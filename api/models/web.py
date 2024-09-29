@@ -1,10 +1,11 @@
 from extensions.ext_database import db
+from models.base import Base
 
 from .model import Message
 from .types import StringUUID
 
 
-class SavedMessage(db.Model):
+class SavedMessage(Base):
     __tablename__ = "saved_messages"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="saved_message_pkey"),
@@ -23,7 +24,7 @@ class SavedMessage(db.Model):
         return db.session.query(Message).filter(Message.id == self.message_id).first()
 
 
-class PinnedConversation(db.Model):
+class PinnedConversation(Base):
     __tablename__ = "pinned_conversations"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="pinned_conversation_pkey"),

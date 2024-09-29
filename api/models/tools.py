@@ -1,8 +1,11 @@
 import json
 from datetime import datetime
 
+from deprecated import deprecated
+from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
+from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
@@ -31,7 +34,7 @@ class BuiltinToolProvider(Base):
     # who created this tool provider
     user_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     # name of the tool provider
-    provider: Mapped[str] = mapped_column(db.String(40), nullable=False)
+    provider: Mapped[str] = mapped_column(db.String(256), nullable=False)
     # credential of the tool provider
     encrypted_credentials: Mapped[str] = mapped_column(db.Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
@@ -182,7 +185,7 @@ class WorkflowToolProvider(Base):
         return db.session.query(App).filter(App.id == self.app_id).first()
 
 
-class ToolModelInvoke(db.Model):
+class ToolModelInvoke(Base):
     """
     store the invoke logs from tool invoke
     """
@@ -219,7 +222,7 @@ class ToolModelInvoke(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class ToolConversationVariables(db.Model):
+class ToolConversationVariables(Base):
     """
     store the conversation variables from tool invoke
     """
@@ -275,3 +278,46 @@ class ToolFile(Base):
     mimetype: Mapped[str] = mapped_column(db.String(255), nullable=False)
     # original url
     original_url: Mapped[str] = mapped_column(db.String(2048), nullable=True)
+
+
+@deprecated
+class DeprecatedPublishedAppTool(Base):
+    """
+    The table stores the apps published as a tool for each person.
+    """
+
+    __tablename__ = "tool_published_apps"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="published_app_tool_pkey"),
+        db.UniqueConstraint("app_id", "user_id", name="unique_published_app_tool"),
+    )
+
+    # id of the tool provider
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    # id of the app
+    app_id = db.Column(StringUUID, ForeignKey("apps.id"), nullable=False)
+    # who published this tool
+    user_id = db.Column(StringUUID, nullable=False)
+    # description of the tool, stored in i18n format, for human
+    description = db.Column(db.Text, nullable=False)
+    # llm_description of the tool, for LLM
+    llm_description = db.Column(db.Text, nullable=False)
+    # query description, query will be seem as a parameter of the tool,
+    # to describe this parameter to llm, we need this field
+    query_description = db.Column(db.Text, nullable=False)
+    # query name, the name of the query parameter
+    query_name = db.Column(db.String(40), nullable=False)
+    # name of the tool provider
+    tool_name = db.Column(db.String(40), nullable=False)
+    # author
+    author = db.Column(db.String(40), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+    @property
+    def description_i18n(self) -> I18nObject:
+        return I18nObject(**json.loads(self.description))
+
+    @property
+    def app(self) -> App:
+        return db.session.query(App).filter(App.id == self.app_id).first()

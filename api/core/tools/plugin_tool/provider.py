@@ -11,12 +11,10 @@ from core.tools.plugin_tool.tool import PluginTool
 class PluginToolProviderController(BuiltinToolProviderController):
     entity: ToolProviderEntityWithPlugin
     tenant_id: str
-    plugin_id: str
 
-    def __init__(self, entity: ToolProviderEntityWithPlugin, tenant_id: str, plugin_id: str) -> None:
+    def __init__(self, entity: ToolProviderEntityWithPlugin, tenant_id: str) -> None:
         self.entity = entity
         self.tenant_id = tenant_id
-        self.plugin_id = plugin_id
 
     @property
     def provider_type(self) -> ToolProviderType:
@@ -35,7 +33,6 @@ class PluginToolProviderController(BuiltinToolProviderController):
         if not manager.validate_provider_credentials(
             tenant_id=self.tenant_id,
             user_id=user_id,
-            plugin_id=self.plugin_id,
             provider=self.entity.identity.name,
             credentials=credentials,
         ):
@@ -54,7 +51,6 @@ class PluginToolProviderController(BuiltinToolProviderController):
             entity=tool_entity,
             runtime=ToolRuntime(tenant_id=self.tenant_id),
             tenant_id=self.tenant_id,
-            plugin_id=self.plugin_id,
         )
 
     def get_tools(self) -> list[PluginTool]:
@@ -66,7 +62,6 @@ class PluginToolProviderController(BuiltinToolProviderController):
                 entity=tool_entity,
                 runtime=ToolRuntime(tenant_id=self.tenant_id),
                 tenant_id=self.tenant_id,
-                plugin_id=self.plugin_id,
             )
             for tool_entity in self.entity.tools
         ]

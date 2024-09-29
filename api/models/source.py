@@ -3,11 +3,12 @@ import json
 from sqlalchemy.dialects.postgresql import JSONB
 
 from extensions.ext_database import db
+from models.base import Base
 
 from .types import StringUUID
 
 
-class DataSourceOauthBinding(db.Model):
+class DataSourceOauthBinding(Base):
     __tablename__ = "data_source_oauth_bindings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="source_binding_pkey"),
@@ -25,7 +26,7 @@ class DataSourceOauthBinding(db.Model):
     disabled = db.Column(db.Boolean, nullable=True, server_default=db.text("false"))
 
 
-class DataSourceApiKeyAuthBinding(db.Model):
+class DataSourceApiKeyAuthBinding(Base):
     __tablename__ = "data_source_api_key_auth_bindings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="data_source_api_key_auth_binding_pkey"),

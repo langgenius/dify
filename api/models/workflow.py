@@ -2,10 +2,13 @@ import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Union
 
-from sqlalchemy import func
-from sqlalchemy.orm import Mapped
+if TYPE_CHECKING:
+    from models.model import AppMode
+
+from sqlalchemy import Index, PrimaryKeyConstraint, func
+from sqlalchemy.orm import Mapped, mapped_column
 
 import contexts
 from constants import HIDDEN_VALUE
@@ -13,6 +16,7 @@ from core.app.segments import SecretVariable, Variable, factory
 from core.helper import encrypter
 from extensions.ext_database import db
 from libs import helper
+from models.base import Base
 
 from .account import Account
 from .types import StringUUID
@@ -75,7 +79,7 @@ class WorkflowType(Enum):
         return cls.WORKFLOW if app_mode == AppMode.WORKFLOW else cls.CHAT
 
 
-class Workflow(db.Model):
+class Workflow(Base):
     """
     Workflow, for `Workflow App` and `Chat App workflow mode`.
 
@@ -345,7 +349,7 @@ class WorkflowRunStatus(Enum):
         raise ValueError(f"invalid workflow run status value {value}")
 
 
-class WorkflowRun(db.Model):
+class WorkflowRun(Base):
     """
     Workflow Run
 
@@ -436,7 +440,7 @@ class WorkflowRun(db.Model):
         return json.loads(self.outputs) if self.outputs else None
 
     @property
-    def message(self) -> Optional["Message"]:
+    def message(self):
         from models.model import Message
 
         return (
@@ -542,7 +546,7 @@ class WorkflowNodeExecutionStatus(Enum):
         raise ValueError(f"invalid workflow node execution status value {value}")
 
 
-class WorkflowNodeExecution(db.Model):
+class WorkflowNodeExecution(Base):
     """
     Workflow Node Execution
 
@@ -708,7 +712,7 @@ class WorkflowAppLogCreatedFrom(Enum):
         raise ValueError(f"invalid workflow app log created from value {value}")
 
 
-class WorkflowAppLog(db.Model):
+class WorkflowAppLog(Base):
     """
     Workflow App execution log, excluding workflow debugging records.
 
@@ -770,15 +774,20 @@ class WorkflowAppLog(db.Model):
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
 
 
-class ConversationVariable(db.Model):
+class ConversationVariable(Base):
     __tablename__ = "workflow_conversation_variables"
+    __table_args__ = (
+        PrimaryKeyConstraint("id", "conversation_id", name="workflow_conversation_variables_pkey"),
+        Index("workflow__conversation_variables_app_id_idx", "app_id"),
+        Index("workflow__conversation_variables_created_at_idx", "created_at"),
+    )
 
-    id: Mapped[str] = db.Column(StringUUID, primary_key=True)
-    conversation_id: Mapped[str] = db.Column(StringUUID, nullable=False, primary_key=True)
-    app_id: Mapped[str] = db.Column(StringUUID, nullable=False, index=True)
-    data = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, index=True, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(
+    id: Mapped[str] = mapped_column(StringUUID, primary_key=True)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=False, primary_key=True)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    data = mapped_column(db.Text, nullable=False)
+    created_at = mapped_column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = mapped_column(
         db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
 

@@ -14,9 +14,9 @@ class PluginToolManager(BasePluginManager):
         provider follows format: plugin_id/provider_name
         """
         if "/" in provider:
-            parts = provider.split("/", 1)
-            if len(parts) == 2:
-                return parts[0], parts[1]
+            parts = provider.split("/", -1)
+            if len(parts) >= 2:
+                return "/".join(parts[:-1]), parts[-1]
             raise ValueError(f"invalid provider format: {provider}")
 
         raise ValueError(f"invalid provider format: {provider}")
@@ -46,6 +46,10 @@ class PluginToolManager(BasePluginManager):
         for provider in response:
             provider.declaration.identity.name = f"{provider.plugin_id}/{provider.declaration.identity.name}"
 
+            # override the provider name for each tool to plugin_id/provider_name
+            for tool in provider.declaration.tools:
+                tool.identity.provider = provider.declaration.identity.name
+
         return response
 
     def fetch_tool_provider(self, tenant_id: str, provider: str) -> PluginToolProviderEntity:
@@ -54,14 +58,25 @@ class PluginToolManager(BasePluginManager):
         """
         plugin_id, provider_name = self._split_provider(provider)
 
+        def transformer(json_response: dict[str, Any]) -> dict:
+            for tool in json_response.get("data", {}).get("declaration", {}).get("tools", []):
+                tool["identity"]["provider"] = provider_name
+
+            return json_response
+
         response = self._request_with_plugin_daemon_response(
             "GET",
             f"plugin/{tenant_id}/management/tool",
             PluginToolProviderEntity,
             params={"provider": provider_name, "plugin_id": plugin_id},
+            transformer=transformer,
         )
 
         response.declaration.identity.name = f"{response.plugin_id}/{response.declaration.identity.name}"
+
+        # override the provider name for each tool to plugin_id/provider_name
+        for tool in response.declaration.tools:
+            tool.identity.provider = response.declaration.identity.name
 
         return response
 

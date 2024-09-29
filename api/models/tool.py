@@ -2,6 +2,7 @@ import json
 from enum import Enum
 
 from extensions.ext_database import db
+from models.base import Base
 
 from .types import StringUUID
 
@@ -17,7 +18,7 @@ class ToolProviderName(Enum):
         raise ValueError(f"No matching enum found for value '{value}'")
 
 
-class ToolProvider(db.Model):
+class ToolProvider(Base):
     __tablename__ = "tool_providers"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tool_provider_pkey"),

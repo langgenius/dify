@@ -86,7 +86,6 @@ class ToolManager:
         return PluginToolProviderController(
             entity=provider_entity.declaration,
             tenant_id=tenant_id,
-            plugin_id=provider_entity.plugin_id,
         )
 
     @classmethod
@@ -158,12 +157,11 @@ class ToolManager:
 
             # decrypt the credentials
             credentials = builtin_provider.credentials
-            controller = cls.get_builtin_provider(provider_id, tenant_id)
             tool_configuration = ProviderConfigEncrypter(
                 tenant_id=tenant_id,
-                config=controller.get_credentials_schema(),
-                provider_type=controller.provider_type.value,
-                provider_identity=controller.entity.identity.name,
+                config=provider_controller.get_credentials_schema(),
+                provider_type=provider_controller.provider_type.value,
+                provider_identity=provider_controller.entity.identity.name,
             )
 
             decrypted_credentials = tool_configuration.decrypt(credentials)
@@ -400,7 +398,6 @@ class ToolManager:
             PluginToolProviderController(
                 entity=provider.declaration,
                 tenant_id=tenant_id,
-                plugin_id=provider.plugin_id,
             )
             for provider in provider_entities
         ]
@@ -525,7 +522,7 @@ class ToolManager:
                 )
 
                 if isinstance(provider, PluginToolProviderController):
-                    result_providers[f"plugin_provider.{user_provider.name}.{provider.plugin_id}"] = user_provider
+                    result_providers[f"plugin_provider.{user_provider.name}"] = user_provider
                 else:
                     result_providers[f"builtin_provider.{user_provider.name}"] = user_provider
 

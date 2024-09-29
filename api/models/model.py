@@ -2,12 +2,15 @@ import json
 import re
 import uuid
 from enum import Enum
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
+
+if TYPE_CHECKING:
+    from models.workflow import Workflow
 
 from flask import request
 from flask_login import UserMixin
-from sqlalchemy import Float, func, text
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy import Float, Index, PrimaryKeyConstraint, func, text
+from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
 from core.file.tool_file_parser import ToolFileParser
@@ -20,7 +23,7 @@ from .account import Account, Tenant
 from .types import StringUUID
 
 
-class DifySetup(db.Model):
+class DifySetup(Base):
     __tablename__ = "dify_setups"
     __table_args__ = (db.PrimaryKeyConstraint("version", name="dify_setup_pkey"),)
 
@@ -55,7 +58,7 @@ class IconType(Enum):
     EMOJI = "emoji"
 
 
-class App(db.Model):
+class App(Base):
     __tablename__ = "apps"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="app_pkey"), db.Index("app_tenant_id_idx", "tenant_id"))
 
@@ -133,7 +136,8 @@ class App(db.Model):
             return False
         if not app_model_config.agent_mode:
             return False
-        if self.app_model_config.agent_mode_dict.get("enabled", False) and self.app_model_config.agent_mode_dict.get(
+
+        if app_model_config.agent_mode_dict.get("enabled", False) and app_model_config.agent_mode_dict.get(
             "strategy", ""
         ) in {"function_call", "react"}:
             self.mode = AppMode.AGENT_CHAT.value
@@ -250,7 +254,7 @@ class AppModelConfig(Base):
         return app
 
     @property
-    def model_dict(self) -> dict:
+    def model_dict(self):
         return json.loads(self.model) if self.model else None
 
     @property
@@ -284,6 +288,9 @@ class AppModelConfig(Base):
         )
         if annotation_setting:
             collection_binding_detail = annotation_setting.collection_binding_detail
+            if not collection_binding_detail:
+                raise ValueError("Collection binding detail not found")
+
             return {
                 "id": annotation_setting.id,
                 "enabled": True,
@@ -314,7 +321,7 @@ class AppModelConfig(Base):
         return json.loads(self.external_data_tools) if self.external_data_tools else []
 
     @property
-    def user_input_form_list(self) -> dict:
+    def user_input_form_list(self):
         return json.loads(self.user_input_form) if self.user_input_form else []
 
     @property
@@ -458,7 +465,7 @@ class AppModelConfig(Base):
         return new_app_model_config
 
 
-class RecommendedApp(db.Model):
+class RecommendedApp(Base):
     __tablename__ = "recommended_apps"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="recommended_app_pkey"),
@@ -486,7 +493,7 @@ class RecommendedApp(db.Model):
         return app
 
 
-class InstalledApp(db.Model):
+class InstalledApp(Base):
     __tablename__ = "installed_apps"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="installed_app_pkey"),
@@ -522,7 +529,7 @@ class Conversation(Base):
         db.Index("conversation_app_from_user_idx", "app_id", "from_source", "from_end_user_id"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
     app_model_config_id = db.Column(StringUUID, nullable=True)
     model_provider = db.Column(db.String(255), nullable=True)
@@ -546,10 +553,8 @@ class Conversation(Base):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
-    messages: Mapped[list["Message"]] = relationship(
-        "Message", backref="conversation", lazy="select", passive_deletes="all"
-    )
-    message_annotations: Mapped[list["MessageAnnotation"]] = relationship(
+    messages = db.relationship("Message", backref="conversation", lazy="select", passive_deletes="all")
+    message_annotations = db.relationship(
         "MessageAnnotation", backref="conversation", lazy="select", passive_deletes="all"
     )
 
@@ -578,7 +583,7 @@ class Conversation(Base):
                 )
 
                 if not app_model_config:
-                    raise ValueError("app config not found")
+                    return {}
 
                 model_config = app_model_config.to_dict()
 
@@ -692,12 +697,12 @@ class Conversation(Base):
 class Message(Base):
     __tablename__ = "messages"
     __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="message_pkey"),
-        db.Index("message_app_id_idx", "app_id", "created_at"),
-        db.Index("message_conversation_id_idx", "conversation_id"),
-        db.Index("message_end_user_idx", "app_id", "from_source", "from_end_user_id"),
-        db.Index("message_account_idx", "app_id", "from_source", "from_account_id"),
-        db.Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
+        PrimaryKeyConstraint("id", name="message_pkey"),
+        Index("message_app_id_idx", "app_id", "created_at"),
+        Index("message_conversation_id_idx", "conversation_id"),
+        Index("message_end_user_idx", "app_id", "from_source", "from_end_user_id"),
+        Index("message_account_idx", "app_id", "from_source", "from_account_id"),
+        Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
@@ -705,10 +710,10 @@ class Message(Base):
     model_provider = db.Column(db.String(255), nullable=True)
     model_id = db.Column(db.String(255), nullable=True)
     override_model_configs = db.Column(db.Text)
-    conversation_id: Mapped[str] = mapped_column(StringUUID, db.ForeignKey("conversations.id"), nullable=False)
-    inputs: Mapped[str] = mapped_column(db.JSON)
-    query: Mapped[str] = mapped_column(db.Text, nullable=False)
-    message: Mapped[str] = mapped_column(db.JSON, nullable=False)
+    conversation_id = db.Column(StringUUID, db.ForeignKey("conversations.id"), nullable=False)
+    inputs = db.Column(db.JSON)
+    query = db.Column(db.Text, nullable=False)
+    message = db.Column(db.JSON, nullable=False)
     message_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     message_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
     message_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
@@ -974,7 +979,7 @@ class Message(Base):
         )
 
 
-class MessageFeedback(db.Model):
+class MessageFeedback(Base):
     __tablename__ = "message_feedbacks"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_feedback_pkey"),
@@ -1009,15 +1014,15 @@ class MessageFile(Base):
         db.Index("message_file_created_by_idx", "created_by"),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
-    type: Mapped[str] = mapped_column(db.String(255), nullable=False)
-    transfer_method: Mapped[str] = mapped_column(db.String(255), nullable=False)
-    url: Mapped[str] = mapped_column(db.Text, nullable=True)
-    belongs_to: Mapped[str] = mapped_column(db.String(255), nullable=True)
-    upload_file_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
-    created_by_role: Mapped[str] = mapped_column(db.String(255), nullable=False)
-    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    message_id = db.Column(StringUUID, nullable=False)
+    type = db.Column(db.String(255), nullable=False)
+    transfer_method = db.Column(db.String(255), nullable=False)
+    url = db.Column(db.Text, nullable=True)
+    belongs_to = db.Column(db.String(255), nullable=True)
+    upload_file_id = db.Column(StringUUID, nullable=True)
+    created_by_role = db.Column(db.String(255), nullable=False)
+    created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
@@ -1032,7 +1037,7 @@ class MessageAnnotation(Base):
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     app_id = db.Column(StringUUID, nullable=False)
-    conversation_id: Mapped[str] = mapped_column(StringUUID, db.ForeignKey("conversations.id"), nullable=True)
+    conversation_id = db.Column(StringUUID, db.ForeignKey("conversations.id"), nullable=True)
     message_id = db.Column(StringUUID, nullable=True)
     question = db.Column(db.Text, nullable=True)
     content = db.Column(db.Text, nullable=False)
@@ -1052,7 +1057,7 @@ class MessageAnnotation(Base):
         return account
 
 
-class AppAnnotationHitHistory(db.Model):
+class AppAnnotationHitHistory(Base):
     __tablename__ = "app_annotation_hit_histories"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="app_annotation_hit_histories_pkey"),
@@ -1090,7 +1095,7 @@ class AppAnnotationHitHistory(db.Model):
         return account
 
 
-class AppAnnotationSetting(db.Model):
+class AppAnnotationSetting(Base):
     __tablename__ = "app_annotation_settings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="app_annotation_settings_pkey"),
@@ -1138,7 +1143,7 @@ class AppAnnotationSetting(db.Model):
         return collection_binding_detail
 
 
-class OperationLog(db.Model):
+class OperationLog(Base):
     __tablename__ = "operation_logs"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="operation_log_pkey"),
@@ -1155,7 +1160,7 @@ class OperationLog(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class EndUser(UserMixin, db.Model):
+class EndUser(UserMixin, Base):
     __tablename__ = "end_users"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="end_user_pkey"),
@@ -1175,7 +1180,7 @@ class EndUser(UserMixin, db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class Site(db.Model):
+class Site(Base):
     __tablename__ = "sites"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="site_pkey"),
@@ -1222,7 +1227,7 @@ class Site(db.Model):
         return dify_config.APP_WEB_URL or request.url_root.rstrip("/")
 
 
-class ApiToken(db.Model):
+class ApiToken(Base):
     __tablename__ = "api_tokens"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="api_token_pkey"),
@@ -1249,7 +1254,7 @@ class ApiToken(db.Model):
             return result
 
 
-class UploadFile(db.Model):
+class UploadFile(Base):
     __tablename__ = "upload_files"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="upload_file_pkey"),
@@ -1273,7 +1278,7 @@ class UploadFile(db.Model):
     hash = db.Column(db.String(255), nullable=True)
 
 
-class ApiRequest(db.Model):
+class ApiRequest(Base):
     __tablename__ = "api_requests"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="api_request_pkey"),
@@ -1290,7 +1295,7 @@ class ApiRequest(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class MessageChain(db.Model):
+class MessageChain(Base):
     __tablename__ = "message_chains"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_chain_pkey"),
@@ -1395,7 +1400,7 @@ class MessageAgentThought(Base):
             return {}
 
     @property
-    def tool_outputs_dict(self) -> dict:
+    def tool_outputs_dict(self):
         tools = self.tools
         try:
             if self.observation:
@@ -1417,7 +1422,7 @@ class MessageAgentThought(Base):
                 return dict.fromkeys(tools, self.observation)
 
 
-class DatasetRetrieverResource(db.Model):
+class DatasetRetrieverResource(Base):
     __tablename__ = "dataset_retriever_resources"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_retriever_resource_pkey"),
@@ -1444,7 +1449,7 @@ class DatasetRetrieverResource(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
 
-class Tag(db.Model):
+class Tag(Base):
     __tablename__ = "tags"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tag_pkey"),
@@ -1462,7 +1467,7 @@ class Tag(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class TagBinding(db.Model):
+class TagBinding(Base):
     __tablename__ = "tag_bindings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tag_binding_pkey"),
@@ -1478,7 +1483,7 @@ class TagBinding(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class TraceAppConfig(db.Model):
+class TraceAppConfig(Base):
     __tablename__ = "trace_app_config"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tracing_app_config_pkey"),
