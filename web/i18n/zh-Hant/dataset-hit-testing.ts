@@ -23,6 +23,7 @@ const translation = {
   },
   noRecentTip: '最近無查詢結果',
   viewChart: '查看向量圖表',
+  viewDetail: '查看詳情',
 }
 
 export default translation

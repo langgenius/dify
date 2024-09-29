@@ -24,6 +24,7 @@ const translation = {
   },
   noRecentTip: 'No recent query results here',
   viewChart: 'View VECTOR CHART',
+  viewDetail: 'View Detail',
 }
 
 export default translation
