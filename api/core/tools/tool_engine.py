@@ -9,7 +9,6 @@ from yarl import URL
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
-from core.callback_handler.plugin_tool_callback_handler import DifyPluginCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -157,7 +156,7 @@ class ToolEngine:
             response = tool.invoke(user_id=user_id, tool_parameters=tool_parameters)
 
             # hit the callback handler
-            workflow_tool_callback.on_tool_end(
+            response = workflow_tool_callback.on_tool_execution(
                 tool_name=tool.entity.identity.name,
                 tool_inputs=tool_parameters,
                 tool_outputs=response,
@@ -166,31 +165,6 @@ class ToolEngine:
             return response
         except Exception as e:
             workflow_tool_callback.on_tool_error(e)
-            raise e
-
-    @staticmethod
-    def plugin_invoke(
-        tool: Tool, tool_parameters: dict, user_id: str, callback: DifyPluginCallbackHandler
-    ) -> Generator[ToolInvokeMessage, None, None]:
-        """
-        Plugin invokes the tool with the given arguments.
-        """
-        try:
-            # hit the callback handler
-            callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
-
-            response = tool.invoke(user_id, tool_parameters)
-
-            # hit the callback handler
-            callback.on_tool_end(
-                tool_name=tool.entity.identity.name,
-                tool_inputs=tool_parameters,
-                tool_outputs=response,
-            )
-
-            return response
-        except Exception as e:
-            callback.on_tool_error(e)
             raise e
 
     @staticmethod

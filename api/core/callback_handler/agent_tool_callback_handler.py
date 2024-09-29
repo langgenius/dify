@@ -103,9 +103,9 @@ class DifyAgentCallbackHandler(BaseModel):
     @property
     def ignore_agent(self) -> bool:
         """Whether to ignore agent callbacks."""
-        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != "true"
+        return not os.environ.get("DEBUG") or os.environ.get("DEBUG", "").lower() != "true"
 
     @property
     def ignore_chat_model(self) -> bool:
         """Whether to ignore chat model callbacks."""
-        return not os.environ.get("DEBUG") or os.environ.get("DEBUG").lower() != "true"
+        return not os.environ.get("DEBUG") or os.environ.get("DEBUG", "").lower() != "true"
