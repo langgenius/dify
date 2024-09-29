@@ -1,6 +1,5 @@
 import threading
 import time
-import uuid
 
 import click
 
@@ -53,14 +52,16 @@ def create_clusters(batch_size):
             dify_config.TIDB_IAM_API_URL,
             dify_config.TIDB_PUBLIC_KEY,
             dify_config.TIDB_PRIVATE_KEY,
-            dify_config.TIDB_REGION)
+            dify_config.TIDB_REGION,
+        )
         for new_cluster in new_clusters:
-            tidb_auth_binding = TidbAuthBinding(cluster_id=new_cluster['cluster_id'],
-                                                cluster_name=new_cluster['cluster_name'],
-                                                account=new_cluster['account'],
-                                                password=new_cluster['password']
-                                                )
+            tidb_auth_binding = TidbAuthBinding(
+                cluster_id=new_cluster["cluster_id"],
+                cluster_name=new_cluster["cluster_name"],
+                account=new_cluster["account"],
+                password=new_cluster["password"],
+            )
             db.session.add(tidb_auth_binding)
         db.session.commit()
     except Exception as e:
-        click.echo(click.style(f'Error: {e}', fg='red'))
+        click.echo(click.style(f"Error: {e}", fg="red"))

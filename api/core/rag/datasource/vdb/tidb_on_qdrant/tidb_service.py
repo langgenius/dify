@@ -7,13 +7,9 @@ from requests.auth import HTTPDigestAuth
 
 class TidbService:
     @staticmethod
-    def create_tidb_serverless_cluster(project_id: str,
-                                       api_url: str,
-                                       iam_url: str,
-                                       public_key: str,
-                                       private_key: str,
-                                       region: str
-                                       ):
+    def create_tidb_serverless_cluster(
+        project_id: str, api_url: str, iam_url: str, public_key: str, private_key: str, region: str
+    ):
         """
         Creates a new TiDB Serverless cluster.
         :param project_id: The project ID of the TiDB Cloud project (required).
@@ -45,7 +41,7 @@ class TidbService:
             "region": region_object,
             "labels": labels,
             "spendingLimit": spending_limit,
-            "rootPassword": password
+            "rootPassword": password,
         }
 
         response = requests.post(f"{api_url}/clusters", json=cluster_data, auth=HTTPDigestAuth(public_key, private_key))
@@ -137,17 +133,10 @@ class TidbService:
         else:
             response.raise_for_status()
 
-
     @staticmethod
     def batch_create_tidb_serverless_cluster(
-        batch_size: int,
-        project_id: str,
-        api_url: str,
-        iam_url: str,
-        public_key: str,
-        private_key: str,
-        region: str
-        )->list[dict]:
+        batch_size: int, project_id: str, api_url: str, iam_url: str, public_key: str, private_key: str, region: str
+    ) -> list[dict]:
         """
         Creates a new TiDB Serverless cluster.
         :param project_id: The project ID of the TiDB Cloud project (required).
@@ -162,7 +151,6 @@ class TidbService:
         """
         clusters = []
         for _ in range(batch_size):
-
             region_object = {
                 "name": region,
             }
@@ -181,23 +169,24 @@ class TidbService:
                 "region": region_object,
                 "labels": labels,
                 "spendingLimit": spending_limit,
-                "rootPassword": password
+                "rootPassword": password,
             }
             clusters.append(cluster_data)
 
-        response = requests.post(f"{api_url}/clusters:batchCreate", json=clusters,
-                                    auth=HTTPDigestAuth(public_key, private_key))
+        response = requests.post(
+            f"{api_url}/clusters:batchCreate", json=clusters, auth=HTTPDigestAuth(public_key, private_key)
+        )
 
         if response.status_code == 200:
             response_data = response.json()
             cluster_infos = []
             for item in response_data:
                 cluster_info = {
-                            "cluster_id": item["clusterId"],
-                            "cluster_name": item["displayName"],
-                            "account": f"{item['userPrefix']}.root",
-                            "password": item["rootPassword"]
-                        }
+                    "cluster_id": item["clusterId"],
+                    "cluster_name": item["displayName"],
+                    "account": f"{item['userPrefix']}.root",
+                    "password": item["rootPassword"],
+                }
                 cluster_infos.append(cluster_info)
             return cluster_infos
         else:

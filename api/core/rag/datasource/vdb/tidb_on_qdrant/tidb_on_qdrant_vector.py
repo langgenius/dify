@@ -413,31 +413,35 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                 db.session.commit()
                 TIDB_ON_QDRANT_API_KEY = f"{idle_tidb_auth_binding.account}:{idle_tidb_auth_binding.password}"
             else:
-                with redis_client.lock('create_tidb_serverless_cluster_lock', timeout=900):
-                    tidb_auth_binding = db.session.query(TidbAuthBinding). \
-                        filter(TidbAuthBinding.tenant_id == dataset.tenant_id). \
-                        one_or_none()
+                with redis_client.lock("create_tidb_serverless_cluster_lock", timeout=900):
+                    tidb_auth_binding = (
+                        db.session.query(TidbAuthBinding)
+                        .filter(TidbAuthBinding.tenant_id == dataset.tenant_id)
+                        .one_or_none()
+                    )
                     if tidb_auth_binding:
-                        TIDB_ON_QDRANT_API_KEY = f'{tidb_auth_binding.account}:{tidb_auth_binding.password}'
+                        TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
 
                     else:
-                        new_cluster = TidbService.create_tidb_serverless_cluster(dify_config.TIDB_PROJECT_ID,
-                                                                         dify_config.TIDB_API_URL,
-                                                                         dify_config.TIDB_IAM_API_URL,
-                                                                         dify_config.TIDB_PUBLIC_KEY,
-                                                                         dify_config.TIDB_PRIVATE_KEY,
-                                                                         dify_config.TIDB_REGION
-                                                                         )
-                        new_tidb_auth_binding = TidbAuthBinding(cluster_id=new_cluster['cluster_id'],
-                                                                cluster_name=new_cluster['cluster_name'],
-                                                                account=new_cluster['account'],
-                                                                password=new_cluster['password'],
-                                                                tenant_id=dataset.tenant_id,
-                                                                active=True
-                                                                )
+                        new_cluster = TidbService.create_tidb_serverless_cluster(
+                            dify_config.TIDB_PROJECT_ID,
+                            dify_config.TIDB_API_URL,
+                            dify_config.TIDB_IAM_API_URL,
+                            dify_config.TIDB_PUBLIC_KEY,
+                            dify_config.TIDB_PRIVATE_KEY,
+                            dify_config.TIDB_REGION,
+                        )
+                        new_tidb_auth_binding = TidbAuthBinding(
+                            cluster_id=new_cluster["cluster_id"],
+                            cluster_name=new_cluster["cluster_name"],
+                            account=new_cluster["account"],
+                            password=new_cluster["password"],
+                            tenant_id=dataset.tenant_id,
+                            active=True,
+                        )
                         db.session.add(new_tidb_auth_binding)
                         db.session.commit()
-                        TIDB_ON_QDRANT_API_KEY = f'{new_tidb_auth_binding.account}:{new_tidb_auth_binding.password}'
+                        TIDB_ON_QDRANT_API_KEY = f"{new_tidb_auth_binding.account}:{new_tidb_auth_binding.password}"
 
         else:
             TIDB_ON_QDRANT_API_KEY = f"{tidb_auth_binding.account}:{tidb_auth_binding.password}"
