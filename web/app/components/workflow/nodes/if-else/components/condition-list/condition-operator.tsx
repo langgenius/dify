@@ -65,7 +65,7 @@ const ConditionOperator = ({
           {
             selectedOption
               ? selectedOption.label
-              : 'select'
+              : t(`${i18nPrefix}.select`)
           }
           <RiArrowDownSLine className='ml-1 w-3.5 h-3.5' />
         </Button>

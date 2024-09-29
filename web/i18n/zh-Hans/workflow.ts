@@ -457,6 +457,7 @@ const translation = {
       conditionNotSetup: '条件未设置',
       selectVariable: '选择变量',
       addSubVariable: '添加子变量',
+      select: '选择',
     },
     variableAssigner: {
       title: '变量赋值',
