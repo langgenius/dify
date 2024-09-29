@@ -265,7 +265,7 @@ class AppDslService:
         draft_workflow = workflow_service.sync_draft_workflow(
             app_model=app,
             graph=workflow_data.get("graph", {}),
-            features=workflow_data.get("../core/app/features", {}),
+            features=workflow_data.get("features", {}),
             unique_hash=None,
             account=account,
             environment_variables=environment_variables,
