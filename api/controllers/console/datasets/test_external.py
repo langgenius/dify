@@ -8,9 +8,6 @@ from services.external_knowledge_service import ExternalDatasetService
 
 
 class TestExternalApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("retrieval_setting", nullable=False, required=True, type=dict, location="json")
