@@ -21,7 +21,7 @@ from events.tenant_event import tenant_was_created
 from libs.helper import email, get_remote_ip
 from libs.password import valid_password
 from models.account import Account
-from services.account_service import AccountService, TenantService
+from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 
 
@@ -35,14 +35,26 @@ class LoginApi(Resource):
         parser.add_argument("email", type=email, required=True, location="json")
         parser.add_argument("password", type=valid_password, required=True, location="json")
         parser.add_argument("remember_me", type=bool, required=False, default=False, location="json")
+        parser.add_argument("invite_token", type=str, required=False, default=None, location="json")
         args = parser.parse_args()
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args["email"])
         if is_login_error_rate_limit:
             raise EmailPasswordLoginLimitError()
 
+        invitation = args["invite_token"]
+        if invitation:
+            invitation = RegisterService.get_invitation_if_token_valid(None, args["email"], invitation)
+        
         try:
-            account = AccountService.authenticate(args["email"], args["password"])
+            if invitation:
+                data = invitation.get("data", {})
+                invitee_email = data.get("email") if data else None
+                if invitee_email != args["email"]:
+                    raise InvalidEmailError()
+                account = AccountService.authenticate(args["email"], args["password"], args["invite_token"])
+            else:
+                account = AccountService.authenticate(args["email"], args["password"])
         except services.errors.account.AccountLoginError:
             raise NotAllowedRegister()
         except services.errors.account.AccountPasswordError:
