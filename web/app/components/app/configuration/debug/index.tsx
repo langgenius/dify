@@ -451,6 +451,7 @@ const Debug: FC<IDebug> = ({
             inputs={inputs}
             visionConfig={{
               ...features.file! as VisionSettings,
+              transfer_methods: features.file!.allowed_file_upload_methods || [],
               image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
             }}
             onVisionFilesChange={setCompletionFiles}
