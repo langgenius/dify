@@ -52,8 +52,17 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
       <div className='flex justify-center flex-grow self-stretch'>
         <div className='flex w-full max-w-[960px] px-14 py-0 flex-col items-center'>
           <div className='flex w-full max-w-[640px] pt-6 pb-8 flex-col grow items-center gap-4'>
-            <div className='relative flex py-2 items-center gap-2 self-stretch'>
-              <div className='flex-grow text-text-primary system-xl-semibold'>{t('dataset.connectDataset')}</div>
+            <div className='relative flex flex-col py-2 items-center gap-[2px] self-stretch'>
+              <div className='flex-grow text-text-primary system-xl-semibold self-stretch'>{t('dataset.connectDataset')}</div>
+              <p className='text-text-tertiary system-sm-regular'>
+                <span>{t('dataset.connectHelper.helper1')}</span>
+                <span className='text-text-secondary system-sm-medium'>{t('dataset.connectHelper.helper2')}</span>
+                <span>{t('dataset.connectHelper.helper3')}</span>
+                <a className='self-stretch text-text-accent system-sm-regular' href='https://docs.dify.ai/guides/knowledge-base/connect-external-knowledge' target='_blank' rel="noopener noreferrer">
+                  {t('dataset.connectHelper.helper4')}
+                </a>
+                <span>{t('dataset.connectHelper.helper5')} </span>
+              </p>
               <Button
                 className='flex w-8 h-8 p-2 items-center justify-center absolute left-[-44px] top-1 rounded-full'
                 variant='tertiary'

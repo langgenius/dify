@@ -53,6 +53,13 @@ const translation = {
     },
     learnMore: 'Learn More',
   },
+  connectHelper: {
+    helper1: 'Connect to external knowledge bases via API and knowledge base ID. Currently, ',
+    helper2: 'only the retrieval functionality is supported',
+    helper3: '. We strongly recommend that you ',
+    helper4: 'read the help documentation',
+    helper5: ' carefully before using this feature.',
+  },
   createDatasetIntro: 'Import your own text data or write data in real-time via Webhook for LLM context enhancement.',
   deleteDatasetConfirmTitle: 'Delete this Knowledge?',
   deleteDatasetConfirmContent:
