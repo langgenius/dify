@@ -27,7 +27,7 @@ class ListFilterNode(BaseNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
             )
-        if not isinstance(variable, ArrayFileSegment | ArrayNumberSegment | ArrayStringSegment):
+        if variable.value and not isinstance(variable, ArrayFileSegment | ArrayNumberSegment | ArrayStringSegment):
             error_message = (
                 f"Variable {node_data.variable} is not an ArrayFileSegment, ArrayNumberSegment " "or ArrayStringSegment"
             )
