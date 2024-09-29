@@ -36,17 +36,25 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
     }
     try {
       setIsLoading(true)
+      const loginData: Record<string, any> = {
+        email,
+        password,
+        remember_me: true,
+      }
+      if (isInvite)
+        loginData.invite_token = decodeURIComponent(searchParams.get('invite_token') as string)
       const res = await login({
         url: '/login',
-        body: {
-          email,
-          password,
-          remember_me: true,
-        },
+        body: loginData,
       })
       if (res.result === 'success') {
-        localStorage.setItem('console_token', res.data)
-        router.replace('/apps')
+        if (isInvite) {
+          router.replace(`/signin/invite-settings?${searchParams.toString()}`)
+        }
+        else {
+          localStorage.setItem('console_token', res.data)
+          router.replace('/apps')
+        }
       }
       else if (res.message === 'account_not_found') {
         const params = new URLSearchParams()
