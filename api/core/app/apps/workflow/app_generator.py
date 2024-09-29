@@ -68,7 +68,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
     ):
-        files: Sequence[Mapping[str, Any]] = args.get("files", [])
+        files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
         role = CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER
 

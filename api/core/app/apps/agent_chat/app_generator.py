@@ -49,7 +49,12 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
     ) -> dict: ...
 
     def generate(
-        self, app_model: App, user: Union[Account, EndUser], args: Any, invoke_from: InvokeFrom, stream: bool = True
+        self,
+        app_model: App,
+        user: Union[Account, EndUser],
+        args: Any,
+        invoke_from: InvokeFrom,
+        stream: bool = True,
     ) -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
@@ -100,7 +105,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         role = CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER
 
         # parse files
-        files = args["files"] if args.get("files") else []
+        files = args.get("files") or []
         file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
         if file_extra_config:
             file_objs = file_factory.build_from_mappings(
