@@ -439,7 +439,9 @@ export const useWorkflowInit = () => {
   const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
-  workflowStore.setState({ appId: appDetail.id })
+  useEffect(() => {
+    workflowStore.setState({ appId: appDetail.id })
+  }, [appDetail.id, workflowStore])
 
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
@@ -487,6 +489,7 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     handleGetInitialWorkflowData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
