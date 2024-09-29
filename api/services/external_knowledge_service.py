@@ -330,7 +330,7 @@ class ExternalDatasetService:
         }
 
         external_knowledge_api_setting = {
-            "url": f"{settings.get('endpoint')}/dify/external-knowledge/retrieval-documents",
+            "url": f"{settings.get('endpoint')}/retrieval",
             "request_method": "post",
             "headers": headers,
             "params": request_params,
