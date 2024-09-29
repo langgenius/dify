@@ -218,7 +218,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
         </div>
       </FloatRightContainer>
       <Modal
-        className='w-full'
+        className={isExternal ? 'py-10 px-8' : 'w-full'}
         closable
         onClose={() => {
           setCurrParagraph({ showModal: false })
