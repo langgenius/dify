@@ -94,7 +94,7 @@ export const useEmbeddedChatbot = () => {
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
-    return (appParams?.user_input_form || []).filter((item: any) => item.paragraph || item.select || item['text-input'] || item.number).map((item: any) => {
+    return (appParams?.user_input_form || []).filter((item: any) => !item.external_data_tool).map((item: any) => {
       if (item.paragraph) {
         let value = initInputs[item.paragraph.variable]
         if (value && item.paragraph.max_length && value.length > item.paragraph.max_length)
