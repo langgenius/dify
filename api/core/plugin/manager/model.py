@@ -10,13 +10,14 @@ from core.model_runtime.entities.text_embedding_entities import TextEmbeddingRes
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
+    PluginDaemonInnerError,
     PluginModelProviderEntity,
     PluginModelSchemaEntity,
     PluginNumTokensResponse,
     PluginStringResultResponse,
     PluginVoicesResponse,
 )
-from core.plugin.manager.base import BasePluginManager, PluginDaemonRespError
+from core.plugin.manager.base import BasePluginManager
 
 
 class PluginModelManager(BasePluginManager):
@@ -179,8 +180,8 @@ class PluginModelManager(BasePluginManager):
 
         try:
             yield from response
-        except PluginDaemonRespError as e:
-            raise ValueError(e.resp_message + str(e.code))
+        except PluginDaemonInnerError as e:
+            raise ValueError(e.message + str(e.code))
 
     def get_llm_num_tokens(
         self,
@@ -395,8 +396,8 @@ class PluginModelManager(BasePluginManager):
             for result in response:
                 hex_str = result.result
                 yield binascii.unhexlify(hex_str)
-        except PluginDaemonRespError as e:
-            raise ValueError(e.resp_message + str(e.code))
+        except PluginDaemonInnerError as e:
+            raise ValueError(e.message + str(e.code))
 
     def get_tts_model_voices(
         self,
