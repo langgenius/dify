@@ -6,9 +6,9 @@ identity:
     zh_Hans: Google
     pt_BR: Google
   description:
-    en_US: Google
-    zh_Hans: GoogleSearch
-    pt_BR: Google
+    en_US: Google Search
+    zh_Hans: Google 搜索
+    pt_BR: Google Search
   icon: icon.svg
   tags:
     - search
