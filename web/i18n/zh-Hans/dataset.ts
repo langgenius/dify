@@ -49,6 +49,13 @@ const translation = {
     },
     learnMore: '了解更多',
   },
+  connectHelper: {
+    helper1: '通过 API 和知识库 ID 连接到外部知识库。目前，',
+    helper2: '仅支持检索功能',
+    helper3: '。我们强烈建议您在使用此功能之前',
+    helper4: '仔细阅读帮助文档',
+    helper5: '。',
+  },
   connectDataset: '连接外部知识库',
   createDatasetIntro: '导入您自己的文本数据或通过 Webhook 实时写入数据以增强 LLM 的上下文。',
   deleteDatasetConfirmTitle: '要删除知识库吗？',

@@ -53,7 +53,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
           ? (
             <div className="flex px-2 py-1 items-center gap-0.5 self-stretch rounded-lg">
               <ApiConnectionMod className='text-text-secondary w-4 h-4' />
-              <div className='flex p-1 items-center flex-grow'>
+              <div className='flex items-center flex-grow'>
                 <span className='text-components-input-text-filled text-ellipsis system-sm-regular overflow-hidden'>{selectedItem.name}</span>
               </div>
             </div>
