@@ -112,7 +112,6 @@ class AccountService:
             account.password = base64_password_hashed
             account.password_salt = base64_salt
             
-
         if account.password is None or not compare_password(password, account.password, account.password_salt):
             raise AccountPasswordError("Invalid email or password.")
 
