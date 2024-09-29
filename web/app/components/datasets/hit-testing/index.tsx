@@ -72,6 +72,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
     setExternalCurrParagraph({ paraInfo: detail, showModal: true })
   }
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
+  const isExternal = currentDataset?.provider === 'external'
 
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
@@ -90,6 +91,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
                 title: record.title,
                 uri: record.metadata ? record.metadata['x-amz-bedrock-kb-source-uri'] : '',
               }}
+              isExternal={isExternal}
               detail={record.segment}
               contentExternal={record.content}
               score={record.score}
@@ -133,7 +135,7 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
           setLoading={setSubmitLoading}
           setText={setText}
           text={text}
-          isExternal={currentDataset?.provider === 'external'}
+          isExternal={isExternal}
           onClickRetrievalMethod={() => setIsShowModifyRetrievalModal(true)}
           retrievalConfig={retrievalConfig}
           isEconomy={currentDataset?.indexing_technique === 'economy'}

@@ -55,6 +55,7 @@ type ISegmentCardProps = {
 const SegmentCard: FC<ISegmentCardProps> = ({
   detail = {},
   contentExternal,
+  isExternal,
   refSource,
   score,
   onClick,
@@ -219,7 +220,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                     textCls="text-xs text-gray-700 !font-normal overflow-hidden whitespace-nowrap text-ellipsis"
                   />
                   <div className={cn(s.chartLinkText, 'group-hover:inline-flex')}>
-                    {t('datasetHitTesting.viewChart')}
+                    {isExternal ? t('datasetHitTesting.viewDetail') : t('datasetHitTesting.viewChart')}
                     <ArrowUpRightIcon className="w-3 h-3 ml-1 stroke-current stroke-2" />
                   </div>
                 </div>

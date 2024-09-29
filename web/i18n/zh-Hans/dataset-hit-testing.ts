@@ -24,6 +24,7 @@ const translation = {
   },
   noRecentTip: '最近无查询结果',
   viewChart: '查看向量图表',
+  viewDetail: '查看详情',
 }
 
 export default translation
