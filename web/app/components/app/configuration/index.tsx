@@ -908,7 +908,7 @@ const Configuration: FC = () => {
                 <Config />
               </div>
               {!isMobile && <div className="relative flex flex-col w-1/2 h-full overflow-y-auto grow " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-                <div className='grow flex flex-col h-0 border-t-[0.5px] border-l-[0.5px] rounded-tl-2xl border-components-panel-border bg-chatbot-bg '>
+                <div className='grow flex flex-col border-t-[0.5px] border-l-[0.5px] rounded-tl-2xl border-components-panel-border bg-chatbot-bg '>
                   <Debug
                     isAPIKeySet={isAPIKeySet}
                     onSetting={() => setShowAccountSettingModal({ payload: 'provider' })}
