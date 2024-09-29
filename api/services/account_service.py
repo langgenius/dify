@@ -102,7 +102,7 @@ class AccountService:
 
         if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
             raise AccountLoginError("Account is banned or closed.")
-        
+
         if password and invite_token:
             # if invite_token is valid, set password and password_salt
             salt = secrets.token_bytes(16)
@@ -111,7 +111,6 @@ class AccountService:
             base64_password_hashed = base64.b64encode(password_hashed).decode()
             account.password = base64_password_hashed
             account.password_salt = base64_salt
-            
 
         if account.password is None or not compare_password(password, account.password, account.password_salt):
             raise AccountPasswordError("Invalid email or password.")
@@ -119,7 +118,7 @@ class AccountService:
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
             account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
-            
+
         db.session.commit()
 
         return account

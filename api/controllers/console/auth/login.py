@@ -45,7 +45,7 @@ class LoginApi(Resource):
         invitation = args["invite_token"]
         if invitation:
             invitation = RegisterService.get_invitation_if_token_valid(None, args["email"], invitation)
-        
+
         try:
             if invitation:
                 data = invitation.get("data", {})
