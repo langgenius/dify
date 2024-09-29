@@ -5,6 +5,7 @@ from typing import Optional, cast
 import numpy as np
 from sqlalchemy.exc import IntegrityError
 
+from core.embedding.embedding_constant import EmbeddingInputType
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
@@ -56,7 +57,9 @@ class CacheEmbedding(Embeddings):
                 for i in range(0, len(embedding_queue_texts), max_chunks):
                     batch_texts = embedding_queue_texts[i : i + max_chunks]
 
-                    embedding_result = self._model_instance.invoke_text_embedding(texts=batch_texts, user=self._user)
+                    embedding_result = self._model_instance.invoke_text_embedding(
+                        texts=batch_texts, user=self._user, input_type=EmbeddingInputType.DOCUMENT
+                    )
 
                     for vector in embedding_result.embeddings:
                         try:
@@ -100,7 +103,9 @@ class CacheEmbedding(Embeddings):
             redis_client.expire(embedding_cache_key, 600)
             return list(np.frombuffer(base64.b64decode(embedding), dtype="float"))
         try:
-            embedding_result = self._model_instance.invoke_text_embedding(texts=[text], user=self._user)
+            embedding_result = self._model_instance.invoke_text_embedding(
+                texts=[text], user=self._user, input_type=EmbeddingInputType.QUERY
+            )
 
             embedding_results = embedding_result.embeddings[0]
             embedding_results = (embedding_results / np.linalg.norm(embedding_results)).tolist()

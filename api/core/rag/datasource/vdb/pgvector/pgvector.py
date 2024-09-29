@@ -23,6 +23,8 @@ class PGVectorConfig(BaseModel):
     user: str
     password: str
     database: str
+    min_connection: int
+    max_connection: int
 
     @model_validator(mode="before")
     @classmethod
@@ -37,6 +39,12 @@ class PGVectorConfig(BaseModel):
             raise ValueError("config PGVECTOR_PASSWORD is required")
         if not values["database"]:
             raise ValueError("config PGVECTOR_DATABASE is required")
+        if not values["min_connection"]:
+            raise ValueError("config PGVECTOR_MIN_CONNECTION is required")
+        if not values["max_connection"]:
+            raise ValueError("config PGVECTOR_MAX_CONNECTION is required")
+        if values["min_connection"] > values["max_connection"]:
+            raise ValueError("config PGVECTOR_MIN_CONNECTION should less than PGVECTOR_MAX_CONNECTION")
         return values
 
 
@@ -61,8 +69,8 @@ class PGVector(BaseVector):
 
     def _create_connection_pool(self, config: PGVectorConfig):
         return psycopg2.pool.SimpleConnectionPool(
-            1,
-            5,
+            config.min_connection,
+            config.max_connection,
             host=config.host,
             port=config.port,
             user=config.user,
@@ -213,5 +221,7 @@ class PGVectorFactory(AbstractVectorFactory):
                 user=dify_config.PGVECTOR_USER,
                 password=dify_config.PGVECTOR_PASSWORD,
                 database=dify_config.PGVECTOR_DATABASE,
+                min_connection=dify_config.PGVECTOR_MIN_CONNECTION,
+                max_connection=dify_config.PGVECTOR_MAX_CONNECTION,
             ),
         )

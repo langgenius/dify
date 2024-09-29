@@ -48,7 +48,7 @@ from ._utils import (
 )
 
 if TYPE_CHECKING:
-    from pydantic_core.core_schema import LiteralSchema, ModelField, ModelFieldsSchema
+    from pydantic_core.core_schema import ModelField
 
 __all__ = ["BaseModel", "GenericModel"]
 _BaseModelT = TypeVar("_BaseModelT", bound="BaseModel")
@@ -630,8 +630,7 @@ def validate_type(*, type_: type[_T], value: object) -> _T:
     return cast(_T, _validate_non_model_type(type_=type_, value=value))
 
 
-# our use of subclasssing here causes weirdness for type checkers,
-# so we just pretend that we don't subclass
+# Subclassing here confuses type checkers, so we treat this class as non-inheriting.
 if TYPE_CHECKING:
     GenericModel = BaseModel
 else:

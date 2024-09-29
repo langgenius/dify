@@ -65,7 +65,7 @@ const WorkflowToolConfigureButton = ({
         else {
           if (item.type === 'paragraph' && param.type !== 'string')
             return true
-          if (param.type !== item.type && !(param.type === 'string' && item.type === 'paragraph'))
+          if (item.type === 'text-input' && param.type !== 'string')
             return true
         }
       }
