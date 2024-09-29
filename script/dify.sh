@@ -2,6 +2,11 @@
 
 # 定义工作目录
 BASE_DIR="/home/ruantong/dify"
+CONDA_ENV="dify"
+
+# 激活 Conda 环境
+source /root/miniconda3/etc/profile.d/conda.sh   # 根据你的 Conda 安装路径调整
+conda activate $CONDA_ENV
 
 # 启动服务的函数
 start_services() {
