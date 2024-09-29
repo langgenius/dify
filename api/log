@@ -1,0 +1,56 @@
+2024-09-27 10:36:26,251.251 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-27 10:38:27,319.319 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 01:39:11,838.838 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 02:15:29,587.587 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 02:15:59,816.816 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 02:16:00,932.932 INFO [MainThread] [_internal.py:97] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.122:5001
+2024-09-29 02:16:00,932.932 INFO [MainThread] [_internal.py:97] - [33mPress CTRL+C to quit[0m
+2024-09-29 02:16:00,933.933 INFO [MainThread] [_internal.py:97] -  * Restarting with stat
+2024-09-29 02:16:15,098.098 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 02:16:16,205.205 WARNING [MainThread] [_internal.py:97] -  * Debugger is active!
+2024-09-29 02:16:16,206.206 INFO [MainThread] [_internal.py:97] -  * Debugger PIN: 104-398-021
+2024-09-29 02:18:04,951.951 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 02:18:06,079.079 INFO [MainThread] [_internal.py:97] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.122:5001
+2024-09-29 02:18:06,080.080 INFO [MainThread] [_internal.py:97] - [33mPress CTRL+C to quit[0m
+2024-09-29 02:18:06,080.080 INFO [MainThread] [_internal.py:97] -  * Restarting with stat
+2024-09-29 02:18:20,017.017 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 02:18:21,141.141 WARNING [MainThread] [_internal.py:97] -  * Debugger is active!
+2024-09-29 02:18:21,141.141 INFO [MainThread] [_internal.py:97] -  * Debugger PIN: 104-398-021
+2024-09-29 02:18:37,328.328 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 02:22:55,916.916 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 02:43:24,989.989 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 02:43:26,107.107 INFO [MainThread] [_internal.py:97] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.122:5001
+2024-09-29 02:43:26,107.107 INFO [MainThread] [_internal.py:97] - [33mPress CTRL+C to quit[0m
+2024-09-29 02:43:26,108.108 INFO [MainThread] [_internal.py:97] -  * Restarting with stat
+2024-09-29 02:43:40,551.551 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 02:43:41,244.244 WARNING [MainThread] [_internal.py:97] -  * Debugger is active!
+2024-09-29 02:43:41,245.245 INFO [MainThread] [_internal.py:97] -  * Debugger PIN: 104-398-021
+2024-09-29 02:44:25,811.811 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 02:50:23,868.868 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 02:59:59,517.517 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 03:02:54,899.899 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 03:04:36,540.540 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 03:06:26,671.671 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 03:08:43,805.805 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 03:55:33,837.837 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 03:59:53,788.788 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 05:54:06,016.016 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 05:54:06,729.729 INFO [MainThread] [_internal.py:97] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.122:5001
+2024-09-29 05:54:06,729.729 INFO [MainThread] [_internal.py:97] - [33mPress CTRL+C to quit[0m
+2024-09-29 05:54:06,730.730 INFO [MainThread] [_internal.py:97] -  * Restarting with stat
+2024-09-29 05:54:21,210.210 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-09-29 05:54:21,901.901 WARNING [MainThread] [_internal.py:97] -  * Debugger is active!
+2024-09-29 05:54:21,902.902 INFO [MainThread] [_internal.py:97] -  * Debugger PIN: 104-398-021
+2024-09-29 05:57:19,496.496 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
