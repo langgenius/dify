@@ -44,6 +44,8 @@ class VertexAiTextEmbeddingModel(_CommonVertexAi, TextEmbeddingModel):
         :param model: model name
         :param credentials: model credentials
         :param texts: texts to embed
+        :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
         service_account_info = json.loads(base64.b64decode(credentials["vertex_service_account_key"]))

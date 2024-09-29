@@ -2,3 +2,4 @@ model: gte-Qwen2-7B-instruct
 model_type: text-embedding
 model_properties:
   context_size: 2048
+deprecated: true
