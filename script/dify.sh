@@ -50,6 +50,7 @@ stop_services() {
 # 重启服务的函数
 restart_services() {
     stop_services
+    sleep 10
     start_services
 }
 
