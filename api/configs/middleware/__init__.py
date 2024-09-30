@@ -222,6 +222,5 @@ class MiddlewareConfig(
     TiDBVectorConfig,
     WeaviateConfig,
     ElasticsearchConfig,
-    BedrockConfig,
 ):
     pass
