@@ -1,6 +1,7 @@
 import datetime
 import json
 
+import requests
 from flask_login import current_user
 
 from core.helper import encrypter
@@ -65,6 +66,35 @@ class WebsiteService:
             time = str(datetime.datetime.now().timestamp())
             redis_client.setex(website_crawl_time_cache_key, 3600, time)
             return {"status": "active", "job_id": job_id}
+        elif provider == "jinareader":
+            api_key = encrypter.decrypt_token(
+                tenant_id=current_user.current_tenant_id, token=credentials.get("config").get("api_key")
+            )
+            crawl_sub_pages = options.get("crawl_sub_pages", False)
+            if not crawl_sub_pages:
+                response = requests.get(
+                    f"https://r.jina.ai/{url}",
+                    headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
+                )
+                if response.json().get("code") != 200:
+                    raise ValueError("Failed to crawl")
+                return {"status": "active", "data": response.json().get("data")}
+            else:
+                response = requests.post(
+                    "https://adaptivecrawl-kir3wx7b3a-uc.a.run.app",
+                    json={
+                        "url": url,
+                        "maxPages": options.get("limit", 1),
+                        "useSitemap": options.get("use_sitemap", True),
+                    },
+                    headers={
+                        "Content-Type": "application/json",
+                        "Authorization": f"Bearer {api_key}",
+                    },
+                )
+                if response.json().get("code") != 200:
+                    raise ValueError("Failed to crawl")
+                return {"status": "active", "job_id": response.json().get("data", {}).get("taskId")}
         else:
             raise ValueError("Invalid provider")
 
@@ -93,6 +123,42 @@ class WebsiteService:
                     time_consuming = abs(end_time - float(start_time))
                     crawl_status_data["time_consuming"] = f"{time_consuming:.2f}"
                     redis_client.delete(website_crawl_time_cache_key)
+        elif provider == "jinareader":
+            api_key = encrypter.decrypt_token(
+                tenant_id=current_user.current_tenant_id, token=credentials.get("config").get("api_key")
+            )
+            response = requests.post(
+                "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
+                headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+                json={"taskId": job_id},
+            )
+            data = response.json().get("data", {})
+            crawl_status_data = {
+                "status": data.get("status", "active"),
+                "job_id": job_id,
+                "total": len(data.get("urls", [])),
+                "current": len(data.get("processed", [])) + len(data.get("failed", [])),
+                "data": [],
+                "time_consuming": data.get("duration", 0) / 1000,
+            }
+
+            if crawl_status_data["status"] == "completed":
+                response = requests.post(
+                    "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+                    json={"taskId": job_id, "urls": list(data.get("processed", {}).keys())},
+                )
+                data = response.json().get("data", {})
+                formatted_data = [
+                    {
+                        "title": item.get("data", {}).get("title"),
+                        "source_url": item.get("data", {}).get("url"),
+                        "description": item.get("data", {}).get("description"),
+                        "markdown": item.get("data", {}).get("content"),
+                    }
+                    for item in data.get("processed", {}).values()
+                ]
+                crawl_status_data["data"] = formatted_data
         else:
             raise ValueError("Invalid provider")
         return crawl_status_data
@@ -119,6 +185,40 @@ class WebsiteService:
                     if item.get("source_url") == url:
                         return item
             return None
+        elif provider == "jinareader":
+            file_key = "website_files/" + job_id + ".txt"
+            if storage.exists(file_key):
+                data = storage.load_once(file_key)
+                if data:
+                    data = json.loads(data.decode("utf-8"))
+            elif not job_id:
+                response = requests.get(
+                    f"https://r.jina.ai/{url}",
+                    headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
+                )
+                if response.json().get("code") != 200:
+                    raise ValueError("Failed to crawl")
+                return response.json().get("data")
+            else:
+                api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
+                response = requests.post(
+                    "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+                    json={"taskId": job_id},
+                )
+                data = response.json().get("data", {})
+                if data.get("status") != "completed":
+                    raise ValueError("Crawl job is not completed")
+
+                response = requests.post(
+                    "https://adaptivecrawlstatus-kir3wx7b3a-uc.a.run.app",
+                    headers={"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"},
+                    json={"taskId": job_id, "urls": list(data.get("processed", {}).keys())},
+                )
+                data = response.json().get("data", {})
+                for item in data.get("processed", {}).values():
+                    if item.get("data", {}).get("url") == url:
+                        return item.get("data", {})
         else:
             raise ValueError("Invalid provider")
 

@@ -37,6 +37,12 @@ const Options: FC<Props> = ({
         isChecked={payload.crawl_sub_pages}
         onChange={handleChange('crawl_sub_pages')}
       />
+      <CheckboxWithLabel
+        label={t(`${I18N_PREFIX}.useSitemap`)}
+        isChecked={payload.use_sitemap}
+        onChange={handleChange('use_sitemap')}
+        tooltip={t(`${I18N_PREFIX}.useSitemapTooltip`) as string}
+      />
       <div className='flex justify-between space-x-4'>
         <Field
           className='grow shrink-0'
@@ -46,37 +52,7 @@ const Options: FC<Props> = ({
           isNumber
           isRequired
         />
-        <Field
-          className='grow shrink-0'
-          label={t(`${I18N_PREFIX}.maxDepth`)}
-          value={payload.max_depth}
-          onChange={handleChange('max_depth')}
-          isNumber
-          tooltip={t(`${I18N_PREFIX}.maxDepthTooltip`)!}
-        />
       </div>
-
-      <div className='flex justify-between space-x-4'>
-        <Field
-          className='grow shrink-0'
-          label={t(`${I18N_PREFIX}.excludePaths`)}
-          value={payload.excludes}
-          onChange={handleChange('excludes')}
-          placeholder='blog/*, /about/*'
-        />
-        <Field
-          className='grow shrink-0'
-          label={t(`${I18N_PREFIX}.includeOnlyPaths`)}
-          value={payload.includes}
-          onChange={handleChange('includes')}
-          placeholder='articles/*'
-        />
-      </div>
-      <CheckboxWithLabel
-        label={t(`${I18N_PREFIX}.extractOnlyMainContent`)}
-        isChecked={payload.only_main_content}
-        onChange={handleChange('only_main_content')}
-      />
     </div>
   )
 }

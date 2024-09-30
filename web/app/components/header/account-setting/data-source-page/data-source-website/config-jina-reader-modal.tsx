@@ -8,7 +8,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Button from '@/app/components/base/button'
-import type { FirecrawlConfig } from '@/models/common'
+import { DataSourceProvider } from '@/models/common'
 import Field from '@/app/components/datasets/create/website/base/field'
 import Toast from '@/app/components/base/toast'
 import { createDataSourceApiKeyBinding } from '@/service/datasets'
@@ -18,35 +18,22 @@ type Props = {
   onSaved: () => void
 }
 
-const I18N_PREFIX = 'datasetCreation.firecrawl'
+const I18N_PREFIX = 'datasetCreation.jinaReader'
 
-const DEFAULT_BASE_URL = 'https://api.firecrawl.dev'
-
-const ConfigFirecrawlModal: FC<Props> = ({
+const ConfigJinaReaderModal: FC<Props> = ({
   onCancel,
   onSaved,
 }) => {
   const { t } = useTranslation()
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<FirecrawlConfig>({
-    api_key: '',
-    base_url: '',
-  })
-
-  const handleConfigChange = useCallback((key: string) => {
-    return (value: string | number) => {
-      setConfig(prev => ({ ...prev, [key]: value as string }))
-    }
-  }, [])
+  const [apiKey, setApiKey] = useState('')
 
   const handleSave = useCallback(async () => {
     if (isSaving)
       return
     let errorMsg = ''
-    if (config.base_url && !((config.base_url.startsWith('http://') || config.base_url.startsWith('https://'))))
-      errorMsg = t('common.errorMsg.urlError')
     if (!errorMsg) {
-      if (!config.api_key) {
+      if (!apiKey) {
         errorMsg = t('common.errorMsg.fieldRequired', {
           field: 'API Key',
         })
@@ -62,12 +49,11 @@ const ConfigFirecrawlModal: FC<Props> = ({
     }
     const postData = {
       category: 'website',
-      provider: 'firecrawl',
+      provider: DataSourceProvider.jinaReader,
       credentials: {
         auth_type: 'bearer',
         config: {
-          api_key: config.api_key,
-          base_url: config.base_url || DEFAULT_BASE_URL,
+          api_key: apiKey,
         },
       },
     }
@@ -84,7 +70,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
     }
 
     onSaved()
-  }, [config.api_key, config.base_url, onSaved, t, isSaving])
+  }, [apiKey, onSaved, t, isSaving])
 
   return (
     <PortalToFollowElem open>
@@ -93,7 +79,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
           <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
             <div className='px-8 pt-8'>
               <div className='flex justify-between items-center mb-4'>
-                <div className='text-xl font-semibold text-gray-900'>{t(`${I18N_PREFIX}.configFirecrawl`)}</div>
+                <div className='text-xl font-semibold text-gray-900'>{t(`${I18N_PREFIX}.configJinaReader`)}</div>
               </div>
 
               <div className='space-y-4'>
@@ -101,20 +87,13 @@ const ConfigFirecrawlModal: FC<Props> = ({
                   label='API Key'
                   labelClassName='!text-sm'
                   isRequired
-                  value={config.api_key}
-                  onChange={handleConfigChange('api_key')}
+                  value={apiKey}
+                  onChange={(value: string | number) => setApiKey(value as string)}
                   placeholder={t(`${I18N_PREFIX}.apiKeyPlaceholder`)!}
-                />
-                <Field
-                  label='Base URL'
-                  labelClassName='!text-sm'
-                  value={config.base_url}
-                  onChange={handleConfigChange('base_url')}
-                  placeholder={DEFAULT_BASE_URL}
                 />
               </div>
               <div className='my-8 flex justify-between items-center h-8'>
-                <a className='flex items-center space-x-1 leading-[18px] text-xs font-normal text-[#155EEF]' target='_blank' href='https://www.firecrawl.dev/account'>
+                <a className='flex items-center space-x-1 leading-[18px] text-xs font-normal text-[#155EEF]' target='_blank' href='https://jina.ai/reader/'>
                   <span>{t(`${I18N_PREFIX}.getApiKeyLinkText`)}</span>
                   <LinkExternal02 className='w-3 h-3' />
                 </a>
@@ -158,4 +137,4 @@ const ConfigFirecrawlModal: FC<Props> = ({
     </PortalToFollowElem>
   )
 }
-export default React.memo(ConfigFirecrawlModal)
+export default React.memo(ConfigJinaReaderModal)
