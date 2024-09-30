@@ -222,6 +222,7 @@ class ToolModelInvoke(Base):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
+@deprecated
 class ToolConversationVariables(Base):
     """
     store the conversation variables from tool invoke

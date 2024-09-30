@@ -223,7 +223,7 @@ class ToolTransformService:
         return result
 
     @staticmethod
-    def tool_to_user_tool(
+    def convert_tool_entity_to_api_entity(
         tool: Union[ApiToolBundle, WorkflowTool, Tool],
         tenant_id: str,
         credentials: dict | None = None,

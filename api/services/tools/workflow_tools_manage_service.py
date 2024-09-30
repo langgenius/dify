@@ -210,7 +210,7 @@ class WorkflowToolManageService:
             )
             ToolTransformService.repack_provider(user_tool_provider)
             user_tool_provider.tools = [
-                ToolTransformService.tool_to_user_tool(
+                ToolTransformService.convert_tool_entity_to_api_entity(
                     tool=tool.get_tools(user_id, tenant_id)[0],
                     labels=labels.get(tool.provider_id, []),
                     tenant_id=tenant_id,
@@ -299,7 +299,7 @@ class WorkflowToolManageService:
             "icon": json.loads(db_tool.icon),
             "description": db_tool.description,
             "parameters": jsonable_encoder(db_tool.parameter_configurations),
-            "tool": ToolTransformService.tool_to_user_tool(
+            "tool": ToolTransformService.convert_tool_entity_to_api_entity(
                 tool=tool.get_tools(db_tool.tenant_id)[0],
                 labels=ToolLabelManager.get_tool_labels(tool),
                 tenant_id=tenant_id,
@@ -329,7 +329,7 @@ class WorkflowToolManageService:
         tool = ToolTransformService.workflow_provider_to_controller(db_tool)
 
         return [
-            ToolTransformService.tool_to_user_tool(
+            ToolTransformService.convert_tool_entity_to_api_entity(
                 tool=tool.get_tools(db_tool.tenant_id)[0],
                 labels=ToolLabelManager.get_tool_labels(tool),
                 tenant_id=tenant_id,

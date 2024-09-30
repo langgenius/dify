@@ -221,7 +221,7 @@ class ApiToolManageService:
         labels = ToolLabelManager.get_tool_labels(controller)
 
         return [
-            ToolTransformService.tool_to_user_tool(
+            ToolTransformService.convert_tool_entity_to_api_entity(
                 tool_bundle,
                 tenant_id=tenant_id,
                 labels=labels,
@@ -465,7 +465,7 @@ class ApiToolManageService:
 
             for tool in tools:
                 user_provider.tools.append(
-                    ToolTransformService.tool_to_user_tool(
+                    ToolTransformService.convert_tool_entity_to_api_entity(
                         tenant_id=tenant_id, tool=tool, credentials=user_provider.original_credentials, labels=labels
                     )
                 )

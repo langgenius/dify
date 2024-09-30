@@ -29,7 +29,13 @@ from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.api_entities import ToolProviderApiEntity, ToolProviderTypeApiLiteral
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ApiProviderAuthType, ToolInvokeFrom, ToolParameter, ToolProviderType
+from core.tools.entities.tool_entities import (
+    ApiProviderAuthType,
+    ToolInvokeFrom,
+    ToolParameter,
+    ToolProviderID,
+    ToolProviderType,
+)
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ProviderConfigEncrypter, ToolParameterConfigurationManager
@@ -143,18 +149,30 @@ class ToolManager:
                     ),
                 )
 
-            # get credentials
-            builtin_provider: BuiltinToolProvider | None = (
-                db.session.query(BuiltinToolProvider)
-                .filter(
-                    BuiltinToolProvider.tenant_id == tenant_id,
-                    BuiltinToolProvider.provider == provider_id,
+            if isinstance(provider_controller, PluginToolProviderController):
+                provider_id_entity = ToolProviderID(provider_id)
+                # get credentials
+                builtin_provider: BuiltinToolProvider | None = (
+                    db.session.query(BuiltinToolProvider)
+                    .filter(
+                        BuiltinToolProvider.tenant_id == tenant_id,
+                        (BuiltinToolProvider.provider == provider_id)
+                        | (BuiltinToolProvider.provider == provider_id_entity.provider_name),
+                    )
+                    .first()
                 )
-                .first()
-            )
 
-            if builtin_provider is None:
-                raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
+                if builtin_provider is None:
+                    raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
+            else:
+                builtin_provider: BuiltinToolProvider | None = (
+                    db.session.query(BuiltinToolProvider)
+                    .filter(BuiltinToolProvider.tenant_id == tenant_id, (BuiltinToolProvider.provider == provider_id))
+                    .first()
+                )
+
+                if builtin_provider is None:
+                    raise ToolProviderNotFoundError(f"builtin provider {provider_id} not found")
 
             # decrypt the credentials
             credentials = builtin_provider.credentials
@@ -504,6 +522,13 @@ class ToolManager:
             db_builtin_providers: list[BuiltinToolProvider] = (
                 db.session.query(BuiltinToolProvider).filter(BuiltinToolProvider.tenant_id == tenant_id).all()
             )
+
+            # rewrite db_builtin_providers
+            for db_provider in db_builtin_providers:
+                try:
+                    ToolProviderID(db_provider.provider)
+                except Exception:
+                    db_provider.provider = f"langgenius/{db_provider.provider}/{db_provider.provider}"
 
             find_db_builtin_provider = lambda provider: next(
                 (x for x in db_builtin_providers if x.provider == provider), None
