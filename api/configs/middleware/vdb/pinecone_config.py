@@ -22,6 +22,6 @@ class PineconeConfig(BaseSettings):
 
     PINECONE_API_KEY: Optional[str] = Field(
         description="The pinecone API key. You can get it from "
-                    "https://docs.pinecone.io/guides/get-started/quickstart#1-get-an-api-key",
-        default=None
+        "https://docs.pinecone.io/guides/get-started/quickstart#1-get-an-api-key",
+        default=None,
     )

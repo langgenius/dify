@@ -13,11 +13,7 @@ class PineconeVectorTest(AbstractVectorTest):
         super().__init__()
         self.vector = PineconeVector(
             collection_name=self.collection_name,
-            config=PineconeConfig(
-                api_key="PINECONE_API_KEY",
-                index="dify-index",
-                index_dimension=768
-            ),
+            config=PineconeConfig(api_key="PINECONE_API_KEY", index="dify-index", index_dimension=768),
         )
 
     def search_by_full_text(self):
@@ -37,4 +33,3 @@ def test_pinecone_vector(setup_mock_redis):
     added_doc_ids = test_instance.add_texts()
     test_instance.delete_by_ids(added_doc_ids)
     test_instance.delete_vector()
-
