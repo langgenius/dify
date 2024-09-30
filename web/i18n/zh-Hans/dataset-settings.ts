@@ -31,6 +31,7 @@ const translation = {
     externalKnowledgeAPI: '外部知识 API',
     externalKnowledgeID: '外部知识库 ID',
     save: '保存',
+    retrievalSettings: '检索设置',
   },
 }
 
