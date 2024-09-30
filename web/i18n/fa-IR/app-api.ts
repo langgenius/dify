@@ -78,6 +78,7 @@ const translation = {
     pathParams: 'پارامترهای مسیر',
     query: 'پرس‌وجو',
   },
+  regenerate: 'بازسازی',
 }
 
 export default translation

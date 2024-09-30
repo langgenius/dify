@@ -175,6 +175,20 @@ const ConfigContent: FC<Props> = ({
             )
           }
           {
+            selectedDatasetsMode.mixtureInternalAndExternal && (
+              <div className='mt-4 system-xs-medium text-text-warning'>
+                {t('dataset.mixtureInternalAndExternalTip')}
+              </div>
+            )
+          }
+          {
+            selectedDatasetsMode.allExternal && (
+              <div className='mt-4 system-xs-medium text-text-warning'>
+                {t('dataset.allExternalTip')}
+              </div>
+            )
+          }
+          {
             selectedDatasetsMode.mixtureHighQualityAndEconomic
             && (
               <div className='mt-4 system-xs-medium text-text-warning'>
@@ -229,15 +243,15 @@ const ConfigContent: FC<Props> = ({
                       />
                     )
                   }
-                  <div className='ml-2 leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
+                  <div className='leading-[32px] text-text-secondary system-sm-semibold'>{t('common.modelProvider.rerankModel.key')}</div>
                   <Tooltip
                     popupContent={
                       <div className="w-[200px]">
                         {t('common.modelProvider.rerankModel.tip')}
                       </div>
                     }
-                    popupClassName='ml-0.5'
-                    triggerClassName='ml-0.5 w-3.5 h-3.5'
+                    popupClassName='ml-1'
+                    triggerClassName='ml-1 w-4 h-4'
                   />
                 </div>
                 <div>

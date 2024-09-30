@@ -73,6 +73,14 @@ const translation = {
       resetAll: 'Đặt lại tất cả',
       crawlSubPage: 'Thu thập dữ liệu các trang phụ',
       maxDepthTooltip: 'Độ sâu tối đa cần thu thập dữ liệu so với URL đã nhập. Độ sâu 0 chỉ cần cạo trang của url đã nhập, độ sâu 1 cạo url và mọi thứ sau khi nhậpURL + một /, v.v.',
+      jinaReaderTitle: 'Chuyển đổi toàn bộ trang web thành Markdown',
+      jinaReaderDoc: 'Tìm hiểu thêm về Jina Reader',
+      useSitemap: 'Sử dụng sơ đồ trang web',
+      chooseProvider: 'Chọn nhà cung cấp',
+      jinaReaderDocLink: 'https://jina.ai/reader',
+      jinaReaderNotConfigured: 'Jina Reader không được cấu hình',
+      jinaReaderNotConfiguredDescription: 'Thiết lập Jina Reader bằng cách nhập khóa API miễn phí của bạn để truy cập.',
+      useSitemapTooltip: 'Thực hiện theo sơ đồ trang web để thu thập dữ liệu trang web. Nếu không, Jina Reader sẽ thu thập dữ liệu lặp đi lặp lại dựa trên mức độ liên quan của trang, mang lại ít trang hơn nhưng chất lượng cao hơn.',
     },
   },
   stepTwo: {
@@ -156,6 +164,11 @@ const translation = {
     getApiKeyLinkText: 'Lấy khóa API của bạn từ firecrawl.dev',
     configFirecrawl: 'Định cấu hình 🔥Firecrawl',
     apiKeyPlaceholder: 'Khóa API từ firecrawl.dev',
+  },
+  jinaReader: {
+    getApiKeyLinkText: 'Nhận khóa API miễn phí của bạn tại jina.ai',
+    configJinaReader: 'Định cấu hình Jina Reader',
+    apiKeyPlaceholder: 'Khóa API từ jina.ai',
   },
 }
 

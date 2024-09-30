@@ -136,6 +136,8 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
         top_k: multipleRetrievalConfig?.top_k || DATASET_DEFAULT.top_k,
         score_threshold: multipleRetrievalConfig?.score_threshold,
         reranking_model: multipleRetrievalConfig?.reranking_model,
+        reranking_mode: multipleRetrievalConfig?.reranking_mode,
+        weights: multipleRetrievalConfig?.weights,
       }
     })
     setInputs(newInput)
@@ -205,9 +207,11 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
   const handleOnDatasetsChange = useCallback((newDatasets: DataSet[]) => {
     const {
-      allEconomic,
       mixtureHighQualityAndEconomic,
+      mixtureInternalAndExternal,
       inconsistentEmbeddingModel,
+      allInternal,
+      allExternal,
     } = getSelectedDatasetsMode(newDatasets)
     const newInputs = produce(inputs, (draft) => {
       draft.dataset_ids = newDatasets.map(d => d.id)
@@ -220,7 +224,11 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
     setSelectedDatasets(newDatasets)
 
-    if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)
+    if (
+      (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
+      || mixtureInternalAndExternal
+      || (allExternal && newDatasets.length > 1)
+    )
       setRerankModelOpen(true)
   }, [inputs, setInputs, payload.retrieval_mode])
 

@@ -58,7 +58,7 @@ provider_credential_schema:  # Provider credential rules, as Anthropic only supp
       en_US: Enter your API URL
 ```
 
-You can also refer to the YAML configuration information under other provider directories in `model_providers`. The complete YAML rules are available at: [Schema](schema.md#Provider).
+You can also refer to the YAML configuration information under other provider directories in `model_providers`. The complete YAML rules are available at: [Schema](schema.md#provider).
 
 ### Implementing Provider Code
 
