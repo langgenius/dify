@@ -151,70 +151,6 @@ class ExternalDatasetService:
                         raise ValueError(f'{parameter.get("name")} is required')
 
     @staticmethod
-    def init_external_dataset(tenant_id: str, user_id: str, args: dict, created_from: str = "web"):
-        external_knowledge_api_id = args.get("external_knowledge_api_id")
-
-        data_source = args.get("data_source")
-        if data_source is None:
-            raise ValueError("data source is required")
-
-        process_parameter = args.get("process_parameter")
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
-            id=external_knowledge_api_id, tenant_id=tenant_id
-        ).first()
-        if external_knowledge_api is None:
-            raise ValueError("api template not found")
-
-        dataset = Dataset(
-            tenant_id=tenant_id,
-            name=args.get("name"),
-            description=args.get("description", ""),
-            provider="external",
-            created_by=user_id,
-        )
-
-        db.session.add(dataset)
-        db.session.flush()
-
-        document = Document.query.filter_by(dataset_id=dataset.id).order_by(Document.position.desc()).first()
-
-        position = document.position + 1 if document else 1
-
-        batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
-        document_ids = []
-        if data_source["type"] == "upload_file":
-            upload_file_list = data_source["info_list"]["file_info_list"]["file_ids"]
-            for file_id in upload_file_list:
-                file = (
-                    db.session.query(UploadFile)
-                    .filter(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
-                    .first()
-                )
-                if file:
-                    data_source_info = {
-                        "upload_file_id": file_id,
-                    }
-                    document = Document(
-                        tenant_id=dataset.tenant_id,
-                        dataset_id=dataset.id,
-                        position=position,
-                        data_source_type=data_source["type"],
-                        data_source_info=json.dumps(data_source_info),
-                        batch=batch,
-                        name=file.name,
-                        created_from=created_from,
-                        created_by=user_id,
-                    )
-                    position += 1
-                    db.session.add(document)
-                    db.session.flush()
-                    document_ids.append(document.id)
-        db.session.commit()
-        # external_document_indexing_task.delay(dataset.id, external_knowledge_api_id, data_source, process_parameter)
-
-        return dataset
-
-    @staticmethod
     def process_external_api(
         settings: ExternalKnowledgeApiSetting, files: Union[None, dict[str, Any]]
     ) -> httpx.Response:
@@ -342,37 +278,3 @@ class ExternalDatasetService:
         if response.status_code == 200:
             return response.json().get("records", [])
         return []
-
-    @staticmethod
-    def test_external_knowledge_retrieval(retrieval_setting: dict, query: str, external_knowledge_id: str):
-        client = boto3.client(
-            "bedrock-agent-runtime",
-            aws_secret_access_key=dify_config.AWS_SECRET_ACCESS_KEY,
-            aws_access_key_id=dify_config.AWS_ACCESS_KEY_ID,
-            region_name="us-east-1",
-        )
-        response = client.retrieve(
-            knowledgeBaseId=external_knowledge_id,
-            retrievalConfiguration={
-                "vectorSearchConfiguration": {
-                    "numberOfResults": retrieval_setting.get("top_k"),
-                    "overrideSearchType": "HYBRID",
-                }
-            },
-            retrievalQuery={"text": query},
-        )
-        results = []
-        if response.get("ResponseMetadata") and response.get("ResponseMetadata").get("HTTPStatusCode") == 200:
-            if response.get("retrievalResults"):
-                retrieval_results = response.get("retrievalResults")
-                for retrieval_result in retrieval_results:
-                    if retrieval_result.get("score") < retrieval_setting.get("score_threshold", 0.0):
-                        continue
-                    result = {
-                        "metadata": retrieval_result.get("metadata"),
-                        "score": retrieval_result.get("score"),
-                        "title": retrieval_result.get("metadata").get("x-amz-bedrock-kb-source-uri"),
-                        "content": retrieval_result.get("content").get("text"),
-                    }
-                    results.append(result)
-        return {"records": results}

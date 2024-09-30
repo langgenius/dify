@@ -45,7 +45,6 @@ from .datasets import (
     external,
     file,
     hit_testing,
-    test_external,
     website,
 )
 

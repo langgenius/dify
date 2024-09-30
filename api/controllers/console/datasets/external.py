@@ -158,48 +158,6 @@ class ExternalApiUseCheckApi(Resource):
         return {"is_using": external_knowledge_api_is_using, "count": count}, 200
 
 
-class ExternalDatasetInitApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self):
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("external_knowledge_api_id", type=str, required=True, nullable=True, location="json")
-        # parser.add_argument('name', nullable=False, required=True,
-        #                     help='name is required. Name must be between 1 to 100 characters.',
-        #                     type=_validate_name)
-        # parser.add_argument('description', type=str, required=True, nullable=True, location='json')
-        parser.add_argument("data_source", type=dict, required=True, nullable=True, location="json")
-        parser.add_argument("process_parameter", type=dict, required=True, nullable=True, location="json")
-
-        args = parser.parse_args()
-
-        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
-        if not current_user.is_dataset_editor:
-            raise Forbidden()
-
-        # validate args
-        ExternalDatasetService.document_create_args_validate(
-            current_user.current_tenant_id, args["external_knowledge_api_id"], args["process_parameter"]
-        )
-
-        try:
-            dataset, documents, batch = ExternalDatasetService.init_external_dataset(
-                tenant_id=current_user.current_tenant_id,
-                user_id=current_user.id,
-                args=args,
-            )
-        except Exception as ex:
-            raise ProviderNotInitializeError(ex.description)
-        response = {"dataset": dataset, "documents": documents, "batch": batch}
-
-        return response
-
-
 class ExternalDatasetCreateApi(Resource):
     @setup_required
     @login_required
