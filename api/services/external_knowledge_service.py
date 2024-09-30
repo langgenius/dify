@@ -1,25 +1,19 @@
 import json
-import random
-import time
 from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any, Optional, Union
 
-import boto3
 import httpx
 import validators
 
 # from tasks.external_document_indexing_task import external_document_indexing_task
-from configs import dify_config
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from models.dataset import (
     Dataset,
-    Document,
     ExternalKnowledgeApis,
     ExternalKnowledgeBindings,
 )
-from models.model import UploadFile
 from services.entities.external_knowledge_entities.external_knowledge_entities import (
     Authorization,
     ExternalKnowledgeApiSetting,
