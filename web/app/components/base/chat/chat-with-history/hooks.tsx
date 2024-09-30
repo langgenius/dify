@@ -127,7 +127,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
-    return (appParams?.user_input_form || []).filter((item: any) => item.paragraph || item.select || item['text-input'] || item.number).map((item: any) => {
+    return (appParams?.user_input_form || []).filter((item: any) => !item.external_data_tool).map((item: any) => {
       if (item.paragraph) {
         return {
           ...item.paragraph,
@@ -144,6 +144,20 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         return {
           ...item.select,
           type: 'select',
+        }
+      }
+
+      if (item['file-list']) {
+        return {
+          ...item['file-list'],
+          type: 'file-list',
+        }
+      }
+
+      if (item.file) {
+        return {
+          ...item.file,
+          type: 'file',
         }
       }
 
@@ -377,6 +391,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     setShowConfigPanelBeforeChat,
     setShowNewConversationItemInList,
     newConversationInputs,
+    newConversationInputsRef,
     handleNewConversationInputsChange,
     inputsForms,
     handleNewConversation,

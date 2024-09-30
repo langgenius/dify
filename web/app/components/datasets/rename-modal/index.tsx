@@ -8,6 +8,8 @@ import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
 import type { DataSet } from '@/models/datasets'
@@ -76,10 +78,10 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
           <div className='shrink-0 py-2 text-sm font-medium leading-[20px] text-gray-900'>
             {t('datasetSettings.form.name')}
           </div>
-          <input
+          <Input
             value={name}
             onChange={e => setName(e.target.value)}
-            className='block px-3 w-full h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
+            className='h-9'
             placeholder={t('datasetSettings.form.namePlaceholder') || ''}
           />
         </div>
@@ -88,10 +90,10 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
             {t('datasetSettings.form.desc')}
           </div>
           <div className='w-full'>
-            <textarea
+            <Textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
-              className='block px-3 py-2 w-full h-[88px] rounded-lg bg-gray-100 text-sm outline-none appearance-none resize-none'
+              className='resize-none'
               placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             />
             <a className='mt-2 flex items-center h-[18px] px-3 text-xs text-gray-500 hover:text-primary-600' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank' rel='noopener noreferrer'>
