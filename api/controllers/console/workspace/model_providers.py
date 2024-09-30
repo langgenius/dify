@@ -1,6 +1,6 @@
 import io
 
-from flask import send_file
+from flask import request, send_file
 from flask_login import current_user
 from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
@@ -125,14 +125,12 @@ class ModelProviderIconApi(Resource):
     """
     Get model provider icon
     """
-
-    @setup_required
-    @login_required
-    @account_initialization_required
     def get(self, provider: str, icon_type: str, lang: str):
         model_provider_service = ModelProviderService()
         icon, mimetype = model_provider_service.get_model_provider_icon(
-            provider=provider, icon_type=icon_type, lang=lang
+            provider=provider,
+            icon_type=icon_type,
+            lang=lang,
         )
 
         return send_file(io.BytesIO(icon), mimetype=mimetype)
