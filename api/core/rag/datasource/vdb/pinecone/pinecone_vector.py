@@ -2,9 +2,9 @@ import json
 import logging
 from typing import Any
 
-from pydantic import BaseModel
-from pinecone.grpc import PineconeGRPC as Pinecone
 from pinecone.grpc import GRPCIndex
+from pinecone.grpc import PineconeGRPC as Pinecone
+from pydantic import BaseModel
 
 from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings

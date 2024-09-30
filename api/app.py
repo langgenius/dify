@@ -1,5 +1,4 @@
 import os
-from flasgger import Swagger
 
 if os.environ.get("DEBUG", "false").lower() != "true":
     from gevent import monkey
@@ -245,7 +244,6 @@ def register_blueprints(app):
 
 # create app
 app = create_app()
-swagger = Swagger(app)
 celery = app.extensions["celery"]
 
 if app.config.get("TESTING"):
