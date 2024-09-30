@@ -45,7 +45,7 @@ const NormalForm = () => {
       const features = await getSystemFeatures()
       setSystemFeatures({ ...defaultSystemFeatures, ...features })
       setShowORLine((features.enable_social_oauth_login || features.sso_enforced_for_signin) && (features.enable_email_code_login || features.enable_email_password_login))
-      updateAuthType(features.enable_email_code_login ? 'code' : 'password')
+      updateAuthType(features.enable_email_password_login ? 'password' : 'code')
       if (isInviteLink) {
         const checkRes = await invitationCheck({
           url: '/activate/check',
