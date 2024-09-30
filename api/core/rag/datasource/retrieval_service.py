@@ -10,6 +10,7 @@ from core.rag.rerank.constants.rerank_mode import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from models.dataset import Dataset
+from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
@@ -34,6 +35,9 @@ class RetrievalService:
         weights: Optional[dict] = None,
     ):
         dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        if not dataset:
+            return []
+
         if not dataset or dataset.available_document_count == 0 or dataset.available_segment_count == 0:
             return []
         all_documents = []
@@ -106,6 +110,16 @@ class RetrievalService:
             all_documents = data_post_processor.invoke(
                 query=query, documents=all_documents, score_threshold=score_threshold, top_n=top_k
             )
+        return all_documents
+
+    @classmethod
+    def external_retrieve(cls, dataset_id: str, query: str, external_retrieval_model: Optional[dict] = None):
+        dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
+        if not dataset:
+            return []
+        all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
+            dataset.tenant_id, dataset_id, query, external_retrieval_model
+        )
         return all_documents
 
     @classmethod
