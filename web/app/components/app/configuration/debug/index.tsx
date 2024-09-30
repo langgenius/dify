@@ -178,7 +178,7 @@ const Debug: FC<IDebug> = ({
     }
 
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
       return false
     }
     return !hasEmptyInput

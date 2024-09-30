@@ -287,6 +287,7 @@ const translation = {
       'Please wait for the response to the batch task to complete.',
     notSelectModel: 'Please choose a model',
     waitForImgUpload: 'Please wait for the image to upload',
+    waitForFileUpload: 'Please wait for the file/files to upload',
   },
   warningMessage: {
     timeoutExceeded: 'Results are not displayed due to timeout. Please refer to the logs to gather complete results.',

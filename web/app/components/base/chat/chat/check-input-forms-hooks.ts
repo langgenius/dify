@@ -38,7 +38,7 @@ export const useCheckInputsForms = () => {
     }
 
     if (fileIsUploading) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
       return
     }
 
