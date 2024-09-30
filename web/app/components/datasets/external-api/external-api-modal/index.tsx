@@ -204,7 +204,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
               isShow={showConfirm}
               type='warning'
               title='Warning'
-              content={`${t('datasets.editExternalAPIConfirmWarningContent.front')} ${datasetBindings?.length} ${t('datasets.editExternalAPIConfirmWarningContent.end')}`}
+              content={`${t('dataset.editExternalAPIConfirmWarningContent.front')} ${datasetBindings?.length} ${t('dataset.editExternalAPIConfirmWarningContent.end')}`}
               onCancel={() => setShowConfirm(false)}
               onConfirm={handleSave}
             />
