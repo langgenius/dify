@@ -10,6 +10,7 @@ import ModerationSettingModal from '@/app/components/base/features/new-feature-p
 import ExternalDataToolModal from '@/app/components/app/configuration/tools/external-data-tool-modal'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import ModelModal from '@/app/components/header/account-setting/model-provider-page/model-modal'
+import ExternalAPIModal from '@/app/components/datasets/external-api/external-api-modal'
 import type {
   ConfigurationMethodEnum,
   CustomConfigurationModelFixedFields,
@@ -23,6 +24,7 @@ import type {
   ApiBasedExtension,
   ExternalDataTool,
 } from '@/models/common'
+import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
 import ModelLoadBalancingEntryModal from '@/app/components/header/account-setting/model-provider-page/model-modal/model-load-balancing-entry-modal'
 import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 import ModelLoadBalancingModal from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
@@ -34,7 +36,10 @@ export type ModalState<T> = {
   onCancelCallback?: () => void
   onSaveCallback?: (newPayload: T) => void
   onRemoveCallback?: (newPayload: T) => void
+  onEditCallback?: (newPayload: T) => void
   onValidateBeforeSaveCallback?: (newPayload: T) => boolean
+  isEditMode?: boolean
+  datasetBindings?: { id: string; name: string }[]
 }
 
 export type ModelModalType = {
@@ -54,6 +59,7 @@ export type ModalContextState = {
   setShowPricingModal: () => void
   setShowAnnotationFullModal: () => void
   setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
+  setShowExternalKnowledgeAPIModal: Dispatch<SetStateAction<ModalState<CreateExternalAPIReq> | null>>
   setShowModelLoadBalancingModal: Dispatch<SetStateAction<ModelLoadBalancingModalProps | null>>
   setShowModelLoadBalancingEntryModal: Dispatch<SetStateAction<ModalState<LoadBalancingEntryModalType> | null>>
   setShowOpeningModal: Dispatch<SetStateAction<ModalState<OpeningStatement & {
@@ -69,6 +75,7 @@ const ModalContext = createContext<ModalContextState>({
   setShowPricingModal: () => { },
   setShowAnnotationFullModal: () => { },
   setShowModelModal: () => { },
+  setShowExternalKnowledgeAPIModal: () => { },
   setShowModelLoadBalancingModal: () => { },
   setShowModelLoadBalancingEntryModal: () => { },
   setShowOpeningModal: () => { },
@@ -93,6 +100,7 @@ export const ModalContextProvider = ({
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
+  const [showExternalKnowledgeAPIModal, setShowExternalKnowledgeAPIModal] = useState<ModalState<CreateExternalAPIReq> | null>(null)
   const [showModelLoadBalancingModal, setShowModelLoadBalancingModal] = useState<ModelLoadBalancingModalProps | null>(null)
   const [showModelLoadBalancingEntryModal, setShowModelLoadBalancingEntryModal] = useState<ModalState<LoadBalancingEntryModalType> | null>(null)
   const [showOpeningModal, setShowOpeningModal] = useState<ModalState<OpeningStatement & {
@@ -132,6 +140,24 @@ export const ModalContextProvider = ({
       showModelModal.onSaveCallback(showModelModal.payload)
     setShowModelModal(null)
   }, [showModelModal])
+
+  const handleCancelExternalApiModal = useCallback(() => {
+    setShowExternalKnowledgeAPIModal(null)
+    if (showExternalKnowledgeAPIModal?.onCancelCallback)
+      showExternalKnowledgeAPIModal.onCancelCallback()
+  }, [showExternalKnowledgeAPIModal])
+
+  const handleSaveExternalApiModal = useCallback(async (updatedFormValue: CreateExternalAPIReq) => {
+    if (showExternalKnowledgeAPIModal?.onSaveCallback)
+      showExternalKnowledgeAPIModal.onSaveCallback(updatedFormValue)
+    setShowExternalKnowledgeAPIModal(null)
+  }, [showExternalKnowledgeAPIModal])
+
+  const handleEditExternalApiModal = useCallback(async (updatedFormValue: CreateExternalAPIReq) => {
+    if (showExternalKnowledgeAPIModal?.onEditCallback)
+      showExternalKnowledgeAPIModal.onEditCallback(updatedFormValue)
+    setShowExternalKnowledgeAPIModal(null)
+  }, [showExternalKnowledgeAPIModal])
 
   const handleCancelModelLoadBalancingEntryModal = useCallback(() => {
     showModelLoadBalancingEntryModal?.onCancelCallback?.()
@@ -196,6 +222,7 @@ export const ModalContextProvider = ({
       setShowPricingModal: () => setShowPricingModal(true),
       setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
       setShowModelModal,
+      setShowExternalKnowledgeAPIModal,
       setShowModelLoadBalancingModal,
       setShowModelLoadBalancingEntryModal,
       setShowOpeningModal,
@@ -266,6 +293,18 @@ export const ModalContextProvider = ({
               currentCustomConfigurationModelFixedFields={showModelModal.payload.currentCustomConfigurationModelFixedFields}
               onCancel={handleCancelModelModal}
               onSave={handleSaveModelModal}
+            />
+          )
+        }
+        {
+          !!showExternalKnowledgeAPIModal && (
+            <ExternalAPIModal
+              data={showExternalKnowledgeAPIModal.payload}
+              datasetBindings={showExternalKnowledgeAPIModal.datasetBindings ?? []}
+              onSave={handleSaveExternalApiModal}
+              onCancel={handleCancelExternalApiModal}
+              onEdit={handleEditExternalApiModal}
+              isEditMode={showExternalKnowledgeAPIModal.isEditMode ?? false}
             />
           )
         }

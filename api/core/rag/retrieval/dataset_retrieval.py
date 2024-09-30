@@ -20,6 +20,7 @@ from core.ops.utils import measure_time
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.entities.context_entities import DocumentContext
 from core.rag.models.document import Document
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
@@ -30,6 +31,7 @@ from core.tools.tool.dataset_retriever.dataset_retriever_tool import DatasetRetr
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
+from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model = {
     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
@@ -110,7 +112,7 @@ class DatasetRetrieval:
                 continue
 
             # pass if dataset is not available
-            if dataset and dataset.available_document_count == 0:
+            if dataset and dataset.available_document_count == 0 and dataset.provider != "external":
                 continue
 
             available_datasets.append(dataset)
@@ -146,69 +148,93 @@ class DatasetRetrieval:
                 message_id,
             )
 
-        document_score_list = {}
-        for item in all_documents:
-            if item.metadata.get("score"):
-                document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
-
+        dify_documents = [item for item in all_documents if item.provider == "dify"]
+        external_documents = [item for item in all_documents if item.provider == "external"]
         document_context_list = []
-        index_node_ids = [document.metadata["doc_id"] for document in all_documents]
-        segments = DocumentSegment.query.filter(
-            DocumentSegment.dataset_id.in_(dataset_ids),
-            DocumentSegment.completed_at.isnot(None),
-            DocumentSegment.status == "completed",
-            DocumentSegment.enabled == True,
-            DocumentSegment.index_node_id.in_(index_node_ids),
-        ).all()
+        retrieval_resource_list = []
+        # deal with external documents
+        for item in external_documents:
+            document_context_list.append(DocumentContext(content=item.page_content, score=item.metadata.get("score")))
+            source = {
+                "dataset_id": item.metadata.get("dataset_id"),
+                "dataset_name": item.metadata.get("dataset_name"),
+                "document_name": item.metadata.get("title"),
+                "data_source_type": "external",
+                "retriever_from": invoke_from.to_source(),
+                "score": item.metadata.get("score"),
+                "content": item.page_content,
+            }
+            retrieval_resource_list.append(source)
+        document_score_list = {}
+        # deal with dify documents
+        if dify_documents:
+            for item in dify_documents:
+                if item.metadata.get("score"):
+                    document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
 
-        if segments:
-            index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}
-            sorted_segments = sorted(
-                segments, key=lambda segment: index_node_id_to_position.get(segment.index_node_id, float("inf"))
-            )
-            for segment in sorted_segments:
-                if segment.answer:
-                    document_context_list.append(f"question:{segment.get_sign_content()} answer:{segment.answer}")
-                else:
-                    document_context_list.append(segment.get_sign_content())
-            if show_retrieve_source:
-                context_list = []
-                resource_number = 1
+            index_node_ids = [document.metadata["doc_id"] for document in dify_documents]
+            segments = DocumentSegment.query.filter(
+                DocumentSegment.dataset_id.in_(dataset_ids),
+                DocumentSegment.status == "completed",
+                DocumentSegment.enabled == True,
+                DocumentSegment.index_node_id.in_(index_node_ids),
+            ).all()
+
+            if segments:
+                index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}
+                sorted_segments = sorted(
+                    segments, key=lambda segment: index_node_id_to_position.get(segment.index_node_id, float("inf"))
+                )
                 for segment in sorted_segments:
-                    dataset = Dataset.query.filter_by(id=segment.dataset_id).first()
-                    document = DatasetDocument.query.filter(
-                        DatasetDocument.id == segment.document_id,
-                        DatasetDocument.enabled == True,
-                        DatasetDocument.archived == False,
-                    ).first()
-                    if dataset and document:
-                        source = {
-                            "position": resource_number,
-                            "dataset_id": dataset.id,
-                            "dataset_name": dataset.name,
-                            "document_id": document.id,
-                            "document_name": document.name,
-                            "data_source_type": document.data_source_type,
-                            "segment_id": segment.id,
-                            "retriever_from": invoke_from.to_source(),
-                            "score": document_score_list.get(segment.index_node_id, None),
-                        }
+                    if segment.answer:
+                        document_context_list.append(
+                            DocumentContext(
+                                content=f"question:{segment.get_sign_content()} answer:{segment.answer}",
+                                score=document_score_list.get(segment.index_node_id, None),
+                            )
+                        )
+                    else:
+                        document_context_list.append(
+                            DocumentContext(
+                                content=segment.get_sign_content(),
+                                score=document_score_list.get(segment.index_node_id, None),
+                            )
+                        )
+                if show_retrieve_source:
+                    for segment in sorted_segments:
+                        dataset = Dataset.query.filter_by(id=segment.dataset_id).first()
+                        document = DatasetDocument.query.filter(
+                            DatasetDocument.id == segment.document_id,
+                            DatasetDocument.enabled == True,
+                            DatasetDocument.archived == False,
+                        ).first()
+                        if dataset and document:
+                            source = {
+                                "dataset_id": dataset.id,
+                                "dataset_name": dataset.name,
+                                "document_id": document.id,
+                                "document_name": document.name,
+                                "data_source_type": document.data_source_type,
+                                "segment_id": segment.id,
+                                "retriever_from": invoke_from.to_source(),
+                                "score": document_score_list.get(segment.index_node_id, None),
+                            }
 
-                        if invoke_from.to_source() == "dev":
-                            source["hit_count"] = segment.hit_count
-                            source["word_count"] = segment.word_count
-                            source["segment_position"] = segment.position
-                            source["index_node_hash"] = segment.index_node_hash
-                        if segment.answer:
-                            source["content"] = f"question:{segment.content} \nanswer:{segment.answer}"
-                        else:
-                            source["content"] = segment.content
-                        context_list.append(source)
-                    resource_number += 1
-                if hit_callback:
-                    hit_callback.return_retriever_resource_info(context_list)
-
-            return str("\n".join(document_context_list))
+                            if invoke_from.to_source() == "dev":
+                                source["hit_count"] = segment.hit_count
+                                source["word_count"] = segment.word_count
+                                source["segment_position"] = segment.position
+                                source["index_node_hash"] = segment.index_node_hash
+                            if segment.answer:
+                                source["content"] = f"question:{segment.content} \nanswer:{segment.answer}"
+                            else:
+                                source["content"] = segment.content
+                            retrieval_resource_list.append(source)
+        if hit_callback and retrieval_resource_list:
+            hit_callback.return_retriever_resource_info(retrieval_resource_list)
+        if document_context_list:
+            document_context_list = sorted(document_context_list, key=lambda x: x.score, reverse=True)
+            return str("\n".join([document_context.content for document_context in document_context_list]))
         return ""
 
     def single_retrieve(
@@ -256,36 +282,58 @@ class DatasetRetrieval:
             # get retrieval model config
             dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
             if dataset:
-                retrieval_model_config = dataset.retrieval_model or default_retrieval_model
-
-                # get top k
-                top_k = retrieval_model_config["top_k"]
-                # get retrieval method
-                if dataset.indexing_technique == "economy":
-                    retrieval_method = "keyword_search"
-                else:
-                    retrieval_method = retrieval_model_config["search_method"]
-                # get reranking model
-                reranking_model = (
-                    retrieval_model_config["reranking_model"] if retrieval_model_config["reranking_enable"] else None
-                )
-                # get score threshold
-                score_threshold = 0.0
-                score_threshold_enabled = retrieval_model_config.get("score_threshold_enabled")
-                if score_threshold_enabled:
-                    score_threshold = retrieval_model_config.get("score_threshold")
-
-                with measure_time() as timer:
-                    results = RetrievalService.retrieve(
-                        retrieval_method=retrieval_method,
-                        dataset_id=dataset.id,
+                results = []
+                if dataset.provider == "external":
+                    external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
+                        tenant_id=dataset.tenant_id,
+                        dataset_id=dataset_id,
                         query=query,
-                        top_k=top_k,
-                        score_threshold=score_threshold,
-                        reranking_model=reranking_model,
-                        reranking_mode=retrieval_model_config.get("reranking_mode", "reranking_model"),
-                        weights=retrieval_model_config.get("weights", None),
+                        external_retrieval_parameters=dataset.retrieval_model,
                     )
+                    for external_document in external_documents:
+                        document = Document(
+                            page_content=external_document.get("content"),
+                            metadata=external_document.get("metadata"),
+                            provider="external",
+                        )
+                        document.metadata["score"] = external_document.get("score")
+                        document.metadata["title"] = external_document.get("title")
+                        document.metadata["dataset_id"] = dataset_id
+                        document.metadata["dataset_name"] = dataset.name
+                        results.append(document)
+                else:
+                    retrieval_model_config = dataset.retrieval_model or default_retrieval_model
+
+                    # get top k
+                    top_k = retrieval_model_config["top_k"]
+                    # get retrieval method
+                    if dataset.indexing_technique == "economy":
+                        retrieval_method = "keyword_search"
+                    else:
+                        retrieval_method = retrieval_model_config["search_method"]
+                    # get reranking model
+                    reranking_model = (
+                        retrieval_model_config["reranking_model"]
+                        if retrieval_model_config["reranking_enable"]
+                        else None
+                    )
+                    # get score threshold
+                    score_threshold = 0.0
+                    score_threshold_enabled = retrieval_model_config.get("score_threshold_enabled")
+                    if score_threshold_enabled:
+                        score_threshold = retrieval_model_config.get("score_threshold")
+
+                    with measure_time() as timer:
+                        results = RetrievalService.retrieve(
+                            retrieval_method=retrieval_method,
+                            dataset_id=dataset.id,
+                            query=query,
+                            top_k=top_k,
+                            score_threshold=score_threshold,
+                            reranking_model=reranking_model,
+                            reranking_mode=retrieval_model_config.get("reranking_mode", "reranking_model"),
+                            weights=retrieval_model_config.get("weights", None),
+                        )
                 self._on_query(query, [dataset_id], app_id, user_from, user_id)
 
                 if results:
@@ -356,7 +404,8 @@ class DatasetRetrieval:
         self, documents: list[Document], message_id: Optional[str] = None, timer: Optional[dict] = None
     ) -> None:
         """Handle retrieval end."""
-        for document in documents:
+        dify_documents = [document for document in documents if document.provider == "dify"]
+        for document in dify_documents:
             query = db.session.query(DocumentSegment).filter(
                 DocumentSegment.index_node_id == document.metadata["doc_id"]
             )
@@ -409,35 +458,54 @@ class DatasetRetrieval:
             if not dataset:
                 return []
 
-            # get retrieval model , if the model is not setting , using default
-            retrieval_model = dataset.retrieval_model or default_retrieval_model
-
-            if dataset.indexing_technique == "economy":
-                # use keyword table query
-                documents = RetrievalService.retrieve(
-                    retrieval_method="keyword_search", dataset_id=dataset.id, query=query, top_k=top_k
+            if dataset.provider == "external":
+                external_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
+                    tenant_id=dataset.tenant_id,
+                    dataset_id=dataset_id,
+                    query=query,
+                    external_retrieval_parameters=dataset.retrieval_model,
                 )
-                if documents:
-                    all_documents.extend(documents)
-            else:
-                if top_k > 0:
-                    # retrieval source
-                    documents = RetrievalService.retrieve(
-                        retrieval_method=retrieval_model["search_method"],
-                        dataset_id=dataset.id,
-                        query=query,
-                        top_k=retrieval_model.get("top_k") or 2,
-                        score_threshold=retrieval_model.get("score_threshold", 0.0)
-                        if retrieval_model["score_threshold_enabled"]
-                        else 0.0,
-                        reranking_model=retrieval_model.get("reranking_model", None)
-                        if retrieval_model["reranking_enable"]
-                        else None,
-                        reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
-                        weights=retrieval_model.get("weights", None),
+                for external_document in external_documents:
+                    document = Document(
+                        page_content=external_document.get("content"),
+                        metadata=external_document.get("metadata"),
+                        provider="external",
                     )
+                    document.metadata["score"] = external_document.get("score")
+                    document.metadata["title"] = external_document.get("title")
+                    document.metadata["dataset_id"] = dataset_id
+                    document.metadata["dataset_name"] = dataset.name
+                    all_documents.append(document)
+            else:
+                # get retrieval model , if the model is not setting , using default
+                retrieval_model = dataset.retrieval_model or default_retrieval_model
 
-                    all_documents.extend(documents)
+                if dataset.indexing_technique == "economy":
+                    # use keyword table query
+                    documents = RetrievalService.retrieve(
+                        retrieval_method="keyword_search", dataset_id=dataset.id, query=query, top_k=top_k
+                    )
+                    if documents:
+                        all_documents.extend(documents)
+                else:
+                    if top_k > 0:
+                        # retrieval source
+                        documents = RetrievalService.retrieve(
+                            retrieval_method=retrieval_model["search_method"],
+                            dataset_id=dataset.id,
+                            query=query,
+                            top_k=retrieval_model.get("top_k") or 2,
+                            score_threshold=retrieval_model.get("score_threshold", 0.0)
+                            if retrieval_model["score_threshold_enabled"]
+                            else 0.0,
+                            reranking_model=retrieval_model.get("reranking_model", None)
+                            if retrieval_model["reranking_enable"]
+                            else None,
+                            reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
+                            weights=retrieval_model.get("weights", None),
+                        )
+
+                        all_documents.extend(documents)
 
     def to_dataset_retriever_tool(
         self,

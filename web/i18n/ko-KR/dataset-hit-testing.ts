@@ -23,6 +23,8 @@ const translation = {
   },
   noRecentTip: '최근 쿼리 결과가 없습니다.',
   viewChart: '벡터 차트 보기',
+  settingTitle: '검색 설정',
+  viewDetail: '자세히보기',
 }
 
 export default translation
