@@ -50,3 +50,9 @@ class NotAllowedRegister(BaseHTTPException):
     error_code = "unauthorized"
     description = "Account not found."
     code = 400
+
+
+class EmailSendIpLimitError(BaseHTTPException):
+    error_code = "email_send_ip_limit"
+    description = "Too many emails have been sent from this IP address recently. Please try again later."
+    code = 429

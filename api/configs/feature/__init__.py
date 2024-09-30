@@ -471,6 +471,11 @@ class MailConfig(BaseSettings):
         default=False,
     )
 
+    EMAIL_SEND_IP_LIMIT_PER_MINUTE: PositiveInt = Field(
+        description="Maximum number of emails allowed to be sent from the same IP address in a minute",
+        default=50,
+    )
+
 
 class RagEtlConfig(BaseSettings):
     """

@@ -15,7 +15,7 @@ from controllers.console.auth.error import (
     InvalidEmailError,
     InvalidTokenError,
 )
-from controllers.console.error import NotAllowedCreateWorkspace, NotAllowedRegister
+from controllers.console.error import EmailSendIpLimitError, NotAllowedCreateWorkspace, NotAllowedRegister
 from controllers.console.setup import setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, get_remote_ip
@@ -121,6 +121,10 @@ class EmailCodeLoginSendEmailApi(Resource):
         parser.add_argument("email", type=email, required=True, location="json")
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
+
+        ip_address = get_remote_ip(request)
+        if AccountService.is_email_send_ip_limit(ip_address):
+            raise EmailSendIpLimitError()
 
         if args["language"] is not None and args["language"] == "zh-Hans":
             language = "zh-Hans"

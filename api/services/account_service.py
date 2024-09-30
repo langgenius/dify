@@ -369,6 +369,46 @@ class AccountService:
         key = f"login_error_rate_limit:{email}"
         redis_client.delete(key)
 
+    @staticmethod
+    def is_email_send_ip_limit(ip_address: str):
+        minute_key = f"email_send_ip_limit_minute:{ip_address}"
+        freeze_key = f"email_send_ip_limit_freeze:{ip_address}"
+        hour_limit_key = f"email_send_ip_limit_hour:{ip_address}"
+
+        # check ip is frozen
+        if redis_client.get(freeze_key):
+            return True
+
+        # check current minute count
+        current_minute_count = redis_client.get(minute_key)
+        if current_minute_count is None:
+            current_minute_count = 0
+        current_minute_count = int(current_minute_count)
+
+        # check current hour count
+        if current_minute_count > dify_config.EMAIL_SEND_IP_LIMIT_PER_MINUTE:
+            hour_limit_count = redis_client.get(hour_limit_key)
+            if hour_limit_count is None:
+                hour_limit_count = 0
+            hour_limit_count = int(hour_limit_count)
+
+            if hour_limit_count >= 1:
+                redis_client.setex(freeze_key, 60 * 60, 1)
+                return True
+            else:
+                redis_client.setex(hour_limit_key, 60 * 10, hour_limit_count + 1)  # first time limit 10 minutes
+
+            # add hour limit count
+            redis_client.incr(hour_limit_key)
+            redis_client.expire(hour_limit_key, 60 * 60)
+
+            return True
+
+        redis_client.setex(minute_key, 60, current_minute_count + 1)
+        redis_client.expire(minute_key, 60)
+
+        return False
+
 
 def _get_login_cache_key(*, account_id: str, token: str):
     return f"account_login:{account_id}:{token}"
