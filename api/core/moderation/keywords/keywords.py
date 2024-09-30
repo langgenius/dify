@@ -18,8 +18,12 @@ class KeywordsModeration(Moderation):
         if not config.get("keywords"):
             raise ValueError("keywords is required")
 
-        if len(config.get("keywords")) > 1000:
-            raise ValueError("keywords length must be less than 1000")
+        if len(config.get("keywords")) > 10000:
+            raise ValueError("keywords length must be less than 10000")
+
+        keywords_row_len = config["keywords"].split("\n")
+        if len(keywords_row_len) > 100:
+            raise ValueError("the number of rows for the keywords must be less than 100")
 
     def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
         flagged = False
