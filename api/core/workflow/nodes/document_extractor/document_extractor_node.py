@@ -41,7 +41,7 @@ class DocumentExtractorNode(BaseNode):
         if variable is None:
             error_message = f"File variable not found for selector: {variable_selector}"
             return NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, error=error_message)
-        if not isinstance(variable, ArrayFileSegment | FileSegment):
+        if variable.value and not isinstance(variable, ArrayFileSegment | FileSegment):
             error_message = f"Variable {variable_selector} is not an ArrayFileSegment"
             return NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, error=error_message)
 
