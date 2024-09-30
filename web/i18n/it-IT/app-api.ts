@@ -99,6 +99,7 @@ const translation = {
     pathParams: 'Parametri del Percorso',
     query: 'Query',
   },
+  regenerate: 'Rigenerare',
 }
 
 export default translation

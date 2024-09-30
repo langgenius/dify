@@ -29,6 +29,9 @@ const translation = {
     save: 'Lưu',
     permissionsInvitedMembers: 'Thành viên một phần trong nhóm',
     me: '(Bạn)',
+    externalKnowledgeAPI: 'API kiến thức bên ngoài',
+    retrievalSettings: 'Cài đặt truy xuất',
+    externalKnowledgeID: 'ID kiến thức bên ngoài',
   },
 }
 
