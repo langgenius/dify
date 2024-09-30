@@ -1,0 +1,9 @@
+description: ""
+icon: ""
+license: ""
+urls: []
+name: ""
+config_file: |
+  backend: rerankers
+files: []
+prompt_templates: []

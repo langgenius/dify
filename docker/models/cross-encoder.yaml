@@ -1,0 +1,2 @@
+backend: rerankers
+name: cross-encoder
