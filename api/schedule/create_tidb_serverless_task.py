@@ -24,18 +24,8 @@ def create_tidb_serverless_task():
             if idle_tidb_serverless_number >= tidb_serverless_number:
                 break
             # create tidb serverless
-            num_threads = 5
-            iterations_per_thread = 20
-
-            threads = []
-            for _ in range(num_threads):
-                thread = threading.Thread(target=create_clusters, args=(iterations_per_thread,))
-                threads.append(thread)
-                thread.start()
-
-            # wait for all threads to finish
-            for thread in threads:
-                thread.join()
+            iterations_per_thread = 100
+            create_clusters(iterations_per_thread)
 
         except Exception as e:
             click.echo(click.style(f'Error: {e}', fg='red'))
@@ -56,7 +46,7 @@ def create_clusters(batch_size):
             dify_config.TIDB_PRIVATE_KEY,
             dify_config.TIDB_REGION)
         for new_cluster in new_clusters:
-            tidb_auth_binding = TidbAuthBinding(cluster_id=new_cluster['cluster_id'],   
+            tidb_auth_binding = TidbAuthBinding(cluster_id=new_cluster['cluster_id'],
                                                 cluster_name=new_cluster['cluster_name'],
                                                 account=new_cluster['account'],
                                                 password=new_cluster['password']

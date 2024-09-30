@@ -181,21 +181,26 @@ class TidbService:
             password = str(uuid.uuid4()).replace("-", "")[:16]
             display_name = str(uuid.uuid4()).replace("-", "")[:16]
             cluster_data = {
-                "displayName": display_name,
-                "region": region_object,
-                "labels": labels,
-                "spendingLimit": spending_limit,
-                "rootPassword": password
+                "cluster": {
+                    "displayName": display_name,
+                    "region": region_object,
+                    "labels": labels,
+                    "spendingLimit": spending_limit,
+                    "rootPassword": password
+                }
             }
             clusters.append(cluster_data)
 
-        response = requests.post(f"{api_url}/clusters:batchCreate", json=clusters,
+        request_body = {
+            "requests": clusters
+        }
+        response = requests.post(f"{api_url}/clusters:batchCreate", json=request_body,
                                     auth=HTTPDigestAuth(public_key, private_key))
 
         if response.status_code == 200:
             response_data = response.json()
             cluster_infos = []
-            for item in response_data:
+            for item in response_data["clusters"]:
                 cluster_info = {
                             "cluster_id": item["clusterId"],
                             "cluster_name": item["displayName"],
