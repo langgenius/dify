@@ -3,7 +3,7 @@ from core.plugin.manager.base import BasePluginManager
 
 
 class PluginEndpointManager(BasePluginManager):
-    def create_endpoint(self, tenant_id: str, user_id: str, plugin_unique_identifier: str, settings: dict):
+    def create_endpoint(self, tenant_id: str, user_id: str, plugin_unique_identifier: str, name: str, settings: dict):
         """
         Create an endpoint for the given plugin.
 
@@ -20,6 +20,7 @@ class PluginEndpointManager(BasePluginManager):
                 "user_id": user_id,
                 "plugin_unique_identifier": plugin_unique_identifier,
                 "settings": settings,
+                "name": name,
             },
         )
 
@@ -50,7 +51,7 @@ class PluginEndpointManager(BasePluginManager):
             },
         )
 
-    def update_endpoint(self, tenant_id: str, user_id: str, endpoint_id: str, settings: dict):
+    def update_endpoint(self, tenant_id: str, user_id: str, endpoint_id: str, name: str, settings: dict):
         """
         Update the settings of the given endpoint.
         """
@@ -61,6 +62,7 @@ class PluginEndpointManager(BasePluginManager):
             data={
                 "user_id": user_id,
                 "endpoint_id": endpoint_id,
+                "name": name,
                 "settings": settings,
             },
         )

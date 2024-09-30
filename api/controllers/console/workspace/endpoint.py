@@ -21,15 +21,18 @@ class EndpointCreateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("plugin_unique_identifier", type=str, required=True)
         parser.add_argument("settings", type=dict, required=True)
+        parser.add_argument("name", type=str, required=True)
         args = parser.parse_args()
 
         plugin_unique_identifier = args["plugin_unique_identifier"]
         settings = args["settings"]
+        name = args["name"]
 
         return EndpointService.create_endpoint(
             tenant_id=user.current_tenant_id,
             user_id=user.id,
             plugin_unique_identifier=plugin_unique_identifier,
+            name=name,
             settings=settings,
         )
 
@@ -75,15 +78,18 @@ class EndpointUpdateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("endpoint_id", type=str, required=True)
         parser.add_argument("settings", type=dict, required=True)
+        parser.add_argument("name", type=str, required=True)
         args = parser.parse_args()
 
         endpoint_id = args["endpoint_id"]
         settings = args["settings"]
+        name = args["name"]
 
         return EndpointService.update_endpoint(
             tenant_id=user.current_tenant_id,
             user_id=user.id,
             endpoint_id=endpoint_id,
+            name=name,
             settings=settings,
         )
 

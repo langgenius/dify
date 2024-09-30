@@ -21,6 +21,7 @@ class EndpointEntity(BasePluginEntity):
     """
 
     settings: dict
+    name: str
     hook_id: str
     tenant_id: str
     plugin_id: str
