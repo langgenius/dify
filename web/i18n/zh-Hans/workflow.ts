@@ -577,6 +577,8 @@ const translation = {
       outputVars: {
         text: '提取的文本',
       },
+      supportFileTypes: '支持的文件类型: {{types}}。',
+      learnMore: '了解更多',
     },
     listFilter: {
       inputVar: '输入变量',

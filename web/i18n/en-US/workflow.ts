@@ -577,6 +577,8 @@ const translation = {
       outputVars: {
         text: 'Extracted text',
       },
+      supportFileTypes: 'Support file types: {{types}}.',
+      learnMore: 'Learn more',
     },
     listFilter: {
       inputVar: 'Input Variable',
