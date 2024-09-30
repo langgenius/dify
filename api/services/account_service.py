@@ -103,7 +103,7 @@ class AccountService:
         if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
             raise AccountLoginError("Account is banned or closed.")
 
-        if password and invite_token:
+        if password and invite_token and account.password is None:
             # if invite_token is valid, set password and password_salt
             salt = secrets.token_bytes(16)
             base64_salt = base64.b64encode(salt).decode()
