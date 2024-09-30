@@ -421,7 +421,7 @@ class TenantService:
             if TenantService.has_roles(tenant, [TenantAccountJoinRole.OWNER]):
                 logging.error(f"Tenant {tenant.id} has already an owner.")
                 raise Exception("Tenant already has an owner.")
-        
+
         ta = db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if ta:
             ta.role = role
