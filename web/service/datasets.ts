@@ -293,7 +293,7 @@ export const createFirecrawlTask: Fetcher<CommonResponse, Record<string, any>> =
   return post<CommonResponse>('website/crawl', {
     body: {
       ...body,
-      provider: 'firecrawl',
+      provider: DataSourceProvider.fireCrawl,
     },
   })
 }
@@ -301,7 +301,26 @@ export const createFirecrawlTask: Fetcher<CommonResponse, Record<string, any>> =
 export const checkFirecrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
   return get<CommonResponse>(`website/crawl/status/${jobId}`, {
     params: {
-      provider: 'firecrawl',
+      provider: DataSourceProvider.fireCrawl,
+    },
+  }, {
+    silent: true,
+  })
+}
+
+export const createJinaReaderTask: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('website/crawl', {
+    body: {
+      ...body,
+      provider: DataSourceProvider.jinaReader,
+    },
+  })
+}
+
+export const checkJinaReaderTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
+  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
+    params: {
+      provider: 'jinareader',
     },
   }, {
     silent: true,

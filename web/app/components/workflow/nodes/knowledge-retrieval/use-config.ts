@@ -136,6 +136,8 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
         top_k: multipleRetrievalConfig?.top_k || DATASET_DEFAULT.top_k,
         score_threshold: multipleRetrievalConfig?.score_threshold,
         reranking_model: multipleRetrievalConfig?.reranking_model,
+        reranking_mode: multipleRetrievalConfig?.reranking_mode,
+        weights: multipleRetrievalConfig?.weights,
       }
     })
     setInputs(newInput)

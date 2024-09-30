@@ -48,7 +48,7 @@ from ._utils import (
 )
 
 if TYPE_CHECKING:
-    from pydantic_core.core_schema import LiteralSchema, ModelField, ModelFieldsSchema
+    from pydantic_core.core_schema import ModelField
 
 __all__ = ["BaseModel", "GenericModel"]
 _BaseModelT = TypeVar("_BaseModelT", bound="BaseModel")

@@ -14,7 +14,7 @@ from models.dataset import Document
 @document_index_created.connect
 def handle(sender, **kwargs):
     dataset_id = sender
-    document_ids = kwargs.get("document_ids", None)
+    document_ids = kwargs.get("document_ids")
     documents = []
     start_at = time.perf_counter()
     for document_id in document_ids:
