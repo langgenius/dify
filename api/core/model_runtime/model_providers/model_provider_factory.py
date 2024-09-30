@@ -96,15 +96,9 @@ class ModelProviderFactory:
         # fetch plugin model providers
         plugin_model_provider_entities = self.get_plugin_model_providers()
 
-        plugin_id, provider_name = self.get_plugin_id_and_provider_name_from_provider(provider)
-
         # get the provider
         plugin_model_provider_entity = next(
-            (
-                p
-                for p in plugin_model_provider_entities
-                if p.declaration.provider == provider_name and (plugin_id and p.plugin_id == plugin_id)
-            ),
+            (p for p in plugin_model_provider_entities if p.declaration.provider == provider),
             None,
         )
 
@@ -284,7 +278,7 @@ class ModelProviderFactory:
         elif model_type == ModelType.TTS:
             return TTSModel(**init_params)
 
-    def get_provider_icon(self, provider: str, icon_type: str, lang: str) -> bytes:
+    def get_provider_icon(self, provider: str, icon_type: str, lang: str) -> tuple[bytes, str]:
         """
         Get provider icon
         :param provider: provider name
@@ -315,9 +309,27 @@ class ModelProviderFactory:
         if not file_name:
             raise ValueError(f"Provider {provider} does not have icon.")
 
+        image_mime_types = {
+            "jpg": "image/jpeg",
+            "jpeg": "image/jpeg",
+            "png": "image/png",
+            "gif": "image/gif",
+            "bmp": "image/bmp",
+            "tiff": "image/tiff",
+            "tif": "image/tiff",
+            "webp": "image/webp",
+            "svg": "image/svg+xml",
+            "ico": "image/vnd.microsoft.icon",
+            "heif": "image/heif",
+            "heic": "image/heic",
+        }
+
+        extension = file_name.split(".")[-1]
+        mime_type = image_mime_types.get(extension, "image/png")
+
         # get icon bytes from plugin asset manager
         plugin_asset_manager = PluginAssetManager()
-        return plugin_asset_manager.fetch_asset(tenant_id=self.tenant_id, id=file_name)
+        return plugin_asset_manager.fetch_asset(tenant_id=self.tenant_id, id=file_name), mime_type
 
     def get_plugin_id_and_provider_name_from_provider(self, provider: str) -> tuple[str, str]:
         """

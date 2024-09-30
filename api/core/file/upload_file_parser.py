@@ -1,12 +1,10 @@
 import base64
-import hashlib
-import hmac
 import logging
-import os
 import time
 from typing import Optional
 
 from configs import dify_config
+from core.helper.url_signer import UrlSigner
 from extensions.ext_storage import storage
 
 IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "svg"]
@@ -46,14 +44,7 @@ class UploadFileParser:
         base_url = dify_config.FILES_URL
         image_preview_url = f"{base_url}/files/{upload_file_id}/image-preview"
 
-        timestamp = str(int(time.time()))
-        nonce = os.urandom(16).hex()
-        data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
-        secret_key = dify_config.SECRET_KEY.encode()
-        sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-        encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
-        return f"{image_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+        return UrlSigner.get_signed_url(url=image_preview_url, sign_key=upload_file_id, prefix="image-preview")
 
     @classmethod
     def verify_image_file_signature(cls, upload_file_id: str, timestamp: str, nonce: str, sign: str) -> bool:
@@ -66,13 +57,12 @@ class UploadFileParser:
         :param sign: signature
         :return:
         """
-        data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
-        secret_key = dify_config.SECRET_KEY.encode()
-        recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
-        recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
+        result = UrlSigner.verify(
+            sign_key=upload_file_id, timestamp=timestamp, nonce=nonce, sign=sign, prefix="image-preview"
+        )
 
         # verify signature
-        if sign != recalculated_encoded_sign:
+        if not result:
             return False
 
         current_time = int(time.time())

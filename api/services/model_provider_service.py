@@ -1,8 +1,5 @@
 import logging
-import os
 from typing import Optional
-
-import requests
 
 from core.entities.model_entities import ModelStatus, ProviderModelWithStatusEntity
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
@@ -368,8 +365,9 @@ class ModelProviderService:
         :return:
         """
         model_type_enum = ModelType.value_of(model_type)
-        result = self.provider_manager.get_default_model(tenant_id=tenant_id, model_type=model_type_enum)
+
         try:
+            result = self.provider_manager.get_default_model(tenant_id=tenant_id, model_type=model_type_enum)
             return (
                 DefaultModelResponse(
                     model=result.model,
@@ -386,7 +384,7 @@ class ModelProviderService:
                 else None
             )
         except Exception as e:
-            logger.info(f"get_default_model_of_model_type error: {e}")
+            logger.debug(f"get_default_model_of_model_type error: {e}")
             return None
 
     def update_default_model_of_model_type(self, tenant_id: str, model_type: str, provider: str, model: str) -> None:
@@ -417,9 +415,9 @@ class ModelProviderService:
         :return:
         """
         model_provider_factory = ModelProviderFactory(tenant_id)
-        byte_data = model_provider_factory.get_provider_icon(provider, icon_type, lang)
+        byte_data, mime_type = model_provider_factory.get_provider_icon(provider, icon_type, lang)
 
-        return byte_data, "application/octet-stream"
+        return byte_data, mime_type
 
     def switch_preferred_provider(self, tenant_id: str, provider: str, preferred_provider_type: str) -> None:
         """
@@ -485,54 +483,3 @@ class ModelProviderService:
 
         # Enable model
         provider_configuration.disable_model(model=model, model_type=ModelType.value_of(model_type))
-
-    def free_quota_submit(self, tenant_id: str, provider: str):
-        api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
-        api_base_url = os.environ.get("FREE_QUOTA_APPLY_BASE_URL")
-        if not api_base_url:
-            raise Exception("FREE_QUOTA_APPLY_BASE_URL is not set")
-
-        api_url = api_base_url + "/api/v1/providers/apply"
-
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
-        response = requests.post(api_url, headers=headers, json={"workspace_id": tenant_id, "provider_name": provider})
-        if not response.ok:
-            logger.error(f"Request FREE QUOTA APPLY SERVER Error: {response.status_code} ")
-            raise ValueError(f"Error: {response.status_code} ")
-
-        if response.json()["code"] != "success":
-            raise ValueError(f"error: {response.json()['message']}")
-
-        rst = response.json()
-
-        if rst["type"] == "redirect":
-            return {"type": rst["type"], "redirect_url": rst["redirect_url"]}
-        else:
-            return {"type": rst["type"], "result": "success"}
-
-    def free_quota_qualification_verify(self, tenant_id: str, provider: str, token: Optional[str]):
-        api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
-        api_base_url = os.environ.get("FREE_QUOTA_APPLY_BASE_URL")
-        if not api_base_url:
-            raise Exception("FREE_QUOTA_APPLY_BASE_URL is not set")
-
-        api_url = api_base_url + "/api/v1/providers/qualification-verify"
-
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
-        json_data = {"workspace_id": tenant_id, "provider_name": provider}
-        if token:
-            json_data["token"] = token
-        response = requests.post(api_url, headers=headers, json=json_data)
-        if not response.ok:
-            logger.error(f"Request FREE QUOTA APPLY SERVER Error: {response.status_code} ")
-            raise ValueError(f"Error: {response.status_code} ")
-
-        rst = response.json()
-        if rst["code"] != "success":
-            raise ValueError(f"error: {rst['message']}")
-
-        data = rst["data"]
-        if data["qualified"] is True:
-            return {"result": "success", "provider_name": provider, "flag": True}
-        else:
-            return {"result": "success", "provider_name": provider, "flag": False, "reason": data["reason"]}

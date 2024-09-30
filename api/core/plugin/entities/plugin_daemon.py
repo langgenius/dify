@@ -58,9 +58,9 @@ class PluginModelSchemaEntity(BaseModel):
 
 
 class PluginModelProviderEntity(BaseModel):
-    id: str = Field(alias="ID", description="ID")
-    created_at: datetime = Field(alias="CreatedAt", description="The created at time of the model provider.")
-    updated_at: datetime = Field(alias="UpdatedAt", description="The updated at time of the model provider.")
+    id: str = Field(description="ID")
+    created_at: datetime = Field(description="The created at time of the model provider.")
+    updated_at: datetime = Field(description="The updated at time of the model provider.")
     provider: str = Field(description="The provider of the model.")
     tenant_id: str = Field(description="The tenant ID.")
     plugin_unique_identifier: str = Field(description="The plugin unique identifier.")
