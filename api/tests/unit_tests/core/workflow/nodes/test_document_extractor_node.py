@@ -6,6 +6,7 @@ from werkzeug.datastructures import FileStorage
 
 from core.file import File, FileTransferMethod
 from core.variables import ArrayFileSegment
+from core.variables.variables import StringVariable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
 from core.workflow.nodes.document_extractor.document_extractor_node import (
@@ -51,7 +52,9 @@ def test_run_variable_not_found(document_extractor_node, mock_graph_runtime_stat
 
 def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_state):
     document_extractor_node.graph_runtime_state = mock_graph_runtime_state
-    mock_graph_runtime_state.variable_pool.get.return_value = "Not an ArrayFileSegment"
+    mock_graph_runtime_state.variable_pool.get.return_value = StringVariable(
+        value="Not an ArrayFileSegment", name="test"
+    )
 
     result = document_extractor_node._run()
 
