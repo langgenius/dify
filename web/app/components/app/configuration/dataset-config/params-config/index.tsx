@@ -56,7 +56,7 @@ const ParamsConfig = ({
     if (allEconomic || allHighQuality || allHighQualityFullTextSearch || allHighQualityVectorSearch || (allExternal && selectedDatasets.length === 1))
       setRerankSettingModalOpen(false)
 
-    if (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || mixtureInternalAndExternal)
+    if (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || mixtureInternalAndExternal || (allExternal && selectedDatasets.length > 1))
       setRerankSettingModalOpen(true)
 
     setTempDataSetConfigs({
