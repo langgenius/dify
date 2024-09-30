@@ -103,6 +103,10 @@ class Vector:
                 from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVectorFactory
 
                 return AnalyticdbVectorFactory
+            case VectorType.PINECONE:
+                from core.rag.datasource.vdb.pinecone.pinecone_vector import PineconeVectorFactory
+
+                return PineconeVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
