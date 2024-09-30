@@ -91,7 +91,7 @@ const Container = () => {
               onClick={() => setShowExternalApiPanel(true)}
             >
               <ApiConnectionMod className='w-4 h-4 text-components-button-secondary-text' />
-              <div className='flex px-0.5 justify-center items-center gap-1 text-components-button-secondary-text system-sm-medium'>{t('dataset.externalAPI')}</div>
+              <div className='flex px-0.5 justify-center items-center gap-1 text-components-button-secondary-text system-sm-medium'>{t('dataset.externalAPIPanelTitle')}</div>
             </Button>
           </div>
         )}

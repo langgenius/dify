@@ -26,6 +26,8 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
   const [loading, setLoading] = useState(false)
   const [name, setName] = useState<string>(dataset.name)
   const [description, setDescription] = useState<string>(dataset.description)
+  const [externalKnowledgeId, setExternalKnowledgeId] = useState<string>(dataset.external_knowledge_info.external_knowledge_id)
+  const [externalKnowledgeApiId, setExternalKnowledgeApiId] = useState<string>(dataset.external_knowledge_info.external_knowledge_api_id)
 
   const onConfirm: MouseEventHandler = async () => {
     if (!name.trim()) {
@@ -34,12 +36,17 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
     }
     try {
       setLoading(true)
+      const body: Partial<DataSet> & { external_knowledge_id?: string; external_knowledge_api_id?: string } = {
+        name,
+        description,
+      }
+      if (externalKnowledgeId && externalKnowledgeApiId) {
+        body.external_knowledge_id = externalKnowledgeId
+        body.external_knowledge_api_id = externalKnowledgeApiId
+      }
       await updateDatasetSetting({
         datasetId: dataset.id,
-        body: {
-          name,
-          description,
-        },
+        body,
       })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       if (onSuccess)
