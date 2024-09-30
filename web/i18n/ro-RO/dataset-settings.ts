@@ -29,6 +29,9 @@ const translation = {
     save: 'Salvare',
     permissionsInvitedMembers: 'Membri parțiali ai echipei',
     me: '(Tu)',
+    externalKnowledgeID: 'ID de cunoștințe extern',
+    externalKnowledgeAPI: 'API de cunoștințe externe',
+    retrievalSettings: 'Setări de recuperare',
   },
 }
 
