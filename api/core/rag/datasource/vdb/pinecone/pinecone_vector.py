@@ -50,19 +50,13 @@ class PineconeVector(BaseVector):
         metadatas = []
         for document in documents:
             metadata = document.metadata
-            metadata.update({'page_content': document.page_content})
+            metadata.update({"page_content": document.page_content})
             metadatas.append(metadata)
 
         vectors = []
         for index, document in enumerate(documents):
             embedding = self._pad_vector(embeddings[index])
-            vectors.append(
-                (
-                    uuids[index],
-                    embedding,
-                    metadatas[index]
-                )
-            )
+            vectors.append((uuids[index], embedding, metadatas[index]))
 
         pindex = self._get_pinecone_index()
         pindex.upsert(vectors=vectors, namespace=self.collection_name, batch_size=len(vectors))
@@ -82,15 +76,14 @@ class PineconeVector(BaseVector):
     def text_exists(self, id: str) -> bool:
         pindex = self._get_pinecone_index()
         response = pindex.query(id=id, namespace=self.collection_name, top_k=1)
-        return len(response['matches']) > 0
+        return len(response["matches"]) > 0
 
     def _pad_vector(self, vector: list[float]) -> list[float]:
-
         vector_length = len(vector)
         if vector_length == self._client_config.index_dimension:
             return vector
         if vector_length > self._client_config.index_dimension:
-            return vector[:self._client_config.index_dimension]
+            return vector[: self._client_config.index_dimension]
         return vector + [0.0] * (self._client_config.index_dimension - vector_length)
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
@@ -105,14 +98,14 @@ class PineconeVector(BaseVector):
         )
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
-        matches = result['matches']
+        matches = result["matches"]
         ids: list[str] = []
         metadatas: list[dict[str, Any]] = []
         scores: list[float] = []
         for match in matches:
-            ids.append(match['id'])
-            metadatas.append(match['metadata'])
-            scores.append(match['score'])
+            ids.append(match["id"])
+            metadatas.append(match["metadata"])
+            scores.append(match["score"])
 
         docs = []
         for index in range(len(ids)):
