@@ -28,8 +28,8 @@ class ApiToolProviderController(ToolProviderController):
 
     @classmethod
     def from_db(cls, db_provider: ApiToolProvider, auth_type: ApiProviderAuthType):
-        credentials_schema = {
-            "auth_type": ProviderConfig(
+        credentials_schema = [
+            ProviderConfig(
                 name="auth_type",
                 required=True,
                 type=ProviderConfig.Type.SELECT,
@@ -40,24 +40,24 @@ class ApiToolProviderController(ToolProviderController):
                 default="none",
                 help=I18nObject(en_US="The auth type of the api provider", zh_Hans="api provider 的认证类型"),
             )
-        }
+        ]
         if auth_type == ApiProviderAuthType.API_KEY:
-            credentials_schema = {
-                **credentials_schema,
-                "api_key_header": ProviderConfig(
+            credentials_schema = [
+                *credentials_schema,
+                ProviderConfig(
                     name="api_key_header",
                     required=False,
                     default="api_key",
                     type=ProviderConfig.Type.TEXT_INPUT,
                     help=I18nObject(en_US="The header name of the api key", zh_Hans="携带 api key 的 header 名称"),
                 ),
-                "api_key_value": ProviderConfig(
+                ProviderConfig(
                     name="api_key_value",
                     required=True,
                     type=ProviderConfig.Type.SECRET_INPUT,
                     help=I18nObject(en_US="The api key", zh_Hans="api key的值"),
                 ),
-                "api_key_header_prefix": ProviderConfig(
+                ProviderConfig(
                     name="api_key_header_prefix",
                     required=False,
                     default="basic",
@@ -69,7 +69,7 @@ class ApiToolProviderController(ToolProviderController):
                         ProviderConfig.Option(value="custom", label=I18nObject(en_US="Custom", zh_Hans="Custom")),
                     ],
                 ),
-            }
+            ]
         elif auth_type == ApiProviderAuthType.NONE:
             pass
 

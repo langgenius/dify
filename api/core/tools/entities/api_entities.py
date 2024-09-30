@@ -2,7 +2,6 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
 
-from core.entities.provider_entities import ProviderConfig
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool import ToolParameter
 from core.tools.entities.common_entities import I18nObject
@@ -62,7 +61,3 @@ class ToolProviderApiEntity(BaseModel):
             "tools": tools,
             "labels": self.labels,
         }
-
-
-class ToolProviderCredentialsApiEntity(BaseModel):
-    credentials: dict[str, ProviderConfig]

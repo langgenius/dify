@@ -85,7 +85,8 @@ class ToolTransformService:
         )
 
         # get credentials schema
-        schema = provider_controller.get_credentials_schema()
+        schema = {x.to_basic_provider_config().name: x for x in provider_controller.get_credentials_schema()}
+
         for name, value in schema.items():
             if result.masked_credentials:
                 result.masked_credentials[name] = ""
@@ -103,7 +104,7 @@ class ToolTransformService:
                 # init tool configuration
                 tool_configuration = ProviderConfigEncrypter(
                     tenant_id=db_provider.tenant_id,
-                    config=provider_controller.get_credentials_schema(),
+                    config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
                     provider_type=provider_controller.provider_type.value,
                     provider_identity=provider_controller.entity.identity.name,
                 )
@@ -208,7 +209,7 @@ class ToolTransformService:
             # init tool configuration
             tool_configuration = ProviderConfigEncrypter(
                 tenant_id=db_provider.tenant_id,
-                config=provider_controller.get_credentials_schema(),
+                config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
                 provider_type=provider_controller.provider_type.value,
                 provider_identity=provider_controller.entity.identity.name,
             )

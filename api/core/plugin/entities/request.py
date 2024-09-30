@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -181,4 +180,4 @@ class RequestInvokeEncrypt(BaseModel):
     namespace: Literal["endpoint"]
     identity: str
     data: dict = Field(default_factory=dict)
-    config: Mapping[str, BasicProviderConfig] = Field(default_factory=Mapping)
+    config: list[BasicProviderConfig] = Field(default_factory=list)

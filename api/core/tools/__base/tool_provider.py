@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from copy import deepcopy
 from typing import Any
 
 from core.entities.provider_entities import ProviderConfig
@@ -16,13 +17,13 @@ class ToolProviderController(ABC):
     def __init__(self, entity: ToolProviderEntity) -> None:
         self.entity = entity
 
-    def get_credentials_schema(self) -> dict[str, ProviderConfig]:
+    def get_credentials_schema(self) -> list[ProviderConfig]:
         """
         returns the credentials schema of the provider
 
         :return: the credentials schema
         """
-        return self.entity.credentials_schema.copy()
+        return deepcopy(self.entity.credentials_schema)
 
     @abstractmethod
     def get_tool(self, tool_name: str) -> Tool:
@@ -48,9 +49,12 @@ class ToolProviderController(ABC):
 
         :param credentials: the credentials of the tool
         """
-        credentials_schema = self.entity.credentials_schema
+        credentials_schema = dict[str, ProviderConfig]()
         if credentials_schema is None:
             return
+
+        for credential in self.entity.credentials_schema:
+            credentials_schema[credential.name] = credential
 
         credentials_need_to_validate: dict[str, ProviderConfig] = {}
         for credential_name in credentials_schema:

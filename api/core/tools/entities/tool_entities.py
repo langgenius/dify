@@ -312,7 +312,7 @@ class ToolEntity(BaseModel):
 
 class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
-    credentials_schema: dict[str, ProviderConfig] = Field(default_factory=dict)
+    credentials_schema: list[ProviderConfig] = Field(default_factory=list)
 
 
 class ToolProviderEntityWithPlugin(ToolProviderEntity):

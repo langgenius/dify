@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any
 
@@ -17,7 +16,7 @@ from core.tools.entities.tool_entities import (
 
 class ProviderConfigEncrypter(BaseModel):
     tenant_id: str
-    config: Mapping[str, BasicProviderConfig]
+    config: list[BasicProviderConfig]
     provider_type: str
     provider_identity: str
 
@@ -36,7 +35,10 @@ class ProviderConfigEncrypter(BaseModel):
         data = self._deep_copy(data)
 
         # get fields need to be decrypted
-        fields = self.config
+        fields = dict[str, BasicProviderConfig]()
+        for credential in self.config:
+            fields[credential.name] = credential
+
         for field_name, field in fields.items():
             if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in data:
@@ -54,7 +56,10 @@ class ProviderConfigEncrypter(BaseModel):
         data = self._deep_copy(data)
 
         # get fields need to be decrypted
-        fields = self.config
+        fields = dict[str, BasicProviderConfig]()
+        for credential in self.config:
+            fields[credential.name] = credential
+
         for field_name, field in fields.items():
             if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in data:
@@ -83,7 +88,10 @@ class ProviderConfigEncrypter(BaseModel):
             return cached_credentials
         data = self._deep_copy(data)
         # get fields need to be decrypted
-        fields = self.config
+        fields = dict[str, BasicProviderConfig]()
+        for credential in self.config:
+            fields[credential.name] = credential
+
         for field_name, field in fields.items():
             if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in data:

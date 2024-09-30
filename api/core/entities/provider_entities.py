@@ -159,3 +159,6 @@ class ProviderConfig(BasicProviderConfig):
     help: Optional[I18nObject] = None
     url: Optional[str] = None
     placeholder: Optional[I18nObject] = None
+
+    def to_basic_provider_config(self) -> BasicProviderConfig:
+        return BasicProviderConfig(type=self.type, name=self.name)

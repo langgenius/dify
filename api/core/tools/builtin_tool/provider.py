@@ -34,10 +34,14 @@ class BuiltinToolProviderController(ToolProviderController):
             for credential_name in provider_yaml["credentials_for_provider"]:
                 provider_yaml["credentials_for_provider"][credential_name]["name"] = credential_name
 
+        credentials_schema = []
+        for credential in provider_yaml.get("credentials_for_provider", {}):
+            credentials_schema.append(credential)
+
         super().__init__(
             entity=ToolProviderEntity(
                 identity=provider_yaml["identity"],
-                credentials_schema=provider_yaml.get("credentials_for_provider", {}) or {},
+                credentials_schema=credentials_schema,
             ),
         )
 
@@ -84,14 +88,14 @@ class BuiltinToolProviderController(ToolProviderController):
         self.tools = tools
         return tools
 
-    def get_credentials_schema(self) -> dict[str, ProviderConfig]:
+    def get_credentials_schema(self) -> list[ProviderConfig]:
         """
         returns the credentials schema of the provider
 
         :return: the credentials schema
         """
         if not self.entity.credentials_schema:
-            return {}
+            return []
 
         return self.entity.credentials_schema.copy()
 

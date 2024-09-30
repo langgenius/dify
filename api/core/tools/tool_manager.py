@@ -160,7 +160,7 @@ class ToolManager:
             credentials = builtin_provider.credentials
             tool_configuration = ProviderConfigEncrypter(
                 tenant_id=tenant_id,
-                config=provider_controller.get_credentials_schema(),
+                config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
                 provider_type=provider_controller.provider_type.value,
                 provider_identity=provider_controller.entity.identity.name,
             )
@@ -186,7 +186,7 @@ class ToolManager:
             # decrypt the credentials
             tool_configuration = ProviderConfigEncrypter(
                 tenant_id=tenant_id,
-                config=api_provider.get_credentials_schema(),
+                config=[x.to_basic_provider_config() for x in api_provider.get_credentials_schema()],
                 provider_type=api_provider.provider_type.value,
                 provider_identity=api_provider.entity.identity.name,
             )
@@ -643,7 +643,7 @@ class ToolManager:
         # init tool configuration
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=tenant_id,
-            config=controller.get_credentials_schema(),
+            config=[x.to_basic_provider_config() for x in controller.get_credentials_schema()],
             provider_type=controller.provider_type.value,
             provider_identity=controller.entity.identity.name,
         )

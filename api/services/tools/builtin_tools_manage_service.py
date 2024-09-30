@@ -35,7 +35,7 @@ class BuiltinToolManageService:
 
         tool_provider_configurations = ProviderConfigEncrypter(
             tenant_id=tenant_id,
-            config=provider_controller.get_credentials_schema(),
+            config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
             provider_type=provider_controller.provider_type.value,
             provider_identity=provider_controller.entity.identity.name,
         )
@@ -78,7 +78,7 @@ class BuiltinToolManageService:
         :return: the list of tool providers
         """
         provider = ToolManager.get_builtin_provider(provider_name, tenant_id)
-        return jsonable_encoder([v for _, v in (provider.get_credentials_schema() or {}).items()])
+        return jsonable_encoder(provider.get_credentials_schema())
 
     @staticmethod
     def update_builtin_tool_provider(user_id: str, tenant_id: str, provider_name: str, credentials: dict):
@@ -102,7 +102,7 @@ class BuiltinToolManageService:
                 raise ValueError(f"provider {provider_name} does not need credentials")
             tool_configuration = ProviderConfigEncrypter(
                 tenant_id=tenant_id,
-                config=provider_controller.get_credentials_schema(),
+                config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
                 provider_type=provider_controller.provider_type.value,
                 provider_identity=provider_controller.entity.identity.name,
             )
@@ -164,7 +164,7 @@ class BuiltinToolManageService:
         provider_controller = ToolManager.get_builtin_provider(provider_obj.provider, tenant_id)
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=tenant_id,
-            config=provider_controller.get_credentials_schema(),
+            config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
             provider_type=provider_controller.provider_type.value,
             provider_identity=provider_controller.entity.identity.name,
         )
@@ -196,7 +196,7 @@ class BuiltinToolManageService:
         provider_controller = ToolManager.get_builtin_provider(provider_name, tenant_id)
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=tenant_id,
-            config=provider_controller.get_credentials_schema(),
+            config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
             provider_type=provider_controller.provider_type.value,
             provider_identity=provider_controller.entity.identity.name,
         )

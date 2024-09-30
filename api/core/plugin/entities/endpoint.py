@@ -1,4 +1,3 @@
-from collections.abc import Mapping
 from datetime import datetime
 
 from pydantic import BaseModel, Field
@@ -12,7 +11,7 @@ class EndpointDeclaration(BaseModel):
     declaration of an endpoint
     """
 
-    settings: Mapping[str, ProviderConfig] = Field(default_factory=Mapping)
+    settings: list[ProviderConfig] = Field(default_factory=list)
 
 
 class EndpointEntity(BasePluginEntity):
