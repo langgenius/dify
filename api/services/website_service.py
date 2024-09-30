@@ -166,6 +166,8 @@ class WebsiteService:
     @classmethod
     def get_crawl_url_data(cls, job_id: str, provider: str, url: str, tenant_id: str) -> dict | None:
         credentials = ApiKeyAuthService.get_auth_credentials(tenant_id, "website", provider)
+        # decrypt api_key
+        api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
         if provider == "firecrawl":
             file_key = "website_files/" + job_id + ".txt"
             if storage.exists(file_key):
@@ -173,8 +175,6 @@ class WebsiteService:
                 if data:
                     data = json.loads(data.decode("utf-8"))
             else:
-                # decrypt api_key
-                api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
                 firecrawl_app = FirecrawlApp(api_key=api_key, base_url=credentials.get("config").get("base_url", None))
                 result = firecrawl_app.check_crawl_status(job_id)
                 if result.get("status") != "completed":
