@@ -141,19 +141,21 @@ const Form = () => {
           description,
           permission,
           indexing_technique: indexMethod,
-          external_retrieval_model: {
-            top_k: topK,
-            score_threshold: scoreThreshold,
-            score_threshold_enabled: scoreThresholdEnabled,
-          },
           retrieval_model: {
             ...postRetrievalConfig,
             score_threshold: postRetrievalConfig.score_threshold_enabled ? postRetrievalConfig.score_threshold : 0,
           },
-          external_knowledge_id: currentDataset!.external_knowledge_info.external_knowledge_id,
-          external_knowledge_api_id: currentDataset!.external_knowledge_info.external_knowledge_api_id,
           embedding_model: embeddingModel.model,
           embedding_model_provider: embeddingModel.provider,
+          ...(currentDataset!.provider === 'external' && {
+            external_knowledge_id: currentDataset!.external_knowledge_info.external_knowledge_id,
+            external_knowledge_api_id: currentDataset!.external_knowledge_info.external_knowledge_api_id,
+            external_retrieval_model: {
+              top_k: topK,
+              score_threshold: scoreThreshold,
+              score_threshold_enabled: scoreThresholdEnabled,
+            },
+          }),
         },
       } as any
       if (permission === 'partial_members') {
