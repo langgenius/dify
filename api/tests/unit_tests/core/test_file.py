@@ -13,7 +13,7 @@ def test_file_loads_and_dumps():
     )
 
     file_dict = file.model_dump()
-    assert file_dict["model_identity"] == FILE_MODEL_IDENTITY
+    assert file_dict["dify_model_identity"] == FILE_MODEL_IDENTITY
     assert file_dict["type"] == file.type.value
     assert isinstance(file_dict["type"], str)
     assert file_dict["transfer_method"] == file.transfer_method.value

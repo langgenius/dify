@@ -190,10 +190,10 @@ class WorkflowTool(Tool):
         for key, value in outputs.items():
             if isinstance(value, list):
                 for item in value:
-                    if isinstance(item, dict) and item.get("model_identity") == FILE_MODEL_IDENTITY:
+                    if isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY:
                         file = File.model_validate(item)
                         files.append(file)
-            elif isinstance(value, dict) and value.get("model_identity") == FILE_MODEL_IDENTITY:
+            elif isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
                 file = File.model_validate(value)
                 files.append(file)
 

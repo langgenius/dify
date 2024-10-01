@@ -569,10 +569,10 @@ class Conversation(db.Model):
     def inputs(self):
         inputs = self._inputs.copy()
         for key, value in inputs.items():
-            if isinstance(value, dict) and value.get("model_identity") == FILE_MODEL_IDENTITY:
+            if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
                 inputs[key] = File.model_validate(value)
             elif isinstance(value, list) and all(
-                isinstance(item, dict) and item.get("model_identity") == FILE_MODEL_IDENTITY for item in value
+                isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
             ):
                 inputs[key] = [File.model_validate(item) for item in value]
         return inputs
@@ -765,10 +765,10 @@ class Message(db.Model):
     def inputs(self):
         inputs = self._inputs.copy()
         for key, value in inputs.items():
-            if isinstance(value, dict) and value.get("model_identity") == FILE_MODEL_IDENTITY:
+            if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
                 inputs[key] = File.model_validate(value)
             elif isinstance(value, list) and all(
-                isinstance(item, dict) and item.get("model_identity") == FILE_MODEL_IDENTITY for item in value
+                isinstance(item, dict) and item.get("dify_model_identity") == FILE_MODEL_IDENTITY for item in value
             ):
                 inputs[key] = [File.model_validate(item) for item in value]
         return inputs
