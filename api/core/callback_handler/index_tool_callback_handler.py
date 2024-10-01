@@ -44,7 +44,6 @@ class DatasetIndexToolCallbackHandler:
                 DocumentSegment.index_node_id == document.metadata["doc_id"]
             )
 
-            # if 'dataset_id' in document.metadata:
             if "dataset_id" in document.metadata:
                 query = query.filter(DocumentSegment.dataset_id == document.metadata["dataset_id"])
 
