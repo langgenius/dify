@@ -7,7 +7,7 @@ identity:
 description:
   human:
     en_US: Create Lark document
-    zh_Hans: 创建飞书文档，支持创建空文档和带内容的文档，支持 markdown 语法创建。
+    zh_Hans: 创建飞书文档，支持创建空文档和带内容的文档，支持 markdown 语法创建。应用需要开启机器人能力(https://open.feishu.cn/document/faq/trouble-shooting/how-to-enable-bot-ability)。
   llm: A tool for creating Feishu documents.
 parameters:
   - name: title
@@ -41,7 +41,8 @@ parameters:
       en_US: folder_token
       zh_Hans: 文档所在文件夹的 Token
     human_description:
-      en_US: The token of the folder where the document is located. If it is not passed or is empty, it means the root directory.
-      zh_Hans: 文档所在文件夹的 Token，不传或传空表示根目录。
-    llm_description: 文档所在文件夹的 Token，不传或传空表示根目录。
+      en_US: |
+        The token of the folder where the document is located. If it is not passed or is empty, it means the root directory. For Example: https://svi136aogf123.feishu.cn/drive/folder/JgR9fiG9AlPt8EdsSNpcGjIInbf
+      zh_Hans: 文档所在文件夹的 Token，不传或传空表示根目录。例如：https://svi136aogf123.feishu.cn/drive/folder/JgR9fiG9AlPt8EdsSNpcGjIInbf。
+    llm_description: 文档所在文件夹的 Token，不传或传空表示根目录。例如：https://svi136aogf123.feishu.cn/drive/folder/JgR9fiG9AlPt8EdsSNpcGjIInbf。
     form: llm

@@ -213,18 +213,21 @@ class SparkLargeLanguageModel(LargeLanguageModel):
         :param prompt_messages: prompt messages
         :return: llm response chunk generator result
         """
+        completion = ""
         for index, content in enumerate(client.subscribe()):
             if isinstance(content, dict):
                 delta = content["data"]
             else:
                 delta = content
-
+            completion += delta
             assistant_prompt_message = AssistantPromptMessage(
                 content=delta or "",
             )
-
+            temp_assistant_prompt_message = AssistantPromptMessage(
+                content=completion,
+            )
             prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
-            completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
+            completion_tokens = self.get_num_tokens(model, credentials, [temp_assistant_prompt_message])
 
             # transform usage
             usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)

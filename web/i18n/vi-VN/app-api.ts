@@ -78,6 +78,7 @@ const translation = {
     query: 'Truy vấn',
   },
   loading: 'Tải',
+  regenerate: 'Tái tạo',
 }
 
 export default translation

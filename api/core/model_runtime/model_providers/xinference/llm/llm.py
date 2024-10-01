@@ -59,6 +59,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.model_runtime.model_providers.xinference.xinference_helper import (
     XinferenceHelper,
     XinferenceModelExtraParameter,
+    validate_model_uid,
 )
 from core.model_runtime.utils import helper
 
@@ -114,7 +115,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         }
         """
         try:
-            if "/" in credentials["model_uid"] or "?" in credentials["model_uid"] or "#" in credentials["model_uid"]:
+            if not validate_model_uid(credentials):
                 raise CredentialsValidateFailedError("model_uid should not contain /, ?, or #")
 
             extra_param = XinferenceHelper.get_xinference_extra_parameter(

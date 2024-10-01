@@ -23,6 +23,8 @@ const translation = {
   },
   noRecentTip: 'यहां कोई हाल के प्रश्न परिणाम नहीं हैं',
   viewChart: 'वेक्टर चार्ट देखें',
+  viewDetail: 'विस्तार से देखें',
+  settingTitle: 'पुनर्प्राप्ति सेटिंग',
 }
 
 export default translation

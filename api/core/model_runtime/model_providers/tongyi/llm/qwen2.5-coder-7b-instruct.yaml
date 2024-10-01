@@ -1,6 +1,7 @@
-model: qwen2.5-7b-instruct
+# for more details, please refer to https://help.aliyun.com/zh/model-studio/getting-started/models
+model: qwen2.5-coder-7b-instruct
 label:
-  en_US: qwen2.5-7b-instruct
+  en_US: qwen2.5-coder-7b-instruct
 model_type: llm
 features:
   - agent-thought

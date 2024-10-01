@@ -37,14 +37,51 @@ model_credential_schema:
       en_US: Model Name
       zh_Hans: 模型名称
     placeholder:
-      en_US: Enter full model name
-      zh_Hans: 输入模型全称
+      en_US: Enter your model name
+      zh_Hans: 输入模型名称
   credential_form_schemas:
     - variable: dashscope_api_key
-      required: true
       label:
         en_US: API Key
       type: secret-input
+      required: true
       placeholder:
         zh_Hans: 在此输入您的 API Key
         en_US: Enter your API Key
+    - variable: context_size
+      label:
+        zh_Hans: 模型上下文长度
+        en_US: Model context size
+      required: true
+      type: text-input
+      default: '4096'
+      placeholder:
+        zh_Hans: 在此输入您的模型上下文长度
+        en_US: Enter your Model context size
+    - variable: max_tokens
+      label:
+        zh_Hans: 最大 token 上限
+        en_US: Upper bound for max tokens
+      default: '4096'
+      type: text-input
+      show_on:
+        - variable: __model_type
+          value: llm
+    - variable: function_calling_type
+      label:
+        en_US: Function calling
+      type: select
+      required: false
+      default: no_call
+      options:
+        - value: no_call
+          label:
+            en_US: Not Support
+            zh_Hans: 不支持
+        - value: function_call
+          label:
+            en_US: Support
+            zh_Hans: 支持
+      show_on:
+        - variable: __model_type
+          value: llm

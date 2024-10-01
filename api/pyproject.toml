@@ -123,6 +123,7 @@ FIRECRAWL_API_KEY = "fc-"
 TEI_EMBEDDING_SERVER_URL = "http://a.abc.com:11451"
 TEI_RERANK_SERVER_URL = "http://a.abc.com:11451"
 MIXEDBREAD_API_KEY = "mk-aaaaaaaaaaaaaaaaaaaa"
+VOYAGE_API_KEY = "va-aaaaaaaaaaaaaaaaaaaa"
 
 [tool.poetry]
 name = "dify-api"
@@ -220,6 +221,7 @@ volcengine-python-sdk = {extras = ["ark"], version = "^1.0.98"}
 oci = "^2.133.0"
 tos = "^2.7.1"
 nomic = "^3.1.2"
+validators = "0.21.0"
 [tool.poetry.group.indriect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"
@@ -253,7 +255,7 @@ alibabacloud_gpdb20160503 = "~3.8.0"
 alibabacloud_tea_openapi = "~0.3.9"
 chromadb = "0.5.1"
 clickhouse-connect = "~0.7.16"
-elasticsearch = "8.14.0"
+elasticsearch = "~8.15.1"
 oracledb = "~2.2.1"
 pgvecto-rs = { version = "~0.2.1", extras = ['sqlalchemy'] }
 pgvector = "0.2.5"
@@ -286,4 +288,4 @@ optional = true
 
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
-ruff = "~0.6.5"
+ruff = "~0.6.8"

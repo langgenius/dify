@@ -248,7 +248,7 @@ def required_args(*variants: Sequence[str]) -> Callable[[CallableT], CallableT]:
         @functools.wraps(func)
         def wrapper(*args: object, **kwargs: object) -> object:
             given_params: set[str] = set()
-            for i, _ in enumerate(args):
+            for i in range(len(args)):
                 try:
                     given_params.add(positional[i])
                 except IndexError:

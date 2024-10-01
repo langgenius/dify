@@ -73,6 +73,14 @@ const translation = {
       fireCrawlNotConfiguredDescription: 'API 키로 Firecrawl을 구성하여 사용합니다.',
       extractOnlyMainContent: '기본 콘텐츠만 추출합니다(머리글, 탐색, 바닥글 등 없음).',
       maxDepthTooltip: '입력한 URL을 기준으로 크롤링할 최대 수준입니다. 깊이 0은 입력 된 url의 페이지를 긁어 내고, 깊이 1은 url과 enteredURL + one / 이후의 모든 것을 긁어 모으는 식입니다.',
+      chooseProvider: '제공자 선택',
+      jinaReaderDocLink: 'https://jina.ai/reader',
+      useSitemap: '사이트맵 사용',
+      jinaReaderNotConfiguredDescription: '액세스를 위해 무료 API 키를 입력하여 Jina Reader를 설정합니다.',
+      jinaReaderDoc: 'Jina Reader에 대해 자세히 알아보기',
+      jinaReaderTitle: '전체 사이트를 Markdown으로 변환',
+      jinaReaderNotConfigured: 'Jina Reader가 구성되지 않았습니다.',
+      useSitemapTooltip: '사이트맵을 따라 사이트를 크롤링합니다. 그렇지 않은 경우 Jina Reader는 페이지 관련성에 따라 반복적으로 크롤링하여 더 적지만 더 높은 품질의 페이지를 생성합니다.',
     },
   },
   stepTwo: {
@@ -157,6 +165,11 @@ const translation = {
     getApiKeyLinkText: 'firecrawl.dev 에서 API 키 가져오기',
     apiKeyPlaceholder: 'firecrawl.dev 의 API 키',
     configFirecrawl: 'Firecrawl 구성 🔥',
+  },
+  jinaReader: {
+    apiKeyPlaceholder: 'jina.ai 의 API 키',
+    getApiKeyLinkText: 'jina.ai 에서 무료 API 키 받기',
+    configJinaReader: 'Jina Reader 구성',
   },
 }
 
