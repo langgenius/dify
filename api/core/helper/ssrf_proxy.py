@@ -15,8 +15,8 @@ SSRF_DEFAULT_MAX_RETRIES = int(os.getenv("SSRF_DEFAULT_MAX_RETRIES", "3"))
 
 proxy_mounts = (
     {
-        "http://": httpx.HTTPTransport(SSRF_PROXY_HTTP_URL),
-        "https://": httpx.HTTPTransport(SSRF_PROXY_HTTPS_URL),
+        "http://": httpx.HTTPTransport(proxy=SSRF_PROXY_HTTP_URL),
+        "https://": httpx.HTTPTransport(proxy=SSRF_PROXY_HTTPS_URL),
     }
     if SSRF_PROXY_HTTP_URL and SSRF_PROXY_HTTPS_URL
     else None

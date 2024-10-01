@@ -34,7 +34,7 @@ class FileExtraConfig(BaseModel):
 
 
 class File(BaseModel):
-    model_identity: str = FILE_MODEL_IDENTITY
+    dify_model_identity: str = FILE_MODEL_IDENTITY
 
     id: Optional[str] = None  # message file id
     tenant_id: str
