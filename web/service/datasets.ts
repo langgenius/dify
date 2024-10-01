@@ -8,6 +8,12 @@ import type {
   DocumentDetailResponse,
   DocumentListResponse,
   ErrorDocsResponse,
+  ExternalAPIDeleteResponse,
+  ExternalAPIItem,
+  ExternalAPIListResponse,
+  ExternalAPIUsage,
+  ExternalKnowledgeBaseHitTestingResponse,
+  ExternalKnowledgeItem,
   FileIndexingEstimateResponse,
   HitTestingRecordsResponse,
   HitTestingResponse,
@@ -23,7 +29,10 @@ import type {
   SegmentsResponse,
   createDocumentResponse,
 } from '@/models/datasets'
+import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
+import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
 import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
+import { DataSourceProvider } from '@/models/common'
 import type {
   ApiKeysListResponse,
   CreateApiKeyResponse,
@@ -80,6 +89,34 @@ export const checkIsUsedInApp: Fetcher<{ is_using: boolean }, string> = (id) => 
 
 export const deleteDataset: Fetcher<DataSet, string> = (datasetID) => {
   return del<DataSet>(`/datasets/${datasetID}`)
+}
+
+export const fetchExternalAPIList: Fetcher<ExternalAPIListResponse, { url: string }> = ({ url }) => {
+  return get<ExternalAPIListResponse>(url)
+}
+
+export const fetchExternalAPI: Fetcher<ExternalAPIItem, { apiTemplateId: string }> = ({ apiTemplateId }) => {
+  return get<ExternalAPIItem>(`/datasets/external-knowledge-api/${apiTemplateId}`)
+}
+
+export const updateExternalAPI: Fetcher<ExternalAPIItem, { apiTemplateId: string; body: ExternalAPIItem }> = ({ apiTemplateId, body }) => {
+  return patch<ExternalAPIItem>(`/datasets/external-knowledge-api/${apiTemplateId}`, { body })
+}
+
+export const deleteExternalAPI: Fetcher<ExternalAPIDeleteResponse, { apiTemplateId: string }> = ({ apiTemplateId }) => {
+  return del<ExternalAPIDeleteResponse>(`/datasets/external-knowledge-api/${apiTemplateId}`)
+}
+
+export const checkUsageExternalAPI: Fetcher<ExternalAPIUsage, { apiTemplateId: string }> = ({ apiTemplateId }) => {
+  return get<ExternalAPIUsage>(`/datasets/external-knowledge-api/${apiTemplateId}/use-check`)
+}
+
+export const createExternalAPI: Fetcher<ExternalAPIItem, { body: CreateExternalAPIReq }> = ({ body }) => {
+  return post<ExternalAPIItem>('/datasets/external-knowledge-api', { body })
+}
+
+export const createExternalKnowledgeBase: Fetcher<ExternalKnowledgeItem, { body: CreateKnowledgeBaseReq }> = ({ body }) => {
+  return post<ExternalKnowledgeItem>('/datasets/external', { body })
 }
 
 export const fetchDefaultProcessRule: Fetcher<ProcessRuleResponse, { url: string }> = ({ url }) => {
@@ -209,6 +246,10 @@ export const hitTesting: Fetcher<HitTestingResponse, { datasetId: string; queryT
   return post<HitTestingResponse>(`/datasets/${datasetId}/hit-testing`, { body: { query: queryText, retrieval_model } })
 }
 
+export const externalKnowledgeBaseHitTesting: Fetcher<ExternalKnowledgeBaseHitTestingResponse, { datasetId: string; query: string; external_retrieval_model: { top_k: number; score_threshold: number; score_threshold_enabled: boolean } }> = ({ datasetId, query, external_retrieval_model }) => {
+  return post<ExternalKnowledgeBaseHitTestingResponse>(`/datasets/${datasetId}/external-hit-testing`, { body: { query, external_retrieval_model } })
+}
+
 export const fetchTestingRecords: Fetcher<HitTestingRecordsResponse, { datasetId: string; params: { page: number; limit: number } }> = ({ datasetId, params }) => {
   return get<HitTestingRecordsResponse>(`/datasets/${datasetId}/queries`, { params })
 }
@@ -253,7 +294,7 @@ export const createFirecrawlTask: Fetcher<CommonResponse, Record<string, any>> =
   return post<CommonResponse>('website/crawl', {
     body: {
       ...body,
-      provider: 'firecrawl',
+      provider: DataSourceProvider.fireCrawl,
     },
   })
 }
@@ -261,7 +302,26 @@ export const createFirecrawlTask: Fetcher<CommonResponse, Record<string, any>> =
 export const checkFirecrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
   return get<CommonResponse>(`website/crawl/status/${jobId}`, {
     params: {
-      provider: 'firecrawl',
+      provider: DataSourceProvider.fireCrawl,
+    },
+  }, {
+    silent: true,
+  })
+}
+
+export const createJinaReaderTask: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('website/crawl', {
+    body: {
+      ...body,
+      provider: DataSourceProvider.jinaReader,
+    },
+  })
+}
+
+export const checkJinaReaderTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
+  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
+    params: {
+      provider: 'jinareader',
     },
   }, {
     silent: true,

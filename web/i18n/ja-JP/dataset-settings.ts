@@ -29,6 +29,9 @@ const translation = {
       longDescription: ' 検索方法についての詳細については、いつでもナレッジの設定で変更できます。',
     },
     save: '保存',
+    externalKnowledgeID: '外部ナレッジID',
+    retrievalSettings: '取得設定',
+    externalKnowledgeAPI: '外部ナレッジAPI',
   },
 }
 

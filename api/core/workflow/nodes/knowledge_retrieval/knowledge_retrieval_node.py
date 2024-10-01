@@ -156,16 +156,34 @@ class KnowledgeRetrievalNode(BaseNode):
                 weights,
                 node_data.multiple_retrieval_config.reranking_enable,
             )
-
-        context_list = []
-        if all_documents:
+        dify_documents = [item for item in all_documents if item.provider == "dify"]
+        external_documents = [item for item in all_documents if item.provider == "external"]
+        retrieval_resource_list = []
+        # deal with external documents
+        for item in external_documents:
+            source = {
+                "metadata": {
+                    "_source": "knowledge",
+                    "dataset_id": item.metadata.get("dataset_id"),
+                    "dataset_name": item.metadata.get("dataset_name"),
+                    "document_name": item.metadata.get("title"),
+                    "data_source_type": "external",
+                    "retriever_from": "workflow",
+                    "score": item.metadata.get("score"),
+                },
+                "title": item.metadata.get("title"),
+                "content": item.page_content,
+            }
+            retrieval_resource_list.append(source)
+        document_score_list = {}
+        # deal with dify documents
+        if dify_documents:
             document_score_list = {}
-            page_number_list = {}
-            for item in all_documents:
+            for item in dify_documents:
                 if item.metadata.get("score"):
                     document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
 
-            index_node_ids = [document.metadata["doc_id"] for document in all_documents]
+            index_node_ids = [document.metadata["doc_id"] for document in dify_documents]
             segments = DocumentSegment.query.filter(
                 DocumentSegment.dataset_id.in_(dataset_ids),
                 DocumentSegment.completed_at.isnot(None),
@@ -186,13 +204,10 @@ class KnowledgeRetrievalNode(BaseNode):
                         Document.enabled == True,
                         Document.archived == False,
                     ).first()
-
-                    resource_number = 1
                     if dataset and document:
                         source = {
                             "metadata": {
                                 "_source": "knowledge",
-                                "position": resource_number,
                                 "dataset_id": dataset.id,
                                 "dataset_name": dataset.name,
                                 "document_id": document.id,
@@ -212,9 +227,16 @@ class KnowledgeRetrievalNode(BaseNode):
                             source["content"] = f"question:{segment.get_sign_content()} \nanswer:{segment.answer}"
                         else:
                             source["content"] = segment.get_sign_content()
-                        context_list.append(source)
-                        resource_number += 1
-        return context_list
+                        retrieval_resource_list.append(source)
+        if retrieval_resource_list:
+            retrieval_resource_list = sorted(
+                retrieval_resource_list, key=lambda x: x.get("metadata").get("score"), reverse=True
+            )
+            position = 1
+            for item in retrieval_resource_list:
+                item["metadata"]["position"] = position
+                position += 1
+        return retrieval_resource_list
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

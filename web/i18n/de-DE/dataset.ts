@@ -72,6 +72,80 @@ const translation = {
   nTo1RetrievalLegacyLink: 'Mehr erfahren',
   nTo1RetrievalLegacyLinkText: 'N-zu-1-Abruf wird im September offiziell eingestellt.',
   defaultRetrievalTip: 'Standardmäßig wird der Multi-Path-Abruf verwendet. Das Wissen wird aus mehreren Wissensdatenbanken abgerufen und dann neu eingestuft.',
+  editExternalAPIConfirmWarningContent: {
+    end: 'externes Wissen, und diese Modifikation wird auf alle angewendet. Sind Sie sicher, dass Sie diese Änderung speichern möchten?',
+    front: 'Diese External Knowledge API ist verknüpft mit',
+  },
+  editExternalAPIFormWarning: {
+    front: 'Diese externe API ist verknüpft mit',
+    end: 'externes Wissen',
+  },
+  deleteExternalAPIConfirmWarningContent: {
+    title: {
+      front: 'Löschen',
+      end: '?',
+    },
+    content: {
+      front: 'Diese External Knowledge API ist verknüpft mit',
+      end: 'externes Wissen. Wenn Sie diese API löschen, werden alle ungültig. Sind Sie sicher, dass Sie diese API löschen möchten?',
+    },
+    noConnectionContent: 'Sind Sie sicher, dass Sie diese API löschen möchten?',
+  },
+  selectExternalKnowledgeAPI: {
+    placeholder: 'Auswählen einer externen Wissens-API',
+  },
+  connectDatasetIntro: {
+    content: {
+      front: 'Um eine Verbindung zu einer externen Wissensdatenbank herzustellen, müssen Sie zuerst eine externe API erstellen. Bitte lesen Sie diese sorgfältig durch und beziehen Sie sich auf',
+      link: 'Erfahren Sie, wie Sie eine externe API erstellen',
+      end: '. Suchen Sie dann die entsprechende Wissens-ID und füllen Sie diese in das Formular links aus. Wenn alle Informationen korrekt sind, wird nach dem Klicken auf die Schaltfläche "Verbinden" automatisch zum Abruftest in der Wissensdatenbank gesprungen.',
+    },
+    learnMore: 'Weitere Informationen',
+    title: 'So stellen Sie eine Verbindung zu einer externen Wissensdatenbank her',
+  },
+  connectHelper: {
+    helper3: '. Wir empfehlen Ihnen dringend,',
+    helper2: 'Es wird nur die Retrieval-Funktionalität unterstützt',
+    helper5: 'bevor Sie diese Funktion verwenden.',
+    helper4: 'Lesen Sie die Hilfedokumentation',
+    helper1: 'Verbinden Sie sich mit externen Wissensdatenbanken über API und Wissensdatenbank-ID.',
+  },
+  externalKnowledgeForm: {
+    connect: 'Verbinden',
+    cancel: 'Abbrechen',
+  },
+  externalAPIForm: {
+    encrypted: {
+      front: 'Ihr API-Token wird verschlüsselt und gespeichert mit',
+      end: 'Technologie.',
+    },
+    save: 'Retten',
+    cancel: 'Abbrechen',
+    endpoint: 'API-Endpunkt',
+    name: 'Name',
+    edit: 'Redigieren',
+    apiKey: 'API-Schlüssel',
+  },
+  externalTag: 'Äußerlich',
+  createExternalAPI: 'Hinzufügen einer externen Knowledge-API',
+  externalAPIPanelDescription: 'Die API für externes Wissen wird verwendet, um eine Verbindung zu einer Wissensdatenbank außerhalb von Dify herzustellen und Wissen aus dieser Wissensdatenbank abzurufen.',
+  createNewExternalAPI: 'Erstellen einer neuen API für externes Wissen',
+  externalKnowledgeDescriptionPlaceholder: 'Beschreiben Sie, was in dieser Wissensdatenbank enthalten ist (optional)',
+  externalAPIPanelDocumentation: 'Erfahren Sie, wie Sie eine API für externes Wissen erstellen',
+  externalAPIPanelTitle: 'API für externes Wissen',
+  learnHowToWriteGoodKnowledgeDescription: 'Erfahren Sie, wie Sie eine gute Wissensbeschreibung schreiben',
+  editExternalAPITooltipTitle: 'VERKNÜPFTES WISSEN',
+  externalKnowledgeIdPlaceholder: 'Bitte geben Sie die Knowledge ID ein',
+  connectDataset: 'Herstellen einer Verbindung mit einer externen Wissensdatenbank',
+  externalAPI: 'Externe API',
+  externalKnowledgeName: 'Name des externen Wissens',
+  allExternalTip: 'Wenn nur externes Wissen verwendet wird, kann der Benutzer auswählen, ob das Rerank-Modell aktiviert werden soll. Wenn diese Option nicht aktiviert ist, werden die abgerufenen Blöcke basierend auf den Punktzahlen sortiert. Wenn die Abrufstrategien verschiedener Wissensdatenbanken inkonsistent sind, ist dies ungenau.',
+  externalKnowledgeDescription: 'Wissen Beschreibung',
+  noExternalKnowledge: 'Es gibt noch keine External Knowledge API, klicken Sie hier, um zu erstellen',
+  externalKnowledgeNamePlaceholder: 'Bitte geben Sie den Namen der Wissensdatenbank ein.',
+  mixtureInternalAndExternalTip: 'Das Rerank-Modell ist für die Mischung von internem und externem Wissen erforderlich.',
+  externalKnowledgeId: 'ID für externes Wissen',
+  editExternalAPIFormTitle: 'Bearbeiten der API für externes Wissen',
 }
 
 export default translation
