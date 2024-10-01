@@ -332,3 +332,9 @@ class Tool(BaseModel, ABC):
         create a json message
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.JSON, message=object)
+
+    def create_array_message(self, object: dict) -> ToolInvokeMessage:
+        """
+        create a array message
+        """
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.ARRAY, message=object)
