@@ -26,7 +26,7 @@ class RedisConfig(BaseSettings):
 
     REDIS_PASSWORD: Optional[str] = Field(
         description="Redis password",
-        default=None,
+        default="difyai123456",
     )
 
     REDIS_DB: NonNegativeInt = Field(
