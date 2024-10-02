@@ -36,7 +36,7 @@ class RedisConfig(BaseSettings):
 
     REDIS_USE_SSL: bool = Field(
         description="whether to use SSL for Redis connection",
-        default=False,
+        default=true,
     )
 
     REDIS_USE_SENTINEL: Optional[bool] = Field(
