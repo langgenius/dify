@@ -114,7 +114,7 @@ class ChatApi(Resource):
         # Starting from v0.9.0, args['parent_message_id'] is used to support message regeneration.
         # For the service API, we need to ensure its forward compatibility,
         # so passing in the 'parent_message_id' is not supported for now.
-        # Here we set the 'parent_message_id' to be 'UUID_NIL' so that the subsequent processing will treat requests 
+        # Here we set the 'parent_message_id' to be 'UUID_NIL' so that the subsequent processing will treat requests
         # from the service API as legacy messages.
         args["parent_message_id"] = UUID_NIL
 
