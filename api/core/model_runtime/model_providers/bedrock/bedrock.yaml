@@ -62,22 +62,34 @@ provider_credential_schema:
           label:
             en_US: Asia Pacific (Tokyo)
             zh_Hans: 亚太地区 (东京)
+        - value: ap-southeast-2
+          label:
+            en_US: Asia Pacific (Sydney)
+            zh_Hans: 亚太地区 (悉尼)
+        - value: ca-central-1
+          label:
+            en_US: Canada (Central)
+            zh_Hans: 加拿大（中部）
         - value: eu-central-1
           label:
             en_US: Europe (Frankfurt)
             zh_Hans: 欧洲 (法兰克福)
         - value: eu-west-2
           label:
-            en_US: Eu west London (London)
+            en_US: Europe (London)
             zh_Hans: 欧洲西部 (伦敦)
+        - value: eu-west-3
+          label:
+            en_US: Europe (Paris)
+            zh_Hans: 欧洲（巴黎）
+        - value: sa-east-1
+          label:
+            en_US: South America (São Paulo)
+            zh_Hans: 南美洲（圣保罗）
         - value: us-gov-west-1
           label:
             en_US: AWS GovCloud (US-West)
             zh_Hans: AWS GovCloud (US-West)
-        - value: ap-southeast-2
-          label:
-            en_US: Asia Pacific (Sydney)
-            zh_Hans: 亚太地区 (悉尼)
     - variable: model_for_validation
       required: false
       label:
