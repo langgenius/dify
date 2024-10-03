@@ -14,7 +14,7 @@ const Contribute: FC = () => {
 
   return (
     <a
-      href='https://github.com/langgenius/dify/blob/main/api/core/tools/README.md'
+      href='#'
       target='_blank'
       rel='noopener noreferrer'
       className="group flex col-span-1 bg-white bg-cover bg-no-repeat bg-[url('~@/app/components/tools/provider/grid_bg.svg')] border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg"
@@ -26,8 +26,7 @@ const Contribute: FC = () => {
         </div>
       </div>
       <div className='mb-3 px-[14px] text-[15px] leading-5 font-semibold'>
-        <div className='text-gradient'>{t('tools.contribute.line1')}</div>
-        <div className='text-gradient'>{t('tools.contribute.line2')}</div>
+    
       </div>
       <div className='px-4 py-3 border-t-[0.5px] border-black/5 flex items-center space-x-1 text-[#155EEF]'>
         <BookOpen01 className='w-3 h-3' />
