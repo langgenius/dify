@@ -1,2 +1,2 @@
-class VariableError(Exception):
+class VariableError(ValueError):
     pass

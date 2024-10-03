@@ -46,12 +46,12 @@ parameters:
       en_US: User ID type, optional values are open_id, union_id, user_id, with a default value of open_id.
       zh_Hans: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
     llm_description: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
-    form: llm
+    form: form
 
   - name: page_size
     type: number
     required: false
-    default: "500"
+    default: 500
     label:
       en_US: page_size
       zh_Hans: 分页大小
