@@ -8,7 +8,7 @@ class PackagingInfo(BaseSettings):
     """
 
     CURRENT_VERSION: str = Field(
-        description="Dify version",
+        description=" Platform version",
         default="0.9.1",
     )
 
