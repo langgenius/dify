@@ -6,29 +6,29 @@ from core.llm_generator.output_parser.errors import OutputParserError
 def parse_json_markdown(json_string: str) -> dict:
     # Get json from the backticks/braces
     json_string = json_string.strip()
-    starts = ["```json","```","``","`","{"]
-    ends = ["```","``","`","}"]
+    starts = ["```json", "```", "``", "`", "{"]
+    ends = ["```", "``", "`", "}"]
     end_index = -1
     for s in starts:
         start_index = json_string.find(s)
         if start_index != -1:
-            if json_string[start_index] != '{':
+            if json_string[start_index] != "{":
                 start_index += len(s)
             break
     if start_index != -1:
         for e in ends:
             end_index = json_string.rfind(e, start_index)
             if end_index != -1:
-                if json_string[end_index] == '}':
+                if json_string[end_index] == "}":
                     end_index += 1
                 break
     if start_index != -1 and end_index != -1 and start_index < end_index:
-        extracted_content = json_string[start_index : end_index].strip()
-        print('content:',extracted_content,start_index,end_index)
+        extracted_content = json_string[start_index:end_index].strip()
+        print("content:", extracted_content, start_index, end_index)
         parsed = json.loads(extracted_content)
     else:
         raise Exception("Could not find JSON block in the output.")
-    
+
     return parsed
 
 
