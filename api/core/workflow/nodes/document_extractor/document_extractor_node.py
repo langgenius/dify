@@ -77,7 +77,7 @@ class DocumentExtractorNode(BaseNode):
             )
 
 
-def _extract_text(*, file_content: bytes, mime_type: str) -> str:
+def _extract_text(*, file_content: bytes, mime_type: str, file_extension: str = "") -> str:
     """Extract text from a file based on its MIME type."""
     if mime_type.startswith("text/plain") or mime_type in {"text/html", "text/htm", "text/markdown", "text/xml"}:
         return _extract_text_from_plain_text(file_content)
@@ -106,7 +106,37 @@ def _extract_text(*, file_content: bytes, mime_type: str) -> str:
     elif mime_type == "application/vnd.ms-outlook":
         return _extract_text_from_msg(file_content)
     else:
+        extract_result = _extract_text_by_file_extension(file_content, file_extension)
+        if extract_result:
+            return extract_result
         raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
+
+
+def _extract_text_by_file_extension(file_content: bytes, file_extension: str) -> str:
+    """Extract text from a file based on its file extension."""
+    match file_extension:
+        case "txt" | "markdown" | "md" | "html" | "htm" | "xml":
+            return _extract_text_from_plain_text(file_content)
+        case "pdf":
+            return _extract_text_from_pdf(file_content)
+        case "doc" | "docx":
+            return _extract_text_from_doc(file_content)
+        case "csv":
+            return _extract_text_from_csv(file_content)
+        case "xls" | "xlsx":
+            return _extract_text_from_excel(file_content)
+        case "ppt":
+            return _extract_text_from_ppt(file_content)
+        case "pptx":
+            return _extract_text_from_pptx(file_content)
+        case "epub":
+            return _extract_text_from_epub(file_content)
+        case "eml":
+            return _extract_text_from_eml(file_content)
+        case "msg":
+            return _extract_text_from_msg(file_content)
+        case _:
+            return ""
 
 
 def _extract_text_from_plain_text(file_content: bytes) -> str:
@@ -163,7 +193,7 @@ def _extract_text_from_file(file: File):
     if file.mime_type is None:
         raise UnsupportedFileTypeError("Unable to determine file type: MIME type is missing")
     file_content = _download_file_content(file)
-    extracted_text = _extract_text(file_content=file_content, mime_type=file.mime_type)
+    extracted_text = _extract_text(file_content=file_content, mime_type=file.mime_type, file_extension=file.extension)
     return extracted_text
 
 
