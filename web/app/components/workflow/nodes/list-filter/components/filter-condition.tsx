@@ -48,12 +48,12 @@ const FilterCondition: FC<Props> = ({
       return []
     }
     return []
-  }, [condition.comparison_operator, condition.key, isSelect, t, isArrayValue])
+  }, [condition.comparison_operator, condition.key, isSelect, t])
   const handleChange = useCallback((key: string) => {
     return (value: any) => {
       onChange({
         ...condition,
-        [key]: isArrayValue ? [value] : value,
+        [key]: (isArrayValue && key === 'value') ? [value] : value,
       })
     }
   }, [condition, onChange, isArrayValue])
