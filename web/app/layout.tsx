@@ -8,7 +8,7 @@ import './styles/globals.css'
 import './styles/markdown.scss'
 
 export const metadata = {
-  title: 'Dify',
+  title: 'Hacienda Platform',
 }
 
 export const viewport: Viewport = {
@@ -30,8 +30,9 @@ const LocaleLayout = ({
     <html lang={locale ?? 'en'} className="h-full" data-theme="light">
       <head>
         <meta name="theme-color" content="#FFFFFF" />
-
-     
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       </head>
       <body
         className="h-full select-auto"
