@@ -27,7 +27,10 @@ class EventSourceNode(BaseNode):
         """
         return {
             "type": "event-source",
-            "config": {"variables": [{"variable": "arg1", "value_selector": []}], "template": "{{ arg1 }}"},
+            "config": {
+                "variables": [],
+                "template": "Lorem ipsum dolor sit amet, consectetur adipiscing elit, ..."
+            },
         }
 
     def _run(self) -> Generator[RunEvent | InNodeEvent, None, None]:
