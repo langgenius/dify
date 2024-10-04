@@ -229,7 +229,9 @@ class KnowledgeRetrievalNode(BaseNode):
                             source["content"] = segment.get_sign_content()
                         retrieval_resource_list.append(source)
         if retrieval_resource_list:
-            retrieval_resource_list = sorted(retrieval_resource_list, key=lambda x: x.get("score"), reverse=True)
+            retrieval_resource_list = sorted(
+                retrieval_resource_list, key=lambda x: x.get("metadata").get("score"), reverse=True
+            )
             position = 1
             for item in retrieval_resource_list:
                 item["metadata"]["position"] = position

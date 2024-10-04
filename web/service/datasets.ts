@@ -30,8 +30,9 @@ import type {
   createDocumentResponse,
 } from '@/models/datasets'
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
-import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations.ts'
+import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
 import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
+import { DataSourceProvider } from '@/models/common'
 import type {
   ApiKeysListResponse,
   CreateApiKeyResponse,

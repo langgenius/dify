@@ -59,10 +59,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const ref = useRef(null)
+  const isExternal = currentDataset.provider === 'external'
   const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
   const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model.score_threshold ?? 0.5)
   const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
-
   const { setShowAccountSettingModal } = useModalContext()
   const [loading, setLoading] = useState(false)
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
@@ -122,19 +122,21 @@ const SettingsModal: FC<SettingsModalProps> = ({
           description,
           permission,
           indexing_technique: indexMethod,
-          external_retrieval_model: {
-            top_k: topK,
-            score_threshold: scoreThreshold,
-            score_threshold_enabled: scoreThresholdEnabled,
-          },
           retrieval_model: {
             ...postRetrievalConfig,
             score_threshold: postRetrievalConfig.score_threshold_enabled ? postRetrievalConfig.score_threshold : 0,
           },
-          external_knowledge_id: currentDataset!.external_knowledge_info.external_knowledge_id,
-          external_knowledge_api_id: currentDataset!.external_knowledge_info.external_knowledge_api_id,
           embedding_model: localeCurrentDataset.embedding_model,
           embedding_model_provider: localeCurrentDataset.embedding_model_provider,
+          ...(isExternal && {
+            external_knowledge_id: currentDataset!.external_knowledge_info.external_knowledge_id,
+            external_knowledge_api_id: currentDataset!.external_knowledge_info.external_knowledge_api_id,
+            external_retrieval_model: {
+              top_k: topK,
+              score_threshold: scoreThreshold,
+              score_threshold_enabled: scoreThresholdEnabled,
+            },
+          }),
         },
       } as any
       if (permission === 'partial_members') {
