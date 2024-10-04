@@ -16,6 +16,7 @@ import AssignerDefault from './nodes/assigner/default'
 import EndNodeDefault from './nodes/end/default'
 import IterationDefault from './nodes/iteration/default'
 import IterationStartDefault from './nodes/iteration-start/default'
+import EventSourceDefault from './nodes/event-source/default'
 
 type NodesExtraData = {
   author: string
@@ -116,6 +117,15 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: TemplateTransformDefault.getAvailablePrevNodes,
     getAvailableNextNodes: TemplateTransformDefault.getAvailableNextNodes,
     checkValid: TemplateTransformDefault.checkValid,
+  },
+  [BlockEnum.EventSource]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: EventSourceDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: EventSourceDefault.getAvailableNextNodes,
+    checkValid: EventSourceDefault.checkValid,
   },
   [BlockEnum.QuestionClassifier]: {
     author: 'Dify',
@@ -256,6 +266,14 @@ export const NODES_INITIAL_DATA = {
     template: '',
     ...TemplateTransformDefault.defaultValue,
   },
+  [BlockEnum.EventSource]: {
+    type: BlockEnum.EventSource,
+    title: '',
+    desc: '',
+    variables: [],
+    template: '',
+    ...EventSourceDefault.defaultValue,
+  },
   [BlockEnum.QuestionClassifier]: {
     type: BlockEnum.QuestionClassifier,
     title: '',
@@ -352,7 +370,7 @@ export const RETRIEVAL_OUTPUT_STRUCT = `{
 export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.Start, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.Code, BlockEnum.TemplateTransform,
   BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner, BlockEnum.VariableAggregator, BlockEnum.QuestionClassifier,
-  BlockEnum.ParameterExtractor, BlockEnum.Iteration,
+  BlockEnum.ParameterExtractor, BlockEnum.Iteration, BlockEnum.EventSource,
 ]
 
 export const LLM_OUTPUT_STRUCT: Var[] = [
@@ -370,6 +388,13 @@ export const KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT: Var[] = [
 ]
 
 export const TEMPLATE_TRANSFORM_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: 'output',
+    type: VarType.string,
+  },
+]
+
+export const EVENT_SOURCE_OUTPUT_STRUCT: Var[] = [
   {
     variable: 'output',
     type: VarType.string,

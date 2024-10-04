@@ -28,6 +28,7 @@ export enum BlockEnum {
   Iteration = 'iteration',
   IterationStart = 'iteration-start',
   Assigner = 'assigner', // is now named as VariableAssigner
+  EventSource = 'event-source',
 }
 
 export enum ControlMode {

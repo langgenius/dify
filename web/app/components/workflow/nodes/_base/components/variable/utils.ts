@@ -9,6 +9,7 @@ import type { IfElseNodeType } from '../../../if-else/types'
 import type { TemplateTransformNodeType } from '../../../template-transform/types'
 import type { QuestionClassifierNodeType } from '../../../question-classifier/types'
 import type { HttpNodeType } from '../../../http/types'
+import type { EventSourceNodeType } from '../../../event-source/types'
 import { VarType as ToolVarType } from '../../../tool/types'
 import type { ToolNodeType } from '../../../tool/types'
 import type { ParameterExtractorNodeType } from '../../../parameter-extractor/types'
@@ -145,6 +146,11 @@ const formatItem = (
     }
 
     case BlockEnum.TemplateTransform: {
+      res.vars = TEMPLATE_TRANSFORM_OUTPUT_STRUCT
+      break
+    }
+
+    case BlockEnum.EventSource: {
       res.vars = TEMPLATE_TRANSFORM_OUTPUT_STRUCT
       break
     }
@@ -606,6 +612,12 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       })
       break
     }
+    case BlockEnum.EventSource: {
+      res = (data as EventSourceNodeType).variables?.map((v: any) => {
+        return v.value_selector
+      })
+      break
+    }
     case BlockEnum.QuestionClassifier: {
       const payload = (data as QuestionClassifierNodeType)
       res = [payload.query_variable_selector]
@@ -684,6 +696,12 @@ export const getNodeUsedVarPassToServerKey = (node: Node, valueSelector: ValueSe
     }
     case BlockEnum.TemplateTransform: {
       const targetVar = (data as TemplateTransformNodeType).variables?.find(v => v.value_selector.join('.') === valueSelector.join('.'))
+      if (targetVar)
+        res = targetVar.variable
+      break
+    }
+    case BlockEnum.EventSource: {
+      const targetVar = (data as EventSourceNodeType).variables?.find(v => v.value_selector.join('.') === valueSelector.join('.'))
       if (targetVar)
         res = targetVar.variable
       break
@@ -812,6 +830,17 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
       }
       case BlockEnum.TemplateTransform: {
         const payload = data as TemplateTransformNodeType
+        if (payload.variables) {
+          payload.variables = payload.variables.map((v: any) => {
+            if (v.value_selector.join('.') === oldVarSelector.join('.'))
+              v.value_selector = newVarSelector
+            return v
+          })
+        }
+        break
+      }
+      case BlockEnum.EventSource: {
+        const payload = data as EventSourceNodeType
         if (payload.variables) {
           payload.variables = payload.variables.map((v: any) => {
             if (v.value_selector.join('.') === oldVarSelector.join('.'))
@@ -965,6 +994,11 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
 
     case BlockEnum.TemplateTransform: {
       varsToValueSelectorList(TEMPLATE_TRANSFORM_OUTPUT_STRUCT, [id], res)
+      break
+    }
+
+    case BlockEnum.EventSource: {
+      varsToValueSelectorList(EVENT_SOURCE_OUTPUT_STRUCT, [id], res)
       break
     }
 

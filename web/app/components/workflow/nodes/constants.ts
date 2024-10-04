@@ -30,6 +30,8 @@ import ParameterExtractorNode from './parameter-extractor/node'
 import ParameterExtractorPanel from './parameter-extractor/panel'
 import IterationNode from './iteration/node'
 import IterationPanel from './iteration/panel'
+import EventSourceNode from './event-source/node'
+import EventSourcePanel from './event-source/panel'
 
 export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Start]: StartNode,
@@ -48,6 +50,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.VariableAggregator]: VariableAssignerNode,
   [BlockEnum.ParameterExtractor]: ParameterExtractorNode,
   [BlockEnum.Iteration]: IterationNode,
+  [BlockEnum.EventSource]: EventSourceNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
@@ -67,6 +70,7 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Assigner]: AssignerPanel,
   [BlockEnum.ParameterExtractor]: ParameterExtractorPanel,
   [BlockEnum.Iteration]: IterationPanel,
+  [BlockEnum.EventSource]: EventSourcePanel,
 }
 
 export const CUSTOM_NODE_TYPE = 'custom'

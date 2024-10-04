@@ -2,6 +2,7 @@ from core.workflow.entities.node_entities import NodeType
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.end.end_node import EndNode
+from core.workflow.nodes.event_source.event_source_node import EventSourceNode
 from core.workflow.nodes.http_request.http_request_node import HttpRequestNode
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
 from core.workflow.nodes.iteration.iteration_node import IterationNode
@@ -25,6 +26,7 @@ node_classes = {
     NodeType.IF_ELSE: IfElseNode,
     NodeType.CODE: CodeNode,
     NodeType.TEMPLATE_TRANSFORM: TemplateTransformNode,
+    NodeType.EVENT_SOURCE: EventSourceNode,
     NodeType.QUESTION_CLASSIFIER: QuestionClassifierNode,
     NodeType.HTTP_REQUEST: HttpRequestNode,
     NodeType.TOOL: ToolNode,

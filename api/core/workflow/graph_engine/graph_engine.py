@@ -23,6 +23,7 @@ from core.workflow.graph_engine.entities.event import (
     GraphRunFailedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
+    NodeRunEventSourceEvent,
     NodeRunFailedEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunStartedEvent,
@@ -39,7 +40,12 @@ from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeSta
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
-from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
+from core.workflow.nodes.event import (
+    RunCompletedEvent,
+    RunEventSourceNodeEvent,
+    RunRetrieverResourceEvent,
+    RunStreamChunkEvent,
+)
 from core.workflow.nodes.node_mapping import node_classes
 from extensions.ext_database import db
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
@@ -652,6 +658,20 @@ class GraphEngine:
                         break
                     elif isinstance(item, RunStreamChunkEvent):
                         yield NodeRunStreamChunkEvent(
+                            id=node_instance.id,
+                            node_id=node_instance.node_id,
+                            node_type=node_instance.node_type,
+                            node_data=node_instance.node_data,
+                            chunk_content=item.chunk_content,
+                            from_variable_selector=item.from_variable_selector,
+                            route_node_state=route_node_state,
+                            parallel_id=parallel_id,
+                            parallel_start_node_id=parallel_start_node_id,
+                            parent_parallel_id=parent_parallel_id,
+                            parent_parallel_start_node_id=parent_parallel_start_node_id,
+                        )
+                    elif isinstance(item, RunEventSourceNodeEvent):
+                        yield NodeRunEventSourceEvent(
                             id=node_instance.id,
                             node_id=node_instance.node_id,
                             node_type=node_instance.node_type,

@@ -12,6 +12,11 @@ class RunStreamChunkEvent(BaseModel):
     from_variable_selector: list[str] = Field(..., description="from variable selector")
 
 
+class RunEventSourceNodeEvent(BaseModel):
+    chunk_content: str = Field(..., description="chunk content")
+    from_variable_selector: list[str] = Field(..., description="from variable selector")
+
+
 class RunRetrieverResourceEvent(BaseModel):
     retriever_resources: list[dict] = Field(..., description="retriever resources")
     context: str = Field(..., description="context")

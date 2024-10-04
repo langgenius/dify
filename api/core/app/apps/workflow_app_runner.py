@@ -31,6 +31,7 @@ from core.workflow.graph_engine.entities.event import (
     IterationRunNextEvent,
     IterationRunStartedEvent,
     IterationRunSucceededEvent,
+    NodeRunEventSourceEvent,
     NodeRunFailedEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunStartedEvent,
@@ -251,7 +252,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     in_iteration_id=event.in_iteration_id,
                 )
             )
-        elif isinstance(event, NodeRunStreamChunkEvent):
+        elif isinstance(event, NodeRunStreamChunkEvent | NodeRunEventSourceEvent):
             self._publish_event(
                 QueueTextChunkEvent(
                     text=event.chunk_content,

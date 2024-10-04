@@ -20,6 +20,7 @@ class NodeType(Enum):
     IF_ELSE = "if-else"
     CODE = "code"
     TEMPLATE_TRANSFORM = "template-transform"
+    EVENT_SOURCE = "event-source"
     QUESTION_CLASSIFIER = "question-classifier"
     HTTP_REQUEST = "http-request"
     TOOL = "tool"

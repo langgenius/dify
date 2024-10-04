@@ -68,6 +68,12 @@ class NodeRunStreamChunkEvent(BaseNodeEvent):
     """from variable selector"""
 
 
+class NodeRunEventSourceEvent(BaseNodeEvent):
+    chunk_content: str = Field(..., description="chunk content")
+    from_variable_selector: Optional[list[str]] = None
+    """from variable selector"""
+
+
 class NodeRunRetrieverResourceEvent(BaseNodeEvent):
     retriever_resources: list[dict] = Field(..., description="retriever resources")
     context: str = Field(..., description="context")

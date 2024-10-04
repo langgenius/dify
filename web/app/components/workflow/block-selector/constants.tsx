@@ -74,6 +74,11 @@ export const BLOCKS: Block[] = [
     type: BlockEnum.HttpRequest,
     title: 'HTTP Request',
   },
+  {
+    classification: BlockClassificationEnum.Default,
+    type: BlockEnum.EventSource,
+    title: 'Event Source',
+  },
 ]
 
 export const BLOCK_CLASSIFICATIONS: string[] = [

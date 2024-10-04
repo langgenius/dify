@@ -1,0 +1,11 @@
+from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.entities.variable_entities import VariableSelector
+
+
+class EventSourceNodeData(BaseNodeData):
+    """
+    Code Node Data.
+    """
+
+    variables: list[VariableSelector]
+    template: str

@@ -358,6 +358,7 @@ export const canRunBySingle = (nodeType: BlockEnum) => {
     || nodeType === BlockEnum.KnowledgeRetrieval
     || nodeType === BlockEnum.Code
     || nodeType === BlockEnum.TemplateTransform
+    || nodeType === BlockEnum.EventSource
     || nodeType === BlockEnum.QuestionClassifier
     || nodeType === BlockEnum.HttpRequest
     || nodeType === BlockEnum.Tool
