@@ -50,7 +50,7 @@ class EventSourceNode(BaseNode):
             )
             n = 5
             for i in range(0, len(result["result"]), n):
-                text = result["result"][i:i + n]
+                text = result["result"][i : i + n]
                 yield RunEventSourceNodeEvent(chunk_content=text, from_variable_selector=[self.node_id, "text"])
                 time.sleep(0.1)
 
