@@ -26,7 +26,7 @@ class RedisConfig(BaseSettings):
 
     REDIS_PASSWORD: Optional[str] = Field(
         description="Redis password",
-        default="difyai123456",
+        default=None,
     )
 
     REDIS_DB: NonNegativeInt = Field(
@@ -36,7 +36,7 @@ class RedisConfig(BaseSettings):
 
     REDIS_USE_SSL: bool = Field(
         description="whether to use SSL for Redis connection",
-        default=true,
+        default=False,
     )
 
     REDIS_USE_SENTINEL: Optional[bool] = Field(
