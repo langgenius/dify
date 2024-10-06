@@ -1,7 +1,7 @@
 const translation = {
   list: {
     title: 'Belgeler',
-    desc: 'Bilginin tüm dosyaları burada gösterilir ve Bilginin tamamı Dify alıntılarına veya Sohbet eklentisi üzerinden dizine eklenebilir.',
+    desc: 'Bilginin tüm dosyaları burada gösterilir ve Bilginin tamamı  alıntılarına veya Sohbet eklentisi üzerinden dizine eklenebilir.',
     addFile: 'Dosya Ekle',
     addPages: 'Sayfa Ekle',
     addUrl: 'URL Ekle',
@@ -52,7 +52,7 @@ const translation = {
         tip: 'Dosya yükleyebilir, web sitesinden veya Notion, GitHub gibi web uygulamalarından senkronize edebilirsiniz.',
       },
       sync: {
-        tip: 'Dify, Notion\'dan periyodik olarak dosyaları indirir ve işlemeyi tamamlar.',
+        tip: ', Notion\'dan periyodik olarak dosyaları indirir ve işlemeyi tamamlar.',
       },
     },
     delete: {

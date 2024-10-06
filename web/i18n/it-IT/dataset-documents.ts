@@ -1,7 +1,7 @@
 const translation = {
   list: {
     title: 'Documenti',
-    desc: 'Tutti i file della Conoscenza sono mostrati qui, e l\'intera Conoscenza può essere collegata alle citazioni di Dify o indicizzata tramite il plugin di Chat.',
+    desc: 'Tutti i file della Conoscenza sono mostrati qui, e l\'intera Conoscenza può essere collegata alle citazioni di  o indicizzata tramite il plugin di Chat.',
     addFile: 'Aggiungi file',
     addPages: 'Aggiungi Pagine',
     addUrl: 'Aggiungi URL',
@@ -52,7 +52,7 @@ const translation = {
         tip: 'Puoi caricare file, sincronizzare dal sito web o da app web come Notion, GitHub, ecc.',
       },
       sync: {
-        tip: 'Dify scaricherà periodicamente i file dal tuo Notion e completerà l\'elaborazione.',
+        tip: ' scaricherà periodicamente i file dal tuo Notion e completerà l\'elaborazione.',
       },
     },
     delete: {

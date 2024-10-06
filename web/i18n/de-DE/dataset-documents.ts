@@ -1,7 +1,7 @@
 const translation = {
   list: {
     title: 'Dokumente',
-    desc: 'Alle Dateien des Wissens werden hier angezeigt, und das gesamte Wissen kann mit Dify-Zitaten verknüpft oder über das Chat-Plugin indiziert werden.',
+    desc: 'Alle Dateien des Wissens werden hier angezeigt, und das gesamte Wissen kann mit -Zitaten verknüpft oder über das Chat-Plugin indiziert werden.',
     addFile: 'Datei hinzufügen',
     addPages: 'Seiten hinzufügen',
     table: {
@@ -51,7 +51,7 @@ const translation = {
         tip: 'Sie können Dateien hochladen, von der Website oder von Web-Apps wie Notion, GitHub usw. synchronisieren.',
       },
       sync: {
-        tip: 'Dify wird periodisch Dateien von Ihrem Notion herunterladen und die Verarbeitung abschließen.',
+        tip: ' wird periodisch Dateien von Ihrem Notion herunterladen und die Verarbeitung abschließen.',
       },
     },
     delete: {

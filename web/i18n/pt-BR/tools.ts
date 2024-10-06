@@ -9,7 +9,7 @@ const translation = {
   },
   contribute: {
     line1: 'Estou interessado em ',
-    line2: 'contribuir com ferramentas para o Dify.',
+    line2: 'contribuir com ferramentas para o .',
     viewGuide: 'Ver o guia',
   },
   author: 'Por',
@@ -146,7 +146,7 @@ const translation = {
     manageInTools: 'Gerenciar em Ferramentas',
   },
   openInStudio: 'Abrir no Studio',
-  customToolTip: 'Saiba mais sobre as ferramentas personalizadas da Dify',
+  customToolTip: 'Saiba mais sobre as ferramentas personalizadas da ',
   toolNameUsageTip: 'Nome da chamada da ferramenta para raciocínio e solicitação do agente',
 }
 

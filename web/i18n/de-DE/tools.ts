@@ -9,7 +9,7 @@ const translation = {
   },
   contribute: {
     line1: 'Ich interessiere mich dafür, ',
-    line2: 'Werkzeuge zu Dify beizutragen.',
+    line2: 'Werkzeuge zu  beizutragen.',
     viewGuide: 'Leitfaden anzeigen',
   },
   author: 'Von',
@@ -146,7 +146,7 @@ const translation = {
     emptyTip: 'Gehen Sie zu "Workflow -> Als Tool veröffentlichen"',
   },
   toolNameUsageTip: 'Name des Tool-Aufrufs für die Argumentation und Aufforderung des Agenten',
-  customToolTip: 'Erfahren Sie mehr über benutzerdefinierte Dify-Tools',
+  customToolTip: 'Erfahren Sie mehr über benutzerdefinierte -Tools',
   openInStudio: 'In Studio öffnen',
 }
 

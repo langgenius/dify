@@ -1,7 +1,7 @@
 const translation = {
   title: 'Инструменты',
   createCustomTool: 'Создать пользовательский инструмент',
-  customToolTip: 'Узнать больше о пользовательских инструментах Dify',
+  customToolTip: 'Узнать больше о пользовательских инструментах ',
   type: {
     all: 'Все',
     builtIn: 'Встроенные',
@@ -10,7 +10,7 @@ const translation = {
   },
   contribute: {
     line1: 'Я заинтересован в',
-    line2: 'внесении инструментов в Dify.',
+    line2: 'внесении инструментов в .',
     viewGuide: 'Посмотреть руководство',
   },
   author: 'Автор',

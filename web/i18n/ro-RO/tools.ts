@@ -9,7 +9,7 @@ const translation = {
   },
   contribute: {
     line1: 'Sunt interesat să ',
-    line2: 'contribui la Dify cu instrumente.',
+    line2: 'contribui la  cu instrumente.',
     viewGuide: 'Vezi ghidul',
   },
   author: 'De',
@@ -146,7 +146,7 @@ const translation = {
     emptyTip: 'Accesați "Flux de lucru -> Publicați ca instrument"',
   },
   openInStudio: 'Deschide în Studio',
-  customToolTip: 'Aflați mai multe despre instrumentele personalizate Dify',
+  customToolTip: 'Aflați mai multe despre instrumentele personalizate ',
   toolNameUsageTip: 'Numele de apel al instrumentului pentru raționamentul și solicitarea agentului',
 }
 
