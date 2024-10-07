@@ -6,6 +6,7 @@ from flask import Flask
 
 from extensions.storage.aliyun_storage import AliyunStorage
 from extensions.storage.azure_storage import AzureStorage
+from extensions.storage.baidu_storage import BaiduStorage
 from extensions.storage.google_storage import GoogleStorage
 from extensions.storage.huawei_storage import HuaweiStorage
 from extensions.storage.local_storage import LocalStorage
@@ -35,6 +36,8 @@ class Storage:
             self.storage_runner = OCIStorage(app=app)
         elif storage_type == "huawei-obs":
             self.storage_runner = HuaweiStorage(app=app)
+        elif storage_type == "baidu-obs":
+            self.storage_runner = BaiduStorage(app=app)
         elif storage_type == "volcengine-tos":
             self.storage_runner = VolcengineStorage(app=app)
         else:
