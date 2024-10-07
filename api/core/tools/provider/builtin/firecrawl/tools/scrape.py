@@ -29,10 +29,10 @@ class ScrapeTool(BuiltinTool):
         extract["schema"] = get_json_params(tool_parameters, "schema")
         extract["systemPrompt"] = tool_parameters.get("systemPrompt")
         extract["prompt"] = tool_parameters.get("prompt")
-        extract = {k: v for k, v in extract.items() if v not in {None, ""}}
+        extract = {k: v for k, v in extract.items() if v not in (None, "")}
         payload["extract"] = extract or None
 
-        payload = {k: v for k, v in payload.items() if v not in {None, ""}}
+        payload = {k: v for k, v in payload.items() if v not in (None, "")}
 
         crawl_result = app.scrape_url(url=tool_parameters["url"], **payload)
         markdown_result = crawl_result.get("data", {}).get("markdown", "")

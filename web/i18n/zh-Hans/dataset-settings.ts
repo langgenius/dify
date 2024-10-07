@@ -1,13 +1,13 @@
 const translation = {
   title: '知识库设置',
-  desc: '在这里您可以修改知识库的工作方式以及其它设置。',
+  desc: '在这里，您可以修改此知识库的属性和检索设置',
   form: {
     name: '知识库名称',
     namePlaceholder: '请输入知识库名称',
     nameError: '名称不能为空',
     desc: '知识库描述',
     descInfo: '请写出清楚的文字描述来概述知识库的内容。当从多个知识库中进行选择匹配时，该描述将用作匹配的基础。',
-    descPlaceholder: '描述这个知识库中的内容。详细的描述可以让 AI 及时访问知识库的内容。如果为空，Dify 将使用默认的命中策略。',
+    descPlaceholder: '请描述这个知识库包含的内容（可选）',
     descWrite: '了解如何编写更好的知识库描述。',
     permissions: '可见权限',
     permissionsOnlyMe: '只有我',
@@ -28,7 +28,10 @@ const translation = {
       description: '关于检索方法。',
       longDescription: '关于检索方法，您可以随时在知识库设置中更改此设置。',
     },
+    externalKnowledgeAPI: '外部知识 API',
+    externalKnowledgeID: '外部知识库 ID',
     save: '保存',
+    retrievalSettings: '检索设置',
   },
 }
 

@@ -1,15 +1,18 @@
 from typing import TYPE_CHECKING
 
-from ...core._base_api import BaseAPI
+from ...core import BaseAPI, cached_property
 from .jobs import Jobs
+from .models import FineTunedModels
 
 if TYPE_CHECKING:
-    from ..._client import ZhipuAI
+    pass
 
 
 class FineTuning(BaseAPI):
-    jobs: Jobs
+    @cached_property
+    def jobs(self) -> Jobs:
+        return Jobs(self._client)
 
-    def __init__(self, client: "ZhipuAI") -> None:
-        super().__init__(client)
-        self.jobs = Jobs(client)
+    @cached_property
+    def models(self) -> FineTunedModels:
+        return FineTunedModels(self._client)

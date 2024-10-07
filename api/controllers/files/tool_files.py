@@ -3,8 +3,8 @@ from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.files import api
+from controllers.files.error import UnsupportedFileTypeError
 from core.tools.tool_file_manager import ToolFileManager
-from libs.exception import BaseHTTPException
 
 
 class ToolFilePreviewApi(Resource):
@@ -43,9 +43,3 @@ class ToolFilePreviewApi(Resource):
 
 
 api.add_resource(ToolFilePreviewApi, "/files/tools/<uuid:file_id>.<string:extension>")
-
-
-class UnsupportedFileTypeError(BaseHTTPException):
-    error_code = "unsupported_file_type"
-    description = "File type not allowed."
-    code = 415

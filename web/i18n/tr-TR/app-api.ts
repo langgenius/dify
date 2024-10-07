@@ -78,6 +78,7 @@ const translation = {
     pathParams: 'Path Params',
     query: 'Query',
   },
+  regenerate: 'Yenilemek',
 }
 
 export default translation

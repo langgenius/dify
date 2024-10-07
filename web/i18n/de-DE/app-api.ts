@@ -78,6 +78,7 @@ const translation = {
     query: 'Anfrage',
   },
   loading: 'Laden',
+  regenerate: 'Erneuern',
 }
 
 export default translation
