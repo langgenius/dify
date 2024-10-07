@@ -83,8 +83,10 @@ def create_flask_app_with_configs() -> Flask:
     with configs loaded from .env file
     """
     dify_app = DifyApp(__name__)
-    dify_app.wsgi_app = ProxyFix(dify_app.wsgi_app)
     dify_app.config.from_mapping(dify_config.model_dump())
+
+    if dify_app.config.get("PROXY_FIX_MIDDLEWARE_ENABLED"):
+        dify_app.wsgi_app = ProxyFix(dify_app.wsgi_app)
 
     # populate configs into system environment variables
     for key, value in dify_app.config.items():
