@@ -14,7 +14,7 @@ class CotAgentOutputParser:
     ) -> Generator[Union[str, AgentScratchpadUnit.Action], None, None]:
         def parse_action(json_str):
             try:
-                action = json.loads(json_str)
+                action = json.loads(json_str, strict=False)
                 action_name = None
                 action_input = None
 

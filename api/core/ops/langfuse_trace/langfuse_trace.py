@@ -159,6 +159,16 @@ class LangFuseDataTrace(BaseTraceInstance):
                     "status": status,
                 }
             )
+            process_data = json.loads(node_execution.process_data) if node_execution.process_data else {}
+            model_provider = process_data.get("model_provider", None)
+            model_name = process_data.get("model_name", None)
+            if model_provider is not None and model_name is not None:
+                metadata.update(
+                    {
+                        "model_provider": model_provider,
+                        "model_name": model_name,
+                    }
+                )
 
             # add span
             if trace_info.message_id:
@@ -191,7 +201,6 @@ class LangFuseDataTrace(BaseTraceInstance):
 
             self.add_span(langfuse_span_data=span_data)
 
-            process_data = json.loads(node_execution.process_data) if node_execution.process_data else {}
             if process_data and process_data.get("model_mode") == "chat":
                 total_token = metadata.get("total_tokens", 0)
                 # add generation
