@@ -6,10 +6,13 @@ WORKDIR /app/api
 # Install Poetry
 ENV POETRY_VERSION=1.8.3
 
-# if you located in China, you can use aliyun mirror to speed up
-# RUN pip install --no-cache-dir poetry==${POETRY_VERSION} -i https://mirrors.aliyun.com/pypi/simple/
+ARG locate=global
 
-RUN pip install --no-cache-dir poetry==${POETRY_VERSION}
+RUN if [ "$locate" = "cn" ]; then \
+        pip install --no-cache-dir poetry==${POETRY_VERSION} -i https://mirrors.aliyun.com/pypi/simple/; \
+    else \
+        pip install --no-cache-dir poetry==${POETRY_VERSION}; \
+    fi
 
 # Configure Poetry
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
@@ -20,8 +23,11 @@ ENV POETRY_REQUESTS_TIMEOUT=15
 
 FROM base AS packages
 
-# if you located in China, you can use aliyun mirror to speed up
-# RUN sed -i 's@deb.debian.org@mirrors.aliyun.com@g' /etc/apt/sources.list.d/debian.sources
+ARG locate=global
+
+RUN if [ "$locate" = "cn" ]; then \
+        sed -i 's@deb.debian.org@mirrors.aliyun.com@g' /etc/apt/sources.list.d/debian.sources; \
+    fi
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc g++ libc-dev libffi-dev libgmp-dev libmpfr-dev libmpc-dev
@@ -48,11 +54,15 @@ ENV TZ=UTC
 
 WORKDIR /app/api
 
+ARG locate=global
+
 RUN apt-get update \
     && apt-get install -y --no-install-recommends curl nodejs libgmp-dev libmpfr-dev libmpc-dev \
-    # if you located in China, you can use aliyun mirror to speed up
-    # && echo "deb http://mirrors.aliyun.com/debian testing main" > /etc/apt/sources.list \
-    && echo "deb http://deb.debian.org/debian testing main" > /etc/apt/sources.list \
+    && if [ "$locate" = "cn" ]; then \
+            echo "deb http://mirrors.aliyun.com/debian testing main" > /etc/apt/sources.list; \
+        else \
+            echo "deb http://deb.debian.org/debian testing main" > /etc/apt/sources.list; \
+        fi \
     && apt-get update \
     # For Security
     && apt-get install -y --no-install-recommends zlib1g=1:1.3.dfsg+really1.3.1-1 expat=2.6.3-1 libldap-2.5-0=2.5.18+dfsg-3 perl=5.38.2-5 libsqlite3-0=3.46.0-1 \
