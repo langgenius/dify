@@ -732,7 +732,7 @@ name = "bce-python-sdk"
 version = "0.9.23"
 description = "BCE SDK for python"
 optional = false
-python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, <4"
+python-versions = "!=3.0.*,!=3.1.*,!=3.2.*,<4,>=2.7"
 files = [
     {file = "bce_python_sdk-0.9.23-py3-none-any.whl", hash = "sha256:8debe21a040e00060f6044877d594765ed7b18bc765c6bf16b878bca864140a3"},
     {file = "bce_python_sdk-0.9.23.tar.gz", hash = "sha256:19739fed5cd0725356fc5ffa2acbdd8fb23f2a81edb91db21a03174551d0cf41"},
@@ -847,7 +847,7 @@ name = "botocore"
 version = "1.35.34"
 description = "Low-level, data-driven core of boto 3."
 optional = false
-python-versions = ">= 3.8"
+python-versions = ">=3.8"
 files = [
     {file = "botocore-1.35.34-py3-none-any.whl", hash = "sha256:ccb0fe397b11b81c9abc0c87029d17298e17bf658d8db5c0c5a551a12a207e7a"},
     {file = "botocore-1.35.34.tar.gz", hash = "sha256:789b6501a3bb4a9591c1fe10da200cc315c1fa5df5ada19c720d8ef06439b3e3"},
@@ -1068,7 +1068,7 @@ name = "build"
 version = "1.2.2.post1"
 description = "A simple, correct Python build frontend"
 optional = false
-python-versions = ">= 3.8"
+python-versions = ">=3.8"
 files = [
     {file = "build-1.2.2.post1-py3-none-any.whl", hash = "sha256:1d61c0887fa860c01971625baae8bdd338e517b836a2f70dd1f7aa3a6b2fc5b5"},
     {file = "build-1.2.2.post1.tar.gz", hash = "sha256:b36993e92ca9375a219c99e606a122ff365a760a2d4bba0caa09bd5278b608b7"},
@@ -2318,13 +2318,13 @@ files = [
 
 [[package]]
 name = "duckduckgo-search"
-version = "6.2.13"
+version = "6.3.0"
 description = "Search for words, documents, images, news, maps and text translation using the DuckDuckGo.com search engine."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "duckduckgo_search-6.2.13-py3-none-any.whl", hash = "sha256:a6618fb2744fa1d081b1bf2e47ef8051de993276a15c20f4e879a150726472de"},
-    {file = "duckduckgo_search-6.2.13.tar.gz", hash = "sha256:f89a9782f0f47d18c01a761c83453d0aef7a4335d1b6466fc47709652d5ca791"},
+    {file = "duckduckgo_search-6.3.0-py3-none-any.whl", hash = "sha256:9a231a7b325226811cf7d35a240f3f501e718ae10a1aa0a638cabc80e129dfe7"},
+    {file = "duckduckgo_search-6.3.0.tar.gz", hash = "sha256:e9f56955569325a7d9cacda2488ca78bf6629a459e74415892bee560b664f5eb"},
 ]
 
 [package.dependencies]
@@ -4486,7 +4486,7 @@ name = "langfuse"
 version = "2.51.3"
 description = "A client library for accessing langfuse"
 optional = false
-python-versions = ">=3.8.1,<4.0"
+python-versions = "<4.0,>=3.8.1"
 files = [
     {file = "langfuse-2.51.3-py3-none-any.whl", hash = "sha256:32aba050123656ec0c165583e1d33243cc7a14e7b8498ed3c9de808aa90306f1"},
     {file = "langfuse-2.51.3.tar.gz", hash = "sha256:ccd2109556ee232db717abfb751ee8a3139f074db7d3e06a4f1a756c349fc5ba"},
@@ -4511,7 +4511,7 @@ name = "langsmith"
 version = "0.1.131"
 description = "Client library to connect to the LangSmith LLM Tracing and Evaluation Platform."
 optional = false
-python-versions = ">=3.8.1,<4.0"
+python-versions = "<4.0,>=3.8.1"
 files = [
     {file = "langsmith-0.1.131-py3-none-any.whl", hash = "sha256:80c106b1c42307195cc0bb3a596472c41ef91b79d15bcee9938307800336c563"},
     {file = "langsmith-0.1.131.tar.gz", hash = "sha256:626101a3bf3ca481e5110d5155ace8aa066e4e9cc2fa7d96c8290ade0fbff797"},
@@ -10595,4 +10595,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "eff91cb29dc285a313ddf0ed6fbbc9c9972d955d97781f56dfd9d3bbde5fba4a"
+content-hash = "dbcbcd7addb7c35c67f074fce00f6e25ec1e225498e5b9de3ef2fcd6af749bf6"
