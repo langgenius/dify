@@ -65,8 +65,7 @@ class RuleCodeGenerateApi(Resource):
         args = parser.parse_args()
 
         account = current_user
-        CODE_GENERATION_MAX_TOKENS = 1000
-
+        CODE_GENERATION_MAX_TOKENS = int(os.getenv("CODE_GENERATION_MAX_TOKENS", "1024"))
         try:
             code_result = LLMGenerator.generate_code(
                 tenant_id=account.current_tenant_id,
