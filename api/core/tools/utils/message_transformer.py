@@ -25,7 +25,6 @@ class ToolFileMessageTransformer:
             elif (
                 message.type == ToolInvokeMessage.MessageType.IMAGE
                 and isinstance(message.message, str)
-                and conversation_id
             ):
                 # try to download image
                 try:
