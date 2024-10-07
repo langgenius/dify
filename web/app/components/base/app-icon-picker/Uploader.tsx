@@ -13,11 +13,15 @@ import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
 type UploaderProps = {
   className?: string
-  onImageCropped?: (tempUrl: string, croppedAreaPixels: Area, fileName: string, file?: File) => void }
+  onImageCropped?: (tempUrl: string, croppedAreaPixels: Area, fileName: string) => void
+  onUpload?: (file?: File) => void
+}
+  
 
 const Uploader: FC<UploaderProps> = ({
   className,
   onImageCropped,
+  onUpload
 }) => {
   const [inputImage, setInputImage] = useState<{ file: File; url: string }>()
   const [isAnimatedImage, setIsAnimatedImage] = useState<boolean>(false)
@@ -35,6 +39,7 @@ const Uploader: FC<UploaderProps> = ({
     if (!inputImage)
       return
     onImageCropped?.(inputImage.url, croppedAreaPixels, inputImage.file.name)
+    onUpload?.(undefined)
   }
 
   const handleLocalFileInput = (e: ChangeEvent<HTMLInputElement>) => {
@@ -44,7 +49,7 @@ const Uploader: FC<UploaderProps> = ({
       checkIsAnimatedImage(file).then((isAnimatedImage) => {
         setIsAnimatedImage(!!isAnimatedImage)
         if (isAnimatedImage)
-          onImageCropped?.(URL.createObjectURL(file), { x: 0, y: 0, width: 0, height: 0 }, file.name, file)
+          onUpload?.(file)
       })
     }
   }
