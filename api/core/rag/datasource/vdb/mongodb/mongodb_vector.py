@@ -1,8 +1,10 @@
 import json
 from typing import Any
-from pydantic import BaseModel
+
 import pymongo
+from pydantic import BaseModel
 from pymongo.operations import SearchIndexModel
+
 from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -16,11 +18,10 @@ from models.dataset import Dataset
 class MongoDBConfig(BaseModel):
     connection_string: str
     database: str
+
     def to_mdb_params(self):
-        return {
-            "connection_string": self.connection_string,
-            "database": self.database
-        }
+        return {"connection_string": self.connection_string, "database": self.database}
+
 
 class MongoDBVector(BaseVector):
     def __init__(self, collection_name: str, config: MongoDBConfig):
@@ -37,7 +38,8 @@ class MongoDBVector(BaseVector):
             # create collection
             self.create_collection(self._collection_name)
             self.add_texts(texts, embeddings, **kwargs)
-    ## not sure how much I got to change yet
+
+    # not sure how much I got to change yet
     def create_collection(self, collection_name: str):
         lock_name = "vector_indexing_lock_{}".format(collection_name)
         with redis_client.lock(lock_name, timeout=20):
@@ -48,18 +50,15 @@ class MongoDBVector(BaseVector):
             # index setup
             # Create your index model, then create the search index
             search_index_model = SearchIndexModel(
-            definition={
+                definition={
                     "fields": [
-                    {
-                        "type": "vector",
-                        "numDimensions": "<numDimensions>",
-                        "path": "<fieldToIndex>",
-                        "similarity": "euclidean | cosine | dotProduct"
-                    },
-                    {
-                        "type": "filter",
-                        "path": "<fieldToIndex>"
-                    },
+                        {
+                            "type": "vector",
+                            "numDimensions": "<numDimensions>",
+                            "path": "<fieldToIndex>",
+                            "similarity": "euclidean | cosine | dotProduct",
+                        },
+                        {"type": "filter", "path": "<fieldToIndex>"},
                     ]
                 },
                 name="<indexName>",
@@ -75,14 +74,14 @@ class MongoDBVector(BaseVector):
 
         collection = self.database[self._collection_name]
         # mongodb upsert
-        #(ids=uuids, documents=texts, embeddings=embeddings, metadatas=metadatas)
+        # (ids=uuids, documents=texts, embeddings=embeddings, metadatas=metadatas)
 
     def delete_by_metadata_field(self, key: str, value: str):
         collection = self.database[self._collection_name]
-        collection.delete_many({key: {"$eq": value}}))
+        collection.delete_many({key: {"$eq": value}})
 
     def delete(self):
-        self.database.drop_collection(self._collection_name))
+        self.database.drop_collection(self._collection_name)
 
     def delete_by_ids(self, ids: list[str]) -> None:
         collection = self.database[self._collection_name]
@@ -90,7 +89,7 @@ class MongoDBVector(BaseVector):
 
     def text_exists(self, id: str) -> bool:
         collection = self.database[self._collection_name]
-        response = collection.find_one({"_id": id}) # todo: this may not work
+        response = collection.find_one({"_id": id})  # todo: this may not work
         return len(response) > 0
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
@@ -116,7 +115,6 @@ class MongoDBVectorFactory(AbstractVectorFactory):
         return MongoDBVector(
             collection_name=collection_name,
             config=MongoDBConfig(
-                connection_string=dify_config.MONGODB_CONNECTION_STRING,
-                database=dify_config.MONGODB_DATABASE
+                connection_string=dify_config.MONGODB_CONNECTION_STRING, database=dify_config.MONGODB_DATABASE
             ),
         )
