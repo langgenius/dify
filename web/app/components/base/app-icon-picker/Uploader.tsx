@@ -16,12 +16,11 @@ type UploaderProps = {
   onImageCropped?: (tempUrl: string, croppedAreaPixels: Area, fileName: string) => void
   onUpload?: (file?: File) => void
 }
-  
 
 const Uploader: FC<UploaderProps> = ({
   className,
   onImageCropped,
-  onUpload
+  onUpload,
 }) => {
   const [inputImage, setInputImage] = useState<{ file: File; url: string }>()
   const [isAnimatedImage, setIsAnimatedImage] = useState<boolean>(false)
