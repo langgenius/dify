@@ -20,6 +20,7 @@ from logging.handlers import RotatingFileHandler
 from flask import Flask, Response, request
 from flask_cors import CORS
 from werkzeug.exceptions import Unauthorized
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 import contexts
 from commands import register_commands
@@ -82,6 +83,7 @@ def create_flask_app_with_configs() -> Flask:
     with configs loaded from .env file
     """
     dify_app = DifyApp(__name__)
+    dify_app.wsgi_app = ProxyFix(dify_app.wsgi_app)
     dify_app.config.from_mapping(dify_config.model_dump())
 
     # populate configs into system environment variables
