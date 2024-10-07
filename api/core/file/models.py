@@ -52,18 +52,21 @@ class File(BaseModel):
         data = self.model_dump()
         return {
             **data,
-            "url": self.generate_url(),
+            "url": self.url,
         }
 
     @property
     def markdown(self) -> str:
-        url = self.generate_url()
         if self.type == FileType.IMAGE:
-            text = f'![{self.filename or ""}]({url})'
+            text = f'![{self.filename or ""}]({self.url})'
         else:
-            text = f"[{self.filename or url}]({url})"
+            text = f"[{self.filename or self.url}]({self.url})"
 
         return text
+
+    @property
+    def url(self) -> str:
+        return self.generate_url()
 
     def generate_url(self) -> Optional[str]:
         if self.type == FileType.IMAGE:

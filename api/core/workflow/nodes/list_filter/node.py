@@ -121,8 +121,8 @@ def _get_file_extract_string_func(*, key: str) -> Callable[[File], str]:
             return lambda x: x.mime_type or ""
         case "transfer_method":
             return lambda x: x.transfer_method
-        case "urL":
-            return lambda x: x.remote_url or ""
+        case "url":
+            return lambda x: x.url or ""
         case _:
             raise ValueError(f"Invalid key: {key}")
 
@@ -248,7 +248,7 @@ def _order_string(*, order: Literal["asc", "desc"], array: Sequence[str]):
 
 
 def _order_file(*, order: Literal["asc", "desc"], order_by: str = "", array: Sequence[File]):
-    if order_by in {"name", "type", "extension", "mime_type", "transfer_method", "urL"}:
+    if order_by in {"name", "type", "extension", "mime_type", "transfer_method", "url"}:
         extract_func = _get_file_extract_string_func(key=order_by)
         return sorted(array, key=lambda x: extract_func(x), reverse=order == "desc")
     elif order_by == "size":
