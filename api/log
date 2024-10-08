@@ -109,3 +109,483 @@
 2024-10-08 10:21:25,792.792 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
 2024-10-08 10:21:26,987.987 WARNING [MainThread] [_internal.py:97] -  * Debugger is active!
 2024-10-08 10:21:26,987.987 INFO [MainThread] [_internal.py:97] -  * Debugger PIN: 104-398-021
+2024-10-08 10:30:04,522.522 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-10-08 10:30:05,034.034 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-10-08 10:30:05,682.682 INFO [MainThread] [_internal.py:97] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.122:5001
+2024-10-08 10:30:05,682.682 INFO [MainThread] [_internal.py:97] - [33mPress CTRL+C to quit[0m
+2024-10-08 10:30:05,683.683 INFO [MainThread] [_internal.py:97] -  * Restarting with stat
+2024-10-08 10:30:19,748.748 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-10-08 10:30:20,903.903 WARNING [MainThread] [_internal.py:97] -  * Debugger is active!
+2024-10-08 10:30:20,903.903 INFO [MainThread] [_internal.py:97] -  * Debugger PIN: 104-398-021
+2024-10-08 10:46:13,802.802 INFO [Thread-3 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:13] "OPTIONS /console/api/apps?page=1&limit=30&name= HTTP/1.1" 200 -
+2024-10-08 10:46:13,809.809 INFO [Thread-4 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:13] "OPTIONS /console/api/account/profile HTTP/1.1" 200 -
+2024-10-08 10:46:13,810.810 INFO [Thread-5 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:13] "OPTIONS /console/api/system-features HTTP/1.1" 200 -
+2024-10-08 10:46:13,811.811 INFO [Thread-6 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:13] "OPTIONS /console/api/workspaces/current HTTP/1.1" 200 -
+2024-10-08 10:46:13,914.914 INFO [Thread-7 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:13] "[31m[1mGET /console/api/apps?page=1&limit=30&name= HTTP/1.1[0m" 401 -
+2024-10-08 10:46:13,916.916 INFO [Thread-8 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:13] "GET /console/api/system-features HTTP/1.1" 200 -
+2024-10-08 10:46:13,919.919 INFO [Thread-9 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:13] "[31m[1mGET /console/api/account/profile HTTP/1.1[0m" 401 -
+2024-10-08 10:46:13,922.922 INFO [Thread-10 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:13] "[31m[1mGET /console/api/workspaces/current HTTP/1.1[0m" 401 -
+2024-10-08 10:46:18,403.403 INFO [Thread-11 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:18] "OPTIONS /console/api/setup HTTP/1.1" 200 -
+2024-10-08 10:46:18,409.409 INFO [Thread-12 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:18] "OPTIONS /console/api/setup HTTP/1.1" 200 -
+2024-10-08 10:46:18,438.438 INFO [Thread-13 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:18] "GET /console/api/setup HTTP/1.1" 200 -
+2024-10-08 10:46:18,466.466 INFO [Thread-14 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:18] "GET /console/api/setup HTTP/1.1" 200 -
+2024-10-08 10:46:18,480.480 INFO [Thread-15 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:18] "OPTIONS /console/api/init HTTP/1.1" 200 -
+2024-10-08 10:46:18,499.499 INFO [Thread-16 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:18] "GET /console/api/init HTTP/1.1" 200 -
+2024-10-08 10:46:18,502.502 INFO [Thread-17 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:18] "OPTIONS /console/api/init HTTP/1.1" 200 -
+2024-10-08 10:46:18,536.536 INFO [Thread-18 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:18] "GET /console/api/init HTTP/1.1" 200 -
+2024-10-08 10:46:54,338.338 INFO [Thread-19 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:54] "OPTIONS /console/api/setup HTTP/1.1" 200 -
+2024-10-08 10:46:55,473.473 INFO [Thread-20 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:55] "[35m[1mPOST /console/api/setup HTTP/1.1[0m" 201 -
+2024-10-08 10:46:57,383.383 INFO [Thread-21 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:57] "OPTIONS /console/api/system-features HTTP/1.1" 200 -
+2024-10-08 10:46:57,391.391 INFO [Thread-22 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:57] "OPTIONS /console/api/system-features HTTP/1.1" 200 -
+2024-10-08 10:46:57,429.429 INFO [Thread-23 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:57] "GET /console/api/system-features HTTP/1.1" 200 -
+2024-10-08 10:46:57,464.464 INFO [Thread-24 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:46:57] "GET /console/api/system-features HTTP/1.1" 200 -
+2024-10-08 10:47:06,788.788 INFO [Thread-25 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:06] "OPTIONS /console/api/login HTTP/1.1" 200 -
+2024-10-08 10:47:06,847.847 INFO [Thread-26 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:06] "POST /console/api/login HTTP/1.1" 200 -
+2024-10-08 10:47:17,621.621 INFO [Thread-27 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "OPTIONS /console/api/apps?page=1&limit=30&name= HTTP/1.1" 200 -
+2024-10-08 10:47:17,640.640 INFO [Thread-28 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "OPTIONS /console/api/account/profile HTTP/1.1" 200 -
+2024-10-08 10:47:17,642.642 INFO [Thread-29 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "OPTIONS /console/api/system-features HTTP/1.1" 200 -
+2024-10-08 10:47:17,643.643 INFO [Thread-30 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "OPTIONS /console/api/workspaces/current HTTP/1.1" 200 -
+2024-10-08 10:47:17,677.677 INFO [Thread-31 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "GET /console/api/apps?page=1&limit=30&name= HTTP/1.1" 200 -
+2024-10-08 10:47:17,690.690 INFO [Thread-32 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "GET /console/api/account/profile HTTP/1.1" 200 -
+2024-10-08 10:47:17,691.691 INFO [Thread-34 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "GET /console/api/system-features HTTP/1.1" 200 -
+2024-10-08 10:47:17,702.702 INFO [Thread-33 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "GET /console/api/workspaces/current HTTP/1.1" 200 -
+2024-10-08 10:47:17,740.740 INFO [Thread-35 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "OPTIONS /console/api/version?current_version=0.8.3 HTTP/1.1" 200 -
+2024-10-08 10:47:17,780.780 INFO [Thread-37 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "OPTIONS /console/api/workspaces HTTP/1.1" 200 -
+2024-10-08 10:47:17,795.795 INFO [Thread-38 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "GET /console/api/apps?page=1&limit=30&name= HTTP/1.1" 200 -
+2024-10-08 10:47:17,801.801 INFO [Thread-39 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "OPTIONS /console/api/workspaces/current/model-providers HTTP/1.1" 200 -
+2024-10-08 10:47:17,805.805 INFO [Thread-40 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "OPTIONS /console/api/workspaces/current/models/model-types/llm HTTP/1.1" 200 -
+2024-10-08 10:47:17,808.808 INFO [Thread-41 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "OPTIONS /console/api/datasets/retrieval-setting HTTP/1.1" 200 -
+2024-10-08 10:47:17,809.809 INFO [Thread-42 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "OPTIONS /console/api/tags?type=app HTTP/1.1" 200 -
+2024-10-08 10:47:17,820.820 INFO [Thread-44 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "OPTIONS /console/api/features HTTP/1.1" 200 -
+2024-10-08 10:47:17,821.821 INFO [Thread-45 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "OPTIONS /console/api/tags?type=app HTTP/1.1" 200 -
+2024-10-08 10:47:17,826.826 INFO [Thread-43 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "GET /console/api/workspaces HTTP/1.1" 200 -
+2024-10-08 10:47:17,842.842 INFO [Thread-47 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "OPTIONS /console/api/features HTTP/1.1" 200 -
+2024-10-08 10:47:17,904.904 INFO [Thread-46 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "GET /console/api/workspaces/current/model-providers HTTP/1.1" 200 -
+2024-10-08 10:47:17,916.916 INFO [Thread-48 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "GET /console/api/workspaces/current/models/model-types/llm HTTP/1.1" 200 -
+2024-10-08 10:47:17,922.922 INFO [Thread-50 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "GET /console/api/datasets/retrieval-setting HTTP/1.1" 200 -
+2024-10-08 10:47:17,926.926 INFO [Thread-51 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "GET /console/api/features HTTP/1.1" 200 -
+2024-10-08 10:47:17,937.937 INFO [Thread-49 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "GET /console/api/tags?type=app HTTP/1.1" 200 -
+2024-10-08 10:47:17,960.960 INFO [Thread-52 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "GET /console/api/features HTTP/1.1" 200 -
+2024-10-08 10:47:17,995.995 INFO [Thread-53 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:17] "GET /console/api/tags?type=app HTTP/1.1" 200 -
+2024-10-08 10:47:18,493.493 INFO [Thread-36 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:18] "GET /console/api/version?current_version=0.8.3 HTTP/1.1" 200 -
+2024-10-08 10:47:34,638.638 INFO [Thread-54 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "OPTIONS /console/api/workspaces/current/models/model-types/text-embedding HTTP/1.1" 200 -
+2024-10-08 10:47:34,648.648 INFO [Thread-55 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "OPTIONS /console/api/workspaces/current/default-model?model_type=text-embedding HTTP/1.1" 200 -
+2024-10-08 10:47:34,650.650 INFO [Thread-56 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "OPTIONS /console/api/workspaces/current/default-model?model_type=llm HTTP/1.1" 200 -
+2024-10-08 10:47:34,652.652 INFO [Thread-59 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "OPTIONS /console/api/workspaces/current/models/model-types/tts HTTP/1.1" 200 -
+2024-10-08 10:47:34,653.653 INFO [Thread-57 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "OPTIONS /console/api/workspaces/current/models/model-types/speech2text HTTP/1.1" 200 -
+2024-10-08 10:47:34,653.653 INFO [Thread-58 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "OPTIONS /console/api/workspaces/current/models/model-types/rerank HTTP/1.1" 200 -
+2024-10-08 10:47:34,682.682 INFO [Thread-61 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "OPTIONS /console/api/workspaces/current/default-model?model_type=rerank HTTP/1.1" 200 -
+2024-10-08 10:47:34,696.696 INFO [Thread-60 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "GET /console/api/workspaces/current/models/model-types/text-embedding HTTP/1.1" 200 -
+2024-10-08 10:47:34,697.697 INFO [Thread-62 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "OPTIONS /console/api/workspaces/current/default-model?model_type=speech2text HTTP/1.1" 200 -
+2024-10-08 10:47:34,698.698 INFO [Thread-63 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "OPTIONS /console/api/workspaces/current/default-model?model_type=tts HTTP/1.1" 200 -
+2024-10-08 10:47:34,721.721 INFO [Thread-64 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "GET /console/api/workspaces/current/models/model-types/speech2text HTTP/1.1" 200 -
+2024-10-08 10:47:34,727.727 INFO [Thread-65 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "GET /console/api/workspaces/current/default-model?model_type=text-embedding HTTP/1.1" 200 -
+2024-10-08 10:47:34,748.748 INFO [Thread-66 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "GET /console/api/workspaces/current/default-model?model_type=llm HTTP/1.1" 200 -
+2024-10-08 10:47:34,752.752 INFO [Thread-67 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "GET /console/api/workspaces/current/models/model-types/tts HTTP/1.1" 200 -
+2024-10-08 10:47:34,761.761 INFO [Thread-68 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "GET /console/api/workspaces/current/models/model-types/rerank HTTP/1.1" 200 -
+2024-10-08 10:47:34,775.775 INFO [Thread-69 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "GET /console/api/workspaces/current/default-model?model_type=rerank HTTP/1.1" 200 -
+2024-10-08 10:47:34,811.811 INFO [Thread-70 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "GET /console/api/workspaces/current/default-model?model_type=speech2text HTTP/1.1" 200 -
+2024-10-08 10:47:34,813.813 INFO [Thread-71 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:47:34] "GET /console/api/workspaces/current/default-model?model_type=tts HTTP/1.1" 200 -
+2024-10-08 10:48:01,737.737 INFO [Thread-72 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "OPTIONS /console/api/workspaces/current/models/model-types/text-embedding HTTP/1.1" 200 -
+2024-10-08 10:48:01,739.739 INFO [Thread-73 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "OPTIONS /console/api/workspaces/current/models/model-types/rerank HTTP/1.1" 200 -
+2024-10-08 10:48:01,740.740 INFO [Thread-74 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "OPTIONS /console/api/workspaces/current/models/model-types/speech2text HTTP/1.1" 200 -
+2024-10-08 10:48:01,741.741 INFO [Thread-75 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "OPTIONS /console/api/workspaces/current/models/model-types/tts HTTP/1.1" 200 -
+2024-10-08 10:48:01,754.754 INFO [Thread-76 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "OPTIONS /console/api/workspaces/current/default-model?model_type=llm HTTP/1.1" 200 -
+2024-10-08 10:48:01,755.755 INFO [Thread-77 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "OPTIONS /console/api/workspaces/current/default-model?model_type=text-embedding HTTP/1.1" 200 -
+2024-10-08 10:48:01,774.774 INFO [Thread-79 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "OPTIONS /console/api/workspaces/current/default-model?model_type=speech2text HTTP/1.1" 200 -
+2024-10-08 10:48:01,776.776 INFO [Thread-80 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "OPTIONS /console/api/workspaces/current/default-model?model_type=rerank HTTP/1.1" 200 -
+2024-10-08 10:48:01,805.805 INFO [Thread-81 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "GET /console/api/workspaces/current/models/model-types/text-embedding HTTP/1.1" 200 -
+2024-10-08 10:48:01,807.807 INFO [Thread-78 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "GET /console/api/workspaces/current/models/model-types/rerank HTTP/1.1" 200 -
+2024-10-08 10:48:01,811.811 INFO [Thread-82 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "GET /console/api/workspaces/current/models/model-types/speech2text HTTP/1.1" 200 -
+2024-10-08 10:48:01,819.819 INFO [Thread-84 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "OPTIONS /console/api/workspaces/current/default-model?model_type=tts HTTP/1.1" 200 -
+2024-10-08 10:48:01,821.821 INFO [Thread-83 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "GET /console/api/workspaces/current/models/model-types/tts HTTP/1.1" 200 -
+2024-10-08 10:48:01,842.842 INFO [Thread-85 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "GET /console/api/workspaces/current/default-model?model_type=text-embedding HTTP/1.1" 200 -
+2024-10-08 10:48:01,849.849 INFO [Thread-86 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "GET /console/api/workspaces/current/default-model?model_type=llm HTTP/1.1" 200 -
+2024-10-08 10:48:01,886.886 INFO [Thread-87 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "GET /console/api/workspaces/current/default-model?model_type=rerank HTTP/1.1" 200 -
+2024-10-08 10:48:01,890.890 INFO [Thread-88 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "GET /console/api/workspaces/current/default-model?model_type=speech2text HTTP/1.1" 200 -
+2024-10-08 10:48:01,899.899 INFO [Thread-89 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:48:01] "GET /console/api/workspaces/current/default-model?model_type=tts HTTP/1.1" 200 -
+2024-10-08 10:49:12,806.806 INFO [Thread-90 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:49:12] "OPTIONS /console/api/workspaces/current/model-providers/openai_api_compatible/models HTTP/1.1" 200 -
+2024-10-08 10:49:22,869.869 ERROR [Thread-91 (process_request_thread)] [models.py:159] - save model credentials error: An error occurred during credentials validation: HTTPConnectionPool(host='1.95.86.245', port=51000): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x7fbde041d990>, 'Connection to 1.95.86.245 timed out. (connect timeout=10)'))
+Traceback (most recent call last):
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/urllib3/connection.py", line 199, in _new_conn
+    sock = connection.create_connection(
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/urllib3/util/connection.py", line 85, in create_connection
+    raise err
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/urllib3/util/connection.py", line 73, in create_connection
+    sock.connect(sa)
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/gevent/_socketcommon.py", line 590, in connect
+    self._internal_connect(address)
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/gevent/_socketcommon.py", line 640, in _internal_connect
+    self._wait(self._write_event)
+  File "src/gevent/_hub_primitives.py", line 317, in gevent._gevent_c_hub_primitives.wait_on_socket
+  File "src/gevent/_hub_primitives.py", line 322, in gevent._gevent_c_hub_primitives.wait_on_socket
+  File "src/gevent/_hub_primitives.py", line 313, in gevent._gevent_c_hub_primitives._primitive_wait
+  File "src/gevent/_hub_primitives.py", line 314, in gevent._gevent_c_hub_primitives._primitive_wait
+  File "src/gevent/_hub_primitives.py", line 46, in gevent._gevent_c_hub_primitives.WaitOperationsGreenlet.wait
+  File "src/gevent/_hub_primitives.py", line 46, in gevent._gevent_c_hub_primitives.WaitOperationsGreenlet.wait
+  File "src/gevent/_hub_primitives.py", line 55, in gevent._gevent_c_hub_primitives.WaitOperationsGreenlet.wait
+  File "src/gevent/_waiter.py", line 154, in gevent._gevent_c_waiter.Waiter.get
+  File "src/gevent/_greenlet_primitives.py", line 61, in gevent._gevent_c_greenlet_primitives.SwitchOutGreenletWithLoop.switch
+  File "src/gevent/_greenlet_primitives.py", line 61, in gevent._gevent_c_greenlet_primitives.SwitchOutGreenletWithLoop.switch
+  File "src/gevent/_greenlet_primitives.py", line 65, in gevent._gevent_c_greenlet_primitives.SwitchOutGreenletWithLoop.switch
+  File "src/gevent/_gevent_c_greenlet_primitives.pxd", line 35, in gevent._gevent_c_greenlet_primitives._greenlet_switch
+TimeoutError: timed out
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/urllib3/connectionpool.py", line 789, in urlopen
+    response = self._make_request(
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/urllib3/connectionpool.py", line 495, in _make_request
+    conn.request(
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/urllib3/connection.py", line 441, in request
+    self.endheaders()
+  File "/root/miniconda3/envs/dify/lib/python3.10/http/client.py", line 1278, in endheaders
+    self._send_output(message_body, encode_chunked=encode_chunked)
+  File "/root/miniconda3/envs/dify/lib/python3.10/http/client.py", line 1038, in _send_output
+    self.send(msg)
+  File "/root/miniconda3/envs/dify/lib/python3.10/http/client.py", line 976, in send
+    self.connect()
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/urllib3/connection.py", line 279, in connect
+    self.sock = self._new_conn()
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/urllib3/connection.py", line 208, in _new_conn
+    raise ConnectTimeoutError(
+urllib3.exceptions.ConnectTimeoutError: (<urllib3.connection.HTTPConnection object at 0x7fbde041d990>, 'Connection to 1.95.86.245 timed out. (connect timeout=10)')
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/requests/adapters.py", line 486, in send
+    resp = conn.urlopen(
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/urllib3/connectionpool.py", line 843, in urlopen
+    retries = retries.increment(
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/urllib3/util/retry.py", line 519, in increment
+    raise MaxRetryError(_pool, url, reason) from reason  # type: ignore[arg-type]
+urllib3.exceptions.MaxRetryError: HTTPConnectionPool(host='1.95.86.245', port=51000): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x7fbde041d990>, 'Connection to 1.95.86.245 timed out. (connect timeout=10)'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/ruantong/dify/api/core/model_runtime/model_providers/openai_api_compatible/llm/llm.py", line 141, in validate_credentials
+    response = requests.post(endpoint_url, headers=headers, json=data, timeout=(10, 300))
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/requests/api.py", line 115, in post
+    return request("post", url, data=data, json=json, **kwargs)
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/requests/api.py", line 59, in request
+    return session.request(method=method, url=url, **kwargs)
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/requests/sessions.py", line 589, in request
+    resp = self.send(prep, **send_kwargs)
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/requests/sessions.py", line 703, in send
+    r = adapter.send(request, **kwargs)
+  File "/root/miniconda3/envs/dify/lib/python3.10/site-packages/requests/adapters.py", line 507, in send
+    raise ConnectTimeout(e, request=request)
+requests.exceptions.ConnectTimeout: HTTPConnectionPool(host='1.95.86.245', port=51000): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x7fbde041d990>, 'Connection to 1.95.86.245 timed out. (connect timeout=10)'))
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/ruantong/dify/api/controllers/console/workspace/models.py", line 151, in post
+    model_provider_service.save_model_credentials(
+  File "/home/ruantong/dify/api/services/model_provider_service.py", line 250, in save_model_credentials
+    provider_configuration.add_or_update_custom_model_credentials(
+  File "/home/ruantong/dify/api/core/entities/provider_configuration.py", line 390, in add_or_update_custom_model_credentials
+    provider_model_record, credentials = self.custom_model_credentials_validate(model_type, model, credentials)
+  File "/home/ruantong/dify/api/core/entities/provider_configuration.py", line 370, in custom_model_credentials_validate
+    credentials = model_provider_factory.model_credentials_validate(
+  File "/home/ruantong/dify/api/core/model_runtime/model_providers/model_provider_factory.py", line 123, in model_credentials_validate
+    model_instance.validate_credentials(model, filtered_credentials)
+  File "/home/ruantong/dify/api/core/model_runtime/model_providers/openai_api_compatible/llm/llm.py", line 173, in validate_credentials
+    raise CredentialsValidateFailedError(f"An error occurred during credentials validation: {str(ex)}")
+core.model_runtime.errors.validate.CredentialsValidateFailedError: An error occurred during credentials validation: HTTPConnectionPool(host='1.95.86.245', port=51000): Max retries exceeded with url: /v1/chat/completions (Caused by ConnectTimeoutError(<urllib3.connection.HTTPConnection object at 0x7fbde041d990>, 'Connection to 1.95.86.245 timed out. (connect timeout=10)'))
+2024-10-08 10:49:22,873.873 INFO [Thread-91 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:49:22] "[31m[1mPOST /console/api/workspaces/current/model-providers/openai_api_compatible/models HTTP/1.1[0m" 400 -
+2024-10-08 10:52:20,978.978 INFO [Thread-92 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:52:20] "OPTIONS /console/api/workspaces/current/model-providers/openai_api_compatible/models HTTP/1.1" 200 -
+2024-10-08 10:52:21,279.279 INFO [Thread-93 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:52:21] "POST /console/api/workspaces/current/model-providers/openai_api_compatible/models HTTP/1.1" 200 -
+2024-10-08 10:52:21,530.530 INFO [Thread-94 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:52:21] "OPTIONS /console/api/workspaces/current/model-providers HTTP/1.1" 200 -
+2024-10-08 10:52:21,666.666 INFO [Thread-95 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:52:21] "GET /console/api/workspaces/current/model-providers HTTP/1.1" 200 -
+2024-10-08 10:52:29,234.234 INFO [Thread-96 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:52:29] "OPTIONS /console/api/workspaces/current/model-providers/openai_api_compatible/models HTTP/1.1" 200 -
+2024-10-08 10:52:29,282.282 INFO [Thread-97 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:52:29] "GET /console/api/workspaces/current/model-providers/openai_api_compatible/models HTTP/1.1" 200 -
+2024-10-08 10:52:41,504.504 INFO [Thread-98 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:52:41] "OPTIONS /console/api/apps?page=1&limit=30&name=&mode=chat HTTP/1.1" 200 -
+2024-10-08 10:52:41,538.538 INFO [Thread-99 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:52:41] "GET /console/api/apps?page=1&limit=30&name=&mode=chat HTTP/1.1" 200 -
+2024-10-08 10:52:42,729.729 INFO [Thread-100 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:52:42] "OPTIONS /console/api/apps?page=1&limit=30&name= HTTP/1.1" 200 -
+2024-10-08 10:52:42,765.765 INFO [Thread-101 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:52:42] "GET /console/api/apps?page=1&limit=30&name= HTTP/1.1" 200 -
+2024-10-08 10:53:19,350.350 INFO [Thread-102 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:53:19] "OPTIONS /console/api/apps HTTP/1.1" 200 -
+2024-10-08 10:53:19,400.400 INFO [Thread-103 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:53:19] "[35m[1mPOST /console/api/apps HTTP/1.1[0m" 201 -
+2024-10-08 10:53:19,448.448 INFO [Thread-104 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:53:19] "OPTIONS /console/api/apps?page=1&limit=30&name=&mode=chat HTTP/1.1" 200 -
+2024-10-08 10:53:19,449.449 INFO [Thread-105 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:53:19] "OPTIONS /console/api/features HTTP/1.1" 200 -
+2024-10-08 10:53:19,450.450 INFO [Thread-106 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:53:19] "OPTIONS /console/api/apps?page=1&limit=30&name= HTTP/1.1" 200 -
+2024-10-08 10:53:19,762.762 INFO [Thread-107 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:53:19] "GET /console/api/apps?page=1&limit=30&name=&mode=chat HTTP/1.1" 200 -
+2024-10-08 10:53:22,511.511 INFO [Thread-108 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:53:22] "GET /console/api/apps?page=1&limit=30&name= HTTP/1.1" 200 -
+2024-10-08 10:53:22,516.516 INFO [Thread-109 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:53:22] "GET /console/api/features HTTP/1.1" 200 -
+2024-10-08 10:54:26,197.197 INFO [Thread-111 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:54:26,200.200 INFO [Thread-112 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:54:26,212.212 INFO [Thread-113 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:54:26,240.240 INFO [Thread-114 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:54:26,277.277 INFO [Thread-115 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:54:26,316.316 INFO [Thread-116 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:54:26,321.321 INFO [Thread-117 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:54:26,323.323 INFO [Thread-118 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:54:26,329.329 INFO [Thread-119 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:54:26,332.332 INFO [Thread-120 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:54:26,335.335 INFO [Thread-121 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:54:26,336.336 INFO [Thread-122 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:54:26,347.347 INFO [Thread-123 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:54:26,353.353 INFO [Thread-124 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:54:26,354.354 INFO [Thread-125 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:54:26,363.363 INFO [Thread-126 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "[31m[1mGET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1[0m" 400 -
+2024-10-08 10:54:26,370.370 INFO [Thread-127 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:54:26,372.372 INFO [Thread-128 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:54:26,373.373 INFO [Thread-129 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:54:26,380.380 INFO [Thread-130 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:54:26,381.381 INFO [Thread-131 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:54:26,587.587 INFO [Thread-132 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:54:26,594.594 INFO [Thread-133 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:54:26,601.601 INFO [Thread-134 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "[31m[1mGET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1[0m" 400 -
+2024-10-08 10:54:26,602.602 INFO [Thread-135 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:54:26,607.607 INFO [Thread-136 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:54:26,612.612 INFO [Thread-137 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:54:26,624.624 INFO [Thread-138 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:54:26,844.844 INFO [Thread-139 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:54:26,890.890 INFO [Thread-140 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:54:26,896.896 INFO [Thread-141 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:54:26,901.901 INFO [Thread-142 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:54:26,906.906 INFO [Thread-143 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:54:26,952.952 INFO [Thread-144 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "[31m[1mPOST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1[0m" 400 -
+2024-10-08 10:54:26,972.972 INFO [Thread-145 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:26] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:54:27,174.174 INFO [Thread-146 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:27] "GET /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:54:27,375.375 INFO [Thread-147 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:27] "GET /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:54:27,383.383 INFO [Thread-148 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:27] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:54:27,389.389 INFO [Thread-149 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:27] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:54:27,450.450 INFO [Thread-150 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:27] "GET /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:54:27,459.459 INFO [Thread-151 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:27] "GET /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:54:27,508.508 INFO [Thread-152 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:27] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:54:27,571.571 INFO [Thread-153 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:27] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:54:32,363.363 INFO [Thread-154 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:32] "OPTIONS /console/api/workspaces/current/models/model-types/llm HTTP/1.1" 200 -
+2024-10-08 10:54:32,364.364 INFO [Thread-155 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:32] "OPTIONS /console/api/workspaces/current/default-model?model_type=llm HTTP/1.1" 200 -
+2024-10-08 10:54:32,420.420 INFO [Thread-156 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:32] "GET /console/api/workspaces/current/models/model-types/llm HTTP/1.1" 200 -
+2024-10-08 10:54:32,431.431 INFO [Thread-157 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:32] "GET /console/api/workspaces/current/default-model?model_type=llm HTTP/1.1" 200 -
+2024-10-08 10:54:32,576.576 INFO [Thread-158 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:32] "OPTIONS /console/api/workspaces/current/model-providers/openai_api_compatible/models/parameter-rules?model=/home/ruantong/mode/Qwen2-72B-Instruct HTTP/1.1" 200 -
+2024-10-08 10:54:32,618.618 INFO [Thread-159 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:32] "GET /console/api/workspaces/current/model-providers/openai_api_compatible/models/parameter-rules?model=/home/ruantong/mode/Qwen2-72B-Instruct HTTP/1.1" 200 -
+2024-10-08 10:54:32,963.963 INFO [Thread-160 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:32] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:54:33,009.009 INFO [Thread-161 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:33] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:54:38,158.158 INFO [Thread-162 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:38] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:54:38,198.198 INFO [Thread-163 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:38] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:54:50,727.727 INFO [Thread-164 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:54:50] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft?_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYmEzMTcyZTgtMWY4YS00NGY2LWEwM2ItNzU0ZjczMThmYzM3IiwiZXhwIjoxNzMwOTQ3NjI2LCJpc3MiOiJTRUxGX0hPU1RFRCIsInN1YiI6IkNvbnNvbGUgQVBJIFBhc3Nwb3J0In0.QoRNq16YKeWNGX2P4kPAezPn_k3fdH8BvPiIzopHNW4 HTTP/1.1" 200 -
+2024-10-08 10:55:11,681.681 INFO [Thread-165 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/apps?page=1&limit=30&name= HTTP/1.1" 200 -
+2024-10-08 10:55:11,682.682 INFO [Thread-166 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/account/profile HTTP/1.1" 200 -
+2024-10-08 10:55:11,685.685 INFO [Thread-167 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/workspaces/current HTTP/1.1" 200 -
+2024-10-08 10:55:11,686.686 INFO [Thread-168 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/system-features HTTP/1.1" 200 -
+2024-10-08 10:55:11,714.714 INFO [Thread-169 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "GET /console/api/account/profile HTTP/1.1" 200 -
+2024-10-08 10:55:11,722.722 INFO [Thread-170 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "GET /console/api/apps?page=1&limit=30&name= HTTP/1.1" 200 -
+2024-10-08 10:55:11,727.727 INFO [Thread-171 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "GET /console/api/workspaces/current HTTP/1.1" 200 -
+2024-10-08 10:55:11,728.728 INFO [Thread-172 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "GET /console/api/system-features HTTP/1.1" 200 -
+2024-10-08 10:55:11,796.796 INFO [Thread-173 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/version?current_version=0.8.3 HTTP/1.1" 200 -
+2024-10-08 10:55:11,849.849 INFO [Thread-175 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "GET /console/api/apps?page=1&limit=30&name= HTTP/1.1" 200 -
+2024-10-08 10:55:11,850.850 INFO [Thread-176 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/workspaces HTTP/1.1" 200 -
+2024-10-08 10:55:11,851.851 INFO [Thread-177 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/workspaces/current/model-providers HTTP/1.1" 200 -
+2024-10-08 10:55:11,852.852 INFO [Thread-178 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/workspaces/current/models/model-types/llm HTTP/1.1" 200 -
+2024-10-08 10:55:11,853.853 INFO [Thread-179 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/datasets/retrieval-setting HTTP/1.1" 200 -
+2024-10-08 10:55:11,854.854 INFO [Thread-180 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:55:11,856.856 INFO [Thread-181 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/features HTTP/1.1" 200 -
+2024-10-08 10:55:11,876.876 INFO [Thread-182 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:55:11,889.889 INFO [Thread-183 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/features HTTP/1.1" 200 -
+2024-10-08 10:55:11,897.897 INFO [Thread-186 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "GET /console/api/workspaces HTTP/1.1" 200 -
+2024-10-08 10:55:11,909.909 INFO [Thread-187 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "GET /console/api/datasets/retrieval-setting HTTP/1.1" 200 -
+2024-10-08 10:55:11,918.918 INFO [Thread-188 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:55:11,949.949 INFO [Thread-184 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "GET /console/api/workspaces/current/model-providers HTTP/1.1" 200 -
+2024-10-08 10:55:11,959.959 INFO [Thread-185 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "GET /console/api/workspaces/current/models/model-types/llm HTTP/1.1" 200 -
+2024-10-08 10:55:11,965.965 INFO [Thread-189 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:55:11,989.989 INFO [Thread-190 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:11] "GET /console/api/features HTTP/1.1" 200 -
+2024-10-08 10:55:12,002.002 INFO [Thread-191 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:55:12,019.019 INFO [Thread-192 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/features HTTP/1.1" 200 -
+2024-10-08 10:55:12,040.040 INFO [Thread-193 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:55:12,078.078 INFO [Thread-194 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:55:12,080.080 INFO [Thread-195 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:12,086.086 INFO [Thread-196 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:55:12,092.092 INFO [Thread-197 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:55:12,093.093 INFO [Thread-198 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:55:12,107.107 INFO [Thread-199 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:55:12,109.109 INFO [Thread-200 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:12,114.114 INFO [Thread-201 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:55:12,121.121 INFO [Thread-202 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:55:12,123.123 INFO [Thread-203 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:55:12,125.125 INFO [Thread-204 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:55:12,164.164 INFO [Thread-205 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:12,205.205 INFO [Thread-206 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:55:12,484.484 INFO [Thread-207 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:55:12,491.491 INFO [Thread-208 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:55:12,506.506 INFO [Thread-209 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:55:12,515.515 INFO [Thread-210 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:12,516.516 INFO [Thread-212 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/workspaces/current/model-providers/openai_api_compatible/models/parameter-rules?model=/home/ruantong/mode/Qwen2-72B-Instruct HTTP/1.1" 200 -
+2024-10-08 10:55:12,529.529 INFO [Thread-211 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:55:12,531.531 INFO [Thread-213 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/workspaces/current/default-model?model_type=llm HTTP/1.1" 200 -
+2024-10-08 10:55:12,858.858 INFO [Thread-214 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:55:12,923.923 INFO [Thread-215 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:55:12,942.942 INFO [Thread-216 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:55:12,943.943 INFO [Thread-218 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:55:12,956.956 INFO [Thread-219 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:55:12,963.963 INFO [Thread-217 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/workspaces/current/model-providers/openai_api_compatible/models/parameter-rules?model=/home/ruantong/mode/Qwen2-72B-Instruct HTTP/1.1" 200 -
+2024-10-08 10:55:12,992.992 INFO [Thread-220 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/workspaces/current/default-model?model_type=llm HTTP/1.1" 200 -
+2024-10-08 10:55:12,997.997 INFO [Thread-221 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:12] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:55:13,063.063 INFO [Thread-222 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:13] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:55:13,626.626 INFO [Thread-174 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:13] "GET /console/api/version?current_version=0.8.3 HTTP/1.1" 200 -
+2024-10-08 10:55:17,384.384 INFO [Thread-223 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:17] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:17,425.425 INFO [Thread-224 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:17] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:24,979.979 INFO [Thread-226 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:24] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/daily-end-users?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:24,980.980 INFO [Thread-225 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:24] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/daily-conversations?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:24,982.982 INFO [Thread-227 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:24] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/api-keys HTTP/1.1" 200 -
+2024-10-08 10:55:24,986.986 INFO [Thread-228 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:24] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/tokens-per-second?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:24,987.987 INFO [Thread-229 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:24] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/average-session-interactions?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:24,993.993 INFO [Thread-230 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:24] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/user-satisfaction-rate?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:25,033.033 INFO [Thread-232 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/token-costs?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:25,034.034 INFO [Thread-233 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/daily-messages?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:25,037.037 INFO [Thread-234 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:55:25,055.055 INFO [Thread-231 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/daily-conversations?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:25,065.065 INFO [Thread-235 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/api-keys HTTP/1.1" 200 -
+2024-10-08 10:55:25,066.066 INFO [Thread-236 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace HTTP/1.1" 200 -
+2024-10-08 10:55:25,074.074 INFO [Thread-237 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/daily-end-users?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:25,081.081 INFO [Thread-238 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/tokens-per-second?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:25,083.083 INFO [Thread-239 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:25,090.090 INFO [Thread-240 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/average-session-interactions?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:25,091.091 INFO [Thread-241 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace HTTP/1.1" 200 -
+2024-10-08 10:55:25,099.099 INFO [Thread-242 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/user-satisfaction-rate?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:25,122.122 INFO [Thread-243 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/daily-messages?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:25,129.129 INFO [Thread-244 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/statistics/token-costs?start=2024-10-01%2000:00&end=2024-10-08%2023:59 HTTP/1.1" 200 -
+2024-10-08 10:55:25,136.136 INFO [Thread-245 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:55:25,143.143 INFO [Thread-246 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace HTTP/1.1" 200 -
+2024-10-08 10:55:25,153.153 INFO [Thread-247 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:25,177.177 INFO [Thread-248 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace HTTP/1.1" 200 -
+2024-10-08 10:55:25,409.409 INFO [Thread-249 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace HTTP/1.1" 200 -
+2024-10-08 10:55:25,451.451 INFO [Thread-250 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace HTTP/1.1" 200 -
+2024-10-08 10:55:25,507.507 INFO [Thread-251 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace-config?tracing_provider=langsmith HTTP/1.1" 200 -
+2024-10-08 10:55:25,544.544 INFO [Thread-253 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace-config?tracing_provider=langsmith HTTP/1.1" 200 -
+2024-10-08 10:55:25,551.551 INFO [Thread-252 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace-config?tracing_provider=langsmith HTTP/1.1" 200 -
+2024-10-08 10:55:25,588.588 INFO [Thread-254 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace-config?tracing_provider=langsmith HTTP/1.1" 200 -
+2024-10-08 10:55:25,596.596 INFO [Thread-255 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace-config?tracing_provider=langfuse HTTP/1.1" 200 -
+2024-10-08 10:55:25,695.695 INFO [Thread-256 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace-config?tracing_provider=langfuse HTTP/1.1" 200 -
+2024-10-08 10:55:25,717.717 INFO [Thread-257 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace-config?tracing_provider=langsmith HTTP/1.1" 200 -
+2024-10-08 10:55:25,734.734 INFO [Thread-258 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace-config?tracing_provider=langfuse HTTP/1.1" 200 -
+2024-10-08 10:55:25,772.772 INFO [Thread-259 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace-config?tracing_provider=langsmith HTTP/1.1" 200 -
+2024-10-08 10:55:25,778.778 INFO [Thread-260 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace-config?tracing_provider=langfuse HTTP/1.1" 200 -
+2024-10-08 10:55:25,820.820 INFO [Thread-261 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/trace-config?tracing_provider=langfuse HTTP/1.1" 200 -
+2024-10-08 10:55:31,704.704 INFO [Thread-262 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:31,705.705 INFO [Thread-263 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:55:31,707.707 INFO [Thread-264 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "OPTIONS /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:55:31,709.709 INFO [Thread-265 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "OPTIONS /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:55:31,716.716 INFO [Thread-266 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "OPTIONS /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:55:31,727.727 INFO [Thread-267 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:55:31,745.745 INFO [Thread-271 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:31,746.746 INFO [Thread-268 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:55:31,753.753 INFO [Thread-273 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "OPTIONS /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:55:31,753.753 INFO [Thread-274 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "OPTIONS /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:55:31,956.956 INFO [Thread-270 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "GET /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:55:31,961.961 INFO [Thread-269 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:55:31,967.967 INFO [Thread-275 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:31,968.968 INFO [Thread-276 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "OPTIONS /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:55:31,974.974 INFO [Thread-277 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "GET /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:55:31,980.980 INFO [Thread-278 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:55:31,985.985 INFO [Thread-272 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:31] "GET /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:55:32,200.200 INFO [Thread-279 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:55:32,202.202 INFO [Thread-280 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:55:32,210.210 INFO [Thread-281 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:32,217.217 INFO [Thread-282 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:55:32,223.223 INFO [Thread-283 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:55:32,229.229 INFO [Thread-284 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:55:32,459.459 INFO [Thread-285 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:55:32,465.465 INFO [Thread-286 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:55:32,661.661 INFO [Thread-287 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:55:32,710.710 INFO [Thread-288 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:32,716.716 INFO [Thread-289 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:55:32,766.766 INFO [Thread-290 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:55:32,786.786 INFO [Thread-291 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:55:32,831.831 INFO [Thread-292 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:55:32,865.865 INFO [Thread-293 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:32,905.905 INFO [Thread-294 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:55:32,941.941 INFO [Thread-295 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:55:32,979.979 INFO [Thread-296 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:32] "GET /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:55:33,056.056 INFO [Thread-297 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:33] "OPTIONS /console/api/workspaces/current/model-providers/openai_api_compatible/models/parameter-rules?model=/home/ruantong/mode/Qwen2-72B-Instruct HTTP/1.1" 200 -
+2024-10-08 10:55:33,057.057 INFO [Thread-298 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:33] "OPTIONS /console/api/workspaces/current/models/model-types/llm HTTP/1.1" 200 -
+2024-10-08 10:55:33,058.058 INFO [Thread-299 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:33] "OPTIONS /console/api/workspaces/current/default-model?model_type=llm HTTP/1.1" 200 -
+2024-10-08 10:55:33,132.132 INFO [Thread-300 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:33] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:55:33,177.177 INFO [Thread-301 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:33] "GET /console/api/workspaces/current/model-providers/openai_api_compatible/models/parameter-rules?model=/home/ruantong/mode/Qwen2-72B-Instruct HTTP/1.1" 200 -
+2024-10-08 10:55:33,293.293 INFO [Thread-303 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:33] "GET /console/api/workspaces/current/default-model?model_type=llm HTTP/1.1" 200 -
+2024-10-08 10:55:33,301.301 INFO [Thread-302 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:33] "GET /console/api/workspaces/current/models/model-types/llm HTTP/1.1" 200 -
+2024-10-08 10:55:33,311.311 INFO [Thread-304 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:33] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:55:40,684.684 INFO [Thread-305 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:40] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft?_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYmEzMTcyZTgtMWY4YS00NGY2LWEwM2ItNzU0ZjczMThmYzM3IiwiZXhwIjoxNzMwOTQ3NjI2LCJpc3MiOiJTRUxGX0hPU1RFRCIsInN1YiI6IkNvbnNvbGUgQVBJIFBhc3Nwb3J0In0.QoRNq16YKeWNGX2P4kPAezPn_k3fdH8BvPiIzopHNW4 HTTP/1.1" 200 -
+2024-10-08 10:55:42,367.367 INFO [Thread-306 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:42] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:55:42,407.407 INFO [Thread-307 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:55:42] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:56:41,862.862 INFO [Thread-308 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:56:41] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:56:41,901.901 INFO [Thread-309 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:56:41] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:56:42,108.108 INFO [Thread-310 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:56:42] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft?_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYmEzMTcyZTgtMWY4YS00NGY2LWEwM2ItNzU0ZjczMThmYzM3IiwiZXhwIjoxNzMwOTQ3NjI2LCJpc3MiOiJTRUxGX0hPU1RFRCIsInN1YiI6IkNvbnNvbGUgQVBJIFBhc3Nwb3J0In0.QoRNq16YKeWNGX2P4kPAezPn_k3fdH8BvPiIzopHNW4 HTTP/1.1" 200 -
+2024-10-08 10:56:44,026.026 INFO [Thread-311 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:56:44] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:57:01,117.117 INFO [Thread-312 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:01] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:57:01,176.176 INFO [Thread-313 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:01] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:57:17,322.322 INFO [Thread-314 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:17] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:57:17,376.376 INFO [Thread-315 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:17] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:57:18,130.130 INFO [Thread-316 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:18] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:57:18,202.202 INFO [Thread-317 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:18] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:57:19,043.043 INFO [Thread-318 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:19] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:57:30,003.003 INFO [Thread-319 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:30] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:57:30,045.045 INFO [Thread-320 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:30] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:57:30,251.251 INFO [Thread-321 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:30] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/advanced-chat/workflows/draft/run HTTP/1.1" 200 -
+2024-10-08 10:57:30,337.337 INFO [Thread-322 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:30] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/advanced-chat/workflows/draft/run HTTP/1.1" 200 -
+2024-10-08 10:57:34,894.894 INFO [Thread-325 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:34] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:57:37,026.026 INFO [Thread-326 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:37] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft?_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYmEzMTcyZTgtMWY4YS00NGY2LWEwM2ItNzU0ZjczMThmYzM3IiwiZXhwIjoxNzMwOTQ3NjI2LCJpc3MiOiJTRUxGX0hPU1RFRCIsInN1YiI6IkNvbnNvbGUgQVBJIFBhc3Nwb3J0In0.QoRNq16YKeWNGX2P4kPAezPn_k3fdH8BvPiIzopHNW4 HTTP/1.1" 200 -
+2024-10-08 10:57:55,049.049 INFO [Thread-327 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:55] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:57:55,092.092 INFO [Thread-328 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:57:55] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:58:08,789.789 INFO [Thread-330 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:58:08] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft?_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYmEzMTcyZTgtMWY4YS00NGY2LWEwM2ItNzU0ZjczMThmYzM3IiwiZXhwIjoxNzMwOTQ3NjI2LCJpc3MiOiJTRUxGX0hPU1RFRCIsInN1YiI6IkNvbnNvbGUgQVBJIFBhc3Nwb3J0In0.QoRNq16YKeWNGX2P4kPAezPn_k3fdH8BvPiIzopHNW4 HTTP/1.1" 200 -
+2024-10-08 10:58:11,962.962 INFO [Thread-329 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:58:11] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:58:12,012.012 INFO [Thread-331 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:58:12] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:58:14,883.883 INFO [Thread-332 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:58:14] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft?_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYmEzMTcyZTgtMWY4YS00NGY2LWEwM2ItNzU0ZjczMThmYzM3IiwiZXhwIjoxNzMwOTQ3NjI2LCJpc3MiOiJTRUxGX0hPU1RFRCIsInN1YiI6IkNvbnNvbGUgQVBJIFBhc3Nwb3J0In0.QoRNq16YKeWNGX2P4kPAezPn_k3fdH8BvPiIzopHNW4 HTTP/1.1" 200 -
+2024-10-08 10:58:17,002.002 INFO [Thread-333 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:58:17] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:58:17,048.048 INFO [Thread-334 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:58:17] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:58:24,371.371 INFO [Thread-335 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:58:24] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft?_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYmEzMTcyZTgtMWY4YS00NGY2LWEwM2ItNzU0ZjczMThmYzM3IiwiZXhwIjoxNzMwOTQ3NjI2LCJpc3MiOiJTRUxGX0hPU1RFRCIsInN1YiI6IkNvbnNvbGUgQVBJIFBhc3Nwb3J0In0.QoRNq16YKeWNGX2P4kPAezPn_k3fdH8BvPiIzopHNW4 HTTP/1.1" 200 -
+2024-10-08 10:58:32,938.938 INFO [Thread-336 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:58:32] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:58:32,979.979 INFO [Thread-337 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:58:32] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:58:36,020.020 INFO [Thread-338 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:58:36] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft?_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYmEzMTcyZTgtMWY4YS00NGY2LWEwM2ItNzU0ZjczMThmYzM3IiwiZXhwIjoxNzMwOTQ3NjI2LCJpc3MiOiJTRUxGX0hPU1RFRCIsInN1YiI6IkNvbnNvbGUgQVBJIFBhc3Nwb3J0In0.QoRNq16YKeWNGX2P4kPAezPn_k3fdH8BvPiIzopHNW4 HTTP/1.1" 200 -
+2024-10-08 10:59:25,098.098 INFO [Thread-339 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:25] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:59:25,148.148 INFO [Thread-340 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:25] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:59:31,722.722 INFO [Thread-341 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:31] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:59:31,765.765 INFO [Thread-342 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:31] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:59:35,184.184 INFO [Thread-343 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:35] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:59:38,126.126 INFO [Thread-344 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:38] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft?_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYmEzMTcyZTgtMWY4YS00NGY2LWEwM2ItNzU0ZjczMThmYzM3IiwiZXhwIjoxNzMwOTQ3NjI2LCJpc3MiOiJTRUxGX0hPU1RFRCIsInN1YiI6IkNvbnNvbGUgQVBJIFBhc3Nwb3J0In0.QoRNq16YKeWNGX2P4kPAezPn_k3fdH8BvPiIzopHNW4 HTTP/1.1" 200 -
+2024-10-08 10:59:40,283.283 INFO [Thread-345 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:40] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:59:40,324.324 INFO [Thread-346 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:40] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:59:40,533.533 INFO [Thread-347 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:40] "OPTIONS /console/api/tags?type=app HTTP/1.1" 200 -
+2024-10-08 10:59:40,568.568 INFO [Thread-348 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:40] "GET /console/api/tags?type=app HTTP/1.1" 200 -
+2024-10-08 10:59:41,277.277 INFO [Thread-349 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:41] "OPTIONS /console/api/apps?page=1&limit=30&name= HTTP/1.1" 200 -
+2024-10-08 10:59:41,285.285 INFO [Thread-351 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:41] "OPTIONS /console/api/tags?type=app HTTP/1.1" 200 -
+2024-10-08 10:59:41,313.313 INFO [Thread-352 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:41] "GET /console/api/apps?page=1&limit=30&name= HTTP/1.1" 200 -
+2024-10-08 10:59:41,323.323 INFO [Thread-353 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:41] "GET /console/api/tags?type=app HTTP/1.1" 200 -
+2024-10-08 10:59:43,965.965 INFO [Thread-350 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:43] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:59:43,981.981 INFO [Thread-354 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:43] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:59:43,986.986 INFO [Thread-355 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:43] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:59:44,002.002 INFO [Thread-356 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:59:44,042.042 INFO [Thread-357 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:59:44,106.106 INFO [Thread-358 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da HTTP/1.1" 200 -
+2024-10-08 10:59:44,611.611 INFO [Thread-359 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "OPTIONS /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:59:44,612.612 INFO [Thread-360 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:59:44,620.620 INFO [Thread-361 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:59:44,622.622 INFO [Thread-362 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "OPTIONS /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:59:44,623.623 INFO [Thread-363 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "OPTIONS /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:59:44,626.626 INFO [Thread-364 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:59:44,627.627 INFO [Thread-365 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "OPTIONS /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:59:44,655.655 INFO [Thread-366 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:59:44,656.656 INFO [Thread-367 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "OPTIONS /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:59:44,662.662 INFO [Thread-368 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "GET /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:59:44,861.861 INFO [Thread-370 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "GET /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:59:44,866.866 INFO [Thread-369 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "GET /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:59:44,874.874 INFO [Thread-371 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:59:44,875.875 INFO [Thread-372 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "OPTIONS /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:59:44,881.881 INFO [Thread-373 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/default-workflow-block-configs HTTP/1.1" 200 -
+2024-10-08 10:59:44,882.882 INFO [Thread-374 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:44] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:59:45,103.103 INFO [Thread-375 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:45] "GET /console/api/workspaces/current/tools/builtin HTTP/1.1" 200 -
+2024-10-08 10:59:45,150.150 INFO [Thread-376 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:45] "GET /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
+2024-10-08 10:59:45,155.155 INFO [Thread-377 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:45] "GET /console/api/workspaces/current/tools/workflow HTTP/1.1" 200 -
+2024-10-08 10:59:45,163.163 INFO [Thread-378 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:45] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:59:45,273.273 INFO [Thread-379 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:45] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 10:59:47,723.723 INFO [Thread-380 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:47] "OPTIONS /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:59:47,768.768 INFO [Thread-381 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:47] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
+2024-10-08 10:59:48,704.704 INFO [Thread-382 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:48] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft?_token=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyX2lkIjoiYmEzMTcyZTgtMWY4YS00NGY2LWEwM2ItNzU0ZjczMThmYzM3IiwiZXhwIjoxNzMwOTQ3NjI2LCJpc3MiOiJTRUxGX0hPU1RFRCIsInN1YiI6IkNvbnNvbGUgQVBJIFBhc3Nwb3J0In0.QoRNq16YKeWNGX2P4kPAezPn_k3fdH8BvPiIzopHNW4 HTTP/1.1" 200 -
+2024-10-08 10:59:52,372.372 INFO [Thread-383 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 10:59:52] "POST /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/draft HTTP/1.1" 200 -
