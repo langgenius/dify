@@ -1,5 +1,5 @@
 model: llama-guard-3-8b
-label: 
+label:
   zh_Hans: Llama-Guard-3-8B
   en_US: Llama-Guard-3-8B
 model_type: llm
