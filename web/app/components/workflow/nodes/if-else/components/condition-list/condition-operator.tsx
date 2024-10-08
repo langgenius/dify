@@ -43,8 +43,7 @@ const ConditionOperator = ({
       }
     })
   }, [t, varType, file])
-  const selectedOption = options.find(o => o.value === value)
-
+  const selectedOption = options.find(o => Array.isArray(value) ? o.value === value[0] : o.value === value)
   return (
     <PortalToFollowElem
       open={open}
