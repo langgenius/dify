@@ -65,7 +65,7 @@ export default nodeDefault
 
 export const FILE_TYPE_OPTIONS = [
   { value: 'image', i18nKey: 'image' },
-  { value: 'doc', i18nKey: 'doc' },
+  { value: 'document', i18nKey: 'doc' },
   { value: 'audio', i18nKey: 'audio' },
   { value: 'video', i18nKey: 'video' },
 ]
