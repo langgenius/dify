@@ -47,9 +47,9 @@ class PluginResourceRequirements(BaseModel):
 
 class PluginDeclaration(BaseModel):
     class Plugins(BaseModel):
-        tools: list[str] = Field(default_factory=list)
-        models: list[str] = Field(default_factory=list)
-        endpoints: list[str] = Field(default_factory=list)
+        tools: Optional[list[str]] = Field(default_factory=list)
+        models: Optional[list[str]] = Field(default_factory=list)
+        endpoints: Optional[list[str]] = Field(default_factory=list)
 
     version: str = Field(..., pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
     author: Optional[str] = Field(..., pattern=r"^[a-zA-Z0-9_-]{1,64}$")

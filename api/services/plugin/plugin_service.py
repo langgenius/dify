@@ -43,3 +43,8 @@ class PluginService:
             yield from manager.install_from_pkg(tenant_id, pkg)
         except PluginDaemonInnerError as e:
             yield InstallPluginMessage(event=InstallPluginMessage.Event.Error, data=str(e.message))
+
+    @staticmethod
+    def uninstall_plugin(tenant_id: str, plugin_installation_id: str) -> bool:
+        manager = PluginInstallationManager()
+        return manager.uninstall(tenant_id, plugin_installation_id)

@@ -53,16 +53,16 @@ class PluginInstallationManager(BasePluginManager):
             headers={"Content-Type": "application/json"},
         )
 
-    def uninstall(self, tenant_id: str, identifier: str) -> bool:
+    def uninstall(self, tenant_id: str, plugin_installation_id: str) -> bool:
         """
         Uninstall a plugin.
         """
         return self._request_with_plugin_daemon_response(
-            "DELETE",
+            "POST",
             f"plugin/{tenant_id}/management/uninstall",
             bool,
             data={
-                "plugin_unique_identifier": identifier,
+                "plugin_installation_id": plugin_installation_id,
             },
             headers={"Content-Type": "application/json"},
         )

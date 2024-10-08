@@ -115,9 +115,28 @@ class PluginInstallFromPkgApi(Resource):
         return Response(generator(), mimetype="text/event-stream")
 
 
+class PluginUninstallApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        req = reqparse.RequestParser()
+        req.add_argument("plugin_installation_id", type=str, required=True, location="json")
+        args = req.parse_args()
+
+        user = current_user
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        tenant_id = user.current_tenant_id
+
+        return {"success": PluginService.uninstall_plugin(tenant_id, args["plugin_installation_id"])}
+
+
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
 api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
 api.add_resource(PluginIconApi, "/workspaces/current/plugin/icon")
 api.add_resource(PluginInstallCheckUniqueIdentifierApi, "/workspaces/current/plugin/install/check_unique_identifier")
 api.add_resource(PluginInstallFromUniqueIdentifierApi, "/workspaces/current/plugin/install/from_unique_identifier")
 api.add_resource(PluginInstallFromPkgApi, "/workspaces/current/plugin/install/from_pkg")
+api.add_resource(PluginUninstallApi, "/workspaces/current/plugin/uninstall")
