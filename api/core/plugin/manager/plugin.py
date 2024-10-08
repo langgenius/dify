@@ -10,7 +10,10 @@ class PluginInstallationManager(BasePluginManager):
         # urlencode the identifier
 
         return self._request_with_plugin_daemon_response(
-            "GET", f"plugin/{tenant_id}/fetch/identifier", bool, params={"plugin_unique_identifier": identifier}
+            "GET",
+            f"plugin/{tenant_id}/management/fetch/identifier",
+            bool,
+            params={"plugin_unique_identifier": identifier},
         )
 
     def list_plugins(self, tenant_id: str) -> list[PluginEntity]:
@@ -29,7 +32,10 @@ class PluginInstallationManager(BasePluginManager):
         body = {"dify_pkg": ("dify_pkg", pkg, "application/octet-stream")}
 
         return self._request_with_plugin_daemon_response_stream(
-            "POST", f"plugin/{tenant_id}/install/pkg", InstallPluginMessage, data=body
+            "POST",
+            f"plugin/{tenant_id}/management/install/pkg",
+            InstallPluginMessage,
+            files=body,
         )
 
     def install_from_identifier(self, tenant_id: str, identifier: str) -> bool:
@@ -39,14 +45,12 @@ class PluginInstallationManager(BasePluginManager):
         # exception will be raised if the request failed
         return self._request_with_plugin_daemon_response(
             "POST",
-            f"plugin/{tenant_id}/install/identifier",
+            f"plugin/{tenant_id}/management/install/identifier",
             bool,
-            params={
-                "plugin_unique_identifier": identifier,
-            },
             data={
                 "plugin_unique_identifier": identifier,
             },
+            headers={"Content-Type": "application/json"},
         )
 
     def uninstall(self, tenant_id: str, identifier: str) -> bool:
@@ -54,5 +58,11 @@ class PluginInstallationManager(BasePluginManager):
         Uninstall a plugin.
         """
         return self._request_with_plugin_daemon_response(
-            "DELETE", f"plugin/{tenant_id}/uninstall", bool, params={"plugin_unique_identifier": identifier}
+            "DELETE",
+            f"plugin/{tenant_id}/management/uninstall",
+            bool,
+            data={
+                "plugin_unique_identifier": identifier,
+            },
+            headers={"Content-Type": "application/json"},
         )

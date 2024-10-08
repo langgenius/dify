@@ -127,6 +127,16 @@ class PluginConfig(BaseSettings):
 
     INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
 
+    PLUGIN_REMOTE_INSTALL_HOST: str = Field(
+        description="Plugin Remote Install Host",
+        default="localhost",
+    )
+
+    PLUGIN_REMOTE_INSTALL_PORT: PositiveInt = Field(
+        description="Plugin Remote Install Port",
+        default=5003,
+    )
+
 
 class EndpointConfig(BaseSettings):
     """

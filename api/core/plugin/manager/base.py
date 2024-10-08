@@ -30,6 +30,7 @@ class BasePluginManager:
         headers: dict | None = None,
         data: bytes | dict | str | None = None,
         params: dict | None = None,
+        files: dict | None = None,
         stream: bool = False,
     ) -> requests.Response:
         """
@@ -44,7 +45,7 @@ class BasePluginManager:
             data = json.dumps(data)
 
         response = requests.request(
-            method=method, url=str(url), headers=headers, data=data, params=params, stream=stream
+            method=method, url=str(url), headers=headers, data=data, params=params, stream=stream, files=files
         )
         return response
 
@@ -55,11 +56,12 @@ class BasePluginManager:
         params: dict | None = None,
         headers: dict | None = None,
         data: bytes | dict | None = None,
+        files: dict | None = None,
     ) -> Generator[bytes, None, None]:
         """
         Make a stream request to the plugin daemon inner API
         """
-        response = self._request(method, path, headers, data, params, stream=True)
+        response = self._request(method, path, headers, data, params, files, stream=True)
         for line in response.iter_lines():
             line = line.decode("utf-8").strip()
             if line.startswith("data:"):
@@ -75,11 +77,12 @@ class BasePluginManager:
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
+        files: dict | None = None,
     ) -> Generator[T, None, None]:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
-        for line in self._stream_request(method, path, params, headers, data):
+        for line in self._stream_request(method, path, params, headers, data, files):
             yield type(**json.loads(line))
 
     def _request_with_model(
@@ -90,11 +93,12 @@ class BasePluginManager:
         headers: dict | None = None,
         data: bytes | None = None,
         params: dict | None = None,
+        files: dict | None = None,
     ) -> T:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
         """
-        response = self._request(method, path, headers, data, params)
+        response = self._request(method, path, headers, data, params, files)
         return type(**response.json())
 
     def _request_with_plugin_daemon_response(
@@ -105,12 +109,13 @@ class BasePluginManager:
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
+        files: dict | None = None,
         transformer: Callable[[dict], dict] | None = None,
     ) -> T:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
         """
-        response = self._request(method, path, headers, data, params)
+        response = self._request(method, path, headers, data, params, files)
         json_response = response.json()
         if transformer:
             json_response = transformer(json_response)
@@ -138,11 +143,12 @@ class BasePluginManager:
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
+        files: dict | None = None,
     ) -> Generator[T, None, None]:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
-        for line in self._stream_request(method, path, params, headers, data):
+        for line in self._stream_request(method, path, params, headers, data, files):
             line_data = json.loads(line)
             rep = PluginDaemonBasicResponse[type](**line_data)
             if rep.code != 0:
