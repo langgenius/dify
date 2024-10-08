@@ -202,10 +202,13 @@ If you'd like to configure a highly-available setup, there are community-contrib
 
 #### Terraform atorlugu pilersitsineq
 
-##### Azure Global
-Atoruk [terraform](https://www.terraform.io/) Dify-mik Azure-mut ataatsikkut ikkussuilluarlugu.
-- [Azure Terraform atorlugu @nikawang](https://github.com/nikawang/dify-azure-terraform)
+wa'logh nIqHom neH ghun deployment toy'wI' [terraform](https://www.terraform.io/) lo'laH.
 
+##### Azure Global
+- [Azure Terraform mung @nikawang](https://github.com/nikawang/dify-azure-terraform)
+
+##### Google Cloud
+- [Google Cloud Terraform qachlot @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 ## Contributing
 
