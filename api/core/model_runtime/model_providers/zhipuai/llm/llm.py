@@ -36,15 +36,15 @@ And you should always end the block with a "```" to indicate the end of the JSON
 
 class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
     def _invoke(
-        self,
-        model: str,
-        credentials: dict,
-        prompt_messages: list[PromptMessage],
-        model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
-        stream: bool = True,
-        user: Optional[str] = None,
+            self,
+            model: str,
+            credentials: dict,
+            prompt_messages: list[PromptMessage],
+            model_parameters: dict,
+            tools: Optional[list[PromptMessageTool]] = None,
+            stop: Optional[list[str]] = None,
+            stream: bool = True,
+            user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
@@ -100,11 +100,11 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
     #         ))
 
     def get_num_tokens(
-        self,
-        model: str,
-        credentials: dict,
-        prompt_messages: list[PromptMessage],
-        tools: Optional[list[PromptMessageTool]] = None,
+            self,
+            model: str,
+            credentials: dict,
+            prompt_messages: list[PromptMessage],
+            tools: Optional[list[PromptMessageTool]] = None,
     ) -> int:
         """
         Get number of tokens for given prompt messages
@@ -146,15 +146,15 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
             raise CredentialsValidateFailedError(str(ex))
 
     def _generate(
-        self,
-        model: str,
-        credentials_kwargs: dict,
-        prompt_messages: list[PromptMessage],
-        model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
-        stream: bool = True,
-        user: Optional[str] = None,
+            self,
+            model: str,
+            credentials_kwargs: dict,
+            prompt_messages: list[PromptMessage],
+            model_parameters: dict,
+            tools: Optional[list[PromptMessageTool]] = None,
+            stop: Optional[list[str]] = None,
+            stream: bool = True,
+            user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
@@ -203,9 +203,9 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                     continue
 
                 if (
-                    new_prompt_messages
-                    and new_prompt_messages[-1].role == PromptMessageRole.USER
-                    and copy_prompt_message.role == PromptMessageRole.USER
+                        new_prompt_messages
+                        and new_prompt_messages[-1].role == PromptMessageRole.USER
+                        and copy_prompt_message.role == PromptMessageRole.USER
                 ):
                     new_prompt_messages[-1].content += "\n\n" + copy_prompt_message.content
                 else:
@@ -222,6 +222,19 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                     new_prompt_messages[-1].content += "\n\n" + copy_prompt_message.content
                 else:
                     new_prompt_messages.append(copy_prompt_message)
+
+        # zhipuai moved web_search param to tools
+        if "web_search" in model_parameters:
+            enable_web_search = model_parameters.get("web_search")
+            model_parameters.pop("web_search")
+            web_search_params = {
+                "type": "web_search",
+                "web_search": {"enable": enable_web_search, "search_result": True}
+            }
+            if "tools" in model_parameters:
+                model_parameters["tools"].append(web_search_params)
+            else:
+                model_parameters["tools"] = [web_search_params]
 
         if model in {"glm-4v", "glm-4v-plus"}:
             params = self._construct_glm_4v_parameter(model, new_prompt_messages, model_parameters)
@@ -319,12 +332,12 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         return image
 
     def _handle_generate_response(
-        self,
-        model: str,
-        credentials: dict,
-        tools: Optional[list[PromptMessageTool]],
-        response: Completion,
-        prompt_messages: list[PromptMessage],
+            self,
+            model: str,
+            credentials: dict,
+            tools: Optional[list[PromptMessageTool]],
+            response: Completion,
+            prompt_messages: list[PromptMessage],
     ) -> LLMResult:
         """
         Handle llm response
@@ -370,12 +383,12 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         return result
 
     def _handle_generate_stream_response(
-        self,
-        model: str,
-        credentials: dict,
-        tools: Optional[list[PromptMessageTool]],
-        responses: Generator[ChatCompletionChunk, None, None],
-        prompt_messages: list[PromptMessage],
+            self,
+            model: str,
+            credentials: dict,
+            tools: Optional[list[PromptMessageTool]],
+            responses: Generator[ChatCompletionChunk, None, None],
+            prompt_messages: list[PromptMessage],
     ) -> Generator:
         """
         Handle llm stream response
@@ -467,7 +480,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         return message_text
 
     def _convert_messages_to_prompt(
-        self, messages: list[PromptMessage], tools: Optional[list[PromptMessageTool]] = None
+            self, messages: list[PromptMessage], tools: Optional[list[PromptMessageTool]] = None
     ) -> str:
         """
         :param messages: List of PromptMessage to combine.
