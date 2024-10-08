@@ -760,3 +760,14 @@ core.model_runtime.errors.validate.CredentialsValidateFailedError: An error occu
 2024-10-08 11:10:20,926.926 INFO [Thread-79 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 11:10:20] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
 2024-10-08 11:10:20,932.932 INFO [Thread-80 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 11:10:20] "GET /console/api/workspaces/current/tools/api HTTP/1.1" 200 -
 2024-10-08 11:10:20,968.968 INFO [Thread-81 (process_request_thread)] [_internal.py:97] - 219.137.36.98 - - [08/Oct/2024 11:10:20] "GET /console/api/apps/80f24638-615a-457f-8e05-452d608f09da/workflows/publish HTTP/1.1" 200 -
+2024-10-08 11:11:26,537.537 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-10-08 11:11:26,833.833 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-10-08 11:11:27,682.682 INFO [MainThread] [_internal.py:97] - [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5001
+ * Running on http://192.168.0.122:5001
+2024-10-08 11:11:27,682.682 INFO [MainThread] [_internal.py:97] - [33mPress CTRL+C to quit[0m
+2024-10-08 11:11:27,683.683 INFO [MainThread] [_internal.py:97] -  * Restarting with stat
+2024-10-08 11:11:42,102.102 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-10-08 11:11:43,241.241 WARNING [MainThread] [_internal.py:97] -  * Debugger is active!
+2024-10-08 11:11:43,242.242 INFO [MainThread] [_internal.py:97] -  * Debugger PIN: 104-398-021
