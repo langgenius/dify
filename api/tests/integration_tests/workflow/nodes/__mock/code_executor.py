@@ -1,5 +1,5 @@
 import os
-from typing import Literal, Optional
+from typing import Literal
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch

@@ -63,6 +63,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         {"prefix": "us.anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "eu.anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
+        {"prefix": "us.meta.llama3-2", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "meta.llama", "support_system_prompts": True, "support_tool_use": False},
         {"prefix": "mistral.mistral-7b-instruct", "support_system_prompts": False, "support_tool_use": False},
         {"prefix": "mistral.mixtral-8x7b-instruct", "support_system_prompts": False, "support_tool_use": False},
@@ -70,6 +71,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         {"prefix": "mistral.mistral-small", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "cohere.command-r", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "amazon.titan", "support_system_prompts": False, "support_tool_use": False},
+        {"prefix": "ai21.jamba-1-5", "support_system_prompts": True, "support_tool_use": False},
     ]
 
     @staticmethod

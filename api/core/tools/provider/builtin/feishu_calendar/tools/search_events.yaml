@@ -1,0 +1,100 @@
+identity:
+  name: search_events
+  author: Doug Lea
+  label:
+    en_US: Search Events
+    zh_Hans: 搜索日程
+description:
+  human:
+    en_US: Search Events
+    zh_Hans: 搜索日程
+  llm: A tool for searching events in Feishu.(在飞书中搜索日程)
+parameters:
+  - name: user_id_type
+    type: select
+    required: false
+    options:
+      - value: open_id
+        label:
+          en_US: open_id
+          zh_Hans: open_id
+      - value: union_id
+        label:
+          en_US: union_id
+          zh_Hans: union_id
+      - value: user_id
+        label:
+          en_US: user_id
+          zh_Hans: user_id
+    default: "open_id"
+    label:
+      en_US: user_id_type
+      zh_Hans: 用户 ID 类型
+    human_description:
+      en_US: User ID type, optional values are open_id, union_id, user_id, with a default value of open_id.
+      zh_Hans: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    llm_description: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    form: form
+
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 搜索关键字
+    human_description:
+      en_US: The search keyword used for fuzzy searching event names, with a maximum input of 200 characters.
+      zh_Hans: 用于模糊查询日程名称的搜索关键字，最大输入 200 字符。
+    llm_description: 用于模糊查询日程名称的搜索关键字，最大输入 200 字符。
+    form: llm
+
+  - name: start_time
+    type: string
+    required: false
+    label:
+      en_US: Start Time
+      zh_Hans: 开始时间
+    human_description:
+      en_US: |
+        The start time, defaults to 0:00 of the current day if not provided, format: 2006-01-02 15:04:05.
+      zh_Hans: 开始时间，不传值时默认当天 0 点时间，格式为:2006-01-02 15:04:05。
+    llm_description: 开始时间，不传值时默认当天 0 点时间，格式为:2006-01-02 15:04:05。
+    form: llm
+
+  - name: end_time
+    type: string
+    required: false
+    label:
+      en_US: End Time
+      zh_Hans: 结束时间
+    human_description:
+      en_US: |
+        The end time, defaults to 23:59 of the current day if not provided, format: 2006-01-02 15:04:05.
+      zh_Hans: 结束时间，不传值时默认当天 23:59 分时间，格式为:2006-01-02 15:04:05。
+    llm_description: 结束时间，不传值时默认当天 23:59 分时间，格式为:2006-01-02 15:04:05。
+    form: llm
+
+  - name: page_size
+    type: number
+    required: false
+    default: 20
+    label:
+      en_US: Page Size
+      zh_Hans: 分页大小
+    human_description:
+      en_US: The page size, i.e., the number of data entries returned in a single request. The default value is 20, and the value range is [10,100].
+      zh_Hans: 分页大小，即单次请求所返回的数据条目数。默认值为 20，取值范围为 [10,100]。
+    llm_description: 分页大小，即单次请求所返回的数据条目数。默认值为 20，取值范围为 [10,100]。
+    form: llm
+
+  - name: page_token
+    type: string
+    required: false
+    label:
+      en_US: Page Token
+      zh_Hans: 分页标记
+    human_description:
+      en_US: The pagination token. Leave it blank for the first request, indicating to start traversing from the beginning; when the pagination query result has more items, a new page_token will be returned simultaneously, which can be used to obtain the query result in the next traversal.
+      zh_Hans: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。
+    llm_description: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。
+    form: llm

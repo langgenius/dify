@@ -200,9 +200,13 @@ Yüksek kullanılabilirliğe sahip bir kurulum yapılandırmak isterseniz, Dify'
 
 #### Dağıtım için Terraform Kullanımı
 
+Dify'ı bulut platformuna tek tıklamayla dağıtın [terraform](https://www.terraform.io/) kullanarak
+
 ##### Azure Global
-[Terraform](https://www.terraform.io/) kullanarak Dify'ı Azure'a tek tıklamayla dağıtın.
-- [@nikawang tarafından Azure Terraform](https://github.com/nikawang/dify-azure-terraform)
+- [Azure Terraform tarafından @nikawang](https://github.com/nikawang/dify-azure-terraform)
+
+##### Google Cloud
+- [Google Cloud Terraform tarafından @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 ## Katkıda Bulunma
 

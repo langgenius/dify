@@ -33,6 +33,7 @@ import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/componen
 import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
 import type { NotionPage } from '@/models/common'
+import { DataSourceProvider } from '@/models/common'
 import { DataSourceType, DocForm } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Switch from '@/app/components/base/switch'
@@ -63,7 +64,8 @@ type StepTwoProps = {
   notionPages?: NotionPage[]
   websitePages?: CrawlResultItem[]
   crawlOptions?: CrawlOptions
-  fireCrawlJobId?: string
+  websiteCrawlProvider?: DataSourceProvider
+  websiteCrawlJobId?: string
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
   updateResultCache?: (res: createDocumentResponse) => void
@@ -94,7 +96,8 @@ const StepTwo = ({
   notionPages = [],
   websitePages = [],
   crawlOptions,
-  fireCrawlJobId = '',
+  websiteCrawlProvider = DataSourceProvider.fireCrawl,
+  websiteCrawlJobId = '',
   onStepChange,
   updateIndexingTypeCache,
   updateResultCache,
@@ -260,8 +263,8 @@ const StepTwo = ({
 
   const getWebsiteInfo = () => {
     return {
-      provider: 'firecrawl',
-      job_id: fireCrawlJobId,
+      provider: websiteCrawlProvider,
+      job_id: websiteCrawlJobId,
       urls: websitePages.map(page => page.source_url),
       only_main_content: crawlOptions?.only_main_content,
     }
@@ -820,7 +823,7 @@ const StepTwo = ({
                   <div className={s.label}>
                     <div className='shrink-0 mr-4'>{t('datasetSettings.form.retrievalSetting.title')}</div>
                     <div className='leading-[18px] text-xs font-normal text-gray-500'>
-                      <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-6-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                      <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                       {t('datasetSettings.form.retrievalSetting.longDescription')}
                     </div>
                   </div>

@@ -19,7 +19,15 @@ default_retrieval_model = {
 
 class HitTestingService:
     @classmethod
-    def retrieve(cls, dataset: Dataset, query: str, account: Account, retrieval_model: dict, limit: int = 10) -> dict:
+    def retrieve(
+        cls,
+        dataset: Dataset,
+        query: str,
+        account: Account,
+        retrieval_model: dict,
+        external_retrieval_model: dict,
+        limit: int = 10,
+    ) -> dict:
         if dataset.available_document_count == 0 or dataset.available_segment_count == 0:
             return {
                 "query": {
@@ -63,9 +71,43 @@ class HitTestingService:
         return cls.compact_retrieve_response(dataset, query, all_documents)
 
     @classmethod
+    def external_retrieve(
+        cls,
+        dataset: Dataset,
+        query: str,
+        account: Account,
+        external_retrieval_model: dict,
+    ) -> dict:
+        if dataset.provider != "external":
+            return {
+                "query": {"content": query},
+                "records": [],
+            }
+
+        start = time.perf_counter()
+
+        all_documents = RetrievalService.external_retrieve(
+            dataset_id=dataset.id,
+            query=cls.escape_query_for_search(query),
+            external_retrieval_model=external_retrieval_model,
+        )
+
+        end = time.perf_counter()
+        logging.debug(f"External knowledge hit testing retrieve in {end - start:0.4f} seconds")
+
+        dataset_query = DatasetQuery(
+            dataset_id=dataset.id, content=query, source="hit_testing", created_by_role="account", created_by=account.id
+        )
+
+        db.session.add(dataset_query)
+        db.session.commit()
+
+        return cls.compact_external_retrieve_response(dataset, query, all_documents)
+
+    @classmethod
     def compact_retrieve_response(cls, dataset: Dataset, query: str, documents: list[Document]):
-        i = 0
         records = []
+
         for document in documents:
             index_node_id = document.metadata["doc_id"]
 
@@ -81,7 +123,6 @@ class HitTestingService:
             )
 
             if not segment:
-                i += 1
                 continue
 
             record = {
@@ -91,14 +132,31 @@ class HitTestingService:
 
             records.append(record)
 
-            i += 1
-
         return {
             "query": {
                 "content": query,
             },
             "records": records,
         }
+
+    @classmethod
+    def compact_external_retrieve_response(cls, dataset: Dataset, query: str, documents: list):
+        records = []
+        if dataset.provider == "external":
+            for document in documents:
+                record = {
+                    "content": document.get("content", None),
+                    "title": document.get("title", None),
+                    "score": document.get("score", None),
+                    "metadata": document.get("metadata", None),
+                }
+                records.append(record)
+            return {
+                "query": {
+                    "content": query,
+                },
+                "records": records,
+            }
 
     @classmethod
     def hit_testing_args_check(cls, args):

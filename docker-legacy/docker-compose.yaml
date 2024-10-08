@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.8.2
+    image: langgenius/dify-api:0.9.1
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -227,7 +227,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.8.2
+    image: langgenius/dify-api:0.9.1
     restart: always
     environment:
       CONSOLE_WEB_URL: ''
@@ -396,7 +396,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.8.2
+    image: langgenius/dify-web:0.9.1
     restart: always
     environment:
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
@@ -500,7 +500,7 @@ services:
 
   # ssrf_proxy server
   # for more information, please refer to
-  # https://docs.dify.ai/learn-more/faq/self-host-faq#id-18.-why-is-ssrf_proxy-needed
+  # https://docs.dify.ai/learn-more/faq/install-faq#id-18.-why-is-ssrf_proxy-needed
   ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always

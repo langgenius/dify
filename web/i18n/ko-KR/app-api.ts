@@ -80,6 +80,7 @@ const translation = {
     pathParams: '경로 매개변수',
     query: '쿼리',
   },
+  regenerate: '재생성',
 }
 
 export default translation

@@ -8,10 +8,8 @@ from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessageTool,
     SystemPromptMessage,
-    TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import ParameterRule
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.localai.llm.llm import LocalAILanguageModel
 

@@ -29,7 +29,8 @@ class HuaweiStorage(BaseStorage):
     def load_stream(self, filename: str) -> Generator:
         def generate(filename: str = filename) -> Generator:
             response = self.client.getObject(bucketName=self.bucket_name, objectKey=filename)["body"].response
-            yield from response.read(4096)
+            while chunk := response.read(4096):
+                yield chunk
 
         return generate()
 

@@ -4,6 +4,7 @@ from typing import Optional
 
 from replicate import Client as ReplicateClient
 
+from core.embedding.embedding_constant import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
@@ -14,8 +15,23 @@ from core.model_runtime.model_providers.replicate._common import _CommonReplicat
 
 class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
+        """
+        Invoke text embedding model
+
+        :param model: model name
+        :param credentials: model credentials
+        :param texts: texts to embed
+        :param user: unique user id
+        :param input_type: input type
+        :return: embeddings result
+        """
         client = ReplicateClient(api_token=credentials["replicate_api_token"], timeout=30)
 
         if "model_version" in credentials:

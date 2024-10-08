@@ -4,6 +4,7 @@ from typing import Optional
 
 from requests import post
 
+from core.embedding.embedding_constant import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
@@ -27,8 +28,37 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
 
     api_base: str = "https://api.jina.ai/v1"
 
+    def _to_payload(self, model: str, texts: list[str], credentials: dict, input_type: EmbeddingInputType) -> dict:
+        """
+        Parse model credentials
+
+        :param model: model name
+        :param credentials: model credentials
+        :param texts: texts to embed
+        :return: parsed credentials
+        """
+
+        def transform_jina_input_text(model, text):
+            if model == "jina-clip-v1":
+                return {"text": text}
+            return text
+
+        data = {"model": model, "input": [transform_jina_input_text(model, text) for text in texts]}
+
+        # model specific parameters
+        if model == "jina-embeddings-v3":
+            # set `task` type according to input type for the best performance
+            data["task"] = "retrieval.query" if input_type == EmbeddingInputType.QUERY else "retrieval.passage"
+
+        return data
+
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
@@ -37,6 +67,7 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
         :param credentials: model credentials
         :param texts: texts to embed
         :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
         api_key = credentials["api_key"]
@@ -49,15 +80,7 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
         url = base_url + "/embeddings"
         headers = {"Authorization": "Bearer " + api_key, "Content-Type": "application/json"}
 
-        def transform_jina_input_text(model, text):
-            if model == "jina-clip-v1":
-                return {"text": text}
-            return text
-
-        data = {"model": model, "input": [transform_jina_input_text(model, text) for text in texts]}
-
-        if model == "jina-embeddings-v3":
-            data["task"] = "text-matching"
+        data = self._to_payload(model=model, texts=texts, credentials=credentials, input_type=input_type)
 
         try:
             response = post(url, headers=headers, data=dumps(data))
