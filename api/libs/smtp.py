@@ -2,6 +2,7 @@ import logging
 import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
+import ssl
 
 
 class SMTPClient:
@@ -24,7 +25,9 @@ class SMTPClient:
                     smtp = smtplib.SMTP(self.server, self.port, timeout=10)
                     smtp.starttls()
                 else:
-                    smtp = smtplib.SMTP_SSL(self.server, self.port, timeout=10)
+                    context = ssl.create_default_context()
+                    context.set_ciphers('DEFAULT')
+                    smtp = smtplib.SMTP_SSL(self.server, self.port, context=context,timeout=10)
             else:
                 smtp = smtplib.SMTP(self.server, self.port, timeout=10)
 
@@ -50,3 +53,14 @@ class SMTPClient:
         finally:
             if smtp:
                 smtp.quit()
+
+if __name__ == "__main__":
+    # ssl使用465端口，非ssl使用25端口
+    client = SMTPClient(server="smtp.qcloudmail.com",
+                        port=465,username="no-reply@euvola-ai.com",password="",_from="no-reply@euvola-ai.com",use_tls=True,opportunistic_tls=False)
+    mail = {
+        "subject":"Test",
+        "to":"pudge@intelliape-solutions.com",
+        "html":"test"
+    }
+    client.send(mail=mail)
