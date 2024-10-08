@@ -19,13 +19,12 @@ class MarkdownToHtmlFile(BuiltinTool):
         if not markdown_text:
             return self.create_text_message("Invalid input markdown_text")
 
-        markdown_text = MarkdownUtils.strip_markdown_wrapper(markdown_text)
-
         try:
+            markdown_text = MarkdownUtils.strip_markdown_wrapper(markdown_text)
             html_str = MarkdownUtils.convert_markdown_to_html(markdown_text)
             result_file_bytes = html_str.encode("utf-8")
         except Exception as e:
-            return self.create_text_message(f"Failed to convert markdown text to html, error: {str(e)}")
+            return self.create_text_message(f"Failed to convert markdown text to HTML file, error: {str(e)}")
 
         return [
             self.create_text_message("The HTML file is saved."),

@@ -31,7 +31,7 @@ class MarkdownToDocxFile(BuiltinTool):
                 file_path = temp_docx_file.name
                 result_file_bytes = Path(file_path).read_bytes()
         except Exception as e:
-            return self.create_text_message(f"Failed to convert markdown text to pdf, error: {str(e)}")
+            return self.create_text_message(f"Failed to convert markdown text to DOCX file, error: {str(e)}")
 
         return [
             self.create_text_message("The DOCX file is saved."),

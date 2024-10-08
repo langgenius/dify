@@ -30,7 +30,7 @@ class MarkdownToPdfFile(BuiltinTool):
                 encoding="utf-8",
             )
         except Exception as e:
-            return self.create_text_message(f"Failed to convert markdown text to pdf, error: {str(e)}")
+            return self.create_text_message(f"Failed to convert markdown text to PDF file, error: {str(e)}")
 
         return [
             self.create_text_message("The PDF file is saved."),
