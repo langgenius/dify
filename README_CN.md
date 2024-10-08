@@ -1,7 +1,7 @@
 ![cover-v5-optimized](https://github.com/langgenius/dify/assets/13230914/f9e19af5-61ba-4119-b926-d10c4c06ebab)
 
 <div align="center">
-  <a href="https://cloud.dify.ai">Dify 云服务</a> ·
+  <a href="https://cloud.dify.ai"> 云服务</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">自托管</a> ·
   <a href="https://docs.dify.ai">文档</a> ·
   <a href="https://udify.app/chat/22L1zSxg6yW1cWQg">（需用英文）常见问题解答 / 联系团队</a>
