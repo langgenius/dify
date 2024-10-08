@@ -4,16 +4,9 @@ from typing import Union
 
 from flask import Flask
 
-from extensions.storage.aliyun_storage import AliyunStorage
-from extensions.storage.azure_storage import AzureStorage
-from extensions.storage.baidu_storage import BaiduStorage
-from extensions.storage.google_storage import GoogleStorage
-from extensions.storage.huawei_storage import HuaweiStorage
-from extensions.storage.local_storage import LocalStorage
-from extensions.storage.oci_storage import OCIStorage
-from extensions.storage.s3_storage import S3Storage
-from extensions.storage.tencent_storage import TencentStorage
-from extensions.storage.volcengine_storage import VolcengineStorage
+from configs import dify_config
+from extensions.storage.base_storage import BaseStorage
+from extensions.storage.storage_type import StorageType
 
 
 class Storage:
@@ -21,27 +14,52 @@ class Storage:
         self.storage_runner = None
 
     def init_app(self, app: Flask):
-        storage_type = app.config.get("STORAGE_TYPE")
-        if storage_type == "s3":
-            self.storage_runner = S3Storage(app=app)
-        elif storage_type == "azure-blob":
-            self.storage_runner = AzureStorage(app=app)
-        elif storage_type == "aliyun-oss":
-            self.storage_runner = AliyunStorage(app=app)
-        elif storage_type == "google-storage":
-            self.storage_runner = GoogleStorage(app=app)
-        elif storage_type == "tencent-cos":
-            self.storage_runner = TencentStorage(app=app)
-        elif storage_type == "oci-storage":
-            self.storage_runner = OCIStorage(app=app)
-        elif storage_type == "huawei-obs":
-            self.storage_runner = HuaweiStorage(app=app)
-        elif storage_type == "baidu-obs":
-            self.storage_runner = BaiduStorage(app=app)
-        elif storage_type == "volcengine-tos":
-            self.storage_runner = VolcengineStorage(app=app)
-        else:
-            self.storage_runner = LocalStorage(app=app)
+        storage_factory = self.get_storage_factory(dify_config.STORAGE_TYPE)
+        self.storage_runner = storage_factory(app=app)
+
+    @staticmethod
+    def get_storage_factory(storage_type: str) -> type[BaseStorage]:
+        match storage_type:
+            case StorageType.S3:
+                from extensions.storage.aws_s3_storage import AwsS3Storage
+
+                return AwsS3Storage
+            case StorageType.AZURE_BLOB:
+                from extensions.storage.azure_blob_storage import AzureBlobStorage
+
+                return AzureBlobStorage
+            case StorageType.ALIYUN_OSS:
+                from extensions.storage.aliyun_oss_storage import AliyunOssStorage
+
+                return AliyunOssStorage
+            case StorageType.GOOGLE_STORAGE:
+                from extensions.storage.google_cloud_storage import GoogleCloudStorage
+
+                return GoogleCloudStorage
+            case StorageType.TENCENT_COS:
+                from extensions.storage.tencent_cos_storage import TencentCosStorage
+
+                return TencentCosStorage
+            case StorageType.OCI_STORAGE:
+                from extensions.storage.oracle_oci_storage import OracleOCIStorage
+
+                return OracleOCIStorage
+            case StorageType.HUAWEI_OBS:
+                from extensions.storage.huawei_obs_storage import HuaweiObsStorage
+
+                return HuaweiObsStorage
+            case StorageType.BAIDU_OBS:
+                from extensions.storage.baidu_obs_storage import BaiduObsStorage
+
+                return BaiduObsStorage
+            case StorageType.VOLCENGINE_TOS:
+                from extensions.storage.volcengine_tos_storage import VolcengineTosStorage
+
+                return VolcengineTosStorage
+            case StorageType.LOCAL | _:
+                from extensions.storage.local_fs_storage import LocalFsStorage
+
+                return LocalFsStorage
 
     def save(self, filename, data):
         try:

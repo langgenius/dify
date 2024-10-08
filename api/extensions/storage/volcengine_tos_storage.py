@@ -6,7 +6,7 @@ from flask import Flask
 from extensions.storage.base_storage import BaseStorage
 
 
-class VolcengineStorage(BaseStorage):
+class VolcengineTosStorage(BaseStorage):
     """Implementation for Volcengine TOS storage."""
 
     def __init__(self, app: Flask):
