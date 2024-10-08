@@ -204,10 +204,13 @@ Si desea configurar una configuración de alta disponibilidad, la comunidad prop
 
 #### Uso de Terraform para el despliegue
 
+Despliega Dify en una plataforma en la nube con un solo clic utilizando [terraform](https://www.terraform.io/)
+
 ##### Azure Global
-Utiliza [terraform](https://www.terraform.io/) para desplegar Dify en Azure con un solo clic.
 - [Azure Terraform por @nikawang](https://github.com/nikawang/dify-azure-terraform)
 
+##### Google Cloud
+- [Google Cloud Terraform por @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 ## Contribuir
 

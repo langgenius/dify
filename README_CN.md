@@ -202,9 +202,13 @@ docker compose up -d
 
 #### 使用 Terraform 部署
 
+使用 [terraform](https://www.terraform.io/) 一键将 Dify 部署到云平台
+
 ##### Azure Global
-使用 [terraform](https://www.terraform.io/) 一键部署 Dify 到 Azure。
 - [Azure Terraform by @nikawang](https://github.com/nikawang/dify-azure-terraform)
+
+##### Google Cloud
+- [Google Cloud Terraform by @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 ## Star History
 
