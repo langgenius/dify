@@ -359,13 +359,8 @@ const baseFetch = <T>(
               case 401: {
                 if (isPublicAPI) {
                   return bodyJson.then((data: ResponseError) => {
-                    if (data.code === 'web_sso_auth_required') {
+                    if (data.code === 'web_sso_auth_required')
                       requiredWebSSOLogin()
-                      return Promise.reject(data)
-                    }
-
-                    if (!silent)
-                      Toast.notify({ type: 'error', message: data.message })
 
                     if (data.code === 'unauthorized') {
                       removeAccessToken()
@@ -539,15 +534,15 @@ export const ssePost = (
       if (!/^(2|3)\d{2}$/.test(String(res.status))) {
         res.json().then((data: any) => {
           if (isPublicAPI) {
-            if (data.code === 'web_sso_auth_required') {
+            if (data.code === 'web_sso_auth_required')
               requiredWebSSOLogin()
-              return
-            }
 
             if (data.code === 'unauthorized') {
               removeAccessToken()
               globalThis.location.reload()
             }
+            if (res.status === 401)
+              return
           }
           Toast.notify({ type: 'error', message: data.message || 'Server Error' })
         })
