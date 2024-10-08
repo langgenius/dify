@@ -125,7 +125,7 @@ jobs:
         with:
           images: ${{ env[matrix.image_name_env] }}
           tags: |
-            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') && !contains(github.ref, '-') }}
             type=ref,event=branch
             type=sha,enable=true,priority=100,prefix=,suffix=,format=long
             type=raw,value=${{ github.ref_name }},enable=${{ startsWith(github.ref, 'refs/tags/') }}

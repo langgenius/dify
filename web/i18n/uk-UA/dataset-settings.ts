@@ -29,6 +29,9 @@ const translation = {
     save: 'Зберегти',
     me: '(Ви)',
     permissionsInvitedMembers: 'Часткові члени команди',
+    externalKnowledgeAPI: 'API зовнішніх знань',
+    externalKnowledgeID: 'Зовнішній ідентифікатор знань',
+    retrievalSettings: 'Налаштування отримання',
   },
 }
 

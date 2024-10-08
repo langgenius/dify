@@ -78,6 +78,14 @@ const translation = {
       scrapTimeInfo: 'Всего просканировано {{total}} страниц за {{time}} секунд',
       preview: 'Предварительный просмотр',
       maxDepthTooltip: 'Максимальная глубина сканирования относительно введенного URL. Глубина 0 сканирует только страницу введенного URL, глубина 1 сканирует URL и все, что находится после введенного URL + один /, и так далее.',
+      jinaReaderNotConfiguredDescription: 'Настройте Jina Reader, введя свой бесплатный ключ API для доступа.',
+      jinaReaderDocLink: 'https://jina.ai/reader',
+      useSitemap: 'Использовать карту сайта',
+      chooseProvider: 'Выберите провайдера',
+      jinaReaderNotConfigured: 'Jina Reader не настроен',
+      jinaReaderDoc: 'Узнайте больше о Jina Reader',
+      jinaReaderTitle: 'Конвертируйте весь сайт в Markdown',
+      useSitemapTooltip: 'Следуйте карте сайта, чтобы просканировать сайт. Если нет, Jina Reader будет сканировать итеративно в зависимости от релевантности страницы, выдавая меньшее количество страниц, но более высокого качества.',
     },
   },
   stepTwo: {
@@ -156,6 +164,11 @@ const translation = {
     modelContent: 'Если вам нужно будет возобновить обработку позже, вы продолжите с того места, где остановились.',
     modelButtonConfirm: 'Подтвердить',
     modelButtonCancel: 'Отмена',
+  },
+  jinaReader: {
+    getApiKeyLinkText: 'Получите бесплатный ключ API в jina.ai',
+    configJinaReader: 'Настройка Jina Reader',
+    apiKeyPlaceholder: 'Ключ API от jina.ai',
   },
 }
 

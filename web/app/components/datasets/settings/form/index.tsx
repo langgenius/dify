@@ -8,11 +8,14 @@ import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
 import PermissionSelector from '../permission-selector'
 import IndexMethodRadio from '../index-method-radio'
+import RetrievalSettings from '../../external-knowledge-base/create/RetrievalSettings'
 import cn from '@/utils/classnames'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
+import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { updateDatasetSetting } from '@/service/datasets'
 import type { DataSetListResponse } from '@/models/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
@@ -55,6 +58,9 @@ const Form = () => {
   const [name, setName] = useState(currentDataset?.name ?? '')
   const [description, setDescription] = useState(currentDataset?.description ?? '')
   const [permission, setPermission] = useState(currentDataset?.permission)
+  const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
+  const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model.score_threshold ?? 0.5)
+  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset?.partial_member_list || [])
   const [memberList, setMemberList] = useState<Member[]>([])
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
@@ -83,6 +89,15 @@ const Form = () => {
       setMemberList([])
     else
       setMemberList(accounts)
+  }
+
+  const handleSettingsChange = (data: { top_k?: number; score_threshold?: number; score_threshold_enabled?: boolean }) => {
+    if (data.top_k !== undefined)
+      setTopK(data.top_k)
+    if (data.score_threshold !== undefined)
+      setScoreThreshold(data.score_threshold)
+    if (data.score_threshold_enabled !== undefined)
+      setScoreThresholdEnabled(data.score_threshold_enabled)
   }
 
   useMount(() => {
@@ -132,6 +147,15 @@ const Form = () => {
           },
           embedding_model: embeddingModel.model,
           embedding_model_provider: embeddingModel.provider,
+          ...(currentDataset!.provider === 'external' && {
+            external_knowledge_id: currentDataset!.external_knowledge_info.external_knowledge_id,
+            external_knowledge_api_id: currentDataset!.external_knowledge_info.external_knowledge_api_id,
+            external_retrieval_model: {
+              top_k: topK,
+              score_threshold: scoreThreshold,
+              score_threshold_enabled: scoreThresholdEnabled,
+            },
+          }),
         },
       } as any
       if (permission === 'partial_members') {
@@ -161,7 +185,7 @@ const Form = () => {
     <div className='w-full sm:w-[800px] p-4 sm:px-16 sm:py-6'>
       <div className={rowClass}>
         <div className={labelClass}>
-          <div>{t('datasetSettings.form.name')}</div>
+          <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.name')}</div>
         </div>
         <div className='w-full max-w-[480px]'>
           <input
@@ -174,7 +198,7 @@ const Form = () => {
       </div>
       <div className={rowClass}>
         <div className={labelClass}>
-          <div>{t('datasetSettings.form.desc')}</div>
+          <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.desc')}</div>
         </div>
         <div className='w-full max-w-[480px]'>
           <textarea
@@ -192,7 +216,7 @@ const Form = () => {
       </div>
       <div className={rowClass}>
         <div className={labelClass}>
-          <div>{t('datasetSettings.form.permissions')}</div>
+          <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.permissions')}</div>
         </div>
         <div className='w-full sm:w-[480px]'>
           <PermissionSelector
@@ -210,7 +234,7 @@ const Form = () => {
           <div className='w-full h-0 border-b-[0.5px] border-b-gray-200 my-2' />
           <div className={rowClass}>
             <div className={labelClass}>
-              <div>{t('datasetSettings.form.indexMethod')}</div>
+              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.indexMethod')}</div>
             </div>
             <div className='w-full sm:w-[480px]'>
               <IndexMethodRadio
@@ -225,7 +249,7 @@ const Form = () => {
       {indexMethod === 'high_quality' && (
         <div className={rowClass}>
           <div className={labelClass}>
-            <div>{t('datasetSettings.form.embeddingModel')}</div>
+            <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.embeddingModel')}</div>
           </div>
           <div className='w-[480px]'>
             <ModelSelector
@@ -240,32 +264,76 @@ const Form = () => {
         </div>
       )}
       {/* Retrieval Method Config */}
-      <div className={rowClass}>
-        <div className={labelClass}>
-          <div>
-            <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
-            <div className='leading-[18px] text-xs font-normal text-gray-500'>
-              <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
-              {t('datasetSettings.form.retrievalSetting.description')}
+      {currentDataset?.provider === 'external'
+        ? <>
+          <div className={rowClass}><Divider/></div>
+          <div className={rowClass}>
+            <div className={labelClass}>
+              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
+            </div>
+            <RetrievalSettings
+              topK={topK}
+              scoreThreshold={scoreThreshold}
+              scoreThresholdEnabled={scoreThresholdEnabled}
+              onChange={handleSettingsChange}
+              isInRetrievalSetting={true}
+            />
+          </div>
+          <div className={rowClass}><Divider/></div>
+          <div className={rowClass}>
+            <div className={labelClass}>
+              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
+            </div>
+            <div className='w-full max-w-[480px]'>
+              <div className='flex h-full px-3 py-2 items-center gap-1 rounded-lg bg-components-input-bg-normal'>
+                <ApiConnectionMod className='w-4 h-4 text-text-secondary' />
+                <div className='overflow-hidden text-text-secondary text-ellipsis system-sm-medium'>
+                  {currentDataset?.external_knowledge_info.external_knowledge_api_name}
+                </div>
+                <div className='text-text-tertiary system-xs-regular'>·</div>
+                <div className='text-text-tertiary system-xs-regular'>{currentDataset?.external_knowledge_info.external_knowledge_api_endpoint}</div>
+              </div>
             </div>
           </div>
+          <div className={rowClass}>
+            <div className={labelClass}>
+              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeID')}</div>
+            </div>
+            <div className='w-full max-w-[480px]'>
+              <div className='flex h-full px-3 py-2 items-center gap-1 rounded-lg bg-components-input-bg-normal'>
+                <div className='text-text-tertiary system-xs-regular'>{currentDataset?.external_knowledge_info.external_knowledge_id}</div>
+              </div>
+            </div>
+          </div>
+          <div className={rowClass}><Divider/></div>
+        </>
+        : <div className={rowClass}>
+          <div className={labelClass}>
+            <div>
+              <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
+              <div className='leading-[18px] text-xs font-normal text-gray-500'>
+                <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                {t('datasetSettings.form.retrievalSetting.description')}
+              </div>
+            </div>
+          </div>
+          <div className='w-[480px]'>
+            {indexMethod === 'high_quality'
+              ? (
+                <RetrievalMethodConfig
+                  value={retrievalConfig}
+                  onChange={setRetrievalConfig}
+                />
+              )
+              : (
+                <EconomicalRetrievalMethodConfig
+                  value={retrievalConfig}
+                  onChange={setRetrievalConfig}
+                />
+              )}
+          </div>
         </div>
-        <div className='w-[480px]'>
-          {indexMethod === 'high_quality'
-            ? (
-              <RetrievalMethodConfig
-                value={retrievalConfig}
-                onChange={setRetrievalConfig}
-              />
-            )
-            : (
-              <EconomicalRetrievalMethodConfig
-                value={retrievalConfig}
-                onChange={setRetrievalConfig}
-              />
-            )}
-        </div>
-      </div>
+      }
       <div className={rowClass}>
         <div className={labelClass} />
         <div className='w-[480px]'>

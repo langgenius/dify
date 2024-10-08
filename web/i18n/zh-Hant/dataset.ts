@@ -72,6 +72,80 @@ const translation = {
   nTo1RetrievalLegacyLink: '了解更多',
   nTo1RetrievalLegacyLinkText: 'N對1檢索將於9月正式棄用。',
   defaultRetrievalTip: '默認情況下，使用多路徑檢索。從多個知識庫中檢索知識，然後重新排名。',
+  editExternalAPIConfirmWarningContent: {
+    end: 'external knowledge，並且此修改將應用於所有這些 Knowledge。是否確實要保存此更改？',
+    front: '此外部知識 API 連結到',
+  },
+  editExternalAPIFormWarning: {
+    end: '外部知識',
+    front: '此外部 API 連結到',
+  },
+  deleteExternalAPIConfirmWarningContent: {
+    title: {
+      end: '?',
+      front: '刪除',
+    },
+    content: {
+      front: '此外部知識 API 連結到',
+      end: '外部知識。刪除此 API 將使所有這些 API 失效。是否確實要刪除此 API？',
+    },
+    noConnectionContent: '您確定要刪除此 API 嗎？',
+  },
+  selectExternalKnowledgeAPI: {
+    placeholder: '選擇外部知識 API',
+  },
+  connectDatasetIntro: {
+    content: {
+      link: '瞭解如何創建外部 API',
+      front: '要連接到外部知識庫，您需要先創建外部 API。請仔細閱讀並參考',
+      end: '.然後找到對應的知識ID並在左側的表單中填寫。如果資訊全部正確，點擊連接按鈕后，會自動跳轉到知識庫中的檢索測試。',
+    },
+    title: '如何連接到外部知識庫',
+    learnMore: '瞭解更多資訊',
+  },
+  connectHelper: {
+    helper5: '使用此功能前請小心。',
+    helper3: '.我們強烈建議您',
+    helper2: '僅支援檢索功能',
+    helper4: '閱讀幫助文件',
+    helper1: '通過 API 和知識庫 ID 連接到外部知識庫。目前，',
+  },
+  externalKnowledgeForm: {
+    connect: '連接',
+    cancel: '取消',
+  },
+  externalAPIForm: {
+    encrypted: {
+      end: '科技。',
+      front: '您的 API 令牌將使用',
+    },
+    save: '救',
+    cancel: '取消',
+    name: '名字',
+    apiKey: 'API 金鑰',
+    edit: '編輯',
+    endpoint: 'API 終端節點',
+  },
+  externalTag: '外部',
+  externalKnowledgeDescription: '知識描述',
+  mixtureInternalAndExternalTip: 'Rerank 模型是內部和外部知識的混合所必需的。',
+  connectDataset: '連接到外部知識庫',
+  learnHowToWriteGoodKnowledgeDescription: '瞭解如何編寫良好的知識描述',
+  createExternalAPI: '添加外部知識 API',
+  externalAPIPanelTitle: '外部知識 API',
+  createNewExternalAPI: '創建新的外部知識 API',
+  externalKnowledgeDescriptionPlaceholder: '描述此知識庫中的內容（選擇）',
+  allExternalTip: '僅使用外部知識時，用戶可以選擇是否啟用 Rerank 模型。如果未啟用，則檢索到的數據塊將根據分數進行排序。當不同知識庫的檢索策略不一致時，就會不準確。',
+  externalKnowledgeIdPlaceholder: '請輸入 Knowledge ID',
+  editExternalAPIFormTitle: '編輯外部知識 API',
+  externalKnowledgeId: '外部知識ID',
+  externalAPIPanelDescription: '外部知識 API 用於連接到 Dify 外部的知識庫，並從該知識庫中檢索知識。',
+  externalAPI: '外部 API',
+  editExternalAPITooltipTitle: '關聯知識',
+  externalKnowledgeName: '外部知識名稱',
+  externalAPIPanelDocumentation: '瞭解如何創建外部知識 API',
+  externalKnowledgeNamePlaceholder: '請輸入知識庫的名稱',
+  noExternalKnowledge: '目前還沒有外部知識 API，按兩下此處創建',
 }
 
 export default translation
