@@ -25,6 +25,7 @@ type ObjectChildrenProps = {
   onChange: (value: ValueSelector, item: Var) => void
   onHovering?: (value: boolean) => void
   itemWidth?: number
+  isSupportFileVar?: boolean
 }
 
 type ItemProps = {
@@ -35,6 +36,7 @@ type ItemProps = {
   onChange: (value: ValueSelector, item: Var) => void
   onHovering?: (value: boolean) => void
   itemWidth?: number
+  isSupportFileVar?: boolean
 }
 
 const Item: FC<ItemProps> = ({
@@ -45,6 +47,7 @@ const Item: FC<ItemProps> = ({
   onChange,
   onHovering,
   itemWidth,
+  isSupportFileVar,
 }) => {
   const isFile = itemData.type === VarType.file
   const isObj = ([VarType.object, VarType.file].includes(itemData.type) && itemData.children && itemData.children.length > 0)
@@ -79,6 +82,9 @@ const Item: FC<ItemProps> = ({
   }, [isHovering])
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!isSupportFileVar && isFile)
+      return
+
     if (isSys || isEnv || isChatVar) { // system variable | environment variable | conversation variable
       onChange([...objPath, ...itemData.variable.split('.')], itemData)
     }
@@ -135,6 +141,7 @@ const Item: FC<ItemProps> = ({
             onChange={onChange}
             onHovering={setIsChildrenHovering}
             itemWidth={itemWidth}
+            isSupportFileVar={isSupportFileVar}
           />
         )}
         {isFile && (
@@ -147,6 +154,7 @@ const Item: FC<ItemProps> = ({
             onChange={onChange}
             onHovering={setIsChildrenHovering}
             itemWidth={itemWidth}
+            isSupportFileVar={isSupportFileVar}
           />
         )}
       </PortalToFollowElemContent>
@@ -162,6 +170,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   onChange,
   onHovering,
   itemWidth,
+  isSupportFileVar,
 }) => {
   const currObjPath = objPath
   const itemRef = useRef(null)
@@ -206,6 +215,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
             itemData={v}
             onChange={onChange}
             onHovering={setIsChildrenHovering}
+            isSupportFileVar={isSupportFileVar}
           />
         ))
       }
@@ -217,6 +227,7 @@ type Props = {
   hideSearch?: boolean
   searchBoxClassName?: string
   vars: NodeOutPutVar[]
+  isSupportFileVar?: boolean
   onChange: (value: ValueSelector, item: Var) => void
   itemWidth?: number
   maxHeightClass?: string
@@ -225,6 +236,7 @@ const VarReferenceVars: FC<Props> = ({
   hideSearch,
   searchBoxClassName,
   vars,
+  isSupportFileVar,
   onChange,
   itemWidth,
   maxHeightClass,
@@ -299,6 +311,7 @@ const VarReferenceVars: FC<Props> = ({
                     itemData={v}
                     onChange={onChange}
                     itemWidth={itemWidth}
+                    isSupportFileVar={isSupportFileVar}
                   />
                 ))}
               </div>))
