@@ -20,7 +20,6 @@ from logging.handlers import RotatingFileHandler
 from flask import Flask, Response, request
 from flask_cors import CORS
 from werkzeug.exceptions import Unauthorized
-from werkzeug.middleware.proxy_fix import ProxyFix
 
 import contexts
 from commands import register_commands
@@ -37,6 +36,7 @@ from extensions import (
     ext_login,
     ext_mail,
     ext_migrate,
+    ext_proxy_fix,
     ext_redis,
     ext_sentry,
     ext_storage,
@@ -84,9 +84,6 @@ def create_flask_app_with_configs() -> Flask:
     """
     dify_app = DifyApp(__name__)
     dify_app.config.from_mapping(dify_config.model_dump())
-
-    if dify_app.config.get("PROXY_FIX_MIDDLEWARE_ENABLED"):
-        dify_app.wsgi_app = ProxyFix(dify_app.wsgi_app)
 
     # populate configs into system environment variables
     for key, value in dify_app.config.items():
@@ -160,6 +157,7 @@ def initialize_extensions(app):
     ext_mail.init_app(app)
     ext_hosting_provider.init_app(app)
     ext_sentry.init_app(app)
+    ext_proxy_fix.init_app(app)
 
 
 # Flask-Login configuration

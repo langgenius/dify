@@ -136,12 +136,6 @@ class EndpointConfig(BaseSettings):
         default="",
     )
 
-    PROXY_FIX_MIDDLEWARE_ENABLED: bool = Field(
-        description="Enable or disable the X-Forwarded-For Proxy Fix middleware from Werkzeug"
-        " to respect X-* headers to redirect clients",
-        default=False,
-    )
-
 
 class FileAccessConfig(BaseSettings):
     """
@@ -251,6 +245,12 @@ class HttpConfig(BaseSettings):
     SSRF_PROXY_HTTPS_URL: Optional[str] = Field(
         description="Proxy URL for HTTPS requests to prevent Server-Side Request Forgery (SSRF)",
         default=None,
+    )
+
+    RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
+        description="Enable or disable the X-Forwarded-For Proxy Fix middleware from Werkzeug"
+        " to respect X-* headers to redirect clients",
+        default=False,
     )
 
 
