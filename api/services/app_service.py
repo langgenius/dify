@@ -88,6 +88,8 @@ class AppService:
 
         if args.get("dataset_id"):
             default_dataset_config["dataset_configs"]["datasets"] = self._get_dataset_config(args["dataset_id"])
+        else:
+            default_dataset_config["dataset_configs"] = None
         if  args.get("pre_prompt"):
             default_app_config["pre_prompt"] = args.get("pre_prompt")
         if args.get("opening_statement"):
