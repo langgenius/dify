@@ -196,9 +196,13 @@ Nếu bạn muốn cấu hình một cài đặt có độ sẵn sàng cao, có 
 
 #### Sử dụng Terraform để Triển khai
 
+Triển khai Dify lên nền tảng đám mây với một cú nhấp chuột bằng cách sử dụng [terraform](https://www.terraform.io/)
+
 ##### Azure Global
-Triển khai Dify lên Azure chỉ với một cú nhấp chuột bằng cách sử dụng [terraform](https://www.terraform.io/).
 - [Azure Terraform bởi @nikawang](https://github.com/nikawang/dify-azure-terraform)
+
+##### Google Cloud
+- [Google Cloud Terraform bởi @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 ## Đóng góp
 
