@@ -50,8 +50,25 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
           errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
         if (!errorMessages && !condition.comparison_operator)
           errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.ifElse.operator') })
-        if (!errorMessages && !isEmptyRelatedOperator(condition.comparison_operator!) && !condition.value)
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
+        if (!errorMessages) {
+          if (condition.sub_variable_condition) {
+            const isSet = condition.sub_variable_condition.conditions.every((c) => {
+              if (!c.comparison_operator)
+                return false
+
+              if (isEmptyRelatedOperator(c.comparison_operator!))
+                return true
+
+              return !!c.value
+            })
+            if (!isSet)
+              errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
+          }
+          else {
+            if (!isEmptyRelatedOperator(condition.comparison_operator!) && !condition.value)
+              errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
+          }
+        }
       })
     })
     return {
