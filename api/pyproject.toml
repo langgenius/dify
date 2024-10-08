@@ -74,8 +74,6 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "app.py" = [
-    "F401", # unused-import
-    "F811", # redefined-while-unused
 ]
 "__init__.py" = [
     "F401", # unused-import
@@ -88,8 +86,13 @@ ignore = [
     "N803", # invalid-argument-name
 ]
 "tests/*" = [
-    "F401", # unused-import
     "F811", # redefined-while-unused
+]
+
+[tool.ruff.lint.pyflakes]
+allowed-unused-imports=[
+    "_pytest.monkeypatch",
+    "tests.integration_tests",
 ]
 
 [tool.ruff.format]
@@ -260,4 +263,4 @@ optional = true
 
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
-ruff = "~0.6.8"
+ruff = "~0.6.9"
