@@ -5,6 +5,7 @@ from werkzeug.exceptions import Forbidden
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.login import login_required
 from services.plugin.endpoint_service import EndpointService
 
@@ -28,13 +29,15 @@ class EndpointCreateApi(Resource):
         settings = args["settings"]
         name = args["name"]
 
-        return EndpointService.create_endpoint(
-            tenant_id=user.current_tenant_id,
-            user_id=user.id,
-            plugin_unique_identifier=plugin_unique_identifier,
-            name=name,
-            settings=settings,
-        )
+        return {
+            "success": EndpointService.create_endpoint(
+                tenant_id=user.current_tenant_id,
+                user_id=user.id,
+                plugin_unique_identifier=plugin_unique_identifier,
+                name=name,
+                settings=settings,
+            )
+        }
 
 
 class EndpointListApi(Resource):
@@ -44,9 +47,23 @@ class EndpointListApi(Resource):
     def get(self):
         user = current_user
 
-        return EndpointService.list_endpoints(
-            tenant_id=user.current_tenant_id,
-            user_id=user.id,
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=int, required=True, location="args")
+        parser.add_argument("page_size", type=int, required=True, location="args")
+        args = parser.parse_args()
+
+        page = args["page"]
+        page_size = args["page_size"]
+
+        return jsonable_encoder(
+            {
+                "endpoints": EndpointService.list_endpoints(
+                    tenant_id=user.current_tenant_id,
+                    user_id=user.id,
+                    page=page,
+                    page_size=page_size,
+                )
+            }
         )
 
 
@@ -61,11 +78,16 @@ class EndpointDeleteApi(Resource):
         parser.add_argument("endpoint_id", type=str, required=True)
         args = parser.parse_args()
 
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
         endpoint_id = args["endpoint_id"]
 
-        return EndpointService.delete_endpoint(
-            tenant_id=user.current_tenant_id, user_id=user.id, endpoint_id=endpoint_id
-        )
+        return {
+            "success": EndpointService.delete_endpoint(
+                tenant_id=user.current_tenant_id, user_id=user.id, endpoint_id=endpoint_id
+            )
+        }
 
 
 class EndpointUpdateApi(Resource):
@@ -85,13 +107,18 @@ class EndpointUpdateApi(Resource):
         settings = args["settings"]
         name = args["name"]
 
-        return EndpointService.update_endpoint(
-            tenant_id=user.current_tenant_id,
-            user_id=user.id,
-            endpoint_id=endpoint_id,
-            name=name,
-            settings=settings,
-        )
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        return {
+            "success": EndpointService.update_endpoint(
+                tenant_id=user.current_tenant_id,
+                user_id=user.id,
+                endpoint_id=endpoint_id,
+                name=name,
+                settings=settings,
+            )
+        }
 
 
 class EndpointEnableApi(Resource):
@@ -107,9 +134,14 @@ class EndpointEnableApi(Resource):
 
         endpoint_id = args["endpoint_id"]
 
-        return EndpointService.enable_endpoint(
-            tenant_id=user.current_tenant_id, user_id=user.id, endpoint_id=endpoint_id
-        )
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        return {
+            "success": EndpointService.enable_endpoint(
+                tenant_id=user.current_tenant_id, user_id=user.id, endpoint_id=endpoint_id
+            )
+        }
 
 
 class EndpointDisableApi(Resource):
@@ -125,9 +157,14 @@ class EndpointDisableApi(Resource):
 
         endpoint_id = args["endpoint_id"]
 
-        return EndpointService.disable_endpoint(
-            tenant_id=user.current_tenant_id, user_id=user.id, endpoint_id=endpoint_id
-        )
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        return {
+            "success": EndpointService.disable_endpoint(
+                tenant_id=user.current_tenant_id, user_id=user.id, endpoint_id=endpoint_id
+            )
+        }
 
 
 api.add_resource(EndpointCreateApi, "/workspaces/current/endpoints/create")

@@ -3,16 +3,18 @@ from core.plugin.manager.base import BasePluginManager
 
 
 class PluginEndpointManager(BasePluginManager):
-    def create_endpoint(self, tenant_id: str, user_id: str, plugin_unique_identifier: str, name: str, settings: dict):
+    def create_endpoint(
+        self, tenant_id: str, user_id: str, plugin_unique_identifier: str, name: str, settings: dict
+    ) -> bool:
         """
         Create an endpoint for the given plugin.
 
         Errors will be raised if any error occurs.
         """
-        self._request_with_plugin_daemon_response(
+        return self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/endpoint/setup",
-            dict,
+            bool,
             headers={
                 "Content-Type": "application/json",
             },
@@ -24,7 +26,7 @@ class PluginEndpointManager(BasePluginManager):
             },
         )
 
-    def list_endpoints(self, tenant_id: str, user_id: str):
+    def list_endpoints(self, tenant_id: str, user_id: str, page: int, page_size: int):
         """
         List all endpoints for the given tenant and user.
         """
@@ -32,7 +34,7 @@ class PluginEndpointManager(BasePluginManager):
             "GET",
             f"plugin/{tenant_id}/endpoint/list",
             list[EndpointEntity],
-            params={"page": 1, "page_size": 256},
+            params={"page": page, "page_size": page_size},
         )
 
     def list_plugin_endpoints(self, tenant_id: str, user_id: str, plugin_unique_identifier: str):
@@ -55,15 +57,18 @@ class PluginEndpointManager(BasePluginManager):
         """
         Update the settings of the given endpoint.
         """
-        self._request_with_plugin_daemon_response(
+        return self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/endpoint/update",
-            dict,
+            bool,
             data={
                 "user_id": user_id,
                 "endpoint_id": endpoint_id,
                 "name": name,
                 "settings": settings,
+            },
+            headers={
+                "Content-Type": "application/json",
             },
         )
 
@@ -71,12 +76,15 @@ class PluginEndpointManager(BasePluginManager):
         """
         Delete the given endpoint.
         """
-        self._request_with_plugin_daemon_response(
-            "DELETE",
+        return self._request_with_plugin_daemon_response(
+            "POST",
             f"plugin/{tenant_id}/endpoint/remove",
-            dict,
+            bool,
             data={
                 "endpoint_id": endpoint_id,
+            },
+            headers={
+                "Content-Type": "application/json",
             },
         )
 
@@ -84,12 +92,15 @@ class PluginEndpointManager(BasePluginManager):
         """
         Enable the given endpoint.
         """
-        self._request_with_plugin_daemon_response(
+        return self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/endpoint/enable",
-            dict,
+            bool,
             data={
                 "endpoint_id": endpoint_id,
+            },
+            headers={
+                "Content-Type": "application/json",
             },
         )
 
@@ -97,11 +108,14 @@ class PluginEndpointManager(BasePluginManager):
         """
         Disable the given endpoint.
         """
-        self._request_with_plugin_daemon_response(
+        return self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/endpoint/disable",
-            dict,
+            bool,
             data={
                 "endpoint_id": endpoint_id,
+            },
+            headers={
+                "Content-Type": "application/json",
             },
         )

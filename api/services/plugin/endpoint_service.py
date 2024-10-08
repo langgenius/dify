@@ -13,10 +13,12 @@ class EndpointService:
         )
 
     @classmethod
-    def list_endpoints(cls, tenant_id: str, user_id: str):
+    def list_endpoints(cls, tenant_id: str, user_id: str, page: int, page_size: int):
         return PluginEndpointManager().list_endpoints(
             tenant_id=tenant_id,
             user_id=user_id,
+            page=page,
+            page_size=page_size,
         )
 
     @classmethod
