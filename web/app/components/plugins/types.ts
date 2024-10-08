@@ -1,28 +1,9 @@
+import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
+
 export enum PluginType {
   plugin = 'plugin',
   model = 'model',
   extension = 'Extension',
-}
-
-export type Endpoint = {
-  'api_key': {
-    'default': null
-    'helper': null
-    'label': {
-      'en_US': string
-      'zh_Hans': string
-    }
-    'name': ''
-    'options': null
-    'placeholder': {
-      'en_US': string
-      'zh_Hans': string
-    }
-    'required': true
-    'scope': null
-    'type': string
-    'url': null
-  }
 }
 
 export type Plugin = {
@@ -43,5 +24,8 @@ export type Plugin = {
   'introduction': string
   'repository': string
   'category': string
-  'endpoint': Endpoint
+  'install_count': number
+  'endpoint': {
+    settings: CredentialFormSchemaBase[]
+  }
 }
