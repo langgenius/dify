@@ -92,7 +92,7 @@ ignore = [
 [tool.ruff.lint.pyflakes]
 allowed-unused-imports=[
     "_pytest.monkeypatch",
-    "tests.integration_tests"
+    "tests.integration_tests",
 ]
 
 [tool.ruff.format]
