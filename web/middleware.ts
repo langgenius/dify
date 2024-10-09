@@ -1,11 +1,16 @@
 import type { NextRequest } from 'next/server'
 import { NextResponse } from 'next/server'
 
+const NECESSARY_DOMAIN = '*.sentry.io http://localhost http://127.0.0.1 https://analytics.google.com https://googletagmanager.com https://api.github.com'
+
 export function middleware(request: NextRequest) {
+  const isWhiteListEnabled = !!process.env.NEXT_PUBLIC_CSP_WHITELIST && process.env.NODE_ENV === 'production'
+  if (!isWhiteListEnabled)
+    return NextResponse.next()
+
+  const whiteList = `${process.env.NEXT_PUBLIC_CSP_WHITELIST} ${NECESSARY_DOMAIN}`
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
-  // style-src 'self' 'nonce-${nonce}';
-  const whiteList = '*.dify.dev *.dify.ai *.sentry.io http://localhost http://127.0.0.1 https://analytics.google.com https://googletagmanager.com https://api.github.com'
-  const csp = (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_EDITION !== 'SELF_HOSTED') ? `'nonce-${nonce}'` : '\'unsafe-eval\' \'unsafe-inline\''
+  const csp = `'nonce-${nonce}'`
 
   const cspHeader = `
     default-src 'self' ${csp} blob: data: ${whiteList};
