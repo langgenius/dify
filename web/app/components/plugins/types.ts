@@ -1,9 +1,10 @@
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
+import type { Locale } from '@/i18n'
 
 export enum PluginType {
-  plugin = 'plugin',
+  tool = 'tool',
   model = 'model',
-  extension = 'Extension',
+  extension = 'extension',
 }
 
 export type Plugin = {
@@ -12,14 +13,8 @@ export type Plugin = {
   'name': string
   'latest_version': string
   'icon': string
-  'label': {
-    'en_US': string
-    'zh_Hans': string
-  }
-  'brief': {
-    'en_US': string
-    'zh_Hans': string
-  }
+  'label': Record<Locale, string>
+  'brief': Record<Locale, string>
   // Repo readme.md content
   'introduction': string
   'repository': string
