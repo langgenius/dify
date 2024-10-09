@@ -67,6 +67,36 @@ class EndpointListApi(Resource):
         )
 
 
+class EndpointListForSinglePluginApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        user = current_user
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=int, required=True, location="args")
+        parser.add_argument("page_size", type=int, required=True, location="args")
+        parser.add_argument("plugin_id", type=str, required=True, location="args")
+        args = parser.parse_args()
+
+        page = args["page"]
+        page_size = args["page_size"]
+        plugin_id = args["plugin_id"]
+
+        return jsonable_encoder(
+            {
+                "endpoints": EndpointService.list_endpoints_for_single_plugin(
+                    tenant_id=user.current_tenant_id,
+                    user_id=user.id,
+                    plugin_id=plugin_id,
+                    page=page,
+                    page_size=page_size,
+                )
+            }
+        )
+
+
 class EndpointDeleteApi(Resource):
     @setup_required
     @login_required
@@ -169,6 +199,7 @@ class EndpointDisableApi(Resource):
 
 api.add_resource(EndpointCreateApi, "/workspaces/current/endpoints/create")
 api.add_resource(EndpointListApi, "/workspaces/current/endpoints/list")
+api.add_resource(EndpointListForSinglePluginApi, "/workspaces/current/endpoints/list/plugin")
 api.add_resource(EndpointDeleteApi, "/workspaces/current/endpoints/delete")
 api.add_resource(EndpointUpdateApi, "/workspaces/current/endpoints/update")
 api.add_resource(EndpointEnableApi, "/workspaces/current/endpoints/enable")

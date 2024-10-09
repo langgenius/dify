@@ -37,6 +37,17 @@ class PluginEndpointManager(BasePluginManager):
             params={"page": page, "page_size": page_size},
         )
 
+    def list_endpoints_for_single_plugin(self, tenant_id: str, user_id: str, plugin_id: str, page: int, page_size: int):
+        """
+        List all endpoints for the given tenant, user and plugin.
+        """
+        return self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/endpoint/list/plugin",
+            list[EndpointEntity],
+            params={"plugin_id": plugin_id, "page": page, "page_size": page_size},
+        )
+
     def list_plugin_endpoints(self, tenant_id: str, user_id: str, plugin_unique_identifier: str):
         """
         List all endpoints for the given tenant, user and plugin.
