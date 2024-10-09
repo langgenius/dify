@@ -17,7 +17,7 @@ class PineconeVectorTest(AbstractVectorTest):
         )
 
     def search_by_full_text(self):
-        # chroma dos not support full text searching
+        # pinecone does not support full text searching
         hits_by_full_text = self.vector.search_by_full_text(query=get_example_text())
         assert len(hits_by_full_text) == 0
 
