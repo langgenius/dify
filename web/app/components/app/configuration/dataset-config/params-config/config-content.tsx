@@ -243,7 +243,7 @@ const ConfigContent: FC<Props> = ({
                       />
                     )
                   }
-                  <div className='leading-[32px] text-text-secondary system-sm-semibold'>{t('common.modelProvider.rerankModel.key')}</div>
+                  <div className='leading-[32px] ml-1 text-text-secondary system-sm-semibold'>{t('common.modelProvider.rerankModel.key')}</div>
                   <Tooltip
                     popupContent={
                       <div className="w-[200px]">
