@@ -38,9 +38,13 @@ const SearchBox = ({
               onChange(e.target.value, selectedTags)
             }}
           />
-          <ActionButton onClick={() => setSearchText('')}>
-            <RiCloseLine className='w-4 h-4' />
-          </ActionButton>
+          {
+            searchText && (
+              <ActionButton onClick={() => setSearchText('')}>
+                <RiCloseLine className='w-4 h-4' />
+              </ActionButton>
+            )
+          }
         </div>
       </div>
     </div>
