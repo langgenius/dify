@@ -1,15 +1,14 @@
-import Container from './Container'
-
+import Card from '@/app/components/plugins/card'
 const PluginList = async () => {
   return (
     <>
-      <Container />
+      <Card />
     </>
   )
 }
 
 export const metadata = {
-  title: 'Plugins - Dify',
+  title: 'Plugins - Card',
 }
 
 export default PluginList
