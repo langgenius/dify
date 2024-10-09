@@ -45,26 +45,23 @@ class BaseIndexProcessor(ABC):
     ) -> list[Document]:
         raise NotImplementedError
 
-    def _get_splitter(self, processing_rule: dict, embedding_model_instance: Optional[ModelInstance]) -> TextSplitter:
+    def _get_splitter(self, processing_rule_mode: str, max_tokens: int, chunk_overlap: int, separators: str, embedding_model_instance: Optional[ModelInstance]) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
         """
-        if processing_rule["mode"] == "custom":
+        if processing_rule_mode == "custom":
             # The user-defined segmentation rule
-            rules = processing_rule["rules"]
-            segmentation = rules["segmentation"]
             max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
-            if segmentation["max_tokens"] < 50 or segmentation["max_tokens"] > max_segmentation_tokens_length:
+            if max_tokens < 50 or max_tokens > max_segmentation_tokens_length:
                 raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}.")
-
-            separator = segmentation["separator"]
-            if separator:
-                separator = separator.replace("\\n", "\n")
+            
+            if separators:
+                separators = separators.replace("\\n", "\n")
 
             character_splitter = FixedRecursiveCharacterTextSplitter.from_encoder(
-                chunk_size=segmentation["max_tokens"],
-                chunk_overlap=segmentation.get("chunk_overlap", 0) or 0,
-                fixed_separator=separator,
+                chunk_size=max_tokens,
+                chunk_overlap=chunk_overlap,
+                fixed_separator=separators,
                 separators=["\n\n", "。", ". ", " ", ""],
                 embedding_model_instance=embedding_model_instance,
             )

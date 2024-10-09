@@ -25,7 +25,7 @@ from models.dataset import Dataset
 class QAIndexProcessor(BaseIndexProcessor):
     def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
         text_docs = ExtractProcessor.extract(
-            extract_setting=extract_setting, is_automatic=kwargs.get("process_rule_mode") == "automatic"
+            extract_setting=extract_setting, is_automatic=(kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical")
         )
         return text_docs
 

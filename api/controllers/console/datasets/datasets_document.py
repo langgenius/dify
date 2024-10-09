@@ -49,6 +49,7 @@ from libs.login import login_required
 from models.dataset import Dataset, DatasetProcessRule, Document, DocumentSegment
 from models.model import UploadFile
 from services.dataset_service import DatasetService, DocumentService
+from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
 
@@ -256,15 +257,16 @@ class DatasetDocumentListApi(Resource):
         )
         parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
         args = parser.parse_args()
+        knowledge_config = KnowledgeConfig(**args)
 
-        if not dataset.indexing_technique and not args["indexing_technique"]:
+        if not dataset.indexing_technique and not knowledge_config.indexing_technique:
             raise ValueError("indexing_technique is required.")
 
         # validate args
-        DocumentService.document_create_args_validate(args)
+        DocumentService.document_create_args_validate(knowledge_config)
 
         try:
-            documents, batch = DocumentService.save_document_with_dataset_id(dataset, args, current_user)
+            documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, current_user)
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:
@@ -309,9 +311,9 @@ class DatasetInitApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
-
-        if args["indexing_technique"] == "high_quality":
-            if args["embedding_model"] is None or args["embedding_model_provider"] is None:
+        knowledge_config = KnowledgeConfig(**args)
+        if knowledge_config.indexing_technique == "high_quality":
+            if knowledge_config.embedding_model is None or knowledge_config.embedding_model_provider is None:
                 raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
             try:
                 model_manager = ModelManager()
@@ -327,11 +329,12 @@ class DatasetInitApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
 
         # validate args
-        DocumentService.document_create_args_validate(args)
+        DocumentService.document_create_args_validate(knowledge_config)
 
         try:
+            
             dataset, documents, batch = DocumentService.save_document_without_dataset_id(
-                tenant_id=current_user.current_tenant_id, document_data=args, account=current_user
+                tenant_id=current_user.current_tenant_id, knowledge_config=knowledge_config, account=current_user
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)

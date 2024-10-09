@@ -36,6 +36,7 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
+from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, RetrievalModel
 from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
@@ -670,7 +671,7 @@ class DocumentService:
     @staticmethod
     def save_document_with_dataset_id(
         dataset: Dataset,
-        document_data: dict,
+        knowledge_config: KnowledgeConfig,
         account: Account,
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
@@ -679,17 +680,17 @@ class DocumentService:
         features = FeatureService.get_features(current_user.current_tenant_id)
 
         if features.billing.enabled:
-            if "original_document_id" not in document_data or not document_data["original_document_id"]:
+            if not knowledge_config.original_document_id:
                 count = 0
-                if document_data["data_source"]["type"] == "upload_file":
-                    upload_file_list = document_data["data_source"]["info_list"]["file_info_list"]["file_ids"]
+                if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                    upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
                     count = len(upload_file_list)
-                elif document_data["data_source"]["type"] == "notion_import":
-                    notion_info_list = document_data["data_source"]["info_list"]["notion_info_list"]
+                elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
+                    notion_info_list = knowledge_config.data_source.info_list.notion_info_list
                     for notion_info in notion_info_list:
                         count = count + len(notion_info["pages"])
-                elif document_data["data_source"]["type"] == "website_crawl":
-                    website_info = document_data["data_source"]["info_list"]["website_info_list"]
+                elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
+                    website_info = knowledge_config.data_source.info_list.website_info_list
                     count = len(website_info["urls"])
                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
                 if count > batch_upload_limit:
@@ -699,17 +700,16 @@ class DocumentService:
 
         # if dataset is empty, update dataset data_source_type
         if not dataset.data_source_type:
-            dataset.data_source_type = document_data["data_source"]["type"]
+            dataset.data_source_type = knowledge_config.data_source.info_list.data_source_type
 
         if not dataset.indexing_technique:
             if (
-                "indexing_technique" not in document_data
-                or document_data["indexing_technique"] not in Dataset.INDEXING_TECHNIQUE_LIST
+                 knowledge_config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST
             ):
-                raise ValueError("Indexing technique is required")
+                raise ValueError("Indexing technique is invalid")
 
-            dataset.indexing_technique = document_data["indexing_technique"]
-            if document_data["indexing_technique"] == "high_quality":
+            dataset.indexing_technique = knowledge_config.indexing_technique
+            if knowledge_config.indexing_technique == "high_quality":
                 model_manager = ModelManager()
                 embedding_model = model_manager.get_default_model_instance(
                     tenant_id=current_user.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
@@ -729,28 +729,28 @@ class DocumentService:
                         "score_threshold_enabled": False,
                     }
 
-                    dataset.retrieval_model = document_data.get("retrieval_model") or default_retrieval_model
+                    dataset.retrieval_model = knowledge_config.retrieval_model.model_dump() or default_retrieval_model
 
         documents = []
         batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
-        if document_data.get("original_document_id"):
-            document = DocumentService.update_document_with_dataset_id(dataset, document_data, account)
+        if knowledge_config.original_document_id:
+            document = DocumentService.update_document_with_dataset_id(dataset, knowledge_config, account)
             documents.append(document)
         else:
             # save process rule
             if not dataset_process_rule:
-                process_rule = document_data["process_rule"]
-                if process_rule["mode"] == "custom":
+                process_rule = knowledge_config.process_rule
+                if process_rule.mode== "custom" or process_rule.mode== "hierarchical":
                     dataset_process_rule = DatasetProcessRule(
                         dataset_id=dataset.id,
-                        mode=process_rule["mode"],
-                        rules=json.dumps(process_rule["rules"]),
+                        mode=process_rule.mode,
+                        rules=process_rule.rules.model_dump_json(),
                         created_by=account.id,
                     )
-                elif process_rule["mode"] == "automatic":
+                elif process_rule.mode == "automatic":
                     dataset_process_rule = DatasetProcessRule(
                         dataset_id=dataset.id,
-                        mode=process_rule["mode"],
+                        mode=process_rule.mode,
                         rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
                         created_by=account.id,
                     )
@@ -759,8 +759,8 @@ class DocumentService:
             position = DocumentService.get_documents_position(dataset.id)
             document_ids = []
             duplicate_document_ids = []
-            if document_data["data_source"]["type"] == "upload_file":
-                upload_file_list = document_data["data_source"]["info_list"]["file_info_list"]["file_ids"]
+            if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
                 for file_id in upload_file_list:
                     file = (
                         db.session.query(UploadFile)
@@ -777,7 +777,7 @@ class DocumentService:
                         "upload_file_id": file_id,
                     }
                     # check duplicate
-                    if document_data.get("duplicate", False):
+                    if knowledge_config.duplicate:
                         document = Document.query.filter_by(
                             dataset_id=dataset.id,
                             tenant_id=current_user.current_tenant_id,
@@ -789,8 +789,8 @@ class DocumentService:
                             document.dataset_process_rule_id = dataset_process_rule.id
                             document.updated_at = datetime.datetime.utcnow()
                             document.created_from = created_from
-                            document.doc_form = document_data["doc_form"]
-                            document.doc_language = document_data["doc_language"]
+                            document.doc_form = knowledge_config.doc_form
+                            document.doc_language = knowledge_config.doc_language
                             document.data_source_info = json.dumps(data_source_info)
                             document.batch = batch
                             document.indexing_status = "waiting"
@@ -801,9 +801,9 @@ class DocumentService:
                     document = DocumentService.build_document(
                         dataset,
                         dataset_process_rule.id,
-                        document_data["data_source"]["type"],
-                        document_data["doc_form"],
-                        document_data["doc_language"],
+                        knowledge_config.data_source.info_list.data_source_type,
+                        knowledge_config.doc_form,
+                        knowledge_config.doc_language,
                         data_source_info,
                         created_from,
                         position,
@@ -816,8 +816,8 @@ class DocumentService:
                     document_ids.append(document.id)
                     documents.append(document)
                     position += 1
-            elif document_data["data_source"]["type"] == "notion_import":
-                notion_info_list = document_data["data_source"]["info_list"]["notion_info_list"]
+            elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
+                notion_info_list = knowledge_config.data_source.info_list.notion_info_list
                 exist_page_ids = []
                 exist_document = {}
                 documents = Document.query.filter_by(
@@ -854,9 +854,9 @@ class DocumentService:
                             document = DocumentService.build_document(
                                 dataset,
                                 dataset_process_rule.id,
-                                document_data["data_source"]["type"],
-                                document_data["doc_form"],
-                                document_data["doc_language"],
+                                knowledge_config.data_source.info_list.data_source_type,
+                                knowledge_config.doc_form,
+                                knowledge_config.doc_language,
                                 data_source_info,
                                 created_from,
                                 position,
@@ -874,15 +874,15 @@ class DocumentService:
                 # delete not selected documents
                 if len(exist_document) > 0:
                     clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
-            elif document_data["data_source"]["type"] == "website_crawl":
-                website_info = document_data["data_source"]["info_list"]["website_info_list"]
-                urls = website_info["urls"]
+            elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
+                website_info = knowledge_config.data_source.info_list.website_info_list
+                urls = website_info.urls
                 for url in urls:
                     data_source_info = {
                         "url": url,
-                        "provider": website_info["provider"],
-                        "job_id": website_info["job_id"],
-                        "only_main_content": website_info.get("only_main_content", False),
+                        "provider": website_info.provider,
+                        "job_id": website_info.job_id,
+                        "only_main_content": website_info.only_main_content,
                         "mode": "crawl",
                     }
                     if len(url) > 255:
@@ -892,9 +892,9 @@ class DocumentService:
                     document = DocumentService.build_document(
                         dataset,
                         dataset_process_rule.id,
-                        document_data["data_source"]["type"],
-                        document_data["doc_form"],
-                        document_data["doc_language"],
+                        knowledge_config.data_source.info_list.data_source_type,
+                        knowledge_config.doc_form,
+                        knowledge_config.doc_language,
                         data_source_info,
                         created_from,
                         position,
@@ -1077,21 +1077,21 @@ class DocumentService:
         return document
 
     @staticmethod
-    def save_document_without_dataset_id(tenant_id: str, document_data: dict, account: Account):
+    def save_document_without_dataset_id(tenant_id: str, knowledge_config: KnowledgeConfig, account: Account):
         features = FeatureService.get_features(current_user.current_tenant_id)
 
         if features.billing.enabled:
             count = 0
-            if document_data["data_source"]["type"] == "upload_file":
-                upload_file_list = document_data["data_source"]["info_list"]["file_info_list"]["file_ids"]
+            if knowledge_config.data_source.data_source_type == "upload_file":
+                upload_file_list = knowledge_config.data_source.file_info_list.file_ids
                 count = len(upload_file_list)
-            elif document_data["data_source"]["type"] == "notion_import":
-                notion_info_list = document_data["data_source"]["info_list"]["notion_info_list"]
+            elif knowledge_config.data_source.data_source_type == "notion_import":
+                notion_info_list = knowledge_config.data_source.notion_info_list
                 for notion_info in notion_info_list:
                     count = count + len(notion_info["pages"])
-            elif document_data["data_source"]["type"] == "website_crawl":
-                website_info = document_data["data_source"]["info_list"]["website_info_list"]
-                count = len(website_info["urls"])
+            elif knowledge_config.data_source.data_source_type == "website_crawl":
+                website_info = knowledge_config.data_source.website_info_list
+                count = len(website_info.urls)
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
@@ -1100,13 +1100,13 @@ class DocumentService:
 
         dataset_collection_binding_id = None
         retrieval_model = None
-        if document_data["indexing_technique"] == "high_quality":
+        if knowledge_config.indexing_technique == "high_quality":
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                document_data["embedding_model_provider"], document_data["embedding_model"]
+                knowledge_config.embedding_model_provider, knowledge_config.embedding_model
             )
             dataset_collection_binding_id = dataset_collection_binding.id
-            if document_data.get("retrieval_model"):
-                retrieval_model = document_data["retrieval_model"]
+            if knowledge_config.retrieval_model:
+                retrieval_model = knowledge_config.retrieval_model
             else:
                 default_retrieval_model = {
                     "search_method": RetrievalMethod.SEMANTIC_SEARCH.value,
@@ -1115,24 +1115,24 @@ class DocumentService:
                     "top_k": 2,
                     "score_threshold_enabled": False,
                 }
-                retrieval_model = default_retrieval_model
+                retrieval_model = RetrievalModel(**default_retrieval_model)
         # save dataset
         dataset = Dataset(
             tenant_id=tenant_id,
             name="",
-            data_source_type=document_data["data_source"]["type"],
-            indexing_technique=document_data.get("indexing_technique", "high_quality"),
+            data_source_type=knowledge_config.data_source.data_source_type,
+            indexing_technique=knowledge_config.indexing_technique,
             created_by=account.id,
-            embedding_model=document_data.get("embedding_model"),
-            embedding_model_provider=document_data.get("embedding_model_provider"),
+            embedding_model=knowledge_config.embedding_model,
+            embedding_model_provider=knowledge_config.embedding_model_provider,
             collection_binding_id=dataset_collection_binding_id,
-            retrieval_model=retrieval_model,
+            retrieval_model=retrieval_model.model_dump_json() if retrieval_model else None,
         )
 
-        db.session.add(dataset)
+        db.session.add(dataset) # type: ignore  
         db.session.flush()
 
-        documents, batch = DocumentService.save_document_with_dataset_id(dataset, document_data, account)
+        documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account)
 
         cut_length = 18
         cut_name = documents[0].name[:cut_length]
@@ -1143,133 +1143,91 @@ class DocumentService:
         return dataset, documents, batch
 
     @classmethod
-    def document_create_args_validate(cls, args: dict):
-        if "original_document_id" not in args or not args["original_document_id"]:
-            DocumentService.data_source_args_validate(args)
-            DocumentService.process_rule_args_validate(args)
+    def document_create_args_validate(cls, knowledge_config: KnowledgeConfig):
+        if knowledge_config.data_source.data_source_type == "upload_file":
+            DocumentService.data_source_args_validate(knowledge_config.data_source)
+        if knowledge_config.process_rule.mode == "custom":
+            DocumentService.process_rule_args_validate(knowledge_config.process_rule)
         else:
-            if ("data_source" not in args or not args["data_source"]) and (
-                "process_rule" not in args or not args["process_rule"]
+            if ("data_source" not in knowledge_config.data_source or not knowledge_config.data_source) and (
+                "process_rule" not in knowledge_config.process_rule or not knowledge_config.process_rule
             ):
                 raise ValueError("Data source or Process rule is required")
             else:
-                if args.get("data_source"):
-                    DocumentService.data_source_args_validate(args)
-                if args.get("process_rule"):
-                    DocumentService.process_rule_args_validate(args)
+                if knowledge_config.data_source:
+                    DocumentService.data_source_args_validate(knowledge_config.data_source)
+                if knowledge_config.process_rule:
+                    DocumentService.process_rule_args_validate(knowledge_config.process_rule)
 
     @classmethod
-    def data_source_args_validate(cls, args: dict):
-        if "data_source" not in args or not args["data_source"]:
+    def data_source_args_validate(cls, knowledge_config: KnowledgeConfig):
+        if not knowledge_config.data_source:
             raise ValueError("Data source is required")
 
-        if not isinstance(args["data_source"], dict):
-            raise ValueError("Data source is invalid")
-
-        if "type" not in args["data_source"] or not args["data_source"]["type"]:
-            raise ValueError("Data source type is required")
-
-        if args["data_source"]["type"] not in Document.DATA_SOURCES:
+        if knowledge_config.data_source.data_source_type not in Document.DATA_SOURCES:
             raise ValueError("Data source type is invalid")
 
-        if "info_list" not in args["data_source"] or not args["data_source"]["info_list"]:
+        if not knowledge_config.data_source.info_list:
             raise ValueError("Data source info is required")
 
-        if args["data_source"]["type"] == "upload_file":
-            if (
-                "file_info_list" not in args["data_source"]["info_list"]
-                or not args["data_source"]["info_list"]["file_info_list"]
-            ):
+        if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+            if not knowledge_config.data_source.info_list.file_info_list:
                 raise ValueError("File source info is required")
-        if args["data_source"]["type"] == "notion_import":
-            if (
-                "notion_info_list" not in args["data_source"]["info_list"]
-                or not args["data_source"]["info_list"]["notion_info_list"]
-            ):
+        if knowledge_config.data_source.info_list.data_source_type == "notion_import":
+            if not knowledge_config.data_source.info_list.notion_info_list:
                 raise ValueError("Notion source info is required")
-        if args["data_source"]["type"] == "website_crawl":
-            if (
-                "website_info_list" not in args["data_source"]["info_list"]
-                or not args["data_source"]["info_list"]["website_info_list"]
-            ):
+        if knowledge_config.data_source.info_list.data_source_type == "website_crawl":
+            if not knowledge_config.data_source.info_list.website_info_list:
                 raise ValueError("Website source info is required")
 
     @classmethod
-    def process_rule_args_validate(cls, args: dict):
-        if "process_rule" not in args or not args["process_rule"]:
+    def process_rule_args_validate(cls, knowledge_config: KnowledgeConfig):
+        if not knowledge_config.process_rule:
             raise ValueError("Process rule is required")
 
-        if not isinstance(args["process_rule"], dict):
-            raise ValueError("Process rule is invalid")
-
-        if "mode" not in args["process_rule"] or not args["process_rule"]["mode"]:
+        if not knowledge_config.process_rule.mode:
             raise ValueError("Process rule mode is required")
 
-        if args["process_rule"]["mode"] not in DatasetProcessRule.MODES:
+        if knowledge_config.process_rule.mode not in DatasetProcessRule.MODES:
             raise ValueError("Process rule mode is invalid")
 
-        if args["process_rule"]["mode"] == "automatic":
-            args["process_rule"]["rules"] = {}
+        if knowledge_config.process_rule.mode == "automatic":
+            knowledge_config.process_rule["rules"] = {}
         else:
-            if "rules" not in args["process_rule"] or not args["process_rule"]["rules"]:
+            if not knowledge_config.process_rule.rules:
                 raise ValueError("Process rule rules is required")
 
-            if not isinstance(args["process_rule"]["rules"], dict):
-                raise ValueError("Process rule rules is invalid")
-
-            if (
-                "pre_processing_rules" not in args["process_rule"]["rules"]
-                or args["process_rule"]["rules"]["pre_processing_rules"] is None
-            ):
+            if knowledge_config.process_rule.rules.pre_processing_rules is None:
                 raise ValueError("Process rule pre_processing_rules is required")
-
-            if not isinstance(args["process_rule"]["rules"]["pre_processing_rules"], list):
-                raise ValueError("Process rule pre_processing_rules is invalid")
-
+            
             unique_pre_processing_rule_dicts = {}
-            for pre_processing_rule in args["process_rule"]["rules"]["pre_processing_rules"]:
-                if "id" not in pre_processing_rule or not pre_processing_rule["id"]:
+            for pre_processing_rule in knowledge_config.process_rule.rules.pre_processing_rules:
+                if not pre_processing_rule.id:
                     raise ValueError("Process rule pre_processing_rules id is required")
 
-                if pre_processing_rule["id"] not in DatasetProcessRule.PRE_PROCESSING_RULES:
-                    raise ValueError("Process rule pre_processing_rules id is invalid")
-
-                if "enabled" not in pre_processing_rule or pre_processing_rule["enabled"] is None:
-                    raise ValueError("Process rule pre_processing_rules enabled is required")
-
-                if not isinstance(pre_processing_rule["enabled"], bool):
+                if not isinstance(pre_processing_rule.enabled, bool):
                     raise ValueError("Process rule pre_processing_rules enabled is invalid")
 
-                unique_pre_processing_rule_dicts[pre_processing_rule["id"]] = pre_processing_rule
+                unique_pre_processing_rule_dicts[pre_processing_rule.id] = pre_processing_rule
 
-            args["process_rule"]["rules"]["pre_processing_rules"] = list(unique_pre_processing_rule_dicts.values())
+            knowledge_config.process_rule.rules.pre_processing_rules = list(unique_pre_processing_rule_dicts.values())
 
-            if (
-                "segmentation" not in args["process_rule"]["rules"]
-                or args["process_rule"]["rules"]["segmentation"] is None
-            ):
+            if not knowledge_config.process_rule.rules.segmentation:
                 raise ValueError("Process rule segmentation is required")
 
-            if not isinstance(args["process_rule"]["rules"]["segmentation"], dict):
-                raise ValueError("Process rule segmentation is invalid")
-
-            if (
-                "separator" not in args["process_rule"]["rules"]["segmentation"]
-                or not args["process_rule"]["rules"]["segmentation"]["separator"]
-            ):
+            if not knowledge_config.process_rule.rules.segmentation.separator:
                 raise ValueError("Process rule segmentation separator is required")
 
-            if not isinstance(args["process_rule"]["rules"]["segmentation"]["separator"], str):
+            if not isinstance(knowledge_config.process_rule.rules.segmentation.separator, str):
                 raise ValueError("Process rule segmentation separator is invalid")
+            
+            if not (knowledge_config.process_rule.mode == "hierarchical" and knowledge_config.process_rule.rules.parent_mode == "full-doc"):
 
-            if (
-                "max_tokens" not in args["process_rule"]["rules"]["segmentation"]
-                or not args["process_rule"]["rules"]["segmentation"]["max_tokens"]
-            ):
-                raise ValueError("Process rule segmentation max_tokens is required")
+                if not knowledge_config.process_rule.rules.segmentation.max_tokens:
+                    raise ValueError("Process rule segmentation max_tokens is required")   
 
-            if not isinstance(args["process_rule"]["rules"]["segmentation"]["max_tokens"], int):
-                raise ValueError("Process rule segmentation max_tokens is invalid")
+                if not isinstance(knowledge_config.process_rule.rules.segmentation.max_tokens, int):
+                    raise ValueError("Process rule segmentation max_tokens is invalid")
 
     @classmethod
     def estimate_args_validate(cls, args: dict):
