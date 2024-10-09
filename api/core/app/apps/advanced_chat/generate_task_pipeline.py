@@ -1,7 +1,6 @@
 import json
 import logging
 import time
-import uuid
 from collections.abc import Generator
 from typing import Any, Optional, Union
 
@@ -101,7 +100,6 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             user_id = self._user.id
 
         self._workflow = workflow
-        workflow_run_id = str(uuid.uuid4())
         self._conversation = conversation
         self._message = message
         self._workflow_system_variables = {
@@ -109,10 +107,6 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             SystemVariableKey.FILES: application_generate_entity.files,
             SystemVariableKey.CONVERSATION_ID: conversation.id,
             SystemVariableKey.USER_ID: user_id,
-            SystemVariableKey.DIALOGUE_COUNT: conversation.dialogue_count,
-            SystemVariableKey.APP_ID: application_generate_entity.app_config.app_id,
-            SystemVariableKey.WORKFLOW_ID: workflow.id,
-            SystemVariableKey.WORKFLOW_RUN_ID: workflow_run_id,
         }
 
         self._task_state = WorkflowTaskState()
