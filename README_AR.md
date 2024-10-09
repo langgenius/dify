@@ -179,10 +179,13 @@ docker compose up -d
 
 #### استخدام Terraform للتوزيع
 
+انشر Dify إلى منصة السحابة بنقرة واحدة باستخدام [terraform](https://www.terraform.io/)
+
 ##### Azure Global
-استخدم [terraform](https://www.terraform.io/) لنشر Dify على Azure بنقرة واحدة.
 - [Azure Terraform بواسطة @nikawang](https://github.com/nikawang/dify-azure-terraform)
 
+##### Google Cloud
+- [Google Cloud Terraform بواسطة @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 ## المساهمة
 
