@@ -45,8 +45,6 @@ ignore = [
     "E721", # type-comparison
     "E722", # bare-except
     "E731", # lambda-assignment
-    "F403", # undefined-local-with-import-star
-    "F405", # undefined-local-with-import-star-usage
     "F821", # undefined-name
     "F841", # unused-variable
     "FURB113", # repeated-append
