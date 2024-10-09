@@ -63,7 +63,9 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       annotation_reply: features.annotationReply,
     } as ChatConfig
   }, [configTemplate, features])
-  const inputsForm = modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({ ...item, label: item.name, variable: item.key })) as InputForm[]
+  const inputsForm = useMemo(() => {
+    return modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({ ...item, label: item.name, variable: item.key })) as InputForm[]
+  }, [modelConfig.configs.prompt_variables])
   const {
     chatList,
     chatListRef,
