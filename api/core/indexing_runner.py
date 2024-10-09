@@ -211,9 +211,9 @@ class IndexingRunner:
         tenant_id: str,
         extract_settings: list[ExtractSetting],
         tmp_processing_rule: dict,
-        doc_form: str = None,
+        doc_form: Optional[str] = None,
         doc_language: str = "English",
-        dataset_id: str = None,
+        dataset_id: Optional[str] = None,
         indexing_technique: str = "economy",
     ) -> dict:
         """
