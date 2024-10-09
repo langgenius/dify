@@ -24,12 +24,17 @@ class PluginInstallationManager(BasePluginManager):
             params={"page": 1, "page_size": 256},
         )
 
-    def install_from_pkg(self, tenant_id: str, pkg: bytes) -> Generator[InstallPluginMessage, None, None]:
+    def install_from_pkg(
+        self, tenant_id: str, pkg: bytes, verify_signature: bool = False
+    ) -> Generator[InstallPluginMessage, None, None]:
         """
         Install a plugin from a package.
         """
         # using multipart/form-data to encode body
-        body = {"dify_pkg": ("dify_pkg", pkg, "application/octet-stream")}
+        body = {
+            "dify_pkg": ("dify_pkg", pkg, "application/octet-stream"),
+            "verify_signature": "true" if verify_signature else "false",
+        }
 
         return self._request_with_plugin_daemon_response_stream(
             "POST",
