@@ -4,15 +4,14 @@ import { NextResponse } from 'next/server'
 export function middleware(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   // style-src 'self' 'nonce-${nonce}';
-  const whiteList = 'https://cloud.dify.dev/ https://upload.dify.dev/ https://cloud.dify.ai/ https://upload.dify.ai/ https://analytics.google.com https://googletagmanager.com https://api.github.com *.sentry.io'
-  // const csp = (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_EDITION !== 'SELF_HOSTED') ? `'nonce-${nonce}'` : '\'unsafe-eval\' \'unsafe-inline\''
-  const csp = '\'unsafe-eval\' \'unsafe-inline\''
+  const whiteList = '*.dify.dev *.dify.ai *.sentry.io http://localhost http://127.0.0.1 https://analytics.google.com https://googletagmanager.com https://api.github.com'
+  const csp = (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_EDITION !== 'SELF_HOSTED') ? `'nonce-${nonce}'` : '\'unsafe-eval\' \'unsafe-inline\''
 
   const cspHeader = `
     default-src 'self' ${csp} blob: data: ${whiteList};
     connect-src 'self' ${csp} blob: data: ${whiteList};
     script-src 'self' ${csp} blob: ${whiteList};
-    style-src 'self' ${csp} ${whiteList};
+    style-src 'self' 'unsafe-inline' ${whiteList};
     worker-src 'self' ${csp} blob: ${whiteList};
     media-src 'self' ${csp} blob: data: ${whiteList};
     img-src 'self' ${csp} blob: data: ${whiteList};
