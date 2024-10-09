@@ -10,8 +10,8 @@ from flask import Flask
 from extensions.storage.base_storage import BaseStorage
 
 
-class BaiduStorage(BaseStorage):
-    """Implementation for baidu obs storage."""
+class BaiduObsStorage(BaseStorage):
+    """Implementation for Baidu OBS storage."""
 
     def __init__(self, app: Flask):
         super().__init__(app)
