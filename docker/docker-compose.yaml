@@ -207,11 +207,13 @@ x-shared-env: &shared-api-worker-env
   WORKFLOW_CALL_MAX_DEPTH: ${WORKFLOW_MAX_EXECUTION_TIME:-5}
   SSRF_PROXY_HTTP_URL: ${SSRF_PROXY_HTTP_URL:-http://ssrf_proxy:3128}
   SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-http://ssrf_proxy:3128}
+  HTTP_REQUEST_NODE_MAX_BINARY_SIZE: ${HTTP_REQUEST_NODE_MAX_BINARY_SIZE:-10485760}
+  HTTP_REQUEST_NODE_MAX_TEXT_SIZE: ${HTTP_REQUEST_NODE_MAX_TEXT_SIZE:-1048576}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.8.3
+    image: langgenius/dify-api:0.9.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -231,7 +233,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.8.3
+    image: langgenius/dify-api:0.9.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -250,7 +252,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.8.3
+    image: langgenius/dify-web:0.9.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -628,7 +630,7 @@ services:
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.1
     container_name: elasticsearch
     profiles:
       - elasticsearch
@@ -655,7 +657,7 @@ services:
   # https://www.elastic.co/guide/en/kibana/current/docker.html
   # https://www.elastic.co/guide/en/kibana/current/settings.html
   kibana:
-    image: docker.elastic.co/kibana/kibana:8.14.3
+    image: docker.elastic.co/kibana/kibana:8.15.1
     container_name: kibana
     profiles:
       - elasticsearch

@@ -56,7 +56,7 @@ class TencentVector(BaseVector):
             return self._client.create_database(database_name=self._client_config.database)
 
     def get_type(self) -> str:
-        return "tencent"
+        return VectorType.TENCENT
 
     def to_index_struct(self) -> dict:
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}

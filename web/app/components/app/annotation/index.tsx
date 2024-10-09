@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pagination } from 'react-headless-pagination'
+import { useDebounce } from 'ahooks'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import Toast from '../../base/toast'
 import Filter from './filter'
@@ -67,10 +68,11 @@ const Annotation: FC<Props> = ({
 
   const [queryParams, setQueryParams] = useState<QueryParam>({})
   const [currPage, setCurrPage] = React.useState<number>(0)
+  const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
   const query = {
     page: currPage + 1,
     limit: APP_PAGE_LIMIT,
-    keyword: queryParams.keyword || '',
+    keyword: debouncedQueryParams.keyword || '',
   }
 
   const [controlUpdateList, setControlUpdateList] = useState(Date.now())
@@ -232,8 +234,8 @@ const Annotation: FC<Props> = ({
             middlePagesSiblingCount={1}
             setCurrentPage={setCurrPage}
             totalPages={Math.ceil(total / APP_PAGE_LIMIT)}
-            truncatableClassName="w-8 px-0.5 text-center"
-            truncatableText="..."
+            truncableClassName="w-8 px-0.5 text-center"
+            truncableText="..."
           >
             <Pagination.PrevButton
               disabled={currPage === 0}

@@ -196,9 +196,13 @@ If you'd like to configure a highly-available setup, there are community-contrib
 
 #### Using Terraform for Deployment
 
+Deploy Dify to Cloud Platform with a single click using [terraform](https://www.terraform.io/)
+
 ##### Azure Global
-Deploy Dify to Azure with a single click using [terraform](https://www.terraform.io/).
 - [Azure Terraform by @nikawang](https://github.com/nikawang/dify-azure-terraform)
+
+##### Google Cloud
+- [Google Cloud Terraform by @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 ## Contributing
 

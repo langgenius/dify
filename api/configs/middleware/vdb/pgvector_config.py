@@ -33,3 +33,13 @@ class PGVectorConfig(BaseSettings):
         description="Name of the PostgreSQL database to connect to",
         default=None,
     )
+
+    PGVECTOR_MIN_CONNECTION: PositiveInt = Field(
+        description="Min connection of the PostgreSQL database",
+        default=1,
+    )
+
+    PGVECTOR_MAX_CONNECTION: PositiveInt = Field(
+        description="Max connection of the PostgreSQL database",
+        default=5,
+    )

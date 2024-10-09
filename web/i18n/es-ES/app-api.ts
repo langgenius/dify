@@ -78,6 +78,7 @@ const translation = {
     pathParams: 'Parámetros de ruta',
     query: 'Consulta',
   },
+  regenerate: 'Regenerar',
 }
 
 export default translation
