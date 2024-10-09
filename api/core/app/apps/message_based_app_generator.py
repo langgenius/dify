@@ -148,7 +148,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         # get from source
         end_user_id = None
         account_id = None
-        if application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
+        if application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
             from_source = "api"
             end_user_id = application_generate_entity.user_id
         else:
@@ -165,11 +165,11 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             model_provider = application_generate_entity.model_conf.provider
             model_id = application_generate_entity.model_conf.model
             override_model_configs = None
-            if app_config.app_model_config_from == EasyUIBasedAppModelConfigFrom.ARGS and app_config.app_mode in [
+            if app_config.app_model_config_from == EasyUIBasedAppModelConfigFrom.ARGS and app_config.app_mode in {
                 AppMode.AGENT_CHAT,
                 AppMode.CHAT,
                 AppMode.COMPLETION,
-            ]:
+            }:
                 override_model_configs = app_config.app_model_config_dict
 
         # get conversation introduction
@@ -218,6 +218,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             answer_tokens=0,
             answer_unit_price=0,
             answer_price_unit=0,
+            parent_message_id=getattr(application_generate_entity, "parent_message_id", None),
             provider_response_latency=0,
             total_price=0,
             currency="USD",

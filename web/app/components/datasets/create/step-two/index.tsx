@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
@@ -13,6 +13,8 @@ import { groupBy } from 'lodash-es'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
+import unescape from './unescape'
+import escape from './escape'
 import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
@@ -31,6 +33,7 @@ import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/componen
 import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
 import type { NotionPage } from '@/models/common'
+import { DataSourceProvider } from '@/models/common'
 import { DataSourceType, DocForm } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import Switch from '@/app/components/base/switch'
@@ -61,7 +64,8 @@ type StepTwoProps = {
   notionPages?: NotionPage[]
   websitePages?: CrawlResultItem[]
   crawlOptions?: CrawlOptions
-  fireCrawlJobId?: string
+  websiteCrawlProvider?: DataSourceProvider
+  websiteCrawlJobId?: string
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
   updateResultCache?: (res: createDocumentResponse) => void
@@ -78,6 +82,8 @@ enum IndexingType {
   ECONOMICAL = 'economy',
 }
 
+const DEFAULT_SEGMENT_IDENTIFIER = '\\n\\n'
+
 const StepTwo = ({
   isSetting,
   documentDetail,
@@ -90,7 +96,8 @@ const StepTwo = ({
   notionPages = [],
   websitePages = [],
   crawlOptions,
-  fireCrawlJobId = '',
+  websiteCrawlProvider = DataSourceProvider.fireCrawl,
+  websiteCrawlJobId = '',
   onStepChange,
   updateIndexingTypeCache,
   updateResultCache,
@@ -110,8 +117,11 @@ const StepTwo = ({
   const previewScrollRef = useRef<HTMLDivElement>(null)
   const [previewScrolled, setPreviewScrolled] = useState(false)
   const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.AUTO)
-  const [segmentIdentifier, setSegmentIdentifier] = useState('\\n')
-  const [max, setMax] = useState(5000) // default chunk length
+  const [segmentIdentifier, doSetSegmentIdentifier] = useState(DEFAULT_SEGMENT_IDENTIFIER)
+  const setSegmentIdentifier = useCallback((value: string) => {
+    doSetSegmentIdentifier(value ? escape(value) : DEFAULT_SEGMENT_IDENTIFIER)
+  }, [])
+  const [max, setMax] = useState(4000) // default chunk length
   const [overlap, setOverlap] = useState(50)
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
@@ -183,7 +193,7 @@ const StepTwo = ({
   }
   const resetRules = () => {
     if (defaultConfig) {
-      setSegmentIdentifier((defaultConfig.segmentation.separator === '\n' ? '\\n' : defaultConfig.segmentation.separator) || '\\n')
+      setSegmentIdentifier(defaultConfig.segmentation.separator)
       setMax(defaultConfig.segmentation.max_tokens)
       setOverlap(defaultConfig.segmentation.chunk_overlap)
       setRules(defaultConfig.pre_processing_rules)
@@ -217,7 +227,7 @@ const StepTwo = ({
       const ruleObj = {
         pre_processing_rules: rules,
         segmentation: {
-          separator: segmentIdentifier === '\\n' ? '\n' : segmentIdentifier,
+          separator: unescape(segmentIdentifier),
           max_tokens: max,
           chunk_overlap: overlap,
         },
@@ -253,8 +263,8 @@ const StepTwo = ({
 
   const getWebsiteInfo = () => {
     return {
-      provider: 'firecrawl',
-      job_id: fireCrawlJobId,
+      provider: websiteCrawlProvider,
+      job_id: websiteCrawlJobId,
       urls: websitePages.map(page => page.source_url),
       only_main_content: crawlOptions?.only_main_content,
     }
@@ -394,7 +404,7 @@ const StepTwo = ({
     try {
       const res = await fetchDefaultProcessRule({ url: '/datasets/process-rule' })
       const separator = res.rules.segmentation.separator
-      setSegmentIdentifier((separator === '\n' ? '\\n' : separator) || '\\n')
+      setSegmentIdentifier(separator)
       setMax(res.rules.segmentation.max_tokens)
       setOverlap(res.rules.segmentation.chunk_overlap)
       setRules(res.rules.pre_processing_rules)
@@ -411,7 +421,7 @@ const StepTwo = ({
       const separator = rules.segmentation.separator
       const max = rules.segmentation.max_tokens
       const overlap = rules.segmentation.chunk_overlap
-      setSegmentIdentifier((separator === '\n' ? '\\n' : separator) || '\\n')
+      setSegmentIdentifier(separator)
       setMax(max)
       setOverlap(overlap)
       setRules(rules.pre_processing_rules)
@@ -616,12 +626,22 @@ const StepTwo = ({
                 <div className={s.typeFormBody}>
                   <div className={s.formRow}>
                     <div className='w-full'>
-                      <div className={s.label}>{t('datasetCreation.stepTwo.separator')}</div>
+                      <div className={s.label}>
+                        {t('datasetCreation.stepTwo.separator')}
+                        <Tooltip
+                          popupContent={
+                            <div className='max-w-[200px]'>
+                              {t('datasetCreation.stepTwo.separatorTip')}
+                            </div>
+                          }
+                        />
+                      </div>
                       <input
                         type="text"
                         className={s.input}
-                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''} value={segmentIdentifier}
-                        onChange={e => setSegmentIdentifier(e.target.value)}
+                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''}
+                        value={segmentIdentifier}
+                        onChange={e => doSetSegmentIdentifier(e.target.value)}
                       />
                     </div>
                   </div>
@@ -803,7 +823,7 @@ const StepTwo = ({
                   <div className={s.label}>
                     <div className='shrink-0 mr-4'>{t('datasetSettings.form.retrievalSetting.title')}</div>
                     <div className='leading-[18px] text-xs font-normal text-gray-500'>
-                      <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-6-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                      <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                       {t('datasetSettings.form.retrievalSetting.longDescription')}
                     </div>
                   </div>

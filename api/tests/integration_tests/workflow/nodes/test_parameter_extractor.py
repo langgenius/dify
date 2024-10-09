@@ -1,4 +1,3 @@
-import json
 import os
 import time
 import uuid
@@ -411,5 +410,5 @@ def test_chat_parameter_extractor_with_memory(setup_anthropic_mock):
         if latest_role is not None:
             assert latest_role != prompt.get("role")
 
-        if prompt.get("role") in ["user", "assistant"]:
+        if prompt.get("role") in {"user", "assistant"}:
             latest_role = prompt.get("role")

@@ -1,6 +1,7 @@
 import time
 from typing import Optional
 
+from core.embedding.embedding_constant import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
@@ -23,7 +24,12 @@ class HuggingfaceTeiTextEmbeddingModel(TextEmbeddingModel):
     """
 
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
@@ -38,12 +44,12 @@ class HuggingfaceTeiTextEmbeddingModel(TextEmbeddingModel):
         :param credentials: model credentials
         :param texts: texts to embed
         :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
         server_url = credentials["server_url"]
 
-        if server_url.endswith("/"):
-            server_url = server_url[:-1]
+        server_url = server_url.removesuffix("/")
 
         # get model properties
         context_size = self._get_context_size(model, credentials)
@@ -119,8 +125,7 @@ class HuggingfaceTeiTextEmbeddingModel(TextEmbeddingModel):
         num_tokens = 0
         server_url = credentials["server_url"]
 
-        if server_url.endswith("/"):
-            server_url = server_url[:-1]
+        server_url = server_url.removesuffix("/")
 
         batch_tokens = TeiHelper.invoke_tokenize(server_url, texts)
         num_tokens = sum(len(tokens) for tokens in batch_tokens)

@@ -1,0 +1,62 @@
+identity:
+  name: list_events
+  author: Doug Lea
+  label:
+    en_US: List Events
+    zh_Hans: 获取日程列表
+description:
+  human:
+    en_US: List Events
+    zh_Hans: 获取日程列表
+  llm: A tool for listing events in Feishu.(在飞书中获取日程列表)
+parameters:
+  - name: start_time
+    type: string
+    required: false
+    label:
+      en_US: Start Time
+      zh_Hans: 开始时间
+    human_description:
+      en_US: |
+        The start time, defaults to 0:00 of the current day if not provided, format: 2006-01-02 15:04:05.
+      zh_Hans: 开始时间，不传值时默认当天 0 点时间，格式为:2006-01-02 15:04:05。
+    llm_description: 开始时间，不传值时默认当天 0 点时间，格式为:2006-01-02 15:04:05。
+    form: llm
+
+  - name: end_time
+    type: string
+    required: false
+    label:
+      en_US: End Time
+      zh_Hans: 结束时间
+    human_description:
+      en_US: |
+        The end time, defaults to 23:59 of the current day if not provided, format: 2006-01-02 15:04:05.
+      zh_Hans: 结束时间，不传值时默认当天 23:59 分时间，格式为:2006-01-02 15:04:05。
+    llm_description: 结束时间，不传值时默认当天 23:59 分时间，格式为:2006-01-02 15:04:05。
+    form: llm
+
+  - name: page_size
+    type: number
+    required: false
+    default: 50
+    label:
+      en_US: Page Size
+      zh_Hans: 分页大小
+    human_description:
+      en_US: The page size, i.e., the number of data entries returned in a single request. The default value is 50, and the value range is [50,1000].
+      zh_Hans: 分页大小，即单次请求所返回的数据条目数。默认值为 50，取值范围为 [50,1000]。
+    llm_description: 分页大小，即单次请求所返回的数据条目数。默认值为 50，取值范围为 [50,1000]。
+    form: llm
+
+  - name: page_token
+    type: string
+    required: false
+    label:
+      en_US: Page Token
+      zh_Hans: 分页标记
+    human_description:
+      en_US: The pagination token. Leave it blank for the first request, indicating to start traversing from the beginning; when the pagination query result has more items, a new page_token will be returned simultaneously, which can be used to obtain the query result in the next traversal.
+      zh_Hans: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。
+    llm_description: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。
+    form: llm

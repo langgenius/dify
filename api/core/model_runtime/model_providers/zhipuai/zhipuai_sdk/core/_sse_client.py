@@ -1,13 +1,16 @@
 from __future__ import annotations
 
+import inspect
 import json
 from collections.abc import Iterator, Mapping
-from typing import TYPE_CHECKING, Generic
+from typing import TYPE_CHECKING, Generic, TypeGuard, cast
 
 import httpx
 
+from . import get_origin
 from ._base_type import ResponseT
 from ._errors import APIResponseError
+from ._utils import extract_type_var_from_base, is_mapping
 
 _FIELD_SEPARATOR = ":"
 
@@ -53,8 +56,41 @@ class StreamResponse(Generic[ResponseT]):
                         request=self.response.request,
                         json_data=data["error"],
                     )
+            if sse.event is None:
+                data = sse.json_data()
+                if is_mapping(data) and data.get("error"):
+                    message = None
+                    error = data.get("error")
+                    if is_mapping(error):
+                        message = error.get("message")
+                    if not message or not isinstance(message, str):
+                        message = "An error occurred during streaming"
 
+                    raise APIResponseError(
+                        message=message,
+                        request=self.response.request,
+                        json_data=data["error"],
+                    )
                 yield self._data_process_func(data=data, cast_type=self._cast_type, response=self.response)
+
+            else:
+                data = sse.json_data()
+
+                if sse.event == "error" and is_mapping(data) and data.get("error"):
+                    message = None
+                    error = data.get("error")
+                    if is_mapping(error):
+                        message = error.get("message")
+                    if not message or not isinstance(message, str):
+                        message = "An error occurred during streaming"
+
+                    raise APIResponseError(
+                        message=message,
+                        request=self.response.request,
+                        json_data=data["error"],
+                    )
+                yield self._data_process_func(data=data, cast_type=self._cast_type, response=self.response)
+
         for sse in iterator:
             pass
 
@@ -127,8 +163,7 @@ class SSELineParser:
 
         field, _p, value = line.partition(":")
 
-        if value.startswith(" "):
-            value = value[1:]
+        value = value.removeprefix(" ")
         if field == "data":
             self._data.append(value)
         elif field == "event":
@@ -139,3 +174,33 @@ class SSELineParser:
             except (TypeError, ValueError):
                 pass
         return
+
+
+def is_stream_class_type(typ: type) -> TypeGuard[type[StreamResponse[object]]]:
+    """TypeGuard for determining whether or not the given type is a subclass of `Stream` / `AsyncStream`"""
+    origin = get_origin(typ) or typ
+    return inspect.isclass(origin) and issubclass(origin, StreamResponse)
+
+
+def extract_stream_chunk_type(
+    stream_cls: type,
+    *,
+    failure_message: str | None = None,
+) -> type:
+    """Given a type like `StreamResponse[T]`, returns the generic type variable `T`.
+
+    This also handles the case where a concrete subclass is given, e.g.
+    ```py
+    class MyStream(StreamResponse[bytes]):
+        ...
+
+    extract_stream_chunk_type(MyStream) -> bytes
+    ```
+    """
+
+    return extract_type_var_from_base(
+        stream_cls,
+        index=0,
+        generic_bases=cast("tuple[type, ...]", (StreamResponse,)),
+        failure_message=failure_message,
+    )

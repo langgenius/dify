@@ -16,7 +16,7 @@ class AppGenerateResponseConverter(ABC):
     def convert(
         cls, response: Union[AppBlockingResponse, Generator[AppStreamResponse, Any, None]], invoke_from: InvokeFrom
     ) -> dict[str, Any] | Generator[str, Any, None]:
-        if invoke_from in [InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API]:
+        if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API}:
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_full_response(response)
             else:
@@ -75,10 +75,10 @@ class AppGenerateResponseConverter(ABC):
         :return:
         """
         # show_retrieve_source
+        updated_resources = []
         if "retriever_resources" in metadata:
-            metadata["retriever_resources"] = []
             for resource in metadata["retriever_resources"]:
-                metadata["retriever_resources"].append(
+                updated_resources.append(
                     {
                         "segment_id": resource["segment_id"],
                         "position": resource["position"],
@@ -87,6 +87,7 @@ class AppGenerateResponseConverter(ABC):
                         "content": resource["content"],
                     }
                 )
+            metadata["retriever_resources"] = updated_resources
 
         # show annotation reply
         if "annotation_reply" in metadata:

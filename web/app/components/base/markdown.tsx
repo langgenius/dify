@@ -5,6 +5,7 @@ import RemarkMath from 'remark-math'
 import RemarkBreaks from 'remark-breaks'
 import RehypeKatex from 'rehype-katex'
 import RemarkGfm from 'remark-gfm'
+import RehypeRaw from 'rehype-raw'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import type { RefObject } from 'react'
@@ -18,6 +19,7 @@ import ImageGallery from '@/app/components/base/image-gallery'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import VideoGallery from '@/app/components/base/video-gallery'
 import AudioGallery from '@/app/components/base/audio-gallery'
+import SVGRenderer from '@/app/components/base/svg-gallery'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -40,6 +42,7 @@ const capitalizationLanguageNameMap: Record<string, string> = {
   powershell: 'PowerShell',
   json: 'JSON',
   latex: 'Latex',
+  svg: 'SVG',
 }
 const getCorrectCapitalizationLanguageName = (language: string) => {
   if (!language)
@@ -107,72 +110,87 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
 // Error: Minified React error 185;
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
+
 const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }) => {
   const [isSVG, setIsSVG] = useState(true)
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
-  let chartData = JSON.parse(String('{"title":{"text":"ECharts error - Wrong JSON format."}}').replace(/\n$/, ''))
-  if (language === 'echarts') {
-    try {
-      chartData = JSON.parse(String(children).replace(/\n$/, ''))
+  const chartData = useMemo(() => {
+    if (language === 'echarts') {
+      try {
+        return JSON.parse(String(children).replace(/\n$/, ''))
+      }
+      catch (error) {}
     }
-    catch (error) {
-    }
-  }
+    return JSON.parse('{"title":{"text":"ECharts error - Wrong JSON format."}}')
+  }, [language, children])
 
-  // Use `useMemo` to ensure that `SyntaxHighlighter` only re-renders when necessary
-  return useMemo(() => {
-    return (!inline && match)
-      ? (
-        <div>
-          <div
-            className='flex justify-between h-8 items-center p-1 pl-3 border-b'
-            style={{
-              borderColor: 'rgba(0, 0, 0, 0.05)',
-            }}
-          >
-            <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
-            <div style={{ display: 'flex' }}>
-              {language === 'mermaid' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
-              <CopyBtn
-                className='mr-1'
-                value={String(children).replace(/\n$/, '')}
-                isPlain
-              />
-            </div>
-          </div>
-          {(language === 'mermaid' && isSVG)
-            ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
-            : (
-              (language === 'echarts')
-                ? (<div style={{ minHeight: '250px', minWidth: '250px' }}><ErrorBoundary><ReactEcharts
-                  option={chartData}
-                >
-                </ReactEcharts></ErrorBoundary></div>)
-                : (<SyntaxHighlighter
-                  {...props}
-                  style={atelierHeathLight}
-                  customStyle={{
-                    paddingLeft: 12,
-                    backgroundColor: '#fff',
-                  }}
-                  language={match[1]}
-                  showLineNumbers
-                  PreTag="div"
-                >
-                  {String(children).replace(/\n$/, '')}
-                </SyntaxHighlighter>))}
+  const renderCodeContent = useMemo(() => {
+    const content = String(children).replace(/\n$/, '')
+    if (language === 'mermaid' && isSVG) {
+      return <Flowchart PrimitiveCode={content} />
+    }
+    else if (language === 'echarts') {
+      return (
+        <div style={{ minHeight: '350px', minWidth: '700px' }}>
+          <ErrorBoundary>
+            <ReactEcharts option={chartData} />
+          </ErrorBoundary>
         </div>
       )
-      : (
-        <code {...props} className={className}>
-          {children}
-        </code>
+    }
+    else if (language === 'svg' && isSVG) {
+      return (
+        <ErrorBoundary>
+          <SVGRenderer content={content} />
+        </ErrorBoundary>
       )
-  }, [chartData, children, className, inline, isSVG, language, languageShowName, match, props])
-})
+    }
+    else {
+      return (
+        <SyntaxHighlighter
+          {...props}
+          style={atelierHeathLight}
+          customStyle={{
+            paddingLeft: 12,
+            backgroundColor: '#fff',
+          }}
+          language={match?.[1]}
+          showLineNumbers
+          PreTag="div"
+        >
+          {content}
+        </SyntaxHighlighter>
+      )
+    }
+  }, [language, match, props, children, chartData, isSVG])
 
+  if (inline || !match)
+    return <code {...props} className={className}>{children}</code>
+
+  return (
+    <div>
+      <div
+        className='flex justify-between h-8 items-center p-1 pl-3 border-b'
+        style={{
+          borderColor: 'rgba(0, 0, 0, 0.05)',
+        }}
+      >
+        <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
+        <div style={{ display: 'flex' }}>
+          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG}/>}
+          <CopyBtn
+            className='mr-1'
+            value={String(children).replace(/\n$/, '')}
+            isPlain
+          />
+        </div>
+      </div>
+      {renderCodeContent}
+    </div>
+  )
+})
 CodeBlock.displayName = 'CodeBlock'
 
 const VideoBlock: CodeComponent = memo(({ node }) => {
@@ -230,6 +248,7 @@ export function Markdown(props: { content: string; className?: string }) {
         remarkPlugins={[[RemarkGfm, RemarkMath, { singleDollarTextMath: false }], RemarkBreaks]}
         rehypePlugins={[
           RehypeKatex,
+          RehypeRaw as any,
           // The Rehype plug-in is used to remove the ref attribute of an element
           () => {
             return (tree) => {
@@ -244,6 +263,7 @@ export function Markdown(props: { content: string; className?: string }) {
             }
           },
         ]}
+        disallowedElements={['script', 'iframe', 'head', 'html', 'meta', 'link', 'style', 'body']}
         components={{
           code: CodeBlock,
           img: Img,
@@ -266,19 +286,23 @@ export function Markdown(props: { content: string; className?: string }) {
 // This can happen when a component attempts to access an undefined object that references an unregistered map, causing the program to crash.
 
 export default class ErrorBoundary extends Component {
-  constructor(props) {
+  constructor(props: any) {
     super(props)
     this.state = { hasError: false }
   }
 
-  componentDidCatch(error, errorInfo) {
+  componentDidCatch(error: any, errorInfo: any) {
     this.setState({ hasError: true })
     console.error(error, errorInfo)
   }
 
   render() {
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
     if (this.state.hasError)
-      return <div>Oops! ECharts reported a runtime error. <br />(see the browser console for more information)</div>
+      return <div>Oops! An error occurred. This could be due to an ECharts runtime error or invalid SVG content. <br />(see the browser console for more information)</div>
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-expect-error
     return this.props.children
   }
 }

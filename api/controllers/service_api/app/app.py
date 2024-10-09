@@ -42,7 +42,7 @@ class AppParameterApi(Resource):
     @marshal_with(parameters_fields)
     def get(self, app_model: App):
         """Retrieve app parameters."""
-        if app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
+        if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
             workflow = app_model.workflow
             if workflow is None:
                 raise AppUnavailableError()

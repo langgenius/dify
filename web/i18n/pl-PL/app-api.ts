@@ -97,6 +97,7 @@ const translation = {
     pathParams: 'Parametry ścieżki',
     query: 'Zapytanie',
   },
+  regenerate: 'Ponownie wygenerować',
 }
 
 export default translation

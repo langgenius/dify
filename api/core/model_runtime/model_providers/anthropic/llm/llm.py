@@ -169,7 +169,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         stop: Optional[list[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
-        callbacks: list[Callback] = None,
+        callbacks: Optional[list[Callback]] = None,
     ) -> Union[LLMResult, Generator]:
         """
         Code block mode wrapper for invoking large language model
@@ -494,7 +494,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                     mime_type = data_split[0].replace("data:", "")
                                     base64_data = data_split[1]
 
-                                if mime_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
+                                if mime_type not in {"image/jpeg", "image/png", "image/gif", "image/webp"}:
                                     raise ValueError(
                                         f"Unsupported image type {mime_type}, "
                                         f"only support image/jpeg, image/png, image/gif, and image/webp"

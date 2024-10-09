@@ -4,6 +4,7 @@ from flask_restful import Resource, reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
+from constants import UUID_NIL
 from controllers.service_api import api
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -96,7 +97,7 @@ class ChatApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -107,6 +108,7 @@ class ChatApi(Resource):
         parser.add_argument("conversation_id", type=uuid_value, location="json")
         parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
         parser.add_argument("auto_generate_name", type=bool, required=False, default=True, location="json")
+        parser.add_argument("parent_message_id", type=uuid_value, required=False, default=UUID_NIL, location="json")
 
         args = parser.parse_args()
 
@@ -144,7 +146,7 @@ class ChatStopApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, task_id):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)

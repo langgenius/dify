@@ -73,6 +73,14 @@ const translation = {
       maxDepthTooltip: 'Maximale Tiefe für das Crawlen relativ zur eingegebenen URL. Tiefe 0 kratzt nur die Seite der eingegebenen URL, Tiefe 1 kratzt die URL und alles nach der eingegebenen URL + ein / und so weiter.',
       crawlSubPage: 'Unterseiten crawlen',
       scrapTimeInfo: 'Insgesamt {{{total}} Seiten innerhalb von {{time}}s gescrapt',
+      jinaReaderDocLink: 'https://jina.ai/reader',
+      jinaReaderTitle: 'Konvertieren Sie die gesamte Website in Markdown',
+      useSitemap: 'Sitemap verwenden',
+      chooseProvider: 'Wählen Sie einen Anbieter',
+      jinaReaderNotConfigured: 'Jina Reader ist nicht konfiguriert',
+      jinaReaderNotConfiguredDescription: 'Richten Sie Jina Reader ein, indem Sie Ihren kostenlosen API-Schlüssel für den Zugriff eingeben.',
+      useSitemapTooltip: 'Folgen Sie der Sitemap, um die Website zu crawlen. Ist dies nicht der Fall, crawlt Jina Reader iterativ basierend auf der Seitenrelevanz, sodass weniger, aber qualitativ hochwertigere Seiten angezeigt werden.',
+      jinaReaderDoc: 'Erfahre mehr über Jina Reader',
     },
   },
   stepTwo: {
@@ -133,6 +141,7 @@ const translation = {
     datasetSettingLink: 'Wissenseinstellungen.',
     websiteSource: 'Preprocess-Website',
     webpageUnit: 'Seiten',
+    separatorTip: 'Ein Trennzeichen ist das Zeichen, das zum Trennen von Text verwendet wird. \\n\\n und \\n sind häufig verwendete Trennzeichen zum Trennen von Absätzen und Zeilen. In Kombination mit Kommas (\\n\\n,\\n) werden Absätze nach Zeilen segmentiert, wenn die maximale Blocklänge überschritten wird. Sie können auch spezielle, von Ihnen selbst definierte Trennzeichen verwenden (z. B. ***).',
   },
   stepThree: {
     creationTitle: '🎉 Wissen erstellt',
@@ -155,6 +164,11 @@ const translation = {
     apiKeyPlaceholder: 'API-Schlüssel von firecrawl.dev',
     configFirecrawl: 'Konfigurieren von 🔥Firecrawl',
     getApiKeyLinkText: 'Holen Sie sich Ihren API-Schlüssel von firecrawl.dev',
+  },
+  jinaReader: {
+    configJinaReader: 'Jina Reader konfigurieren',
+    apiKeyPlaceholder: 'API-Schlüssel von jina.ai',
+    getApiKeyLinkText: 'Holen Sie sich Ihren kostenlosen API-Schlüssel bei jina.ai',
   },
 }
 

@@ -49,8 +49,7 @@ class HuggingfaceTeiRerankModel(RerankModel):
             return RerankResult(model=model, docs=[])
         server_url = credentials["server_url"]
 
-        if server_url.endswith("/"):
-            server_url = server_url[:-1]
+        server_url = server_url.removesuffix("/")
 
         try:
             results = TeiHelper.invoke_rerank(server_url, query, docs)

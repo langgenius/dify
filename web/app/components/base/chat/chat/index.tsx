@@ -16,6 +16,7 @@ import type {
   ChatConfig,
   ChatItem,
   Feedback,
+  OnRegenerate,
   OnSend,
 } from '../types'
 import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
@@ -42,6 +43,7 @@ export type ChatProps = {
   onStopResponding?: () => void
   noChatInput?: boolean
   onSend?: OnSend
+  onRegenerate?: OnRegenerate
   chatContainerClassName?: string
   chatContainerInnerClassName?: string
   chatFooterClassName?: string
@@ -67,6 +69,7 @@ const Chat: FC<ChatProps> = ({
   appData,
   config,
   onSend,
+  onRegenerate,
   chatList,
   isResponding,
   noStopResponding,
@@ -109,9 +112,9 @@ const Chat: FC<ChatProps> = ({
   const userScrolledRef = useRef(false)
 
   const handleScrollToBottom = useCallback(() => {
-    if (chatContainerRef.current && !userScrolledRef.current)
+    if (chatList.length > 1 && chatContainerRef.current && !userScrolledRef.current)
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
-  }, [])
+  }, [chatList.length])
 
   const handleWindowResize = useCallback(() => {
     if (chatContainerRef.current)
@@ -186,6 +189,7 @@ const Chat: FC<ChatProps> = ({
       answerIcon={answerIcon}
       allToolIcons={allToolIcons}
       onSend={onSend}
+      onRegenerate={onRegenerate}
       onAnnotationAdded={onAnnotationAdded}
       onAnnotationEdited={onAnnotationEdited}
       onAnnotationRemoved={onAnnotationRemoved}
@@ -219,6 +223,7 @@ const Chat: FC<ChatProps> = ({
                       showPromptLog={showPromptLog}
                       chatAnswerContainerInner={chatAnswerContainerInner}
                       hideProcessDetail={hideProcessDetail}
+                      noChatInput={noChatInput}
                     />
                   )
                 }

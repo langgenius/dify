@@ -43,6 +43,7 @@ const LocaleLayout = ({
         data-public-sentry-dsn={process.env.NEXT_PUBLIC_SENTRY_DSN}
         data-public-maintenance-notice={process.env.NEXT_PUBLIC_MAINTENANCE_NOTICE}
         data-public-site-about={process.env.NEXT_PUBLIC_SITE_ABOUT}
+        data-public-text-generation-timeout-ms={process.env.NEXT_PUBLIC_TEXT_GENERATION_TIMEOUT_MS}
       >
         <Topbar />
         <BrowserInitor>

@@ -41,7 +41,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.7
+    image: langgenius/dify-sandbox:0.2.9
     restart: always
     environment:
       # The DifySandbox configurations
@@ -63,7 +63,7 @@ services:
 
   # ssrf_proxy server
   # for more information, please refer to
-  # https://docs.dify.ai/learn-more/faq/self-host-faq#id-18.-why-is-ssrf_proxy-needed
+  # https://docs.dify.ai/learn-more/faq/install-faq#id-18.-why-is-ssrf_proxy-needed
   ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always
@@ -89,6 +89,7 @@ services:
   weaviate:
     image: semitechnologies/weaviate:1.19.0
     profiles:
+      - ""
       - weaviate
     restart: always
     volumes:

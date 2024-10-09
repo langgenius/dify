@@ -1,8 +1,8 @@
 # standard import
 import base64
-import io
 import json
 import logging
+import mimetypes
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
@@ -17,7 +17,6 @@ from botocore.exceptions import (
     ServiceNotInRegionError,
     UnknownServiceError,
 )
-from PIL.Image import Image
 
 # local import
 from core.model_runtime.callbacks.base_callback import Callback
@@ -64,6 +63,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         {"prefix": "us.anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "eu.anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
+        {"prefix": "us.meta.llama3-2", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "meta.llama", "support_system_prompts": True, "support_tool_use": False},
         {"prefix": "mistral.mistral-7b-instruct", "support_system_prompts": False, "support_tool_use": False},
         {"prefix": "mistral.mixtral-8x7b-instruct", "support_system_prompts": False, "support_tool_use": False},
@@ -71,6 +71,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         {"prefix": "mistral.mistral-small", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "cohere.command-r", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "amazon.titan", "support_system_prompts": False, "support_tool_use": False},
+        {"prefix": "ai21.jamba-1-5", "support_system_prompts": True, "support_tool_use": False},
     ]
 
     @staticmethod
@@ -91,7 +92,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         stop: Optional[list[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
-        callbacks: list[Callback] = None,
+        callbacks: Optional[list[Callback]] = None,
     ) -> Union[LLMResult, Generator]:
         """
         Code block mode wrapper for invoking large language model
@@ -443,8 +444,9 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                             try:
                                 url = message_content.data
                                 image_content = requests.get(url).content
-                                with Image.open(io.BytesIO(image_content)) as img:
-                                    mime_type = f"image/{img.format.lower()}"
+                                if "?" in url:
+                                    url = url.split("?")[0]
+                                mime_type, _ = mimetypes.guess_type(url)
                                 base64_data = base64.b64encode(image_content).decode("utf-8")
                             except Exception as ex:
                                 raise ValueError(f"Failed to fetch image data from url {message_content.data}, {ex}")
@@ -454,7 +456,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                             base64_data = data_split[1]
                             image_content = base64.b64decode(base64_data)
 
-                        if mime_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
+                        if mime_type not in {"image/jpeg", "image/png", "image/gif", "image/webp"}:
                             raise ValueError(
                                 f"Unsupported image type {mime_type}, "
                                 f"only support image/jpeg, image/png, image/gif, and image/webp"
@@ -886,16 +888,16 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         if error_code == "AccessDeniedException":
             return InvokeAuthorizationError(error_msg)
-        elif error_code in ["ResourceNotFoundException", "ValidationException"]:
+        elif error_code in {"ResourceNotFoundException", "ValidationException"}:
             return InvokeBadRequestError(error_msg)
-        elif error_code in ["ThrottlingException", "ServiceQuotaExceededException"]:
+        elif error_code in {"ThrottlingException", "ServiceQuotaExceededException"}:
             return InvokeRateLimitError(error_msg)
-        elif error_code in [
+        elif error_code in {
             "ModelTimeoutException",
             "ModelErrorException",
             "InternalServerException",
             "ModelNotReadyException",
-        ]:
+        }:
             return InvokeServerUnavailableError(error_msg)
         elif error_code == "ModelStreamErrorException":
             return InvokeConnectionError(error_msg)

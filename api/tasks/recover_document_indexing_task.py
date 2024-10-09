@@ -29,7 +29,7 @@ def recover_document_indexing_task(dataset_id: str, document_id: str):
 
     try:
         indexing_runner = IndexingRunner()
-        if document.indexing_status in ["waiting", "parsing", "cleaning"]:
+        if document.indexing_status in {"waiting", "parsing", "cleaning"}:
             indexing_runner.run([document])
         elif document.indexing_status == "splitting":
             indexing_runner.run_in_splitting_status(document)

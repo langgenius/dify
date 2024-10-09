@@ -96,6 +96,8 @@ const translation = {
     parallelRun: 'समानांतर रन',
     jumpToNode: 'इस नोड पर जाएं',
     addParallelNode: 'समानांतर नोड जोड़ें',
+    parallel: 'समानांतर',
+    branch: 'शाखा',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',

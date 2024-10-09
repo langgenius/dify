@@ -72,6 +72,80 @@ const translation = {
   nTo1RetrievalLegacyLink: '詳細を見る',
   nTo1RetrievalLegacyLinkText: ' N-to-1 retrievalは9月に正式に廃止されます。',
   defaultRetrievalTip: 'デフォルトでは、マルチパス取得が使用されます。ナレッジは複数のナレッジ ベースから取得され、再ランク付けされます。',
+  editExternalAPIConfirmWarningContent: {
+    front: 'この外部ナレッジAPIは、',
+    end: '外部の知識、そしてこの変更はそれらすべてに適用されます。この変更を保存してもよろしいですか?',
+  },
+  editExternalAPIFormWarning: {
+    end: '外部の知識',
+    front: 'この外部APIはにリンクされています',
+  },
+  deleteExternalAPIConfirmWarningContent: {
+    title: {
+      end: '?',
+      front: '削除',
+    },
+    content: {
+      front: 'この外部ナレッジAPIは、',
+      end: '外部の知識。このAPIを削除すると、それらすべてが無効になります。この API を削除してもよろしいですか ?',
+    },
+    noConnectionContent: 'この API を削除してもよろしいですか ?',
+  },
+  selectExternalKnowledgeAPI: {
+    placeholder: '外部ナレッジ API を選択する',
+  },
+  connectDatasetIntro: {
+    content: {
+      link: '外部 API の作成方法を学ぶ',
+      front: '外部ナレッジ ベースに接続するには、まず外部 API を作成する必要があります。よくお読みになり、以下を参照してください。',
+      end: '.次に、対応するナレッジIDを見つけて、左側のフォームに入力します。すべての情報が正しい場合は、接続ボタンをクリックした後、ナレッジベースの検索テストに自動的にジャンプします。',
+    },
+    title: '外部ナレッジベースに接続する方法',
+    learnMore: '詳細情報',
+  },
+  connectHelper: {
+    helper2: '取得機能のみがサポートされています',
+    helper3: '.次のことを強くお勧めします。',
+    helper4: 'ヘルプドキュメントを読む',
+    helper5: 'この機能を使用する前に慎重に。',
+    helper1: 'APIとナレッジベースIDを介して外部ナレッジベースに接続します。',
+  },
+  externalKnowledgeForm: {
+    cancel: 'キャンセル',
+    connect: '繋ぐ',
+  },
+  externalAPIForm: {
+    encrypted: {
+      front: 'APIトークンは暗号化され、',
+      end: 'テクノロジー。',
+    },
+    apiKey: 'APIキー',
+    name: '名前',
+    edit: '編集',
+    save: 'セーブ',
+    cancel: 'キャンセル',
+    endpoint: 'API エンドポイント',
+  },
+  externalTag: '外',
+  editExternalAPITooltipTitle: 'リンクされた知識',
+  externalKnowledgeName: '外部ナレッジ名',
+  externalAPI: '外部 API',
+  externalAPIPanelDocumentation: 'External Knowledge API の作成方法を学ぶ',
+  editExternalAPIFormTitle: '外部ナレッジ API の編集',
+  externalAPIPanelTitle: '外部ナレッジAPI',
+  externalKnowledgeId: '外部ナレッジID',
+  connectDataset: '外部ナレッジベースへの接続',
+  externalKnowledgeIdPlaceholder: 'ナレッジIDを入力してください',
+  createNewExternalAPI: '新しい外部ナレッジ API を作成する',
+  noExternalKnowledge: 'External Knowledge APIはまだありませんので、こちらをクリックして作成してください',
+  mixtureInternalAndExternalTip: '再ランク付けモデルは、内部知識と外部知識の混合に必要です。',
+  learnHowToWriteGoodKnowledgeDescription: '良い知識の説明を書く方法を学ぶ',
+  externalKnowledgeNamePlaceholder: 'ナレッジベースの名前を入力してください',
+  externalKnowledgeDescription: 'ナレッジの説明',
+  createExternalAPI: '外部ナレッジ API を追加する',
+  externalKnowledgeDescriptionPlaceholder: 'このナレッジベースの内容を説明する(オプション)',
+  allExternalTip: '外部ナレッジのみを使用する場合、ユーザーは Rerank モデルを有効にするかどうかを選択できます。有効にしない場合、取得されたチャンクはスコアに基づいて並べ替えられます。異なるナレッジベースの検索戦略に一貫性がない場合、不正確になります。',
+  externalAPIPanelDescription: '外部ナレッジAPIは、Difyの外部のナレッジベースに接続し、そのナレッジベースからナレッジを取得するために使用されます。',
 }
 
 export default translation

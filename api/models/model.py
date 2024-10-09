@@ -134,7 +134,7 @@ class App(db.Model):
             return False
         if self.app_model_config.agent_mode_dict.get("enabled", False) and self.app_model_config.agent_mode_dict.get(
             "strategy", ""
-        ) in ["function_call", "react"]:
+        ) in {"function_call", "react"}:
             self.mode = AppMode.AGENT_CHAT.value
             db.session.commit()
             return True
@@ -710,6 +710,7 @@ class Message(db.Model):
     answer_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     answer_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
     answer_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
+    parent_message_id = db.Column(StringUUID, nullable=True)
     provider_response_latency = db.Column(db.Float, nullable=False, server_default=db.text("0"))
     total_price = db.Column(db.Numeric(10, 7))
     currency = db.Column(db.String(255), nullable=False)
@@ -1422,10 +1423,10 @@ class DatasetRetrieverResource(db.Model):
     position = db.Column(db.Integer, nullable=False)
     dataset_id = db.Column(StringUUID, nullable=False)
     dataset_name = db.Column(db.Text, nullable=False)
-    document_id = db.Column(StringUUID, nullable=False)
+    document_id = db.Column(StringUUID, nullable=True)
     document_name = db.Column(db.Text, nullable=False)
-    data_source_type = db.Column(db.Text, nullable=False)
-    segment_id = db.Column(StringUUID, nullable=False)
+    data_source_type = db.Column(db.Text, nullable=True)
+    segment_id = db.Column(StringUUID, nullable=True)
     score = db.Column(db.Float, nullable=True)
     content = db.Column(db.Text, nullable=False)
     hit_count = db.Column(db.Integer, nullable=True)
@@ -1501,6 +1502,6 @@ class TraceAppConfig(db.Model):
             "tracing_provider": self.tracing_provider,
             "tracing_config": self.tracing_config_dict,
             "is_active": self.is_active,
-            "created_at": self.created_at.__str__() if self.created_at else None,
-            "updated_at": self.updated_at.__str__() if self.updated_at else None,
+            "created_at": str(self.created_at) if self.created_at else None,
+            "updated_at": str(self.updated_at) if self.updated_at else None,
         }

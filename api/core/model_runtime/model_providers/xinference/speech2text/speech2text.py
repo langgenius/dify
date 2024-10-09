@@ -14,6 +14,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
+from core.model_runtime.model_providers.xinference.xinference_helper import validate_model_uid
 
 
 class XinferenceSpeech2TextModel(Speech2TextModel):
@@ -42,11 +43,10 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
         :return:
         """
         try:
-            if "/" in credentials["model_uid"] or "?" in credentials["model_uid"] or "#" in credentials["model_uid"]:
+            if not validate_model_uid(credentials):
                 raise CredentialsValidateFailedError("model_uid should not contain /, ?, or #")
 
-            if credentials["server_url"].endswith("/"):
-                credentials["server_url"] = credentials["server_url"][:-1]
+            credentials["server_url"] = credentials["server_url"].removesuffix("/")
 
             # initialize client
             client = Client(
@@ -116,8 +116,7 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
         server_url = credentials["server_url"]
         model_uid = credentials["model_uid"]
         api_key = credentials.get("api_key")
-        if server_url.endswith("/"):
-            server_url = server_url[:-1]
+        server_url = server_url.removesuffix("/")
         auth_headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
 
         try:
