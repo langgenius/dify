@@ -3,8 +3,8 @@ import PluginTypeSwitch from './plugin-type-switch'
 
 const Marketplace = () => {
   return (
-    <div className='w-full bg-background-body'>
-      <div className='py-10 bg-background-body'>
+    <div className='w-full'>
+      <div className='py-10'>
         <h1 className='mb-2 text-center title-4xl-semibold text-text-primary'>
           Empower your AI development
         </h1>

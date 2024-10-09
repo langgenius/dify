@@ -17,6 +17,7 @@ import TabSlider from '@/app/components/base/tab-slider'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import Marketplace from '@/app/components/plugins/marketplace'
+import cn from '@/utils/classnames'
 
 const Container = () => {
   const { t } = useTranslation()
@@ -38,8 +39,10 @@ const Container = () => {
   return (
     <div
       ref={containerRef}
-      className='grow relative flex flex-col rounded-t-xl bg-components-panel-bg border-t
-      border-divider-subtle overflow-y-auto'
+      className={cn('grow relative flex flex-col overflow-y-auto border-t border-divider-subtle', activeTab === 'plugins'
+        ? 'rounded-t-xl bg-components-panel-bg'
+        : 'bg-background-body',
+      )}
     >
       <div className='flex min-h-[60px] px-12 pt-4 pb-2 items-center self-stretch gap-1'>
         <div className='flex justify-between items-center w-full'>
