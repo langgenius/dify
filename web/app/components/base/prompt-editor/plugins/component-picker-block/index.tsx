@@ -40,6 +40,7 @@ type ComponentPickerProps = {
   variableBlock?: VariableBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  isSupportFileVar?: boolean
 }
 const ComponentPicker = ({
   triggerString,
@@ -49,6 +50,7 @@ const ComponentPicker = ({
   variableBlock,
   externalToolBlock,
   workflowVariableBlock,
+  isSupportFileVar,
 }: ComponentPickerProps) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const { refs, floatingStyles, isPositioned } = useFloating({
@@ -178,6 +180,7 @@ const ComponentPicker = ({
                             handleSelectWorkflowVariable(variables)
                           }}
                           maxHeightClass='max-h-[34vh]'
+                          isSupportFileVar={isSupportFileVar}
                         />
                       </div>
                     </>
