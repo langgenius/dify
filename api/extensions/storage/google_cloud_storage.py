@@ -10,8 +10,8 @@ from google.cloud import storage as google_cloud_storage
 from extensions.storage.base_storage import BaseStorage
 
 
-class GoogleStorage(BaseStorage):
-    """Implementation for google storage."""
+class GoogleCloudStorage(BaseStorage):
+    """Implementation for Google Cloud storage."""
 
     def __init__(self, app: Flask):
         super().__init__(app)
