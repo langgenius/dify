@@ -34,7 +34,7 @@ class Files(BaseAPI):
     def create(
         self,
         *,
-        file: FileTypes = None,
+        file: Optional[FileTypes] = None,
         upload_detail: Optional[list[UploadDetail]] = None,
         purpose: Literal["fine-tune", "retrieval", "batch"],
         knowledge_id: Optional[str] = None,

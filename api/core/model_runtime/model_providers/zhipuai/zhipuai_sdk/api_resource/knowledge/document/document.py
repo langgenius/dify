@@ -34,7 +34,7 @@ class Document(BaseAPI):
     def create(
         self,
         *,
-        file: FileTypes = None,
+        file: Optional[FileTypes] = None,
         custom_separator: Optional[list[str]] = None,
         upload_detail: Optional[list[UploadDetail]] = None,
         purpose: Literal["retrieval"],
