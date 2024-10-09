@@ -5,7 +5,7 @@ from pydantic import BaseModel, Field
 
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
-from core.plugin.entities.endpoint import EndpointEntity
+from core.plugin.entities.endpoint import EndpointProviderDeclaration
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntity
 
@@ -61,7 +61,7 @@ class PluginDeclaration(BaseModel):
     plugins: Plugins
     tool: Optional[ToolProviderEntity] = None
     model: Optional[ProviderEntity] = None
-    endpoint: Optional[EndpointEntity] = None
+    endpoint: Optional[EndpointProviderDeclaration] = None
 
 
 class PluginEntity(BasePluginEntity):

@@ -1,4 +1,4 @@
-from core.plugin.entities.endpoint import EndpointEntity
+from core.plugin.entities.endpoint import EndpointEntityWithInstance
 from core.plugin.manager.base import BasePluginManager
 
 
@@ -33,7 +33,7 @@ class PluginEndpointManager(BasePluginManager):
         return self._request_with_plugin_daemon_response(
             "GET",
             f"plugin/{tenant_id}/endpoint/list",
-            list[EndpointEntity],
+            list[EndpointEntityWithInstance],
             params={"page": page, "page_size": page_size},
         )
 
@@ -44,24 +44,8 @@ class PluginEndpointManager(BasePluginManager):
         return self._request_with_plugin_daemon_response(
             "GET",
             f"plugin/{tenant_id}/endpoint/list/plugin",
-            list[EndpointEntity],
+            list[EndpointEntityWithInstance],
             params={"plugin_id": plugin_id, "page": page, "page_size": page_size},
-        )
-
-    def list_plugin_endpoints(self, tenant_id: str, user_id: str, plugin_unique_identifier: str):
-        """
-        List all endpoints for the given tenant, user and plugin.
-        """
-        return self._request_with_plugin_daemon_response(
-            "GET",
-            f"plugin/{tenant_id}/endpoint/list/plugin",
-            list[EndpointEntity],
-            headers={
-                "Content-Type": "application/json",
-            },
-            data={
-                "plugin_unique_identifier": plugin_unique_identifier,
-            },
         )
 
     def update_endpoint(self, tenant_id: str, user_id: str, endpoint_id: str, name: str, settings: dict):

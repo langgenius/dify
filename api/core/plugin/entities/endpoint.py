@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
 
@@ -12,7 +13,17 @@ class EndpointDeclaration(BaseModel):
     declaration of an endpoint
     """
 
+    path: str
+    method: str
+
+
+class EndpointProviderDeclaration(BaseModel):
+    """
+    declaration of an endpoint group
+    """
+
     settings: list[ProviderConfig] = Field(default_factory=list)
+    endpoints: Optional[list[EndpointDeclaration]] = Field(default_factory=list)
 
 
 class EndpointEntity(BasePluginEntity):
@@ -21,14 +32,17 @@ class EndpointEntity(BasePluginEntity):
     """
 
     settings: dict
+    tenant_id: str
+    plugin_id: str
+    expired_at: datetime
+    declaration: EndpointProviderDeclaration = Field(default_factory=EndpointProviderDeclaration)
+
+
+class EndpointEntityWithInstance(EndpointEntity):
     name: str
     enabled: bool
     url: str
     hook_id: str
-    tenant_id: str
-    plugin_id: str
-    expired_at: datetime
-    declaration: EndpointDeclaration = Field(default_factory=EndpointDeclaration)
 
     @model_validator(mode="before")
     @classmethod
