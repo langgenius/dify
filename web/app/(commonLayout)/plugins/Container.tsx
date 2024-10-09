@@ -29,7 +29,7 @@ const Container = () => {
   }, [t])
 
   const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: 'plugins',
+    defaultTab: options[0].value,
   })
 
   const containerRef = useRef<HTMLDivElement>(null)
@@ -45,7 +45,7 @@ const Container = () => {
           <div className='flex-1'>
             <TabSlider
               value={activeTab}
-              onChange={newActiveTab => setActiveTab(newActiveTab)}
+              onChange={setActiveTab}
               options={options}
             />
           </div>
@@ -108,10 +108,10 @@ const Container = () => {
       <div className='flex px-12 items-start content-start gap-2 flex-grow self-stretch flex-wrap'>
         {/* Plugin cards go here */}
       </div>
-      <div className='flex items-center justify-center py-4 gap-2 text-text-quaternary'>
+      {activeTab === 'plugins' && <div className='flex items-center justify-center py-4 gap-2 text-text-quaternary'>
         <RiDragDropLine className='w-4 h-4' />
         <span className='system-xs-regular'>Drop plugin package here to install</span>
-      </div>
+      </div>}
     </div>
   )
 }
