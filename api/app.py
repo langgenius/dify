@@ -36,6 +36,7 @@ from extensions import (
     ext_login,
     ext_mail,
     ext_migrate,
+    ext_proxy_fix,
     ext_redis,
     ext_sentry,
     ext_storage,
@@ -156,6 +157,7 @@ def initialize_extensions(app):
     ext_mail.init_app(app)
     ext_hosting_provider.init_app(app)
     ext_sentry.init_app(app)
+    ext_proxy_fix.init_app(app)
 
 
 # Flask-Login configuration
