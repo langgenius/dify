@@ -7,8 +7,8 @@ from flask import Flask
 from extensions.storage.base_storage import BaseStorage
 
 
-class AliyunStorage(BaseStorage):
-    """Implementation for aliyun storage."""
+class AliyunOssStorage(BaseStorage):
+    """Implementation for Aliyun OSS storage."""
 
     def __init__(self, app: Flask):
         super().__init__(app)

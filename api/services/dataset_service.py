@@ -250,6 +250,9 @@ class DatasetService:
             db.session.commit()
         else:
             data.pop("partial_member_list", None)
+            data.pop("external_knowledge_api_id", None)
+            data.pop("external_knowledge_id", None)
+            data.pop("external_retrieval_model", None)
             filtered_data = {k: v for k, v in data.items() if v is not None or k == "description"}
             action = None
             if dataset.indexing_technique != data["indexing_technique"]:

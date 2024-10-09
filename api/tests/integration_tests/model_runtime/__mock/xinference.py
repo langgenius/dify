@@ -5,7 +5,6 @@ from typing import Union
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from requests import Response
-from requests.exceptions import ConnectionError
 from requests.sessions import Session
 from xinference_client.client.restful.restful_client import (
     Client,
