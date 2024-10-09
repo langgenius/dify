@@ -76,7 +76,7 @@ type DescriptionProps = {
   descriptionLineRows: number
 }
 
-const Description: FC<DescriptionProps> = ({
+export const Description: FC<DescriptionProps> = ({
   className,
   text,
   descriptionLineRows,
