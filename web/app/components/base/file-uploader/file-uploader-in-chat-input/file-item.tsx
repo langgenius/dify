@@ -3,6 +3,7 @@ import {
   RiDownloadLine,
 } from '@remixicon/react'
 import {
+  downloadFile,
   fileIsUploaded,
   getFileAppearanceType,
   getFileExtension,
@@ -30,14 +31,14 @@ const FileItem = ({
   onRemove,
   onReUpload,
 }: FileItemProps) => {
-  const { id, name, type, progress } = file
+  const { id, name, type, progress, url } = file
   const ext = getFileExtension(name, type)
   const uploadError = progress === -1
 
   return (
     <div
       className={cn(
-        'group relative p-2 w-[144px] h-[68px] rounded-lg border-[0.5px] border-components-panel-border bg-components-card-bg shadow-xs',
+        'group/file-item relative p-2 w-[144px] h-[68px] rounded-lg border-[0.5px] border-components-panel-border bg-components-card-bg shadow-xs',
         !uploadError && 'hover:bg-components-card-bg-alt',
         uploadError && 'border border-state-destructive-border bg-state-destructive-hover',
         uploadError && 'hover:border-[0.5px] hover:border-state-destructive-border bg-state-destructive-hover-alt',
@@ -46,7 +47,7 @@ const FileItem = ({
       {
         showDeleteAction && (
           <Button
-            className='hidden group-hover:flex absolute -right-1.5 -top-1.5 p-0 w-5 h-5 rounded-full z-10'
+            className='hidden group-hover/file-item:flex absolute -right-1.5 -top-1.5 p-0 w-5 h-5 rounded-full z-10'
             onClick={() => onRemove?.(id)}
           >
             <RiCloseLine className='w-4 h-4 text-components-button-secondary-text' />
@@ -56,7 +57,7 @@ const FileItem = ({
       <div className='mb-1 h-8 line-clamp-2 system-xs-medium text-text-tertiary'>
         {name}
       </div>
-      <div className='flex items-center justify-between'>
+      <div className='relative flex items-center justify-between'>
         <div className='flex items-center system-2xs-medium-uppercase text-text-tertiary'>
           <FileTypeIcon
             size='sm'
@@ -75,13 +76,16 @@ const FileItem = ({
         </div>
         {
           showDownloadAction && (
-            <a href={file.url} download={true} target='_blank'>
-              <ActionButton
-                size='xs'
-              >
-                <RiDownloadLine className='w-3.5 h-3.5 text-text-tertiary' />
-              </ActionButton>
-            </a>
+            <ActionButton
+              size='m'
+              className='hidden group-hover/file-item:flex absolute -right-1 -top-1'
+              onClick={(e) => {
+                e.stopPropagation()
+                downloadFile(url || '', name)
+              }}
+            >
+              <RiDownloadLine className='w-3.5 h-3.5 text-text-tertiary' />
+            </ActionButton>
           )
         }
         {

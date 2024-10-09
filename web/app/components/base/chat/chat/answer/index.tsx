@@ -175,6 +175,7 @@ const Answer: FC<AnswerProps> = ({
                   files={allFiles}
                   showDeleteAction={false}
                   showDownloadAction
+                  canPreview
                 />
               )
             }

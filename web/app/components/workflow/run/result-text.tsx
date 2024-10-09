@@ -57,6 +57,7 @@ const ResultText: FC<ResultTextProps> = ({
               files={allFiles}
               showDeleteAction={false}
               showDownloadAction
+              canPreview
             />
           )}
         </div>

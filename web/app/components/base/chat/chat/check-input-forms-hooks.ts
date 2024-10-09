@@ -19,6 +19,9 @@ export const useCheckInputsForms = () => {
         if (hasEmptyInput)
           return
 
+        if (fileIsUploading)
+          return
+
         if (!inputs[variable])
           hasEmptyInput = label as string
 
@@ -27,7 +30,7 @@ export const useCheckInputsForms = () => {
           if (Array.isArray(files))
             fileIsUploading = files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
           else
-            fileIsUploading = files.transfer_method === TransferMethod.local_file && !files.uploadedId
+            fileIsUploading = files.transferMethod === TransferMethod.local_file && !files.uploadedId
         }
       })
     }

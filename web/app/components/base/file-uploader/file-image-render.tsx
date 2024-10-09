@@ -24,7 +24,6 @@ const FileImageRender = ({
         onLoad={onLoad}
         onError={onError}
         src={imageUrl}
-        onClick={() => showDownloadAction && window.open(imageUrl, '_blank')}
       />
     </div>
   )

@@ -62,6 +62,7 @@ const ResultTab = ({
                 files={data?.files}
                 showDeleteAction={false}
                 showDownloadAction
+                canPreview
               />
             )}
           </>
