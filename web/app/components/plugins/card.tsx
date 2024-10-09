@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react'
-import { RiVerifiedBadgeLine } from '@remixicon/react'
+import { RiCheckLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import type { FC } from 'react'
 import { LeftCorner } from '../base/icons/src/vender/plugin'
 import type { Plugin } from './types'
@@ -31,6 +31,13 @@ export const Icon = ({
         backgroundImage: `url(${src})`,
       }}
     >
+      {installed
+        && <div className='p-0.5 absolute bottom-[-4px] right-[-4px] w-3 h-3 rounded-full bg-white '>
+          <div className='h-full rounded-full bg-state-success-solid'>
+            <RiCheckLine className='w-full h-full text-text-primary-on-surface' />
+          </div>
+        </div>
+      }
     </div>
   )
 }
@@ -108,7 +115,7 @@ const Card = ({
 
   const { type, name, org, label } = payload
   return (
-    <div className={cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs')}>
+    <div className={cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
       <CornerMark text={type} />
       {/* Header */}
       <div className="flex">
