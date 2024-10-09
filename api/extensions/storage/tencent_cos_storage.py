@@ -6,8 +6,8 @@ from qcloud_cos import CosConfig, CosS3Client
 from extensions.storage.base_storage import BaseStorage
 
 
-class TencentStorage(BaseStorage):
-    """Implementation for tencent cos storage."""
+class TencentCosStorage(BaseStorage):
+    """Implementation for Tencent Cloud COS storage."""
 
     def __init__(self, app: Flask):
         super().__init__(app)

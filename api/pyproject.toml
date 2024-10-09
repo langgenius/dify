@@ -113,7 +113,6 @@ authlib = "1.3.1"
 azure-ai-inference = "~1.0.0b3"
 azure-ai-ml = "~1.20.0"
 azure-identity = "1.16.1"
-azure-storage-blob = "12.13.0"
 beautifulsoup4 = "4.12.2"
 boto3 = "1.35.17"
 bs4 = "~0.0.1"
@@ -221,6 +220,7 @@ yfinance = "~0.2.40"
 # Required for storage clients
 ############################################################
 [tool.poetry.group.storage.dependencies]
+azure-storage-blob = "12.13.0"
 bce-python-sdk = "~0.9.23"
 cos-python-sdk-v5 = "1.9.30"
 esdk-obs-python = "3.24.6.1"
