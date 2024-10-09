@@ -50,7 +50,7 @@ const ChatInputArea = ({
   onSend,
   inputs = {},
   inputsForm = [],
-  // theme,
+  theme,
 }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -127,6 +127,7 @@ const ChatInputArea = ({
       speechToTextConfig={speechToTextConfig}
       onShowVoiceInput={handleShowVoiceInput}
       onSend={handleSend}
+      theme={theme}
     />
   )
 
