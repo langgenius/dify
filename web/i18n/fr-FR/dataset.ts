@@ -141,7 +141,7 @@ const translation = {
   externalAPIPanelDocumentation: 'Découvrez comment créer une API de connaissances externe',
   createNewExternalAPI: 'Créer une API de connaissances externe',
   externalKnowledgeDescriptionPlaceholder: 'Décrivez le contenu de cette base de connaissances (facultatif)',
-  externalAPIPanelDescription: 'L’API de connaissances externe est utilisée pour se connecter à une base de connaissances en dehors de Dify et récupérer des connaissances de cette base de connaissances.',
+  externalAPIPanelDescription: 'L’API de connaissances externe est utilisée pour se connecter à une base de connaissances en dehors de Platform et récupérer des connaissances de cette base de connaissances.',
   externalKnowledgeId: 'Identification des connaissances externes',
   externalAPIPanelTitle: 'API de connaissances externes',
   noExternalKnowledge: 'Il n’y a pas encore d’API de connaissances externes, cliquez ici pour créer',
