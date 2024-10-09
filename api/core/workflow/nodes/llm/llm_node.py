@@ -193,11 +193,14 @@ class LLMNode(BaseNode):
         """
         db.session.close()
 
+        # get stream flag
+        stream = node_data_model.completion_params.pop("stream", True)
+
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
             model_parameters=node_data_model.completion_params,
             stop=stop,
-            stream=True,
+            stream=stream,
             user=self.user_id,
         )
 
@@ -221,36 +224,41 @@ class LLMNode(BaseNode):
         :param invoke_result: invoke result
         :return:
         """
+        # handle  stream = False
         if isinstance(invoke_result, LLMResult):
-            return
-
-        model = None
-        prompt_messages: list[PromptMessage] = []
-        full_text = ""
-        usage = None
-        finish_reason = None
-        for result in invoke_result:
-            text = result.delta.message.content
-            full_text += text
-
+            text = invoke_result.message.content
+            usage = invoke_result.usage
+            finish_reason = "STOP"
             yield RunStreamChunkEvent(chunk_content=text, from_variable_selector=[self.node_id, "text"])
+            yield ModelInvokeCompleted(text=text, usage=usage, finish_reason=finish_reason)
+        else:
+            model = None
+            prompt_messages: list[PromptMessage] = []
+            full_text = ""
+            usage = None
+            finish_reason = None
+            for result in invoke_result:
+                text = result.delta.message.content
+                full_text += text
 
-            if not model:
-                model = result.model
+                yield RunStreamChunkEvent(chunk_content=text, from_variable_selector=[self.node_id, "text"])
 
-            if not prompt_messages:
-                prompt_messages = result.prompt_messages
+                if not model:
+                    model = result.model
 
-            if not usage and result.delta.usage:
-                usage = result.delta.usage
+                if not prompt_messages:
+                    prompt_messages = result.prompt_messages
 
-            if not finish_reason and result.delta.finish_reason:
-                finish_reason = result.delta.finish_reason
+                if not usage and result.delta.usage:
+                    usage = result.delta.usage
 
-        if not usage:
-            usage = LLMUsage.empty_usage()
+                if not finish_reason and result.delta.finish_reason:
+                    finish_reason = result.delta.finish_reason
 
-        yield ModelInvokeCompleted(text=full_text, usage=usage, finish_reason=finish_reason)
+            if not usage:
+                usage = LLMUsage.empty_usage()
+
+            yield ModelInvokeCompleted(text=full_text, usage=usage, finish_reason=finish_reason)
 
     def _transform_chat_messages(
         self, messages: list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
