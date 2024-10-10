@@ -1,5 +1,5 @@
 import Card from '@/app/components/plugins/card'
-import { extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/card-mock'
+import { extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/card/card-mock'
 import PluginItem from '@/app/components/plugins/plugin-item'
 
 const PluginList = async () => {

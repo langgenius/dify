@@ -1,4 +1,4 @@
-import { PluginType } from './types'
+import { PluginType } from '../types'
 
 export const toolNotion = {
   type: PluginType.tool,

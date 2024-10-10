@@ -3,7 +3,12 @@ import React from 'react'
 import { RiArrowRightUpLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import { Github } from '../base/icons/src/public/common'
 import type { Plugin } from './types'
-import { CornerMark, Description, Icon, OrgInfo, Title } from '@/app/components/plugins/card'
+import CornerMark from './card/base/corner-mark'
+import Description from './card/base/description'
+import Icon from './card/base/icon'
+import OrgInfo from './card/base/org-info'
+import Title from './card/base/title'
+
 import cn from '@/utils/classnames'
 import { getLocaleOnServer } from '@/i18n/server'
 
