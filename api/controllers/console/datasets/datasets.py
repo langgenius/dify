@@ -617,6 +617,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.CHROMA
                 | VectorType.TENCENT
                 | VectorType.PGVECTO_RS
+                | VectorType.BAIDU
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
@@ -653,6 +654,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.CHROMA
                 | VectorType.TENCENT
                 | VectorType.PGVECTO_RS
+                | VectorType.BAIDU
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
