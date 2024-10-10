@@ -3,6 +3,7 @@ from flask_restful import marshal, reqparse
 from werkzeug.exceptions import NotFound
 
 import services.dataset_service
+from controllers.console.datasets.hit_testing import HitTestingMixin
 from controllers.service_api import api
 from controllers.service_api.dataset.error import DatasetInUseError, DatasetNameDuplicateError
 from controllers.service_api.wraps import DatasetApiResource
@@ -151,5 +152,11 @@ class DatasetApi(DatasetApiResource):
             raise DatasetInUseError()
 
 
+class DatasetHitTestingApi(DatasetApiResource, HitTestingMixin):
+    def post(self, _, dataset_id):
+        return self._post(dataset_id)
+
+
 api.add_resource(DatasetListApi, "/datasets")
 api.add_resource(DatasetApi, "/datasets/<uuid:dataset_id>")
+api.add_resource(DatasetHitTestingApi, "/datasets/<uuid:dataset_id>/hit_testing")
