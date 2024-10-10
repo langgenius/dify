@@ -79,7 +79,7 @@ class ImagePromptMessageContent(PromptMessageContent):
     Model class for image prompt message content.
     """
 
-    class DETAIL(Enum):
+    class DETAIL(str, Enum):
         LOW = "low"
         HIGH = "high"
 

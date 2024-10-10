@@ -13,8 +13,11 @@ SSRF_PROXY_HTTP_URL = os.getenv("SSRF_PROXY_HTTP_URL", "")
 SSRF_PROXY_HTTPS_URL = os.getenv("SSRF_PROXY_HTTPS_URL", "")
 SSRF_DEFAULT_MAX_RETRIES = int(os.getenv("SSRF_DEFAULT_MAX_RETRIES", "3"))
 
-proxies = (
-    {"http://": SSRF_PROXY_HTTP_URL, "https://": SSRF_PROXY_HTTPS_URL}
+proxy_mounts = (
+    {
+        "http://": httpx.HTTPTransport(proxy=SSRF_PROXY_HTTP_URL),
+        "https://": httpx.HTTPTransport(proxy=SSRF_PROXY_HTTPS_URL),
+    }
     if SSRF_PROXY_HTTP_URL and SSRF_PROXY_HTTPS_URL
     else None
 )
@@ -33,11 +36,14 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     while retries <= max_retries:
         try:
             if SSRF_PROXY_ALL_URL:
-                response = httpx.request(method=method, url=url, proxy=SSRF_PROXY_ALL_URL, **kwargs)
-            elif proxies:
-                response = httpx.request(method=method, url=url, proxies=proxies, **kwargs)
+                with httpx.Client(proxy=SSRF_PROXY_ALL_URL) as client:
+                    response = client.request(method=method, url=url, **kwargs)
+            elif proxy_mounts:
+                with httpx.Client(mounts=proxy_mounts) as client:
+                    response = client.request(method=method, url=url, **kwargs)
             else:
-                response = httpx.request(method=method, url=url, **kwargs)
+                with httpx.Client() as client:
+                    response = client.request(method=method, url=url, **kwargs)
 
             if response.status_code not in STATUS_FORCELIST:
                 return response

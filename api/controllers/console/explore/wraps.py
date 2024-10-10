@@ -7,7 +7,7 @@ from werkzeug.exceptions import NotFound
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
 from libs.login import login_required
-from models.model import InstalledApp
+from models import InstalledApp
 
 
 def installed_app_required(view=None):

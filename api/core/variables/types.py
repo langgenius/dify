@@ -11,5 +11,7 @@ class SegmentType(str, Enum):
     ARRAY_NUMBER = "array[number]"
     ARRAY_OBJECT = "array[object]"
     OBJECT = "object"
+    FILE = "file"
+    ARRAY_FILE = "array[file]"
 
     GROUP = "group"

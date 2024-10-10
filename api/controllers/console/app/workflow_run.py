@@ -13,7 +13,8 @@ from fields.workflow_run_fields import (
 )
 from libs.helper import uuid_value
 from libs.login import login_required
-from models.model import App, AppMode
+from models import App
+from models.model import AppMode
 from services.workflow_run_service import WorkflowRunService
 
 
