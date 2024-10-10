@@ -12,9 +12,10 @@ from hashlib import sha256
 from typing import Any, Optional, Union
 from zoneinfo import available_timezones
 
-from flask import Response, current_app, stream_with_context
+from flask import Response, stream_with_context
 from flask_restful import fields
 
+from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from core.file.upload_file_parser import UploadFileParser
 from extensions.ext_redis import redis_client
@@ -201,7 +202,7 @@ class TokenManager:
         if additional_data:
             token_data.update(additional_data)
 
-        expiry_hours = current_app.config[f"{token_type.upper()}_TOKEN_EXPIRY_HOURS"]
+        expiry_hours = dify_config.model_dump().get(f"{token_type.upper()}_TOKEN_EXPIRY_HOURS")
         token_key = cls._get_token_key(token, token_type)
         redis_client.setex(token_key, expiry_hours * 60 * 60, json.dumps(token_data))
 

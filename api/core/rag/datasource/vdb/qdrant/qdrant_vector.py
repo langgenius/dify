@@ -428,14 +428,13 @@ class QdrantVectorFactory(AbstractVectorFactory):
         if not dataset.index_struct_dict:
             dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.QDRANT, collection_name))
 
-        config = current_app.config
         return QdrantVector(
             collection_name=collection_name,
             group_id=dataset.id,
             config=QdrantConfig(
                 endpoint=dify_config.QDRANT_URL,
                 api_key=dify_config.QDRANT_API_KEY,
-                root_path=config.root_path,
+                root_path=current_app.config.root_path,
                 timeout=dify_config.QDRANT_CLIENT_TIMEOUT,
                 grpc_port=dify_config.QDRANT_GRPC_PORT,
                 prefer_grpc=dify_config.QDRANT_GRPC_ENABLED,

@@ -23,6 +23,21 @@ class SecurityConfig(BaseSettings):
         default=24,
     )
 
+    LOGIN_DISABLED: bool = Field(
+        description="Whether to disable login checks",
+        default=False,
+    )
+
+    ADMIN_API_KEY_ENABLE: bool = Field(
+        description="Whether to enable admin api key for authentication",
+        default=False,
+    )
+
+    ADMIN_API_KEY: Optional[str] = Field(
+        description="admin api key for authentication",
+        default=None,
+    )
+
 
 class AppExecutionConfig(BaseSettings):
     """

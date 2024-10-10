@@ -212,6 +212,7 @@ class MiddlewareConfig(
     VectorStoreConfig,
     AnalyticdbConfig,
     ChromaConfig,
+    ElasticsearchConfig,
     MilvusConfig,
     MyScaleConfig,
     OpenSearchConfig,
@@ -223,6 +224,5 @@ class MiddlewareConfig(
     TencentVectorDBConfig,
     TiDBVectorConfig,
     WeaviateConfig,
-    ElasticsearchConfig,
 ):
     pass

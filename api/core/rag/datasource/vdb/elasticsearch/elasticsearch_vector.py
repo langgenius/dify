@@ -5,9 +5,9 @@ from urllib.parse import urlparse
 
 import requests
 from elasticsearch import Elasticsearch
-from flask import current_app
 from pydantic import BaseModel, model_validator
 
+from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -201,14 +201,13 @@ class ElasticSearchVectorFactory(AbstractVectorFactory):
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
             dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.ELASTICSEARCH, collection_name))
 
-        config = current_app.config
         return ElasticSearchVector(
             index_name=collection_name,
             config=ElasticSearchConfig(
-                host=config.get("ELASTICSEARCH_HOST"),
-                port=config.get("ELASTICSEARCH_PORT"),
-                username=config.get("ELASTICSEARCH_USERNAME"),
-                password=config.get("ELASTICSEARCH_PASSWORD"),
+                host=dify_config.ELASTICSEARCH_HOST,
+                port=dify_config.ELASTICSEARCH_PORT,
+                username=dify_config.ELASTICSEARCH_USERNAME,
+                password=dify_config.ELASTICSEARCH_PASSWORD,
             ),
             attributes=[],
         )
