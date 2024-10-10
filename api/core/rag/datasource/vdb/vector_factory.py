@@ -103,6 +103,10 @@ class Vector:
                 from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVectorFactory
 
                 return AnalyticdbVectorFactory
+            case VectorType.BAIDU:
+                from core.rag.datasource.vdb.baidu.baidu_vector import BaiduVectorFactory
+
+                return BaiduVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
