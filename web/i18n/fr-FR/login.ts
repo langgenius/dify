@@ -1,5 +1,5 @@
 const translation = {
-  pageTitle: 'Salut, commençons !👋',
+  pageTitle: 'Hello',
   welcome: 'Bienvenue sur Hacienda Platform, veuillez vous connecter pour continuer.',
   email: 'Adresse e-mail',
   emailPlaceholder: 'Votre email',
