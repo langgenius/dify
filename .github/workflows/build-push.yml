@@ -14,7 +14,7 @@ concurrency:
 
 env:
   DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
-  DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWWORD }}
+  DOCKERHUB_PASSWORD: ${{ secrets.DOCKERHUB_PASSWORD }}
   API_IMAGE_NAME: 'ixinjulu/hacienda-api'
   WEB_IMAGE_NAME: 'ixinjulu/hacienda-web'
 
