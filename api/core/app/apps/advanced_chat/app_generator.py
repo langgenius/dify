@@ -119,7 +119,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             conversation_id=conversation.id if conversation else None,
-            inputs=conversation.inputs if conversation else self._get_cleaned_inputs(inputs, app_config),
+            inputs=self._get_cleaned_inputs(inputs, app_config),
             query=query,
             files=file_objs,
             parent_message_id=args.get("parent_message_id"),
