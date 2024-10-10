@@ -12,19 +12,21 @@ export function middleware(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const csp = `'nonce-${nonce}'`
 
+  const scheme_source = 'data: mediastream: blob: filesystem:'
+
   const cspHeader = `
-    default-src 'self' ${csp} blob: data: ${whiteList};
-    connect-src 'self' ${csp} blob: data: ${whiteList};
-    script-src 'self' ${csp} blob: ${whiteList};
-    style-src 'self' 'unsafe-inline' ${whiteList};
-    worker-src 'self' ${csp} blob: ${whiteList};
-    media-src 'self' ${csp} blob: data: ${whiteList};
-    img-src 'self' ${csp} blob: data: ${whiteList};
+    default-src 'self' ${scheme_source} ${csp} ${whiteList};
+    connect-src 'self' ${scheme_source} ${csp} ${whiteList};
+    script-src 'self' ${scheme_source} ${csp} ${whiteList};
+    style-src 'self' 'unsafe-inline' ${scheme_source} ${whiteList};
+    worker-src 'self' ${scheme_source} ${csp} ${whiteList};
+    media-src 'self' ${scheme_source} ${csp} ${whiteList};
+    img-src 'self' ${scheme_source} ${csp} ${whiteList};
     font-src 'self';
     object-src 'none';
     base-uri 'self';
     form-action 'self';
-    frame-ancestors 'none';
+    frame-ancestors 'self' ${scheme_source} ${whiteList};
     upgrade-insecure-requests;
 `
   // Replace newline characters and spaces
