@@ -1,0 +1,50 @@
+identity:
+  name: aliyuque_describe_document_content
+  author: 佐井
+  label:
+    en_US: Fetch Document Content
+    zh_Hans: 获取文档内容
+  icon: icon.svg
+
+description:
+  human:
+    en_US: Retrieves document content from Yuque based on the provided document URL, which can be a normal or shared link.
+    zh_Hans: 根据提供的语雀文档地址（支持正常链接或分享链接）获取文档内容。
+  llm: Fetches Yuque document content given a URL.
+
+parameters:
+  - name: url
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Document URL
+      zh_Hans: 文档地址
+    human_description:
+      en_US: The URL of the document to retrieve content from, can be normal or shared.
+      zh_Hans: 需要获取内容的文档地址，可以是正常链接或分享链接。
+    llm_description: URL of the Yuque document to fetch content.
+
+  - name: body_only
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: return body content only
+      zh_Hans: 仅返回body内容
+    human_description:
+      en_US: true:Body content only, false:Full response with metadata.
+      zh_Hans: true:仅返回body内容，不返回其他元数据，false:返回所有元数据。
+    llm_description: true:Body content only, false:Full response with metadata.
+
+  - name: token
+    type: secret-input
+    required: false
+    form: llm
+    label:
+      en_US: Yuque API Token
+      zh_Hans: 语雀接口Token
+    human_description:
+      en_US: The token for calling the Yuque API defaults to the Yuque token bound to the current tool if not provided.
+      zh_Hans: 调用语雀接口的token，如果不传则默认为当前工具绑定的语雀Token。
+    llm_description: If the token for calling the Yuque API is not provided, it will default to the Yuque token bound to the current tool.
