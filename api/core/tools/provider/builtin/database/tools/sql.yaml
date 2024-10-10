@@ -1,0 +1,34 @@
+identity:
+  name: sql
+  author: hjlarry
+  label:
+    en_US: SQL execute
+  icon: icon.svg
+description:
+  human:
+    en_US: This tool is used to execute SQL in an existing database.
+    zh_Hans: 该工具用于在已有数据库中执行SQL。
+  llm: This tool is used to execute SQL in an existing database.
+parameters:
+  - name: sql_string
+    type: string
+    required: true
+    label:
+      en_US: SQL statement
+      zh_Hans: SQL语句
+    llm_description: the sql statement to execute.
+    form: llm
+  - name: output_format
+    type: select
+    default: "json"
+    label:
+      en_US: Output Format
+      zh_Hans: 输出格式
+    form: form
+    options:
+      - value: json
+        label:
+          en_US: JSON
+      - value: markdown
+        label:
+          en_US: Markdown
