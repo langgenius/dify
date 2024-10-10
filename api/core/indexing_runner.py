@@ -851,7 +851,7 @@ class IndexingRunner:
         )
 
         # add document segments
-        doc_store.add_documents(documents)
+        doc_store.add_documents(docs=documents, save_child=dataset_document.doc_form == "hierarchical_model")
 
         # update document status to indexing
         cur_time = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)

@@ -7,7 +7,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.models.document import Document
 from extensions.ext_database import db
-from models.dataset import Dataset, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DocumentSegment
 
 
 class DatasetDocumentStore:
@@ -60,7 +60,7 @@ class DatasetDocumentStore:
 
         return output
 
-    def add_documents(self, docs: Sequence[Document], allow_update: bool = True) -> None:
+    def add_documents(self, docs: Sequence[Document], allow_update: bool = True, save_child: bool = False) -> None:
         max_position = (
             db.session.query(func.max(DocumentSegment.position))
             .filter(DocumentSegment.document_id == self._document_id)
@@ -117,6 +117,24 @@ class DatasetDocumentStore:
                     segment_document.answer = doc.metadata.pop("answer", "")
 
                 db.session.add(segment_document)
+                db.session.flush()
+                if save_child:
+                    child_position = 1
+                    for child in doc.childs:
+                        child_segment = ChildChunk(
+                            tenant_id=self._dataset.tenant_id,
+                            dataset_id=self._dataset.id,
+                            document_id=self._document_id,
+                            segment_id=segment_document.id,
+                            index_node_id=child.metadata["doc_id"],
+                            index_node_hash=child.metadata["doc_hash"],
+                            position=child_position,
+                            content=child.page_content,
+                            word_count=len(child.page_content),
+                            created_by=self._user_id,
+                        )
+                        db.session.add(child_segment)
+                        child_position += 1
             else:
                 segment_document.content = doc.page_content
                 if doc.metadata.get("answer"):

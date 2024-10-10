@@ -3,6 +3,7 @@
 import uuid
 from typing import Optional
 
+from core.model_manager import ModelInstance
 from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.retrieval_service import RetrievalService
@@ -10,7 +11,7 @@ from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
-from core.rag.models.document import Document
+from core.rag.models.document import ChildDocument, Document
 from libs import helper
 from models.dataset import Dataset
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
@@ -31,9 +32,9 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             # Split the text documents into nodes.
             splitter = self._get_splitter(
                 processing_rule_mode=process_rule.get("mode"),
-                max_tokens=rules.seg,
+                max_tokens=rules.segmentation.max_tokens,
                 chunk_overlap=rules.segmentation.chunk_overlap,
-                separators=rules.segmentation.separator,
+                separator=rules.segmentation.separator,
                 embedding_model_instance=kwargs.get("embedding_model_instance")
             )
             all_documents = []
@@ -58,11 +59,33 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             page_content = page_content
                         if len(page_content) > 0:
                             document_node.page_content = page_content
+                            child_splitter = self._get_splitter(
+                                processing_rule_mode=process_rule.get("mode"),
+                                max_tokens=rules.subchunk_segmentation.max_tokens,
+                                chunk_overlap=rules.subchunk_segmentation.chunk_overlap,
+                                separator=rules.subchunk_segmentation.separator,
+                                embedding_model_instance=kwargs.get("embedding_model_instance")
+                            )
+                            # parse document to child nodes
+                            child_nodes = self._split_child_nodes(document_node, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance"))
+                            document_node.childs = child_nodes
                             split_documents.append(document_node)
                 all_documents.extend(split_documents)
+        elif rules.parent_mode == ParentMode.FULL_DOC:
+            page_content = "\n".join([document.page_content for document in documents])
+            document = Document(page_content=page_content, metadata=documents[0].metadata)
+            # parse document to child nodes
+            child_nodes = self._split_child_nodes(document, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance"))
+            document.childs = child_nodes
+            doc_id = str(uuid.uuid4())
+            hash = helper.generate_text_hash(document.page_content)
+            document.metadata["doc_id"] = doc_id
+            document.metadata["doc_hash"] = hash
+            all_documents.append(document)
+
         return all_documents
 
-    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True):
+    def load(self, dataset: Dataset, documents: list[Document|ChildDocument], with_keywords: bool = True):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
@@ -111,3 +134,32 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 doc = Document(page_content=result.page_content, metadata=metadata)
                 docs.append(doc)
         return docs
+    
+    def _split_child_nodes(self, document_node: Document, rules: Rule, process_rule_mode: str, embedding_model_instance: Optional[ModelInstance]) -> list[ChildDocument]:
+        child_splitter = self._get_splitter(
+            processing_rule_mode=process_rule_mode,
+            max_tokens=rules.subchunk_segmentation.max_tokens,
+            chunk_overlap=rules.subchunk_segmentation.chunk_overlap,
+            separator=rules.subchunk_segmentation.separator,
+            embedding_model_instance=embedding_model_instance
+        )
+        # parse document to child nodes
+        child_nodes = []
+        child_documents = child_splitter.split_documents([document_node])
+        for child_document_node in child_documents:
+            if child_document_node.page_content.strip():
+                doc_id = str(uuid.uuid4())
+                hash = helper.generate_text_hash(child_document_node.page_content)
+                child_document = ChildDocument(
+                    page_content=child_document_node.page_content,
+                    metadata=document_node.metadata
+                )
+                child_document.metadata["doc_id"] = doc_id
+                child_document.metadata["doc_hash"] = hash
+                child_page_content = child_document.page_content
+                if child_page_content.startswith(".") or child_page_content.startswith("。"):
+                    child_page_content = child_page_content[1:].strip()
+                if len(child_page_content) > 0:
+                    child_document.page_content = child_page_content
+                    child_nodes.append(child_document)
+        return child_nodes

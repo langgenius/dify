@@ -45,7 +45,7 @@ class BaseIndexProcessor(ABC):
     ) -> list[Document]:
         raise NotImplementedError
 
-    def _get_splitter(self, processing_rule_mode: str, max_tokens: int, chunk_overlap: int, separators: str, embedding_model_instance: Optional[ModelInstance]) -> TextSplitter:
+    def _get_splitter(self, processing_rule_mode: str, max_tokens: int, chunk_overlap: int, separator: str, embedding_model_instance: Optional[ModelInstance]) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
         """
@@ -55,13 +55,13 @@ class BaseIndexProcessor(ABC):
             if max_tokens < 50 or max_tokens > max_segmentation_tokens_length:
                 raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}.")
             
-            if separators:
-                separators = separators.replace("\\n", "\n")
+            if separator:
+                separator = separator.replace("\\n", "\n")
 
             character_splitter = FixedRecursiveCharacterTextSplitter.from_encoder(
                 chunk_size=max_tokens,
                 chunk_overlap=chunk_overlap,
-                fixed_separator=separators,
+                fixed_separator=separator,
                 separators=["\n\n", "。", ". ", " ", ""],
                 embedding_model_instance=embedding_model_instance,
             )

@@ -709,8 +709,7 @@ class DatasetPermissionUserListApi(Resource):
         return {
             "data": partial_members_list,
         }, 200
-
-
+    
 api.add_resource(DatasetListApi, "/datasets")
 api.add_resource(DatasetApi, "/datasets/<uuid:dataset_id>")
 api.add_resource(DatasetUseCheckApi, "/datasets/<uuid:dataset_id>/use-check")

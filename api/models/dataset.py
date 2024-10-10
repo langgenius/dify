@@ -585,6 +585,47 @@ class DocumentSegment(db.Model):
 
         return text
 
+class ChildChunk(db.Model):
+    __tablename__ = "child_chunks"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="child_chunk_pkey"),
+        db.Index("child_chunk_dataset_id_idx", "tenant_id", "dataset_id", "document_id", "segment_id", "index_node_id"),
+    )
+
+    # initial fields
+    id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    dataset_id = db.Column(StringUUID, nullable=False)
+    document_id = db.Column(StringUUID, nullable=False)
+    segment_id = db.Column(StringUUID, nullable=False)
+    position = db.Column(db.Integer, nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    word_count = db.Column(db.Integer, nullable=False)
+    # indexing fields
+    index_node_id = db.Column(db.String(255), nullable=True)
+    index_node_hash = db.Column(db.String(255), nullable=True)
+    type = db.Column(db.String(255), nullable=False, server_default=db.text("'automatic'::character varying"))
+
+    status = db.Column(db.String(255), nullable=False, server_default=db.text("'waiting'::character varying"))
+    created_by = db.Column(StringUUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_by = db.Column(StringUUID, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    indexing_at = db.Column(db.DateTime, nullable=True)
+    completed_at = db.Column(db.DateTime, nullable=True)
+    error = db.Column(db.Text, nullable=True)
+
+    @property
+    def dataset(self):
+        return db.session.query(Dataset).filter(Dataset.id == self.dataset_id).first()
+
+    @property
+    def document(self):
+        return db.session.query(Document).filter(Document.id == self.document_id).first()
+    
+    @property
+    def segment(self):
+        return db.session.query(DocumentSegment).filter(DocumentSegment.id == self.segment_id).first()
 
 class AppDatasetJoin(db.Model):
     __tablename__ = "app_dataset_joins"
