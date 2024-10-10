@@ -1,7 +1,6 @@
 import json
 import logging
 import time
-import uuid
 from collections.abc import Generator
 from typing import Any, Optional, Union
 
@@ -95,13 +94,12 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             user_id = self._user.id
 
         self._workflow = workflow
-        workflow_run_id = str(uuid.uuid4())
         self._workflow_system_variables = {
             SystemVariableKey.FILES: application_generate_entity.files,
             SystemVariableKey.USER_ID: user_id,
             SystemVariableKey.APP_ID: application_generate_entity.app_config.app_id,
             SystemVariableKey.WORKFLOW_ID: workflow.id,
-            SystemVariableKey.WORKFLOW_RUN_ID: workflow_run_id,
+            SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,
         }
 
         self._task_state = WorkflowTaskState()
