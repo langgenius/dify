@@ -210,7 +210,7 @@ numexpr = "~2.9.0"
 opensearch-py = "2.4.0"
 qrcode = "~7.4.2"
 twilio = "~9.0.4"
-vanna = { version = "0.5.5", extras = ["postgres", "mysql", "clickhouse", "duckdb"] }
+vanna = { version = "0.7.3", extras = ["postgres", "mysql", "clickhouse", "duckdb"] }
 wikipedia = "1.4.0"
 yfinance = "~0.2.40"
 
