@@ -21,6 +21,7 @@ import type {
   WorkflowRunningData,
 } from './types'
 import { WorkflowContext } from './context'
+import type { VersionHistory } from '@/types/workflow'
 
 // #TODO chatVar#
 // const MOCK_DATA = [
@@ -164,6 +165,8 @@ type Shape = {
   setShowImportDSLModal: (showImportDSLModal: boolean) => void
   showTips: string
   setShowTips: (showTips: string) => void
+  versionHistory: VersionHistory[]
+  setVersionHistory: (versionHistory: VersionHistory[]) => void
 }
 
 export const createWorkflowStore = () => {
@@ -266,6 +269,8 @@ export const createWorkflowStore = () => {
     setShowImportDSLModal: showImportDSLModal => set(() => ({ showImportDSLModal })),
     showTips: '',
     setShowTips: showTips => set(() => ({ showTips })),
+    versionHistory: [],
+    setVersionHistory: versionHistory => set(() => ({ versionHistory })),
   }))
 }
 
