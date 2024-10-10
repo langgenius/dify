@@ -6,7 +6,7 @@ import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import InstallModelItem from '@/app/components/plugins/install-model-item'
 
 const PluginList = async () => {
-  const pluginList = [toolNotion, extensionDallE, modelGPT4, toolNotion, toolNotion]
+  const pluginList = [toolNotion, extensionDallE, modelGPT4]
 
   return (
     <div className='pb-3 bg-white'>
