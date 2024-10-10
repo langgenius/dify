@@ -1,0 +1,22 @@
+identity:
+  author: Ice Yao
+  name: alist
+  label:
+    en_US: AList
+    zh_Hans: AList
+  description:
+    en_US: AList is a file listing program that supports multiple storage providers including Dropbox, Alibaba Cloud Disk, OneDrive, Google Drive, etc., and is easy to expand.
+    zh_Hans: AList是一个文件列表程序，支持包括Dropbox、阿里云盘、OneDrive、Google Drive等多种存储提供商，并且易于扩展
+  icon: icon.svg
+  tags:
+    - productivity
+credentials_for_provider:
+  alist_base_url:
+    type: text-input
+    required: true
+    label:
+      en_US: AList base URL
+      zh_Hans: AList base URL
+    placeholder:
+      en_US: Please input your AList base URL
+      zh_Hans: 请输入您的 AList base URL

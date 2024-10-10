@@ -1,0 +1,45 @@
+identity:
+  name: remove_file
+  author: Ice Yao
+  label:
+    en_US: Remove alist file
+    zh_Hans: 删除AList文件
+description:
+  human:
+    en_US: Remove alist file
+    zh_Hans: 删除AList文件
+  llm: A tool to remove alist file
+parameters:
+  - name: username
+    type: string
+    required: true
+    label:
+      en_US: username
+      zh_Hans: AList用户名
+    human_description:
+      en_US: The username of AList
+      zh_Hans: AList用户名
+    llm_description: AList用户名，用于获取AList token
+    form: llm
+  - name: password
+    type: string
+    required: true
+    label:
+      en_US: password
+      zh_Hans: AList用户密码
+    human_description:
+      en_US: The user password of AList
+      zh_Hans: AList用户密码
+    llm_description: AList用户密码，用于获取AList token
+    form: llm
+  - name: path
+    type: string
+    required: false
+    label:
+      en_US: path
+      zh_Hans: AList文件路径
+    human_description:
+      en_US: The file path of AList
+      zh_Hans: AList文件路径，文件的唯一标识
+    llm_description: AList文件路径，文件的唯一标识
+    form: llm
