@@ -1,0 +1,53 @@
+identity:
+  name: set_string
+  author: G81192
+  label:
+    en_US: set string
+    zh_Hans: 设置字符串值
+    pt_BR: set string
+description:
+  human:
+    en_US: A tool for redis set string
+    zh_Hans: redis设置字符串值
+    pt_BR: A tool for redis set string
+  llm: A tool for redis set string
+parameters:
+  - name: key
+    type: string
+    required: true
+    label:
+      en_US: key
+      zh_Hans: key
+      pt_BR: key
+    human_description:
+      en_US: The key of a Redis string set
+      zh_Hans: redis存储string类型的key
+      pt_BR: The key of a Redis string set
+    form: form
+  - name: value
+    type: string
+    required: true
+    label:
+      en_US: value
+      zh_Hans: value
+      pt_BR: value
+    human_description:
+      en_US: The value of a Redis string set
+      zh_Hans: redis存储string类型的value
+      pt_BR: The value of a Redis string set
+    llm_description: The value of a Redis string set
+    form: llm
+  - name: expiration
+    type: number
+    required: true
+    default: 180
+    label:
+      en_US: expire time in second
+      zh_Hans: 过期时间(秒)
+      pt_BR: expire time in second
+    human_description:
+      en_US: expire time in second
+      zh_Hans: 过期时间(秒)
+      pt_BR: expire time in second
+    llm_description: expire time in second
+    form: form
