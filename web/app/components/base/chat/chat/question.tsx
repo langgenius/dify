@@ -39,7 +39,7 @@ const Question: FC<QuestionProps> = ({
               <FileList
                 files={message_files}
                 showDeleteAction={false}
-                showDownloadAction={false}
+                showDownloadAction={true}
               />
             )
           }

@@ -142,7 +142,7 @@ export const getFileNameFromUrl = (url: string) => {
 
 export const getSupportFileExtensionList = (allowFileTypes: string[], allowFileExtensions: string[]) => {
   if (allowFileTypes.includes(SupportUploadFileTypes.custom))
-    return allowFileExtensions
+    return allowFileExtensions.map(item => item.toUpperCase())
 
   return allowFileTypes.map(type => FILE_EXTS[type]).flat()
 }

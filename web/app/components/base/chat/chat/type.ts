@@ -1,6 +1,5 @@
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Annotation, MessageRating } from '@/models/log'
-import type { VisionFile } from '@/types/app'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVarType } from '@/app/components/workflow/types'
 import type { FileResponse } from '@/types/workflow'
@@ -45,7 +44,7 @@ export type ThoughtItem = {
   observation: string
   position: number
   files?: string[]
-  message_files?: VisionFile[]
+  message_files?: FileEntity[]
 }
 
 export type CitationItem = {
@@ -91,7 +90,7 @@ export type IChatItem = {
   useCurrentUserAvatar?: boolean
   isOpeningStatement?: boolean
   suggestedQuestions?: string[]
-  log?: { role: string; text: string; files?: VisionFile[] }[]
+  log?: { role: string; text: string; files?: FileEntity[] }[]
   agent_thoughts?: ThoughtItem[]
   message_files?: FileEntity[]
   workflow_run_id?: string

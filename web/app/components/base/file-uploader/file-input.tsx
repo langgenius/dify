@@ -21,7 +21,7 @@ const FileInput = ({
 
   const allowedFileTypes = fileConfig.allowed_file_types
   const isCustom = allowedFileTypes?.includes(SupportUploadFileTypes.custom)
-  const exts = isCustom ? (fileConfig.allowed_file_extensions || []) : (allowedFileTypes?.map(type => FILE_EXTS[type]) || []).flat().map(item => `.${item}`)
+  const exts = isCustom ? (fileConfig.allowed_file_extensions?.map(item => `.${item}`) || []) : (allowedFileTypes?.map(type => FILE_EXTS[type]) || []).flat().map(item => `.${item}`)
   const accept = exts.join(',')
 
   return (

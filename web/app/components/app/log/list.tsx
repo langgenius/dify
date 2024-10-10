@@ -41,6 +41,7 @@ import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
 import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -82,6 +83,7 @@ const PARAM_MAP = {
 }
 
 function appendQAToChatList(newChatList: IChatItem[], item: any, conversationId: string, timezone: string, format: string) {
+  const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
   newChatList.push({
     id: item.id,
     content: item.answer,
@@ -90,7 +92,7 @@ function appendQAToChatList(newChatList: IChatItem[], item: any, conversationId:
     adminFeedback: item.feedbacks.find((item: any) => item.from_source === 'admin'), // admin feedback
     feedbackDisabled: false,
     isAnswer: true,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+    message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
     log: [
       ...item.message,
       ...(item.message[item.message.length - 1]?.role !== 'assistant'
@@ -137,11 +139,12 @@ function appendQAToChatList(newChatList: IChatItem[], item: any, conversationId:
     })(),
     parentMessageId: `question-${item.id}`,
   })
+  const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
   newChatList.push({
     id: `question-${item.id}`,
     content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
     isAnswer: false,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
+    message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
     parentMessageId: item.parent_message_id || undefined,
   })
 }

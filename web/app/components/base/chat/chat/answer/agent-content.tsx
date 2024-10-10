@@ -2,11 +2,11 @@ import type { FC } from 'react'
 import { memo } from 'react'
 import type {
   ChatItem,
-  VisionFile,
 } from '../../types'
 import { Markdown } from '@/app/components/base/markdown'
 import Thought from '@/app/components/base/chat/chat/thought'
-import ImageGallery from '@/app/components/base/image-gallery'
+import { FileList } from '@/app/components/base/file-uploader'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 
 type AgentContentProps = {
   item: ChatItem
@@ -20,12 +20,6 @@ const AgentContent: FC<AgentContentProps> = ({
     annotation,
     agent_thoughts,
   } = item
-
-  const getImgs = (list?: VisionFile[]) => {
-    if (!list)
-      return []
-    return list.filter(file => file.type === 'image' && file.belongs_to === 'assistant')
-  }
 
   if (annotation?.logAnnotation)
     return <Markdown content={annotation?.logAnnotation.content || ''} />
@@ -46,9 +40,16 @@ const AgentContent: FC<AgentContentProps> = ({
             />
           )}
 
-          {getImgs(thought.message_files).length > 0 && (
-            <ImageGallery srcs={getImgs(thought.message_files).map(file => file.url)} />
-          )}
+          {
+            !!thought.message_files?.length && (
+              <FileList
+                files={getProcessedFilesFromResponse(thought.message_files.map((item: any) => ({ ...item, related_id: item.id })))}
+                showDeleteAction={false}
+                showDownloadAction={true}
+                canPreview={true}
+              />
+            )
+          }
         </div>
       ))}
     </div>

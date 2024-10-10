@@ -58,6 +58,7 @@ const Answer: FC<AnswerProps> = ({
     annotation,
     workflowProcess,
     allFiles,
+    message_files,
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
@@ -173,6 +174,17 @@ const Answer: FC<AnswerProps> = ({
                 <FileList
                   className='my-1'
                   files={allFiles}
+                  showDeleteAction={false}
+                  showDownloadAction
+                  canPreview
+                />
+              )
+            }
+            {
+              !!message_files?.length && (
+                <FileList
+                  className='my-1'
+                  files={message_files}
                   showDeleteAction={false}
                   showDownloadAction
                   canPreview
