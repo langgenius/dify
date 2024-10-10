@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import MagicMock
+
+import pytest
 
 from core.rag.datasource.vdb.pinecone.pinecone_vector import PineconeConfig, PineconeVector
 from tests.integration_tests.vdb.test_vector_store import (
