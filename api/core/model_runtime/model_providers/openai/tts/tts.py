@@ -1,5 +1,5 @@
 import concurrent.futures
-from typing import Any,Optional
+from typing import Any, Optional
 
 from openai import OpenAI
 

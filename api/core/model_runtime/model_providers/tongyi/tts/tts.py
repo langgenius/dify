@@ -1,6 +1,6 @@
 import threading
 from queue import Queue
-from typing import Any,Optional
+from typing import Any, Optional
 
 import dashscope
 from dashscope import SpeechSynthesizer
