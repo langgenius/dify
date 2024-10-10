@@ -16,6 +16,7 @@ import {
 import type { EntityMatch } from '@lexical/text'
 import { CustomTextNode } from './plugins/custom-text/node'
 import type { MenuTextMatch } from './types'
+import { VAR_REGEX as REGEX } from '@/config'
 
 export function getSelectedNode(
   selection: RangeSelection,
@@ -204,6 +205,7 @@ export const decoratorTransform = (
   let match
 
   while (true) {
+    REGEX.lastIndex = 0
     match = getMatch(text)
     let nextText = match === null ? '' : text.slice(match.end)
     text = nextText
