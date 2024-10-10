@@ -2,6 +2,7 @@ from collections.abc import Generator
 from mimetypes import guess_type
 
 from core.helper.download import download_with_size_limit
+from core.helper.marketplace import download_plugin_pkg
 from core.plugin.entities.plugin import PluginEntity, PluginInstallationSource
 from core.plugin.entities.plugin_daemon import InstallPluginMessage, PluginDaemonInnerError
 from core.plugin.manager.asset import PluginAssetManager
@@ -83,7 +84,7 @@ class PluginService:
         """
         manager = PluginInstallationManager()
 
-        pkg = b""
+        pkg = download_plugin_pkg(plugin_unique_identifier)
 
         try:
             yield from manager.install_from_pkg(
