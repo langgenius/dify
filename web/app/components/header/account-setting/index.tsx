@@ -8,7 +8,6 @@ import {
   RiApps2AddLine,
   RiBrainFill,
   RiBrainLine,
-  RiCloseLine,
   RiColorFilterFill,
   RiColorFilterLine,
   RiDatabase2Fill,
@@ -163,7 +162,7 @@ export default function AccountSetting({
   return (
     <MenuDialog
       show
-      onClose={() => { }}
+      onClose={onCancel}
     >
       <div className='mx-auto max-w-[1048px] h-[100vh] flex'>
         <div className='w-[44px] sm:w-[224px] pl-4 pr-6 border-r border-divider-burn flex flex-col'>
@@ -213,9 +212,6 @@ export default function AccountSetting({
                 onChange={e => setSearchValue(e.target.value)}
                 value={searchValue}
               />
-              <div className='flex items-center justify-center -mr-4 w-6 h-6 cursor-pointer' onClick={onCancel}>
-                <RiCloseLine className='w-4 h-4 text-gray-400' />
-              </div>
             </div>
           </div>
           <div className='px-4 sm:px-8 pt-2'>
