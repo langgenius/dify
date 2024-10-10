@@ -137,6 +137,16 @@ class PluginConfig(BaseSettings):
         default=5003,
     )
 
+class MarketplaceConfig(BaseSettings):
+    """
+    Configuration for marketplace
+    """
+
+    MARKETPLACE_API_URL: HttpUrl = Field(
+        description="Marketplace API URL",
+        default="https://marketplace.dify.ai",
+    )
+
 
 class EndpointConfig(BaseSettings):
     """
@@ -636,6 +646,7 @@ class FeatureConfig(
     BillingConfig,
     CodeExecutionSandboxConfig,
     PluginConfig,
+    MarketplaceConfig,
     DataSetConfig,
     EndpointConfig,
     FileAccessConfig,
