@@ -11,6 +11,7 @@ from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.entities.plugin_daemon import InstallPluginMessage
 from libs.login import login_required
 from services.plugin.plugin_service import PluginService
 
@@ -27,7 +28,7 @@ class PluginDebuggingKeyApi(Resource):
         tenant_id = user.current_tenant_id
 
         return {
-            "key": PluginService.get_plugin_debugging_key(tenant_id),
+            "key": PluginService.get_debugging_key(tenant_id),
             "host": dify_config.PLUGIN_REMOTE_INSTALL_HOST,
             "port": dify_config.PLUGIN_REMOTE_INSTALL_PORT,
         }
@@ -40,7 +41,7 @@ class PluginListApi(Resource):
     def get(self):
         user = current_user
         tenant_id = user.current_tenant_id
-        plugins = PluginService.list_plugins(tenant_id)
+        plugins = PluginService.list(tenant_id)
         return jsonable_encoder({"plugins": plugins})
 
 
@@ -88,9 +89,7 @@ class PluginInstallFromUniqueIdentifierApi(Resource):
 
         tenant_id = user.current_tenant_id
 
-        return {
-            "success": PluginService.install_plugin_from_unique_identifier(tenant_id, args["plugin_unique_identifier"])
-        }
+        return {"success": PluginService.install_from_unique_identifier(tenant_id, args["plugin_unique_identifier"])}
 
 
 class PluginInstallFromPkgApi(Resource):
@@ -108,9 +107,71 @@ class PluginInstallFromPkgApi(Resource):
         content = file.read()
 
         def generator():
-            response = PluginService.install_plugin_from_pkg(tenant_id, content)
-            for message in response:
-                yield f"data: {json.dumps(jsonable_encoder(message))}\n\n"
+            try:
+                response = PluginService.install_from_local_pkg(tenant_id, content)
+                for message in response:
+                    yield f"data: {json.dumps(jsonable_encoder(message))}\n\n"
+            except ValueError as e:
+                error_message = InstallPluginMessage(event=InstallPluginMessage.Event.Error, data=str(e))
+                yield f"data: {json.dumps(jsonable_encoder(error_message))}\n\n"
+
+        return Response(generator(), mimetype="text/event-stream")
+
+
+class PluginInstallFromGithubApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        user = current_user
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        tenant_id = user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("repo", type=str, required=True, location="json")
+        parser.add_argument("version", type=str, required=True, location="json")
+        parser.add_argument("package", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        def generator():
+            try:
+                response = PluginService.install_from_github_pkg(
+                    tenant_id, args["repo"], args["version"], args["package"]
+                )
+                for message in response:
+                    yield f"data: {json.dumps(jsonable_encoder(message))}\n\n"
+            except ValueError as e:
+                error_message = InstallPluginMessage(event=InstallPluginMessage.Event.Error, data=str(e))
+                yield f"data: {json.dumps(jsonable_encoder(error_message))}\n\n"
+
+        return Response(generator(), mimetype="text/event-stream")
+
+
+class PluginInstallFromMarketplaceApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        user = current_user
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        tenant_id = user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        def generator():
+            try:
+                response = PluginService.install_from_marketplace_pkg(tenant_id, args["plugin_unique_identifier"])
+                for message in response:
+                    yield f"data: {json.dumps(jsonable_encoder(message))}\n\n"
+            except ValueError as e:
+                error_message = InstallPluginMessage(event=InstallPluginMessage.Event.Error, data=str(e))
+                yield f"data: {json.dumps(jsonable_encoder(error_message))}\n\n"
 
         return Response(generator(), mimetype="text/event-stream")
 
@@ -130,7 +191,7 @@ class PluginUninstallApi(Resource):
 
         tenant_id = user.current_tenant_id
 
-        return {"success": PluginService.uninstall_plugin(tenant_id, args["plugin_installation_id"])}
+        return {"success": PluginService.uninstall(tenant_id, args["plugin_installation_id"])}
 
 
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
@@ -139,4 +200,6 @@ api.add_resource(PluginIconApi, "/workspaces/current/plugin/icon")
 api.add_resource(PluginInstallCheckUniqueIdentifierApi, "/workspaces/current/plugin/install/check_unique_identifier")
 api.add_resource(PluginInstallFromUniqueIdentifierApi, "/workspaces/current/plugin/install/from_unique_identifier")
 api.add_resource(PluginInstallFromPkgApi, "/workspaces/current/plugin/install/from_pkg")
+api.add_resource(PluginInstallFromGithubApi, "/workspaces/current/plugin/install/from_github")
+api.add_resource(PluginInstallFromMarketplaceApi, "/workspaces/current/plugin/install/from_marketplace")
 api.add_resource(PluginUninstallApi, "/workspaces/current/plugin/uninstall")

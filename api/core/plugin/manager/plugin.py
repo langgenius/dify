@@ -1,6 +1,8 @@
-from collections.abc import Generator
+import json
+from collections.abc import Generator, Mapping
+from typing import Any
 
-from core.plugin.entities.plugin import PluginEntity
+from core.plugin.entities.plugin import PluginEntity, PluginInstallationSource
 from core.plugin.entities.plugin_daemon import InstallPluginMessage
 from core.plugin.manager.base import BasePluginManager
 
@@ -25,7 +27,12 @@ class PluginInstallationManager(BasePluginManager):
         )
 
     def install_from_pkg(
-        self, tenant_id: str, pkg: bytes, verify_signature: bool = False
+        self,
+        tenant_id: str,
+        pkg: bytes,
+        source: PluginInstallationSource,
+        meta: Mapping[str, Any],
+        verify_signature: bool = False,
     ) -> Generator[InstallPluginMessage, None, None]:
         """
         Install a plugin from a package.
@@ -33,7 +40,12 @@ class PluginInstallationManager(BasePluginManager):
         # using multipart/form-data to encode body
         body = {
             "dify_pkg": ("dify_pkg", pkg, "application/octet-stream"),
+        }
+
+        data = {
             "verify_signature": "true" if verify_signature else "false",
+            "source": source.value,
+            "meta": json.dumps(meta),
         }
 
         return self._request_with_plugin_daemon_response_stream(
@@ -41,6 +53,7 @@ class PluginInstallationManager(BasePluginManager):
             f"plugin/{tenant_id}/management/install/pkg",
             InstallPluginMessage,
             files=body,
+            data=data,
         )
 
     def install_from_identifier(self, tenant_id: str, identifier: str) -> bool:

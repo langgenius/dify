@@ -1,4 +1,5 @@
 import datetime
+from enum import Enum
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -8,6 +9,13 @@ from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.endpoint import EndpointProviderDeclaration
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntity
+
+
+class PluginInstallationSource(str, Enum):
+    Github = "github"
+    Marketplace = "marketplace"
+    Package = "package"
+    Remote = "remote"
 
 
 class PluginResourceRequirements(BaseModel):
@@ -74,4 +82,15 @@ class PluginEntity(BasePluginEntity):
     endpoints_setups: int
     endpoints_active: int
     runtime_type: str
+    version: str
+
+
+class GithubPackage(BaseModel):
+    repo: str
+    version: str
+    package: str
+
+
+class GithubVersion(BaseModel):
+    repo: str
     version: str
