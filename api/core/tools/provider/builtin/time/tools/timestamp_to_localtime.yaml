@@ -1,0 +1,33 @@
+identity:
+  name: timestamp_to_localtime
+  author: zhuhao
+  label:
+    en_US: Timestamp to localtime
+    zh_Hans: 时间戳转换
+description:
+  human:
+    en_US: A tool for timestamp convert to localtime
+    zh_Hans: 时间戳转换
+  llm: A tool for timestamp convert to localtime
+parameters:
+  - name: timestamp
+    type: number
+    required: true
+    form: llm
+    label:
+      en_US: Timestamp
+      zh_Hans: 时间戳
+    human_description:
+      en_US: Timestamp
+      zh_Hans: 时间戳
+  - name: timezone
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Timezone
+      zh_Hans: 时区
+    human_description:
+      en_US: Timezone, such as Asia/Shanghai
+      zh_Hans: 时区, 比如Asia/Shanghai
+    default: Asia/Shanghai

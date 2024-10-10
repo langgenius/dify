@@ -8,8 +8,8 @@ from flask import Flask
 from extensions.storage.base_storage import BaseStorage
 
 
-class LocalStorage(BaseStorage):
-    """Implementation for local storage."""
+class LocalFsStorage(BaseStorage):
+    """Implementation for local filesystem storage."""
 
     def __init__(self, app: Flask):
         super().__init__(app)

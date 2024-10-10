@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
 
 from configs import dify_config
 from core.embedding.cached_embedding import CacheEmbedding
@@ -25,7 +25,7 @@ class AbstractVectorFactory(ABC):
 
 
 class Vector:
-    def __init__(self, dataset: Dataset, attributes: list = None):
+    def __init__(self, dataset: Dataset, attributes: Optional[list] = None):
         if attributes is None:
             attributes = ["doc_id", "dataset_id", "document_id", "doc_hash"]
         self._dataset = dataset
@@ -106,7 +106,7 @@ class Vector:
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
-    def create(self, texts: list = None, **kwargs):
+    def create(self, texts: Optional[list] = None, **kwargs):
         if texts:
             embeddings = self._embeddings.embed_documents([document.page_content for document in texts])
             self._vector_processor.create(texts=texts, embeddings=embeddings, **kwargs)

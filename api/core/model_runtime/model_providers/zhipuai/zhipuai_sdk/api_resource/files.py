@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from typing import TYPE_CHECKING, Literal, cast
+from typing import TYPE_CHECKING, Literal, Optional, cast
 
 import httpx
 
@@ -34,11 +34,11 @@ class Files(BaseAPI):
     def create(
         self,
         *,
-        file: FileTypes = None,
-        upload_detail: list[UploadDetail] = None,
+        file: Optional[FileTypes] = None,
+        upload_detail: Optional[list[UploadDetail]] = None,
         purpose: Literal["fine-tune", "retrieval", "batch"],
-        knowledge_id: str = None,
-        sentence_size: int = None,
+        knowledge_id: Optional[str] = None,
+        sentence_size: Optional[int] = None,
         extra_headers: Headers | None = None,
         extra_body: Body | None = None,
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,

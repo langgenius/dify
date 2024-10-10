@@ -17,7 +17,7 @@
             alt="chat on Discord"></a>
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
         <img src="https://img.shields.io/twitter/follow/dify_ai?logo=X&color=%20%23f5f5f5"
-            alt="follow on Twitter"></a>
+            alt="follow on X(Twitter)"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
         <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
     <a href="https://github.com/langgenius/dify/graphs/commit-activity" target="_blank">
@@ -39,7 +39,6 @@
   <a href="./README_AR.md"><img alt="README بالعربية" src="https://img.shields.io/badge/العربية-d9d9d9"></a>
   <a href="./README_TR.md"><img alt="Türkçe README" src="https://img.shields.io/badge/Türkçe-d9d9d9"></a>
   <a href="./README_VI.md"><img alt="README Tiếng Việt" src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-d9d9d9"></a>
-
 </p>
 
 
@@ -195,9 +194,13 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 
 #### Terraform을 사용한 배포
 
+[terraform](https://www.terraform.io/)을 사용하여 단 한 번의 클릭으로 Dify를 클라우드 플랫폼에 배포하십시오
+
 ##### Azure Global
-[terraform](https://www.terraform.io/)을 사용하여 Azure에 Dify를 원클릭으로 배포하세요.
 - [nikawang의 Azure Terraform](https://github.com/nikawang/dify-azure-terraform)
+
+##### Google Cloud
+- [sotazum의 Google Cloud Terraform](https://github.com/DeNA/dify-google-cloud-terraform)
 
 ## 기여
 

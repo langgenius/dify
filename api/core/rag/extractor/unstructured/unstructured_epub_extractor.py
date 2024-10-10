@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -17,7 +18,7 @@ class UnstructuredEpubExtractor(BaseExtractor):
     def __init__(
         self,
         file_path: str,
-        api_url: str = None,
+        api_url: Optional[str] = None,
     ):
         """Initialize with file path."""
         self._file_path = file_path
