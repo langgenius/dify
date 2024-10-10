@@ -23,6 +23,7 @@ export const extensionDallE = {
   name: 'DALL-E',
   version: '1.1.0',
   latest_version: '1.2.0',
+  install_count: 1234,
   icon: 'https://via.placeholder.com/150',
   label: {
     'en-US': 'DALL-E',
@@ -40,6 +41,7 @@ export const modelGPT4 = {
   name: 'GPT-4',
   version: '1.0.0',
   latest_version: '1.0.0',
+  install_count: 99999,
   icon: 'https://via.placeholder.com/150',
   label: {
     'en-US': 'GPT-4',

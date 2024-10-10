@@ -15,11 +15,11 @@ const Description: FC<Props> = ({
 }) => {
   const lineClassName = useMemo(() => {
     if (descriptionLineRows === 1)
-      return 'truncate'
+      return 'h-4 truncate'
     else if (descriptionLineRows === 2)
-      return 'line-clamp-2'
+      return 'h-8 line-clamp-2'
     else
-      return 'line-clamp-3'
+      return 'h-12 line-clamp-3'
   }, [descriptionLineRows])
   return (
     <div className={cn('text-text-tertiary system-xs-regular', lineClassName, className)}>
