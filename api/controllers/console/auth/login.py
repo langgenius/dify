@@ -7,9 +7,10 @@ from flask_restful import Resource, reqparse
 import services
 from controllers.console import api
 from controllers.console.setup import setup_required
+from extensions.ext_database import db
 from libs.helper import email, get_remote_ip
 from libs.password import valid_password
-from models.account import Account
+from models.account import Account, AccountIntegrate
 from services.account_service import AccountService, TenantService
 
 
@@ -49,7 +50,17 @@ class LogoutApi(Resource):
     @setup_required
     def get(self):
         account = cast(Account, flask_login.current_user)
-        token = request.headers.get("Authorization", "").split(" ")[1]
+        # OAuth backend exit
+        from controllers.console.auth.oauth import get_oauth_providers
+        OAUTH_PROVIDERS = get_oauth_providers()
+        account_integrates = AccountIntegrate.query.filter_by(account_id=account.id).all()
+        for account_integrate in account_integrates:
+            oauth_provider = OAUTH_PROVIDERS.get(account_integrate.provider)
+            if oauth_provider and account_integrate.encrypted_token:
+                oauth_provider.logout(account_integrate.encrypted_token)
+                account_integrate.encrypted_token = ""
+                db.session.commit()
+        token = request.headers.get('Authorization', '').split(' ')[1]
         AccountService.logout(account=account, token=token)
         flask_login.logout_user()
         return {"result": "success"}
