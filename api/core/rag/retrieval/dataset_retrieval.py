@@ -234,10 +234,8 @@ class DatasetRetrieval:
             retrieval_resource_list = sorted(
                 retrieval_resource_list, key=lambda x: x.get("score"), reverse=True
             )
-            position = 1
-            for item in retrieval_resource_list:
+            for position, item in enumerate(retrieval_resource_list, start=1):
                 item["position"] = position
-                position += 1
             hit_callback.return_retriever_resource_info(retrieval_resource_list)
         if document_context_list:
             document_context_list = sorted(document_context_list, key=lambda x: x.score, reverse=True)
