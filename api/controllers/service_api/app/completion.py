@@ -108,9 +108,15 @@ class ChatApi(Resource):
         parser.add_argument("conversation_id", type=uuid_value, location="json")
         parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
         parser.add_argument("auto_generate_name", type=bool, required=False, default=True, location="json")
-        parser.add_argument("parent_message_id", type=uuid_value, required=False, default=UUID_NIL, location="json")
 
         args = parser.parse_args()
+
+        # Starting from v0.9.0, args['parent_message_id'] is used to support message regeneration.
+        # For the service API, we need to ensure its forward compatibility,
+        # so passing in the 'parent_message_id' is not supported for now.
+        # Here we set the 'parent_message_id' to be 'UUID_NIL' so that the subsequent processing will treat requests
+        # from the service API as legacy messages.
+        args["parent_message_id"] = UUID_NIL
 
         streaming = args["response_mode"] == "streaming"
 
