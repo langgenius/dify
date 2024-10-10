@@ -55,7 +55,7 @@ class GTERerankModel(RerankModel):
 
         # initialize client
         dashscope.api_key = credentials["dashscope_api_key"]
-        
+
         response = dashscope.TextReRank.call(
             query=query,
             documents=docs,
@@ -70,7 +70,7 @@ class GTERerankModel(RerankModel):
             rerank_document = RerankDocument(
                 index=result.index,
                 score=result.relevance_score,
-                text=result['document']['text'],
+                text=result["document"]["text"],
             )
 
             # score threshold check
