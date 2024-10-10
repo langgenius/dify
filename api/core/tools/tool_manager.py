@@ -4,7 +4,7 @@ import mimetypes
 from collections.abc import Generator
 from os import listdir, path
 from threading import Lock
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from configs import dify_config
 from core.agent.entities import AgentToolEntity
@@ -72,7 +72,7 @@ class ToolManager:
 
     @classmethod
     def get_tool(
-        cls, provider_type: str, provider_id: str, tool_name: str, tenant_id: str = None
+        cls, provider_type: str, provider_id: str, tool_name: str, tenant_id: Optional[str] = None
     ) -> Union[BuiltinTool, ApiTool]:
         """
         get the tool

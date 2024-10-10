@@ -201,10 +201,13 @@ docker compose up -d
 
 #### Terraformを使用したデプロイ
 
-##### Azure Global
-[terraform](https://www.terraform.io/) を使用して、AzureにDifyをワンクリックでデプロイします。
-- [nikawangのAzure Terraform](https://github.com/nikawang/dify-azure-terraform)
+[terraform](https://www.terraform.io/) を使用して、ワンクリックでDifyをクラウドプラットフォームにデプロイします
 
+##### Azure Global
+- [@nikawangによるAzure Terraform](https://github.com/nikawang/dify-azure-terraform)
+
+##### Google Cloud
+- [@sotazumによるGoogle Cloud Terraform](https://github.com/DeNA/dify-google-cloud-terraform)
 
 ## 貢献
 
