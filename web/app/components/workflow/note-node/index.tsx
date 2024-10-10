@@ -81,7 +81,6 @@ const NoteNode = ({
             nodeData={data}
             icon={<Icon />}
             minWidth={240}
-            maxWidth={640}
             minHeight={88}
           />
           <div className='shrink-0 h-2 opacity-50 rounded-t-md' style={{ background: THEME_MAP[theme].title }}></div>
