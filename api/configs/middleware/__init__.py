@@ -23,6 +23,7 @@ from configs.middleware.vdb.opensearch_config import OpenSearchConfig
 from configs.middleware.vdb.oracle_config import OracleConfig
 from configs.middleware.vdb.pgvector_config import PGVectorConfig
 from configs.middleware.vdb.pgvectors_config import PGVectoRSConfig
+from configs.middleware.vdb.pinecone_config import PineconeConfig
 from configs.middleware.vdb.qdrant_config import QdrantConfig
 from configs.middleware.vdb.relyt_config import RelytConfig
 from configs.middleware.vdb.tencent_vector_config import TencentVectorDBConfig
@@ -212,6 +213,7 @@ class MiddlewareConfig(
     VectorStoreConfig,
     AnalyticdbConfig,
     ChromaConfig,
+    PineconeConfig,
     MilvusConfig,
     MyScaleConfig,
     OpenSearchConfig,
