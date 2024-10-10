@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { useMount } from 'ahooks'
 import { useContext } from 'use-context-selector'
-import { BookOpenIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
@@ -206,10 +205,6 @@ const Form = () => {
             value={description}
             onChange={e => setDescription(e.target.value)}
           />
-          <a className='flex items-center h-[18px] px-3 text-xs text-gray-500' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank' rel='noopener noreferrer'>
-            <BookOpenIcon className='w-3 h-[18px] mr-1' />
-            {t('datasetSettings.form.descWrite')}
-          </a>
         </div>
       </div>
       <div className={rowClass}>
