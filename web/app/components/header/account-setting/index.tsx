@@ -2,8 +2,6 @@
 import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
 import {
-  RiAccountCircleFill,
-  RiAccountCircleLine,
   RiApps2AddFill,
   RiApps2AddLine,
   RiBox3Fill,
@@ -21,7 +19,6 @@ import {
   RiPuzzle2Line,
   RiTranslate2,
 } from '@remixicon/react'
-import AccountPage from './account-page'
 import MembersPage from './members-page'
 import IntegrationsPage from './Integrations-page'
 import LanguagePage from './language-page'
@@ -60,7 +57,7 @@ type GroupItem = {
 
 export default function AccountSetting({
   onCancel,
-  activeTab = 'account',
+  activeTab = 'members',
 }: IAccountSettingProps) {
   const [activeMenu, setActiveMenu] = useState(activeTab)
   const { t } = useTranslation()
@@ -125,12 +122,6 @@ export default function AccountSetting({
       key: 'account-group',
       name: t('common.settings.accountGroup'),
       items: [
-        {
-          key: 'account',
-          name: t('common.settings.account'),
-          icon: <RiAccountCircleLine className={iconClassName} />,
-          activeIcon: <RiAccountCircleFill className={iconClassName} />,
-        },
         {
           key: 'integrations',
           name: t('common.settings.integrations'),
@@ -217,7 +208,6 @@ export default function AccountSetting({
             </div>
           </div>
           <div className='px-4 sm:px-8 pt-2'>
-            {activeMenu === 'account' && <AccountPage />}
             {activeMenu === 'members' && <MembersPage />}
             {activeMenu === 'billing' && <BillingPage />}
             {activeMenu === 'integrations' && <IntegrationsPage />}
