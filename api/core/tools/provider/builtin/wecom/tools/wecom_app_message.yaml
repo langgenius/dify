@@ -1,0 +1,51 @@
+identity:
+  name: wecom_app_message
+  author: Yuzheng Xie
+  label:
+    en_US: Send App Message
+    zh_Hans: 发送应用消息
+    pt_BR: Send App Message
+  icon: icon.svg
+description:
+  human:
+    en_US: Sending a message on Wecom app
+    zh_Hans: 通过企业微信应用发送消息
+    pt_BR: Sending a message on Wecom app
+  llm: A tool for sending messages to a app on Wecom(企业微信) .
+parameters:
+  - name: message_body
+    type: string
+    required: true
+    label:
+      en_US: App message body of wecom
+      zh_Hans: 企业微信的应用消息请求体
+      pt_BR: App message body of wecom
+    human_description:
+      en_US: App message body of wecom
+      zh_Hans: 企业微信的应用消息请求体
+      pt_BR: App message body of wecom
+    form: llm
+  - name: corp_id
+    type: string
+    required: true
+    label:
+      en_US: Corp ID of wecom
+      zh_Hans: 企业微信的企业ID
+      pt_BR: Corp ID of wecom
+    human_description:
+      en_US: Corp ID of wecom
+      zh_Hans: 企业微信的企业ID
+      pt_BR: Corp ID of wecom
+    form: llm
+  - name: corp_secret
+    type: secret-input
+    required: true
+    label:
+      en_US: Corp Secret of wecom
+      zh_Hans: 企业微信的凭证密钥
+      pt_BR: Corp Secret of wecom
+    human_description:
+      en_US: Corp Secret of wecom
+      zh_Hans: 企业微信的凭证密钥
+      pt_BR: Corp Secret of wecom
+    form: llm
