@@ -1,7 +1,8 @@
 import type { FC } from 'react'
 import React from 'react'
-import { RiArrowRightUpLine, RiVerifiedBadgeLine } from '@remixicon/react'
+import { RiArrowRightUpLine, RiLoginCircleLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import { Github } from '../base/icons/src/public/common'
+import Badge from '../base/badge'
 import type { Plugin } from './types'
 import CornerMark from './card/base/corner-mark'
 import Description from './card/base/description'
@@ -23,6 +24,7 @@ const PluginItem: FC<Props> = ({
 }) => {
   const locale = getLocaleOnServer()
   const { type, name, org, label } = payload
+  const hasNewVersion = payload.latest_version !== payload.version
 
   return (
     <div className='p-1 bg-background-section-burn rounded-xl'>
@@ -31,24 +33,29 @@ const PluginItem: FC<Props> = ({
         {/* Header */}
         <div className="flex">
           <Icon src={payload.icon} />
-          <div className="ml-3 grow">
+          <div className="ml-3 w-0 grow">
             <div className="flex items-center h-5">
               <Title title={label[locale]} />
               <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />
+              <Badge className='ml-1' text={payload.version} hasRedCornerMark={hasNewVersion} />
             </div>
             <Description text={payload.brief[locale]} descriptionLineRows={1}></Description>
           </div>
         </div>
       </div>
-      <div className='mt-1.5 mb-1 flex justify-between items-center h-4'>
+      <div className='mt-1.5 mb-1 flex justify-between items-center h-4 px-3'>
         <div className='flex items-center'>
           <OrgInfo
             className="mt-0.5"
             orgName={org}
             packageName={name}
+            packageNameClassName='w-auto max-w-[150px]'
           />
           <div className='mx-2 text-text-quaternary system-xs-regular'>·</div>
-          <div className='text-text-tertiary system-xs-regular'>2 sets of endpoints enabled</div>
+          <div className='flex text-text-tertiary system-xs-regular space-x-1'>
+            <RiLoginCircleLine className='w-4 h-4' />
+            <span>2 sets of endpoints enabled</span>
+          </div>
         </div>
 
         <div className='flex items-center'>

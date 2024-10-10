@@ -20,6 +20,7 @@ const PluginList = async () => {
           <Card
             payload={toolNotion as any}
             descriptionLineRows={1}
+            showVersion
           />
         </div>
         <h3 className='my-1'>Installed</h3>

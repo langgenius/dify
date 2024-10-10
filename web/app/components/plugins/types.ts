@@ -11,6 +11,7 @@ export type Plugin = {
   'type': PluginType
   'org': string
   'name': string
+  'version': string
   'latest_version': string
   'icon': string
   'label': Record<Locale, string>

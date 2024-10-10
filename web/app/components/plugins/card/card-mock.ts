@@ -4,7 +4,8 @@ export const toolNotion = {
   type: PluginType.tool,
   org: 'Notion',
   name: 'notion page search',
-  latest_version: '1.0.0',
+  version: '1.2.0',
+  latest_version: '1.3.0',
   icon: 'https://via.placeholder.com/150',
   label: {
     'en-US': 'Notion Page Search',
@@ -20,7 +21,8 @@ export const extensionDallE = {
   type: PluginType.extension,
   org: 'OpenAI',
   name: 'DALL-E',
-  latest_version: '1.0.0',
+  version: '1.1.0',
+  latest_version: '1.2.0',
   icon: 'https://via.placeholder.com/150',
   label: {
     'en-US': 'DALL-E',
@@ -36,6 +38,7 @@ export const modelGPT4 = {
   type: PluginType.model,
   org: 'OpenAI',
   name: 'GPT-4',
+  version: '1.0.0',
   latest_version: '1.0.0',
   icon: 'https://via.placeholder.com/150',
   label: {
