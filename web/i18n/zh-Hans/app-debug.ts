@@ -360,6 +360,16 @@ const translation = {
       autoPlayDisabled: '关闭',
     },
   },
+  speechToText: {
+    settings: '设置',
+    speechToTextSettings: {
+      title: '语音转文字设置',
+      languageRecognition: '语言识别',
+      resolutionTooltip: '语音转文字支持的语言。',
+      auto: '自动',
+      custom: '自定义',
+    },
+  },
   openingStatement: {
     title: '对话开场白',
     add: '添加开场白',
