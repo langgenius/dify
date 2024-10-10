@@ -366,6 +366,40 @@ class ToolManager:
         return tool_runtime
 
     @classmethod
+    def get_tool_runtime_from_plugin(
+        cls,
+        tool_type: ToolProviderType,
+        tenant_id: str,
+        provider: str,
+        tool_name: str,
+        tool_parameters: dict[str, Any],
+    ) -> Tool:
+        """
+        get tool runtime from plugin
+        """
+        tool_entity = cls.get_tool_runtime(
+            provider_type=tool_type,
+            provider_id=provider,
+            tool_name=tool_name,
+            tenant_id=tenant_id,
+            invoke_from=InvokeFrom.SERVICE_API,
+            tool_invoke_from=ToolInvokeFrom.PLUGIN,
+        )
+        runtime_parameters = {}
+        parameters = tool_entity.get_merged_runtime_parameters()
+        for parameter in parameters:
+            if parameter.form == ToolParameter.ToolParameterForm.FORM:
+                # save tool parameter to tool entity memory
+                value = cls._init_runtime_parameter(parameter, tool_parameters)
+                runtime_parameters[parameter.name] = value
+
+        if not tool_entity.runtime:
+            raise Exception("tool missing runtime")
+
+        tool_entity.runtime.runtime_parameters.update(runtime_parameters)
+        return tool_entity
+
+    @classmethod
     def get_builtin_provider_icon(cls, provider: str, tenant_id: str) -> tuple[str, str]:
         """
         get the absolute path of the icon of the builtin provider

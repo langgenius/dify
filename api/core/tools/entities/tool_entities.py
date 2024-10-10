@@ -378,6 +378,7 @@ class ToolInvokeFrom(Enum):
 
     WORKFLOW = "workflow"
     AGENT = "agent"
+    PLUGIN = "plugin"
 
 
 class ToolProviderID:

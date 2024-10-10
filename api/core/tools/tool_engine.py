@@ -131,7 +131,7 @@ class ToolEngine:
         return error_response, [], ToolInvokeMeta.error_instance(error_response)
 
     @staticmethod
-    def workflow_invoke(
+    def generic_invoke(
         tool: Tool,
         tool_parameters: dict[str, Any],
         user_id: str,

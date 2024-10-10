@@ -1,5 +1,3 @@
-import time
-
 from flask_restful import Resource
 
 from controllers.console.setup import setup_required
@@ -10,6 +8,7 @@ from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocationResponse
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
 from core.plugin.backwards_invocation.node import PluginNodeBackwardsInvocation
+from core.plugin.backwards_invocation.tool import PluginToolBackwardsInvocation
 from core.plugin.encrypt import PluginEncrypter
 from core.plugin.entities.request import (
     RequestInvokeApp,
@@ -24,7 +23,7 @@ from core.plugin.entities.request import (
     RequestInvokeTool,
     RequestInvokeTTS,
 )
-from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.entities.tool_entities import ToolProviderType
 from libs.helper import compact_generate_response
 from models.account import Tenant
 
@@ -138,17 +137,16 @@ class PluginInvokeToolApi(Resource):
     @plugin_data(payload_type=RequestInvokeTool)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeTool):
         def generator():
-            for i in range(10):
-                time.sleep(0.1)
-                yield (
-                    ToolInvokeMessage(
-                        type=ToolInvokeMessage.MessageType.TEXT,
-                        message=ToolInvokeMessage.TextMessage(text="helloworld"),
-                    )
-                    .model_dump_json()
-                    .encode()
-                    + b"\n\n"
-                )
+            return PluginToolBackwardsInvocation.convert_to_event_stream(
+                PluginToolBackwardsInvocation.invoke_tool(
+                    tenant_id=tenant_model.id,
+                    user_id=user_id,
+                    tool_type=ToolProviderType.value_of(payload.tool_type),
+                    provider=payload.provider,
+                    tool_name=payload.tool,
+                    tool_parameters=payload.tool_parameters,
+                ),
+            )
 
         return compact_generate_response(generator())
 

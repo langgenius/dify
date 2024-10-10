@@ -66,7 +66,7 @@ class ToolNode(BaseNode):
         )
 
         try:
-            message_stream = ToolEngine.workflow_invoke(
+            message_stream = ToolEngine.generic_invoke(
                 tool=tool_runtime,
                 tool_parameters=parameters,
                 user_id=self.user_id,

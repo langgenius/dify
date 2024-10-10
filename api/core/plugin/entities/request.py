@@ -32,6 +32,11 @@ class RequestInvokeTool(BaseModel):
     Request to invoke a tool
     """
 
+    tool_type: Literal["builtin", "workflow", "api"]
+    provider: str
+    tool: str
+    tool_parameters: dict
+
 
 class BaseRequestInvokeModel(BaseModel):
     provider: str
