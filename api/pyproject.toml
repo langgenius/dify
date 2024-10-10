@@ -28,6 +28,7 @@ select = [
     "PLR0402", # manual-from-import
     "PLR1711", # useless-return
     "PLR1714", # repeated-equality-comparison
+    "RUF013", # implicit-optional
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
@@ -44,8 +45,6 @@ ignore = [
     "E721", # type-comparison
     "E722", # bare-except
     "E731", # lambda-assignment
-    "F403", # undefined-local-with-import-star
-    "F405", # undefined-local-with-import-star-usage
     "F821", # undefined-name
     "F841", # unused-variable
     "FURB113", # repeated-append
@@ -113,7 +112,6 @@ authlib = "1.3.1"
 azure-ai-inference = "~1.0.0b3"
 azure-ai-ml = "~1.20.0"
 azure-identity = "1.16.1"
-azure-storage-blob = "12.13.0"
 beautifulsoup4 = "4.12.2"
 boto3 = "1.35.17"
 bs4 = "~0.0.1"
@@ -221,6 +219,7 @@ yfinance = "~0.2.40"
 # Required for storage clients
 ############################################################
 [tool.poetry.group.storage.dependencies]
+azure-storage-blob = "12.13.0"
 bce-python-sdk = "~0.9.23"
 cos-python-sdk-v5 = "1.9.30"
 esdk-obs-python = "3.24.6.1"

@@ -6,8 +6,8 @@ from obs import ObsClient
 from extensions.storage.base_storage import BaseStorage
 
 
-class HuaweiStorage(BaseStorage):
-    """Implementation for huawei obs storage."""
+class HuaweiObsStorage(BaseStorage):
+    """Implementation for Huawei OBS storage."""
 
     def __init__(self, app: Flask):
         super().__init__(app)

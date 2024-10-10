@@ -247,6 +247,12 @@ class HttpConfig(BaseSettings):
         default=None,
     )
 
+    RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
+        description="Enable or disable the X-Forwarded-For Proxy Fix middleware from Werkzeug"
+        " to respect X-* headers to redirect clients",
+        default=False,
+    )
+
 
 class InnerAPIConfig(BaseSettings):
     """

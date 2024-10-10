@@ -1,7 +1,7 @@
 import re
 import tempfile
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 from urllib.parse import unquote
 
 from configs import dify_config
@@ -84,7 +84,7 @@ class ExtractProcessor:
 
     @classmethod
     def extract(
-        cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: str = None
+        cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: Optional[str] = None
     ) -> list[Document]:
         if extract_setting.datasource_type == DatasourceType.FILE.value:
             with tempfile.TemporaryDirectory() as temp_dir:
