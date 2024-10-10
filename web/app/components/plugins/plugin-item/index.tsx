@@ -56,7 +56,7 @@ const PluginItem: FC<Props> = async ({
           </div>
         </div>
       </div>
-      <div className='mt-1.5 mb-1 flex justify-between items-center h-4 px-3'>
+      <div className='mt-1.5 mb-1 flex justify-between items-center h-4 px-4'>
         <div className='flex items-center'>
           <OrgInfo
             className="mt-0.5"
