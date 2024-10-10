@@ -119,8 +119,7 @@ class DatasetDocumentStore:
                 db.session.add(segment_document)
                 db.session.flush()
                 if save_child:
-                    child_position = 1
-                    for child in doc.childs:
+                    for child_position, child in enumerate(doc.childs, start=1):
                         child_segment = ChildChunk(
                             tenant_id=self._dataset.tenant_id,
                             dataset_id=self._dataset.id,
@@ -131,10 +130,10 @@ class DatasetDocumentStore:
                             position=child_position,
                             content=child.page_content,
                             word_count=len(child.page_content),
+                            type="automatic",
                             created_by=self._user_id,
                         )
                         db.session.add(child_segment)
-                        child_position += 1
             else:
                 segment_document.content = doc.page_content
                 if doc.metadata.get("answer"):
@@ -142,6 +141,30 @@ class DatasetDocumentStore:
                 segment_document.index_node_hash = doc.metadata["doc_hash"]
                 segment_document.word_count = len(doc.page_content)
                 segment_document.tokens = tokens
+                if save_child and doc.childs:
+                    # delete the existing child chunks
+                    db.session.query(ChildChunk).filter(
+                        ChildChunk.tenant_id == self._dataset.tenant_id,
+                        ChildChunk.dataset_id == self._dataset.id,
+                        ChildChunk.document_id == self._document_id,
+                        ChildChunk.segment_id == segment_document.id,
+                    ).delete()
+
+                    for child_position, child in enumerate(doc.childs, start=1):
+                        child_segment = ChildChunk(
+                            tenant_id=self._dataset.tenant_id,
+                            dataset_id=self._dataset.id,
+                            document_id=self._document_id,
+                            segment_id=segment_document.id,
+                            index_node_id=child.metadata["doc_id"],
+                            index_node_hash=child.metadata["doc_hash"],
+                            position=child_position,
+                            content=child.page_content,
+                            word_count=len(child.page_content),
+                            type="automatic",
+                            created_by=self._user_id,
+                        )
+                        db.session.add(child_segment)
 
             db.session.commit()
 
