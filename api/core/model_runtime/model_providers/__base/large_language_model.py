@@ -94,7 +94,7 @@ class LargeLanguageModel(AIModel):
         )
 
         try:
-            if "response_format" in model_parameters:
+            if "response_format" in model_parameters and model_parameters["response_format"] in {"JSON", "XML"}:
                 result = self._code_block_mode_wrapper(
                     model=model,
                     credentials=credentials,

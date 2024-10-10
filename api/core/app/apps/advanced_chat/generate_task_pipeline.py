@@ -107,6 +107,10 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             SystemVariableKey.FILES: application_generate_entity.files,
             SystemVariableKey.CONVERSATION_ID: conversation.id,
             SystemVariableKey.USER_ID: user_id,
+            SystemVariableKey.DIALOGUE_COUNT: conversation.dialogue_count,
+            SystemVariableKey.APP_ID: application_generate_entity.app_config.app_id,
+            SystemVariableKey.WORKFLOW_ID: workflow.id,
+            SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,
         }
 
         self._task_state = WorkflowTaskState()
