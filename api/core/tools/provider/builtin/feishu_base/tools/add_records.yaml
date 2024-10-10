@@ -1,0 +1,91 @@
+identity:
+  name: add_records
+  author: Doug Lea
+  label:
+    en_US: Add Records
+    zh_Hans: 新增多条记录
+description:
+  human:
+    en_US: Add Multiple Records to Multidimensional Table
+    zh_Hans: 在多维表格数据表中新增多条记录
+  llm: A tool for adding multiple records to a multidimensional table. (在多维表格数据表中新增多条记录)
+parameters:
+  - name: app_token
+    type: string
+    required: true
+    label:
+      en_US: app_token
+      zh_Hans: app_token
+    human_description:
+      en_US: Unique identifier for the multidimensional table, supports inputting document URL.
+      zh_Hans: 多维表格的唯一标识符，支持输入文档 URL。
+    llm_description: 多维表格的唯一标识符，支持输入文档 URL。
+    form: llm
+
+  - name: table_id
+    type: string
+    required: false
+    label:
+      en_US: table_id
+      zh_Hans: table_id
+    human_description:
+      en_US: Unique identifier for the multidimensional table data, either table_id or table_name must be provided, cannot be empty simultaneously.
+      zh_Hans: 多维表格数据表的唯一标识符，table_id 和 table_name 至少需要提供一个，不能同时为空。
+    llm_description: 多维表格数据表的唯一标识符，table_id 和 table_name 至少需要提供一个，不能同时为空。
+    form: llm
+
+  - name: table_name
+    type: string
+    required: false
+    label:
+      en_US: table_name
+      zh_Hans: table_name
+    human_description:
+      en_US: Name of the multidimensional table data, either table_name or table_id must be provided, cannot be empty simultaneously.
+      zh_Hans: 多维表格数据表的名称，table_name 和 table_id 至少需要提供一个，不能同时为空。
+    llm_description: 多维表格数据表的名称，table_name 和 table_id 至少需要提供一个，不能同时为空。
+    form: llm
+
+  - name: records
+    type: string
+    required: true
+    label:
+      en_US: records
+      zh_Hans: 记录列表
+    human_description:
+      en_US: |
+        List of records to be added in this request. Example value: [{"multi-line-text":"text content","single_select":"option 1","date":1674206443000}]
+        For supported field types, refer to the integration guide (https://open.larkoffice.com/document/server-docs/docs/bitable-v1/notification). For data structures of different field types, refer to the data structure overview (https://open.larkoffice.com/document/server-docs/docs/bitable-v1/bitable-structure).
+      zh_Hans: |
+        本次请求将要新增的记录列表，示例值：[{"多行文本":"文本内容","单选":"选项 1","日期":1674206443000}]。
+        当前接口支持的字段类型请参考接入指南(https://open.larkoffice.com/document/server-docs/docs/bitable-v1/notification)，不同类型字段的数据结构请参考数据结构概述(https://open.larkoffice.com/document/server-docs/docs/bitable-v1/bitable-structure)。
+    llm_description: |
+      本次请求将要新增的记录列表，示例值：[{"多行文本":"文本内容","单选":"选项 1","日期":1674206443000}]。
+      当前接口支持的字段类型请参考接入指南(https://open.larkoffice.com/document/server-docs/docs/bitable-v1/notification)，不同类型字段的数据结构请参考数据结构概述(https://open.larkoffice.com/document/server-docs/docs/bitable-v1/bitable-structure)。
+    form: llm
+
+  - name: user_id_type
+    type: select
+    required: false
+    options:
+      - value: open_id
+        label:
+          en_US: open_id
+          zh_Hans: open_id
+      - value: union_id
+        label:
+          en_US: union_id
+          zh_Hans: union_id
+      - value: user_id
+        label:
+          en_US: user_id
+          zh_Hans: user_id
+    default: "open_id"
+    label:
+      en_US: user_id_type
+      zh_Hans: 用户 ID 类型
+    human_description:
+      en_US: User ID type, optional values are open_id, union_id, user_id, with a default value of open_id.
+      zh_Hans: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    llm_description: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    form: form
