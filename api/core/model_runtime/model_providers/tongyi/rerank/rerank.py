@@ -104,6 +104,7 @@ class GTERerankModel(RerankModel):
                 score_threshold=0.8,
             )
         except Exception as ex:
+            print(ex)
             raise CredentialsValidateFailedError(str(ex))
 
     @property
