@@ -97,6 +97,9 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         self._workflow_system_variables = {
             SystemVariableKey.FILES: application_generate_entity.files,
             SystemVariableKey.USER_ID: user_id,
+            SystemVariableKey.APP_ID: application_generate_entity.app_config.app_id,
+            SystemVariableKey.WORKFLOW_ID: workflow.id,
+            SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,
         }
 
         self._task_state = WorkflowTaskState()

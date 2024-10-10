@@ -85,6 +85,9 @@ class WorkflowCycleManage:
 
         # init workflow run
         workflow_run = WorkflowRun()
+        workflow_run_id = self._workflow_system_variables[SystemVariableKey.WORKFLOW_RUN_ID]
+        if workflow_run_id:
+            workflow_run.id = workflow_run_id
         workflow_run.tenant_id = self._workflow.tenant_id
         workflow_run.app_id = self._workflow.app_id
         workflow_run.sequence_number = new_sequence_number
