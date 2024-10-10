@@ -1,0 +1,1157 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model account_integrates {
+  id              String   @id(map: "account_integrate_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  account_id      String   @db.Uuid
+  provider        String   @db.VarChar(16)
+  open_id         String   @db.VarChar(255)
+  encrypted_token String   @db.VarChar(255)
+  created_at      DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at      DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@unique([account_id, provider], map: "unique_account_provider")
+  @@unique([provider, open_id], map: "unique_provider_open_id")
+}
+
+model accounts {
+  id                 String    @id(map: "account_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name               String    @db.VarChar(255)
+  email              String    @db.VarChar(255)
+  password           String?   @db.VarChar(255)
+  password_salt      String?   @db.VarChar(255)
+  avatar             String?   @db.VarChar(255)
+  interface_language String?   @db.VarChar(255)
+  interface_theme    String?   @db.VarChar(255)
+  timezone           String?   @db.VarChar(255)
+  last_login_at      DateTime? @db.Timestamp(6)
+  last_login_ip      String?   @db.VarChar(255)
+  status             String    @default("active") @db.VarChar(16)
+  initialized_at     DateTime? @db.Timestamp(6)
+  created_at         DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at         DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  last_active_at     DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([email], map: "account_email_idx")
+}
+
+model alembic_version {
+  version_num String @id(map: "alembic_version_pkc") @db.VarChar(32)
+}
+
+model api_based_extensions {
+  id           String   @id(map: "api_based_extension_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id    String   @db.Uuid
+  name         String   @db.VarChar(255)
+  api_endpoint String   @db.VarChar(255)
+  api_key      String
+  created_at   DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([tenant_id], map: "api_based_extension_tenant_idx")
+}
+
+model api_requests {
+  id           String   @id(map: "api_request_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id    String   @db.Uuid
+  api_token_id String   @db.Uuid
+  path         String   @db.VarChar(255)
+  request      String?
+  response     String?
+  ip           String   @db.VarChar(255)
+  created_at   DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([tenant_id, api_token_id], map: "api_request_token_idx")
+}
+
+model api_tokens {
+  id           String    @id(map: "api_token_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id       String?   @db.Uuid
+  type         String    @db.VarChar(16)
+  token        String    @db.VarChar(255)
+  last_used_at DateTime? @db.Timestamp(6)
+  created_at   DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  tenant_id    String?   @db.Uuid
+
+  @@index([app_id, type], map: "api_token_app_id_type_idx")
+  @@index([tenant_id, type], map: "api_token_tenant_idx")
+  @@index([token, type], map: "api_token_token_idx")
+}
+
+model app_annotation_hit_histories {
+  id                  String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id              String   @db.Uuid
+  annotation_id       String   @db.Uuid
+  source              String
+  question            String
+  account_id          String   @db.Uuid
+  created_at          DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  score               Float    @default(0)
+  message_id          String   @db.Uuid
+  annotation_question String
+  annotation_content  String
+
+  @@index([account_id], map: "app_annotation_hit_histories_account_idx")
+  @@index([annotation_id], map: "app_annotation_hit_histories_annotation_idx")
+  @@index([app_id], map: "app_annotation_hit_histories_app_idx")
+  @@index([message_id], map: "app_annotation_hit_histories_message_idx")
+}
+
+model app_annotation_settings {
+  id                    String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id                String   @db.Uuid
+  score_threshold       Float    @default(0)
+  collection_binding_id String   @db.Uuid
+  created_user_id       String   @db.Uuid
+  created_at            DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_user_id       String   @db.Uuid
+  updated_at            DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([app_id], map: "app_annotation_settings_app_idx")
+}
+
+model app_dataset_joins {
+  id         String   @id(map: "app_dataset_join_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id     String   @db.Uuid
+  dataset_id String   @db.Uuid
+  created_at DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([dataset_id, app_id], map: "app_dataset_join_app_dataset_idx")
+}
+
+model app_model_configs {
+  id                               String   @id(map: "app_model_config_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id                           String   @db.Uuid
+  provider                         String?  @db.VarChar(255)
+  model_id                         String?  @db.VarChar(255)
+  configs                          Json?    @db.Json
+  created_at                       DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at                       DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  opening_statement                String?
+  suggested_questions              String?
+  suggested_questions_after_answer String?
+  more_like_this                   String?
+  model                            String?
+  user_input_form                  String?
+  pre_prompt                       String?
+  agent_mode                       String?
+  speech_to_text                   String?
+  sensitive_word_avoidance         String?
+  retriever_resource               String?
+  dataset_query_variable           String?  @db.VarChar(255)
+  prompt_type                      String   @default("simple") @db.VarChar(255)
+  chat_prompt_config               String?
+  completion_prompt_config         String?
+  dataset_configs                  String?
+  external_data_tools              String?
+  file_upload                      String?
+  text_to_speech                   String?
+  created_by                       String?  @db.Uuid
+  updated_by                       String?  @db.Uuid
+
+  @@index([app_id], map: "app_app_id_idx")
+}
+
+model apps {
+  id                      String                @id(map: "app_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id               String                @db.Uuid
+  name                    String                @db.VarChar(255)
+  mode                    String                @db.VarChar(255)
+  icon                    String?               @db.VarChar(255)
+  icon_background         String?               @db.VarChar(255)
+  app_model_config_id     String?               @db.Uuid
+  status                  String                @default("normal") @db.VarChar(255)
+  enable_site             Boolean
+  enable_api              Boolean
+  api_rpm                 Int                   @default(0)
+  api_rph                 Int                   @default(0)
+  is_demo                 Boolean               @default(false)
+  is_public               Boolean               @default(false)
+  created_at              DateTime              @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at              DateTime              @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  is_universal            Boolean               @default(false)
+  workflow_id             String?               @db.Uuid
+  description             String                @default("")
+  tracing                 String?
+  max_active_requests     Int?
+  icon_type               String?               @db.VarChar(255)
+  created_by              String?               @db.Uuid
+  updated_by              String?               @db.Uuid
+  use_icon_as_answer_icon Boolean               @default(false)
+  tool_published_apps     tool_published_apps[]
+
+  @@index([tenant_id], map: "app_tenant_id_idx")
+}
+
+model celery_taskmeta {
+  id        Int       @id @default(autoincrement())
+  task_id   String?   @unique @db.VarChar(155)
+  status    String?   @db.VarChar(50)
+  result    Bytes?
+  date_done DateTime? @db.Timestamp(6)
+  traceback String?
+  name      String?   @db.VarChar(155)
+  args      Bytes?
+  kwargs    Bytes?
+  worker    String?   @db.VarChar(155)
+  retries   Int?
+  queue     String?   @db.VarChar(155)
+}
+
+model celery_tasksetmeta {
+  id         Int       @id @default(autoincrement())
+  taskset_id String?   @unique @db.VarChar(155)
+  result     Bytes?
+  date_done  DateTime? @db.Timestamp(6)
+}
+
+model conversations {
+  id                        String    @id(map: "conversation_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id                    String    @db.Uuid
+  app_model_config_id       String?   @db.Uuid
+  model_provider            String?   @db.VarChar(255)
+  override_model_configs    String?
+  model_id                  String?   @db.VarChar(255)
+  mode                      String    @db.VarChar(255)
+  name                      String    @db.VarChar(255)
+  summary                   String?
+  inputs                    Json?     @db.Json
+  introduction              String?
+  system_instruction        String?
+  system_instruction_tokens Int       @default(0)
+  status                    String    @db.VarChar(255)
+  from_source               String    @db.VarChar(255)
+  from_end_user_id          String?   @db.Uuid
+  from_account_id           String?   @db.Uuid
+  read_at                   DateTime? @db.Timestamp(6)
+  read_account_id           String?   @db.Uuid
+  created_at                DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at                DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  is_deleted                Boolean   @default(false)
+  invoke_from               String?   @db.VarChar(255)
+  dialogue_count            Int       @default(0)
+
+  @@index([app_id, from_source, from_end_user_id], map: "conversation_app_from_user_idx")
+}
+
+model data_source_api_key_auth_bindings {
+  id          String   @id(map: "data_source_api_key_auth_binding_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id   String   @db.Uuid
+  category    String   @db.VarChar(255)
+  provider    String   @db.VarChar(255)
+  credentials String?
+  created_at  DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at  DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  disabled    Boolean? @default(false)
+
+  @@index([provider], map: "data_source_api_key_auth_binding_provider_idx")
+  @@index([tenant_id], map: "data_source_api_key_auth_binding_tenant_id_idx")
+}
+
+model data_source_oauth_bindings {
+  id           String   @id(map: "source_binding_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id    String   @db.Uuid
+  access_token String   @db.VarChar(255)
+  provider     String   @db.VarChar(255)
+  source_info  Json
+  created_at   DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at   DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  disabled     Boolean? @default(false)
+
+  @@index([tenant_id], map: "source_binding_tenant_id_idx")
+  @@index([source_info], map: "source_info_idx", type: Gin)
+}
+
+model dataset_collection_bindings {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  provider_name   String   @db.VarChar(40)
+  model_name      String   @db.VarChar(255)
+  collection_name String   @db.VarChar(64)
+  created_at      DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  type            String   @default("dataset") @db.VarChar(40)
+
+  @@index([provider_name, model_name], map: "provider_model_name_idx")
+}
+
+model dataset_keyword_tables {
+  id               String @id(map: "dataset_keyword_table_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  dataset_id       String @unique @db.Uuid
+  keyword_table    String
+  data_source_type String @default("database") @db.VarChar(255)
+
+  @@index([dataset_id], map: "dataset_keyword_table_dataset_id_idx")
+}
+
+model dataset_permissions {
+  id             String   @id(map: "dataset_permission_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  dataset_id     String   @db.Uuid
+  account_id     String   @db.Uuid
+  has_permission Boolean  @default(true)
+  created_at     DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  tenant_id      String   @db.Uuid
+
+  @@index([account_id], map: "idx_dataset_permissions_account_id")
+  @@index([dataset_id], map: "idx_dataset_permissions_dataset_id")
+  @@index([tenant_id], map: "idx_dataset_permissions_tenant_id")
+}
+
+model dataset_process_rules {
+  id         String   @id(map: "dataset_process_rule_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  dataset_id String   @db.Uuid
+  mode       String   @default("automatic") @db.VarChar(255)
+  rules      String?
+  created_by String   @db.Uuid
+  created_at DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([dataset_id], map: "dataset_process_rule_dataset_id_idx")
+}
+
+model dataset_queries {
+  id              String   @id(map: "dataset_query_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  dataset_id      String   @db.Uuid
+  content         String
+  source          String   @db.VarChar(255)
+  source_app_id   String?  @db.Uuid
+  created_by_role String   @db.VarChar
+  created_by      String   @db.Uuid
+  created_at      DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([dataset_id], map: "dataset_query_dataset_id_idx")
+}
+
+model dataset_retriever_resources {
+  id               String   @id(map: "dataset_retriever_resource_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  message_id       String   @db.Uuid
+  position         Int
+  dataset_id       String   @db.Uuid
+  dataset_name     String
+  document_id      String   @db.Uuid
+  document_name    String
+  data_source_type String
+  segment_id       String   @db.Uuid
+  score            Float?
+  content          String
+  hit_count        Int?
+  word_count       Int?
+  segment_position Int?
+  index_node_hash  String?
+  retriever_from   String
+  created_by       String   @db.Uuid
+  created_at       DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([message_id], map: "dataset_retriever_resource_message_id_idx")
+}
+
+model datasets {
+  id                       String   @id(map: "dataset_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id                String   @db.Uuid
+  name                     String   @db.VarChar(255)
+  description              String?
+  provider                 String   @default("vendor") @db.VarChar(255)
+  permission               String   @default("only_me") @db.VarChar(255)
+  data_source_type         String?  @db.VarChar(255)
+  indexing_technique       String?  @db.VarChar(255)
+  index_struct             String?
+  created_by               String   @db.Uuid
+  created_at               DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_by               String?  @db.Uuid
+  updated_at               DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  embedding_model          String?  @default("text-embedding-ada-002") @db.VarChar(255)
+  embedding_model_provider String?  @default("openai") @db.VarChar(255)
+  collection_binding_id    String?  @db.Uuid
+  retrieval_model          Json?
+
+  @@index([tenant_id], map: "dataset_tenant_idx")
+  @@index([retrieval_model], map: "retrieval_model_idx", type: Gin)
+}
+
+model dify_setups {
+  version  String   @id(map: "dify_setup_pkey") @db.VarChar(255)
+  setup_at DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+}
+
+model document_segments {
+  id              String    @id(map: "document_segment_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id       String    @db.Uuid
+  dataset_id      String    @db.Uuid
+  document_id     String    @db.Uuid
+  position        Int
+  content         String
+  word_count      Int
+  tokens          Int
+  keywords        Json?     @db.Json
+  index_node_id   String?   @db.VarChar(255)
+  index_node_hash String?   @db.VarChar(255)
+  hit_count       Int
+  enabled         Boolean   @default(true)
+  disabled_at     DateTime? @db.Timestamp(6)
+  disabled_by     String?   @db.Uuid
+  status          String    @default("waiting") @db.VarChar(255)
+  created_by      String    @db.Uuid
+  created_at      DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  indexing_at     DateTime? @db.Timestamp(6)
+  completed_at    DateTime? @db.Timestamp(6)
+  error           String?
+  stopped_at      DateTime? @db.Timestamp(6)
+  answer          String?
+  updated_by      String?   @db.Uuid
+  updated_at      DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([dataset_id], map: "document_segment_dataset_id_idx")
+  @@index([dataset_id, index_node_id], map: "document_segment_dataset_node_idx")
+  @@index([document_id], map: "document_segment_document_id_idx")
+  @@index([dataset_id, tenant_id], map: "document_segment_tenant_dataset_idx")
+  @@index([document_id, tenant_id], map: "document_segment_tenant_document_idx")
+  @@index([tenant_id], map: "document_segment_tenant_idx")
+}
+
+model documents {
+  id                      String    @id(map: "document_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id               String    @db.Uuid
+  dataset_id              String    @db.Uuid
+  position                Int
+  data_source_type        String    @db.VarChar(255)
+  data_source_info        String?
+  dataset_process_rule_id String?   @db.Uuid
+  batch                   String    @db.VarChar(255)
+  name                    String    @db.VarChar(255)
+  created_from            String    @db.VarChar(255)
+  created_by              String    @db.Uuid
+  created_api_request_id  String?   @db.Uuid
+  created_at              DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  processing_started_at   DateTime? @db.Timestamp(6)
+  file_id                 String?
+  word_count              Int?
+  parsing_completed_at    DateTime? @db.Timestamp(6)
+  cleaning_completed_at   DateTime? @db.Timestamp(6)
+  splitting_completed_at  DateTime? @db.Timestamp(6)
+  tokens                  Int?
+  indexing_latency        Float?
+  completed_at            DateTime? @db.Timestamp(6)
+  is_paused               Boolean?  @default(false)
+  paused_by               String?   @db.Uuid
+  paused_at               DateTime? @db.Timestamp(6)
+  error                   String?
+  stopped_at              DateTime? @db.Timestamp(6)
+  indexing_status         String    @default("waiting") @db.VarChar(255)
+  enabled                 Boolean   @default(true)
+  disabled_at             DateTime? @db.Timestamp(6)
+  disabled_by             String?   @db.Uuid
+  archived                Boolean   @default(false)
+  archived_reason         String?   @db.VarChar(255)
+  archived_by             String?   @db.Uuid
+  archived_at             DateTime? @db.Timestamp(6)
+  updated_at              DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  doc_type                String?   @db.VarChar(40)
+  doc_metadata            Json?     @db.Json
+  doc_form                String    @default("text_model") @db.VarChar(255)
+  doc_language            String?   @db.VarChar(255)
+
+  @@index([dataset_id], map: "document_dataset_id_idx")
+  @@index([is_paused], map: "document_is_paused_idx")
+  @@index([tenant_id], map: "document_tenant_idx")
+}
+
+model embeddings {
+  id            String   @id(map: "embedding_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  hash          String   @db.VarChar(64)
+  embedding     Bytes
+  created_at    DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  model_name    String   @default("text-embedding-ada-002") @db.VarChar(255)
+  provider_name String   @default("") @db.VarChar(255)
+
+  @@unique([model_name, hash, provider_name], map: "embedding_hash_idx")
+  @@index([created_at], map: "created_at_idx")
+}
+
+model end_users {
+  id               String   @id(map: "end_user_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id        String   @db.Uuid
+  app_id           String?  @db.Uuid
+  type             String   @db.VarChar(255)
+  external_user_id String?  @db.VarChar(255)
+  name             String?  @db.VarChar(255)
+  is_anonymous     Boolean  @default(true)
+  session_id       String   @db.VarChar(255)
+  created_at       DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at       DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([session_id, type], map: "end_user_session_id_idx")
+  @@index([tenant_id, session_id, type], map: "end_user_tenant_session_id_idx")
+}
+
+model installed_apps {
+  id                  String    @id(map: "installed_app_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id           String    @db.Uuid
+  app_id              String    @db.Uuid
+  app_owner_tenant_id String    @db.Uuid
+  position            Int
+  is_pinned           Boolean   @default(false)
+  last_used_at        DateTime? @db.Timestamp(6)
+  created_at          DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@unique([tenant_id, app_id], map: "unique_tenant_app")
+  @@index([app_id], map: "installed_app_app_id_idx")
+  @@index([tenant_id], map: "installed_app_tenant_id_idx")
+}
+
+model invitation_codes {
+  id                 Int       @id(map: "invitation_code_pkey") @default(autoincrement())
+  batch              String    @db.VarChar(255)
+  code               String    @db.VarChar(32)
+  status             String    @default("unused") @db.VarChar(16)
+  used_at            DateTime? @db.Timestamp(6)
+  used_by_tenant_id  String?   @db.Uuid
+  used_by_account_id String?   @db.Uuid
+  deprecated_at      DateTime? @db.Timestamp(6)
+  created_at         DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([batch])
+  @@index([code, status], map: "invitation_codes_code_idx")
+}
+
+model load_balancing_model_configs {
+  id               String   @id(map: "load_balancing_model_config_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id        String   @db.Uuid
+  provider_name    String   @db.VarChar(255)
+  model_name       String   @db.VarChar(255)
+  model_type       String   @db.VarChar(40)
+  name             String   @db.VarChar(255)
+  encrypted_config String?
+  enabled          Boolean  @default(true)
+  created_at       DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at       DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([tenant_id, provider_name, model_type], map: "load_balancing_model_config_tenant_provider_model_idx")
+}
+
+model message_agent_thoughts {
+  id                 String   @id(map: "message_agent_thought_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  message_id         String   @db.Uuid
+  message_chain_id   String?  @db.Uuid
+  position           Int
+  thought            String?
+  tool               String?
+  tool_input         String?
+  observation        String?
+  tool_process_data  String?
+  message            String?
+  message_token      Int?
+  message_unit_price Decimal? @db.Decimal
+  answer             String?
+  answer_token       Int?
+  answer_unit_price  Decimal? @db.Decimal
+  tokens             Int?
+  total_price        Decimal? @db.Decimal
+  currency           String?  @db.VarChar
+  latency            Float?
+  created_by_role    String   @db.VarChar
+  created_by         String   @db.Uuid
+  created_at         DateTime @default(now()) @db.Timestamp(6)
+  message_price_unit Decimal  @default(0.001) @db.Decimal(10, 7)
+  answer_price_unit  Decimal  @default(0.001) @db.Decimal(10, 7)
+  message_files      String?
+  tool_labels_str    String   @default("{}")
+  tool_meta_str      String   @default("{}")
+
+  @@index([message_chain_id], map: "message_agent_thought_message_chain_id_idx")
+  @@index([message_id], map: "message_agent_thought_message_id_idx")
+}
+
+model message_annotations {
+  id              String   @id(map: "message_annotation_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id          String   @db.Uuid
+  conversation_id String?  @db.Uuid
+  message_id      String?  @db.Uuid
+  content         String
+  account_id      String   @db.Uuid
+  created_at      DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at      DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  question        String?
+  hit_count       Int      @default(0)
+
+  @@index([app_id], map: "message_annotation_app_idx")
+  @@index([conversation_id], map: "message_annotation_conversation_idx")
+  @@index([message_id], map: "message_annotation_message_idx")
+}
+
+model message_chains {
+  id         String   @id(map: "message_chain_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  message_id String   @db.Uuid
+  type       String   @db.VarChar(255)
+  input      String?
+  output     String?
+  created_at DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([message_id], map: "message_chain_message_id_idx")
+}
+
+model message_feedbacks {
+  id               String   @id(map: "message_feedback_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id           String   @db.Uuid
+  conversation_id  String   @db.Uuid
+  message_id       String   @db.Uuid
+  rating           String   @db.VarChar(255)
+  content          String?
+  from_source      String   @db.VarChar(255)
+  from_end_user_id String?  @db.Uuid
+  from_account_id  String?  @db.Uuid
+  created_at       DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at       DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([app_id], map: "message_feedback_app_idx")
+  @@index([conversation_id, from_source, rating], map: "message_feedback_conversation_idx")
+  @@index([message_id, from_source], map: "message_feedback_message_idx")
+}
+
+model message_files {
+  id              String   @id(map: "message_file_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  message_id      String   @db.Uuid
+  type            String   @db.VarChar(255)
+  transfer_method String   @db.VarChar(255)
+  url             String?
+  upload_file_id  String?  @db.Uuid
+  created_by_role String   @db.VarChar(255)
+  created_by      String   @db.Uuid
+  created_at      DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  belongs_to      String?  @db.VarChar(255)
+
+  @@index([created_by], map: "message_file_created_by_idx")
+  @@index([message_id], map: "message_file_message_idx")
+}
+
+model messages {
+  id                        String   @id(map: "message_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id                    String   @db.Uuid
+  model_provider            String?  @db.VarChar(255)
+  model_id                  String?  @db.VarChar(255)
+  override_model_configs    String?
+  conversation_id           String   @db.Uuid
+  inputs                    Json?    @db.Json
+  query                     String
+  message                   Json     @db.Json
+  message_tokens            Int      @default(0)
+  message_unit_price        Decimal  @db.Decimal(10, 4)
+  answer                    String
+  answer_tokens             Int      @default(0)
+  answer_unit_price         Decimal  @db.Decimal(10, 4)
+  provider_response_latency Float    @default(0)
+  total_price               Decimal? @db.Decimal(10, 7)
+  currency                  String   @db.VarChar(255)
+  from_source               String   @db.VarChar(255)
+  from_end_user_id          String?  @db.Uuid
+  from_account_id           String?  @db.Uuid
+  created_at                DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at                DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  agent_based               Boolean  @default(false)
+  message_price_unit        Decimal  @default(0.001) @db.Decimal(10, 7)
+  answer_price_unit         Decimal  @default(0.001) @db.Decimal(10, 7)
+  workflow_run_id           String?  @db.Uuid
+  status                    String   @default("normal") @db.VarChar(255)
+  error                     String?
+  message_metadata          String?
+  invoke_from               String?  @db.VarChar(255)
+
+  @@index([app_id, from_source, from_account_id], map: "message_account_idx")
+  @@index([app_id, created_at], map: "message_app_id_idx")
+  @@index([conversation_id], map: "message_conversation_id_idx")
+  @@index([app_id, from_source, from_end_user_id], map: "message_end_user_idx")
+  @@index([conversation_id, workflow_run_id], map: "message_workflow_run_id_idx")
+}
+
+model operation_logs {
+  id         String   @id(map: "operation_log_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id  String   @db.Uuid
+  account_id String   @db.Uuid
+  action     String   @db.VarChar(255)
+  content    Json?    @db.Json
+  created_at DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  created_ip String   @db.VarChar(255)
+  updated_at DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([tenant_id, account_id, action], map: "operation_log_account_action_idx")
+}
+
+model pinned_conversations {
+  id              String   @id(map: "pinned_conversation_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id          String   @db.Uuid
+  conversation_id String   @db.Uuid
+  created_by      String   @db.Uuid
+  created_at      DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  created_by_role String   @default("end_user") @db.VarChar(255)
+
+  @@index([app_id, conversation_id, created_by_role, created_by], map: "pinned_conversation_conversation_idx")
+}
+
+model provider_model_settings {
+  id                     String   @id(map: "provider_model_setting_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id              String   @db.Uuid
+  provider_name          String   @db.VarChar(255)
+  model_name             String   @db.VarChar(255)
+  model_type             String   @db.VarChar(40)
+  enabled                Boolean  @default(true)
+  load_balancing_enabled Boolean  @default(false)
+  created_at             DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at             DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([tenant_id, provider_name, model_type], map: "provider_model_setting_tenant_provider_model_idx")
+}
+
+model provider_models {
+  id               String   @id(map: "provider_model_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id        String   @db.Uuid
+  provider_name    String   @db.VarChar(255)
+  model_name       String   @db.VarChar(255)
+  model_type       String   @db.VarChar(40)
+  encrypted_config String?
+  is_valid         Boolean  @default(false)
+  created_at       DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at       DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@unique([tenant_id, provider_name, model_name, model_type], map: "unique_provider_model_name")
+  @@index([tenant_id, provider_name], map: "provider_model_tenant_id_provider_idx")
+}
+
+model provider_orders {
+  id                 String    @id(map: "provider_order_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id          String    @db.Uuid
+  provider_name      String    @db.VarChar(255)
+  account_id         String    @db.Uuid
+  payment_product_id String    @db.VarChar(191)
+  payment_id         String?   @db.VarChar(191)
+  transaction_id     String?   @db.VarChar(191)
+  quantity           Int       @default(1)
+  currency           String?   @db.VarChar(40)
+  total_amount       Int?
+  payment_status     String    @default("wait_pay") @db.VarChar(40)
+  paid_at            DateTime? @db.Timestamp(6)
+  pay_failed_at      DateTime? @db.Timestamp(6)
+  refunded_at        DateTime? @db.Timestamp(6)
+  created_at         DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at         DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([tenant_id, provider_name], map: "provider_order_tenant_provider_idx")
+}
+
+model providers {
+  id               String    @id(map: "provider_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id        String    @db.Uuid
+  provider_name    String    @db.VarChar(255)
+  provider_type    String    @default("custom") @db.VarChar(40)
+  encrypted_config String?
+  is_valid         Boolean   @default(false)
+  last_used        DateTime? @db.Timestamp(6)
+  quota_type       String?   @default("") @db.VarChar(40)
+  quota_limit      BigInt?
+  quota_used       BigInt?
+  created_at       DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at       DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@unique([tenant_id, provider_name, provider_type, quota_type], map: "unique_provider_name_type_quota")
+  @@index([tenant_id, provider_name], map: "provider_tenant_id_provider_idx")
+}
+
+model recommended_apps {
+  id                String   @id(map: "recommended_app_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id            String   @db.Uuid
+  description       Json     @db.Json
+  copyright         String   @db.VarChar(255)
+  privacy_policy    String   @db.VarChar(255)
+  category          String   @db.VarChar(255)
+  position          Int
+  is_listed         Boolean
+  install_count     Int
+  created_at        DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at        DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  language          String   @default("en-US") @db.VarChar(255)
+  custom_disclaimer String?  @db.VarChar(255)
+
+  @@index([app_id], map: "recommended_app_app_id_idx")
+  @@index([is_listed, language], map: "recommended_app_is_listed_idx")
+}
+
+model saved_messages {
+  id              String   @id(map: "saved_message_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id          String   @db.Uuid
+  message_id      String   @db.Uuid
+  created_by      String   @db.Uuid
+  created_at      DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  created_by_role String   @default("end_user") @db.VarChar(255)
+
+  @@index([app_id, message_id, created_by_role, created_by], map: "saved_message_message_idx")
+}
+
+model sites {
+  id                        String   @id(map: "site_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id                    String   @db.Uuid
+  title                     String   @db.VarChar(255)
+  icon                      String?  @db.VarChar(255)
+  icon_background           String?  @db.VarChar(255)
+  description               String?
+  default_language          String   @db.VarChar(255)
+  copyright                 String?  @db.VarChar(255)
+  privacy_policy            String?  @db.VarChar(255)
+  customize_domain          String?  @db.VarChar(255)
+  customize_token_strategy  String   @db.VarChar(255)
+  prompt_public             Boolean  @default(false)
+  status                    String   @default("normal") @db.VarChar(255)
+  created_at                DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at                DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  code                      String?  @db.VarChar(255)
+  custom_disclaimer         String?  @db.VarChar(255)
+  show_workflow_steps       Boolean  @default(true)
+  chat_color_theme          String?  @db.VarChar(255)
+  chat_color_theme_inverted Boolean  @default(false)
+  icon_type                 String?  @db.VarChar(255)
+  created_by                String?  @db.Uuid
+  updated_by                String?  @db.Uuid
+  use_icon_as_answer_icon   Boolean  @default(false)
+
+  @@index([app_id], map: "site_app_id_idx")
+  @@index([code, status], map: "site_code_idx")
+}
+
+model tag_bindings {
+  id         String   @id(map: "tag_binding_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id  String?  @db.Uuid
+  tag_id     String?  @db.Uuid
+  target_id  String?  @db.Uuid
+  created_by String   @db.Uuid
+  created_at DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([tag_id], map: "tag_bind_tag_id_idx")
+  @@index([target_id], map: "tag_bind_target_id_idx")
+}
+
+model tags {
+  id         String   @id(map: "tag_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id  String?  @db.Uuid
+  type       String   @db.VarChar(16)
+  name       String   @db.VarChar(255)
+  created_by String   @db.Uuid
+  created_at DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([name], map: "tag_name_idx")
+  @@index([type], map: "tag_type_idx")
+}
+
+model tenant_account_joins {
+  id         String   @id(map: "tenant_account_join_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id  String   @db.Uuid
+  account_id String   @db.Uuid
+  role       String   @default("normal") @db.VarChar(16)
+  invited_by String?  @db.Uuid
+  created_at DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  current    Boolean  @default(false)
+
+  @@unique([tenant_id, account_id], map: "unique_tenant_account_join")
+  @@index([account_id], map: "tenant_account_join_account_id_idx")
+  @@index([tenant_id], map: "tenant_account_join_tenant_id_idx")
+}
+
+model tenant_default_models {
+  id            String   @id(map: "tenant_default_model_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id     String   @db.Uuid
+  provider_name String   @db.VarChar(255)
+  model_name    String   @db.VarChar(255)
+  model_type    String   @db.VarChar(40)
+  created_at    DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at    DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([tenant_id, provider_name, model_type], map: "tenant_default_model_tenant_id_provider_type_idx")
+}
+
+model tenant_preferred_model_providers {
+  id                      String   @id(map: "tenant_preferred_model_provider_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id               String   @db.Uuid
+  provider_name           String   @db.VarChar(255)
+  preferred_provider_type String   @db.VarChar(40)
+  created_at              DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at              DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([tenant_id, provider_name], map: "tenant_preferred_model_provider_tenant_provider_idx")
+}
+
+model tenants {
+  id                 String   @id(map: "tenant_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name               String   @db.VarChar(255)
+  encrypt_public_key String?
+  plan               String   @default("basic") @db.VarChar(255)
+  status             String   @default("normal") @db.VarChar(255)
+  created_at         DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at         DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  custom_config      String?
+}
+
+model tool_api_providers {
+  id                String   @id(map: "tool_api_provider_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name              String   @db.VarChar(40)
+  schema            String
+  schema_type_str   String   @db.VarChar(40)
+  user_id           String   @db.Uuid
+  tenant_id         String   @db.Uuid
+  tools_str         String
+  icon              String   @db.VarChar(255)
+  credentials_str   String
+  description       String
+  created_at        DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at        DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  privacy_policy    String?  @db.VarChar(255)
+  custom_disclaimer String?  @db.VarChar(255)
+
+  @@unique([name, tenant_id], map: "unique_api_tool_provider")
+}
+
+model tool_builtin_providers {
+  id                    String   @id(map: "tool_builtin_provider_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id             String?  @db.Uuid
+  user_id               String   @db.Uuid
+  provider              String   @db.VarChar(40)
+  encrypted_credentials String?
+  created_at            DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at            DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@unique([tenant_id, provider], map: "unique_builtin_tool_provider")
+}
+
+model tool_conversation_variables {
+  id              String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id         String   @db.Uuid
+  tenant_id       String   @db.Uuid
+  conversation_id String   @db.Uuid
+  variables_str   String
+  created_at      DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at      DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([conversation_id], map: "conversation_id_idx")
+  @@index([user_id], map: "user_id_idx")
+}
+
+model tool_files {
+  id              String  @id(map: "tool_file_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id         String  @db.Uuid
+  tenant_id       String  @db.Uuid
+  conversation_id String? @db.Uuid
+  file_key        String  @db.VarChar(255)
+  mimetype        String  @db.VarChar(255)
+  original_url    String? @db.VarChar(2048)
+
+  @@index([conversation_id], map: "tool_file_conversation_id_idx")
+}
+
+model tool_label_bindings {
+  id         String @id(map: "tool_label_bind_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tool_id    String @db.VarChar(64)
+  tool_type  String @db.VarChar(40)
+  label_name String @db.VarChar(40)
+
+  @@unique([tool_id, label_name], map: "unique_tool_label_bind")
+}
+
+model tool_model_invokes {
+  id                        String   @id(map: "tool_model_invoke_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  user_id                   String   @db.Uuid
+  tenant_id                 String   @db.Uuid
+  provider                  String   @db.VarChar(40)
+  tool_type                 String   @db.VarChar(40)
+  tool_name                 String   @db.VarChar(40)
+  model_parameters          String
+  prompt_messages           String
+  model_response            String
+  prompt_tokens             Int      @default(0)
+  answer_tokens             Int      @default(0)
+  answer_unit_price         Decimal  @db.Decimal(10, 4)
+  answer_price_unit         Decimal  @default(0.001) @db.Decimal(10, 7)
+  provider_response_latency Float    @default(0)
+  total_price               Decimal? @db.Decimal(10, 7)
+  currency                  String   @db.VarChar(255)
+  created_at                DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at                DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+}
+
+model tool_providers {
+  id                    String   @id(map: "tool_provider_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id             String   @db.Uuid
+  tool_name             String   @db.VarChar(40)
+  encrypted_credentials String?
+  is_enabled            Boolean  @default(false)
+  created_at            DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at            DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@unique([tenant_id, tool_name], map: "unique_tool_provider_tool_name")
+}
+
+model tool_published_apps {
+  id                String   @id(map: "published_app_tool_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id            String   @db.Uuid
+  user_id           String   @db.Uuid
+  description       String
+  llm_description   String
+  query_description String
+  query_name        String   @db.VarChar(40)
+  tool_name         String   @db.VarChar(40)
+  author            String   @db.VarChar(40)
+  created_at        DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at        DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  apps              apps     @relation(fields: [app_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@unique([app_id, user_id], map: "unique_published_app_tool")
+}
+
+model tool_workflow_providers {
+  id                      String   @id(map: "tool_workflow_provider_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  name                    String   @db.VarChar(40)
+  icon                    String   @db.VarChar(255)
+  app_id                  String   @db.Uuid
+  user_id                 String   @db.Uuid
+  tenant_id               String   @db.Uuid
+  description             String
+  parameter_configuration String   @default("[]")
+  created_at              DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at              DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  privacy_policy          String?  @default("") @db.VarChar(255)
+  version                 String   @default("") @db.VarChar(255)
+  label                   String   @default("") @db.VarChar(255)
+
+  @@unique([name, tenant_id], map: "unique_workflow_tool_provider")
+  @@unique([tenant_id, app_id], map: "unique_workflow_tool_provider_app_id")
+}
+
+model trace_app_config {
+  id               String   @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  app_id           String   @db.Uuid
+  tracing_provider String?  @db.VarChar(255)
+  tracing_config   Json?    @db.Json
+  created_at       DateTime @default(now()) @db.Timestamp(6)
+  updated_at       DateTime @default(now()) @db.Timestamp(6)
+  is_active        Boolean  @default(true)
+
+  @@index([app_id])
+}
+
+model upload_files {
+  id              String    @id(map: "upload_file_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id       String    @db.Uuid
+  storage_type    String    @db.VarChar(255)
+  key             String    @db.VarChar(255)
+  name            String    @db.VarChar(255)
+  size            Int
+  extension       String    @db.VarChar(255)
+  mime_type       String?   @db.VarChar(255)
+  created_by      String    @db.Uuid
+  created_at      DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  used            Boolean   @default(false)
+  used_by         String?   @db.Uuid
+  used_at         DateTime? @db.Timestamp(6)
+  hash            String?   @db.VarChar(255)
+  created_by_role String    @default("account") @db.VarChar(255)
+
+  @@index([tenant_id], map: "upload_file_tenant_idx")
+}
+
+model workflow_app_logs {
+  id              String   @id(map: "workflow_app_log_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id       String   @db.Uuid
+  app_id          String   @db.Uuid
+  workflow_id     String   @db.Uuid
+  workflow_run_id String   @db.Uuid
+  created_from    String   @db.VarChar(255)
+  created_by_role String   @db.VarChar(255)
+  created_by      String   @db.Uuid
+  created_at      DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+
+  @@index([tenant_id, app_id], map: "workflow_app_log_app_idx")
+}
+
+model workflow_conversation_variables {
+  id              String   @db.Uuid
+  conversation_id String   @db.Uuid
+  app_id          String   @db.Uuid
+  data            String
+  created_at      DateTime @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_at      DateTime @default(now()) @db.Timestamp(6)
+
+  @@id([id, conversation_id], map: "workflow__conversation_variables_pkey")
+  @@index([app_id], map: "workflow__conversation_variables_app_id_idx")
+  @@index([created_at], map: "workflow__conversation_variables_created_at_idx")
+}
+
+model workflow_node_executions {
+  id                  String    @id(map: "workflow_node_execution_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id           String    @db.Uuid
+  app_id              String    @db.Uuid
+  workflow_id         String    @db.Uuid
+  triggered_from      String    @db.VarChar(255)
+  workflow_run_id     String?   @db.Uuid
+  index               Int
+  predecessor_node_id String?   @db.VarChar(255)
+  node_id             String    @db.VarChar(255)
+  node_type           String    @db.VarChar(255)
+  title               String    @db.VarChar(255)
+  inputs              String?
+  process_data        String?
+  outputs             String?
+  status              String    @db.VarChar(255)
+  error               String?
+  elapsed_time        Float     @default(0)
+  execution_metadata  String?
+  created_at          DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  created_by_role     String    @db.VarChar(255)
+  created_by          String    @db.Uuid
+  finished_at         DateTime? @db.Timestamp(6)
+  node_execution_id   String?   @db.VarChar(255)
+
+  @@index([tenant_id, app_id, workflow_id, triggered_from, node_execution_id], map: "workflow_node_execution_id_idx")
+  @@index([tenant_id, app_id, workflow_id, triggered_from, node_id], map: "workflow_node_execution_node_run_idx")
+  @@index([tenant_id, app_id, workflow_id, triggered_from, workflow_run_id], map: "workflow_node_execution_workflow_run_idx")
+}
+
+model workflow_runs {
+  id              String    @id(map: "workflow_run_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id       String    @db.Uuid
+  app_id          String    @db.Uuid
+  sequence_number Int
+  workflow_id     String    @db.Uuid
+  type            String    @db.VarChar(255)
+  triggered_from  String    @db.VarChar(255)
+  version         String    @db.VarChar(255)
+  graph           String?
+  inputs          String?
+  status          String    @db.VarChar(255)
+  outputs         String?
+  error           String?
+  elapsed_time    Float     @default(0)
+  total_tokens    Int       @default(0)
+  total_steps     Int?      @default(0)
+  created_by_role String    @db.VarChar(255)
+  created_by      String    @db.Uuid
+  created_at      DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  finished_at     DateTime? @db.Timestamp(6)
+
+  @@index([tenant_id, app_id, sequence_number], map: "workflow_run_tenant_app_sequence_idx")
+  @@index([tenant_id, app_id, triggered_from], map: "workflow_run_triggerd_from_idx")
+}
+
+model workflows {
+  id                     String    @id(map: "workflow_pkey") @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+  tenant_id              String    @db.Uuid
+  app_id                 String    @db.Uuid
+  type                   String    @db.VarChar(255)
+  version                String    @db.VarChar(255)
+  graph                  String?
+  features               String?
+  created_by             String    @db.Uuid
+  created_at             DateTime  @default(dbgenerated("CURRENT_TIMESTAMP(0)")) @db.Timestamp(6)
+  updated_by             String?   @db.Uuid
+  updated_at             DateTime? @db.Timestamp(6)
+  environment_variables  String    @default("{}")
+  conversation_variables String    @default("{}")
+
+  @@index([tenant_id, app_id, version], map: "workflow_version_idx")
+}

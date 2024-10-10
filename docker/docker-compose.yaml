@@ -261,6 +261,21 @@ services:
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
 
+  node:
+    image: node:20
+    platform: 'linux/amd64'
+    tty: true
+    working_dir: /var/www/html
+    ports:
+      - "3000:3000"
+    volumes:
+      - ../frontend:/var/www/html
+    environment:
+      - TZ=Asia/Tokyo
+    networks:
+      - ssrf_proxy_network
+      - default
+
   # The postgres database.
   db:
     image: postgres:15-alpine

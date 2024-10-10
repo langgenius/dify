@@ -1,0 +1,22 @@
+@import 'primereact/resources/primereact.min.css';
+@import 'primereact/resources/themes/lara-light-indigo/theme.css';
+@import 'primeicons/primeicons.css';
+@import 'primeflex/primeflex.css';
+
+:root {
+    --primary-color: #00BFFF;
+    --primary-color-text: #00BFFF;
+}
+
+body {
+    overflow: hidden;
+}
+
+.p-radiobutton.p-highlight .p-radiobutton-box {
+    border-color: var(--primary-color);
+    background: var(--primary-color);
+}
+
+.p-radiobutton:not(.p-disabled):has(.p-radiobutton-input:hover) .p-radiobutton-box {
+    border-color: var(--primary-color);
+}

@@ -1,0 +1,2 @@
+.next
+node_modules
