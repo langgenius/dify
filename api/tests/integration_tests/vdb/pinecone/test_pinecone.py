@@ -32,7 +32,6 @@ def test_pinecone_vector(test_instance, setup_mock_redis, pinecone_mock):
     test_instance.vector._client = pinecone_mock
     test_instance.create_vector()
     # It seems that pinecone needs sometime to persist the data.
-    # time.sleep(10)
     test_instance.search_by_vector()
     test_instance.text_exists()
     test_instance.get_ids_by_metadata_field()
