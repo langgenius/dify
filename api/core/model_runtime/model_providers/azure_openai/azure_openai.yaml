@@ -57,8 +57,8 @@ model_credential_schema:
             en_US: 2024-09-01-preview
           value: 2024-09-01-preview
         - label:
-            en_US: 2024-09-01-preview
-          value: 2024-09-01-preview
+            en_US: 2024-08-01-preview
+          value: 2024-08-01-preview
         - label:
             en_US: 2024-07-01-preview
           value: 2024-07-01-preview
