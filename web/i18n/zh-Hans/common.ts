@@ -142,6 +142,7 @@ const translation = {
   settings: {
     accountGroup: '账户',
     workplaceGroup: '工作空间',
+    generalGroup: '通用',
     account: '我的账户',
     members: '成员',
     billing: '账单',

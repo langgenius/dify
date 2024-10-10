@@ -142,6 +142,7 @@ const translation = {
   settings: {
     accountGroup: 'ACCOUNT',
     workplaceGroup: 'WORKSPACE',
+    generalGroup: 'GENERAL',
     account: 'My account',
     members: 'Members',
     billing: 'Billing',

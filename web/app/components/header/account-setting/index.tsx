@@ -6,8 +6,8 @@ import {
   RiAccountCircleLine,
   RiApps2AddFill,
   RiApps2AddLine,
-  RiBox3Fill,
-  RiBox3Line,
+  RiBrainFill,
+  RiBrainLine,
   RiCloseLine,
   RiColorFilterFill,
   RiColorFilterLine,
@@ -31,17 +31,14 @@ import ModelProviderPage from './model-provider-page'
 import cn from '@/utils/classnames'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
-import Modal from '@/app/components/base/modal'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useProviderContext } from '@/context/provider-context'
 import { useAppContext } from '@/context/app-context'
+import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
+import Input from '@/app/components/base/input'
 
 const iconClassName = `
-  w-4 h-4 ml-3 mr-2
-`
-
-const scrolledClassName = `
-  border-b shadow-xs bg-white/[.98]
+  w-5 h-5 mr-2
 `
 
 type IAccountSettingProps = {
@@ -59,7 +56,7 @@ type GroupItem = {
 
 export default function AccountSetting({
   onCancel,
-  activeTab = 'account',
+  activeTab = 'provider',
 }: IAccountSettingProps) {
   const [activeMenu, setActiveMenu] = useState(activeTab)
   const { t } = useTranslation()
@@ -73,8 +70,8 @@ export default function AccountSetting({
       {
         key: 'provider',
         name: t('common.settings.provider'),
-        icon: <RiBox3Line className={iconClassName} />,
-        activeIcon: <RiBox3Fill className={iconClassName} />,
+        icon: <RiBrainLine className={iconClassName} />,
+        activeIcon: <RiBrainFill className={iconClassName} />,
       },
       {
         key: 'members',
@@ -122,7 +119,7 @@ export default function AccountSetting({
     },
     {
       key: 'account-group',
-      name: t('common.settings.accountGroup'),
+      name: t('common.settings.generalGroup'),
       items: [
         {
           key: 'account',
@@ -161,32 +158,31 @@ export default function AccountSetting({
 
   const activeItem = [...menuItems[0].items, ...menuItems[1].items].find(item => item.key === activeMenu)
 
+  const [searchValue, setSearchValue] = useState<string>('')
+
   return (
-    <Modal
-      isShow
+    <MenuDialog
+      show
       onClose={() => { }}
-      className='my-[60px] p-0 max-w-[1024px] rounded-xl overflow-y-auto'
-      wrapperClassName='pt-[60px]'
     >
-      <div className='flex'>
-        <div className='w-[44px] sm:w-[200px] px-[1px] py-4 sm:p-4 border border-gray-100 shrink-0 sm:shrink-1 flex flex-col items-center sm:items-start'>
-          <div className='mb-8 ml-0 sm:ml-2 text-sm sm:text-base font-medium leading-6 text-gray-900'>{t('common.userProfile.settings')}</div>
+      <div className='mx-auto max-w-[1048px] h-[100vh] flex'>
+        <div className='w-[44px] sm:w-[224px] pl-4 pr-6 border-r border-divider-burn flex flex-col'>
+          <div className='mt-6 mb-8 px-3 py-2 text-text-primary title-2xl-semi-bold'>{t('common.userProfile.settings')}</div>
           <div className='w-full'>
             {
               menuItems.map(menuItem => (
-                <div key={menuItem.key} className='mb-4'>
+                <div key={menuItem.key} className='mb-2'>
                   {!isCurrentWorkspaceDatasetOperator && (
-                    <div className='px-2 mb-[6px] text-[10px] sm:text-xs font-medium text-gray-500'>{menuItem.name}</div>
+                    <div className='py-2 pl-3 pb-1 mb-0.5 text-text-tertiary system-xs-medium-uppercase'>{menuItem.name}</div>
                   )}
                   <div>
                     {
                       menuItem.items.map(item => (
                         <div
                           key={item.key}
-                          className={`
-                            flex items-center h-[37px] mb-[2px] text-sm cursor-pointer rounded-lg
-                            ${activeMenu === item.key ? 'font-semibold text-primary-600 bg-primary-50' : 'font-light text-gray-700'}
-                          `}
+                          className={cn(
+                            'flex items-center mb-0.5 p-1 pl-3 h-[37px] text-sm cursor-pointer rounded-lg',
+                            activeMenu === item.key ? 'bg-state-base-active text-components-menu-item-text-active system-sm-semibold' : 'text-components-menu-item-text system-sm-medium')}
                           title={item.name}
                           onClick={() => setActiveMenu(item.key)}
                         >
@@ -201,15 +197,22 @@ export default function AccountSetting({
             }
           </div>
         </div>
-        <div ref={scrollRef} className='relative w-[824px] h-[720px] pb-4 overflow-y-auto'>
-          <div className={cn('sticky top-0 px-6 py-4 flex items-center h-14 mb-4 bg-white text-base font-medium text-gray-900 z-20', scrolled && scrolledClassName)}>
-            <div className='shrink-0'>{activeItem?.name}</div>
+        <div ref={scrollRef} className='relative w-[824px] pb-4 bg-components-panel-bg overflow-y-auto'>
+          <div className={cn('sticky top-0 px-8 py-[26px] flex items-center bg-components-panel-bg z-20', scrolled && 'border-b shadow-xs')}>
+            <div className='shrink-0 text-text-primary title-2xl-semi-bold'>{activeItem?.name}</div>
             {
               activeItem?.description && (
                 <div className='shrink-0 ml-2 text-xs text-gray-600'>{activeItem?.description}</div>
               )
             }
             <div className='grow flex justify-end'>
+              <Input
+                showLeftIcon
+                wrapperClassName='!w-[200px]'
+                className='!h-8 !text-[13px]'
+                onChange={e => setSearchValue(e.target.value)}
+                value={searchValue}
+              />
               <div className='flex items-center justify-center -mr-4 w-6 h-6 cursor-pointer' onClick={onCancel}>
                 <RiCloseLine className='w-4 h-4 text-gray-400' />
               </div>
@@ -228,6 +231,6 @@ export default function AccountSetting({
           </div>
         </div>
       </div>
-    </Modal>
+    </MenuDialog>
   )
 }
