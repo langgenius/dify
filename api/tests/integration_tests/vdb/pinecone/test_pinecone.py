@@ -47,7 +47,7 @@ def pinecone_mock(test_instance):
     mock.has_index.return_value = True
     mock.Index.return_value.query.return_value = {
         "matches": [
-            {"id": "1", "metadata": {"page_content": "content1", 'doc_id': test_instance.example_doc_id}, "score": 0.9},
+            {"id": "1", "metadata": {"page_content": "content1", "doc_id": test_instance.example_doc_id}, "score": 0.9},
         ]
     }
     return mock
