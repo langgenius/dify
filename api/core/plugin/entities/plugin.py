@@ -1,6 +1,7 @@
 import datetime
+from collections.abc import Mapping
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
@@ -83,6 +84,8 @@ class PluginEntity(BasePluginEntity):
     endpoints_active: int
     runtime_type: str
     version: str
+    source: PluginInstallationSource
+    meta: Mapping[str, Any]
 
 
 class GithubPackage(BaseModel):
