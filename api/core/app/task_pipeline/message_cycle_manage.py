@@ -82,8 +82,8 @@ class MessageCycleManage:
                 try:
                     name = LLMGenerator.generate_conversation_name(app_model.tenant_id, query)
                     conversation.name = name
-                except:
-                    pass
+                except Exception as e:
+                    logging.exception(f"generate conversation name failed: {e}")
 
                 db.session.merge(conversation)
                 db.session.commit()

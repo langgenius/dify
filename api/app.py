@@ -26,7 +26,7 @@ from commands import register_commands
 from configs import dify_config
 
 # DO NOT REMOVE BELOW
-from events import event_handlers
+from events import event_handlers  # noqa: F401
 from extensions import (
     ext_celery,
     ext_code_based_extension,
@@ -36,6 +36,7 @@ from extensions import (
     ext_login,
     ext_mail,
     ext_migrate,
+    ext_proxy_fix,
     ext_redis,
     ext_sentry,
     ext_storage,
@@ -45,7 +46,7 @@ from extensions.ext_login import login_manager
 from libs.passport import PassportService
 
 # TODO: Find a way to avoid importing models here
-from models import account, dataset, model, source, task, tool, tools, web
+from models import account, dataset, model, source, task, tool, tools, web  # noqa: F401
 from services.account_service import AccountService
 
 # DO NOT REMOVE ABOVE
@@ -156,6 +157,7 @@ def initialize_extensions(app):
     ext_mail.init_app(app)
     ext_hosting_provider.init_app(app)
     ext_sentry.init_app(app)
+    ext_proxy_fix.init_app(app)
 
 
 # Flask-Login configuration
@@ -181,10 +183,10 @@ def load_user_from_request(request_from_flask_login):
     decoded = PassportService().verify(auth_token)
     user_id = decoded.get("user_id")
 
-    account = AccountService.load_logged_in_account(account_id=user_id, token=auth_token)
-    if account:
-        contexts.tenant_id.set(account.current_tenant_id)
-    return account
+    logged_in_account = AccountService.load_logged_in_account(account_id=user_id, token=auth_token)
+    if logged_in_account:
+        contexts.tenant_id.set(logged_in_account.current_tenant_id)
+    return logged_in_account
 
 
 @login_manager.unauthorized_handler
