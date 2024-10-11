@@ -200,7 +200,7 @@ safetensors = "~0.4.3"
 ############################################################
 # [ Tools ] dependency group
 ############################################################
-[tool.poetry.group.tool.dependencies]
+[tool.poetry.group.tools.dependencies]
 arxiv = "2.1.0"
 cloudscraper = "1.2.71"
 duckduckgo-search = "~6.3.0"
