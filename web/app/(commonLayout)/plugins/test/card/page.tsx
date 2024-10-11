@@ -6,6 +6,7 @@ import PluginItem from '@/app/components/plugins/plugin-item'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import InstallModelItem from '@/app/components/plugins/install-model-item'
 import { getLocaleOnServer, useTranslation as translate } from '@/i18n/server'
+import Badge from '@/app/components/base/badge'
 const PluginList = async () => {
   const locale = getLocaleOnServer()
   const pluginList = [toolNotion, extensionDallE, modelGPT4]
@@ -34,7 +35,9 @@ const PluginList = async () => {
             payload={toolNotion as any}
             locale={locale}
             descriptionLineRows={1}
-            showVersion
+            titleLeft={
+              <Badge className='ml-1' text={toolNotion.version} />
+            }
           />
         </div>
         <h3 className='my-1'>Installed</h3>
