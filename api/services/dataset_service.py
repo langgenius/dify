@@ -8,6 +8,7 @@ from typing import Optional
 
 from flask_login import current_user
 from sqlalchemy import func
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -975,6 +976,8 @@ class DocumentService:
     ):
         DatasetService.check_dataset_model_setting(dataset)
         document = DocumentService.get_document(dataset.id, document_data["original_document_id"])
+        if document is None:
+            raise NotFound("Document not found")
         if document.display_status != "available":
             raise ValueError("Document is not available")
         # update document name
