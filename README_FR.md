@@ -202,10 +202,13 @@ Si vous souhaitez configurer une configuration haute disponibilité, la communau
 
 #### Utilisation de Terraform pour le déploiement
 
+Déployez Dify sur une plateforme cloud en un clic en utilisant [terraform](https://www.terraform.io/)
+
 ##### Azure Global
-Utilisez [terraform](https://www.terraform.io/) pour déployer Dify sur Azure en un clic.
 - [Azure Terraform par @nikawang](https://github.com/nikawang/dify-azure-terraform)
 
+##### Google Cloud
+- [Google Cloud Terraform par @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 ## Contribuer
 

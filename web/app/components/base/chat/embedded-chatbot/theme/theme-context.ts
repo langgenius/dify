@@ -26,7 +26,7 @@ export class Theme {
     if (this.chatColorTheme !== null && this.chatColorTheme !== '') {
       this.primaryColor = this.chatColorTheme ?? '#1C64F2'
       this.backgroundHeaderColorStyle = `backgroundColor: ${this.primaryColor}`
-      this.backgroundButtonDefaultColorStyle = `backgroundColor: ${this.primaryColor}`
+      this.backgroundButtonDefaultColorStyle = `backgroundColor: ${this.primaryColor}; color: ${colorFontOnHeaderStyle};`
       this.roundedBackgroundColorStyle = `backgroundColor: ${hexToRGBA(this.primaryColor, 0.05)}`
       this.chatBubbleColorStyle = `backgroundColor: ${hexToRGBA(this.primaryColor, 0.15)}`
       this.chatBubbleColor = `${hexToRGBA(this.primaryColor, 0.15)}`

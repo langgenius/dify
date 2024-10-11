@@ -68,10 +68,13 @@ class WorkflowTool(Tool):
 
         result = []
 
-        outputs = data.get("outputs", {})
-        outputs, files = self._extract_files(outputs)
-        for file in files:
-            result.append(self.create_file_var_message(file))
+        outputs = data.get("outputs")
+        if outputs == None:
+            outputs = {}
+        else:
+            outputs, files = self._extract_files(outputs)
+            for file in files:
+                result.append(self.create_file_var_message(file))
 
         result.append(self.create_text_message(json.dumps(outputs, ensure_ascii=False)))
         result.append(self.create_json_message(outputs))

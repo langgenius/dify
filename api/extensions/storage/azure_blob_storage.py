@@ -8,8 +8,8 @@ from extensions.ext_redis import redis_client
 from extensions.storage.base_storage import BaseStorage
 
 
-class AzureStorage(BaseStorage):
-    """Implementation for azure storage."""
+class AzureBlobStorage(BaseStorage):
+    """Implementation for Azure Blob storage."""
 
     def __init__(self, app: Flask):
         super().__init__(app)
