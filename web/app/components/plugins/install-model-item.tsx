@@ -1,5 +1,5 @@
-import type { FC } from 'react'
 import React from 'react'
+import type { FC } from 'react'
 import { RiVerifiedBadgeLine } from '@remixicon/react'
 import Badge from '../base/badge'
 import type { Plugin } from './types'
@@ -7,19 +7,20 @@ import Description from './card/base/description'
 import Icon from './card/base/card-icon'
 import Title from './card/base/title'
 import DownloadCount from './card/base/download-count'
-import { getLocaleOnServer } from '@/i18n/server'
+import type { Locale } from '@/i18n'
 import cn from '@/utils/classnames'
 
 type Props = {
   className?: string
+  locale: Locale // The component is used in both client and server side, so we can't get the locale from both side(getLocaleOnServer and useContext)
   payload: Plugin
 }
 
 const PluginItem: FC<Props> = async ({
   className,
+  locale,
   payload,
 }) => {
-  const locale = getLocaleOnServer()
   const { org, label } = payload
 
   return (

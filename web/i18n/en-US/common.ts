@@ -377,7 +377,7 @@ const translation = {
     configureRequired: 'Configure required',
     configureTip: 'Set up api-key or add model to use',
     installProvider: 'Install model providers',
-    discoverMore: 'Discover more in',
+    discoverMore: 'Discover more in ',
     emptyProviderTitle: 'Model provider not set up',
     emptyProviderTip: 'Please install a model provider first.',
   },

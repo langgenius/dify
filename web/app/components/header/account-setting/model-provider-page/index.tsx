@@ -1,6 +1,13 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiAlertFill, RiBrainLine } from '@remixicon/react'
+import Link from 'next/link'
+import {
+  RiAlertFill,
+  RiArrowDownSLine,
+  RiArrowRightUpLine,
+  RiBrainLine,
+} from '@remixicon/react'
+import { useContext } from 'use-context-selector'
 import SystemModelSelector from './system-model-selector'
 import ProviderAddedCard, { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 // import ProviderCard from './provider-card'
@@ -18,10 +25,15 @@ import {
   useUpdateModelList,
   useUpdateModelProviders,
 } from './hooks'
+import Divider from '@/app/components/base/divider'
+import ProviderCard from '@/app/components/plugins/provider-card'
+import I18n from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import cn from '@/utils/classnames'
+
+import { extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/card/card-mock'
 
 const ModelProviderPage = () => {
   const { t } = useTranslation()
@@ -89,6 +101,12 @@ const ModelProviderPage = () => {
     })
   }
 
+  const [collapse, setCollapse] = useState(false)
+  const { locale } = useContext(I18n)
+
+  // TODO #Plugin list API#
+  const pluginList = [toolNotion, extensionDallE, modelGPT4]
+
   return (
     <div className='relative pt-1 -mt-2'>
       <div className={cn('flex items-center mb-2')}>
@@ -134,7 +152,7 @@ const ModelProviderPage = () => {
           ))}
         </div>
       )}
-      {!!notConfiguredProviders?.length && (
+      {false && !!notConfiguredProviders?.length && (
         <>
           <div className='flex items-center mb-2 pt-2 text-text-primary system-md-semibold'>{t('common.modelProvider.configureRequired')}</div>
           <div className='relative'>
@@ -149,8 +167,29 @@ const ModelProviderPage = () => {
           </div>
         </>
       )}
-      <div className='flex items-center mb-2 pt-2'>{t('common.modelProvider.installProvider')}</div>
-      <div className='flex items-center mb-2 pt-2'>{t('common.modelProvider.discoverMore')}</div>
+      <div className='mb-2'>
+        <Divider className='!mt-4 h-px' />
+        <div className='flex items-center justify-between'>
+          <div className='flex items-center gap-1 text-text-primary system-md-semibold cursor-pointer' onClick={() => setCollapse(!collapse)}>
+            <RiArrowDownSLine className={cn('w-4 h-4', collapse && '-rotate-90')} />
+            {t('common.modelProvider.installProvider')}
+          </div>
+          <div className='flex items-center mb-2 pt-2'>
+            <span className='pr-1 text-text-tertiary system-sm-regular'>{t('common.modelProvider.discoverMore')}</span>
+            <Link target="_blank" href="/plugins" className='inline-flex items-center system-sm-medium text-text-accent'>
+              Dify Marketplace
+              <RiArrowRightUpLine className='w-4 h-4' />
+            </Link>
+          </div>
+        </div>
+        {!collapse && (
+          <div className='grid grid-cols-2 gap-2'>
+            {pluginList.map((plugin, index) => (
+              <ProviderCard key={index} locale={locale} payload={plugin as any} />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

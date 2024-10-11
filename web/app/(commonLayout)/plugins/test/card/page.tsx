@@ -43,7 +43,7 @@ const PluginList = async () => {
         <h3 className='my-1'>Install model provide</h3>
         <div className='grid grid-cols-2 gap-3'>
           {pluginList.map((plugin, index) => (
-            <InstallModelItem key={index} payload={plugin as any} />
+            <InstallModelItem key={index} locale={locale} payload={plugin as any} />
           ))}
         </div>
 
