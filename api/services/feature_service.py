@@ -132,3 +132,5 @@ class FeatureService:
         features.sso_enforced_for_signin_protocol = enterprise_info["sso_enforced_for_signin_protocol"]
         features.sso_enforced_for_web = enterprise_info["sso_enforced_for_web"]
         features.sso_enforced_for_web_protocol = enterprise_info["sso_enforced_for_web_protocol"]
+        features.enable_email_code_login = enterprise_info["enable_email_code_login"]
+        features.enable_email_password_login = enterprise_info["enable_email_password_login"]
