@@ -2,6 +2,7 @@ import React from 'react'
 import { RiVerifiedBadgeLine } from '@remixicon/react'
 import type { Plugin } from '../types'
 import Badge from '../../base/badge'
+import Icon from '../card/base/card-icon'
 import CornerMark from './base/corner-mark'
 import Title from './base/title'
 import OrgInfo from './base/org-info'
@@ -39,7 +40,7 @@ const Card = ({
       <CornerMark text={type} />
       {/* Header */}
       <div className="flex">
-        {/* <Icon src={payload.icon} installed={installed} /> */}
+        <Icon src={payload.icon} installed={installed} />
         <div className="ml-3 grow">
           <div className="flex items-center h-5">
             <Title title={label[locale]} />
