@@ -5,7 +5,6 @@ import {
   RiArrowDownSLine,
   RiCloseCircleFill,
   RiFilter3Line,
-  RiSearchLine,
 } from '@remixicon/react'
 import {
   PortalToFollowElem,
@@ -14,6 +13,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import Checkbox from '@/app/components/base/checkbox'
 import cn from '@/utils/classnames'
+import Input from '@/app/components/base/input'
 
 type TagsFilterProps = {
   value: string[]
@@ -98,14 +98,12 @@ const TagsFilter = ({
       <PortalToFollowElemContent>
         <div className='w-[240px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur rounded-xl shadow-lg'>
           <div className='p-2 pb-1'>
-            <div className='flex items-center p-2'>
-              <RiSearchLine className='mr-0.5 w-4 h-4 text-text-placeholder' />
-              <input
-                className='px-1 system-sm-regular outline-none appearance-none'
-                value={searchText}
-                onChange={e => setSearchText(e.target.value)}
-              />
-            </div>
+            <Input
+              showLeftIcon
+              value={searchText}
+              onChange={e => setSearchText(e.target.value)}
+              placeholder='Search tags'
+            />
           </div>
           <div className='p-1 max-h-[448px] overflow-y-auto'>
             {

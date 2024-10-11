@@ -44,7 +44,7 @@ const Container = () => {
         : 'bg-background-body',
       )}
     >
-      <div className='flex min-h-[60px] px-12 pt-4 pb-2 items-center self-stretch gap-1'>
+      <div className='sticky top-0 flex min-h-[60px] px-12 pt-4 pb-2 items-center self-stretch gap-1'>
         <div className='flex justify-between items-center w-full'>
           <div className='flex-1'>
             <TabSlider
