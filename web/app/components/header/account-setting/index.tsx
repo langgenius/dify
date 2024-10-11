@@ -204,15 +204,17 @@ export default function AccountSetting({
                 <div className='shrink-0 ml-2 text-xs text-gray-600'>{activeItem?.description}</div>
               )
             }
-            <div className='grow flex justify-end'>
-              <Input
-                showLeftIcon
-                wrapperClassName='!w-[200px]'
-                className='!h-8 !text-[13px]'
-                onChange={e => setSearchValue(e.target.value)}
-                value={searchValue}
-              />
-            </div>
+            {activeItem?.key === 'provider' && (
+              <div className='grow flex justify-end'>
+                <Input
+                  showLeftIcon
+                  wrapperClassName='!w-[200px]'
+                  className='!h-8 !text-[13px]'
+                  onChange={e => setSearchValue(e.target.value)}
+                  value={searchValue}
+                />
+              </div>
+            )}
           </div>
           <div className='px-4 sm:px-8 pt-2'>
             {activeMenu === 'account' && <AccountPage />}
