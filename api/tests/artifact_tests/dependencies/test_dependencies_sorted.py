@@ -18,13 +18,13 @@ ALL_DEPENDENCY_GROUP_NAMES = [
 
 def load_api_poetry_configs() -> dict[str, Any]:
     pyproject_toml = toml.load("api/pyproject.toml")
-    return pyproject_toml.get("tool").get("poetry")
+    return pyproject_toml["tool"]["poetry"]
 
 
 def load_dependency_groups() -> dict[str, dict[str, dict[str, Any]]]:
     poetry_configs = load_api_poetry_configs()
     group_name_to_dependencies = {
-        group_name: (poetry_configs.get("group").get(group_name) if group_name else poetry_configs).get("dependencies")
+        group_name: (poetry_configs["group"][group_name] if group_name else poetry_configs)["dependencies"]
         for group_name in ALL_DEPENDENCY_GROUP_NAMES
     }
     return group_name_to_dependencies
@@ -44,7 +44,7 @@ def test_group_dependencies_sorted():
 def test_group_dependencies_version_operator():
     for group_name, dependencies in load_dependency_groups().items():
         for dependency_name, specification in dependencies.items():
-            version_spec = specification if isinstance(specification, str) else specification.get("version")
+            version_spec = specification if isinstance(specification, str) else specification["version"]
             assert not version_spec.startswith("^"), (
                 f"'^' is not allowed in dependency version," f" but found in '{dependency_name} = {version_spec}'"
             )
