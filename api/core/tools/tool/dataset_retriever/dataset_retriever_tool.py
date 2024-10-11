@@ -1,11 +1,11 @@
 from pydantic import BaseModel, Field
 
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.models.document import Document as RetrievalDocument
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.tools.tool.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
-from core.rag.models.document import Document as RetrievalDocument
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model = {
@@ -65,9 +65,9 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
             )
             for external_document in external_documents:
                 document = RetrievalDocument(
-                            page_content=external_document.get("content"),
-                            metadata=external_document.get("metadata"),
-                            provider="external",
+                    page_content=external_document.get("content"),
+                    metadata=external_document.get("metadata"),
+                    provider="external",
                 )
                 document.metadata["score"] = external_document.get("score")
                 document.metadata["title"] = external_document.get("title")
@@ -94,7 +94,6 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
 
             return str("\n".join([item.page_content for item in results]))
         else:
-
             # get retrieval model , if the model is not setting , using default
             retrieval_model = dataset.retrieval_model or default_retrieval_model
             if dataset.indexing_technique == "economy":
@@ -147,7 +146,9 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                     )
                     for segment in sorted_segments:
                         if segment.answer:
-                            document_context_list.append(f"question:{segment.get_sign_content()} answer:{segment.answer}")
+                            document_context_list.append(
+                                f"question:{segment.get_sign_content()} answer:{segment.answer}"
+                            )
                         else:
                             document_context_list.append(segment.get_sign_content())
                     if self.return_resource:

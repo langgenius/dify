@@ -1,10 +1,10 @@
-
 import boto3
 
 from configs import dify_config
 
 
-class ExternalDatasetServiceTest:
+class ExternalDatasetTestService:
+    # this service is only for internal testing
     @staticmethod
     def knowledge_retrieval(retrieval_setting: dict, query: str, knowledge_id: str):
         # get bedrock client
@@ -19,7 +19,10 @@ class ExternalDatasetServiceTest:
         response = client.retrieve(
             knowledgeBaseId=knowledge_id,
             retrievalConfiguration={
-                "vectorSearchConfiguration": {"numberOfResults": retrieval_setting.get("top_k"), "overrideSearchType": "HYBRID"}
+                "vectorSearchConfiguration": {
+                    "numberOfResults": retrieval_setting.get("top_k"),
+                    "overrideSearchType": "HYBRID",
+                }
             },
             retrievalQuery={"text": query},
         )
@@ -30,7 +33,7 @@ class ExternalDatasetServiceTest:
                 retrieval_results = response.get("retrievalResults")
                 for retrieval_result in retrieval_results:
                     # filter out results with score less than threshold
-                    if retrieval_result.get("score") < retrieval_setting.get("score_threshold", .0):
+                    if retrieval_result.get("score") < retrieval_setting.get("score_threshold", 0.0):
                         continue
                     result = {
                         "metadata": retrieval_result.get("metadata"),
@@ -39,6 +42,4 @@ class ExternalDatasetServiceTest:
                         "content": retrieval_result.get("content").get("text"),
                     }
                     results.append(result)
-        return {
-            "records": results
-        }
+        return {"records": results}
