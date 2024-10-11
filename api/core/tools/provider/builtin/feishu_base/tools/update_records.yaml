@@ -54,7 +54,7 @@ parameters:
       zh_Hans: 记录列表
     human_description:
       en_US: |
-        List of records to be updated in this request. Example value: [{"fields":{"multi-line-text":"text content","single_select":"option 1","date":1674206443000},"record_id":"recupK4f4RM5RX"}]. 
+        List of records to be updated in this request. Example value: [{"fields":{"multi-line-text":"text content","single_select":"option 1","date":1674206443000},"record_id":"recupK4f4RM5RX"}].
         For supported field types, refer to the integration guide (https://open.larkoffice.com/document/server-docs/docs/bitable-v1/notification). For data structures of different field types, refer to the data structure overview (https://open.larkoffice.com/document/server-docs/docs/bitable-v1/bitable-structure).
       zh_Hans: |
         本次请求将要更新的记录列表，示例值：[{"fields":{"多行文本":"文本内容","单选":"选项 1","日期":1674206443000},"record_id":"recupK4f4RM5RX"}]。
