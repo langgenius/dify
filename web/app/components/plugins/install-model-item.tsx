@@ -16,7 +16,7 @@ type Props = {
   payload: Plugin
 }
 
-const PluginItem: FC<Props> = async ({
+const PluginItem: FC<Props> = ({
   className,
   locale,
   payload,
