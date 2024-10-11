@@ -1,11 +1,14 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { useContext } from 'use-context-selector'
+import { RiInformation2Line } from '@remixicon/react'
 import Card from '../../card'
 import { extensionDallE, modelGPT4, toolNotion } from '../../card/card-mock'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Checkbox from '@/app/components/base/checkbox'
+import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import I18n from '@/context/i18n'
 
 type InstallFromMarketplaceProps = {
@@ -17,6 +20,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({ onClose
 
   // Mock a plugin list
   const plugins = [toolNotion, extensionDallE, modelGPT4]
+  const [selectedPlugins, setSelectedPlugins] = useState<Set<number>>(new Set())
 
   return (
     <Modal
@@ -35,12 +39,49 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({ onClose
         </div>
         <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap
           rounded-2xl bg-background-section-burn'>
-          {plugins.map((plugin, index) => (
-            <Card
-              key={index}
-              payload={plugin as any}
+          {plugins.length === 1
+            && <Card
+              payload={plugins[0] as any}
               locale={locale}
-            />
+              className='w-full'
+            >
+            </Card>
+          }
+          {plugins.length > 1 && plugins.map((plugin, index) => (
+            <div className='flex pl-1 items-center gap-2 flex-grow' key={index}>
+              <Checkbox
+                checked={selectedPlugins.has(index)}
+                onCheck={() => {
+                  const newSelectedPlugins = new Set(selectedPlugins)
+                  if (newSelectedPlugins.has(index))
+                    newSelectedPlugins.delete(index)
+                  else
+                    newSelectedPlugins.add(index)
+
+                  setSelectedPlugins(newSelectedPlugins)
+                }}
+              />
+              <Card
+                key={index}
+                payload={plugin as any}
+                locale={locale}
+                className='w-full'
+                titleLeft={plugin.version === plugin.latest_version
+                  ? <Badge className='mx-1' size="s" state={BadgeState.Default}>{plugin.version}</Badge>
+                  : <>
+                    <Badge
+                      className='mx-1'
+                      size="s"
+                      state={BadgeState.Warning}>{`${plugin.version} -> ${plugin.latest_version}`}
+                    </Badge>
+                    <div className='flex px-0.5 justify-center items-center gap-0.5'>
+                      <div className='text-text-warning system-xs-medium'>Used in 3 apps</div>
+                      <RiInformation2Line className='w-4 h-4 text-text-tertiary' />
+                    </div>
+                  </>
+                }
+              />
+            </div>
           ))}
         </div>
       </div>

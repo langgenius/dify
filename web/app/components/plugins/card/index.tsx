@@ -1,7 +1,6 @@
 import React from 'react'
 import { RiVerifiedBadgeLine } from '@remixicon/react'
 import type { Plugin } from '../types'
-import Badge from '../../base/badge'
 import Icon from '../card/base/card-icon'
 import CornerMark from './base/corner-mark'
 import Title from './base/title'
@@ -14,7 +13,7 @@ type Props = {
   className?: string
   payload: Plugin
   locale: Locale // The component is used in both client and server side, so we can't get the locale from both side(getLocaleOnServer and useContext)
-  showVersion?: boolean
+  titleLeft?: React.ReactNode
   installed?: boolean
   descriptionLineRows?: number
   footer?: React.ReactNode
@@ -24,7 +23,7 @@ type Props = {
 const Card = ({
   className,
   payload,
-  showVersion,
+  titleLeft,
   installed,
   descriptionLineRows = 2,
   footer,
@@ -42,9 +41,7 @@ const Card = ({
           <div className="flex items-center h-5">
             <Title title={label[locale]} />
             <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />
-            {
-              showVersion && <Badge className='ml-1' text={payload.latest_version} />
-            }
+            {titleLeft} {/* This can be version badge */}
           </div>
           <OrgInfo
             className="mt-0.5"
@@ -64,8 +61,3 @@ const Card = ({
 }
 
 export default Card
-
-// export function ServerCard(props: Omit<Props, 'serverLocale'>) {
-//   const serverLocale = getLocaleOnServer()
-//   return <Card {...props} serverLocale={serverLocale} />
-// }
