@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiAlertFill } from '@remixicon/react'
+import { RiAlertFill, RiBrainLine } from '@remixicon/react'
 import SystemModelSelector from './system-model-selector'
 import ProviderAddedCard, { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 import ProviderCard from './provider-card'
@@ -58,25 +58,25 @@ const ModelProviderPage = () => {
 
   const handleOpenModal = (
     provider: ModelProvider,
-    configurateMethod: ConfigurationMethodEnum,
+    configurationMethod: ConfigurationMethodEnum,
     CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
   ) => {
     setShowModelModal({
       payload: {
         currentProvider: provider,
-        currentConfigurationMethod: configurateMethod,
+        currentConfigurationMethod: configurationMethod,
         currentCustomConfigurationModelFixedFields: CustomConfigurationModelFixedFields,
       },
       onSaveCallback: () => {
         updateModelProviders()
 
-        if (configurateMethod === ConfigurationMethodEnum.predefinedModel) {
+        if (configurationMethod === ConfigurationMethodEnum.predefinedModel) {
           provider.supported_model_types.forEach((type) => {
             updateModelList(type)
           })
         }
 
-        if (configurateMethod === ConfigurationMethodEnum.customizableModel && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
+        if (configurationMethod === ConfigurationMethodEnum.customizableModel && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
           eventEmitter?.emit({
             type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
             payload: provider.provider,
@@ -114,21 +114,29 @@ const ModelProviderPage = () => {
           />
         </div>
       </div>
-      {
-        !!configuredProviders?.length && (
-          <div className='pb-3'>
-            {
-              configuredProviders?.map(provider => (
-                <ProviderAddedCard
-                  key={provider.provider}
-                  provider={provider}
-                  onOpenModal={(configurateMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => handleOpenModal(provider, configurateMethod, currentCustomConfigurationModelFixedFields)}
-                />
-              ))
-            }
+      {!configuredProviders?.length && (
+        <div className='mb-2 p-4 rounded-[10px]' style={{ background: 'linear-gradient(90deg, rgba(200, 206, 218, 0.20) 0%, rgba(200, 206, 218, 0.04) 100%)' }}>
+          <div className='w-10 h-10 flex items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur'>
+            <RiBrainLine className='w-5 h-5 text-text-primary' />
           </div>
-        )
-      }
+          <div className='mt-2 text-text-secondary system-sm-medium'>{t('common.modelProvider.emptyProviderTitle')}</div>
+          <div className='mt-1 text-text-tertiary system-xs-regular'>{t('common.modelProvider.emptyProviderTip')}</div>
+        </div>
+      )}
+      {!!configuredProviders?.length && (
+        <div className='pb-3'>
+          {configuredProviders?.map(provider => (
+            <ProviderAddedCard
+              key={provider.provider}
+              provider={provider}
+              onOpenModal={(configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => handleOpenModal(provider, configurationMethod, currentCustomConfigurationModelFixedFields)}
+            />
+          ))}
+        </div>
+      )}
+      <div className='flex items-center mb-2 pt-2'>{t('common.modelProvider.configureRequired')}</div>
+      <div className='flex items-center mb-2 pt-2'>{t('common.modelProvider.installProvider')}</div>
+      <div className='flex items-center mb-2 pt-2'>{t('common.modelProvider.discoverMore')}</div>
       {
         !!notConfiguredProviders?.length && (
           <>
@@ -142,7 +150,7 @@ const ModelProviderPage = () => {
                   <ProviderCard
                     key={provider.provider}
                     provider={provider}
-                    onOpenModal={(configurateMethod: ConfigurationMethodEnum) => handleOpenModal(provider, configurateMethod)}
+                    onOpenModal={(configurationMethod: ConfigurationMethodEnum) => handleOpenModal(provider, configurationMethod)}
                   />
                 ))
               }

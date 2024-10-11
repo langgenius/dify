@@ -374,6 +374,12 @@ const translation = {
     loadBalancingInfo: '默认情况下，负载平衡使用 Round-robin 策略。如果触发速率限制，将应用 1 分钟的冷却时间',
     upgradeForLoadBalancing: '升级以解锁负载均衡功能',
     apiKey: 'API 密钥',
+    configureRequired: '尚未配置',
+    configureTip: '请配置 API 密钥，添加模型。',
+    installProvider: '安装模型供应商',
+    discoverMore: '发现更多就在',
+    emptyProviderTitle: '尚未安装模型供应商',
+    emptyProviderTip: '请安装模型供应商。',
   },
   dataSource: {
     add: '添加数据源',
