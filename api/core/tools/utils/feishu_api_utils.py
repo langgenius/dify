@@ -57,8 +57,7 @@ def convert_update_records(json_str):
 
 
 class FeishuRequest:
-    # API_BASE_URL = "https://lark-plugin-api.solutionsuite.cn/lark-plugin"
-    API_BASE_URL = "http://10.174.151.112:6789/lark-plugin"
+    API_BASE_URL = "https://lark-plugin-api.solutionsuite.cn/lark-plugin"
 
     def __init__(self, app_id: str, app_secret: str):
         self.app_id = app_id
