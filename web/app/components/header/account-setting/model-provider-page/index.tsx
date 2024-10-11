@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiAlertFill } from '@remixicon/react'
 import SystemModelSelector from './system-model-selector'
 import ProviderAddedCard, { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 import ProviderCard from './provider-card'
@@ -17,10 +18,10 @@ import {
   useUpdateModelList,
   useUpdateModelProviders,
 } from './hooks'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import cn from '@/utils/classnames'
 
 const ModelProviderPage = () => {
   const { t } = useTranslation()
@@ -90,24 +91,28 @@ const ModelProviderPage = () => {
 
   return (
     <div className='relative pt-1 -mt-2'>
-      <div className={`flex items-center justify-between mb-2 h-8 ${defaultModelNotConfigured && 'px-3 bg-[#FFFAEB] rounded-lg border border-[#FEF0C7]'}`}>
-        {
-          defaultModelNotConfigured
-            ? (
-              <div className='flex items-center text-xs font-medium text-gray-700'>
-                <AlertTriangle className='mr-1 w-3 h-3 text-[#F79009]' />
-                {t('common.modelProvider.notConfigured')}
-              </div>
-            )
-            : <div className='text-sm font-medium text-gray-800'>{t('common.modelProvider.models')}</div>
-        }
-        <SystemModelSelector
-          textGenerationDefaultModel={textGenerationDefaultModel}
-          embeddingsDefaultModel={embeddingsDefaultModel}
-          rerankDefaultModel={rerankDefaultModel}
-          speech2textDefaultModel={speech2textDefaultModel}
-          ttsDefaultModel={ttsDefaultModel}
-        />
+      <div className={cn('flex items-center mb-2')}>
+        <div className='grow text-text-primary system-md-semibold'>{t('common.modelProvider.models')}</div>
+        <div className={cn(
+          'shrink-0 relative flex items-center justify-end gap-2 p-0.5 rounded-lg border border-transparent',
+          defaultModelNotConfigured && 'pl-2 bg-components-panel-bg-blur border-components-panel-border shadow-xs',
+        )}>
+          {defaultModelNotConfigured && <div className='absolute top-0 bottom-0 right-0 left-0 opacity-40' style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }}/>}
+          {defaultModelNotConfigured && (
+            <div className='flex items-center gap-1 text-text-primary system-xs-medium'>
+              <RiAlertFill className='w-4 h-4 text-text-warning-secondary' />
+              {t('common.modelProvider.notConfigured')}
+            </div>
+          )}
+          <SystemModelSelector
+            notConfigured={defaultModelNotConfigured}
+            textGenerationDefaultModel={textGenerationDefaultModel}
+            embeddingsDefaultModel={embeddingsDefaultModel}
+            rerankDefaultModel={rerankDefaultModel}
+            speech2textDefaultModel={speech2textDefaultModel}
+            ttsDefaultModel={ttsDefaultModel}
+          />
+        </div>
       </div>
       {
         !!configuredProviders?.length && (

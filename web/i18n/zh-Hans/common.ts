@@ -276,7 +276,7 @@ const translation = {
     },
   },
   modelProvider: {
-    notConfigured: '系统模型尚未完全配置，部分功能可能无法使用。',
+    notConfigured: '系统模型尚未完全配置',
     systemModelSettings: '系统模型设置',
     systemModelSettingsLink: '为什么需要设置系统模型？',
     selectModel: '选择您的模型',

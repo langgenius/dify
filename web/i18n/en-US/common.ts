@@ -276,7 +276,7 @@ const translation = {
     },
   },
   modelProvider: {
-    notConfigured: 'The system model has not yet been fully configured, and some functions may be unavailable.',
+    notConfigured: 'The system model has not yet been fully configured',
     systemModelSettings: 'System Model Settings',
     systemModelSettingsLink: 'Why is it necessary to set up a system model?',
     selectModel: 'Select your model',

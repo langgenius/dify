@@ -197,7 +197,7 @@ export default function AccountSetting({
           </div>
         </div>
         <div ref={scrollRef} className='relative w-[824px] pb-4 bg-components-panel-bg overflow-y-auto'>
-          <div className={cn('sticky top-0 px-8 py-[26px] flex items-center bg-components-panel-bg z-20', scrolled && 'border-b shadow-xs')}>
+          <div className={cn('sticky top-0 mx-8 pt-[27px] pb-2 mb-[18px] flex items-center bg-components-panel-bg z-20', scrolled && 'border-b')}>
             <div className='shrink-0 text-text-primary title-2xl-semi-bold'>{activeItem?.name}</div>
             {
               activeItem?.description && (
