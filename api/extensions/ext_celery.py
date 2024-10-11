@@ -1,5 +1,5 @@
 from datetime import timedelta
-
+from celery.schedules import crontab
 from celery import Celery, Task
 from flask import Flask
 
@@ -50,21 +50,48 @@ def init_app(app: Flask) -> Celery:
     celery_app.set_default()
     app.extensions["celery"] = celery_app
 
+    schedule = get_schedule(app.config)
+
     imports = [
         "schedule.clean_embedding_cache_task",
         "schedule.clean_unused_datasets_task",
     ]
-    day = app.config.get("CELERY_BEAT_SCHEDULER_TIME")
+
     beat_schedule = {
         "clean_embedding_cache_task": {
             "task": "schedule.clean_embedding_cache_task.clean_embedding_cache_task",
-            "schedule": timedelta(days=day),
+            "schedule": schedule,
         },
         "clean_unused_datasets_task": {
             "task": "schedule.clean_unused_datasets_task.clean_unused_datasets_task",
-            "schedule": timedelta(days=day),
+            "schedule": schedule,
         },
     }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app
+
+def get_schedule(app_config):
+    """Determine the schedule type based on configuration."""
+
+    # Fetch configuration values
+    scheduler_type = app_config.get("CELERY_BEAT_SCHEDULER_TYPE")  # Options: 'time' or 'cron'
+    day = app_config.get("CELERY_BEAT_SCHEDULER_TIME")
+    cron_expression = app_config.get("CELERY_BEAT_SCHEDULER_CRON_EXPRESSION")
+
+    # Determine the schedule based on the 'scheduler_type' value
+    if scheduler_type == "cron" and cron_expression:
+        minute, hour, day_of_month, month_of_year, day_of_week = cron_expression.split()
+        schedule = crontab(
+            minute=minute,
+            hour=hour,
+            day_of_month=day_of_month,
+            month_of_year=month_of_year,
+            day_of_week=day_of_week
+        )
+    elif scheduler_type == "time":
+        schedule = timedelta(days=day)
+    else:
+        raise ValueError("Invalid scheduler type. Must be 'time' or 'cron'.")
+
+    return schedule
