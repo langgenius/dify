@@ -1,16 +1,15 @@
 import json
-import uuid
 import time
+import uuid
 from typing import Any
 
 from pydantic import BaseModel, model_validator
-
 from pymochow import MochowClient
-from pymochow.configuration import Configuration
 from pymochow.auth.bce_credentials import BceCredentials
-from pymochow.model.enum import FieldType, IndexType, MetricType, TableState, IndexState
-from pymochow.model.schema import Schema, Field, VectorIndex, HNSWParams
-from pymochow.model.table import Partition, Row, AnnSearch, HNSWSearchParams
+from pymochow.configuration import Configuration
+from pymochow.model.enum import FieldType, IndexState, IndexType, MetricType, TableState
+from pymochow.model.schema import Field, HNSWParams, Schema, VectorIndex
+from pymochow.model.table import AnnSearch, HNSWSearchParams, Partition, Row
 
 from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings

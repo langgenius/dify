@@ -2,13 +2,12 @@ import os
 
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
-from requests.adapters import HTTPAdapter
-
 from pymochow import MochowClient
 from pymochow.model.database import Database
+from pymochow.model.enum import IndexState, IndexType, MetricType, ReadConsistency, TableState
+from pymochow.model.schema import HNSWParams, VectorIndex
 from pymochow.model.table import Table
-from pymochow.model.enum import IndexType, MetricType, TableState, IndexState, ReadConsistency
-from pymochow.model.schema import VectorIndex, HNSWParams
+from requests.adapters import HTTPAdapter
 
 
 class MockBaiduVectorDBClass:
