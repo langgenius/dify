@@ -6,11 +6,26 @@ import Button from '@/app/components/base/button'
 import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
 import { Github } from '@/app/components/base/icons/src/vender/solid/general'
+import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
+import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import cn from '@/utils/classnames'
 
 const InstallPluginDropdown = () => {
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [selectedAction, setSelectedAction] = useState<string | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (file) {
+      setSelectedFile(file)
+      setSelectedAction('local')
+      setIsMenuOpen(false)
+    }
+  }
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -42,6 +57,13 @@ const InstallPluginDropdown = () => {
           system-xs-medium-uppercase'>
             Install Form
           </span>
+          <input
+            type='file'
+            ref={fileInputRef}
+            style={{ display: 'none' }}
+            onChange={handleFileChange}
+            accept='.difypkg'
+          />
           {[
             { icon: MagicBox, text: 'Marketplace', action: 'marketplace' },
             { icon: Github, text: 'GitHub', action: 'github' },
@@ -51,8 +73,13 @@ const InstallPluginDropdown = () => {
               key={action}
               className='flex items-center w-full px-2 py-1.5 gap-1 rounded-lg hover:bg-state-base-hover cursor-pointer'
               onClick={() => {
-                console.log(action)
-                setIsMenuOpen(false)
+                if (action === 'local') {
+                  fileInputRef.current?.click()
+                }
+                else {
+                  setSelectedAction(action)
+                  setIsMenuOpen(false)
+                }
               }}
             >
               <Icon className="w-4 h-4 text-text-tertiary" />
@@ -61,6 +88,14 @@ const InstallPluginDropdown = () => {
           ))}
         </div>
       )}
+      {selectedAction === 'marketplace' && <InstallFromMarketplace onClose={() => setSelectedAction(null)} />}
+      {selectedAction === 'github' && <InstallFromGitHub onClose={() => setSelectedAction(null)}/>}
+      {selectedAction === 'local' && selectedFile
+          && (<InstallFromLocalPackage
+            file={selectedFile}
+            onClose={() => setSelectedAction(null)}/>
+          )
+      }
     </div>
   )
 }

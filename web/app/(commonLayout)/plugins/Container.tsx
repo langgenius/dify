@@ -26,7 +26,7 @@ const Container = () => {
   const options = useMemo(() => {
     return [
       { value: 'plugins', text: t('common.menus.plugins') },
-      { value: 'discover', text: 'Discover in Marketplace' },
+      { value: 'discover', text: 'Explore Marketplace' },
     ]
   }, [t])
 

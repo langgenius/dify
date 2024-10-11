@@ -3,12 +3,12 @@ import { RiVerifiedBadgeLine } from '@remixicon/react'
 import type { Plugin } from '../types'
 import Badge from '../../base/badge'
 import CornerMark from './base/corner-mark'
-import Icon from './base/icon'
 import Title from './base/title'
 import OrgInfo from './base/org-info'
 import Description from './base/description'
 import cn from '@/utils/classnames'
-import { getLocaleOnServer } from '@/i18n/server'
+// import { getLocaleOnServer } from '@/i18n/server'
+import type { Locale } from '@/i18n'
 
 type Props = {
   className?: string
@@ -17,6 +17,8 @@ type Props = {
   installed?: boolean
   descriptionLineRows?: number
   footer?: React.ReactNode
+  clientLocale?: Locale
+  serverLocale?: Locale
 }
 
 const Card = ({
@@ -26,8 +28,10 @@ const Card = ({
   installed,
   descriptionLineRows = 2,
   footer,
+  clientLocale,
+  serverLocale,
 }: Props) => {
-  const locale = getLocaleOnServer()
+  const locale = clientLocale || serverLocale || 'en'
   const { type, name, org, label } = payload
 
   return (
@@ -35,7 +39,7 @@ const Card = ({
       <CornerMark text={type} />
       {/* Header */}
       <div className="flex">
-        <Icon src={payload.icon} installed={installed} />
+        {/* <Icon src={payload.icon} installed={installed} /> */}
         <div className="ml-3 grow">
           <div className="flex items-center h-5">
             <Title title={label[locale]} />
@@ -62,3 +66,8 @@ const Card = ({
 }
 
 export default Card
+
+// export function ServerCard(props: Omit<Props, 'serverLocale'>) {
+//   const serverLocale = getLocaleOnServer()
+//   return <Card {...props} serverLocale={serverLocale} />
+// }
