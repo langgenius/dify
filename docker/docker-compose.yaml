@@ -486,7 +486,7 @@ services:
     profiles:
       - couchbase
     restart: always
-    environment:  
+    environment:
       - CLUSTER_NAME=dify_search
       - COUCHBASE_ADMINISTRATOR_USERNAME=${COUCHBASE_USER:-Administrator}
       - COUCHBASE_ADMINISTRATOR_PASSWORD=${COUCHBASE_PASSWORD:-password}
@@ -500,10 +500,10 @@ services:
     container_name: couchbase-server
     working_dir: /opt/couchbase
     stdin_open: true
-    tty: true      
+    tty: true
     entrypoint: [""]
     command: sh -c "/opt/couchbase/init/init-cbserver.sh"
-    volumes: 
+    volumes:
       - ./volumes/couchbase/data:/opt/couchbase/var/lib/couchbase/data
 
   # The pgvector vector database.
