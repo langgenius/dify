@@ -33,7 +33,8 @@ def test_group_dependencies_version_operator():
         for dependency_name, specification in dependencies.items():
             version_spec = specification if isinstance(specification, str) else specification["version"]
             assert not version_spec.startswith("^"), (
-                f"'^' is not allowed in dependency version," f" but found in '{dependency_name} = {version_spec}'"
+                f"Please replace '{dependency_name} = {version_spec}' with '{dependency_name} = ~{version_spec[1:]}' "
+                f"'^' operator is too wide and not allowed in the version specification."
             )
 
 
