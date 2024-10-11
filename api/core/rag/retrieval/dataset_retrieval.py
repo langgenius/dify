@@ -231,6 +231,9 @@ class DatasetRetrieval:
                                 source["content"] = segment.content
                             retrieval_resource_list.append(source)
         if hit_callback and retrieval_resource_list:
+            retrieval_resource_list = sorted(retrieval_resource_list, key=lambda x: x.get("score"), reverse=True)
+            for position, item in enumerate(retrieval_resource_list, start=1):
+                item["position"] = position
             hit_callback.return_retriever_resource_info(retrieval_resource_list)
         if document_context_list:
             document_context_list = sorted(document_context_list, key=lambda x: x.score, reverse=True)
