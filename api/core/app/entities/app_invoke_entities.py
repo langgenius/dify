@@ -121,6 +121,7 @@ class ConversationAppGenerateEntity(AppGenerateEntity):
     """
     Base entity for conversation-based app generation.
     """
+
     conversation_id: Optional[str] = None
     parent_message_id: Optional[str] = Field(
         default=None,
