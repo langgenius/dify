@@ -1,5 +1,5 @@
 import PluginsPanel from './plugins-panel'
-import Container from './C'
+import Container from './container'
 import Marketplace from '@/app/components/plugins/marketplace'
 
 const PluginList = async () => {
