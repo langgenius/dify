@@ -16,7 +16,7 @@ class BaiduVectorDBConfig(BaseSettings):
 
     BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS: PositiveInt = Field(
         description="Timeout in milliseconds for Baidu Vector Database operations (default is 30000 milliseconds)",
-        default=30,
+        default=30000,
     )
 
     BAIDU_VECTOR_DB_ACCOUNT: Optional[str] = Field(
