@@ -8,7 +8,7 @@ import {
   RiClipboardLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
-import InstallPluginDropdown from './InstallPluginDropdown'
+import InstallPluginDropdown from './Install-plugin-dropdown'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { useModalContext } from '@/context/modal-context'
 import Button from '@/app/components/base/button'
