@@ -11,6 +11,7 @@ from sqlalchemy import func
 
 from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
+from werkzeug.exceptions import NotFound
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
@@ -975,6 +976,8 @@ class DocumentService:
     ):
         DatasetService.check_dataset_model_setting(dataset)
         document = DocumentService.get_document(dataset.id, document_data["original_document_id"])
+        if document is None:
+            raise NotFound("Document not found")
         if document.display_status != "available":
             raise ValueError("Document is not available")
         # update document name
