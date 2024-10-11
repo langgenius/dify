@@ -1,5 +1,3 @@
-import os
-
 import pytest
 
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
