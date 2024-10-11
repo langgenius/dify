@@ -16,7 +16,8 @@ const UserSSOForm: FC<UserSSOFormProps> = ({
   protocol,
 }) => {
   const searchParams = useSearchParams()
-  const consoleToken = searchParams.get('console_token')
+  const consoleToken = searchParams.get('access_token')
+  const refreshToken = searchParams.get('refresh_token')
   const message = searchParams.get('message')
 
   const router = useRouter()
@@ -25,7 +26,8 @@ const UserSSOForm: FC<UserSSOFormProps> = ({
   const [isLoading, setIsLoading] = useState(false)
 
   useEffect(() => {
-    if (consoleToken) {
+    if (refreshToken && consoleToken) {
+      localStorage.setItem('refresh_token', refreshToken)
       localStorage.setItem('console_token', consoleToken)
       router.replace('/apps')
     }
@@ -36,7 +38,7 @@ const UserSSOForm: FC<UserSSOFormProps> = ({
         message,
       })
     }
-  }, [])
+  }, [consoleToken, refreshToken, message, router])
 
   const handleSSOLogin = () => {
     setIsLoading(true)
