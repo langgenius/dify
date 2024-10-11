@@ -1,25 +1,32 @@
 import { handleDelete } from './actions'
+import TestClientPlugin from './test-client-plugin'
 import Card from '@/app/components/plugins/card'
 import { extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/card/card-mock'
 import PluginItem from '@/app/components/plugins/plugin-item'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import InstallModelItem from '@/app/components/plugins/install-model-item'
-import { getLocaleOnServer } from '@/i18n/server'
-
+import { getLocaleOnServer, useTranslation as translate } from '@/i18n/server'
 const PluginList = async () => {
   const locale = getLocaleOnServer()
-
   const pluginList = [toolNotion, extensionDallE, modelGPT4]
-
+  const { t: pluginI8n } = await translate(locale, 'plugin')
   return (
     <div className='pb-3 bg-white'>
       <div className='mx-3 '>
         <h2 className='my-3'>Dify Plugin list</h2>
         <div className='grid grid-cols-2 gap-3'>
           {pluginList.map((plugin, index) => (
-            <PluginItem key={index} payload={plugin as any} onDelete={handleDelete} />
+            <PluginItem
+              key={index}
+              payload={plugin as any}
+              onDelete={handleDelete}
+              pluginI8n={pluginI8n}
+              locale={locale}
+            />
           ))}
         </div>
+        <h2>Client plugin item</h2>
+        <TestClientPlugin />
 
         <h2 className='my-3'>Install Plugin / Package under bundle</h2>
         <div className='w-[512px] rounded-2xl bg-background-section-burn p-2'>

@@ -10,22 +10,27 @@ import Icon from '../card/base/card-icon'
 import OrgInfo from '../card/base/org-info'
 import Title from '../card/base/title'
 import Action from './action'
-import { getLocaleOnServer, useTranslation as translate } from '@/i18n/server'
 import cn from '@/utils/classnames'
+import type { Locale } from '@/i18n'
 
 type Props = {
   className?: string
   payload: Plugin
+  locale: Locale
   onDelete: () => void
+  pluginI8n: any
+  isClient?: boolean
 }
 
-const PluginItem: FC<Props> = async ({
+const PluginItem: FC<Props> = ({
   className,
   payload,
   onDelete,
+  locale,
+  pluginI8n,
+  isClient,
 }) => {
-  const locale = getLocaleOnServer()
-  const { t: pluginI8n } = await translate(locale, 'plugin')
+  const t = (key: string, param?: object) => pluginI8n(`${isClient ? 'plugin.' : ''}${key}`, param)
 
   const { type, name, org, label } = payload
   const hasNewVersion = payload.latest_version !== payload.version
@@ -67,12 +72,12 @@ const PluginItem: FC<Props> = async ({
           <div className='mx-2 text-text-quaternary system-xs-regular'>·</div>
           <div className='flex text-text-tertiary system-xs-regular space-x-1'>
             <RiLoginCircleLine className='w-4 h-4' />
-            <span>{pluginI8n('endpointsEnabled', { num: 2 })}</span>
+            <span>{t('endpointsEnabled', { num: 2 })}</span>
           </div>
         </div>
 
         <div className='flex items-center'>
-          <a href='' target='_blank' className='mr-1 text-text-tertiary system-2xs-medium-uppercase'>{pluginI8n('from')}</a>
+          <a href='' target='_blank' className='mr-1 text-text-tertiary system-2xs-medium-uppercase'>{t('from')}</a>
           <div className='flex items-center space-x-0.5 text-text-secondary'>
             <Github className='ml-1 w-3 h-3' />
             <div className='system-2xs-semibold-uppercase'>GitHub</div>
