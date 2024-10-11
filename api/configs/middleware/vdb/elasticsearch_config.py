@@ -28,3 +28,10 @@ class ElasticsearchConfig(BaseSettings):
         description="Password for authenticating with Elasticsearch (default is 'elastic')",
         default="elastic",
     )
+
+    NUM_CANDIDATES: PositiveInt = Field(
+        description="The number of nearest neighbor candidates to consider per shard. Cannot exceed 10000."
+                    "Increasing num_candidates tends to improve the accuracy of the final k results,"
+                    " but it will cost more time.",
+        default=10,
+    )
