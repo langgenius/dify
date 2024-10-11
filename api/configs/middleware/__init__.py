@@ -12,6 +12,7 @@ from configs.middleware.storage.baidu_obs_storage_config import BaiduOBSStorageC
 from configs.middleware.storage.google_cloud_storage_config import GoogleCloudStorageConfig
 from configs.middleware.storage.huawei_obs_storage_config import HuaweiCloudOBSStorageConfig
 from configs.middleware.storage.oci_storage_config import OCIStorageConfig
+from configs.middleware.storage.supabase_storage_config import SupabaseStorageConfig
 from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
 from configs.middleware.storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
 from configs.middleware.vdb.analyticdb_config import AnalyticdbConfig
@@ -222,6 +223,7 @@ class MiddlewareConfig(
     HuaweiCloudOBSStorageConfig,
     OCIStorageConfig,
     S3StorageConfig,
+    SupabaseStorageConfig,
     TencentCloudCOSStorageConfig,
     VolcengineTOSStorageConfig,
     # configs of vdb and vdb providers
