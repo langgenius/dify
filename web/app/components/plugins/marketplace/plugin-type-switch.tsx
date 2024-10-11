@@ -8,7 +8,7 @@ import {
 import cn from '@/utils/classnames'
 
 type PluginTypeSwitchProps = {
-  onChange: (type: string) => void
+  onChange?: (type: string) => void
 }
 const options = [
   {
@@ -54,7 +54,7 @@ const PluginTypeSwitch = ({
             )}
             onClick={() => {
               setActiveType(option.value)
-              onChange(option.value)
+              onChange?.(option.value)
             }}
           >
             {option.icon}

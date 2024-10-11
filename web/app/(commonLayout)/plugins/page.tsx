@@ -1,10 +1,13 @@
-import Container from './Container'
+import PluginsPanel from './plugins-panel'
+import Container from './container'
+import Marketplace from '@/app/components/plugins/marketplace'
 
 const PluginList = async () => {
   return (
-    <>
-      <Container />
-    </>
+    <Container
+      plugins={<PluginsPanel />}
+      marketplace={<Marketplace />}
+    />
   )
 }
 

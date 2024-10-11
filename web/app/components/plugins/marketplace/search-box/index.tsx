@@ -9,7 +9,7 @@ import TagsFilter from './tags-filter'
 import ActionButton from '@/app/components/base/action-button'
 
 type SearchBoxProps = {
-  onChange: (searchText: string, tags: string[]) => void
+  onChange?: (searchText: string, tags: string[]) => void
 }
 const SearchBox = ({
   onChange,
@@ -19,7 +19,7 @@ const SearchBox = ({
 
   const handleTagsChange = useCallback((tags: string[]) => {
     setSelectedTags(tags)
-    onChange(searchText, tags)
+    onChange?.(searchText, tags)
   }, [searchText, onChange])
 
   return (
@@ -36,7 +36,7 @@ const SearchBox = ({
             value={searchText}
             onChange={(e) => {
               setSearchText(e.target.value)
-              onChange(e.target.value, selectedTags)
+              onChange?.(e.target.value, selectedTags)
             }}
           />
           {
