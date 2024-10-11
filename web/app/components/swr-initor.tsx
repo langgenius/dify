@@ -13,16 +13,18 @@ const SwrInitor = ({
 }: SwrInitorProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const consoleToken = searchParams.get('console_token')
+  const consoleToken = searchParams.get('access_token')
+  const refreshToken = searchParams.get('refresh_token')
   const consoleTokenFromLocalStorage = localStorage?.getItem('console_token')
   const [init, setInit] = useState(false)
 
   useEffect(() => {
-    if (!(consoleToken || consoleTokenFromLocalStorage))
+    if (!(consoleToken || refreshToken || consoleTokenFromLocalStorage))
       router.replace('/signin')
 
-    if (consoleToken) {
+    if (consoleToken && refreshToken) {
       localStorage?.setItem('console_token', consoleToken!)
+      localStorage?.setItem('refresh_token', refreshToken!)
       router.replace('/apps', { forceOptimisticNavigation: false } as any)
     }
     setInit(true)
