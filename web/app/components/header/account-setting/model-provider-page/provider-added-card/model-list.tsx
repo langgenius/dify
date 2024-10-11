@@ -1,6 +1,9 @@
 import type { FC } from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiArrowRightSLine,
+} from '@remixicon/react'
 import type {
   CustomConfigurationModelFixedFields,
   ModelItem,
@@ -12,7 +15,6 @@ import {
 // import Tab from './tab'
 import AddModelButton from './add-model-button'
 import ModelListItem from './model-list-item'
-import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useAppContext } from '@/context/app-context'
 
@@ -53,13 +55,14 @@ const ModelList: FC<ModelListProps> = ({
           <span className='group shrink-0 flex items-center mr-2'>
             <span className='group-hover:hidden pl-1 pr-1.5 h-6 leading-6 text-xs font-medium text-gray-500'>
               {t('common.modelProvider.modelsNum', { num: models.length })}
+              <RiArrowRightSLine className='mr-0.5 w-4 h-4 rotate-90' />
             </span>
             <span
               className='hidden group-hover:inline-flex items-center pl-1 pr-1.5 h-6 text-xs font-medium text-gray-500 bg-gray-50 cursor-pointer rounded-lg'
               onClick={() => onCollapse()}
             >
-              <ChevronDownDouble className='mr-0.5 w-3 h-3 rotate-180' />
-              {t('common.modelProvider.collapse')}
+              {t('common.modelProvider.modelsNum', { num: models.length })}
+              <RiArrowRightSLine className='mr-0.5 w-4 h-4 rotate-90' />
             </span>
           </span>
           {/* {

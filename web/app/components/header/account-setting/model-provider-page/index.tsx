@@ -124,7 +124,7 @@ const ModelProviderPage = () => {
         </div>
       )}
       {!!configuredProviders?.length && (
-        <div className='pb-3'>
+        <div className='relative'>
           {configuredProviders?.map(provider => (
             <ProviderAddedCard
               key={provider.provider}
