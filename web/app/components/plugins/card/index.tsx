@@ -8,17 +8,16 @@ import Title from './base/title'
 import OrgInfo from './base/org-info'
 import Description from './base/description'
 import cn from '@/utils/classnames'
-// import { getLocaleOnServer } from '@/i18n/server'
 import type { Locale } from '@/i18n'
 
 type Props = {
   className?: string
   payload: Plugin
+  locale: Locale // The component is used in both client and server side, so we can't get the locale from both side(getLocaleOnServer and useContext)
   showVersion?: boolean
   installed?: boolean
   descriptionLineRows?: number
   footer?: React.ReactNode
-  clientLocale?: Locale
   serverLocale?: Locale
 }
 
@@ -29,10 +28,8 @@ const Card = ({
   installed,
   descriptionLineRows = 2,
   footer,
-  clientLocale,
-  serverLocale,
+  locale,
 }: Props) => {
-  const locale = clientLocale || serverLocale || 'en'
   const { type, name, org, label } = payload
 
   return (

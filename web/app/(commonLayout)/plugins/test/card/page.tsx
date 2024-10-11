@@ -4,8 +4,11 @@ import { extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/
 import PluginItem from '@/app/components/plugins/plugin-item'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import InstallModelItem from '@/app/components/plugins/install-model-item'
+import { getLocaleOnServer } from '@/i18n/server'
 
 const PluginList = async () => {
+  const locale = getLocaleOnServer()
+
   const pluginList = [toolNotion, extensionDallE, modelGPT4]
 
   return (
@@ -22,6 +25,7 @@ const PluginList = async () => {
         <div className='w-[512px] rounded-2xl bg-background-section-burn p-2'>
           <Card
             payload={toolNotion as any}
+            locale={locale}
             descriptionLineRows={1}
             showVersion
           />
@@ -30,6 +34,7 @@ const PluginList = async () => {
         <div className='w-[512px] rounded-2xl bg-background-section-burn p-2'>
           <Card
             payload={toolNotion as any}
+            locale={locale}
             descriptionLineRows={1}
             installed
           />
@@ -49,6 +54,7 @@ const PluginList = async () => {
             <Card
               key={index}
               payload={plugin as any}
+              locale={locale}
               footer={
                 <CardMoreInfo downloadCount={index % 2 === 0 ? 1234 : 6} tags={index % 2 === 0 ? ['Search', 'Productivity'] : []} />
               }

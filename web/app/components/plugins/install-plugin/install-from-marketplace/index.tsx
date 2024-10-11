@@ -39,7 +39,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({ onClose
             <Card
               key={index}
               payload={plugin as any}
-              clientLocale={locale}
+              locale={locale}
             />
           ))}
         </div>
