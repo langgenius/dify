@@ -191,6 +191,22 @@ class CeleryConfig(DatabaseConfig):
         return self.CELERY_BROKER_URL.startswith("rediss://") if self.CELERY_BROKER_URL else False
 
 
+class InternalTestConfig(BaseSettings):
+    """
+    Configuration settings for Internal Test
+    """
+
+    AWS_SECRET_ACCESS_KEY: Optional[str] = Field(
+        description="Internal test AWS secret access key",
+        default=None,
+    )
+
+    AWS_ACCESS_KEY_ID: Optional[str] = Field(
+        description="Internal test AWS access key ID",
+        default=None,
+    )
+
+
 class MiddlewareConfig(
     # place the configs in alphabet order
     CeleryConfig,
@@ -224,5 +240,6 @@ class MiddlewareConfig(
     TiDBVectorConfig,
     WeaviateConfig,
     ElasticsearchConfig,
+    InternalTestConfig,
 ):
     pass
