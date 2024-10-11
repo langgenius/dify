@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { RiAlertFill, RiBrainLine } from '@remixicon/react'
 import SystemModelSelector from './system-model-selector'
 import ProviderAddedCard, { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
-import ProviderCard from './provider-card'
+// import ProviderCard from './provider-card'
 import type {
   CustomConfigurationModelFixedFields,
   ModelProvider,
@@ -134,30 +134,23 @@ const ModelProviderPage = () => {
           ))}
         </div>
       )}
-      <div className='flex items-center mb-2 pt-2'>{t('common.modelProvider.configureRequired')}</div>
+      {!!notConfiguredProviders?.length && (
+        <>
+          <div className='flex items-center mb-2 pt-2 text-text-primary system-md-semibold'>{t('common.modelProvider.configureRequired')}</div>
+          <div className='relative'>
+            {notConfiguredProviders?.map(provider => (
+              <ProviderAddedCard
+                notConfigured
+                key={provider.provider}
+                provider={provider}
+                onOpenModal={(configurationMethod: ConfigurationMethodEnum, currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => handleOpenModal(provider, configurationMethod, currentCustomConfigurationModelFixedFields)}
+              />
+            ))}
+          </div>
+        </>
+      )}
       <div className='flex items-center mb-2 pt-2'>{t('common.modelProvider.installProvider')}</div>
       <div className='flex items-center mb-2 pt-2'>{t('common.modelProvider.discoverMore')}</div>
-      {
-        !!notConfiguredProviders?.length && (
-          <>
-            <div className='flex items-center mb-2 text-xs font-semibold text-gray-500'>
-              + {t('common.modelProvider.addMoreModelProvider')}
-              <span className='grow ml-3 h-[1px] bg-gradient-to-r from-[#f3f4f6]' />
-            </div>
-            <div className='grid grid-cols-3 gap-2'>
-              {
-                notConfiguredProviders?.map(provider => (
-                  <ProviderCard
-                    key={provider.provider}
-                    provider={provider}
-                    onOpenModal={(configurationMethod: ConfigurationMethodEnum) => handleOpenModal(provider, configurationMethod)}
-                  />
-                ))
-              }
-            </div>
-          </>
-        )
-      }
     </div>
   )
 }

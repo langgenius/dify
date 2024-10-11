@@ -53,7 +53,7 @@ const ModelList: FC<ModelListProps> = ({
       <div className='py-1 bg-white rounded-lg'>
         <div className='flex items-center pl-1 pr-[3px]'>
           <span className='group shrink-0 flex items-center mr-2'>
-            <span className='group-hover:hidden pl-1 pr-1.5 h-6 leading-6 text-xs font-medium text-gray-500'>
+            <span className='group-hover:hidden inline-flex pl-1 pr-1.5 h-6 leading-6 text-xs font-medium text-gray-500'>
               {t('common.modelProvider.modelsNum', { num: models.length })}
               <RiArrowRightSLine className='mr-0.5 w-4 h-4 rotate-90' />
             </span>
