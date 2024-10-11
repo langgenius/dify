@@ -38,6 +38,10 @@ const translation = {
     duplicate: '复制',
     rename: '重命名',
     audioSourceUnavailable: '音源不可用',
+    copyImage: '复制图片',
+    zoomOut: '缩小',
+    zoomIn: '放大',
+    openInNewTab: '在新标签页打开',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',

@@ -38,6 +38,10 @@ const translation = {
     duplicate: 'Duplicate',
     rename: 'Rename',
     audioSourceUnavailable: 'AudioSource is unavailable',
+    copyImage: 'Copy Image',
+    zoomOut: 'Zoom Out',
+    zoomIn: 'Zoom In',
+    openInNewTab: 'Open in new tab',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
