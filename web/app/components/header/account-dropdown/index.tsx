@@ -102,7 +102,7 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                   </Menu.Item>
                   <div className="px-1 py-1">
                     <Menu.Item>
-                      <div className={itemClassName} onClick={() => setShowAccountSettingModal({ payload: 'account' })}>
+                      <div className={itemClassName} onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>
                         <div>{t('common.userProfile.settings')}</div>
                       </div>
                     </Menu.Item>

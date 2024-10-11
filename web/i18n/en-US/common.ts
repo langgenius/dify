@@ -142,6 +142,7 @@ const translation = {
   settings: {
     accountGroup: 'ACCOUNT',
     workplaceGroup: 'WORKSPACE',
+    generalGroup: 'GENERAL',
     account: 'My account',
     members: 'Members',
     billing: 'Billing',
@@ -275,7 +276,7 @@ const translation = {
     },
   },
   modelProvider: {
-    notConfigured: 'The system model has not yet been fully configured, and some functions may be unavailable.',
+    notConfigured: 'The system model has not yet been fully configured',
     systemModelSettings: 'System Model Settings',
     systemModelSettingsLink: 'Why is it necessary to set up a system model?',
     selectModel: 'Select your model',
@@ -373,6 +374,12 @@ const translation = {
     loadBalancingLeastKeyWarning: 'To enable load balancing at least 2 keys must be enabled.',
     loadBalancingInfo: 'By default, load balancing uses the Round-robin strategy. If rate limiting is triggered, a 1-minute cooldown period will be applied.',
     upgradeForLoadBalancing: 'Upgrade your plan to enable Load Balancing.',
+    configureRequired: 'Configure required',
+    configureTip: 'Set up api-key or add model to use',
+    installProvider: 'Install model providers',
+    discoverMore: 'Discover more in ',
+    emptyProviderTitle: 'Model provider not set up',
+    emptyProviderTip: 'Please install a model provider first.',
   },
   dataSource: {
     add: 'Add a data source',
