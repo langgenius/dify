@@ -23,6 +23,6 @@ class SearchRecordsTool(BuiltinTool):
         user_id_type = tool_parameters.get("user_id_type", "open_id")
         page_size = tool_parameters.get("page_size", 20)
 
-        res = client.search_record(app_token, table_id, table_name, view_id, field_names, sort, filters, page_token,
-                                   automatic_fields, user_id_type, page_size)
+        res = client.search_record(app_token, table_id, table_name, view_id, field_names, sort,
+                                   filters, page_token, automatic_fields, user_id_type, page_size)
         return self.create_json_message(res)
