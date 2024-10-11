@@ -1,0 +1,124 @@
+identity:
+  name: kolors
+  author: zhuhao
+  label:
+    en_US: Kolors
+  icon: icon.svg
+description:
+  human:
+    en_US: Generate image via Fal.ai Kolors model.
+  llm: This tool is used to generate image from prompt via Fal.ai Kolors model.
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: The text prompt used to generate the image.
+      zh_Hans: 建议用英文的生成图片提示词以获得更好的生成效果。
+    llm_description: this prompt text will be used to generate image.
+    form: llm
+  - name: negative_prompt
+    type: string
+    label:
+      en_US: negative prompt
+      zh_Hans: 负面提示词
+    human_description:
+      en_US: Describe what you don't want included in the image.
+      zh_Hans: 描述您不希望包含在图片中的内容。
+    llm_description: Describe what you don't want included in the image.
+    form: llm
+  - name: image_size
+    type: select
+    required: true
+    options:
+      - value: square_hd
+        label:
+          en_US: square_hd
+      - value: square
+        label:
+          en_US: square
+      - value: portrait_4_3
+        label:
+          en_US: portrait_4_3
+      - value: portrait_16_9
+        label:
+          en_US: portrait_16_9
+      - value: landscape_4_3
+        label:
+          en_US: landscape_4_3
+      - value: landscape_16_9
+        label:
+          en_US: landscape_16_9
+    default: square_hd
+    label:
+      en_US: The size of the generated image
+      zh_Hans: 选择生成的图片大小
+    form: form
+  - name: num_inference_steps
+    type: number
+    required: true
+    default: 50
+    min: 1
+    max: 100
+    label:
+      en_US: Num Inference Steps
+      zh_Hans: 生成图片的步数
+    form: form
+    human_description:
+      en_US: The number of inference steps to perform. More steps produce higher quality but take longer.
+      zh_Hans: 执行的推理步骤数量。更多的步骤可以产生更高质量的结果，但需要更长的时间。
+  - name: seed
+    type: number
+    min: 0
+    max: 9999999999
+    label:
+      en_US: Seed
+      zh_Hans: 种子
+    human_description:
+      en_US: The same seed and prompt can produce similar images.
+      zh_Hans: 相同的种子和提示可以产生相似的图像。
+    form: form
+  - name: guidance_scale
+    type: number
+    required: false
+    default: 5
+    label:
+      en_US: Guidance Scale
+      zh_Hans: 引导缩放比例
+    form: form
+    human_description:
+      en_US: The Guidance scale is a measure of how close you want the model to stick to your prompt when looking for a related image to you.
+      zh_Hans: 无分类器引导比例是衡量在寻找相关图像展示时最贴近提示的一个尺度.
+  - name: num_images
+    type: number
+    default: 1
+    label:
+      en_US: Image Number
+      zh_Hans: 图像数量
+    human_description:
+      en_US: The number of images to generate
+      zh_Hans: 生成图像的数量
+    form: form
+  - name: sync_mode
+    type: boolean
+    default: false
+    label:
+      en_US: Sync Mode
+      zh_Hans: 同步模式
+    human_description:
+      en_US: The function will wait for the image to be generated and uploaded before returning the response if true
+      zh_Hans: 为真时该函数将在返回响应之前等待图像生成并上传.
+    form: form
+  - name: enable_safety_checker
+    type: boolean
+    default: true
+    label:
+      en_US: Enable Safety Checker
+      zh_Hans: 开启安全检测
+    human_description:
+      en_US: The safety checker will be enabled if true
+      zh_Hans: 为真时开启安全检测.
+    form: form

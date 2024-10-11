@@ -1,0 +1,21 @@
+identity:
+  author: zhuhao
+  name: fal
+  label:
+    en_US: Fal
+    zh_CN: Fal
+  description:
+    en_US: The image generation API provided by fal.ai includes Flux, AuraFlow, Stable Diffusion and Kolors models.
+    zh_CN: Fal提供的图片生成API, 包含Flux,AuraFlow,Stable Diffusion和Kolors模型。
+  icon: icon.svg
+  tags:
+    - image
+credentials_for_provider:
+  fal_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Fal API Key
+    placeholder:
+      en_US: Please input your Fal API key
+    url: https://fal.ai/dashboard/keys
