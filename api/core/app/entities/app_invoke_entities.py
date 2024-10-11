@@ -2,8 +2,9 @@ from collections.abc import Mapping
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
 
+from constants import UUID_NIL
 from core.app.app_config.entities import AppConfig, EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file.file_obj import FileVar
@@ -116,13 +117,35 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     model_config = ConfigDict(protected_namespaces=())
 
 
-class ChatAppGenerateEntity(EasyUIBasedAppGenerateEntity):
+class ConversationAppGenerateEntity(AppGenerateEntity):
+    """
+    Base entity for conversation-based app generation.
+    """
+    conversation_id: Optional[str] = None
+    parent_message_id: Optional[str] = Field(
+        default=None,
+        description=(
+            "Starting from v0.9.0, parent_message_id is used to support message regeneration "
+            "for internal chat API. For service API, we need to ensure its forward compatibility, "
+            "so passing in the parent_message_id as request arg is not supported for now. "
+            "It will be set to UUID_NIL so that the subsequent processing will treat it as legacy messages."
+        ),
+    )
+
+    @field_validator("parent_message_id")
+    @classmethod
+    def validate_parent_message_id(cls, v, info: ValidationInfo):
+        if info.data.get("invoke_from") == InvokeFrom.SERVICE_API:
+            return UUID_NIL
+        return v
+
+
+class ChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerateEntity):
     """
     Chat Application Generate Entity.
     """
 
-    conversation_id: Optional[str] = None
-    parent_message_id: Optional[str] = None
+    pass
 
 
 class CompletionAppGenerateEntity(EasyUIBasedAppGenerateEntity):
@@ -133,16 +156,15 @@ class CompletionAppGenerateEntity(EasyUIBasedAppGenerateEntity):
     pass
 
 
-class AgentChatAppGenerateEntity(EasyUIBasedAppGenerateEntity):
+class AgentChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerateEntity):
     """
     Agent Chat Application Generate Entity.
     """
 
-    conversation_id: Optional[str] = None
-    parent_message_id: Optional[str] = None
+    pass
 
 
-class AdvancedChatAppGenerateEntity(AppGenerateEntity):
+class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
     """
     Advanced Chat Application Generate Entity.
     """
@@ -150,8 +172,6 @@ class AdvancedChatAppGenerateEntity(AppGenerateEntity):
     # app config
     app_config: WorkflowUIBasedAppConfig
 
-    conversation_id: Optional[str] = None
-    parent_message_id: Optional[str] = None
     workflow_run_id: Optional[str] = None
     query: str
 
