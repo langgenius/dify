@@ -33,3 +33,13 @@ class QdrantConfig(BaseSettings):
         description="Port number for gRPC connection to Qdrant server (default is 6334)",
         default=6334,
     )
+
+    AWS_SECRET_ACCESS_KEY: Optional[str] = Field(
+        description="AWS secret access key for authenticating with the Qdrant server",
+        default=None,
+    )
+
+    AWS_ACCESS_KEY_ID: Optional[str] = Field(
+        description="AWS access key ID for authenticating with the Qdrant server",
+        default=None,
+    )
