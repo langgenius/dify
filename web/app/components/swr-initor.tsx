@@ -26,7 +26,9 @@ const SwrInitor = ({
       return
     }
     (async () => {
-      await getNewAccessToken(localStorage?.getItem('console_token') || '', localStorage?.getItem('refresh_token') || '')
+      const err = await getNewAccessToken(localStorage?.getItem('console_token') || '', localStorage?.getItem('refresh_token') || '')
+      if (err)
+        router.replace('/signin')
     })()
     router.replace('/apps', { forceOptimisticNavigation: false } as any)
     setInit(true)
