@@ -197,7 +197,7 @@ const translation = {
     'searchTool': '搜索工具',
     'tools': '工具',
     'allTool': '全部',
-    'builtInTool': '内置',
+    'plugin': '插件',
     'customTool': '自定义',
     'workflowTool': '工作流',
     'question-understand': '问题理解',

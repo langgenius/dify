@@ -5,6 +5,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BlockEnum, ToolWithProvider } from '../types'
+import { CollectionType } from '../../tools/types'
 import IndexBar, { groupItems } from './index-bar'
 import type { ToolDefaultValue } from './types'
 import ToolItem from './tool-item'
@@ -42,7 +43,7 @@ const Blocks = ({
           list.map(tool => (
             <ToolItem
               key={tool.name}
-              isToolPlugin={toolWithProvider.type === 'builtin'}
+              isToolPlugin={toolWithProvider.type === CollectionType.builtIn}
               provider={toolWithProvider}
               payload={tool}
               onSelect={onSelect}

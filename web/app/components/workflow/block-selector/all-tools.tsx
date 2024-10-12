@@ -9,6 +9,7 @@ import type {
 import { ToolTypeEnum } from './types'
 import Tools from './tools'
 import { useToolTabs } from './hooks'
+import ViewTypeSelect, { ViewType } from './view-type-select'
 import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
 
@@ -29,6 +30,7 @@ const AllTools = ({
   const language = useGetLanguage()
   const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
+  const [activeView, setActiveView] = useState<ViewType>(ViewType.list)
 
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
@@ -49,22 +51,25 @@ const AllTools = ({
   }, [activeTab, buildInTools, customTools, workflowTools, searchText, language])
   return (
     <div>
-      <div className='flex items-center px-3 h-8 space-x-1 bg-gray-25 border-b-[0.5px] border-black/[0.08] shadow-xs'>
-        {
-          tabs.map(tab => (
-            <div
-              className={cn(
-                'flex items-center px-2 h-6 rounded-md hover:bg-gray-100 cursor-pointer',
-                'text-xs font-medium text-gray-700',
-                activeTab === tab.key && 'bg-gray-200',
-              )}
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.name}
-            </div>
-          ))
-        }
+      <div className='flex items-center justify-between px-3 bg-background-default-hover border-b-[0.5px] border-black/[0.08] shadow-xs'>
+        <div className='flex items-center h-8 space-x-1'>
+          {
+            tabs.map(tab => (
+              <div
+                className={cn(
+                  'flex items-center px-2 h-6 rounded-md hover:bg-gray-100 cursor-pointer',
+                  'text-xs font-medium text-gray-700',
+                  activeTab === tab.key && 'bg-gray-200',
+                )}
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.name}
+              </div>
+            ))
+          }
+        </div>
+        <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
       </div>
       <Tools
         showWorkflowEmpty={activeTab === ToolTypeEnum.Workflow}
