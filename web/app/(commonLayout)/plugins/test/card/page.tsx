@@ -5,6 +5,7 @@ import { extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/
 import PluginItem from '@/app/components/plugins/plugin-item'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import ProviderCard from '@/app/components/plugins/provider-card'
+import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { getLocaleOnServer, useTranslation as translate } from '@/i18n/server'
 import Badge from '@/app/components/base/badge'
 const PluginList = async () => {
@@ -72,6 +73,9 @@ const PluginList = async () => {
           ))}
         </div>
       </div>
+      <PluginDetailPanel
+        locale={locale}
+      />
     </div>
   )
 }

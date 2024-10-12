@@ -7,3 +7,8 @@ export async function handleDelete() {
   // revalidatePath only invalidates the cache when the included path is next visited.
   revalidatePath('/')
 }
+
+export async function fetchPluginDetail(id: string) {
+  // Fetch plugin detail TODO
+  return { id }
+}

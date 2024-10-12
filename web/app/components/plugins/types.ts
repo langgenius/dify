@@ -8,6 +8,7 @@ export enum PluginType {
 }
 
 export type Plugin = {
+  id: string
   'type': PluginType
   'org': string
   'name': string
