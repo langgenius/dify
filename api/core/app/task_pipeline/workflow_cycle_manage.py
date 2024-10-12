@@ -266,19 +266,34 @@ class WorkflowCycleManage:
 
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
+        execution_metadata = (
+            json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
+        )
+        finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        elapsed_time = (finished_at - event.start_at).total_seconds()
+
+        db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
+            {
+                WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.SUCCEEDED.value,
+                WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
+                WorkflowNodeExecution.process_data: json.dumps(event.process_data) if event.process_data else None,
+                WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
+                WorkflowNodeExecution.execution_metadata: execution_metadata,
+                WorkflowNodeExecution.finished_at: finished_at,
+                WorkflowNodeExecution.elapsed_time: elapsed_time,
+            }
+        )
+
+        db.session.commit()
+        db.session.close()
 
         workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
         workflow_node_execution.process_data = json.dumps(event.process_data) if event.process_data else None
         workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
-        workflow_node_execution.execution_metadata = (
-            json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
-        )
-        workflow_node_execution.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        workflow_node_execution.elapsed_time = (workflow_node_execution.finished_at - event.start_at).total_seconds()
-
-        db.session.commit()
-        db.session.close()
+        workflow_node_execution.execution_metadata = execution_metadata
+        workflow_node_execution.finished_at = finished_at
+        workflow_node_execution.elapsed_time = elapsed_time
 
         self._wip_workflow_node_executions.pop(workflow_node_execution.node_execution_id)
 
@@ -294,17 +309,31 @@ class WorkflowCycleManage:
 
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
+        finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        elapsed_time = (finished_at - event.start_at).total_seconds()
 
-        workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
-        workflow_node_execution.error = event.error
-        workflow_node_execution.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
-        workflow_node_execution.process_data = json.dumps(event.process_data) if event.process_data else None
-        workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
-        workflow_node_execution.elapsed_time = (workflow_node_execution.finished_at - event.start_at).total_seconds()
+        db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
+            {
+                WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.FAILED.value,
+                WorkflowNodeExecution.error: event.error,
+                WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
+                WorkflowNodeExecution.process_data: json.dumps(event.process_data) if event.process_data else None,
+                WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
+                WorkflowNodeExecution.finished_at: finished_at,
+                WorkflowNodeExecution.elapsed_time: elapsed_time,
+            }
+        )
 
         db.session.commit()
         db.session.close()
+
+        workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
+        workflow_node_execution.error = event.error
+        workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
+        workflow_node_execution.process_data = json.dumps(event.process_data) if event.process_data else None
+        workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
+        workflow_node_execution.finished_at = finished_at
+        workflow_node_execution.elapsed_time = elapsed_time
 
         self._wip_workflow_node_executions.pop(workflow_node_execution.node_execution_id)
 
