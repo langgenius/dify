@@ -124,14 +124,14 @@ const RetrievalParamConfig: FC<Props> = ({
               >
                 <Switch
                   size='md'
-                  defaultValue={value.reranking_enable}
+                  defaultValue={currentModel ? value.reranking_enable : false}
                   onChange={(v) => {
                     onChange({
                       ...value,
                       reranking_enable: v,
                     })
                   }}
-                  disabled={rerankDefaultModel && !currentModel}
+                  disabled={!currentModel}
                 />
               </div>
             )}

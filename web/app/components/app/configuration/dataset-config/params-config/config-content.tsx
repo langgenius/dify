@@ -256,8 +256,8 @@ const ConfigContent: FC<Props> = ({
                       >
                         <Switch
                           size='md'
-                          defaultValue={showRerankModel}
-                          disabled={rerankDefaultModel && !currentModel}
+                          defaultValue={currentModel ? showRerankModel : false}
+                          disabled={!currentModel}
                           onChange={(v) => {
                             onChange({
                               ...datasetConfigs,
