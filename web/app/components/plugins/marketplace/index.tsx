@@ -1,20 +1,17 @@
-import { MarketplaceContextProvider } from './context'
-import HeaderWrapper from './header-wrapper'
 import Header from './header'
-import ListWrapper from './list-wrapper'
+import HeaderWrapper from './header/wrapper'
 import List from './list'
+import ListWrapper from './list/wrapper'
 
 const Marketplace = () => {
   return (
-    <div className='w-full'>
-      <MarketplaceContextProvider>
-        <HeaderWrapper>
-          <Header />
-        </HeaderWrapper>
-        <ListWrapper>
-          <List />
-        </ListWrapper>
-      </MarketplaceContextProvider>
+    <div className='grow relative flex flex-col w-full h-0'>
+      <HeaderWrapper>
+        <Header />
+      </HeaderWrapper>
+      <ListWrapper>
+        <List />
+      </ListWrapper>
     </div>
   )
 }

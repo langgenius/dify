@@ -5,20 +5,20 @@ import {
   useState,
 } from 'react'
 import { RiCloseLine } from '@remixicon/react'
-import { useMarketplaceContext } from '../context'
 import TagsFilter from './tags-filter'
 import ActionButton from '@/app/components/base/action-button'
 import cn from '@/utils/classnames'
 
 type SearchBoxProps = {
   onChange?: (searchText: string, tags: string[]) => void
+  widthShouldChange?: boolean
 }
 const SearchBox = ({
   onChange,
+  widthShouldChange,
 }: SearchBoxProps) => {
   const [searchText, setSearchText] = useState('')
   const [selectedTags, setSelectedTags] = useState<string[]>([])
-  const scrollIntersected = useMarketplaceContext(v => v.scrollIntersected)
 
   const handleTagsChange = useCallback((tags: string[]) => {
     setSelectedTags(tags)
@@ -29,7 +29,7 @@ const SearchBox = ({
     <div
       className={cn(
         'flex items-center p-1.5 w-[640px] h-11 border border-components-chat-input-border bg-components-panel-bg-blur rounded-xl shadow-md',
-        !scrollIntersected && 'w-[508px] transition-[width] duration-300',
+        widthShouldChange && 'w-[508px] transition-[width] duration-300',
       )}
     >
       <TagsFilter

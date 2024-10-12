@@ -2,7 +2,6 @@
 
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContextSelector } from 'use-context-selector'
 import {
   RiArrowRightUpLine,
   RiBugLine,
@@ -10,8 +9,8 @@ import {
   RiEqualizer2Line,
 } from '@remixicon/react'
 import {
-  PluginPageContext,
   PluginPageContextProvider,
+  usePluginPageContext,
 } from './context'
 import InstallPluginDropdown from './install-plugin-dropdown'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
@@ -32,7 +31,8 @@ const PluginPage = ({
 }: PluginPageProps) => {
   const { t } = useTranslation()
   const { setShowPluginSettingModal } = useModalContext() as any
-  const containerRef = useContextSelector(PluginPageContext, v => v.containerRef)
+  const containerRef = usePluginPageContext(v => v.containerRef)
+  const scrollDisabled = usePluginPageContext(v => v.scrollDisabled)
 
   const options = useMemo(() => {
     return [
@@ -51,9 +51,14 @@ const PluginPage = ({
       className={cn('grow relative flex flex-col overflow-y-auto border-t border-divider-subtle', activeTab === 'plugins'
         ? 'rounded-t-xl bg-components-panel-bg'
         : 'bg-background-body',
+      activeTab === 'discover' && scrollDisabled && 'overflow-hidden',
       )}
     >
-      <div className='sticky top-0 flex min-h-[60px] px-12 pt-4 pb-2 items-center self-stretch gap-1'>
+      <div
+        className={cn(
+          'sticky top-0 flex min-h-[60px] px-12 pt-4 pb-2 items-center self-stretch gap-1',
+        )}
+      >
         <div className='flex justify-between items-center w-full'>
           <div className='flex-1'>
             <TabSlider

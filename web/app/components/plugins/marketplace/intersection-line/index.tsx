@@ -3,10 +3,21 @@
 import { useRef } from 'react'
 import { useScrollIntersection } from './hooks'
 
-const IntersectionLine = () => {
+type IntersectionLineProps = {
+  containerRef: React.RefObject<HTMLDivElement>
+  intersectedCallback: (isIntersecting: boolean) => void
+}
+const IntersectionLine = ({
+  containerRef,
+  intersectedCallback,
+}: IntersectionLineProps) => {
   const ref = useRef<HTMLDivElement>(null)
 
-  useScrollIntersection(ref)
+  useScrollIntersection(
+    containerRef,
+    ref,
+    intersectedCallback,
+  )
 
   return (
     <div ref={ref} className='h-[1px] bg-transparent'></div>
