@@ -1,8 +1,8 @@
+'use client'
 import { useCallback, useEffect, useRef } from 'react'
 import { jwtDecode } from 'jwt-decode'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
-import { useRouter } from 'next/router'
 import type { CommonResponse } from '@/models/common'
 import { fetchNewToken } from '@/service/common'
 import { fetchWithRetry } from '@/utils'
@@ -10,7 +10,6 @@ import { fetchWithRetry } from '@/utils'
 dayjs.extend(utc)
 
 const useRefreshToken = () => {
-  const router = useRouter()
   const timer = useRef<NodeJS.Timeout>()
   const advanceTime = useRef<number>(7 * 60 * 1000)
 
@@ -27,12 +26,11 @@ const useRefreshToken = () => {
     localStorage?.removeItem('is_refreshing')
     localStorage?.removeItem('console_token')
     localStorage?.removeItem('refresh_token')
-    router.replace('/signin')
-  }, [router])
+  }, [])
 
   const getNewAccessToken = useCallback(async (currentAccessToken: string, currentRefreshToken: string) => {
     if (localStorage?.getItem('is_refreshing') === '1')
-      return
+      return null
     const currentTokenExpireTime = getExpireTime(currentAccessToken)
     if (getCurrentTimeStamp() + advanceTime.current > currentTokenExpireTime) {
       localStorage?.setItem('is_refreshing', '1')
@@ -41,7 +39,7 @@ const useRefreshToken = () => {
       }) as Promise<CommonResponse & { data: { access_token: string; refresh_token: string } }>)
       if (e) {
         handleError()
-        return
+        return e
       }
       const { access_token, refresh_token } = res.data
       localStorage?.setItem('is_refreshing', '0')
@@ -58,6 +56,7 @@ const useRefreshToken = () => {
         getNewAccessToken(localStorage?.getItem('console_token') || '', localStorage?.getItem('refresh_token') || '')
       }, newTokenExpireTime - advanceTime.current - getCurrentTimeStamp())
     }
+    return null
   }, [getExpireTime, getCurrentTimeStamp, handleError])
 
   useEffect(() => {
