@@ -4,7 +4,7 @@ import Card from '@/app/components/plugins/card'
 import { extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/card/card-mock'
 import PluginItem from '@/app/components/plugins/plugin-item'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
-import InstallModelItem from '@/app/components/plugins/install-model-item'
+import ProviderCard from '@/app/components/plugins/provider-card'
 import { getLocaleOnServer, useTranslation as translate } from '@/i18n/server'
 import Badge from '@/app/components/base/badge'
 const PluginList = async () => {
@@ -53,7 +53,7 @@ const PluginList = async () => {
         <h3 className='my-1'>Install model provide</h3>
         <div className='grid grid-cols-2 gap-3'>
           {pluginList.map((plugin, index) => (
-            <InstallModelItem key={index} locale={locale} payload={plugin as any} />
+            <ProviderCard key={index} locale={locale} payload={plugin as any} />
           ))}
         </div>
 
