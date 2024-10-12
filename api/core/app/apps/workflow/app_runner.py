@@ -90,6 +90,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             system_inputs = {
                 SystemVariableKey.FILES: files,
                 SystemVariableKey.USER_ID: user_id,
+                SystemVariableKey.APP_ID: app_config.app_id,
+                SystemVariableKey.WORKFLOW_ID: app_config.workflow_id,
+                SystemVariableKey.WORKFLOW_RUN_ID: self.application_generate_entity.workflow_run_id,
             }
 
             variable_pool = VariablePool(

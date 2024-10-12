@@ -223,6 +223,16 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                 else:
                     new_prompt_messages.append(copy_prompt_message)
 
+        # zhipuai moved web_search param to tools
+        if "web_search" in model_parameters:
+            enable_web_search = model_parameters.get("web_search")
+            model_parameters.pop("web_search")
+            web_search_params = {"type": "web_search", "web_search": {"enable": enable_web_search}}
+            if "tools" in model_parameters:
+                model_parameters["tools"].append(web_search_params)
+            else:
+                model_parameters["tools"] = [web_search_params]
+
         if model in {"glm-4v", "glm-4v-plus"}:
             params = self._construct_glm_4v_parameter(model, new_prompt_messages, model_parameters)
         else:

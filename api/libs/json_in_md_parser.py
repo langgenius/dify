@@ -4,25 +4,28 @@ from core.llm_generator.output_parser.errors import OutputParserError
 
 
 def parse_json_markdown(json_string: str) -> dict:
-    # Remove the triple backticks if present
+    # Get json from the backticks/braces
     json_string = json_string.strip()
-    start_index = json_string.find("```json")
-    end_index = json_string.find("```", start_index + len("```json"))
-
-    if start_index != -1 and end_index != -1:
-        extracted_content = json_string[start_index + len("```json") : end_index].strip()
-
-        # Parse the JSON string into a Python dictionary
+    starts = ["```json", "```", "``", "`", "{"]
+    ends = ["```", "``", "`", "}"]
+    end_index = -1
+    for s in starts:
+        start_index = json_string.find(s)
+        if start_index != -1:
+            if json_string[start_index] != "{":
+                start_index += len(s)
+            break
+    if start_index != -1:
+        for e in ends:
+            end_index = json_string.rfind(e, start_index)
+            if end_index != -1:
+                if json_string[end_index] == "}":
+                    end_index += 1
+                break
+    if start_index != -1 and end_index != -1 and start_index < end_index:
+        extracted_content = json_string[start_index:end_index].strip()
+        print("content:", extracted_content, start_index, end_index)
         parsed = json.loads(extracted_content)
-    elif start_index != -1 and end_index == -1 and json_string.endswith("``"):
-        end_index = json_string.find("``", start_index + len("```json"))
-        extracted_content = json_string[start_index + len("```json") : end_index].strip()
-
-        # Parse the JSON string into a Python dictionary
-        parsed = json.loads(extracted_content)
-    elif json_string.startswith("{"):
-        # Parse the JSON string into a Python dictionary
-        parsed = json.loads(json_string)
     else:
         raise Exception("Could not find JSON block in the output.")
 
