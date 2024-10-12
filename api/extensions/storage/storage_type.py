@@ -12,3 +12,4 @@ class StorageType(str, Enum):
     S3 = "s3"
     TENCENT_COS = "tencent-cos"
     VOLCENGINE_TOS = "volcengine-tos"
+    SUPBASE = "supabase"

@@ -539,7 +539,7 @@ class DatasetRetrieval:
                 continue
 
             # pass if dataset is not available
-            if dataset and dataset.available_document_count == 0:
+            if dataset and dataset.provider != "external" and dataset.available_document_count == 0:
                 continue
 
             available_datasets.append(dataset)
