@@ -172,6 +172,7 @@ const translation = {
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
+    rerankModelRequired: 'Before turning on the Rerank Model, please confirm that the model has been successfully configured in the settings.',
     authRequired: 'Authorization is required',
     invalidJson: '{{field}} is invalid JSON',
     fields: {
