@@ -14,6 +14,8 @@ const useRefreshToken = () => {
   const advanceTime = useRef<number>(7 * 60 * 1000)
 
   const getExpireTime = useCallback((token: string) => {
+    if (!token)
+      return 0
     const decoded = jwtDecode(token)
     return (decoded.exp || 0) * 1000
   }, [])
@@ -47,13 +49,19 @@ const useRefreshToken = () => {
       localStorage?.setItem('refresh_token', refresh_token)
       const newTokenExpireTime = getExpireTime(access_token)
       timer.current = setTimeout(() => {
-        getNewAccessToken(localStorage?.getItem('console_token') || '', localStorage?.getItem('refresh_token') || '')
+        const consoleTokenFromLocalStorage = localStorage?.getItem('console_token')
+        const refreshTokenFromLocalStorage = localStorage?.getItem('refresh_token')
+        if (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage)
+          getNewAccessToken(consoleTokenFromLocalStorage, refreshTokenFromLocalStorage)
       }, newTokenExpireTime - advanceTime.current - getCurrentTimeStamp())
     }
     else {
       const newTokenExpireTime = getExpireTime(currentAccessToken)
       timer.current = setTimeout(() => {
-        getNewAccessToken(localStorage?.getItem('console_token') || '', localStorage?.getItem('refresh_token') || '')
+        const consoleTokenFromLocalStorage = localStorage?.getItem('console_token')
+        const refreshTokenFromLocalStorage = localStorage?.getItem('refresh_token')
+        if (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage)
+          getNewAccessToken(consoleTokenFromLocalStorage, refreshTokenFromLocalStorage)
       }, newTokenExpireTime - advanceTime.current - getCurrentTimeStamp())
     }
     return null
