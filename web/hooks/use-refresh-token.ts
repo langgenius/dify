@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef } from 'react'
 import { jwtDecode } from 'jwt-decode'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
+import { useRouter } from 'next/navigation'
 import type { CommonResponse } from '@/models/common'
 import { fetchNewToken } from '@/service/common'
 import { fetchWithRetry } from '@/utils'
@@ -10,6 +11,7 @@ import { fetchWithRetry } from '@/utils'
 dayjs.extend(utc)
 
 const useRefreshToken = () => {
+  const router = useRouter()
   const timer = useRef<NodeJS.Timeout>()
   const advanceTime = useRef<number>(7 * 60 * 1000)
 
@@ -28,6 +30,7 @@ const useRefreshToken = () => {
     localStorage?.removeItem('is_refreshing')
     localStorage?.removeItem('console_token')
     localStorage?.removeItem('refresh_token')
+    router.replace('/signin')
   }, [])
 
   const getNewAccessToken = useCallback(async (currentAccessToken: string, currentRefreshToken: string) => {
