@@ -88,7 +88,7 @@ export const useWorkflowStartRun = () => {
             else {
               Toast.notify({
                 type: 'error',
-                message: t('workflow.errorMsg.rerankModelRequired'),
+                message: t('appDebug.datasetConfig.rerankModelRequired'),
               })
               return false
             }
