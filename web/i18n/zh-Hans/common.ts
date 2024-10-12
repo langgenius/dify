@@ -150,6 +150,7 @@ const translation = {
     dataSource: '数据来源',
     plugin: '插件',
     apiBasedExtension: 'API 扩展',
+    account: '我的账户',
   },
   account: {
     account: '账户',
