@@ -38,8 +38,17 @@ import type {
 import type { RETRIEVE_METHOD } from '@/types/app'
 import type { SystemFeatures } from '@/types/feature'
 
-export const login: Fetcher<CommonResponse & { data: { access_token: string;refresh_token: string } }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
-  return post(url, { body }) as Promise<CommonResponse & { data: { access_token: string;refresh_token: string } }>
+type LoginSuccess = {
+  result: 'success'
+  data: { access_token: string;refresh_token: string }
+}
+type LoginFail = {
+  result: 'fail'
+  data: string
+}
+type LoginResponse = LoginSuccess | LoginFail
+export const login: Fetcher<LoginResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<LoginResponse>
 }
 
 export const fetchNewToken: Fetcher<CommonResponse & { data: { access_token: string; refresh_token: string } }, { body: Record<string, any> }> = ({ body }) => {

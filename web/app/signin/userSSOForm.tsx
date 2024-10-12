@@ -7,6 +7,7 @@ import cn from '@/utils/classnames'
 import Toast from '@/app/components/base/toast'
 import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
 import Button from '@/app/components/base/button'
+import useRefreshToken from '@/hooks/use-refresh-token'
 
 type UserSSOFormProps = {
   protocol: string
@@ -15,6 +16,7 @@ type UserSSOFormProps = {
 const UserSSOForm: FC<UserSSOFormProps> = ({
   protocol,
 }) => {
+  const { getNewAccessToken } = useRefreshToken()
   const searchParams = useSearchParams()
   const consoleToken = searchParams.get('access_token')
   const refreshToken = searchParams.get('refresh_token')
@@ -27,8 +29,7 @@ const UserSSOForm: FC<UserSSOFormProps> = ({
 
   useEffect(() => {
     if (refreshToken && consoleToken) {
-      localStorage.setItem('refresh_token', refreshToken)
-      localStorage.setItem('console_token', consoleToken)
+      getNewAccessToken(consoleToken, refreshToken)
       router.replace('/apps')
     }
 
