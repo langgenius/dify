@@ -182,6 +182,7 @@ const translation = {
       rerankModel: 'Model rerank',
     },
     invalidVariable: 'Nieprawidłowa zmienna',
+    rerankModelRequired: 'Przed włączeniem Rerank Model upewnij się, że model został pomyślnie skonfigurowany w ustawieniach.',
   },
   singleRun: {
     testRun: 'Testowe uruchomienie ',

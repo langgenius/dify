@@ -185,6 +185,7 @@ const translation = {
       rerankModel: 'पुनः रैंक मॉडल',
     },
     invalidVariable: 'अमान्य वेरिएबल',
+    rerankModelRequired: 'Rerank मॉडल चालू करने से पहले, कृपया पुष्टि करें कि मॉडल को सेटिंग्स में सफलतापूर्वक कॉन्फ़िगर किया गया है।',
   },
   singleRun: {
     testRun: 'परीक्षण रन',
