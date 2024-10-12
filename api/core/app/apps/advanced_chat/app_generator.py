@@ -113,6 +113,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             # always enable retriever resource in debugger mode
             app_config.additional_features.show_retrieve_source = True
 
+        workflow_run_id = str(uuid.uuid4())
         # init application generate entity
         application_generate_entity = AdvancedChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -127,6 +128,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=invoke_from,
             extras=extras,
             trace_manager=trace_manager,
+            workflow_run_id=workflow_run_id,
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
 

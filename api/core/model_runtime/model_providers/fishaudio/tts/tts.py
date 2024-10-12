@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 
@@ -46,7 +46,7 @@ class FishAudioText2SpeechModel(TTSModel):
         content_text: str,
         voice: str,
         user: Optional[str] = None,
-    ) -> any:
+    ) -> Any:
         """
         Invoke text2speech model
 
@@ -87,7 +87,7 @@ class FishAudioText2SpeechModel(TTSModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, voice: str) -> any:
+    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, voice: str) -> Any:
         """
         Invoke streaming text2speech model
         :param model: model name
@@ -112,7 +112,7 @@ class FishAudioText2SpeechModel(TTSModel):
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
-    def _tts_invoke_streaming_sentence(self, credentials: dict, content_text: str, voice: Optional[str] = None) -> any:
+    def _tts_invoke_streaming_sentence(self, credentials: dict, content_text: str, voice: Optional[str] = None) -> Any:
         """
         Invoke streaming text2speech model
 

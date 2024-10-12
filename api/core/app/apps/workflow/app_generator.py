@@ -99,6 +99,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         user_id = user.id if isinstance(user, Account) else user.session_id
         trace_manager = TraceQueueManager(app_model.id, user_id)
 
+        workflow_run_id = str(uuid.uuid4())
         # init application generate entity
         application_generate_entity = WorkflowAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -110,6 +111,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             invoke_from=invoke_from,
             call_depth=call_depth,
             trace_manager=trace_manager,
+            workflow_run_id=workflow_run_id,
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
 
