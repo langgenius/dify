@@ -75,7 +75,7 @@ const ConfigContent: FC<Props> = ({
   )
 
   const handleDisabledSwitchClick = useCallback(() => {
-    if (!currentModel && rerankDefaultModel)
+    if (!currentModel)
       Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
   }, [currentModel, rerankDefaultModel, t])
 
