@@ -24,8 +24,8 @@ import Loading from '@/app/components/base/loading'
 import cn from '@/utils/classnames'
 import {
   // extensionDallE,
-  modelGPT4,
-  // toolNotion,
+  // modelGPT4,
+  toolNotion,
 } from '@/app/components/plugins/card/card-mock'
 
 type Props = {
@@ -57,7 +57,7 @@ const PluginDetailPanel: FC<Props> = ({
     const detail = await fetchPluginDetail(org, name)
     setPluginDetail({
       ...detail,
-      ...modelGPT4,
+      ...toolNotion,
     } as any)
     setLoading(false)
   }

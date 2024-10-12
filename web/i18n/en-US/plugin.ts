@@ -12,6 +12,7 @@ const translation = {
       remove: 'Remove',
     },
     modelNum: '{{num}} MODELS INCLUDED',
+    actionNum: '{{num}} ACTIONS INCLUDED',
   },
 }
 

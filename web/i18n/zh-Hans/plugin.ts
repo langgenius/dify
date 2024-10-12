@@ -12,6 +12,7 @@ const translation = {
       remove: '移除',
     },
     modelNum: '{{num}} 模型已包含',
+    actionNum: '{{num}} ACTIONS 已包含',
   },
 }
 
