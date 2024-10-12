@@ -75,6 +75,7 @@ const AllTools = ({
         showWorkflowEmpty={activeTab === ToolTypeEnum.Workflow}
         tools={tools}
         onSelect={onSelect}
+        viewType={activeView}
       />
     </div>
   )

@@ -47,9 +47,10 @@ const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs }) => {
       element.scrollIntoView({ behavior: 'smooth' })
   }
   return (
-    <div className="index-bar absolute right-4 top-36 flex flex-col items-center text-xs font-medium text-gray-500">
+    <div className="index-bar absolute right-4 top-36 flex flex-col items-center w-6 justify-center text-xs font-medium text-text-quaternary ">
+      <div className='absolute left-0 top-0 h-full w-px bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(16,24,40,0.08)_30%,rgba(16,24,40,0.08)_50%,rgba(16,24,40,0.08)_70.5%,rgba(255,255,255,0)_100%)]'></div>
       {letters.map(letter => (
-        <div className="hover:text-gray-900 cursor-pointer" key={letter} onClick={() => handleIndexClick(letter)}>
+        <div className="hover:text-text-secondary cursor-pointer" key={letter} onClick={() => handleIndexClick(letter)}>
           {letter}
         </div>
       ))}

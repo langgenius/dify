@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { RiArrowRightSLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import BlockIcon from '../block-icon'
 import type { ToolWithProvider } from '../types'
@@ -10,8 +10,10 @@ import type { ToolDefaultValue } from './types'
 import Tooltip from '@/app/components/base/tooltip'
 import type { Tool } from '@/app/components/tools/types'
 import { useGetLanguage } from '@/context/i18n'
+import cn from '@/utils/classnames'
 
 type Props = {
+  className?: string
   isToolPlugin: boolean // Tool plugin should choose action
   provider: ToolWithProvider
   payload: Tool
@@ -19,6 +21,7 @@ type Props = {
 }
 
 const ToolItem: FC<Props> = ({
+  className,
   isToolPlugin,
   provider,
   payload,
@@ -27,7 +30,9 @@ const ToolItem: FC<Props> = ({
   const language = useGetLanguage()
   const [isFold, {
     toggle: toggleFold,
-  }] = useBoolean(true)
+  }] = useBoolean(false)
+
+  const FoldIcon = isFold ? RiArrowDownSLine : RiArrowRightSLine
 
   const actions = [
     'DuckDuckGo AI Search',
@@ -52,9 +57,9 @@ const ToolItem: FC<Props> = ({
         </div>
       )}
     >
-      <div>
+      <div className={cn(className)}>
         <div
-          className='flex items-center px-3 w-full h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
+          className='flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-gray-50 cursor-pointer'
           onClick={() => {
             if (isToolPlugin) {
               toggleFold()
@@ -70,22 +75,24 @@ const ToolItem: FC<Props> = ({
             })
           }}
         >
+          <div className='flex items-center h-8'>
+            <BlockIcon
+              className='shrink-0'
+              type={BlockEnum.Tool}
+              toolIcon={provider.icon}
+            />
+            <div className='ml-2 text-sm text-gray-900 flex-1 min-w-0 truncate'>{payload.label[language]}</div>
+          </div>
           {isToolPlugin && (
-            <RiArrowRightSLine className='mr-1 w-4 h-4 text-text-quaternary shrink-0' />
+            <FoldIcon className={cn('w-4 h-4 text-text-quaternary shrink-0', isFold && 'text-text-tertiary')} />
           )}
-          <BlockIcon
-            className='mr-2 shrink-0'
-            type={BlockEnum.Tool}
-            toolIcon={provider.icon}
-          />
-          <div className='text-sm text-gray-900 flex-1 min-w-0 truncate'>{payload.label[language]}</div>
         </div>
         {(!isFold && isToolPlugin) && (
           <div>
             {actions.map(action => (
               <div
                 key={action}
-                className='rounded-lg pl-[37px] hover:bg-state-base-hover cursor-pointer'
+                className='rounded-lg pl-[21px] hover:bg-state-base-hover cursor-pointer'
                 onClick={() => {
                   onSelect(BlockEnum.Tool, {
                     provider_id: provider.id,
@@ -97,7 +104,7 @@ const ToolItem: FC<Props> = ({
                   })
                 }}
               >
-                <div className='h-8 leading-8 border-l-2 border-divider-subtle pl-[19px] truncate text-text-secondary system-sm-medium'>{action}</div>
+                <div className='h-8 leading-8 border-l-2 border-divider-subtle pl-4 truncate text-text-secondary system-sm-medium'>{action}</div>
               </div>
             ))}
           </div>
