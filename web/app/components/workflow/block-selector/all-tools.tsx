@@ -6,7 +6,6 @@ import type {
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
-import { useStore } from '../store'
 import { ToolTypeEnum } from './types'
 import Tools from './tools'
 import { useToolTabs } from './hooks'
@@ -15,18 +14,21 @@ import { useGetLanguage } from '@/context/i18n'
 
 type AllToolsProps = {
   searchText: string
+  buildInTools: ToolWithProvider[]
+  customTools: ToolWithProvider[]
+  workflowTools: ToolWithProvider[]
   onSelect: OnSelectBlock
 }
 const AllTools = ({
   searchText,
   onSelect,
+  buildInTools,
+  workflowTools,
+  customTools,
 }: AllToolsProps) => {
   const language = useGetLanguage()
   const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
 
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
