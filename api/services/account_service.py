@@ -114,12 +114,11 @@ class AccountService:
 
     @staticmethod
     def get_account_jwt_token(account: Account) -> str:
+        exp_dt = datetime.now(timezone.utc) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
+        exp = int(exp_dt.timestamp())
         payload = {
             "user_id": account.id,
-            "exp": int(
-                datetime.now(timezone.utc).timestamp()
-                + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES).total_seconds()
-            ),
+            "exp": exp,
             "iss": dify_config.EDITION,
             "sub": "Console API Passport",
         }
