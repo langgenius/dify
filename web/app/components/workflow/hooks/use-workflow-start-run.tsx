@@ -15,6 +15,8 @@ import {
   useWorkflowInteractions,
   useWorkflowRun,
 } from './index'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import KnowledgeRetrievalDefault from '@/app/components/workflow/nodes/knowledge-retrieval/default'
 import Toast from '@/app/components/base/toast'
@@ -30,6 +32,23 @@ export const useWorkflowStartRun = () => {
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { checkValid: checkKnowledgeRetrievalValid } = KnowledgeRetrievalDefault
   const { t } = useTranslation()
+  const {
+    modelList: rerankModelList,
+    defaultModel: rerankDefaultModel,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+
+  const {
+    currentModel,
+  } = useCurrentProviderAndModel(
+    rerankModelList,
+    rerankDefaultModel
+      ? {
+        ...rerankDefaultModel,
+        provider: rerankDefaultModel.provider.provider,
+      }
+      : undefined,
+  )
+
   const handleWorkflowStartRunInWorkflow = useCallback(async () => {
     const {
       workflowRunningData,
@@ -57,12 +76,19 @@ export const useWorkflowStartRun = () => {
       for (const node of knowledgeRetrievalNodes) {
         if (isFromStartNode(node.id)) {
           const res = checkKnowledgeRetrievalValid(node.data, t)
-          if (!res.isValid) {
+          if (!res.isValid || !currentModel || !rerankDefaultModel) {
             const errorMessage = res.errorMessage
             if (errorMessage) {
               Toast.notify({
                 type: 'error',
                 message: errorMessage,
+              })
+              return false
+            }
+            else {
+              Toast.notify({
+                type: 'error',
+                message: t('workflow.errorMsg.rerankModelRequired'),
               })
               return false
             }

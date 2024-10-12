@@ -45,7 +45,6 @@ const ConfigContent: FC<Props> = ({
   selectedDatasets = [],
 }) => {
   const { t } = useTranslation()
-  const i18nPrefix = 'workflow'
   const selectedDatasetsMode = useSelectedDatasetsMode(selectedDatasets)
   const type = datasetConfigs.retrieval_model
 
@@ -67,12 +66,18 @@ const ConfigContent: FC<Props> = ({
     currentModel,
   } = useCurrentProviderAndModel(
     rerankModelList,
+    rerankDefaultModel
+      ? {
+        ...rerankDefaultModel,
+        provider: rerankDefaultModel.provider.provider,
+      }
+      : undefined,
   )
 
   const handleDisabledSwitchClick = useCallback(() => {
-    if (!currentModel)
+    if (!currentModel && rerankDefaultModel)
       Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
-  }, [currentModel, t])
+  }, [currentModel, rerankDefaultModel, t])
 
   const rerankModel = (() => {
     if (datasetConfigs.reranking_model?.reranking_provider_name) {
@@ -252,7 +257,7 @@ const ConfigContent: FC<Props> = ({
                         <Switch
                           size='md'
                           defaultValue={showRerankModel}
-                          disabled={!currentModel}
+                          disabled={rerankDefaultModel && !currentModel}
                           onChange={(v) => {
                             onChange({
                               ...datasetConfigs,
