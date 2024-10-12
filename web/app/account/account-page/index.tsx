@@ -142,8 +142,10 @@ export default function AccountPage() {
       <div className='mb-8'>
         <div className={titleClassName}>{t('common.account.name')}</div>
         <div className={classNames('flex items-center justify-between mt-2 w-full h-9 px-3 bg-gray-100 rounded text-sm font-normal text-gray-800 cursor-pointer group')}>
-          {userProfile.name}
-          <div className='items-center hidden h-6 px-2 text-xs font-normal bg-white border border-gray-200 rounded-md group-hover:flex' onClick={handleEditName}>{t('common.operation.edit')}</div>
+          <span className='flex-1 mr-2'>
+            {userProfile.name}
+          </span>
+          <div className='items-center h-6 px-2 text-xs font-normal bg-gray-100 rounded flex' onClick={handleEditName}>{t('common.operation.edit')}</div>
         </div>
       </div>
       <div className='mb-8'>

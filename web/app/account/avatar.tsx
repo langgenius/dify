@@ -44,7 +44,7 @@ export default function AppSelector() {
                     ${open && 'bg-gray-200'}
                   `}
               >
-                <Avatar name={userProfile.name} className='sm:mr-2 mr-0' size={32} />
+                <Avatar name={userProfile.name} size={32} />
               </Menu.Button>
             </div>
             <Transition
@@ -58,27 +58,29 @@ export default function AppSelector() {
             >
               <Menu.Items
                 className="
-                    absolute right-0 mt-1.5 w-60 max-w-80
+                    absolute -right-3 -top-3 w-60 max-w-80
                     divide-y divide-gray-100 origin-top-right rounded-lg bg-white
                     shadow-lg
                   "
               >
                 <Menu.Item>
-                  <div className='flex flex-nowrap items-center px-4 py-[13px]'>
-                    <div className='grow'>
-                      <div className='leading-5 font-normal text-[14px] text-gray-800 break-all'>{userProfile.name}</div>
-                      <div className='leading-[18px] text-xs font-normal text-gray-500 break-all'>{userProfile.email}</div>
+                  <div className='p-1'>
+                    <div className='flex flex-nowrap items-center px-3 py-2'>
+                      <div className='grow'>
+                        <div className='system-md-medium text-text-primary break-all'>{userProfile.name}</div>
+                        <div className='system-xs-regular text-text-tertiary break-all'>{userProfile.email}</div>
+                      </div>
+                      <Avatar name={userProfile.name} size={32} />
                     </div>
-                    <Avatar name={userProfile.name} size={36} className='mr-3' />
                   </div>
                 </Menu.Item>
                 <Menu.Item>
                   <div className='p-1' onClick={() => handleLogout()}>
                     <div
-                      className='flex items-center justify-between h-9 px-3 rounded-lg cursor-pointer group hover:bg-gray-50'
+                      className='flex items-center justify-start h-9 px-3 rounded-lg cursor-pointer group hover:bg-gray-50'
                     >
+                      <LogOut01 className='w-4 h-4 text-gray-500 flex mr-1' />
                       <div className='font-normal text-[14px] text-gray-700'>{t('common.userProfile.logout')}</div>
-                      <LogOut01 className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
                     </div>
                   </div>
                 </Menu.Item>
