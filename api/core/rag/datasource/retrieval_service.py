@@ -4,12 +4,14 @@ from typing import Optional
 from flask import Flask, current_app
 
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
+from core.rag.datasource.entity.retrieval import RetrievalSegments
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.models.document import Document
 from core.rag.rerank.constants.rerank_mode import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from models.dataset import Dataset
+from models.dataset import ChildChunk, Dataset, DocumentSegment, Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model = {
@@ -229,3 +231,73 @@ class RetrievalService:
     @staticmethod
     def escape_query_for_search(query: str) -> str:
         return query.replace('"', '\\"')
+
+    @staticmethod
+    def format_retrieval_documents(documents: list[Document]) -> list[RetrievalSegments]:
+        records = []
+        include_segment_ids = []
+        segment_child_map = {}
+        for document in documents:
+            document_id = document.metadata["document_id"]
+            dataset_document = db.session.query(DatasetDocument).filter(DatasetDocument.id == document_id).first()
+            if dataset_document and dataset_document.doc_form == "hierarchical_model":
+                child_index_node_id = document.metadata["doc_id"]
+                result = (
+                    db.session.query(ChildChunk, DocumentSegment)
+                    .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
+                    .filter(
+                        ChildChunk.index_node_id == child_index_node_id,
+                        DocumentSegment.dataset_id == dataset_document.dataset_id,
+                        DocumentSegment.enabled == True,
+                        DocumentSegment.status == "completed"
+                    )
+                    .first()
+                )
+                if result:
+                    child_chunk, segment = result
+                    if not segment:
+                        continue
+                    if segment.id not in include_segment_ids:
+                        include_segment_ids.append(segment.id)
+                        map_detail = {
+                            "max_score": document.metadata.get("score", .0),
+                            "child_chunks": [child_chunk],
+                        }
+                        segment_child_map[segment.id] = map_detail
+                        record = {
+                            "segment": segment,
+                        }
+                        records.append(record)
+                    else:
+                        segment_child_map[segment.id]["child_chunks"].append(child_chunk)
+                        segment_child_map[segment.id]["max_score"] = max(segment_child_map[segment.id]["max_score"], document.metadata.get("score", .0))
+                else:
+                    continue
+            else:
+                index_node_id = document.metadata["doc_id"]
+
+                segment = (
+                    db.session.query(DocumentSegment)
+                    .filter(
+                        DocumentSegment.dataset_id == dataset_document.dataset_id,
+                        DocumentSegment.enabled == True,
+                        DocumentSegment.status == "completed",
+                        DocumentSegment.index_node_id == index_node_id,
+                    )
+                    .first()
+                )
+
+                if not segment:
+                    continue
+                include_segment_ids.append(segment.id)
+                record = {
+                    "segment": segment,
+                    "score": document.metadata.get("score", None),
+                }
+
+                records.append(record)
+            for record in records:
+                if record["segment"].id in segment_child_map:
+                    record["child_chunks"] = segment_child_map[record["segment"].id]
+                    record["score"] = segment_child_map[record["segment"].id]["max_score"]
+        return [RetrievalSegments(**record) for record in records]
