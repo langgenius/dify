@@ -16,18 +16,20 @@ type Props = {
   className?: string
   locale: Locale // The component is used in both client and server side, so we can't get the locale from both side(getLocaleOnServer and useContext)
   payload: Plugin
+  installed?: boolean
 }
 
 const ProviderCard: FC<Props> = ({
   className,
   locale,
   payload,
+  installed = true,
 }) => {
   const { org, label } = payload
 
   return (
     <div className={cn('group relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
-      <Link href={`/plugins/test/card?pluginID=${payload.id}`}>
+      <Link href={`/plugins/test/card?org=${payload.org}&name=${payload.name}`}>
         {/* Header */}
         <div className="flex">
           <Icon src={payload.icon} />
@@ -51,24 +53,26 @@ const ProviderCard: FC<Props> = ({
             <Badge key={tag} text={tag} />
           ))}
         </div>
-        <div
-          className='hidden group-hover:flex items-center gap-2 absolute bottom-0 left-0 right-0 p-4 pt-8'
-          style={{ background: 'linear-gradient(0deg, #F9FAFB 60.27%, rgba(249, 250, 251, 0.00) 100%)' }}
-        >
-          <Button
-            className='flex-grow'
-            variant='primary'
+        {!installed && (
+          <div
+            className='hidden group-hover:flex items-center gap-2 absolute bottom-0 left-0 right-0 p-4 pt-8'
+            style={{ background: 'linear-gradient(0deg, #F9FAFB 60.27%, rgba(249, 250, 251, 0.00) 100%)' }}
           >
-            Install
-          </Button>
-          <Button
-            className='flex-grow'
-            variant='secondary'
-          >
-            Details
-            <RiArrowRightUpLine className='w-4 h-4' />
-          </Button>
-        </div>
+            <Button
+              className='flex-grow'
+              variant='primary'
+            >
+              Install
+            </Button>
+            <Button
+              className='flex-grow'
+              variant='secondary'
+            >
+              Details
+              <RiArrowRightUpLine className='w-4 h-4' />
+            </Button>
+          </div>
+        )}
       </Link>
     </div>
   )

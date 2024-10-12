@@ -1,7 +1,6 @@
 import { PluginType } from '../types'
 
 export const toolNotion = {
-  id: 'tool-notion',
   type: PluginType.tool,
   org: 'Notion',
   name: 'notion page search',
@@ -19,7 +18,6 @@ export const toolNotion = {
 }
 
 export const extensionDallE = {
-  id: 'extension-dalle',
   type: PluginType.extension,
   org: 'OpenAI',
   name: 'DALL-E',
@@ -38,7 +36,6 @@ export const extensionDallE = {
 }
 
 export const modelGPT4 = {
-  id: 'model-gpt4',
   type: PluginType.model,
   org: 'OpenAI',
   name: 'GPT-4',

@@ -185,7 +185,7 @@ const ModelProviderPage = () => {
         {!collapse && (
           <div className='grid grid-cols-2 gap-2'>
             {pluginList.map((plugin, index) => (
-              <ProviderCard key={index} locale={locale} payload={plugin as any} />
+              <ProviderCard key={index} installed={false} locale={locale} payload={plugin as any} />
             ))}
           </div>
         )}

@@ -8,7 +8,7 @@ export async function handleDelete() {
   revalidatePath('/')
 }
 
-export async function fetchPluginDetail(id: string) {
+export async function fetchPluginDetail(org: string, name: string) {
   // Fetch plugin detail TODO
-  return { id }
+  return { org, name }
 }
