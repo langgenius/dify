@@ -35,12 +35,13 @@ const SwrInitor = ({
     if (consoleToken && refreshToken) {
       localStorage.setItem('console_token', consoleToken)
       localStorage.setItem('refresh_token', refreshToken)
-      getNewAccessToken(consoleToken, refreshToken).catch(() => {
+      getNewAccessToken(consoleToken, refreshToken).then(() => {
+        router.replace('/apps', { forceOptimisticNavigation: false } as any)
+      }).catch(() => {
         router.replace('/signin')
       })
     }
 
-    router.replace('/apps', { forceOptimisticNavigation: false } as any)
     setInit(true)
   }, [])
 
