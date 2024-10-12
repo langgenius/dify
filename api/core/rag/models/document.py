@@ -31,7 +31,7 @@ class Document(BaseModel):
 
     provider: Optional[str] = "dify"
 
-    childs: Optional[list[ChildDocument]] = None
+    children: Optional[list[ChildDocument]] = None
 
 
 class BaseDocumentTransformer(ABC):

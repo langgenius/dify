@@ -119,7 +119,7 @@ class DatasetDocumentStore:
                 db.session.add(segment_document)
                 db.session.flush()
                 if save_child:
-                    for child_position, child in enumerate(doc.childs, start=1):
+                    for child_position, child in enumerate(doc.children, start=1):
                         child_segment = ChildChunk(
                             tenant_id=self._dataset.tenant_id,
                             dataset_id=self._dataset.id,
@@ -141,7 +141,7 @@ class DatasetDocumentStore:
                 segment_document.index_node_hash = doc.metadata["doc_hash"]
                 segment_document.word_count = len(doc.page_content)
                 segment_document.tokens = tokens
-                if save_child and doc.childs:
+                if save_child and doc.children:
                     # delete the existing child chunks
                     db.session.query(ChildChunk).filter(
                         ChildChunk.tenant_id == self._dataset.tenant_id,
@@ -149,8 +149,8 @@ class DatasetDocumentStore:
                         ChildChunk.document_id == self._document_id,
                         ChildChunk.segment_id == segment_document.id,
                     ).delete()
-
-                    for child_position, child in enumerate(doc.childs, start=1):
+                    # add new child chunks
+                    for child_position, child in enumerate(doc.children, start=1):
                         child_segment = ChildChunk(
                             tenant_id=self._dataset.tenant_id,
                             dataset_id=self._dataset.id,

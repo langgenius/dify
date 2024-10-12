@@ -13,9 +13,9 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import ChildDocument, Document
 from libs import helper
-from models.dataset import Dataset
+from models.dataset import ChildChunk, Dataset, DocumentSegment
 from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
-
+from extensions.ext_database import db
 
 class ParentChildIndexProcessor(BaseIndexProcessor):
     def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
@@ -68,7 +68,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             )
                             # parse document to child nodes
                             child_nodes = self._split_child_nodes(document_node, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance"))
-                            document_node.childs = child_nodes
+                            document_node.children = child_nodes
                             split_documents.append(document_node)
                 all_documents.extend(split_documents)
         elif rules.parent_mode == ParentMode.FULL_DOC:
@@ -76,7 +76,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
             document = Document(page_content=page_content, metadata=documents[0].metadata)
             # parse document to child nodes
             child_nodes = self._split_child_nodes(document, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance"))
-            document.childs = child_nodes
+            document.children = child_nodes
             doc_id = str(uuid.uuid4())
             hash = helper.generate_text_hash(document.page_content)
             document.metadata["doc_id"] = doc_id
@@ -85,27 +85,33 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
         return all_documents
 
-    def load(self, dataset: Dataset, documents: list[Document|ChildDocument], with_keywords: bool = True):
+    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
-            vector.create(documents)
-        if with_keywords:
-            keyword = Keyword(dataset)
-            keyword.create(documents)
+            for document in documents:
+                child_documents = document.children
+                if child_documents:
+                    formatted_child_documents = [Document(**child_document.model_dump()) for child_document in child_documents]
+                    vector.create(formatted_child_documents)
 
     def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             if node_ids:
-                vector.delete_by_ids(node_ids)
+                child_node_ids = (
+                    db.session.query(ChildChunk.index_node_id)
+                    .join(DocumentSegment, ChildChunk.segment_id == DocumentSegment.id)
+                    .filter(
+                        DocumentSegment.dataset_id == dataset.id,
+                        DocumentSegment.index_node_id.in_(node_ids),
+                        ChildChunk.dataset_id == dataset.id
+                    )
+                    .all()
+                )
+                child_node_ids = [child_node_id[0] for child_node_id in child_node_ids]
+                vector.delete_by_ids(child_node_ids)
             else:
                 vector.delete()
-        if with_keywords:
-            keyword = Keyword(dataset)
-            if node_ids:
-                keyword.delete_by_ids(node_ids)
-            else:
-                keyword.delete()
 
     def retrieve(
         self,

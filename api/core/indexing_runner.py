@@ -649,13 +649,14 @@ class IndexingRunner:
         indexing_start_at = time.perf_counter()
         tokens = 0
         chunk_size = 10
+        if dataset_document.doc_form != "hierarchical_model":
+            # create keyword index
+            create_keyword_thread = threading.Thread(
+                target=self._process_keyword_index,
+                args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),
+            )
+            create_keyword_thread.start()
 
-        # create keyword index
-        create_keyword_thread = threading.Thread(
-            target=self._process_keyword_index,
-            args=(current_app._get_current_object(), dataset.id, dataset_document.id, documents),
-        )
-        create_keyword_thread.start()
         if dataset.indexing_technique == "high_quality":
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
                 futures = []
