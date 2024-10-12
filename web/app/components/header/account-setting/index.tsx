@@ -2,8 +2,6 @@
 import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
 import {
-  RiApps2AddFill,
-  RiApps2AddLine,
   RiBox3Fill,
   RiBox3Line,
   RiCloseLine,
@@ -20,7 +18,6 @@ import {
   RiTranslate2,
 } from '@remixicon/react'
 import MembersPage from './members-page'
-import IntegrationsPage from './Integrations-page'
 import LanguagePage from './language-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page'
@@ -123,12 +120,6 @@ export default function AccountSetting({
       name: t('common.settings.accountGroup'),
       items: [
         {
-          key: 'integrations',
-          name: t('common.settings.integrations'),
-          icon: <RiApps2AddLine className={iconClassName} />,
-          activeIcon: <RiApps2AddFill className={iconClassName} />,
-        },
-        {
           key: 'language',
           name: t('common.settings.language'),
           icon: <RiTranslate2 className={iconClassName} />,
@@ -210,7 +201,6 @@ export default function AccountSetting({
           <div className='px-4 sm:px-8 pt-2'>
             {activeMenu === 'members' && <MembersPage />}
             {activeMenu === 'billing' && <BillingPage />}
-            {activeMenu === 'integrations' && <IntegrationsPage />}
             {activeMenu === 'language' && <LanguagePage />}
             {activeMenu === 'provider' && <ModelProviderPage />}
             {activeMenu === 'data-source' && <DataSourcePage />}

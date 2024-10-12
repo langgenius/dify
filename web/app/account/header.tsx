@@ -20,7 +20,7 @@ const Header = () => {
           <LogoSite className='object-contain' />
         </div>
         <div className='w-[1px] h-4 bg-divider-regular' />
-        <p className='text-text-primary text-xl'>{t('common.account.account')}</p>
+        <p className='text-text-primary title-3xl-semi-bold'>{t('common.account.account')}</p>
       </div>
       <div className='flex items-center flex-shrink-0 gap-3'>
         <Button className='gap-2 py-2 px-3 system-sm-medium' onClick={back}>

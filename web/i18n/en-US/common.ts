@@ -140,7 +140,7 @@ const translation = {
     logout: 'Log out',
   },
   settings: {
-    accountGroup: 'ACCOUNT',
+    accountGroup: 'GENERAL',
     workplaceGroup: 'WORKSPACE',
     account: 'My account',
     members: 'Members',
