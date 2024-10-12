@@ -7,7 +7,7 @@ const List = () => {
   const locale = getLocaleOnServer()
 
   return (
-    <>
+    <div className='px-12 py-2 bg-background-default-subtle'>
       <div className='py-3'>
         <div className='title-xl-semi-bold text-text-primary'>Featured</div>
         <div className='system-xs-regular text-text-tertiary'>Our top picks to get you started</div>
@@ -223,7 +223,7 @@ const List = () => {
           />
         </div>
       </div>
-    </>
+    </div>
   )
 }
 

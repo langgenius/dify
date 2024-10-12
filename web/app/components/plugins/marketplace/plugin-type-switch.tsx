@@ -43,7 +43,9 @@ const PluginTypeSwitch = ({
   const [activeType, setActiveType] = useState('all')
 
   return (
-    <div className='flex items-center justify-center space-x-2'>
+    <div className={cn(
+      'sticky top-[60px] flex items-center justify-center py-3 bg-background-body space-x-2 z-10',
+    )}>
       {
         options.map(option => (
           <div
