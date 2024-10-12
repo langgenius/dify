@@ -77,7 +77,7 @@ class ElasticSearchVector(BaseVector):
             raise ValueError("Elasticsearch vector database version must be greater than 8.0.0")
 
     def get_type(self) -> str:
-        return "elasticsearch"
+        return VectorType.ELASTICSEARCH
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
