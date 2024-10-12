@@ -13,7 +13,8 @@ dayjs.extend(utc)
 const useRefreshToken = () => {
   const router = useRouter()
   const timer = useRef<NodeJS.Timeout>()
-  const advanceTime = useRef<number>(7 * 60 * 1000)
+  const advanceTime = useRef<number>(5 * 60 * 1000)
+  const interval = useRef<number>(55 * 60 * 1000)
 
   const getExpireTime = useCallback((token: string) => {
     if (!token)
@@ -30,6 +31,7 @@ const useRefreshToken = () => {
     localStorage?.removeItem('is_refreshing')
     localStorage?.removeItem('console_token')
     localStorage?.removeItem('refresh_token')
+    localStorage?.removeItem('last_refresh_time')
     router.replace('/signin')
   }, [])
 
@@ -37,7 +39,10 @@ const useRefreshToken = () => {
     if (localStorage?.getItem('is_refreshing') === '1')
       return null
     const currentTokenExpireTime = getExpireTime(currentAccessToken)
-    if (getCurrentTimeStamp() + advanceTime.current > currentTokenExpireTime) {
+    let lastRefreshTime = parseInt(localStorage?.getItem('last_refresh_time') || '0')
+    lastRefreshTime = isNaN(lastRefreshTime) ? 0 : lastRefreshTime
+    if (getCurrentTimeStamp() + advanceTime.current > currentTokenExpireTime
+      && lastRefreshTime + interval.current < getCurrentTimeStamp()) {
       localStorage?.setItem('is_refreshing', '1')
       const [e, res] = await fetchWithRetry(fetchNewToken({
         body: { refresh_token: currentRefreshToken },
@@ -48,6 +53,7 @@ const useRefreshToken = () => {
       }
       const { access_token, refresh_token } = res.data
       localStorage?.setItem('is_refreshing', '0')
+      localStorage?.setItem('last_refresh_time', getCurrentTimeStamp().toString())
       localStorage?.setItem('console_token', access_token)
       localStorage?.setItem('refresh_token', refresh_token)
       const newTokenExpireTime = getExpireTime(access_token)
@@ -74,6 +80,7 @@ const useRefreshToken = () => {
     return () => {
       clearTimeout(timer.current)
       localStorage?.removeItem('is_refreshing')
+      localStorage?.removeItem('last_refresh_time')
     }
   }, [])
 

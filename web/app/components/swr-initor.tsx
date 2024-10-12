@@ -26,11 +26,8 @@ const SwrInitor = ({
       router.replace('/signin')
       return
     }
-    if (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage) {
-      getNewAccessToken(consoleTokenFromLocalStorage, refreshTokenFromLocalStorage).catch(() => {
-        router.replace('/signin')
-      })
-    }
+    if (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage)
+      getNewAccessToken(consoleTokenFromLocalStorage, refreshTokenFromLocalStorage)
 
     if (consoleToken && refreshToken) {
       localStorage.setItem('console_token', consoleToken)
