@@ -126,10 +126,10 @@ class ConversationAppGenerateEntity(AppGenerateEntity):
     parent_message_id: Optional[str] = Field(
         default=None,
         description=(
-            "Starting from v0.9.0, parent_message_id is used to support message regeneration "
-            "for internal chat API. For service API, we need to ensure its forward compatibility, "
+            "Starting from v0.9.0, parent_message_id is used to support message regeneration for internal chat API."
+            "For service API, we need to ensure its forward compatibility, "
             "so passing in the parent_message_id as request arg is not supported for now. "
-            "It will be set to UUID_NIL so that the subsequent processing will treat it as legacy messages."
+            "It needs to be set to UUID_NIL so that the subsequent processing will treat it as legacy messages."
         ),
     )
 
