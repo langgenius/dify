@@ -30,7 +30,7 @@ const useRefreshToken = () => {
 
   const getNewAccessToken = useCallback(async (currentAccessToken: string, currentRefreshToken: string) => {
     if (localStorage?.getItem('is_refreshing') === '1')
-      return new Error('Refreshing token...')
+      return null
     const currentTokenExpireTime = getExpireTime(currentAccessToken)
     if (getCurrentTimeStamp() + advanceTime.current > currentTokenExpireTime) {
       localStorage?.setItem('is_refreshing', '1')
