@@ -42,6 +42,10 @@ export const login: Fetcher<CommonResponse & { data: { access_token: string;refr
   return post(url, { body }) as Promise<CommonResponse & { data: { access_token: string;refresh_token: string } }>
 }
 
+export const fetchNewToken: Fetcher<CommonResponse & { data: { access_token: string; refresh_token: string } }, { body: Record<string, any> }> = ({ body }) => {
+  return post('/refresh-token', { body }) as Promise<CommonResponse & { data: { access_token: string; refresh_token: string } }>
+}
+
 export const setup: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
   return post<CommonResponse>('/setup', { body })
 }

@@ -39,3 +39,22 @@ export const getPurifyHref = (href: string) => {
 
   return escape(href)
 }
+
+export async function fetchWithRetry<T = any>(fn: Promise<T>, retries = 3, factor = 2): Promise<[Error] | [null, T]> {
+  let attempts = 0
+  let lastError
+  while (attempts < retries) {
+    try {
+      return [null, await fn]
+    }
+    catch (error) {
+      lastError = error
+      attempts++
+      const delay = (factor ** attempts) * 1000
+      await new Promise(resolve => setTimeout(resolve, delay))
+    }
+  }
+  if (lastError instanceof Error)
+    return [lastError]
+  return [new Error('unknown error')]
+}
