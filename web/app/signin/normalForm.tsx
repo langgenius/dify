@@ -97,6 +97,8 @@ const NormalForm = () => {
         },
       })
       if (res.result === 'success') {
+        localStorage.setItem('console_token', res.data.access_token)
+        localStorage.setItem('refresh_token', res.data.refresh_token)
         getNewAccessToken(res.data.access_token, res.data.refresh_token)
         router.replace('/apps')
       }

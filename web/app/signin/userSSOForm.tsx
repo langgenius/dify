@@ -29,6 +29,8 @@ const UserSSOForm: FC<UserSSOFormProps> = ({
 
   useEffect(() => {
     if (refreshToken && consoleToken) {
+      localStorage.setItem('console_token', consoleToken)
+      localStorage.setItem('refresh_token', refreshToken)
       getNewAccessToken(consoleToken, refreshToken)
       router.replace('/apps')
     }
