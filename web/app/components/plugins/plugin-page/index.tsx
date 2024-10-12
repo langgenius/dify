@@ -1,14 +1,19 @@
 'use client'
 
-import { useMemo, useRef } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useContextSelector } from 'use-context-selector'
 import {
   RiArrowRightUpLine,
   RiBugLine,
   RiClipboardLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
-import InstallPluginDropdown from './Install-plugin-dropdown'
+import {
+  PluginPageContext,
+  PluginPageContextProvider,
+} from './context'
+import InstallPluginDropdown from './install-plugin-dropdown'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { useModalContext } from '@/context/modal-context'
 import Button from '@/app/components/base/button'
@@ -17,16 +22,17 @@ import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 
-type ContainerWrapperProps = {
+export type PluginPageProps = {
   plugins: React.ReactNode
   marketplace: React.ReactNode
 }
-const ContainerWrapper = ({
+const PluginPage = ({
   plugins,
   marketplace,
-}: ContainerWrapperProps) => {
+}: PluginPageProps) => {
   const { t } = useTranslation()
   const { setShowPluginSettingModal } = useModalContext() as any
+  const containerRef = useContextSelector(PluginPageContext, v => v.containerRef)
 
   const options = useMemo(() => {
     return [
@@ -38,8 +44,6 @@ const ContainerWrapper = ({
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: options[0].value,
   })
-
-  const containerRef = useRef<HTMLDivElement>(null)
 
   return (
     <div
@@ -118,4 +122,12 @@ const ContainerWrapper = ({
   )
 }
 
-export default ContainerWrapper
+const PluginPageWithContext = (props: PluginPageProps) => {
+  return (
+    <PluginPageContextProvider>
+      <PluginPage {...props} />
+    </PluginPageContextProvider>
+  )
+}
+
+export default PluginPageWithContext

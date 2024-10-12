@@ -1,10 +1,10 @@
+import PluginPage from '@/app/components/plugins/plugin-page'
 import PluginsPanel from '@/app/components/plugins/plugins-panel'
-import Container from '@/app/components/plugins/container'
 import Marketplace from '@/app/components/plugins/marketplace'
 
 const PluginList = async () => {
   return (
-    <Container
+    <PluginPage
       plugins={<PluginsPanel />}
       marketplace={<Marketplace />}
     />
