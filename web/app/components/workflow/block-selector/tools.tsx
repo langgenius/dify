@@ -4,12 +4,10 @@ import {
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import BlockIcon from '../block-icon'
-import { BlockEnum } from '../types'
-import type { ToolWithProvider } from '../types'
+import type { BlockEnum, ToolWithProvider } from '../types'
 import IndexBar, { groupItems } from './index-bar'
 import type { ToolDefaultValue } from './types'
-import Tooltip from '@/app/components/base/tooltip'
+import ToolItem from './tool-item'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { useGetLanguage } from '@/context/i18n'
 
@@ -42,42 +40,13 @@ const Blocks = ({
         </div>
         {
           list.map(tool => (
-            <Tooltip
+            <ToolItem
               key={tool.name}
-              position='right'
-              popupClassName='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
-              popupContent={(
-                <div>
-                  <BlockIcon
-                    size='md'
-                    className='mb-2'
-                    type={BlockEnum.Tool}
-                    toolIcon={toolWithProvider.icon}
-                  />
-                  <div className='mb-1 text-sm leading-5 text-gray-900'>{tool.label[language]}</div>
-                  <div className='text-xs text-gray-700 leading-[18px]'>{tool.description[language]}</div>
-                </div>
-              )}
-            >
-              <div
-                className='flex items-center px-3 w-full h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
-                onClick={() => onSelect(BlockEnum.Tool, {
-                  provider_id: toolWithProvider.id,
-                  provider_type: toolWithProvider.type,
-                  provider_name: toolWithProvider.name,
-                  tool_name: tool.name,
-                  tool_label: tool.label[language],
-                  title: tool.label[language],
-                })}
-              >
-                <BlockIcon
-                  className='mr-2 shrink-0'
-                  type={BlockEnum.Tool}
-                  toolIcon={toolWithProvider.icon}
-                />
-                <div className='text-sm text-gray-900 flex-1 min-w-0 truncate'>{tool.label[language]}</div>
-              </div>
-            </Tooltip>
+              isToolPlugin={toolWithProvider.type === 'builtin'}
+              provider={toolWithProvider}
+              payload={tool}
+              onSelect={onSelect}
+            />
           ))
         }
       </div>
