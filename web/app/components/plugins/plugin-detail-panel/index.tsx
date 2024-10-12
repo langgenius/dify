@@ -1,16 +1,20 @@
 'use client'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { RiVerifiedBadgeLine } from '@remixicon/react'
-import Badge from '../../base/badge'
+import { RiCloseLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import type { Plugin } from '../types'
+import Badge from '../../base/badge'
 import Description from '../card/base/description'
 import Icon from '../card/base/card-icon'
 import Title from '../card/base/title'
-import DownloadCount from '../card/base/download-count'
+import OperationDropdown from './operation-dropdown'
 import type { Locale } from '@/i18n'
 import { fetchPluginDetail } from '@/app/(commonLayout)/plugins/test/card/actions'
+import { BoxSparkleFill } from '@/app/components/base/icons/src/vender/plugin'
+import Button from '@/app/components/base/button'
+import ActionButton from '@/app/components/base/action-button'
 import Drawer from '@/app/components/base/drawer'
 import Loading from '@/app/components/base/loading'
 import cn from '@/utils/classnames'
@@ -27,12 +31,19 @@ type Props = {
 const PluginDetailPanel: FC<Props> = ({
   locale,
 }) => {
+  const { t } = useTranslation()
   const searchParams = useSearchParams()
   const pluginID = searchParams.get('pluginID')
   const router = useRouter()
   const pathname = usePathname()
   const [loading, setLoading] = useState(true)
   const [pluginDetail, setPluginDetail] = useState<Plugin>()
+
+  const hasNewVersion = useMemo(() => {
+    if (!pluginDetail)
+      return false
+    return pluginDetail.latest_version !== pluginDetail.version
+  }, [pluginDetail])
 
   const getPluginDetail = async (pluginID: string) => {
     setLoading(true)
@@ -48,6 +59,8 @@ const PluginDetailPanel: FC<Props> = ({
     setPluginDetail(undefined)
     router.replace(pathname)
   }
+
+  const handleUpdate = () => {}
 
   useEffect(() => {
     if (pluginID)
@@ -65,40 +78,43 @@ const PluginDetailPanel: FC<Props> = ({
       footer={null}
       mask={false}
       positionCenter={false}
-      panelClassname={cn('mt-[65px] !w-[405px] !max-w-[405px]')}
+      panelClassname={cn('mt-[64px] mr-2 mb-2 !w-[420px] !max-w-[420px] !p-0 !bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl')}
     >
       {loading && <Loading type='area' />}
       {!loading && pluginDetail && (
-        <div
-          className={cn('w-full flex flex-col bg-white border-[0.5px] border-gray-200 rounded-xl shadow-xl')}
-          style={{
-            height: 'calc(100vh - 65px)',
-          }}
-        >
-          <div className={cn('group relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs')}>
-            {/* Header */}
+        <div className={cn('w-full flex flex-col')}>
+          <div className={cn('shrink-0 p-4 pb-3 border-b border-divider-subtle bg-components-panel-bg')}>
             <div className="flex">
               <Icon src={pluginDetail.icon} />
               <div className="ml-3 w-0 grow">
                 <div className="flex items-center h-5">
                   <Title title={pluginDetail.label[locale]} />
                   <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />
+                  <Badge
+                    className='mx-1'
+                    text={pluginDetail.version}
+                    hasRedCornerMark={hasNewVersion}
+                  />
+                  {hasNewVersion && (
+                    <Button variant='secondary-accent' size='small' className='!h-5' onClick={handleUpdate}>{t('plugin.detailPanel.operation.update')}</Button>
+                  )}
                 </div>
                 <div className='mb-1 flex justify-between items-center h-4'>
                   <div className='flex items-center'>
                     <div className='text-text-tertiary system-xs-regular'>{pluginDetail.org}</div>
                     <div className='mx-2 text-text-quaternary system-xs-regular'>·</div>
-                    <DownloadCount downloadCount={pluginDetail.install_count || 0} />
+                    <BoxSparkleFill className='w-3.5 h-3.5 text-text-tertiary' />
                   </div>
                 </div>
               </div>
+              <div className='flex gap-1'>
+                <OperationDropdown />
+                <ActionButton onClick={handleClose}>
+                  <RiCloseLine className='w-4 h-4' />
+                </ActionButton>
+              </div>
             </div>
             <Description className='mt-3' text={pluginDetail.brief[locale]} descriptionLineRows={2}></Description>
-            <div className='mt-3 flex space-x-0.5'>
-              {['LLM', 'text embedding', 'speech2text'].map(tag => (
-                <Badge key={tag} text={tag} />
-              ))}
-            </div>
           </div>
         </div>
       )}
