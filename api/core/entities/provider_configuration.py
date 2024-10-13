@@ -119,7 +119,7 @@ class ProviderConfiguration(BaseModel):
                         credentials = model_configuration.credentials
                         break
 
-            if self.custom_configuration.provider:
+            if not credentials and self.custom_configuration.provider:
                 credentials = self.custom_configuration.provider.credentials
 
             return credentials

@@ -309,7 +309,7 @@ class AppRunner:
             if not prompt_messages:
                 prompt_messages = result.prompt_messages
 
-            if not usage and result.delta.usage:
+            if result.delta.usage:
                 usage = result.delta.usage
 
         if not usage:

@@ -5,8 +5,10 @@ identity:
     en_US: Lark Message
     zh_Hans: 飞书消息
   description:
-    en_US: Lark Message
-    zh_Hans: 飞书消息
+    en_US: |
+      Lark message, requires the following permissions: im:message、im:message.group_msg.
+    zh_Hans: |
+      飞书消息，需要开通以下权限: im:message、im:message.group_msg。
   icon: icon.svg
   tags:
     - social
@@ -23,7 +25,7 @@ credentials_for_provider:
     help:
       en_US: Get your app_id and app_secret from Feishu
       zh_Hans: 从飞书获取您的 app_id 和 app_secret
-    url: https://open.feishu.cn
+    url: https://open.larkoffice.com/app
   app_secret:
     type: secret-input
     required: true

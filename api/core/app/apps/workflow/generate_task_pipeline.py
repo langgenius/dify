@@ -52,6 +52,7 @@ from models.workflow import (
     Workflow,
     WorkflowAppLog,
     WorkflowAppLogCreatedFrom,
+    WorkflowNodeExecution,
     WorkflowRun,
     WorkflowRunStatus,
 )
@@ -69,6 +70,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
     _task_state: WorkflowTaskState
     _application_generate_entity: WorkflowAppGenerateEntity
     _workflow_system_variables: dict[SystemVariableKey, Any]
+    _wip_workflow_node_executions: dict[str, WorkflowNodeExecution]
 
     def __init__(
         self,
@@ -97,9 +99,13 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         self._workflow_system_variables = {
             SystemVariableKey.FILES: application_generate_entity.files,
             SystemVariableKey.USER_ID: user_id,
+            SystemVariableKey.APP_ID: application_generate_entity.app_config.app_id,
+            SystemVariableKey.WORKFLOW_ID: workflow.id,
+            SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,
         }
 
         self._task_state = WorkflowTaskState()
+        self._wip_workflow_node_executions = {}
 
     def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
         """
@@ -212,7 +218,8 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             except Exception as e:
                 logger.error(e)
                 break
-        yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+        if tts_publisher:
+            yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
 
     def _process_stream_response(
         self,

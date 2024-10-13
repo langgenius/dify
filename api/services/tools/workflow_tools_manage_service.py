@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from typing import Optional
 
 from sqlalchemy import or_
 
@@ -32,7 +33,7 @@ class WorkflowToolManageService:
         description: str,
         parameters: list[dict],
         privacy_policy: str = "",
-        labels: list[str] = None,
+        labels: Optional[list[str]] = None,
     ) -> dict:
         """
         Create a workflow tool.
@@ -106,7 +107,7 @@ class WorkflowToolManageService:
         description: str,
         parameters: list[dict],
         privacy_policy: str = "",
-        labels: list[str] = None,
+        labels: Optional[list[str]] = None,
     ) -> dict:
         """
         Update a workflow tool.

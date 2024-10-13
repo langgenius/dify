@@ -83,6 +83,14 @@ const translation = {
       preview: 'पूर्वावलोकन',
       maxDepthTooltip:
         'प्रविष्ट URL के सापेक्ष क्रॉल करने की अधिकतम गहराई। गहराई 0 केवल प्रविष्ट url का पृष्ठ स्क्रैप करता है, गहराई 1 url और प्रविष्टURL + एक / के बाद सब कुछ स्क्रैप करता है, और इसी तरह।',
+      jinaReaderDocLink: 'https://jina.ai/reader',
+      jinaReaderDoc: 'जीना रीडर के बारे में अधिक जानें',
+      useSitemapTooltip: 'साइट क्रॉल करने के लिए साइटमैप का अनुसरण करें. यदि नहीं, तो जीना रीडर पृष्ठ प्रासंगिकता के आधार पर पुनरावृत्त रूप से क्रॉल करेगा, कम लेकिन उच्च-गुणवत्ता वाले पृष्ठों की उपज देगा।',
+      useSitemap: 'साइटमैप का इस्तेमाल करना',
+      jinaReaderNotConfigured: 'जीना रीडर कॉन्फ़िगर नहीं किया गया है',
+      chooseProvider: 'एक प्रदाता का चयन करें',
+      jinaReaderTitle: 'पूरी साइट को मार्कडाउन में बदलें',
+      jinaReaderNotConfiguredDescription: 'एक्सेस के लिए अपनी मुफ्त एपीआई कुंजी दर्ज करके जीना रीडर सेट करें।',
     },
   },
   stepTwo: {
@@ -176,6 +184,11 @@ const translation = {
       'यदि आपको बाद में फिर से प्रसंस्करण करने की आवश्यकता है, तो आप जहां से छोड़े थे वहीं से जारी रखेंगे।',
     modelButtonConfirm: 'पुष्टि करें',
     modelButtonCancel: 'रद्द करें',
+  },
+  jinaReader: {
+    configJinaReader: 'जीना रीडर कॉन्फ़िगर करें',
+    apiKeyPlaceholder: 'jina.ai से एपीआई कुंजी',
+    getApiKeyLinkText: 'jina.ai पर अपनी निःशुल्क एपीआई कुंजी प्राप्त करें',
   },
 }
 

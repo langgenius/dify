@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import useSWR from 'swr'
 import { usePathname } from 'next/navigation'
 import { Pagination } from 'react-headless-pagination'
+import { useDebounce } from 'ahooks'
 import { omit } from 'lodash-es'
 import dayjs from 'dayjs'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
@@ -59,6 +60,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     sort_by: '-created_at',
   })
   const [currPage, setCurrPage] = React.useState<number>(0)
+  const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
 
   // Get the app type first
   const isChatMode = appDetail.mode !== 'completion'
@@ -66,14 +68,14 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const query = {
     page: currPage + 1,
     limit: APP_PAGE_LIMIT,
-    ...(queryParams.period !== 'all'
+    ...(debouncedQueryParams.period !== 'all'
       ? {
-        start: dayjs().subtract(queryParams.period as number, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+        start: dayjs().subtract(debouncedQueryParams.period as number, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
         end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
       }
       : {}),
-    ...(isChatMode ? { sort_by: queryParams.sort_by } : {}),
-    ...omit(queryParams, ['period']),
+    ...(isChatMode ? { sort_by: debouncedQueryParams.sort_by } : {}),
+    ...omit(debouncedQueryParams, ['period']),
   }
 
   const getWebAppType = (appType: AppMode) => {
@@ -119,8 +121,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
             middlePagesSiblingCount={1}
             setCurrentPage={setCurrPage}
             totalPages={Math.ceil(total / APP_PAGE_LIMIT)}
-            truncatableClassName="w-8 px-0.5 text-center"
-            truncatableText="..."
+            truncableClassName="w-8 px-0.5 text-center"
+            truncableText="..."
           >
             <Pagination.PrevButton
               disabled={currPage === 0}

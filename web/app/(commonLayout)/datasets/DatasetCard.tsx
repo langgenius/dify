@@ -18,6 +18,7 @@ import Divider from '@/app/components/base/divider'
 import RenameDatasetModal from '@/app/components/datasets/rename-modal'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
+import CornerLabel from '@/app/components/base/corner-label'
 import { useAppContext } from '@/context/app-context'
 
 export type DatasetCardProps = {
@@ -32,6 +33,7 @@ const DatasetCard = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { push } = useRouter()
+  const EXTERNAL_PROVIDER = 'external' as const
 
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [tags, setTags] = useState<Tag[]>(dataset.tags)
@@ -39,6 +41,7 @@ const DatasetCard = ({
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string>('')
+  const isExternalProvider = (provider: string): boolean => provider === EXTERNAL_PROVIDER
   const detectIsUsedByApp = useCallback(async () => {
     try {
       const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
@@ -108,13 +111,16 @@ const DatasetCard = ({
   return (
     <>
       <div
-        className='group col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
+        className='group relative col-span-1 bg-white border-[0.5px] border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
-          push(`/datasets/${dataset.id}/documents`)
+          isExternalProvider(dataset.provider)
+            ? push(`/datasets/${dataset.id}/hitTesting`)
+            : push(`/datasets/${dataset.id}/documents`)
         }}
       >
+        {isExternalProvider(dataset.provider) && <CornerLabel label='External' className='absolute right-0' labelClassName='rounded-tr-xl' />}
         <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
           <div className={cn(
             'shrink-0 flex items-center justify-center p-2.5 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#E0EAFF]',
@@ -136,13 +142,20 @@ const DatasetCard = ({
             <div className='flex items-center mt-[1px] text-xs leading-[18px] text-gray-500'>
               <div
                 className={cn('truncate', (!dataset.embedding_available || !dataset.document_count) && 'opacity-50')}
-                title={`${dataset.document_count}${t('dataset.documentCount')} · ${Math.round(dataset.word_count / 1000)}${t('dataset.wordCount')} · ${dataset.app_count}${t('dataset.appCount')}`}
+                title={dataset.provider === 'external' ? `${dataset.app_count}${t('dataset.appCount')}` : `${dataset.document_count}${t('dataset.documentCount')} · ${Math.round(dataset.word_count / 1000)}${t('dataset.wordCount')} · ${dataset.app_count}${t('dataset.appCount')}`}
               >
-                <span>{dataset.document_count}{t('dataset.documentCount')}</span>
-                <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
-                <span>{Math.round(dataset.word_count / 1000)}{t('dataset.wordCount')}</span>
-                <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
-                <span>{dataset.app_count}{t('dataset.appCount')}</span>
+                {dataset.provider === 'external'
+                  ? <>
+                    <span>{dataset.app_count}{t('dataset.appCount')}</span>
+                  </>
+                  : <>
+                    <span>{dataset.document_count}{t('dataset.documentCount')}</span>
+                    <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
+                    <span>{Math.round(dataset.word_count / 1000)}{t('dataset.wordCount')}</span>
+                    <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
+                    <span>{dataset.app_count}{t('dataset.appCount')}</span>
+                  </>
+                }
               </div>
             </div>
           </div>
