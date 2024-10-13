@@ -60,8 +60,8 @@ class TokenBufferMemory:
         thread_messages = extract_thread_messages(messages)
 
         # for newly created message, its answer is temporarily empty, we don't need to add it to memory
-        if thread_messages and not thread_messages[-1].answer:
-            thread_messages.pop()
+        if thread_messages and not thread_messages[0].answer:
+            thread_messages.pop(0)
 
         messages = list(reversed(thread_messages))
 
