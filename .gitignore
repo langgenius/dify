@@ -188,3 +188,4 @@ api/.vscode
 
 .idea/
 .vscode
+docker/postgres-data
