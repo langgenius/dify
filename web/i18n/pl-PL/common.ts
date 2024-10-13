@@ -173,6 +173,9 @@ const translation = {
     delete: 'Usuń konto',
     deleteTip: 'Usunięcie konta spowoduje trwałe usunięcie wszystkich danych i nie będzie można ich odzyskać.',
     deleteConfirmTip: 'Aby potwierdzić, wyślij następujące informacje z zarejestrowanego adresu e-mail na adres ',
+    myAccount: 'Moje konto',
+    studio: 'Dify Studio',
+    account: 'Rachunek',
   },
   members: {
     team: 'Zespół',
