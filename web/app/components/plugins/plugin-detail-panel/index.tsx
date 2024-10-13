@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { RiCloseLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import type { Plugin } from '../types'
-import { PluginType } from '../types'
+// import { PluginType } from '../types'
 import Badge from '../../base/badge'
 import Description from '../card/base/description'
 import Icon from '../card/base/card-icon'
@@ -124,15 +124,9 @@ const PluginDetailPanel: FC<Props> = ({
             <Description className='mt-3' text={pluginDetail.brief[locale]} descriptionLineRows={2}></Description>
           </div>
           <div className='grow overflow-y-auto'>
-            {pluginDetail.type === PluginType.model && (
-              <ModelList />
-            )}
-            {pluginDetail.type !== PluginType.model && (
-              <>
-                <EndpointList />
-                <ActionList />
-              </>
-            )}
+            <ActionList />
+            <EndpointList />
+            <ModelList />
           </div>
         </>
       )}

@@ -11,8 +11,12 @@ const translation = {
       viewDetail: '查看详情',
       remove: '移除',
     },
-    modelNum: '{{num}} 模型已包含',
     actionNum: '{{num}} ACTIONS 已包含',
+    endpoints: 'Endpoints',
+    endpointsEmpty: '点击 \'+\' 按钮添加端点',
+    serviceOk: '服务正常',
+    disabled: '停用',
+    modelNum: '{{num}} 模型已包含',
   },
 }
 

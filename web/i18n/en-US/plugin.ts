@@ -11,8 +11,12 @@ const translation = {
       viewDetail: 'View Detail',
       remove: 'Remove',
     },
-    modelNum: '{{num}} MODELS INCLUDED',
     actionNum: '{{num}} ACTIONS INCLUDED',
+    endpoints: 'Endpoints',
+    endpointsEmpty: 'Click the \'+\' button to add an endpoint',
+    serviceOk: 'Service OK',
+    disabled: 'Disabled',
+    modelNum: '{{num}} MODELS INCLUDED',
   },
 }
 
