@@ -142,6 +142,7 @@ const translation = {
   settings: {
     accountGroup: '通用',
     workplaceGroup: '工作空间',
+    account: '我的账户',
     members: '成员',
     billing: '账单',
     integrations: '集成',
@@ -150,7 +151,6 @@ const translation = {
     dataSource: '数据来源',
     plugin: '插件',
     apiBasedExtension: 'API 扩展',
-    account: '我的账户',
   },
   account: {
     account: '账户',
