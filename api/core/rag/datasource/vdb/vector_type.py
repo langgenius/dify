@@ -17,3 +17,4 @@ class VectorType(str, Enum):
     ORACLE = "oracle"
     ELASTICSEARCH = "elasticsearch"
     BAIDU = "baidu"
+    VIKINGDB = "vikingdb"
