@@ -1,7 +1,5 @@
 'use client'
 
-import { RiDragDropLine } from '@remixicon/react'
-
 const PluginsPanel = () => {
   return (
     <>
@@ -13,10 +11,6 @@ const PluginsPanel = () => {
       </div>
       <div className='flex px-12 items-start content-start gap-2 flex-grow self-stretch flex-wrap'>
         {/* Plugin cards go here */}
-      </div>
-      <div className='flex items-center justify-center py-4 gap-2 text-text-quaternary'>
-        <RiDragDropLine className='w-4 h-4' />
-        <span className='system-xs-regular'>Drop plugin package here to install</span>
       </div>
     </>
   )
