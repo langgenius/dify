@@ -1,6 +1,10 @@
 from collections.abc import Generator
 from typing import Optional, Union
 
+from zhipuai import ZhipuAI
+from zhipuai.types.chat.chat_completion import Completion
+from zhipuai.types.chat.chat_completion_chunk import ChatCompletionChunk
+
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -16,9 +20,6 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.model_providers.zhipuai._common import _CommonZhipuaiAI
-from core.model_runtime.model_providers.zhipuai.zhipuai_sdk._client import ZhipuAI
-from core.model_runtime.model_providers.zhipuai.zhipuai_sdk.types.chat.chat_completion import Completion
-from core.model_runtime.model_providers.zhipuai.zhipuai_sdk.types.chat.chat_completion_chunk import ChatCompletionChunk
 from core.model_runtime.utils import helper
 
 GLM_JSON_MODE_PROMPT = """You should always follow the instructions and output a valid JSON object.
