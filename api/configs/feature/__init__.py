@@ -360,9 +360,9 @@ class WorkflowConfig(BaseSettings):
     )
 
 
-class OAuthConfig(BaseSettings):
+class AuthConfig(BaseSettings):
     """
-    Configuration for OAuth authentication
+    Configuration for authentication and OAuth
     """
 
     OAUTH_REDIRECT_PATH: str = Field(
@@ -371,7 +371,7 @@ class OAuthConfig(BaseSettings):
     )
 
     GITHUB_CLIENT_ID: Optional[str] = Field(
-        description="GitHub OAuth client secret",
+        description="GitHub OAuth client ID",
         default=None,
     )
 
@@ -388,6 +388,11 @@ class OAuthConfig(BaseSettings):
     GOOGLE_CLIENT_SECRET: Optional[str] = Field(
         description="Google OAuth client secret",
         default=None,
+    )
+
+    ACCESS_TOKEN_EXPIRE_MINUTES: PositiveInt = Field(
+        description="Expiration time for access tokens in minutes",
+        default=60,
     )
 
 
@@ -607,6 +612,7 @@ class PositionConfig(BaseSettings):
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
+    AuthConfig,  # Changed from OAuthConfig to AuthConfig
     BillingConfig,
     CodeExecutionSandboxConfig,
     DataSetConfig,
@@ -621,14 +627,13 @@ class FeatureConfig(
     MailConfig,
     ModelLoadBalanceConfig,
     ModerationConfig,
-    OAuthConfig,
+    PositionConfig,
     RagEtlConfig,
     SecurityConfig,
     ToolConfig,
     UpdateConfig,
     WorkflowConfig,
     WorkspaceConfig,
-    PositionConfig,
     # hosted services config
     HostedServiceConfig,
     CeleryBeatConfig,
