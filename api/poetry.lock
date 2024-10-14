@@ -1996,6 +1996,17 @@ timedelta = ["pytimeparse (>=1.1.7)"]
 yaml = ["PyYAML (>=5.3)"]
 
 [[package]]
+name = "dataclasses"
+version = "0.6"
+description = "A backport of the dataclasses module for Python 3.6"
+optional = false
+python-versions = "*"
+files = [
+    {file = "dataclasses-0.6-py3-none-any.whl", hash = "sha256:454a69d788c7fda44efd71e259be79577822f5e3f53f029a22d08004e951dc9f"},
+    {file = "dataclasses-0.6.tar.gz", hash = "sha256:6988bd2b895eef432d562370bb707d540f32f7360ab13da45340101bc2307d84"},
+]
+
+[[package]]
 name = "dataclasses-json"
 version = "0.6.7"
 description = "Easily serialize dataclasses to and from JSON."
@@ -2026,6 +2037,17 @@ numpy = ">=1.16.6"
 packaging = ">=17.0"
 pandas = ">=0.24.2"
 pyarrow = ">=3.0.0"
+
+[[package]]
+name = "decorator"
+version = "5.1.1"
+description = "Decorators for Humans"
+optional = false
+python-versions = ">=3.5"
+files = [
+    {file = "decorator-5.1.1-py3-none-any.whl", hash = "sha256:b8c3f85900b9dc423225913c5aace94729fe1fa9763b38939a95226f02d37186"},
+    {file = "decorator-5.1.1.tar.gz", hash = "sha256:637996211036b6385ef91435e4fae22989472f9d571faba8927ba8253acbc330"},
+]
 
 [[package]]
 name = "defusedxml"
@@ -3015,6 +3037,20 @@ files = [
 [package.extras]
 docs = ["sphinx (>=4)", "sphinx-rtd-theme (>=1)"]
 tests = ["cython", "hypothesis", "mpmath", "pytest", "setuptools"]
+
+[[package]]
+name = "google"
+version = "3.0.0"
+description = "Python bindings to the Google search engine."
+optional = false
+python-versions = "*"
+files = [
+    {file = "google-3.0.0-py2.py3-none-any.whl", hash = "sha256:889cf695f84e4ae2c55fbc0cfdaf4c1e729417fa52ab1db0485202ba173e4935"},
+    {file = "google-3.0.0.tar.gz", hash = "sha256:143530122ee5130509ad5e989f0512f7cb218b2d4eddbafbad40fd10e8d8ccbe"},
+]
+
+[package.dependencies]
+beautifulsoup4 = "*"
 
 [[package]]
 name = "google-ai-generativelanguage"
@@ -4929,6 +4965,7 @@ python-versions = ">=3.7"
 files = [
     {file = "milvus_lite-2.4.10-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:fc4246d3ed7d1910847afce0c9ba18212e93a6e9b8406048436940578dfad5cb"},
     {file = "milvus_lite-2.4.10-py3-none-macosx_11_0_arm64.whl", hash = "sha256:74a8e07c5e3b057df17fbb46913388e84df1dc403a200f4e423799a58184c800"},
+    {file = "milvus_lite-2.4.10-py3-none-manylinux2014_aarch64.whl", hash = "sha256:240c7386b747bad696ecb5bd1f58d491e86b9d4b92dccee3315ed7256256eddc"},
     {file = "milvus_lite-2.4.10-py3-none-manylinux2014_x86_64.whl", hash = "sha256:211d2e334a043f9282bdd9755f76b9b2d93b23bffa7af240919ffce6a8dfe325"},
 ]
 
@@ -6659,6 +6696,17 @@ files = [
 ]
 
 [[package]]
+name = "py"
+version = "1.11.0"
+description = "library with cross-python path, ini-parsing, io, code, log facilities"
+optional = false
+python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
+files = [
+    {file = "py-1.11.0-py2.py3-none-any.whl", hash = "sha256:607c53218732647dff4acdfcd50cb62615cedf612e72d1724fb1a0cc6405b378"},
+    {file = "py-1.11.0.tar.gz", hash = "sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719"},
+]
+
+[[package]]
 name = "py-cpuinfo"
 version = "9.0.0"
 description = "Get CPU info with pure Python"
@@ -7034,6 +7082,22 @@ ujson = ">=2.0.0"
 bulk-writer = ["azure-storage-blob", "minio (>=7.0.0)", "pyarrow (>=12.0.0)", "requests"]
 dev = ["black", "grpcio (==1.62.2)", "grpcio-testing (==1.62.2)", "grpcio-tools (==1.62.2)", "pytest (>=5.3.4)", "pytest-cov (>=2.8.1)", "pytest-timeout (>=1.3.4)", "ruff (>0.4.0)"]
 model = ["milvus-model (>=0.1.0)"]
+
+[[package]]
+name = "pymochow"
+version = "1.3.1"
+description = "Python SDK for mochow"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "pymochow-1.3.1-py3-none-any.whl", hash = "sha256:a7f3b34fd6ea5d1d8413650bb6678365aa148fc396ae945e4ccb4f2365a52327"},
+    {file = "pymochow-1.3.1.tar.gz", hash = "sha256:1693d10cd0bb7bce45327890a90adafb503155922ccc029acb257699a73a20ba"},
+]
+
+[package.dependencies]
+future = "*"
+orjson = "*"
+requests = "*"
 
 [[package]]
 name = "pymysql"
@@ -7985,6 +8049,21 @@ files = [
 requests = "2.31.0"
 
 [[package]]
+name = "retry"
+version = "0.9.2"
+description = "Easy to use retry decorator."
+optional = false
+python-versions = "*"
+files = [
+    {file = "retry-0.9.2-py2.py3-none-any.whl", hash = "sha256:ccddf89761fa2c726ab29391837d4327f819ea14d244c232a1d24c67a2f98606"},
+    {file = "retry-0.9.2.tar.gz", hash = "sha256:f8bfa8b99b69c4506d6f5bd3b0aabf77f98cdb17f3c9fc3f5ca820033336fba4"},
+]
+
+[package.dependencies]
+decorator = ">=3.4.2"
+py = ">=1.4.26,<2.0.0"
+
+[[package]]
 name = "rich"
 version = "13.9.2"
 description = "Render rich text, tables, progress bars, syntax highlighting, markdown and more to the terminal"
@@ -8405,6 +8484,11 @@ files = [
     {file = "scikit_learn-1.5.2-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f60021ec1574e56632be2a36b946f8143bf4e5e6af4a06d85281adc22938e0dd"},
     {file = "scikit_learn-1.5.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:394397841449853c2290a32050382edaec3da89e35b3e03d6cc966aebc6a8ae6"},
     {file = "scikit_learn-1.5.2-cp312-cp312-win_amd64.whl", hash = "sha256:57cc1786cfd6bd118220a92ede80270132aa353647684efa385a74244a41e3b1"},
+    {file = "scikit_learn-1.5.2-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:e9a702e2de732bbb20d3bad29ebd77fc05a6b427dc49964300340e4c9328b3f5"},
+    {file = "scikit_learn-1.5.2-cp313-cp313-macosx_12_0_arm64.whl", hash = "sha256:b0768ad641981f5d3a198430a1d31c3e044ed2e8a6f22166b4d546a5116d7908"},
+    {file = "scikit_learn-1.5.2-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:178ddd0a5cb0044464fc1bfc4cca5b1833bfc7bb022d70b05db8530da4bb3dd3"},
+    {file = "scikit_learn-1.5.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f7284ade780084d94505632241bf78c44ab3b6f1e8ccab3d2af58e0e950f9c12"},
+    {file = "scikit_learn-1.5.2-cp313-cp313-win_amd64.whl", hash = "sha256:b7b0f9a0b1040830d38c39b91b3a44e1b643f4b36e36567b80b7c6bd2202a27f"},
     {file = "scikit_learn-1.5.2-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:757c7d514ddb00ae249832fe87100d9c73c6ea91423802872d9e74970a0e40b9"},
     {file = "scikit_learn-1.5.2-cp39-cp39-macosx_12_0_arm64.whl", hash = "sha256:52788f48b5d8bca5c0736c175fa6bdaab2ef00a8f536cda698db61bd89c551c1"},
     {file = "scikit_learn-1.5.2-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:643964678f4b5fbdc95cbf8aec638acc7aa70f5f79ee2cdad1eec3df4ba6ead8"},
@@ -9797,6 +9881,26 @@ files = [
 ]
 
 [[package]]
+name = "volcengine-compat"
+version = "1.0.156"
+description = "Be Compatible with the Volcengine SDK for Python, The version of package dependencies has been modified. like pycryptodome, pytz."
+optional = false
+python-versions = "*"
+files = [
+    {file = "volcengine_compat-1.0.156-py3-none-any.whl", hash = "sha256:4abc149a7601ebad8fa2d28fab50c7945145cf74daecb71bca797b0bdc82c5a5"},
+    {file = "volcengine_compat-1.0.156.tar.gz", hash = "sha256:e357d096828e31a202dc6047bbc5bf6fff3f54a98cd35a99ab5f965ea741a267"},
+]
+
+[package.dependencies]
+google = ">=3.0.0"
+protobuf = ">=3.18.3"
+pycryptodome = ">=3.9.9"
+pytz = ">=2020.5"
+requests = ">=2.25.1"
+retry = ">=0.9.2"
+six = ">=1.0"
+
+[[package]]
 name = "volcengine-python-sdk"
 version = "1.0.103"
 description = "Volcengine SDK for Python"
@@ -10382,21 +10486,20 @@ repair = ["scipy (>=1.6.3)"]
 
 [[package]]
 name = "zhipuai"
-version = "2.1.5.20230904"
+version = "1.0.7"
 description = "A SDK library for accessing big model apis from ZhipuAI"
 optional = false
-python-versions = "!=2.7.*,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,!=3.7.*,>=3.8"
+python-versions = ">=3.6"
 files = [
-    {file = "zhipuai-2.1.5.20230904-py3-none-any.whl", hash = "sha256:8485ca452c2f07fea476fb0666abc8fbbdf1b2e4feeee46a3bb3c1a2b51efccd"},
-    {file = "zhipuai-2.1.5.20230904.tar.gz", hash = "sha256:2c19dd796b12e2f19b93d8f9be6fd01e85d3320737a187ebf3c75a9806a7c2b5"},
+    {file = "zhipuai-1.0.7-py3-none-any.whl", hash = "sha256:360c01b8c2698f366061452e86d5a36a5ff68a576ea33940da98e4806f232530"},
+    {file = "zhipuai-1.0.7.tar.gz", hash = "sha256:b80f699543d83cce8648acf1ce32bc2725d1c1c443baffa5882abc2cc704d581"},
 ]
 
 [package.dependencies]
-cachetools = ">=4.2.2"
-httpx = ">=0.23.0"
-pydantic = ">=1.9.0,<3.0"
-pydantic-core = ">=2.14.6"
-pyjwt = ">=2.8.0,<2.9.0"
+cachetools = "*"
+dataclasses = "*"
+PyJWT = "*"
+requests = "*"
 
 [[package]]
 name = "zipp"
@@ -10604,4 +10707,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "309f203bb25f9113ae4c11055a3b582a916210d6dac19770aa320c8324ad36f6"
+content-hash = "edb5e3b0d50e84a239224cc77f3f615fdbdd6b504bce5b1075b29363f3054957"
