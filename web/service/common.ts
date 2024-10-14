@@ -45,6 +45,7 @@ type LoginSuccess = {
 type LoginFail = {
   result: 'fail'
   data: string
+  message: string
 }
 type LoginResponse = LoginSuccess | LoginFail
 export const login: Fetcher<LoginResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {

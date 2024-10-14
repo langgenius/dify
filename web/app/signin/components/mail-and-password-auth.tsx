@@ -52,7 +52,8 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
           router.replace(`/signin/invite-settings?${searchParams.toString()}`)
         }
         else {
-          localStorage.setItem('console_token', res.data)
+          localStorage.setItem('console_token', res.data.access_token)
+          localStorage.setItem('refresh_token', res.data.refresh_token)
           router.replace('/apps')
         }
       }
