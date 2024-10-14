@@ -1,4 +1,4 @@
-from controllers.console.datasets.warps import DatasetsHitTestingBase
+from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase
 from controllers.service_api import api
 from controllers.service_api.wraps import DatasetApiResource
 

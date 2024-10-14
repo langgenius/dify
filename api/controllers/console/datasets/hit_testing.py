@@ -1,7 +1,7 @@
 from flask_restful import Resource
 
 from controllers.console import api
-from controllers.console.datasets.warps import DatasetsHitTestingBase
+from controllers.console.datasets.hit_testing_base import DatasetsHitTestingBase
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from libs.login import login_required
