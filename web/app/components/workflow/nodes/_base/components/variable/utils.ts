@@ -116,6 +116,19 @@ const formatItem = (
         variable: 'sys.files',
         type: VarType.arrayFile,
       })
+      res.vars.push({
+        variable: 'sys.app_id',
+        type: VarType.string,
+      })
+      res.vars.push({
+        variable: 'sys.workflow_id',
+        type: VarType.string,
+      })
+      res.vars.push({
+        variable: 'sys.workflow_run_id',
+        type: VarType.string,
+      })
+
       break
     }
 

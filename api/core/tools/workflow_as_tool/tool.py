@@ -92,10 +92,13 @@ class WorkflowTool(Tool):
         if data.get("error"):
             raise Exception(data.get("error"))
 
-        outputs = data.get("outputs", {})
-        outputs, files = self._extract_files(outputs)
-        for file in files:
-            yield self.create_file_var_message(file)
+        outputs = data.get("outputs")
+        if outputs == None:
+            outputs = {}
+        else:
+            outputs, files = self._extract_files(outputs)
+            for file in files:
+                yield self.create_file_var_message(file)
 
         yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
         yield self.create_json_message(outputs)

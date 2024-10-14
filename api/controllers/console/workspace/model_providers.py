@@ -80,7 +80,7 @@ class ModelProviderValidateApi(Resource):
         response = {"result": "success" if result else "error"}
 
         if not result:
-            response["error"] = error
+            response["error"] = error or "Unknown error"
 
         return response
 

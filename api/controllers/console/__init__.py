@@ -37,7 +37,16 @@ from .auth import activate, data_source_bearer_auth, data_source_oauth, forgot_p
 from .billing import billing
 
 # Import datasets controllers
-from .datasets import data_source, datasets, datasets_document, datasets_segments, file, hit_testing, website
+from .datasets import (
+    data_source,
+    datasets,
+    datasets_document,
+    datasets_segments,
+    external,
+    file,
+    hit_testing,
+    website,
+)
 
 # Import explore controllers
 from .explore import (

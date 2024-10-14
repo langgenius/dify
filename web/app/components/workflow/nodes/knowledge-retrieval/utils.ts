@@ -21,6 +21,9 @@ export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
   let allHighQualityFullTextSearch = true
   let allEconomic = true
   let mixtureHighQualityAndEconomic = true
+  let allExternal = true
+  let allInternal = true
+  let mixtureInternalAndExternal = true
   let inconsistentEmbeddingModel = false
   if (!datasets.length) {
     allHighQuality = false
@@ -29,6 +32,9 @@ export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
     allEconomic = false
     mixtureHighQualityAndEconomic = false
     inconsistentEmbeddingModel = false
+    allExternal = false
+    allInternal = false
+    mixtureInternalAndExternal = false
   }
   datasets.forEach((dataset) => {
     if (dataset.indexing_technique === 'economy') {
@@ -45,7 +51,20 @@ export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
       if (dataset.retrieval_model_dict.search_method !== RETRIEVE_METHOD.fullText)
         allHighQualityFullTextSearch = false
     }
+    if (dataset.provider !== 'external') {
+      allExternal = false
+    }
+    else {
+      allInternal = false
+      allHighQuality = false
+      allHighQualityVectorSearch = false
+      allHighQualityFullTextSearch = false
+      mixtureHighQualityAndEconomic = false
+    }
   })
+
+  if (allExternal || allInternal)
+    mixtureInternalAndExternal = false
 
   if (allHighQuality || allEconomic)
     mixtureHighQualityAndEconomic = false
@@ -59,6 +78,9 @@ export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
     allHighQualityFullTextSearch,
     allEconomic,
     mixtureHighQualityAndEconomic,
+    allInternal,
+    allExternal,
+    mixtureInternalAndExternal,
     inconsistentEmbeddingModel,
   } as SelectedDatasetsMode
 }
@@ -70,6 +92,9 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
     allHighQualityFullTextSearch,
     allEconomic,
     mixtureHighQualityAndEconomic,
+    allInternal,
+    allExternal,
+    mixtureInternalAndExternal,
     inconsistentEmbeddingModel,
   } = getSelectedDatasetsMode(selectedDatasets)
 
@@ -91,13 +116,13 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
     reranking_enable: allEconomic ? reranking_enable : true,
   }
 
-  if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)
+  if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || allExternal || mixtureInternalAndExternal)
     result.reranking_mode = RerankingModeEnum.RerankingModel
 
-  if (allHighQuality && !inconsistentEmbeddingModel && reranking_mode === undefined)
+  if (allHighQuality && !inconsistentEmbeddingModel && reranking_mode === undefined && allInternal)
     result.reranking_mode = RerankingModeEnum.WeightedScore
 
-  if (allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined) && !weights) {
+  if (allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined) && allInternal && !weights) {
     result.weights = {
       vector_setting: {
         vector_weight: allHighQualityVectorSearch

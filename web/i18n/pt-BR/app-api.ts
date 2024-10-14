@@ -78,6 +78,7 @@ const translation = {
   loading: 'Carregamento',
   pause: 'Pausa',
   playing: 'Jogar',
+  regenerate: 'Regenerar',
 }
 
 export default translation

@@ -85,6 +85,7 @@ class LargeLanguageModel(AIModel):
         )
 
         try:
+<<<<<<< HEAD
             plugin_model_manager = PluginModelManager()
             result = plugin_model_manager.invoke_llm(
                 tenant_id=self.tenant_id,
@@ -116,6 +117,10 @@ class LargeLanguageModel(AIModel):
                     break
 
                 result = LLMResult(
+=======
+            if "response_format" in model_parameters and model_parameters["response_format"] in {"JSON", "XML"}:
+                result = self._code_block_mode_wrapper(
+>>>>>>> main
                     model=model,
                     prompt_messages=prompt_messages,
                     message=AssistantPromptMessage(content=content or content_list),
