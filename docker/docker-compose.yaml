@@ -266,8 +266,6 @@ services:
     platform: 'linux/amd64'
     tty: true
     working_dir: /var/www/html
-    ports:
-      - "3000:3000"
     volumes:
       - ../frontend:/var/www/html
     environment:
