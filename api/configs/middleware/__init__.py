@@ -30,12 +30,13 @@ from configs.middleware.vdb.tencent_vector_config import TencentVectorDBConfig
 from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
 from configs.middleware.vdb.vikingdb_config import VikingDBConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
+from configs.middleware.vdb.supabase_vector_config import SupabaseVectorConfig
 
 
 class StorageConfig(BaseSettings):
     STORAGE_TYPE: str = Field(
         description="Type of storage to use."
-        " Options: 'local', 's3', 'azure-blob', 'aliyun-oss', 'google-storage'. Default is 'local'.",
+                    " Options: 'local', 's3', 'azure-blob', 'aliyun-oss', 'google-storage'. Default is 'local'.",
         default="local",
     )
 
@@ -48,7 +49,7 @@ class StorageConfig(BaseSettings):
 class VectorStoreConfig(BaseSettings):
     VECTOR_STORE: Optional[str] = Field(
         description="Type of vector store to use for efficient similarity search."
-        " Set to None if not using a vector store.",
+                    " Set to None if not using a vector store.",
         default=None,
     )
 
@@ -56,7 +57,7 @@ class VectorStoreConfig(BaseSettings):
 class KeywordStoreConfig(BaseSettings):
     KEYWORD_STORE: str = Field(
         description="Method for keyword extraction and storage."
-        " Default is 'jieba', a Chinese text segmentation library.",
+                    " Default is 'jieba', a Chinese text segmentation library.",
         default="jieba",
     )
 
@@ -245,5 +246,6 @@ class MiddlewareConfig(
     ElasticsearchConfig,
     InternalTestConfig,
     VikingDBConfig,
+    SupabaseVectorConfig,
 ):
     pass
