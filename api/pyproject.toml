@@ -149,7 +149,7 @@ nomic = "~3.1.2"
 novita-client = "~0.5.7"
 numpy = "~1.26.4"
 oci = "~2.135.1"
-openai = "~1.29.0"
+openai = "~1.51.2"
 openpyxl = "~3.1.5"
 pandas = { version = "~2.2.2", extras = ["performance", "excel"] }
 psycopg2-binary = "~2.9.6"
@@ -172,7 +172,7 @@ scikit-learn = "~1.5.1"
 sentry-sdk = { version = "~1.44.1", extras = ["flask"] }
 sqlalchemy = "~2.0.29"
 tencentcloud-sdk-python-hunyuan = "~3.0.1158"
-tiktoken = "~0.7.0"
+tiktoken = "~0.8.0"
 tokenizers = "~0.15.0"
 transformers = "~4.35.0"
 unstructured = { version = "~0.10.27", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
