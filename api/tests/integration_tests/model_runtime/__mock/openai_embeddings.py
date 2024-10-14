@@ -1,7 +1,6 @@
 import re
 from typing import Any, Literal, Union
 
-from openai import OpenAI
 from openai._types import NOT_GIVEN, NotGiven
 from openai.resources.embeddings import Embeddings
 from openai.types.create_embedding_response import CreateEmbeddingResponse, Usage

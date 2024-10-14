@@ -171,6 +171,9 @@ const translation = {
     delete: 'Eliminar cuenta',
     deleteTip: 'Eliminar tu cuenta borrará permanentemente todos tus datos y no se podrán recuperar.',
     deleteConfirmTip: 'Para confirmar, por favor envía lo siguiente desde tu correo electrónico registrado a ',
+    account: 'Cuenta',
+    myAccount: 'Mi Cuenta',
+    studio: 'Estudio Dify',
   },
   members: {
     team: 'Equipo',
@@ -202,7 +205,7 @@ const translation = {
     invitationLink: 'Enlace de invitación',
     failedInvitationEmails: 'Los siguientes usuarios no fueron invitados exitosamente',
     ok: 'OK',
-    removeFromTeam: 'Eliminar del equipo',
+    removeFromTeam: 'Eliminar del espacio de trabajo',
     removeFromTeamTip: 'Se eliminará el acceso al equipo',
     setAdmin: 'Establecer como administrador',
     setMember: 'Establecer como miembro ordinario',

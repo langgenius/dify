@@ -1,0 +1,38 @@
+identity:
+  name: delete_event
+  author: Doug Lea
+  label:
+    en_US: Delete Event
+    zh_Hans: 删除日程
+description:
+  human:
+    en_US: Delete Event
+    zh_Hans: 删除日程
+  llm: A tool for deleting events in Feishu.(在飞书中删除日程)
+parameters:
+  - name: event_id
+    type: string
+    required: true
+    label:
+      en_US: Event ID
+      zh_Hans: 日程 ID
+    human_description:
+      en_US: |
+        The ID of the event, for example: e8b9791c-39ae-4908-8ad8-66b13159b9fb_0.
+      zh_Hans: 日程 ID，例如：e8b9791c-39ae-4908-8ad8-66b13159b9fb_0。
+    llm_description: 日程 ID，例如：e8b9791c-39ae-4908-8ad8-66b13159b9fb_0。
+    form: llm
+
+  - name: need_notification
+    type: boolean
+    required: false
+    default: true
+    label:
+      en_US: Need Notification
+      zh_Hans: 是否需要通知
+    human_description:
+      en_US: |
+        Indicates whether to send bot notifications to event participants upon deletion. true: send, false: do not send.
+      zh_Hans: 删除日程是否给日程参与人发送 bot 通知，true：发送，false：不发送。
+    llm_description: 删除日程是否给日程参与人发送 bot 通知，true：发送，false：不发送。
+    form: form

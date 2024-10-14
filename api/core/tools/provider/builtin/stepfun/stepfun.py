@@ -16,7 +16,7 @@ class StepfunProvider(BuiltinToolProviderController):
                 user_id="",
                 tool_parameters={
                     "prompt": "cute girl, blue eyes, white hair, anime style",
-                    "size": "1024x1024",
+                    "size": "256x256",
                     "n": 1,
                 },
             )

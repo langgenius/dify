@@ -35,10 +35,10 @@ class CrawlTool(BuiltinTool):
         scrapeOptions["excludeTags"] = get_array_params(tool_parameters, "excludeTags")
         scrapeOptions["onlyMainContent"] = tool_parameters.get("onlyMainContent", False)
         scrapeOptions["waitFor"] = tool_parameters.get("waitFor", 0)
-        scrapeOptions = {k: v for k, v in scrapeOptions.items() if v not in {None, ""}}
+        scrapeOptions = {k: v for k, v in scrapeOptions.items() if v not in (None, "")}
         payload["scrapeOptions"] = scrapeOptions or None
 
-        payload = {k: v for k, v in payload.items() if v not in {None, ""}}
+        payload = {k: v for k, v in payload.items() if v not in (None, "")}
 
         crawl_result = app.crawl_url(url=tool_parameters["url"], wait=wait_for_results, **payload)
 

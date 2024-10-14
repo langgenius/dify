@@ -1,3 +1,4 @@
+# for more details, please refer to https://help.aliyun.com/zh/model-studio/getting-started/models
 model: qwen-vl-max-0201
 label:
   en_US: qwen-vl-max-0201

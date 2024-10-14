@@ -78,6 +78,7 @@ const translation = {
     pathParams: 'Параметры пути',
     query: 'Запрос',
   },
+  regenerate: 'Регенерировать',
 }
 
 export default translation

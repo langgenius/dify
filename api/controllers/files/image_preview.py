@@ -4,7 +4,7 @@ from werkzeug.exceptions import NotFound
 
 import services
 from controllers.files import api
-from libs.exception import BaseHTTPException
+from controllers.files.error import UnsupportedFileTypeError
 from services.account_service import TenantService
 from services.file_service import FileService
 
@@ -50,9 +50,3 @@ class WorkspaceWebappLogoApi(Resource):
 
 api.add_resource(ImagePreviewApi, "/files/<uuid:file_id>/image-preview")
 api.add_resource(WorkspaceWebappLogoApi, "/files/workspaces/<uuid:workspace_id>/webapp-logo")
-
-
-class UnsupportedFileTypeError(BaseHTTPException):
-    error_code = "unsupported_file_type"
-    description = "File type not allowed."
-    code = 415

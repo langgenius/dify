@@ -17,6 +17,8 @@ class Document(BaseModel):
     """
     metadata: Optional[dict] = Field(default_factory=dict)
 
+    provider: Optional[str] = "dify"
+
 
 class BaseDocumentTransformer(ABC):
     """Abstract base class for document transformation systems.

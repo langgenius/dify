@@ -347,6 +347,14 @@ def migrate_knowledge_vector_database():
                     index_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {"type": "elasticsearch", "vector_store": {"class_prefix": index_name}}
                     dataset.index_struct = json.dumps(index_struct_dict)
+                elif vector_type == VectorType.BAIDU:
+                    dataset_id = dataset.id
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+                    index_struct_dict = {
+                        "type": VectorType.BAIDU,
+                        "vector_store": {"class_prefix": collection_name},
+                    }
+                    dataset.index_struct = json.dumps(index_struct_dict)
                 else:
                     raise ValueError(f"Vector store {vector_type} is not supported.")
 
@@ -652,7 +660,7 @@ where sites.id is null limit 1000"""
                         app_was_created.send(app, account=account)
                 except Exception as e:
                     failed_app_ids.append(app_id)
-                    click.echo(click.style("FFailed to fix missing site for app {}".format(app_id), fg="red"))
+                    click.echo(click.style("Failed to fix missing site for app {}".format(app_id), fg="red"))
                     logging.exception(f"Fix app related site missing issue failed, error: {e}")
                     continue
 

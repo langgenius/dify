@@ -200,14 +200,14 @@ parameters:
       en_US: If enabled, it will attempt to train on the metadata of that database
       zh_Hans: 是否自动从数据库获取元数据来训练
     form: form
-  - name: generate_chart
+  - name: allow_llm_to_see_data
     type: boolean
     required: false
-    default: True
+    default: false
     label:
-      en_US: Generate Charts
-      zh_Hans: 生成图表
+      en_US: Whether to allow the LLM to see the data
+      zh_Hans: 是否允许LLM查看数据
     human_description:
-      en_US: Generate Charts
-      zh_Hans: 是否生成图表
+      en_US: Whether to allow the LLM to see the data
+      zh_Hans: 是否允许LLM查看数据
     form: form
