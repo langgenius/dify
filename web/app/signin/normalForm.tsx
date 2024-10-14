@@ -11,6 +11,7 @@ import { IS_CE_EDITION, SUPPORT_MAIL_LOGIN, apiPrefix, emailRegex } from '@/conf
 import Button from '@/app/components/base/button'
 import { login, oauth } from '@/service/common'
 import { getPurifyHref } from '@/utils'
+import useRefreshToken from '@/hooks/use-refresh-token'
 
 type IState = {
   formValid: boolean
@@ -61,6 +62,7 @@ function reducer(state: IState, action: IAction) {
 
 const NormalForm = () => {
   const { t } = useTranslation()
+  const { getNewAccessToken } = useRefreshToken()
   const useEmailLogin = IS_CE_EDITION || SUPPORT_MAIL_LOGIN
 
   const router = useRouter()
@@ -95,7 +97,9 @@ const NormalForm = () => {
         },
       })
       if (res.result === 'success') {
-        localStorage.setItem('console_token', res.data)
+        localStorage.setItem('console_token', res.data.access_token)
+        localStorage.setItem('refresh_token', res.data.refresh_token)
+        getNewAccessToken(res.data.access_token, res.data.refresh_token)
         router.replace('/apps')
       }
       else {

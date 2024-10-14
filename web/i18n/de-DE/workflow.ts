@@ -182,6 +182,7 @@ const translation = {
       rerankModel: 'Neusortierungsmodell',
     },
     invalidVariable: 'Ungültige Variable',
+    rerankModelRequired: 'Bevor Sie das Rerank-Modell aktivieren, bestätigen Sie bitte, dass das Modell in den Einstellungen erfolgreich konfiguriert wurde.',
   },
   singleRun: {
     testRun: 'Testlauf ',

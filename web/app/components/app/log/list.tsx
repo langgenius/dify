@@ -301,10 +301,14 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }))
   }, [items])
 
+  const fetchInitiated = useRef(false)
+
   useEffect(() => {
-    if (appDetail?.id && detail.id && appDetail?.mode !== 'completion')
+    if (appDetail?.id && detail.id && appDetail?.mode !== 'completion' && !fetchInitiated.current) {
+      fetchInitiated.current = true
       fetchData()
-  }, [appDetail?.id, detail.id, appDetail?.mode])
+    }
+  }, [appDetail?.id, detail.id, appDetail?.mode, fetchData])
 
   const isChatMode = appDetail?.mode !== 'completion'
   const isAdvanced = appDetail?.mode === 'advanced-chat'

@@ -100,26 +100,35 @@ class LangSmithDataTrace(BaseTraceInstance):
         self.add_run(langsmith_run)
 
         # through workflow_run_id get all_nodes_execution
-        workflow_nodes_executions = (
-            db.session.query(
-                WorkflowNodeExecution.id,
-                WorkflowNodeExecution.tenant_id,
-                WorkflowNodeExecution.app_id,
-                WorkflowNodeExecution.title,
-                WorkflowNodeExecution.node_type,
-                WorkflowNodeExecution.status,
-                WorkflowNodeExecution.inputs,
-                WorkflowNodeExecution.outputs,
-                WorkflowNodeExecution.created_at,
-                WorkflowNodeExecution.elapsed_time,
-                WorkflowNodeExecution.process_data,
-                WorkflowNodeExecution.execution_metadata,
-            )
+        workflow_nodes_execution_id_records = (
+            db.session.query(WorkflowNodeExecution.id)
             .filter(WorkflowNodeExecution.workflow_run_id == trace_info.workflow_run_id)
             .all()
         )
 
-        for node_execution in workflow_nodes_executions:
+        for node_execution_id_record in workflow_nodes_execution_id_records:
+            node_execution = (
+                db.session.query(
+                    WorkflowNodeExecution.id,
+                    WorkflowNodeExecution.tenant_id,
+                    WorkflowNodeExecution.app_id,
+                    WorkflowNodeExecution.title,
+                    WorkflowNodeExecution.node_type,
+                    WorkflowNodeExecution.status,
+                    WorkflowNodeExecution.inputs,
+                    WorkflowNodeExecution.outputs,
+                    WorkflowNodeExecution.created_at,
+                    WorkflowNodeExecution.elapsed_time,
+                    WorkflowNodeExecution.process_data,
+                    WorkflowNodeExecution.execution_metadata,
+                )
+                .filter(WorkflowNodeExecution.id == node_execution_id_record.id)
+                .first()
+            )
+
+            if not node_execution:
+                continue
+
             node_execution_id = node_execution.id
             tenant_id = node_execution.tenant_id
             app_id = node_execution.app_id
