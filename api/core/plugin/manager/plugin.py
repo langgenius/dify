@@ -1,16 +1,16 @@
-import json
-from collections.abc import Generator, Mapping
-from typing import Any
+from collections.abc import Sequence
 
-from core.plugin.entities.plugin import PluginEntity, PluginInstallationSource
-from core.plugin.entities.plugin_daemon import InstallPluginMessage
+from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
+from core.plugin.entities.plugin_daemon import PluginInstallTask
 from core.plugin.manager.base import BasePluginManager
 
 
 class PluginInstallationManager(BasePluginManager):
-    def fetch_plugin_by_identifier(self, tenant_id: str, identifier: str) -> bool:
-        # urlencode the identifier
-
+    def fetch_plugin_by_identifier(
+        self,
+        tenant_id: str,
+        identifier: str,
+    ) -> bool:
         return self._request_with_plugin_daemon_response(
             "GET",
             f"plugin/{tenant_id}/management/fetch/identifier",
@@ -26,37 +26,34 @@ class PluginInstallationManager(BasePluginManager):
             params={"page": 1, "page_size": 256},
         )
 
-    def install_from_pkg(
+    def upload_pkg(
         self,
         tenant_id: str,
         pkg: bytes,
-        source: PluginInstallationSource,
-        meta: Mapping[str, Any],
         verify_signature: bool = False,
-    ) -> Generator[InstallPluginMessage, None, None]:
+    ) -> str:
         """
-        Install a plugin from a package.
+        Upload a plugin package and return the plugin unique identifier.
         """
-        # using multipart/form-data to encode body
         body = {
             "dify_pkg": ("dify_pkg", pkg, "application/octet-stream"),
         }
 
         data = {
             "verify_signature": "true" if verify_signature else "false",
-            "source": source.value,
-            "meta": json.dumps(meta),
         }
 
-        return self._request_with_plugin_daemon_response_stream(
+        return self._request_with_plugin_daemon_response(
             "POST",
-            f"plugin/{tenant_id}/management/install/pkg",
-            InstallPluginMessage,
+            f"plugin/{tenant_id}/management/install/upload",
+            str,
             files=body,
             data=data,
         )
 
-    def install_from_identifier(self, tenant_id: str, identifier: str) -> bool:
+    def install_from_identifiers(
+        self, tenant_id: str, identifiers: Sequence[str], source: PluginInstallationSource, meta: dict
+    ) -> str:
         """
         Install a plugin from an identifier.
         """
@@ -64,11 +61,43 @@ class PluginInstallationManager(BasePluginManager):
         return self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/management/install/identifier",
-            bool,
+            str,
             data={
-                "plugin_unique_identifier": identifier,
+                "plugin_unique_identifiers": identifiers,
+                "source": source,
+                "meta": meta,
             },
             headers={"Content-Type": "application/json"},
+        )
+
+    def fetch_plugin_installation_tasks(self, tenant_id: str) -> Sequence[PluginInstallTask]:
+        """
+        Fetch plugin installation tasks.
+        """
+        return self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/install/tasks",
+            list[PluginInstallTask],
+        )
+
+    def fetch_plugin_installation_task(self, tenant_id: str, task_id: str) -> PluginInstallTask:
+        """
+        Fetch a plugin installation task.
+        """
+        return self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/install/tasks/{task_id}",
+            PluginInstallTask,
+        )
+
+    def fetch_plugin_manifest(self, tenant_id: str, plugin_unique_identifier: str) -> PluginDeclaration:
+        """
+        Fetch a plugin manifest.
+        """
+        return self._request_with_plugin_daemon_response(
+            "GET",
+            f"plugin/{tenant_id}/management/fetch/identifier",
+            PluginDeclaration,
         )
 
     def uninstall(self, tenant_id: str, plugin_installation_id: str) -> bool:

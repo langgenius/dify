@@ -19,7 +19,7 @@ from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse, Plugin
 plugin_daemon_inner_api_baseurl = dify_config.PLUGIN_API_URL
 plugin_daemon_inner_api_key = dify_config.PLUGIN_API_KEY
 
-T = TypeVar("T", bound=(BaseModel | dict | list | bool))
+T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
 
 
 class BasePluginManager:

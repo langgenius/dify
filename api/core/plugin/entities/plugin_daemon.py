@@ -6,9 +6,10 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
+from core.plugin.entities.base import BasePluginEntity
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 
-T = TypeVar("T", bound=(BaseModel | dict | list | bool))
+T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
 
 
 class PluginDaemonBasicResponse(BaseModel, Generic[T]):
@@ -106,3 +107,24 @@ class PluginDaemonInnerError(Exception):
     def __init__(self, code: int, message: str):
         self.code = code
         self.message = message
+
+
+class PluginInstallTaskStatus(str, Enum):
+    Pending = "pending"
+    Running = "running"
+    Success = "success"
+    Failed = "failed"
+
+
+class PluginInstallTaskPluginStatus(BaseModel):
+    plugin_unique_identifier: str = Field(description="The plugin unique identifier of the install task.")
+    plugin_id: str = Field(description="The plugin ID of the install task.")
+    status: PluginInstallTaskStatus = Field(description="The status of the install task.")
+    message: str = Field(description="The message of the install task.")
+
+
+class PluginInstallTask(BasePluginEntity):
+    status: PluginInstallTaskStatus = Field(description="The status of the install task.")
+    total_plugins: int = Field(description="The total number of plugins to be installed.")
+    completed_plugins: int = Field(description="The number of plugins that have been installed.")
+    plugins: list[PluginInstallTaskPluginStatus] = Field(description="The status of the plugins.")
