@@ -124,7 +124,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                     messages=[{"role": "user", "content": "ping"}],
                     model=model,
                     temperature=1,
-                    max_completion_tokens=20,         
+                    max_completion_tokens=20,     
                     stream=False,
                 )
             elif ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
@@ -133,7 +133,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                     messages=[{"role": "user", "content": "ping"}],
                     model=model,
                     temperature=0,
-                    max_tokens=20,         
+                    max_tokens=20,
                     stream=False,
                 )
             else:
