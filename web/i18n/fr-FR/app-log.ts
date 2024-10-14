@@ -20,6 +20,7 @@ const translation = {
       user: 'UTILISATEUR FINAL OU COMPTE',
       version: 'VERSION',
     },
+    total: 'Total',
     pagination: {
       previous: 'Précédent',
       next: 'Suivant',

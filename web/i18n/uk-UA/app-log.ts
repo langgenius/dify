@@ -20,6 +20,7 @@ const translation = {
       user: 'КІНЦЕВИЙ КОРИСТУВАЧ АБО ОБЛІКОВИЙ ЗАПИС',
       version: 'ВЕРСІЯ',
     },
+    total: 'Всього',
     pagination: {
       previous: 'Попередня',
       next: 'Наступна',

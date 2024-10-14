@@ -16,6 +16,7 @@ const translation = {
       },
       rename: 'Rename',
       name: 'Name',
+      total: 'Total',
     },
     action: {
       uploadFile: 'Upload new file',

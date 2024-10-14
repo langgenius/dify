@@ -650,7 +650,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
 /**
  * Conversation list component including basic information
  */
-const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh }) => {
+const ConversationList: FC<IConversationList> = ({ logs, appDetail, total, onRefresh }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
 
@@ -747,6 +747,9 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
           })}
         </tbody>
       </table>
+      <div className='p-2 flex justify-end text-[13px] text-gray-500'>
+        {t('appLog.table.total')}: {total}
+      </div>
       <Drawer
         isOpen={showDrawer}
         onClose={onCloseDrawer}

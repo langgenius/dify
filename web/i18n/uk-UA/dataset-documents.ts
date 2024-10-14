@@ -12,6 +12,7 @@ const translation = {
         uploadTime: 'ЧАС ЗАВАНТАЖЕННЯ',
         status: 'СТАТУС',
         action: 'ДІЯ',
+        total: 'Всього',
       },
       name: 'Ім\'я',
       rename: 'Перейменувати',

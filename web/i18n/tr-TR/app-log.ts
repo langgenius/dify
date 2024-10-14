@@ -20,6 +20,7 @@ const translation = {
       user: 'SON KULLANICI VEYA HESAP',
       version: 'VERSİYON',
     },
+    total: 'Toplam',
     pagination: {
       previous: 'Önceki',
       next: 'Sonraki',

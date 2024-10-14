@@ -13,6 +13,7 @@ const translation = {
         uploadTime: 'YÜKLEME ZAMANI',
         status: 'DURUM',
         action: 'EYLEM',
+        total: 'Toplam',
       },
       rename: 'Yeniden Adlandır',
       name: 'Ad',

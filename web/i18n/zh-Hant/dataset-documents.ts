@@ -15,6 +15,7 @@ const translation = {
       },
       name: '名字',
       rename: '重新命名',
+      total: '總計',
     },
     action: {
       uploadFile: '上傳新檔案',
@@ -281,7 +282,7 @@ const translation = {
         bookExcerpt: '書籍摘錄',
         schedule: '日程安排',
         list: '列表',
-        projectOverview: '專案概述',
+        projectOverview: '專案���述',
         photoCollection: '照片集',
         creativeWriting: '創意寫作',
         codeSnippet: '程式碼片段',

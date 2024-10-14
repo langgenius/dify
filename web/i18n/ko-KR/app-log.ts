@@ -20,6 +20,7 @@ const translation = {
       user: '엔드 유저 또는 계정',
       version: '버전',
     },
+    total: '총계',
     pagination: {
       previous: '이전',
       next: '다음',

@@ -20,6 +20,7 @@ const translation = {
       user: 'NGƯỜI DÙNG CUỐI HOẶC TÀI KHOẢN',
       version: 'PHIÊN BẢN',
     },
+    total: 'Tổng cộng',
     pagination: {
       previous: 'Trước',
       next: 'Sau',
@@ -48,7 +49,7 @@ const translation = {
       dislike: 'Không thích',
       addAnnotation: 'Thêm chú thích',
       editAnnotation: 'Chỉnh sửa chú thích',
-      annotationPlaceholder: 'Nhập câu trả lời mong muốn từ AI. Điều này sẽ được sử dụng để điều chỉnh mô hình và cải thiện chất lượng sinh văn bản trong tương lai.',
+      annotationPlaceholder: 'Nhập câu trả lời mong muốn từ AI. Điều này s�� được sử dụng để điều chỉnh mô hình và cải thiện chất lượng sinh văn bản trong tương lai.',
     },
     variables: 'Biến',
     uploadImages: 'Ảnh đã tải lên',

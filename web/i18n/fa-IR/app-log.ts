@@ -20,6 +20,7 @@ const translation = {
       user: 'کاربر نهایی یا حساب',
       version: 'نسخه',
     },
+    total: 'مجموع',
     pagination: {
       previous: 'قبلی',
       next: 'بعدی',

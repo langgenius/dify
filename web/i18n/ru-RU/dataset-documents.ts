@@ -13,6 +13,7 @@ const translation = {
         uploadTime: 'ВРЕМЯ ЗАГРУЗКИ',
         status: 'СТАТУС',
         action: 'ДЕЙСТВИЕ',
+        total: 'Итого',
       },
       rename: 'Переименовать',
       name: 'Название',

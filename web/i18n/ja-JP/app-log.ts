@@ -20,6 +20,7 @@ const translation = {
       user: 'エンドユーザーまたはアカウント',
       version: 'バージョン',
     },
+    total: '合計',
     pagination: {
       previous: '前へ',
       next: '次へ',

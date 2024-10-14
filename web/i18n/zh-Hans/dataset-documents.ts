@@ -16,6 +16,7 @@ const translation = {
       },
       rename: '重命名',
       name: '名称',
+      total: '总计',
     },
     action: {
       uploadFile: '上传新文件',

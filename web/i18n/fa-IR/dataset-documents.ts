@@ -16,6 +16,7 @@ const translation = {
       },
       rename: 'تغییر نام',
       name: 'نام',
+      total: 'مجموع',
     },
     action: {
       uploadFile: 'بارگذاری فایل جدید',
