@@ -73,6 +73,14 @@ const translation = {
       totalPageScraped: 'Total de páginas raspadas:',
       excludePaths: 'Excluir caminhos',
       extractOnlyMainContent: 'Extraia apenas o conteúdo principal (sem cabeçalhos, navs, rodapés, etc.)',
+      jinaReaderNotConfiguredDescription: 'Configure o Jina Reader inserindo sua chave de API gratuita para acesso.',
+      jinaReaderDoc: 'Saiba mais sobre o Jina Reader',
+      chooseProvider: 'Selecione um provedor',
+      jinaReaderNotConfigured: 'Jina Reader não está configurado',
+      jinaReaderDocLink: 'https://jina.ai/reader',
+      useSitemap: 'Usar o mapa do site',
+      useSitemapTooltip: 'Siga o mapa do site para rastrear o site. Caso contrário, o Jina Reader rastreará iterativamente com base na relevância da página, produzindo menos páginas, mas de maior qualidade.',
+      jinaReaderTitle: 'Converter todo o site em Markdown',
     },
   },
   stepTwo: {
@@ -156,6 +164,11 @@ const translation = {
     apiKeyPlaceholder: 'Chave de API do firecrawl.dev',
     configFirecrawl: 'Configurar 🔥o Firecrawl',
     getApiKeyLinkText: 'Obtenha sua chave de API do firecrawl.dev',
+  },
+  jinaReader: {
+    getApiKeyLinkText: 'Obtenha sua chave de API gratuita em jina.ai',
+    configJinaReader: 'Configurar o Jina Reader',
+    apiKeyPlaceholder: 'Chave de API do jina.ai',
   },
 }
 

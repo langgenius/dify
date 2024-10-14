@@ -29,6 +29,9 @@ const translation = {
       longDescription: ' geri alım yöntemi hakkında, bunu Bilgi ayarlarında istediğiniz zaman değiştirebilirsiniz.',
     },
     save: 'Kaydet',
+    retrievalSettings: 'Alma Ayarları',
+    externalKnowledgeAPI: 'Harici Bilgi API\'si',
+    externalKnowledgeID: 'Harici Bilgi Kimliği',
   },
 }
 

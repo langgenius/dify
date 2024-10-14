@@ -23,6 +23,8 @@ const translation = {
   },
   noRecentTip: 'اینجا نتیجه پرسش اخیر وجود ندارد',
   viewChart: 'مشاهده نمودار بُرداری',
+  settingTitle: 'تنظیمات بازیابی',
+  viewDetail: 'نمایش جزئیات',
 }
 
 export default translation

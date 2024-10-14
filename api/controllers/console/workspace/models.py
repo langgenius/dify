@@ -72,8 +72,9 @@ class DefaultModelApi(Resource):
                     provider=model_setting["provider"],
                     model=model_setting["model"],
                 )
-            except Exception:
-                logging.warning(f"{model_setting['model_type']} save error")
+            except Exception as ex:
+                logging.exception(f"{model_setting['model_type']} save error: {ex}")
+                raise ex
 
         return {"result": "success"}
 

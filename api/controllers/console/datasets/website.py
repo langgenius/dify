@@ -14,7 +14,9 @@ class WebsiteCrawlApi(Resource):
     @account_initialization_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("provider", type=str, choices=["firecrawl"], required=True, nullable=True, location="json")
+        parser.add_argument(
+            "provider", type=str, choices=["firecrawl", "jinareader"], required=True, nullable=True, location="json"
+        )
         parser.add_argument("url", type=str, required=True, nullable=True, location="json")
         parser.add_argument("options", type=dict, required=True, nullable=True, location="json")
         args = parser.parse_args()
@@ -33,7 +35,7 @@ class WebsiteCrawlStatusApi(Resource):
     @account_initialization_required
     def get(self, job_id: str):
         parser = reqparse.RequestParser()
-        parser.add_argument("provider", type=str, choices=["firecrawl"], required=True, location="args")
+        parser.add_argument("provider", type=str, choices=["firecrawl", "jinareader"], required=True, location="args")
         args = parser.parse_args()
         # get crawl status
         try:

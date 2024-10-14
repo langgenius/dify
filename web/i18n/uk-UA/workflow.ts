@@ -182,6 +182,7 @@ const translation = {
       rerankModel: 'Модель повторного ранжування',
     },
     invalidVariable: 'Недійсна змінна',
+    rerankModelRequired: 'Перед увімкненням Rerank Model, будь ласка, підтвердьте, що модель успішно налаштована в налаштуваннях.',
   },
   singleRun: {
     testRun: 'Тестовий запуск',

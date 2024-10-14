@@ -341,7 +341,7 @@ class ToolRuntimeVariablePool(BaseModel):
 
         self.pool.append(variable)
 
-    def set_file(self, tool_name: str, value: str, name: str = None) -> None:
+    def set_file(self, tool_name: str, value: str, name: Optional[str] = None) -> None:
         """
         set an image variable
 

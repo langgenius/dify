@@ -11,7 +11,7 @@ from configs import dify_config
 from constants.languages import languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
-from libs.helper import get_remote_ip
+from libs.helper import extract_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
@@ -119,9 +119,14 @@ class OAuthCallback(Resource):
                 "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
             )
 
-        token = AccountService.login(account, ip_address=get_remote_ip(request))
+        token_pair = AccountService.login(
+            account=account,
+            ip_address=extract_remote_ip(request),
+        )
 
-        return redirect(f"{dify_config.CONSOLE_WEB_URL}?console_token={token}")
+        return redirect(
+            f"{dify_config.CONSOLE_WEB_URL}?access_token={token_pair.access_token}&refresh_token={token_pair.refresh_token}"
+        )
 
 
 def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Optional[Account]:

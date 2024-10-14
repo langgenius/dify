@@ -8,10 +8,12 @@ import ConfigItem from './config-item'
 
 import s from './style.module.css'
 import { DataSourceType } from './types'
+import { DataSourceProvider } from '@/models/common'
 import cn from '@/utils/classnames'
 
 type Props = {
   type: DataSourceType
+  provider: DataSourceProvider
   isConfigured: boolean
   onConfigure: () => void
   readOnly: boolean
@@ -25,6 +27,7 @@ type Props = {
 
 const Panel: FC<Props> = ({
   type,
+  provider,
   isConfigured,
   onConfigure,
   readOnly,
@@ -46,7 +49,7 @@ const Panel: FC<Props> = ({
             <div className='text-sm font-medium text-gray-800'>{t(`common.dataSource.${type}.title`)}</div>
             {isWebsite && (
               <div className='ml-1 leading-[18px] px-1.5 rounded-md bg-white border border-gray-100 text-xs font-medium text-gray-700'>
-                <span className='text-gray-500'>{t('common.dataSource.website.with')}</span> 🔥 Firecrawl
+                <span className='text-gray-500'>{t('common.dataSource.website.with')}</span> { provider === DataSourceProvider.fireCrawl ? '🔥 Firecrawl' : 'Jina Reader'}
               </div>
             )}
           </div>
