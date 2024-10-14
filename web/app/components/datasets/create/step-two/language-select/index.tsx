@@ -9,16 +9,19 @@ import { languages } from '@/i18n/language'
 export type ILanguageSelectProps = {
   currentLanguage: string
   onSelect: (language: string) => void
+  disabled?: boolean
 }
 
 const LanguageSelect: FC<ILanguageSelectProps> = ({
   currentLanguage,
   onSelect,
+  disabled,
 }) => {
   return (
     <Popover
       manualClose
       trigger='click'
+      disabled={disabled}
       htmlContent={
         <div className='w-full py-1'>
           {languages.filter(language => language.supported).map(({ prompt_name, name }) => (
