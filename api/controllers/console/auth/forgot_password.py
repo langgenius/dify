@@ -17,7 +17,7 @@ from controllers.console.error import EmailSendIpLimitError, NotAllowedCreateWor
 from controllers.console.setup import setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
-from libs.helper import email, get_remote_ip
+from libs.helper import email, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
@@ -31,7 +31,7 @@ class ForgotPasswordSendEmailApi(Resource):
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
 
-        ip_address = get_remote_ip(request)
+        ip_address = extract_remote_ip(request)
         if AccountService.is_email_send_ip_limit(ip_address):
             raise EmailSendIpLimitError()
 
@@ -128,9 +128,9 @@ class ForgotPasswordResetApi(Resource):
                 interface_language=languages[0],
             )
 
-        token = AccountService.login(account, ip_address=get_remote_ip(request))
+        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
 
-        return {"result": "success", "data": token}
+        return {"result": "success", "data": token_pair.model_dump()}
 
 
 api.add_resource(ForgotPasswordSendEmailApi, "/forgot-password")

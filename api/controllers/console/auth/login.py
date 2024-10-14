@@ -186,9 +186,9 @@ class EmailCodeLoginApi(Resource):
                     f"{dify_config.CONSOLE_WEB_URL}/signin"
                     "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
                 )
-        token = AccountService.login(account, ip_address=extract_remote_ip(request))
+        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
-        return {"result": "success", "data": token}
+        return {"result": "success", "data": token_pair.model_dump()}
 
 
 class RefreshTokenApi(Resource):
