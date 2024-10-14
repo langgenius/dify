@@ -27,9 +27,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v3
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
@@ -38,6 +35,9 @@ jobs:
           cache-dependency-path: |
             api/pyproject.toml
             api/poetry.lock
+
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v3
 
       - name: Check Poetry lockfile
         run: |
