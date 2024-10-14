@@ -1,5 +1,6 @@
 const translation = {
   from: '来自',
+  fromMarketplace: '来自市场',
   endpointsEnabled: '{{num}} 组端点已启用',
   detailPanel: {
     operation: {
@@ -18,6 +19,8 @@ const translation = {
     disabled: '停用',
     modelNum: '{{num}} 模型已包含',
   },
+  install: '{{num}} 次安装',
+  installAction: '安装',
 }
 
 export default translation

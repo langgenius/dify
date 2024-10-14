@@ -1,5 +1,6 @@
 const translation = {
   from: 'From',
+  fromMarketplace: 'From Marketplace',
   endpointsEnabled: '{{num}} sets of endpoints enabled',
   detailPanel: {
     operation: {
@@ -18,6 +19,8 @@ const translation = {
     disabled: 'Disabled',
     modelNum: '{{num}} MODELS INCLUDED',
   },
+  install: '{{num}} installs',
+  installAction: 'Install',
 }
 
 export default translation

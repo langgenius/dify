@@ -75,13 +75,13 @@ const ToolItem: FC<Props> = ({
             })
           }}
         >
-          <div className='flex items-center h-8'>
+          <div className='flex grow items-center h-8'>
             <BlockIcon
               className='shrink-0'
               type={BlockEnum.Tool}
               toolIcon={provider.icon}
             />
-            <div className='ml-2 text-sm text-gray-900 flex-1 min-w-0 truncate'>{payload.label[language]}</div>
+            <div className='ml-2 text-sm text-gray-900 flex-1 w-0 grow truncate'>{payload.label[language]}</div>
           </div>
           {isToolPlugin && (
             <FoldIcon className={cn('w-4 h-4 text-text-quaternary shrink-0', isFold && 'text-text-tertiary')} />
