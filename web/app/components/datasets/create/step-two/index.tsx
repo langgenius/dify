@@ -585,7 +585,7 @@ const StepTwo = ({
       <div ref={scrollRef} className='relative h-full w-full overflow-y-scroll'>
         <div className={cn(s.pageHeader, scrolled && s.fixed, isMobile && '!px-6')}>
           <span>{t('datasetCreation.steps.two')}</span>
-          {isMobile && (
+          {(isMobile || !showPreview) && (
             <Button
               className='border-[0.5px] !h-8 hover:outline hover:outline-[0.5px] hover:outline-gray-300 text-gray-700 font-medium bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]'
               onClick={setShowPreview}
