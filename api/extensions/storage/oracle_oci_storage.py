@@ -1,7 +1,9 @@
 from collections.abc import Generator
+
 import boto3
 from botocore.exceptions import ClientError
 from flask import Flask
+
 from extensions.storage.base_storage import BaseStorage
 
 
