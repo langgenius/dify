@@ -266,6 +266,7 @@ def migrate_knowledge_vector_database():
         VectorType.WEAVIATE,
         VectorType.ORACLE,
         VectorType.ELASTICSEARCH,
+        VectorType.SUPABASE,
     }
     lower_colletion_vector_types = {
         VectorType.ANALYTICDB,
