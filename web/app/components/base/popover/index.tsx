@@ -17,6 +17,7 @@ type IPopover = {
   btnElement?: string | React.ReactNode
   btnClassName?: string | ((open: boolean) => string)
   manualClose?: boolean
+  disabled?: boolean
 }
 
 const timeoutDuration = 100
@@ -30,6 +31,7 @@ export default function CustomPopover({
   className,
   btnClassName,
   manualClose,
+  disabled = false,
 }: IPopover) {
   const buttonRef = useRef<HTMLButtonElement>(null)
   const timeOutRef = useRef<NodeJS.Timeout | null>(null)
@@ -60,6 +62,7 @@ export default function CustomPopover({
             >
               <Popover.Button
                 ref={buttonRef}
+                disabled={disabled}
                 className={`group ${s.popupBtn} ${open ? '' : 'bg-gray-100'} ${!btnClassName
                   ? ''
                   : typeof btnClassName === 'string'
