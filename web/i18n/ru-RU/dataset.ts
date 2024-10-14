@@ -72,6 +72,80 @@ const translation = {
   nTo1RetrievalLegacyLink: 'Узнать больше',
   nTo1RetrievalLegacyLinkText: ' Поиск N-к-1 будет официально прекращен в сентябре.',
   defaultRetrievalTip: 'По умолчанию используется многоканальная проверка. Знания извлекаются из нескольких баз знаний, а затем повторно ранжируются.',
+  editExternalAPIConfirmWarningContent: {
+    end: 'внешних знаний, и эта модификация будет применена ко всем им. Вы уверены, что хотите сохранить это изменение?',
+    front: 'Этот API внешних знаний связан с',
+  },
+  editExternalAPIFormWarning: {
+    end: 'Внешние знания',
+    front: 'Этот внешний API связан с',
+  },
+  deleteExternalAPIConfirmWarningContent: {
+    title: {
+      end: '?',
+      front: 'Удалить',
+    },
+    content: {
+      front: 'Этот API внешних знаний связан с',
+      end: 'внешнее знание. Удаление этого API сделает их все недействительными. Вы уверены, что хотите удалить этот API?',
+    },
+    noConnectionContent: 'Вы уверены, что удалите этот API?',
+  },
+  selectExternalKnowledgeAPI: {
+    placeholder: 'Выбор API внешних знаний',
+  },
+  connectDatasetIntro: {
+    content: {
+      link: 'Узнайте, как создать внешний API',
+      front: 'Чтобы подключиться к внешней базе знаний, необходимо сначала создать внешний API. Пожалуйста, внимательно прочтите и обратитесь к',
+      end: '. Затем найдите соответствующий идентификатор знания и заполните его в форме слева. Если вся информация верна, он автоматически перейдет к тесту извлечения в базе знаний после нажатия кнопки подключения.',
+    },
+    learnMore: 'Подробнее',
+    title: 'Как подключиться к внешней базе знаний',
+  },
+  connectHelper: {
+    helper2: 'Поддерживается только функция извлечения',
+    helper3: '. Мы настоятельно рекомендуем вам',
+    helper4: 'Ознакомьтесь с справочной документацией',
+    helper5: 'Будьте внимательны перед использованием этой функции.',
+    helper1: 'Подключение к внешним базам знаний через API и идентификатор базы знаний. В настоящее время',
+  },
+  externalKnowledgeForm: {
+    connect: 'Соединять',
+    cancel: 'Отмена',
+  },
+  externalAPIForm: {
+    encrypted: {
+      end: 'Технологии.',
+      front: 'Ваш токен API будет зашифрован и сохранен с помощью',
+    },
+    cancel: 'Отмена',
+    endpoint: 'Конечная точка API',
+    save: 'Спасать',
+    edit: 'Редактировать',
+    name: 'Имя',
+    apiKey: 'Ключ API',
+  },
+  externalKnowledgeNamePlaceholder: 'Пожалуйста, введите название базы знаний',
+  externalTag: 'Внешний',
+  learnHowToWriteGoodKnowledgeDescription: 'Узнайте, как написать хорошее описание знаний',
+  externalAPIPanelTitle: 'API внешних знаний',
+  externalKnowledgeDescription: 'Описание знаний',
+  editExternalAPITooltipTitle: 'СВЯЗАННЫЕ ЗНАНИЯ',
+  externalKnowledgeName: 'Имя внешнего базы знаний',
+  createExternalAPI: 'Добавление API внешних знаний',
+  externalKnowledgeIdPlaceholder: 'Пожалуйста, введите идентификатор знаний',
+  externalKnowledgeDescriptionPlaceholder: 'Опишите, что входит в эту базу знаний (необязательно)',
+  noExternalKnowledge: 'У нас еще нет External Knowledge API, нажмите здесь, чтобы создать',
+  externalAPI: 'Внешний API',
+  externalKnowledgeId: 'Внешний идентификатор базы знаний',
+  createNewExternalAPI: 'Создание нового API внешних знаний',
+  editExternalAPIFormTitle: 'Редактирование API внешних знаний',
+  connectDataset: 'Подключение к внешней базе знаний',
+  mixtureInternalAndExternalTip: 'Модель Rerank необходима для смешивания внутренних и внешних знаний.',
+  allExternalTip: 'При использовании только внешних знаний пользователь может выбрать, следует ли включать модель повторного ранжирования. Если этот параметр не включен, полученные фрагменты будут сортироваться на основе баллов. Когда стратегии извлечения из разных баз знаний несовместимы, они будут неточными.',
+  externalAPIPanelDocumentation: 'Узнайте, как создать API внешних знаний',
+  externalAPIPanelDescription: 'Внешний API базы знаний используется для подключения к базе знаний за пределами Dify и извлечения знаний из этой базы знаний.',
 }
 
 export default translation

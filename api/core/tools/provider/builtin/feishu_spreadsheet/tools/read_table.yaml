@@ -1,0 +1,122 @@
+identity:
+  name: read_table
+  author: Doug Lea
+  label:
+    en_US: Read Table
+    zh_Hans: 自定义读取电子表格行列数据
+description:
+  human:
+    en_US: Read Table
+    zh_Hans: 自定义读取电子表格行列数据
+  llm: A tool for custom reading of row and column data from a spreadsheet. (自定义读取电子表格行列数据)
+parameters:
+  - name: spreadsheet_token
+    type: string
+    required: true
+    label:
+      en_US: spreadsheet_token
+      zh_Hans: 电子表格 token
+    human_description:
+      en_US: Spreadsheet token, supports input of spreadsheet URL.
+      zh_Hans: 电子表格 token，支持输入电子表格 url。
+    llm_description: 电子表格 token，支持输入电子表格 url。
+    form: llm
+
+  - name: sheet_id
+    type: string
+    required: false
+    label:
+      en_US: sheet_id
+      zh_Hans: 工作表 ID
+    human_description:
+      en_US: Sheet ID, either sheet_id or sheet_name must be filled.
+      zh_Hans: 工作表 ID，与 sheet_name 二者其一必填。
+    llm_description: 工作表 ID，与 sheet_name 二者其一必填。
+    form: llm
+
+  - name: sheet_name
+    type: string
+    required: false
+    label:
+      en_US: sheet_name
+      zh_Hans: 工作表名称
+    human_description:
+      en_US: Sheet name, either sheet_id or sheet_name must be filled.
+      zh_Hans: 工作表名称，与 sheet_id 二者其一必填。
+    llm_description: 工作表名称，与 sheet_id 二者其一必填。
+    form: llm
+
+  - name: user_id_type
+    type: select
+    required: false
+    options:
+      - value: open_id
+        label:
+          en_US: open_id
+          zh_Hans: open_id
+      - value: union_id
+        label:
+          en_US: union_id
+          zh_Hans: union_id
+      - value: user_id
+        label:
+          en_US: user_id
+          zh_Hans: user_id
+    default: "open_id"
+    label:
+      en_US: user_id_type
+      zh_Hans: 用户 ID 类型
+    human_description:
+      en_US: User ID type, optional values are open_id, union_id, user_id, with a default value of open_id.
+      zh_Hans: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    llm_description: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    form: form
+
+  - name: start_row
+    type: number
+    required: false
+    label:
+      en_US: start_row
+      zh_Hans: 起始行号
+    human_description:
+      en_US: Starting row number, starting from 1.
+      zh_Hans: 起始行号，从 1 开始。
+    llm_description: 起始行号，从 1 开始。
+    form: llm
+
+  - name: num_rows
+    type: number
+    required: false
+    label:
+      en_US: num_rows
+      zh_Hans: 读取行数
+    human_description:
+      en_US: Number of rows to read.
+      zh_Hans: 读取行数
+    llm_description: 读取行数
+    form: llm
+
+  - name: range
+    type: string
+    required: false
+    label:
+      en_US: range
+      zh_Hans: 取数范围
+    human_description:
+      en_US: |
+        Data range, format like: A1:B2, can be empty when query=all.
+      zh_Hans: 取数范围,格式如:A1:B2，query=all 时可为空。
+    llm_description: 取数范围,格式如:A1:B2，query=all 时可为空。
+    form: llm
+
+  - name: query
+    type: string
+    required: false
+    label:
+      en_US: query
+      zh_Hans: 查询
+    human_description:
+      en_US: Pass "all" to query all data in the table, but no more than 100 columns.
+      zh_Hans: 传 all，表示查询表格所有数据，但最多查询 100 列数据。
+    llm_description: 传 all，表示查询表格所有数据，但最多查询 100 列数据。
+    form: llm

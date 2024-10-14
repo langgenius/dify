@@ -182,6 +182,7 @@ const translation = {
       rerankModel: 'Yeniden Sıralama Modeli',
     },
     invalidVariable: 'Geçersiz değişken',
+    rerankModelRequired: 'Yeniden Sıralama Modelini açmadan önce, lütfen ayarlarda modelin başarıyla yapılandırıldığını onaylayın.',
   },
   singleRun: {
     testRun: 'Test Çalıştırma',

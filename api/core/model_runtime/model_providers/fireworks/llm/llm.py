@@ -511,7 +511,7 @@ class FireworksLargeLanguageModel(_CommonFireworks, LargeLanguageModel):
         model: str,
         messages: list[PromptMessage],
         tools: Optional[list[PromptMessageTool]] = None,
-        credentials: dict = None,
+        credentials: Optional[dict] = None,
     ) -> int:
         """
         Approximate num tokens with GPT2 tokenizer.

@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
@@ -370,7 +370,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         return tool_calls
 
     def _init_system_message(
-        self, prompt_template: str, prompt_messages: list[PromptMessage] = None
+        self, prompt_template: str, prompt_messages: Optional[list[PromptMessage]] = None
     ) -> list[PromptMessage]:
         """
         Initialize system message
@@ -385,7 +385,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return prompt_messages
 
-    def _organize_user_query(self, query, prompt_messages: list[PromptMessage] = None) -> list[PromptMessage]:
+    def _organize_user_query(self, query, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
         Organize user query
         """

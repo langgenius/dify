@@ -78,6 +78,7 @@ const translation = {
     query: 'Requête',
   },
   loading: 'Chargement',
+  regenerate: 'Régénérer',
 }
 
 export default translation

@@ -78,6 +78,7 @@ const translation = {
     pathParams: 'パスパラメータ',
     query: 'クエリ',
   },
+  regenerate: '再生',
 }
 
 export default translation

@@ -1,0 +1,4 @@
+model: gte-rerank
+model_type: rerank
+model_properties:
+  context_size: 4000

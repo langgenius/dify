@@ -172,6 +172,7 @@ const translation = {
   },
   errorMsg: {
     fieldRequired: '{{field}} 不能为空',
+    rerankModelRequired: '开启 Rerank 模型前，请务必确认模型已在设置中成功配置。',
     authRequired: '请先授权',
     invalidJson: '{{field}} 是非法的 JSON',
     fields: {

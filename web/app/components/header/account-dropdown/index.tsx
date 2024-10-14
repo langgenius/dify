@@ -102,7 +102,16 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                   </Menu.Item>
                   <div className="px-1 py-1">
                     <Menu.Item>
-                      <div className={itemClassName} onClick={() => setShowAccountSettingModal({ payload: 'provider' })}>
+                      <Link
+                        className={classNames(itemClassName, 'group justify-between')}
+                        href='/account'
+                        target='_self' rel='noopener noreferrer'>
+                        <div>{t('common.account.account')}</div>
+                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
+                      </Link>
+                    </Menu.Item>
+                    <Menu.Item>
+                      <div className={itemClassName} onClick={() => setShowAccountSettingModal({ payload: 'members' })}>
                         <div>{t('common.userProfile.settings')}</div>
                       </div>
                     </Menu.Item>
