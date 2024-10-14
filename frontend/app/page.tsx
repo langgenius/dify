@@ -169,8 +169,8 @@ export default function Page() {
 
     const companyLogo = () => {
         return <span className={'flex flex-wrap align-items-center'}>
-            <img src={'/logo1.png'} alt={'logo1'} className={'ml-2'} width={'45px'}/>
-            <img src={'/logo2.png'} alt={'logo2'} className={'ml-2'} width={'110px'}/>
+            <img src={'/user/logo1.png'} alt={'logo1'} className={'ml-2'} width={'45px'}/>
+            <img src={'/user/logo2.png'} alt={'logo2'} className={'ml-2'} width={'110px'}/>
         </span>
     }
 
