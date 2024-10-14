@@ -165,27 +165,20 @@ class DatasetRetrieval:
                 "content": item.page_content,
             }
             retrieval_resource_list.append(source)
-        document_score_list = {}
         # deal with dify documents
         if dify_documents:
             for item in dify_documents:
-                if item.metadata.get("score"):
-                    document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
 
-            index_node_ids = [document.metadata["doc_id"] for document in dify_documents]
-            segments = DocumentSegment.query.filter(
-                DocumentSegment.dataset_id.in_(dataset_ids),
-                DocumentSegment.status == "completed",
-                DocumentSegment.enabled == True,
-                DocumentSegment.index_node_id.in_(index_node_ids),
-            ).all()
-
-            if segments:
-                index_node_id_to_position = {id: position for position, id in enumerate(index_node_ids)}
-                sorted_segments = sorted(
-                    segments, key=lambda segment: index_node_id_to_position.get(segment.index_node_id, float("inf"))
-                )
-                for segment in sorted_segments:
+            records = RetrievalService.format_retrieval_documents(dify_documents)
+            if records:
+                for record in records:
+                    segment = record.segment
+                    dataset = Dataset.query.filter_by(id=segment.dataset_id).first()
+                    document = Document.query.filter(
+                        Document.id == segment.document_id,
+                        Document.enabled == True,
+                        Document.archived == False,
+                    ).first()
                     if segment.answer:
                         document_context_list.append(
                             DocumentContext(
@@ -201,7 +194,8 @@ class DatasetRetrieval:
                             )
                         )
                 if show_retrieve_source:
-                    for segment in sorted_segments:
+                    for record in records:
+                        segment = record.segment
                         dataset = Dataset.query.filter_by(id=segment.dataset_id).first()
                         document = DatasetDocument.query.filter(
                             DatasetDocument.id == segment.document_id,
