@@ -12,12 +12,15 @@ import { IS_CE_EDITION } from '@/config'
 import { getSystemFeatures, invitationCheck } from '@/service/common'
 import { defaultSystemFeatures } from '@/types/feature'
 import Toast from '@/app/components/base/toast'
+import useRefreshToken from '@/hooks/use-refresh-token'
 
 const NormalForm = () => {
+  const { getNewAccessToken } = useRefreshToken()
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const consoleToken = decodeURIComponent(searchParams.get('console_token') || '')
+  const consoleToken = decodeURIComponent(searchParams.get('access_token') || '')
+  const refreshToken = decodeURIComponent(searchParams.get('refresh_token') || '')
   const message = decodeURIComponent(searchParams.get('message') || '')
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [isLoading, setIsLoading] = useState(true)
@@ -30,8 +33,10 @@ const NormalForm = () => {
 
   const init = useCallback(async () => {
     try {
-      if (consoleToken) {
+      if (consoleToken && refreshToken) {
         localStorage.setItem('console_token', consoleToken)
+        localStorage.setItem('refresh_token', refreshToken)
+        getNewAccessToken(consoleToken, refreshToken)
         router.replace('/apps')
         return
       }
