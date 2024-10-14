@@ -145,11 +145,20 @@ class AdvancedPromptTransform(PromptTransform):
             raw_prompt = prompt_item.text
 
             if prompt_item.edition_type == "basic" or not prompt_item.edition_type:
-                vp = VariablePool()
-                for k, v in inputs.items():
-                    vp.add(k[1:-1].split("."), v)
-                raw_prompt.replace("{{#context#}}", context or "")
-                prompt = vp.convert_template(raw_prompt).text
+                if self.with_variable_tmpl:
+                    vp = VariablePool()
+                    for k, v in inputs.items():
+                        if k.startswith("#"):
+                            vp.add(k[1:-1].split("."), v)
+                    raw_prompt.replace("{{#context#}}", context or "")
+                    prompt = vp.convert_template(raw_prompt).text
+                else:
+                    parser = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
+                    prompt_inputs = {k: inputs[k] for k in parser.variable_keys if k in inputs}
+                    prompt_inputs = self._set_context_variable(
+                        context=context, parser=parser, prompt_inputs=prompt_inputs
+                    )
+                    prompt = parser.format(prompt_inputs)
             elif prompt_item.edition_type == "jinja2":
                 prompt = raw_prompt
                 prompt_inputs = inputs
