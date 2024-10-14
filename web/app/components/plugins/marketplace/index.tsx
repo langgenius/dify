@@ -1,18 +1,19 @@
-import Header from './header'
-import HeaderWrapper from './header/wrapper'
+import { MarketplaceContextProvider } from './context'
+import Description from './description'
+import IntersectionLine from './intersection-line'
+import SearchBox from './search-box'
+import PluginTypeSwitch from './plugin-type-switch'
 import List from './list'
-import ListWrapper from './list/wrapper'
 
 const Marketplace = () => {
   return (
-    <div className='grow relative flex flex-col w-full h-0'>
-      <HeaderWrapper>
-        <Header />
-      </HeaderWrapper>
-      <ListWrapper>
-        <List />
-      </ListWrapper>
-    </div>
+    <MarketplaceContextProvider>
+      <Description />
+      <IntersectionLine />
+      <SearchBox />
+      <PluginTypeSwitch />
+      <List />
+    </MarketplaceContextProvider>
   )
 }
 

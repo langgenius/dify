@@ -12,6 +12,8 @@ import { useToolTabs } from './hooks'
 import ViewTypeSelect, { ViewType } from './view-type-select'
 import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
+import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import { extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/card/card-mock'
 
 type AllToolsProps = {
   searchText: string
@@ -71,6 +73,7 @@ const AllTools = ({
         </div>
         <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
       </div>
+      <PluginList list={[toolNotion, extensionDallE, modelGPT4] as any} />
       <Tools
         showWorkflowEmpty={activeTab === ToolTypeEnum.Workflow}
         tools={tools}

@@ -198,7 +198,7 @@ const translation = {
     'searchTool': 'Search tool',
     'tools': 'Tools',
     'allTool': 'All',
-    'builtInTool': 'Built-in',
+    'plugin': 'Plugin',
     'customTool': 'Custom',
     'workflowTool': 'Workflow',
     'question-understand': 'Question Understand',

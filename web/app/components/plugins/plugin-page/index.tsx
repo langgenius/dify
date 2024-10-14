@@ -36,7 +36,6 @@ const PluginPage = ({
   const { setShowPluginSettingModal } = useModalContext() as any
   const [currentFile, setCurrentFile] = useState<File | null>(null)
   const containerRef = usePluginPageContext(v => v.containerRef)
-  const scrollDisabled = usePluginPageContext(v => v.scrollDisabled)
 
   const { dragging, fileUploader, fileChangeHandle, removeFile } = useUploader({
     onFileChange: setCurrentFile,
@@ -60,12 +59,11 @@ const PluginPage = ({
       className={cn('grow relative flex flex-col overflow-y-auto border-t border-divider-subtle', activeTab === 'plugins'
         ? 'rounded-t-xl bg-components-panel-bg'
         : 'bg-background-body',
-      activeTab === 'discover' && scrollDisabled && 'overflow-hidden',
       )}
     >
       <div
         className={cn(
-          'sticky top-0 flex min-h-[60px] px-12 pt-4 pb-2 items-center self-stretch gap-1',
+          'sticky top-0 flex min-h-[60px] px-12 pt-4 pb-2 items-center self-stretch gap-1 bg-background-body z-10',
         )}
       >
         <div className='flex justify-between items-center w-full'>

@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react'
 import {
   useRef,
-  useState,
 } from 'react'
 import {
   createContext,
@@ -12,14 +11,10 @@ import {
 
 export type PluginPageContextValue = {
   containerRef: React.RefObject<HTMLDivElement>
-  scrollDisabled: boolean
-  setScrollDisabled: (scrollDisabled: boolean) => void
 }
 
 export const PluginPageContext = createContext<PluginPageContextValue>({
   containerRef: { current: null },
-  scrollDisabled: false,
-  setScrollDisabled: () => {},
 })
 
 type PluginPageContextProviderProps = {
@@ -34,14 +29,11 @@ export const PluginPageContextProvider = ({
   children,
 }: PluginPageContextProviderProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
-  const [scrollDisabled, setScrollDisabled] = useState(false)
 
   return (
     <PluginPageContext.Provider
       value={{
         containerRef,
-        scrollDisabled,
-        setScrollDisabled,
       }}
     >
       {children}
