@@ -18,6 +18,7 @@ from core.model_runtime.entities import (
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.prompt_transform import PromptTransform
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
+from core.workflow.entities.variable_pool import VariablePool
 
 
 class AdvancedPromptTransform(PromptTransform):
@@ -144,10 +145,11 @@ class AdvancedPromptTransform(PromptTransform):
             raw_prompt = prompt_item.text
 
             if prompt_item.edition_type == "basic" or not prompt_item.edition_type:
-                parser = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
-                prompt_inputs = {k: inputs[k] for k in parser.variable_keys if k in inputs}
-                prompt_inputs = self._set_context_variable(context=context, parser=parser, prompt_inputs=prompt_inputs)
-                prompt = parser.format(prompt_inputs)
+                vp = VariablePool()
+                for k, v in inputs.items():
+                    vp.add(k[1:-1].split("."), v)
+                raw_prompt.replace("{{#context#}}", context or "")
+                prompt = vp.convert_template(raw_prompt).text
             elif prompt_item.edition_type == "jinja2":
                 prompt = raw_prompt
                 prompt_inputs = inputs

@@ -267,6 +267,7 @@ class WorkflowCycleManage:
         workflow_node_execution = self._refetch_workflow_node_execution(event.node_execution_id)
 
         inputs = WorkflowEntry.handle_special_values(event.inputs)
+        process_data = WorkflowEntry.handle_special_values(event.process_data)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
         execution_metadata = (
             json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
@@ -278,7 +279,7 @@ class WorkflowCycleManage:
             {
                 WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.SUCCEEDED.value,
                 WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
-                WorkflowNodeExecution.process_data: json.dumps(event.process_data) if event.process_data else None,
+                WorkflowNodeExecution.process_data: json.dumps(process_data) if event.process_data else None,
                 WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
                 WorkflowNodeExecution.execution_metadata: execution_metadata,
                 WorkflowNodeExecution.finished_at: finished_at,
@@ -311,6 +312,7 @@ class WorkflowCycleManage:
         workflow_node_execution = self._refetch_workflow_node_execution(event.node_execution_id)
 
         inputs = WorkflowEntry.handle_special_values(event.inputs)
+        process_data = WorkflowEntry.handle_special_values(event.process_data)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
         finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
@@ -320,7 +322,7 @@ class WorkflowCycleManage:
                 WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.FAILED.value,
                 WorkflowNodeExecution.error: event.error,
                 WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
-                WorkflowNodeExecution.process_data: json.dumps(event.process_data) if event.process_data else None,
+                WorkflowNodeExecution.process_data: json.dumps(process_data) if event.process_data else None,
                 WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
                 WorkflowNodeExecution.finished_at: finished_at,
                 WorkflowNodeExecution.elapsed_time: elapsed_time,

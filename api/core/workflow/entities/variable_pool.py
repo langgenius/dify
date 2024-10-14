@@ -48,14 +48,16 @@ class VariablePool(BaseModel):
     def __init__(
         self,
         *,
-        system_variables: Mapping[SystemVariableKey, Any],
-        user_inputs: Mapping[str, Any],
+        system_variables: Mapping[SystemVariableKey, Any] | None = None,
+        user_inputs: Mapping[str, Any] | None = None,
         environment_variables: Sequence[Variable] | None = None,
         conversation_variables: Sequence[Variable] | None = None,
         **kwargs,
     ):
         environment_variables = environment_variables or []
         conversation_variables = conversation_variables or []
+        user_inputs = user_inputs or {}
+        system_variables = system_variables or {}
 
         super().__init__(
             system_variables=system_variables,
