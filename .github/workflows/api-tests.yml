@@ -31,7 +31,6 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'poetry'
           cache-dependency-path: |
             api/pyproject.toml
             api/poetry.lock
