@@ -36,7 +36,7 @@ const NormalForm = () => {
       if (consoleToken && refreshToken) {
         localStorage.setItem('console_token', consoleToken)
         localStorage.setItem('refresh_token', refreshToken)
-        getNewAccessToken(consoleToken, refreshToken)
+        getNewAccessToken()
         router.replace('/apps')
         return
       }
