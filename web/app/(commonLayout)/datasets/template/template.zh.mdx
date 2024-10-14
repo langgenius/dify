@@ -1095,7 +1095,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col sticky>
     <CodeGroup
       title="Request"
-      tag="GET"
+      tag="POST"
       label="/datasets/{dataset_id}/hit_testing"
       targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/hit_testing' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
         "query": "test",
