@@ -173,6 +173,11 @@ x-shared-env: &shared-api-worker-env
   BAIDU_VECTOR_DB_DATABASE: ${BAIDU_VECTOR_DB_DATABASE:-dify}
   BAIDU_VECTOR_DB_SHARD: ${BAIDU_VECTOR_DB_SHARD:-1}
   BAIDU_VECTOR_DB_REPLICAS: ${BAIDU_VECTOR_DB_REPLICAS:-3}
+  VIKINGDB_ACCESS_KEY: ${VIKINGDB_ACCESS_KEY:-dify}
+  VIKINGDB_SECRET_KEY: ${VIKINGDB_SECRET_KEY:-dify}
+  VIKINGDB_REGION: ${VIKINGDB_REGION:-cn-shanghai}
+  VIKINGDB_HOST: ${VIKINGDB_HOST:-api-vikingdb.xxx.volces.com}
+  VIKINGDB_SCHEMA: ${VIKINGDB_SCHEMA:-http}
   UPLOAD_FILE_SIZE_LIMIT: ${UPLOAD_FILE_SIZE_LIMIT:-15}
   UPLOAD_FILE_BATCH_LIMIT: ${UPLOAD_FILE_BATCH_LIMIT:-5}
   ETL_TYPE: ${ETL_TYPE:-dify}
@@ -222,7 +227,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.9.1
+    image: langgenius/dify-api:0.9.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -242,7 +247,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.9.1
+    image: langgenius/dify-api:0.9.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -261,7 +266,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.9.1
+    image: langgenius/dify-web:0.9.2
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
