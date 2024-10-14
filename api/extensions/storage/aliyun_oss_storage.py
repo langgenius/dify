@@ -1,6 +1,8 @@
 from collections.abc import Generator
+
 import oss2 as aliyun_s3
 from flask import Flask
+
 from extensions.storage.base_storage import BaseStorage
 
 
