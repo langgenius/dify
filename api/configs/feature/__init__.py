@@ -137,6 +137,7 @@ class PluginConfig(BaseSettings):
         default=5003,
     )
 
+
 class MarketplaceConfig(BaseSettings):
     """
     Configuration for marketplace

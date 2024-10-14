@@ -3,7 +3,6 @@ import uuid
 from json import dumps as json_dumps
 from json import loads as json_loads
 from json.decoder import JSONDecodeError
-from typing import Optional
 
 from requests import get
 from yaml import YAMLError, safe_load

@@ -1,4 +1,3 @@
-from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.common_entities import I18nObject
