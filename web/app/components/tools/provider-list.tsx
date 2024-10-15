@@ -100,20 +100,28 @@ const ProviderList = () => {
         )}>
           {activeTab === 'api' && <CustomCreateCard onRefreshData={getProviderList} />}
           {filteredCollectionList.map(collection => (
-            <Card
+            <div
               key={collection.id}
-              locale={language}
-              payload={{
-                ...collection,
-                brief: collection.description,
-              } as any}
-              footer={
-                <CardMoreInfo
-                  downloadCount={0}
-                  tags={collection.labels}
-                />
-              }
-            />
+              onClick={() => setCurrentProvider(collection)}
+            >
+              <Card
+                className={cn(
+                  'border-[1.5px] border-transparent',
+                  currentProvider?.id === collection.id && 'border-components-option-card-option-selected-border',
+                )}
+                locale={language}
+                payload={{
+                  ...collection,
+                  brief: collection.description,
+                } as any}
+                footer={
+                  <CardMoreInfo
+                    downloadCount={0}
+                    tags={collection.labels}
+                  />
+                }
+              />
+            </div>
           ))}
           {!filteredCollectionList.length && <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'><Empty /></div>}
         </div>
