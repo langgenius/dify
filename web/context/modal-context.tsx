@@ -5,7 +5,6 @@ import { useCallback, useState } from 'react'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AccountSetting from '@/app/components/header/account-setting'
-import PluginSettingModal from '@/app/components/plugins/plugin-setting/modal'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
 import ModerationSettingModal from '@/app/components/app/configuration/toolbox/moderation/moderation-setting-modal'
 import ExternalDataToolModal from '@/app/components/app/configuration/tools/external-data-tool-modal'
@@ -52,7 +51,6 @@ export type LoadBalancingEntryModalType = ModelModalType & {
 }
 export type ModalContextState = {
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<string> | null>>
-  setShowPluginSettingModal: () => void
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
   setShowExternalDataToolModal: Dispatch<SetStateAction<ModalState<ExternalDataTool> | null>>
@@ -65,7 +63,6 @@ export type ModalContextState = {
 }
 const ModalContext = createContext<ModalContextState>({
   setShowAccountSettingModal: () => { },
-  setShowPluginSettingModal: () => { },
   setShowApiBasedExtensionModal: () => { },
   setShowModerationSettingModal: () => { },
   setShowExternalDataToolModal: () => { },
@@ -103,7 +100,6 @@ export const ModalContextProvider = ({
   const router = useRouter()
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
   const [showAnnotationFullModal, setShowAnnotationFullModal] = useState(false)
-  const [showPluginSettingModal, setShowPluginSettingModal] = useState(false)
   const handleCancelAccountSettingModal = () => {
     setShowAccountSettingModal(null)
     if (showAccountSettingModal?.onCancelCallback)
@@ -197,7 +193,6 @@ export const ModalContextProvider = ({
   return (
     <ModalContext.Provider value={{
       setShowAccountSettingModal,
-      setShowPluginSettingModal: () => setShowPluginSettingModal(true),
       setShowApiBasedExtensionModal,
       setShowModerationSettingModal,
       setShowExternalDataToolModal,
@@ -215,15 +210,6 @@ export const ModalContextProvider = ({
             <AccountSetting
               activeTab={showAccountSettingModal.payload}
               onCancel={handleCancelAccountSettingModal}
-            />
-          )
-        }
-
-        {
-          !!showPluginSettingModal && (
-            <PluginSettingModal
-              show={showPluginSettingModal}
-              onHide={() => setShowPluginSettingModal(false)}
             />
           )
         }

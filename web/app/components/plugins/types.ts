@@ -25,3 +25,14 @@ export type Plugin = {
     settings: CredentialFormSchemaBase[]
   }
 }
+
+export enum PermissionType {
+  everyone = 'everyone',
+  admin = 'admin',
+  noOne = 'noOne',
+}
+
+export type Permissions = {
+  canInstall: PermissionType
+  canDebugger: PermissionType
+}

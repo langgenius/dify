@@ -1,33 +1,43 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import Button from '@/app/components/base/button'
-
-enum PluginManagementOption {
-  Everyone = 'Everyone',
-  Admins = 'Admins',
-  NoOne = 'No one',
-}
+import type { Permissions } from '@/app/components/plugins/types'
+import { PermissionType } from '@/app/components/plugins/types'
 
 type Props = {
-  show: boolean
+  payload: Permissions
   onHide: () => void
+  onSave: (payload: Permissions) => void
 }
 
 const PluginSettingModal: FC<Props> = ({
-  show,
+  payload,
   onHide,
+  onSave,
 }) => {
   const { t } = useTranslation()
-  const [manageOption, setManageOption] = useState<PluginManagementOption>(PluginManagementOption.Everyone)
-  const [debugOption, setDebugOption] = useState<PluginManagementOption>(PluginManagementOption.Everyone)
+  const [tempPrivilege, setTempPrivilege] = useState<Permissions>(payload)
+  const handlePrivilegeChange = useCallback((key: string) => {
+    return (value: PermissionType) => {
+      setTempPrivilege({
+        ...tempPrivilege,
+        [key]: value,
+      })
+    }
+  }, [tempPrivilege])
+
+  const handleSave = useCallback(() => {
+    onSave(tempPrivilege)
+    onHide()
+  }, [tempPrivilege])
 
   return (
     <Modal
-      isShow={show}
+      isShow
       onClose={onHide}
       closable
       className='!p-0 w-[420px]'
@@ -38,19 +48,19 @@ const PluginSettingModal: FC<Props> = ({
         </div>
         <div className='flex px-6 py-3 flex-col justify-center items-start gap-4 self-stretch'>
           {[
-            { title: 'Who can install and manage plugins?', key: 'manage', value: manageOption, setValue: setManageOption },
-            { title: 'Who can debug plugins?', key: 'debug', value: debugOption, setValue: setDebugOption },
-          ].map(({ title, key, value, setValue }) => (
+            { title: 'Who can install and manage plugins?', key: 'canInstall', value: tempPrivilege.canInstall },
+            { title: 'Who can debug plugins?', key: 'canDebugger', value: tempPrivilege.canDebugger },
+          ].map(({ title, key, value }) => (
             <div key={key} className='flex flex-col items-start gap-1 self-stretch'>
               <div className='flex m-h-6 items-center gap-0.5'>
                 <span className='text-text-secondary system-sm-semibold'>{title}</span>
               </div>
               <div className='flex items-start gap-2 justify-between w-full'>
-                {Object.values(PluginManagementOption).map(option => (
+                {[PermissionType.everyone, PermissionType.admin, PermissionType.noOne].map(option => (
                   <OptionCard
                     key={option}
                     title={option}
-                    onSelect={() => setValue(option)}
+                    onSelect={() => handlePrivilegeChange(key)(option)}
                     selected={value === option}
                     className="flex-1"
                   />
@@ -69,6 +79,7 @@ const PluginSettingModal: FC<Props> = ({
           <Button
             className='min-w-[72px]'
             variant={'primary'}
+            onClick={handleSave}
           >
             Save
           </Button>
