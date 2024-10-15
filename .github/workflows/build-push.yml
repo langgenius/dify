@@ -5,6 +5,7 @@ on:
     branches:
       - "main"
       - "deploy/dev"
+      - "release/0.10.0-beta"
   release:
     types: [published]
 
