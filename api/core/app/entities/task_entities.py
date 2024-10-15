@@ -213,7 +213,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         created_by: Optional[dict] = None
         created_at: int
         finished_at: int
-        files: Optional[list[dict]] = []
+        files: Optional[Sequence[Mapping[str, Any]]] = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
     workflow_run_id: str
@@ -298,7 +298,7 @@ class NodeFinishStreamResponse(StreamResponse):
         execution_metadata: Optional[dict] = None
         created_at: int
         finished_at: int
-        files: Optional[list[dict]] = []
+        files: Optional[Sequence[Mapping[str, Any]]] = []
         parallel_id: Optional[str] = None
         parallel_start_node_id: Optional[str] = None
         parent_parallel_id: Optional[str] = None
