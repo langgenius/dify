@@ -13,13 +13,15 @@ import { Colors } from '@/app/components/base/icons/src/vender/line/others'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
 import ContributeCard from '@/app/components/tools/provider/contribute'
-import ProviderCard from '@/app/components/tools/provider/card'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { fetchCollectionList } from '@/service/tools'
+import Card from '@/app/components/plugins/card'
+import { useGetLanguage } from '@/context/i18n'
 
 const ProviderList = () => {
   const { t } = useTranslation()
+  const language = useGetLanguage()
 
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'builtin',
@@ -94,11 +96,13 @@ const ProviderList = () => {
           {activeTab === 'builtin' && <ContributeCard />}
           {activeTab === 'api' && <CustomCreateCard onRefreshData={getProviderList} />}
           {filteredCollectionList.map(collection => (
-            <ProviderCard
-              active={currentProvider?.id === collection.id}
-              onSelect={() => setCurrentProvider(collection)}
+            <Card
               key={collection.id}
-              collection={collection}
+              locale={language}
+              payload={{
+                ...collection,
+                brief: collection.description,
+              } as any}
             />
           ))}
           {!filteredCollectionList.length && <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'><Empty /></div>}

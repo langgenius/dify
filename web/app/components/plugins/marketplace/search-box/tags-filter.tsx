@@ -95,7 +95,7 @@ const TagsFilter = ({
           }
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
+      <PortalToFollowElemContent className='z-10'>
         <div className='w-[240px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur rounded-xl shadow-lg'>
           <div className='p-2 pb-1'>
             <Input
