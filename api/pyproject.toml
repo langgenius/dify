@@ -89,7 +89,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.pyflakes]
-allowed-unused-imports=[
+extend-generics=[
     "_pytest.monkeypatch",
     "tests.integration_tests",
 ]

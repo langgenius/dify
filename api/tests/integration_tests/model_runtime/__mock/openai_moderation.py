@@ -61,25 +61,25 @@ class MockModerationClass:
                 }
                 category_applied_input_types = {
                     "sexual": ["text", "image"],
-                        "hate": ["text"],
-                        "harassment": ["text"],
-                        "self-harm": ["text", "image"],
-                        "sexual/minors": ["text"],
-                        "hate/threatening": ["text"],
-                        "violence/graphic": ["text", "image"],
-                        "self-harm/intent": ["text", "image"],
-                        "self-harm/instructions": ["text", "image"],
-                        "harassment/threatening": ["text"],
-                        "violence": ["text", "image"],
-                        "illicit": ["text"],
-                        "illicit/violent": ["text"],
+                    "hate": ["text"],
+                    "harassment": ["text"],
+                    "self-harm": ["text", "image"],
+                    "sexual/minors": ["text"],
+                    "hate/threatening": ["text"],
+                    "violence/graphic": ["text", "image"],
+                    "self-harm/intent": ["text", "image"],
+                    "self-harm/instructions": ["text", "image"],
+                    "harassment/threatening": ["text"],
+                    "violence": ["text", "image"],
+                    "illicit": ["text"],
+                    "illicit/violent": ["text"],
                 }
                 result.append(
                     Moderation(
                         flagged=True,
                         categories=Categories(**moderation_categories),
                         category_scores=CategoryScores(**moderation_categories_scores),
-                        category_applied_input_types=category_applied_input_types
+                        category_applied_input_types=category_applied_input_types,
                     )
                 )
             else:
@@ -115,25 +115,25 @@ class MockModerationClass:
                 }
                 category_applied_input_types = {
                     "sexual": ["text", "image"],
-                        "hate": ["text"],
-                        "harassment": ["text"],
-                        "self-harm": ["text", "image"],
-                        "sexual/minors": ["text"],
-                        "hate/threatening": ["text"],
-                        "violence/graphic": ["text", "image"],
-                        "self-harm/intent": ["text", "image"],
-                        "self-harm/instructions": ["text", "image"],
-                        "harassment/threatening": ["text"],
-                        "violence": ["text", "image"],
-                        "illicit": ["text"],
-                        "illicit/violent": ["text"],
+                    "hate": ["text"],
+                    "harassment": ["text"],
+                    "self-harm": ["text", "image"],
+                    "sexual/minors": ["text"],
+                    "hate/threatening": ["text"],
+                    "violence/graphic": ["text", "image"],
+                    "self-harm/intent": ["text", "image"],
+                    "self-harm/instructions": ["text", "image"],
+                    "harassment/threatening": ["text"],
+                    "violence": ["text", "image"],
+                    "illicit": ["text"],
+                    "illicit/violent": ["text"],
                 }
                 result.append(
                     Moderation(
                         flagged=False,
                         categories=Categories(**moderation_categories),
                         category_scores=CategoryScores(**moderation_categories_scores),
-                        category_applied_input_types=category_applied_input_types
+                        category_applied_input_types=category_applied_input_types,
                     )
                 )
 
