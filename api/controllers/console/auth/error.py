@@ -27,7 +27,7 @@ class InvalidTokenError(BaseHTTPException):
 
 class PasswordResetRateLimitExceededError(BaseHTTPException):
     error_code = "password_reset_rate_limit_exceeded"
-    description = "Too many password reset emails have been sent. Please try again in 5 minutes."
+    description = "Too many password reset emails have been sent. Please try again in 1 minutes."
     code = 429
 
 

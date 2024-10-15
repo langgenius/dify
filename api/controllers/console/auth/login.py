@@ -36,6 +36,7 @@ class LoginApi(Resource):
         parser.add_argument("password", type=valid_password, required=True, location="json")
         parser.add_argument("remember_me", type=bool, required=False, default=False, location="json")
         parser.add_argument("invite_token", type=str, required=False, default=None, location="json")
+        parser.add_argument("language", type=str, required=False, default="en-US", location="json")
         args = parser.parse_args()
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args["email"])
@@ -45,6 +46,11 @@ class LoginApi(Resource):
         invitation = args["invite_token"]
         if invitation:
             invitation = RegisterService.get_invitation_if_token_valid(None, args["email"], invitation)
+
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
+        else:
+            language = "en-US"
 
         try:
             if invitation:
@@ -64,7 +70,7 @@ class LoginApi(Resource):
             if not dify_config.ALLOW_REGISTER:
                 raise NotAllowedRegister()
 
-            token = AccountService.send_reset_password_email(email=args["email"])
+            token = AccountService.send_reset_password_email(email=args["email"], language=language)
             return {"result": "fail", "data": token, "message": "account_not_found"}
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)

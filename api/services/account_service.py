@@ -340,7 +340,10 @@ class AccountService:
 
     @classmethod
     def send_reset_password_email(
-        cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
+        cls,
+        account: Optional[Account] = None,
+        email: Optional[str] = None,
+        language: Optional[str] = "en-US",
     ):
         account_email = account.email if account else email
 
