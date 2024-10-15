@@ -95,7 +95,7 @@ const ChangePasswordForm = () => {
         <div className='flex flex-col md:w-[400px]'>
           <div className="w-full mx-auto">
             <h2 className="title-4xl-semi-bold text-text-primary">
-              {t('login.resetPassword')}
+              {t('login.changePassword')}
             </h2>
             <p className='mt-2 body-md-regular text-text-secondary'>
               {t('login.changePasswordTip')}
@@ -139,7 +139,7 @@ const ChangePasswordForm = () => {
                   className='w-full'
                   onClick={handleChangePassword}
                 >
-                  {t('common.operation.reset')}
+                  {t('login.changePasswordBtn')}
                 </Button>
               </div>
             </div>
