@@ -11,34 +11,13 @@ import contexts
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
 from core.variables import SecretVariable, Variable
+from enums import CreatedByRole
 from extensions.ext_database import db
 from factories import variable_factory
 from libs import helper
 
 from .account import Account
 from .types import StringUUID
-
-
-class CreatedByRole(Enum):
-    """
-    Created By Role Enum
-    """
-
-    ACCOUNT = "account"
-    END_USER = "end_user"
-
-    @classmethod
-    def value_of(cls, value: str) -> "CreatedByRole":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid created by role value {value}")
 
 
 class WorkflowType(Enum):
@@ -424,14 +403,14 @@ class WorkflowRun(db.Model):
 
     @property
     def created_by_account(self):
-        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        created_by_role = CreatedByRole(self.created_by_role)
         return db.session.get(Account, self.created_by) if created_by_role == CreatedByRole.ACCOUNT else None
 
     @property
     def created_by_end_user(self):
         from models.model import EndUser
 
-        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        created_by_role = CreatedByRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
 
     @property
@@ -651,14 +630,14 @@ class WorkflowNodeExecution(db.Model):
 
     @property
     def created_by_account(self):
-        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        created_by_role = CreatedByRole(self.created_by_role)
         return db.session.get(Account, self.created_by) if created_by_role == CreatedByRole.ACCOUNT else None
 
     @property
     def created_by_end_user(self):
         from models.model import EndUser
 
-        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        created_by_role = CreatedByRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
 
     @property
@@ -770,14 +749,14 @@ class WorkflowAppLog(db.Model):
 
     @property
     def created_by_account(self):
-        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        created_by_role = CreatedByRole(self.created_by_role)
         return db.session.get(Account, self.created_by) if created_by_role == CreatedByRole.ACCOUNT else None
 
     @property
     def created_by_end_user(self):
         from models.model import EndUser
 
-        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        created_by_role = CreatedByRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
 
 
