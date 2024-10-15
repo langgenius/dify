@@ -2,11 +2,13 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import { emailRegex } from '@/config'
 import { login } from '@/service/common'
 import Input from '@/app/components/base/input'
+import I18NContext from '@/context/i18n'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
@@ -14,6 +16,7 @@ type MailAndPasswordAuthProps = {
 
 export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
+  const { locale } = useContext(I18NContext)
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
@@ -39,6 +42,7 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
       const loginData: Record<string, any> = {
         email,
         password,
+        language: locale,
         remember_me: true,
       }
       if (isInvite)
