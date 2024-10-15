@@ -27,15 +27,6 @@ parameter_rules:
     default: 4096
     min: 1
     max: 4096
-  - name: stream
-    label:
-      zh_Hans: 流式输出
-      en_US: Stream
-    type: boolean
-    help:
-      zh_Hans: 流式输出允许模型在生成文本的过程中逐步返回结果，而不是一次性生成全部结果后再返回。
-      en_US: Streaming output allows the model to return results incrementally as it generates text, rather than generating all the results at once.
-    default: false
 pricing:
   input: '0.00'
   output: '0.00'
