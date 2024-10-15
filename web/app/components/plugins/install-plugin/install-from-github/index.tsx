@@ -10,7 +10,7 @@ type InstallFromGitHubProps = {
   onClose: () => void
 }
 
-type InstallStep = 'url' | 'version' | 'package'
+type InstallStep = 'url' | 'version' | 'package' | 'installed'
 
 const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
   const [step, setStep] = useState<InstallStep>('url')
@@ -42,10 +42,37 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
         setStep('package')
         break
       case 'package':
-        // TODO: Handle final submission
+        // TODO: Handle installation
+        setStep('installed')
         break
     }
   }
+
+  const isInputValid = () => {
+    switch (step) {
+      case 'url':
+        return !!repoUrl.trim()
+      case 'version':
+        return !!selectedVersion
+      case 'package':
+        return !!selectedPackage
+      default:
+        return true
+    }
+  }
+
+  const InfoRow = ({ label, value }: { label: string; value: string }) => (
+    <div className='flex items-center gap-3'>
+      <div className='flex w-[72px] items-center gap-2'>
+        <div className='text-text-tertiary system-sm-medium'>
+          {label}
+        </div>
+      </div>
+      <div className='flex-grow overflow-hidden text-text-secondary text-ellipsis system-sm-medium'>
+        {value}
+      </div>
+    </div>
+  )
 
   return (
     <Modal
@@ -61,11 +88,11 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
             Install plugin from GitHub
           </div>
           <div className='self-stretch text-text-tertiary system-xs-regular'>
-            Please make sure that you only install plugins from a trusted source.
+            {step !== 'installed' && 'Please make sure that you only install plugins from a trusted source.'}
           </div>
         </div>
       </div>
-      <div className='flex px-6 py-3 flex-col justify-center items-start gap-4 self-stretch'>
+      <div className={`flex px-6 py-3 flex-col justify-center items-start self-stretch ${step === 'installed' ? 'gap-2' : 'gap-4'}`}>
         {step === 'url' && (
           <>
             <label
@@ -121,22 +148,51 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
             />
           </>
         )}
+        {step === 'installed' && (
+          <>
+            <div className='text-text-secondary system-md-regular'>The plugin has been installed successfully.</div>
+            <div className='flex w-full p-4 flex-col justify-center items-start gap-2 rounded-2xl bg-background-section-burn'>
+              {[
+                { label: 'Repository', value: repoUrl },
+                { label: 'Version', value: selectedVersion },
+                { label: 'Package', value: selectedPackage },
+              ].map(({ label, value }) => (
+                <InfoRow key={label} label={label} value={value} />
+              ))}
+            </div>
+          </>
+        )}
       </div>
       <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
-        <Button
-          variant='secondary'
-          className='min-w-[72px]'
-          onClick={onClose}
-        >
-          Cancel
-        </Button>
-        <Button
-          variant='primary'
-          className='min-w-[72px]'
-          onClick={handleNext}
-        >
-          {step === 'package' ? 'Install' : 'Next'}
-        </Button>
+        {step === 'installed'
+          ? (
+            <Button
+              variant='primary'
+              className='min-w-[72px]'
+              onClick={onClose}
+            >
+            Close
+            </Button>
+          )
+          : (
+            <>
+              <Button
+                variant='secondary'
+                className='min-w-[72px]'
+                onClick={onClose}
+              >
+              Cancel
+              </Button>
+              <Button
+                variant='primary'
+                className='min-w-[72px]'
+                onClick={handleNext}
+                disabled={!isInputValid()}
+              >
+                {step === 'package' ? 'Install' : 'Next'}
+              </Button>
+            </>
+          )}
       </div>
     </Modal>
   )

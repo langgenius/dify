@@ -2,6 +2,7 @@ import React from 'react'
 import { RiVerifiedBadgeLine } from '@remixicon/react'
 import type { Plugin } from '../types'
 import Icon from '../card/base/card-icon'
+import { Group } from '../../base/icons/src/vender/other'
 import CornerMark from './base/corner-mark'
 import Title from './base/title'
 import OrgInfo from './base/org-info'
@@ -18,6 +19,8 @@ type Props = {
   descriptionLineRows?: number
   footer?: React.ReactNode
   serverLocale?: Locale
+  isLoading?: boolean
+  loadingFileName?: string
 }
 
 const Card = ({
@@ -28,33 +31,53 @@ const Card = ({
   descriptionLineRows = 2,
   footer,
   locale,
+  isLoading = false,
+  loadingFileName,
 }: Props) => {
-  const { type, name, org, label } = payload
+  const { type, name, org, label, brief, icon } = payload
+
+  const getLocalizedText = (obj: Record<string, string> | undefined) =>
+    obj?.[locale] || obj?.['en-US'] || ''
+
+  const LoadingPlaceholder = ({ className }: { className?: string }) => (
+    <div className={cn('h-2 rounded-sm opacity-20 bg-text-quaternary', className)} />
+  )
 
   return (
     <div className={cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
-      <CornerMark text={type} />
+      {!isLoading && <CornerMark text={type} />}
       {/* Header */}
       <div className="flex">
-        <Icon src={payload.icon} installed={installed} />
+        {isLoading
+          ? (<div
+            className='flex max-w-10 max-h-10 p-1 justify-center items-center gap-2 flex-grow rounded-[10px]
+              border-[0.5px] border-components-panel-border bg-background-default backdrop-blur-sm'>
+            <div className='flex w-5 h-5 justify-center items-center'>
+              <Group className='text-text-tertiary' />
+            </div>
+          </div>)
+          : <Icon src={icon} installed={installed} />}
         <div className="ml-3 grow">
           <div className="flex items-center h-5">
-            <Title title={label[locale]} />
-            <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />
+            <Title title={loadingFileName || getLocalizedText(label)} />
+            {!isLoading && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
             {titleLeft} {/* This can be version badge */}
           </div>
           <OrgInfo
             className="mt-0.5"
             orgName={org}
             packageName={name}
+            isLoading={isLoading}
           />
         </div>
       </div>
-      <Description
-        className="mt-3"
-        text={payload.brief[locale]}
-        descriptionLineRows={descriptionLineRows}
-      />
+      {isLoading
+        ? <LoadingPlaceholder className="mt-3 w-[420px]" />
+        : <Description
+          className="mt-3"
+          text={getLocalizedText(brief)}
+          descriptionLineRows={descriptionLineRows}
+        />}
       {footer && <div>{footer}</div>}
     </div>
   )

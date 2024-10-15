@@ -18,10 +18,8 @@ const Icon = ({
       }}
     >
       {installed
-        && <div className='p-0.5 absolute bottom-[-4px] right-[-4px] w-3 h-3 rounded-full bg-white '>
-          <div className='h-full rounded-full bg-state-success-solid'>
-            <RiCheckLine className='w-full h-full text-text-primary-on-surface' />
-          </div>
+        && <div className='flex justify-center items-center gap-2 absolute bottom-[-4px] right-[-4px] w-[18px] h-[18px] rounded-full border-2 border-components-panel-bg bg-state-success-solid'>
+          <RiCheckLine className='w-3 h-3 text-text-primary-on-surface' />
         </div>
       }
     </div>
