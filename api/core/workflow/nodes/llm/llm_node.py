@@ -359,7 +359,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             return []
         raise ValueError(f"Invalid variable type: {type(variable)}")
 
-    def _fetch_context(self, node_data: LLMNodeData) -> Generator[RunEvent, None, None]:
+    def _fetch_context(self, node_data: LLMNodeData):
         if not node_data.context.enabled:
             return
 
