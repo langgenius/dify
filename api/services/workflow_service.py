@@ -13,13 +13,12 @@ from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.node_mapping import node_classes
 from core.workflow.workflow_entry import WorkflowEntry
-from enums import NodeType
+from enums import CreatedByRole, NodeType
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode
 from models.workflow import (
-    CreatedByRole,
     Workflow,
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,

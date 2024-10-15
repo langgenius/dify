@@ -36,12 +36,11 @@ from core.tools.tool_manager import ToolManager
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_entry import WorkflowEntry
-from enums import NodeType, WorkflowRunTriggeredFrom
+from enums import CreatedByRole, NodeType, WorkflowRunTriggeredFrom
 from extensions.ext_database import db
 from models.account import Account
 from models.model import EndUser
 from models.workflow import (
-    CreatedByRole,
     Workflow,
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
