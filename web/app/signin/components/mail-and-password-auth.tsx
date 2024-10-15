@@ -14,6 +14,8 @@ type MailAndPasswordAuthProps = {
   isInvite: boolean
 }
 
+const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
+
 export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
   const { locale } = useContext(I18NContext)
@@ -34,6 +36,17 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
       Toast.notify({
         type: 'error',
         message: t('login.error.emailInValid'),
+      })
+      return
+    }
+    if (!password?.trim()) {
+      Toast.notify({ type: 'error', message: t('login.error.passwordEmpty') })
+      return
+    }
+    if (!passwordRegex.test(password)) {
+      Toast.notify({
+        type: 'error',
+        message: t('login.error.passwordInValid'),
       })
       return
     }
