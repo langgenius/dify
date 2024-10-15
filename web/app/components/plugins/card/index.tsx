@@ -16,6 +16,7 @@ type Props = {
   locale: Locale // The component is used in both client and server side, so we can't get the locale from both side(getLocaleOnServer and useContext)
   titleLeft?: React.ReactNode
   installed?: boolean
+  hideCornerMark?: boolean
   descriptionLineRows?: number
   footer?: React.ReactNode
   serverLocale?: Locale
@@ -28,6 +29,7 @@ const Card = ({
   payload,
   titleLeft,
   installed,
+  hideCornerMark,
   descriptionLineRows = 2,
   footer,
   locale,
@@ -45,7 +47,7 @@ const Card = ({
 
   return (
     <div className={cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
-      {!isLoading && <CornerMark text={type} />}
+      {!hideCornerMark && !isLoading && <CornerMark text={type} />}
       {/* Header */}
       <div className="flex">
         {isLoading
