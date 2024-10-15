@@ -19,11 +19,11 @@ class IndexProcessorFactory:
         if not self._index_type:
             raise ValueError("Index type must be specified.")
 
-        if self._index_type == IndexType.PARAGRAPH_INDEX.value:
+        if self._index_type == IndexType.PARAGRAPH_INDEX:
             return ParagraphIndexProcessor()
-        elif self._index_type == IndexType.QA_INDEX.value:
+        elif self._index_type == IndexType.QA_INDEX:
             return QAIndexProcessor()
-        elif self._index_type == IndexType.PARENT_CHILD_INDEX.value:
+        elif self._index_type == IndexType.PARENT_CHILD_INDEX:
             return ParentChildIndexProcessor()
         else:
             raise ValueError(f"Index type {self._index_type} is not supported.")

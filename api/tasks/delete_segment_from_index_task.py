@@ -4,10 +4,11 @@ import time
 import click
 from celery import shared_task
 
+from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset, Document
+from models.dataset import ChildChunk, Dataset, Document
 
 
 @shared_task(queue="dataset")
@@ -40,6 +41,14 @@ def delete_segment_from_index_task(segment_id: str, index_node_id: str, dataset_
             return
 
         index_type = dataset_document.doc_form
+        if index_type == IndexType.PARENT_CHILD_INDEX:
+            # delete child chunks
+            db.session.query(ChildChunk).filter(
+                ChildChunk.dataset_id == dataset_id,
+                ChildChunk.document_id == document_id,
+                ChildChunk.segment_id == segment_id,
+            ).delete()
+            db.session.commit()
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
         index_processor.clean(dataset, [index_node_id])
 

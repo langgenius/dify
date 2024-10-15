@@ -167,30 +167,22 @@ class DatasetRetrieval:
             retrieval_resource_list.append(source)
         # deal with dify documents
         if dify_documents:
-            for item in dify_documents:
-
             records = RetrievalService.format_retrieval_documents(dify_documents)
             if records:
                 for record in records:
                     segment = record.segment
-                    dataset = Dataset.query.filter_by(id=segment.dataset_id).first()
-                    document = Document.query.filter(
-                        Document.id == segment.document_id,
-                        Document.enabled == True,
-                        Document.archived == False,
-                    ).first()
                     if segment.answer:
                         document_context_list.append(
                             DocumentContext(
                                 content=f"question:{segment.get_sign_content()} answer:{segment.answer}",
-                                score=document_score_list.get(segment.index_node_id, None),
+                                score=record.score,
                             )
                         )
                     else:
                         document_context_list.append(
                             DocumentContext(
                                 content=segment.get_sign_content(),
-                                score=document_score_list.get(segment.index_node_id, None),
+                                score=record.score,
                             )
                         )
                 if show_retrieve_source:
@@ -211,7 +203,7 @@ class DatasetRetrieval:
                                 "data_source_type": document.data_source_type,
                                 "segment_id": segment.id,
                                 "retriever_from": invoke_from.to_source(),
-                                "score": document_score_list.get(segment.index_node_id, None),
+                                "score": record.score,
                             }
 
                             if invoke_from.to_source() == "dev":

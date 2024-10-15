@@ -26,6 +26,7 @@ from fields.segment_fields import segment_fields
 from libs.login import login_required
 from models.dataset import DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
+from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.enable_segment_to_index_task import enable_segment_to_index_task
@@ -307,9 +308,10 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         parser.add_argument("content", type=str, required=True, nullable=False, location="json")
         parser.add_argument("answer", type=str, required=False, nullable=True, location="json")
         parser.add_argument("keywords", type=list, required=False, nullable=True, location="json")
+        parser.add_argument("regenerate_child_chunks", type=bool, required=False, nullable=True, default=False, location="json")
         args = parser.parse_args()
         SegmentService.segment_create_args_validate(args, document)
-        segment = SegmentService.update_segment(args, segment, document, dataset)
+        segment = SegmentService.update_segment(SegmentUpdateArgs(**args), segment, document, dataset)
         return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
 
     @setup_required
@@ -411,6 +413,149 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
 
         return {"job_id": job_id, "job_status": cache_result.decode()}, 200
 
+class DatasetDocumentSegmentAddApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_resource_check("vector_space")
+    @cloud_edition_billing_knowledge_limit_check("add_segment")
+    def post(self, dataset_id, document_id):
+        # check dataset
+        dataset_id = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        # check document
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset_id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+        if not current_user.is_editor:
+            raise Forbidden()
+        # check embedding model setting
+        if dataset.indexing_technique == "high_quality":
+            try:
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
+                    tenant_id=current_user.current_tenant_id,
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model,
+                )
+            except LLMBadRequestError:
+                raise ProviderNotInitializeError(
+                    "No Embedding Model available. Please configure a valid provider "
+                    "in the Settings -> Model Provider."
+                )
+            except ProviderTokenNotInitError as ex:
+                raise ProviderNotInitializeError(ex.description)
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+        # validate args
+        parser = reqparse.RequestParser()
+        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("answer", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("keywords", type=list, required=False, nullable=True, location="json")
+        args = parser.parse_args()
+        SegmentService.segment_create_args_validate(args, document)
+        segment = SegmentService.create_segment(args, document, dataset)
+        return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
+
+
+class DatasetDocumentSegmentUpdateApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_resource_check("vector_space")
+    def patch(self, dataset_id, document_id, segment_id):
+        # check dataset
+        dataset_id = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
+        # check document
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset_id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+        if dataset.indexing_technique == "high_quality":
+            # check embedding model setting
+            try:
+                model_manager = ModelManager()
+                model_manager.get_model_instance(
+                    tenant_id=current_user.current_tenant_id,
+                    provider=dataset.embedding_model_provider,
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=dataset.embedding_model,
+                )
+            except LLMBadRequestError:
+                raise ProviderNotInitializeError(
+                    "No Embedding Model available. Please configure a valid provider "
+                    "in the Settings -> Model Provider."
+                )
+            except ProviderTokenNotInitError as ex:
+                raise ProviderNotInitializeError(ex.description)
+            # check segment
+        segment_id = str(segment_id)
+        segment = DocumentSegment.query.filter(
+            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not segment:
+            raise NotFound("Segment not found.")
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+        # validate args
+        parser = reqparse.RequestParser()
+        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("answer", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("keywords", type=list, required=False, nullable=True, location="json")
+        parser.add_argument("regenerate_child_chunks", type=bool, required=False, nullable=True, default=False, location="json")
+        args = parser.parse_args()
+        SegmentService.segment_create_args_validate(args, document)
+        segment = SegmentService.update_segment(SegmentUpdateArgs(**args), segment, document, dataset)
+        return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, dataset_id, document_id, segment_id):
+        # check dataset
+        dataset_id = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
+        # check document
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset_id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+        # check segment
+        segment_id = str(segment_id)
+        segment = DocumentSegment.query.filter(
+            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not segment:
+            raise NotFound("Segment not found.")
+        # The role of the current user in the ta table must be admin or owner
+        if not current_user.is_editor:
+            raise Forbidden()
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+        SegmentService.delete_segment(segment, document, dataset)
+        return {"result": "success"}, 200
 
 api.add_resource(DatasetDocumentSegmentListApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
 api.add_resource(DatasetDocumentSegmentApi, "/datasets/<uuid:dataset_id>/segments/<uuid:segment_id>/<string:action>")

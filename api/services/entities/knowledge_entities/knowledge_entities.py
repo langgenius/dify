@@ -77,3 +77,10 @@ class KnowledgeConfig(BaseModel):
     doc_language: str = "English"
     embedding_model: Optional[str] = None
     embedding_model_provider: Optional[str] = None
+
+class SegmentUpdateArgs(BaseModel):
+    content: Optional[str] = None
+    answer: Optional[str] = None
+    keywords: Optional[list[str]] = None
+    regenerate_child_chunks: bool = False
+    enabled: Optional[bool] = None

@@ -558,6 +558,11 @@ class DocumentSegment(db.Model):
             .filter(DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position + 1)
             .first()
         )
+    
+    @property
+    def child_chunks(self):
+        child_chunks = db.session.query(ChildChunk).filter(ChildChunk.segment_id == self.id).all()
+        return child_chunks or []
 
     def get_sign_content(self):
         pattern = r"/files/([a-f0-9\-]+)/image-preview"
@@ -598,7 +603,6 @@ class ChildChunk(db.Model):
     dataset_id = db.Column(StringUUID, nullable=False)
     document_id = db.Column(StringUUID, nullable=False)
     segment_id = db.Column(StringUUID, nullable=False)
-    position = db.Column(db.Integer, nullable=False)
     content = db.Column(db.Text, nullable=False)
     word_count = db.Column(db.Integer, nullable=False)
     # indexing fields

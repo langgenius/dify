@@ -405,7 +405,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
                 except Exception as e:
                     raise IndexingEstimateError(str(e))
 
-        return response
+        return response.model_dump(), 200
 
 
 class DocumentBatchIndexingEstimateApi(DocumentResource):
@@ -418,7 +418,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         documents = self.get_batch_documents(dataset_id, batch)
         response = {"tokens": 0, "total_price": 0, "currency": "USD", "total_segments": 0, "preview": []}
         if not documents:
-            return response
+            return response, 200
         data_process_rule = documents[0].dataset_process_rule
         data_process_rule_dict = data_process_rule.to_dict()
         info_list = []
@@ -505,7 +505,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 raise ProviderNotInitializeError(ex.description)
             except Exception as e:
                 raise IndexingEstimateError(str(e))
-        return response
+        return response.model_dump(), 200
 
 
 class DocumentBatchIndexingStatusApi(DocumentResource):

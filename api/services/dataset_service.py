@@ -14,6 +14,7 @@ from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
+from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.models.document import Document as RAGDocument
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
@@ -24,6 +25,7 @@ from libs import helper
 from models.account import Account, TenantAccountRole
 from models.dataset import (
     AppDatasetJoin,
+    ChildChunk,
     Dataset,
     DatasetCollectionBinding,
     DatasetPermission,
@@ -36,7 +38,7 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
-from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, RetrievalModel
+from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, RetrievalModel, SegmentUpdateArgs
 from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
@@ -1450,13 +1452,13 @@ class SegmentService:
             return segment_data_list
 
     @classmethod
-    def update_segment(cls, args: dict, segment: DocumentSegment, document: Document, dataset: Dataset):
+    def update_segment(cls, args: SegmentUpdateArgs, segment: DocumentSegment, document: Document, dataset: Dataset):
         indexing_cache_key = "segment_{}_indexing".format(segment.id)
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is indexing, please try again later")
-        if "enabled" in args and args["enabled"] is not None:
-            action = args["enabled"]
+        if args.enabled is not None:
+            action = args.enabled
             if segment.enabled != action:
                 if not action:
                     segment.enabled = action
@@ -1469,25 +1471,25 @@ class SegmentService:
                     disable_segment_from_index_task.delay(segment.id)
                     return segment
         if not segment.enabled:
-            if "enabled" in args and args["enabled"] is not None:
-                if not args["enabled"]:
+            if args.enabled is not None:
+                if not args.enabled:
                     raise ValueError("Can't update disabled segment")
             else:
                 raise ValueError("Can't update disabled segment")
         try:
-            content = args["content"]
+            content = args.content
             if segment.content == content:
                 if document.doc_form == "qa_model":
-                    segment.answer = args["answer"]
-                if args.get("keywords"):
-                    segment.keywords = args["keywords"]
+                    segment.answer = args.answer
+                if args.keywords:
+                    segment.keywords = args.keywords
                 segment.enabled = True
                 segment.disabled_at = None
                 segment.disabled_by = None
                 db.session.add(segment)
                 db.session.commit()
-                # update segment index task
-                if "keywords" in args:
+                # update segment index task, parent child index don't have keywords
+                if args.keywords and document.doc_form != IndexType.PARENT_CHILD_INDEX:
                     keyword = Keyword(dataset)
                     keyword.delete_by_ids([segment.index_node_id])
                     document = RAGDocument(
@@ -1499,7 +1501,10 @@ class SegmentService:
                             "dataset_id": segment.dataset_id,
                         },
                     )
-                    keyword.add_texts([document], keywords_list=[args["keywords"]])
+                    keyword.add_texts([document], keywords_list=[args.keywords])
+                if document.doc_form == IndexType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
+                    # regenerate child chunks
+                    VectorService.regenerate_child_chunks(segment, document, dataset)
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
@@ -1527,11 +1532,14 @@ class SegmentService:
                 segment.disabled_at = None
                 segment.disabled_by = None
                 if document.doc_form == "qa_model":
-                    segment.answer = args["answer"]
+                    segment.answer = args.answer
                 db.session.add(segment)
                 db.session.commit()
-                # update segment vector index
-                VectorService.update_segment_vector(args["keywords"], segment, dataset)
+                if document.doc_form == IndexType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
+                    VectorService.regenerate_child_chunks(segment, document, dataset)
+                elif document.doc_form == IndexType.PARAGRAPH_INDEX or document.doc_form == IndexType.QA_INDEX:
+                    # update segment vector index
+                    VectorService.update_segment_vector(args.keywords, segment, dataset)
 
         except Exception as e:
             logging.exception("update segment index failed")

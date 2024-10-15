@@ -59,13 +59,6 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                             page_content = page_content
                         if len(page_content) > 0:
                             document_node.page_content = page_content
-                            child_splitter = self._get_splitter(
-                                processing_rule_mode=process_rule.get("mode"),
-                                max_tokens=rules.subchunk_segmentation.max_tokens,
-                                chunk_overlap=rules.subchunk_segmentation.chunk_overlap,
-                                separator=rules.subchunk_segmentation.separator,
-                                embedding_model_instance=kwargs.get("embedding_model_instance")
-                            )
                             # parse document to child nodes
                             child_nodes = self._split_child_nodes(document_node, rules, process_rule.get("mode"), kwargs.get("embedding_model_instance"))
                             document_node.children = child_nodes

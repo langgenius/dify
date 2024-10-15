@@ -456,7 +456,7 @@ class DatasetIndexingEstimateApi(Resource):
         except Exception as e:
             raise IndexingEstimateError(str(e))
 
-        return response, 200
+        return response.model_dump(), 200
 
 
 class DatasetRelatedAppListApi(Resource):

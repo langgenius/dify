@@ -119,7 +119,7 @@ class DatasetDocumentStore:
                 db.session.add(segment_document)
                 db.session.flush()
                 if save_child:
-                    for child_position, child in enumerate(doc.children, start=1):
+                    for child in doc.children:
                         child_segment = ChildChunk(
                             tenant_id=self._dataset.tenant_id,
                             dataset_id=self._dataset.id,
@@ -127,7 +127,6 @@ class DatasetDocumentStore:
                             segment_id=segment_document.id,
                             index_node_id=child.metadata["doc_id"],
                             index_node_hash=child.metadata["doc_hash"],
-                            position=child_position,
                             content=child.page_content,
                             word_count=len(child.page_content),
                             type="automatic",
@@ -150,7 +149,7 @@ class DatasetDocumentStore:
                         ChildChunk.segment_id == segment_document.id,
                     ).delete()
                     # add new child chunks
-                    for child_position, child in enumerate(doc.children, start=1):
+                    for child in doc.children:
                         child_segment = ChildChunk(
                             tenant_id=self._dataset.tenant_id,
                             dataset_id=self._dataset.id,
@@ -158,7 +157,6 @@ class DatasetDocumentStore:
                             segment_id=segment_document.id,
                             index_node_id=child.metadata["doc_id"],
                             index_node_hash=child.metadata["doc_hash"],
-                            position=child_position,
                             content=child.page_content,
                             word_count=len(child.page_content),
                             type="automatic",

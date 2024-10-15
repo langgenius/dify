@@ -2,6 +2,15 @@ from flask_restful import fields
 
 from libs.helper import TimestampField
 
+child_chunk_fields = {
+    "id": fields.String,
+    "segment_id": fields.String,
+    "content": fields.String,
+    "word_count": fields.Integer,
+    "type": fields.String,
+    "created_at": TimestampField,
+}
+
 segment_fields = {
     "id": fields.String,
     "position": fields.Integer,
@@ -24,6 +33,7 @@ segment_fields = {
     "completed_at": TimestampField,
     "error": fields.String,
     "stopped_at": TimestampField,
+    "child_chunks": fields.List(fields.Nested(child_chunk_fields)),
 }
 
 segment_list_response = {

@@ -7,6 +7,7 @@ from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.entity.retrieval import RetrievalSegments
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.models.document import Document
 from core.rag.rerank.constants.rerank_mode import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -240,7 +241,7 @@ class RetrievalService:
         for document in documents:
             document_id = document.metadata["document_id"]
             dataset_document = db.session.query(DatasetDocument).filter(DatasetDocument.id == document_id).first()
-            if dataset_document and dataset_document.doc_form == "hierarchical_model":
+            if dataset_document and dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                 child_index_node_id = document.metadata["doc_id"]
                 result = (
                     db.session.query(ChildChunk, DocumentSegment)
