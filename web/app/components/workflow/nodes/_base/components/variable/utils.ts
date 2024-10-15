@@ -581,6 +581,16 @@ export const toNodeAvailableVars = ({
       environmentVariables,
       conversationVariables,
     })
+    const itemChildren = itemType === VarType.file
+      ? {
+        children: OUTPUT_FILE_SUB_VARIABLES.map((key) => {
+          return {
+            variable: key,
+            type: key === 'size' ? VarType.number : VarType.string,
+          }
+        }),
+      }
+      : {}
     const iterationVar = {
       nodeId: iterationNode?.id,
       title: t('workflow.nodes.iteration.currentIteration'),
@@ -588,6 +598,7 @@ export const toNodeAvailableVars = ({
         {
           variable: 'item',
           type: itemType,
+          ...itemChildren,
         },
         {
           variable: 'index',
