@@ -132,7 +132,7 @@ class AccountService:
 
         account = Account.query.filter_by(email=email).first()
         if not account:
-            raise AccountLoginError("Invalid email or password.")
+            raise AccountLoginError("Account is not exist.")
 
         if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
             raise AccountLoginError("Account is banned or closed.")
