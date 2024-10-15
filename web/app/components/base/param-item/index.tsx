@@ -1,10 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
-
-import Tooltip from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
 
@@ -40,9 +36,10 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
           )}
           <span className="mx-1 text-gray-900 text-[13px] leading-[18px] font-medium">{name}</span>
           {!noTooltip && (
-            <Tooltip popupContent={<div className="w-[200px]">{tip}</div>}>
-              <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
-            </Tooltip>
+            <Tooltip
+              triggerClassName='w-4 h-4 shrink-0'
+              popupContent={<div className="w-[200px]">{tip}</div>}
+            />
           )}
 
         </div>

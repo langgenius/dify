@@ -10,12 +10,10 @@ def test_validate_provider_credentials():
     provider = NovitaProvider()
 
     with pytest.raises(CredentialsValidateFailedError):
-        provider.validate_provider_credentials(
-            credentials={}
-        )
+        provider.validate_provider_credentials(credentials={})
 
     provider.validate_provider_credentials(
         credentials={
-            'api_key': os.environ.get('NOVITA_API_KEY'),
+            "api_key": os.environ.get("NOVITA_API_KEY"),
         }
     )

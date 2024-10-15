@@ -3,12 +3,11 @@ import type { FC } from 'react'
 import React from 'react'
 import {
   RiArrowDownSLine,
-  RiQuestionLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import type { DefaultTFuncReturn } from 'i18next'
 import cn from '@/utils/classnames'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   className?: string
@@ -38,21 +37,20 @@ const Filed: FC<Props> = ({
         onClick={() => supportFold && toggleFold()}
         className={cn('flex justify-between items-center', supportFold && 'cursor-pointer')}>
         <div className='flex items-center h-6'>
-          <div className='text-[13px] font-medium text-gray-700 uppercase'>{title}</div>
+          <div className='system-sm-semibold-uppercase text-text-secondary'>{title}</div>
           {tooltip && (
-            <TooltipPlus popupContent={
-              <div className='w-[120px]'>
-                {tooltip}
-              </div>}>
-              <RiQuestionLine className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
-            </TooltipPlus>
+            <Tooltip
+              popupContent={tooltip}
+              popupClassName='ml-1'
+              triggerClassName='w-4 h-4 ml-1'
+            />
           )}
 
         </div>
         <div className='flex'>
           {operations && <div>{operations}</div>}
           {supportFold && (
-            <RiArrowDownSLine className='w-3.5 h-3.5 text-gray-500 cursor-pointer transform transition-transform' style={{ transform: fold ? 'rotate(0deg)' : 'rotate(90deg)' }} />
+            <RiArrowDownSLine className='w-4 h-4 text-text-tertiary cursor-pointer transform transition-transform' style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
           )}
         </div>
       </div>

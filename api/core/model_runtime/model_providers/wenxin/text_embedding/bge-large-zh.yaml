@@ -1,0 +1,9 @@
+model: bge-large-zh
+model_type: text-embedding
+model_properties:
+  context_size: 512
+  max_chunks: 16
+pricing:
+  input: '0.0005'
+  unit: '0.001'
+  currency: RMB

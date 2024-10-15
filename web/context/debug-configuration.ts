@@ -97,6 +97,8 @@ type IDebugConfiguration = {
   isShowVisionConfig: boolean
   visionConfig: VisionSettings
   setVisionConfig: (visionConfig: VisionSettings, noNotice?: boolean) => void
+  rerankSettingModalOpen: boolean
+  setRerankSettingModalOpen: (rerankSettingModalOpen: boolean) => void
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
@@ -217,7 +219,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   showSelectDataSet: () => { },
   setDataSets: () => { },
   datasetConfigs: {
-    retrieval_model: RETRIEVE_TYPE.oneWay,
+    retrieval_model: RETRIEVE_TYPE.multiWay,
     reranking_model: {
       reranking_provider_name: '',
       reranking_model_name: '',
@@ -239,6 +241,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     transfer_methods: [TransferMethod.remote_url],
   },
   setVisionConfig: () => { },
+  rerankSettingModalOpen: false,
+  setRerankSettingModalOpen: () => { },
 })
 
 export const useDebugConfigurationContext = () => useContext(DebugConfigurationContext)

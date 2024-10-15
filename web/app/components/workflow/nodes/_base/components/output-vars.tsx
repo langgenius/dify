@@ -3,8 +3,10 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
+import {
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import cn from '@/utils/classnames'
-import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 type Props = {
   className?: string
@@ -25,9 +27,9 @@ const OutputVars: FC<Props> = ({
     <div>
       <div
         onClick={toggleFold}
-        className={cn(className, 'flex justify-between leading-[18px] text-[13px] font-semibold text-gray-700 uppercase cursor-pointer')}>
+        className={cn(className, 'flex justify-between system-sm-semibold-uppercase text-text-secondary cursor-pointer')}>
         <div>{title || t('workflow.nodes.common.outputVars')}</div>
-        <ChevronRight className='w-4 h-4 text-gray-500 transform transition-transform' style={{ transform: isFold ? 'rotate(0deg)' : 'rotate(90deg)' }} />
+        <RiArrowDownSLine className='w-4 h-4 text-text-tertiary transform transition-transform' style={{ transform: isFold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
       </div>
       {!isFold && (
         <div className='mt-2 space-y-1'>
@@ -57,10 +59,10 @@ export const VarItem: FC<VarItemProps> = ({
   return (
     <div className='py-1'>
       <div className='flex leading-[18px] items-center'>
-        <div className='text-[13px] font-medium text-gray-900 font-mono'>{name}</div>
-        <div className='ml-2 text-xs font-normal text-gray-500 capitalize'>{type}</div>
+        <div className='code-sm-semibold text-text-secondary'>{name}</div>
+        <div className='ml-2 system-xs-regular text-text-tertiary'>{type}</div>
       </div>
-      <div className='mt-0.5 leading-[18px] text-xs font-normal text-gray-600'>
+      <div className='mt-0.5 system-xs-regular text-text-tertiary'>
         {description}
         {subItems && (
           <div className='ml-2 border-l border-gray-200 pl-2'>

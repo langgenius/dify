@@ -4,15 +4,13 @@ import { ArrowUpRightIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import {
   RiDeleteBinLine,
-  RiErrorWarningFill,
 } from '@remixicon/react'
 import { StatusItem } from '../../list'
 import { DocumentTitle } from '../index'
 import s from './style.module.css'
 import { SegmentIndexTag } from './index'
 import cn from '@/utils/classnames'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import Indicator from '@/app/components/header/indicator'
@@ -38,6 +36,12 @@ export type UsageScene = 'doc' | 'hitTesting'
 type ISegmentCardProps = {
   loading: boolean
   detail?: SegmentDetailModel & { document: { name: string } }
+  contentExternal?: string
+  refSource?: {
+    title: string
+    uri: string
+  }
+  isExternal?: boolean
   score?: number
   onClick?: () => void
   onChangeSwitch?: (segId: string, enabled: boolean) => Promise<void>
@@ -50,6 +54,9 @@ type ISegmentCardProps = {
 
 const SegmentCard: FC<ISegmentCardProps> = ({
   detail = {},
+  contentExternal,
+  isExternal,
+  refSource,
   score,
   onClick,
   onChangeSwitch,
@@ -89,6 +96,9 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         </>
       )
     }
+
+    if (contentExternal)
+      return contentExternal
 
     return content
   }
@@ -201,42 +211,31 @@ const SegmentCard: FC<ISegmentCardProps> = ({
               </div>
               <div className={cn('w-full bg-gray-50 group-hover:bg-white')}>
                 <Divider />
-                <div className="relative flex items-center w-full">
+                <div className="relative flex items-center w-full pb-1">
                   <DocumentTitle
-                    name={detail?.document?.name || ''}
-                    extension={(detail?.document?.name || '').split('.').pop() || 'txt'}
+                    name={detail?.document?.name || refSource?.title || ''}
+                    extension={(detail?.document?.name || refSource?.title || '').split('.').pop() || 'txt'}
                     wrapperCls='w-full'
                     iconCls="!h-4 !w-4 !bg-contain"
                     textCls="text-xs text-gray-700 !font-normal overflow-hidden whitespace-nowrap text-ellipsis"
                   />
                   <div className={cn(s.chartLinkText, 'group-hover:inline-flex')}>
-                    {t('datasetHitTesting.viewChart')}
+                    {isExternal ? t('datasetHitTesting.viewDetail') : t('datasetHitTesting.viewChart')}
                     <ArrowUpRightIcon className="w-3 h-3 ml-1 stroke-current stroke-2" />
                   </div>
                 </div>
               </div>
             </>
         )}
-      {showModal && <Modal isShow={showModal} onClose={() => setShowModal(false)} className={s.delModal} closable>
-        <div>
-          <div className={s.warningWrapper}>
-            <RiErrorWarningFill className='w-6 h-6 text-red-600' />
-          </div>
-          <div className='text-xl font-semibold text-gray-900 mb-1'>{t('datasetDocuments.segment.delete')}</div>
-          <div className='flex gap-2 justify-end'>
-            <Button onClick={() => setShowModal(false)}>{t('common.operation.cancel')}</Button>
-            <Button
-              variant='warning'
-              onClick={async () => {
-                await onDelete?.(id)
-              }}
-              className='border-red-700'
-            >
-              {t('common.operation.sure')}
-            </Button>
-          </div>
-        </div>
-      </Modal>}
+      {showModal
+        && <Confirm
+          isShow={showModal}
+          title={t('datasetDocuments.segment.delete')}
+          confirmText={t('common.operation.sure')}
+          onConfirm={async () => { await onDelete?.(id) }}
+          onCancel={() => setShowModal(false)}
+        />
+      }
     </div>
   )
 }

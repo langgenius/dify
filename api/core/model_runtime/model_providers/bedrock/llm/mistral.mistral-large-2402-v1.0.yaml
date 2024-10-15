@@ -2,6 +2,9 @@ model: mistral.mistral-large-2402-v1:0
 label:
   en_US: Mistral Large
 model_type: llm
+features:
+  - tool-call
+  - agent-thought
 model_properties:
   mode: completion
   context_size: 32000

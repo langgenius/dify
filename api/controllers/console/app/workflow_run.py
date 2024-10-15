@@ -28,15 +28,12 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         Get advanced chat app workflow run list
         """
         parser = reqparse.RequestParser()
-        parser.add_argument('last_id', type=uuid_value, location='args')
-        parser.add_argument('limit', type=int_range(1, 100), required=False, default=20, location='args')
+        parser.add_argument("last_id", type=uuid_value, location="args")
+        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
 
         workflow_run_service = WorkflowRunService()
-        result = workflow_run_service.get_paginate_advanced_chat_workflow_runs(
-            app_model=app_model,
-            args=args
-        )
+        result = workflow_run_service.get_paginate_advanced_chat_workflow_runs(app_model=app_model, args=args)
 
         return result
 
@@ -52,15 +49,12 @@ class WorkflowRunListApi(Resource):
         Get workflow run list
         """
         parser = reqparse.RequestParser()
-        parser.add_argument('last_id', type=uuid_value, location='args')
-        parser.add_argument('limit', type=int_range(1, 100), required=False, default=20, location='args')
+        parser.add_argument("last_id", type=uuid_value, location="args")
+        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
         args = parser.parse_args()
 
         workflow_run_service = WorkflowRunService()
-        result = workflow_run_service.get_paginate_workflow_runs(
-            app_model=app_model,
-            args=args
-        )
+        result = workflow_run_service.get_paginate_workflow_runs(app_model=app_model, args=args)
 
         return result
 
@@ -98,12 +92,10 @@ class WorkflowRunNodeExecutionListApi(Resource):
         workflow_run_service = WorkflowRunService()
         node_executions = workflow_run_service.get_workflow_run_node_executions(app_model=app_model, run_id=run_id)
 
-        return {
-            'data': node_executions
-        }
+        return {"data": node_executions}
 
 
-api.add_resource(AdvancedChatAppWorkflowRunListApi, '/apps/<uuid:app_id>/advanced-chat/workflow-runs')
-api.add_resource(WorkflowRunListApi, '/apps/<uuid:app_id>/workflow-runs')
-api.add_resource(WorkflowRunDetailApi, '/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>')
-api.add_resource(WorkflowRunNodeExecutionListApi, '/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions')
+api.add_resource(AdvancedChatAppWorkflowRunListApi, "/apps/<uuid:app_id>/advanced-chat/workflow-runs")
+api.add_resource(WorkflowRunListApi, "/apps/<uuid:app_id>/workflow-runs")
+api.add_resource(WorkflowRunDetailApi, "/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>")
+api.add_resource(WorkflowRunNodeExecutionListApi, "/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/node-executions")

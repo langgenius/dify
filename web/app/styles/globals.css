@@ -142,6 +142,12 @@ button:focus-within {
   line-height: 12px;
 }
 
+.system-2xs-regular {
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 12px;
+}
+
 .system-2xs-medium {
   font-size: 10px;
   font-weight: 500;
@@ -274,6 +280,10 @@ button:focus-within {
   font-size: 16px;
   font-weight: 600;
   line-height: 24px;
+}
+
+[class*='code-'] {
+  @apply font-mono;
 }
 
 .code-xs-regular {
@@ -563,6 +573,7 @@ button:focus-within {
   font-weight: 700;
   line-height: 1.2;
 }
+
 /* font define end */
 
 /* border radius start */
@@ -625,6 +636,7 @@ button:focus-within {
 .radius-full {
   border-radius: 64px;
 }
+
 /* border radius end */
 
 .link {
@@ -654,6 +666,7 @@ button:focus-within {
 }
 
 @import '../components/base/button/index.css';
+@import '../components/base/action-button/index.css';
 @import '../components/base/modal/index.css';
 
 @tailwind utilities;

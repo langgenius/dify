@@ -1,4 +1,10 @@
+# for more details, please refer to https://help.aliyun.com/zh/model-studio/getting-started/models#3383780daf8hw
 model: text-embedding-v2
 model_type: text-embedding
 model_properties:
   context_size: 2048
+  max_chunks: 25
+pricing:
+  input: "0.0007"
+  unit: "0.001"
+  currency: RMB

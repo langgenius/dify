@@ -58,6 +58,9 @@ const translation = {
       ragAPIRequest: 'RAG API запити',
       agentMode: 'Режим агента',
       workflow: 'Робочий процес',
+      bulkUpload: 'Масове завантаження документів',
+      llmLoadingBalancing: 'Балансування навантаження LLM',
+      llmLoadingBalancingTooltip: 'Додавайте кілька ключів API до моделей, ефективно обходячи обмеження швидкості API.',
     },
     comingSoon: 'Скоро',
     member: 'Учасник',
@@ -72,6 +75,8 @@ const translation = {
     },
     ragAPIRequestTooltip: 'Відноситься до кількості викликів API, що викликають лише можливості обробки бази знань Dify.',
     receiptInfo: 'Лише власник команди та адміністратор команди можуть підписуватися та переглядати інформацію про виставлення рахунків',
+    annotationQuota: 'Квота анотацій',
+    documentsUploadQuota: 'Квота завантаження документів',
   },
   plans: {
     sandbox: {

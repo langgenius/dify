@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '../../base/app-unavailable'
 import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
-import { FeishuProvider } from '../../header/account-setting/data-source-page/data-source-feishu/constants'
 import StepsNavBar from './steps-nav-bar'
 import StepOne from './step-one'
 import StepTwo from './step-two'
@@ -12,7 +11,7 @@ import { DataSourceType } from '@/models/datasets'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource } from '@/service/common'
 import { fetchDatasetDetail } from '@/service/datasets'
-import type { FeishuPage, NotionPage } from '@/models/common'
+import { DataSourceProvider, type NotionPage } from '@/models/common'
 import { useModalContext } from '@/context/modal-context'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
@@ -27,6 +26,7 @@ const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
   excludes: '',
   limit: 10,
   max_depth: '',
+  use_sitemap: true,
 }
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
@@ -46,18 +46,14 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     setNotionPages(value)
   }
 
-  const [feishuPages, setFeishuPages] = useState<FeishuPage[]>([])
-  const updateFeishuPages = (value: FeishuPage[]) => {
-    setFeishuPages(value)
-  }
-
   const [websitePages, setWebsitePages] = useState<CrawlResultItem[]>([])
   const [crawlOptions, setCrawlOptions] = useState<CrawlOptions>(DEFAULT_CRAWL_OPTIONS)
 
   const updateFileList = (preparedFiles: FileItem[]) => {
     setFiles(preparedFiles)
   }
-  const [fireCrawlJobId, setFireCrawlJobId] = useState('')
+  const [websiteCrawlProvider, setWebsiteCrawlProvider] = useState<DataSourceProvider>(DataSourceProvider.fireCrawl)
+  const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
 
   const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
     const targetIndex = list.findIndex(file => file.fileID === fileItem.fileID)
@@ -99,15 +95,8 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     setHasConnection(hasConnection.length > 0)
   }
 
-  const checkFeishuConnection = async () => {
-    const { data } = await fetchDataSource({ url: '/data-source/integrates' })
-    const hasConnection = data.filter(item => item.provider === FeishuProvider) || []
-    setHasConnection(hasConnection.length > 0)
-  }
-
   useEffect(() => {
     checkNotionConnection()
-    checkFeishuConnection()
   }, [])
 
   const [detail, setDetail] = useState<DataSet | null>(null)
@@ -147,12 +136,11 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
             updateFileList={updateFileList}
             notionPages={notionPages}
             updateNotionPages={updateNotionPages}
-            feishuPages={feishuPages}
-            updateFeishuPages={updateFeishuPages}
             onStepChange={nextStep}
             websitePages={websitePages}
             updateWebsitePages={setWebsitePages}
-            onFireCrawlJobIdChange={setFireCrawlJobId}
+            onWebsiteCrawlProviderChange={setWebsiteCrawlProvider}
+            onWebsiteCrawlJobIdChange={setWebsiteCrawlJobId}
             crawlOptions={crawlOptions}
             onCrawlOptionsChange={setCrawlOptions}
           />
@@ -165,9 +153,9 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           dataSourceType={dataSourceType}
           files={fileList.map(file => file.file)}
           notionPages={notionPages}
-          feishuPages={feishuPages}
           websitePages={websitePages}
-          fireCrawlJobId={fireCrawlJobId}
+          websiteCrawlProvider={websiteCrawlProvider}
+          websiteCrawlJobId={websiteCrawlJobId}
           onStepChange={changeStep}
           updateIndexingTypeCache={updateIndexingTypeCache}
           updateResultCache={updateResultCache}

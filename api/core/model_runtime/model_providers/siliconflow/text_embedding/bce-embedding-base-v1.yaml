@@ -1,0 +1,5 @@
+model: netease-youdao/bce-embedding-base_v1
+model_type: text-embedding
+model_properties:
+  context_size: 512
+  max_chunks: 1

@@ -1,0 +1,82 @@
+identity:
+  name: sagemaker_text_rerank
+  author: AWS
+  label:
+    en_US: SagemakerRerank
+    zh_Hans: Sagemaker重排序
+    pt_BR: SagemakerRerank
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool for performing text similarity ranking. You can find deploy notebook on Github Repo - https://github.com/aws-samples/dify-aws-tool
+    zh_Hans: Sagemaker重排序工具, 请参考 Github Repo - https://github.com/aws-samples/dify-aws-tool上的部署脚本
+    pt_BR: A tool for performing text similarity ranking.
+  llm: A tool for performing text similarity ranking. You can find deploy notebook on Github Repo - https://github.com/aws-samples/dify-aws-tool
+parameters:
+  - name: sagemaker_endpoint
+    type: string
+    required: true
+    label:
+      en_US: sagemaker endpoint for reranking
+      zh_Hans: 重排序的SageMaker 端点
+      pt_BR: sagemaker endpoint for reranking
+    human_description:
+      en_US: sagemaker endpoint for reranking
+      zh_Hans: 重排序的SageMaker 端点
+      pt_BR: sagemaker endpoint for reranking
+    llm_description: sagemaker endpoint for reranking
+    form: form
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+      pt_BR: Query string
+    human_description:
+      en_US: key words for searching
+      zh_Hans: 查询关键词
+      pt_BR: key words for searching
+    llm_description: key words for searching
+    form: llm
+  - name: candidate_texts
+    type: string
+    required: true
+    label:
+      en_US: text candidates
+      zh_Hans: 候选文本
+      pt_BR: text candidates
+    human_description:
+      en_US: searched candidates by query
+      zh_Hans: 查询文本搜到候选文本
+      pt_BR: searched candidates by query
+    llm_description: searched candidates by query
+    form: llm
+  - name: topk
+    type: number
+    required: false
+    form: form
+    label:
+      en_US: Limit for results count
+      zh_Hans: 返回个数限制
+      pt_BR: Limit for results count
+    human_description:
+      en_US: Limit for results count
+      zh_Hans: 返回个数限制
+      pt_BR: Limit for results count
+    min: 1
+    max: 10
+    default: 5
+  - name: aws_region
+    type: string
+    required: false
+    label:
+      en_US: region of sagemaker endpoint
+      zh_Hans: SageMaker 端点所在的region
+      pt_BR: region of sagemaker endpoint
+    human_description:
+      en_US: region of sagemaker endpoint
+      zh_Hans: SageMaker 端点所在的region
+      pt_BR: region of sagemaker endpoint
+    llm_description: region of sagemaker endpoint
+    form: form

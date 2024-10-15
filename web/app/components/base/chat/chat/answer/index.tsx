@@ -8,7 +8,6 @@ import type {
   ChatConfig,
   ChatItem,
 } from '../../types'
-import { useChatContext } from '../context'
 import Operation from './operation'
 import AgentContent from './agent-content'
 import BasicContent from './basic-content'
@@ -16,12 +15,13 @@ import SuggestedQuestions from './suggested-questions'
 import More from './more'
 import WorkflowProcess from './workflow-process'
 import { AnswerTriangle } from '@/app/components/base/icons/src/vender/solid/general'
-import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import Citation from '@/app/components/base/chat/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import type { Emoji } from '@/app/components/tools/types'
 import type { AppData } from '@/models/share'
+import AnswerIcon from '@/app/components/base/answer-icon'
+import cn from '@/utils/classnames'
 
 type AnswerProps = {
   item: ChatItem
@@ -35,6 +35,7 @@ type AnswerProps = {
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   appData?: AppData
+  noChatInput?: boolean
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -48,6 +49,7 @@ const Answer: FC<AnswerProps> = ({
   chatAnswerContainerInner,
   hideProcessDetail,
   appData,
+  noChatInput,
 }) => {
   const { t } = useTranslation()
   const {
@@ -60,68 +62,59 @@ const Answer: FC<AnswerProps> = ({
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
-  const [containerWidth] = useState(0)
+  const [containerWidth, setContainerWidth] = useState(0)
   const [contentWidth, setContentWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
-  const {
-    config: chatContextConfig,
-  } = useChatContext()
+  const getContainerWidth = () => {
+    if (containerRef.current)
+      setContainerWidth(containerRef.current?.clientWidth + 16)
+  }
+  useEffect(() => {
+    getContainerWidth()
+  }, [])
 
-  const voiceRef = useRef(chatContextConfig?.text_to_speech?.voice)
   const getContentWidth = () => {
     if (contentRef.current)
       setContentWidth(contentRef.current?.clientWidth)
   }
 
   useEffect(() => {
-    voiceRef.current = chatContextConfig?.text_to_speech?.voice
-  }
-  , [chatContextConfig?.text_to_speech?.voice])
-
-  useEffect(() => {
     if (!responding)
       getContentWidth()
   }, [responding])
 
+  // Recalculate contentWidth when content changes (e.g., SVG preview/source toggle)
+  useEffect(() => {
+    if (!containerRef.current)
+      return
+    const resizeObserver = new ResizeObserver(() => {
+      getContentWidth()
+    })
+    resizeObserver.observe(containerRef.current)
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
+
   return (
     <div className='flex mb-2 last:mb-0'>
       <div className='shrink-0 relative w-10 h-10'>
-        {
-          answerIcon || (
-            <div className='flex items-center justify-center w-full h-full rounded-full bg-[#d5f5f6] border-[0.5px] border-black/5 text-xl'>
-              🤖
-            </div>
-          )
-        }
-        {
-          responding && (
-            <div className='absolute -top-[3px] -left-[3px] pl-[6px] flex items-center w-4 h-4 bg-white rounded-full shadow-xs border-[0.5px] border-gray-50'>
-              <LoadingAnim type='avatar' />
-            </div>
-          )
-        }
+        {answerIcon || <AnswerIcon />}
+        {responding && (
+          <div className='absolute -top-[3px] -left-[3px] pl-[6px] flex items-center w-4 h-4 bg-white rounded-full shadow-xs border-[0.5px] border-gray-50'>
+            <LoadingAnim type='avatar' />
+          </div>
+        )}
       </div>
       <div className='chat-answer-container group grow w-0 ml-4' ref={containerRef}>
-        <div className={`group relative pr-10 ${chatAnswerContainerInner}`}>
+        <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
           <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
           <div
             ref={contentRef}
-            className={`
-              relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900
-              ${workflowProcess && 'w-full'}
-            `}
+            className={cn('relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900', workflowProcess && 'w-full')}
           >
-            {annotation?.id && (
-              <div
-                className='absolute -top-3.5 -right-3.5 box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7] shadow-md group-hover:hidden'
-              >
-                <div className='p-1 rounded-lg bg-[#EEF4FF] '>
-                  <MessageFast className='w-4 h-4' />
-                </div>
-              </div>
-            )}
             {
               !responding && (
                 <Operation
@@ -132,6 +125,7 @@ const Answer: FC<AnswerProps> = ({
                   question={question}
                   index={index}
                   showPromptLog={showPromptLog}
+                  noChatInput={noChatInput}
                 />
               )
             }

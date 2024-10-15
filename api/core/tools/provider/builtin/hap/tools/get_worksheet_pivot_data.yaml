@@ -1,0 +1,248 @@
+identity:
+  name: get_worksheet_pivot_data
+  author: Ryan Tian
+  label:
+    en_US: Get Worksheet Pivot Data
+    zh_Hans: 获取工作表统计透视数据
+description:
+  human:
+    en_US: Retrieve statistical pivot table data from a specified worksheet
+    zh_Hans: 从指定的工作表中检索统计透视表数据
+  llm: A tool for extracting statistical pivot table data from a specific worksheet, providing summarized information for analysis and reporting purposes.
+parameters:
+  - name: appkey
+    type: secret-input
+    required: true
+    label:
+      en_US: App Key
+      zh_Hans: App Key
+    human_description:
+      en_US: The AppKey parameter for the HAP application, typically found in the application's API documentation.
+      zh_Hans: HAP 应用的 AppKey 参数，可以从应用 API 文档中查找到
+    llm_description: the AppKey parameter for the HAP application
+    form: form
+
+  - name: sign
+    type: secret-input
+    required: true
+    label:
+      en_US: Sign
+      zh_Hans: Sign
+    human_description:
+      en_US: The Sign parameter for the HAP application
+      zh_Hans: HAP 应用的 Sign 参数
+    llm_description: the Sign parameter for the HAP application
+    form: form
+
+  - name: worksheet_id
+    type: string
+    required: true
+    label:
+      en_US: Worksheet ID
+      zh_Hans: 工作表 ID
+    human_description:
+      en_US: The ID of the specified worksheet
+      zh_Hans: 要获取字段信息的工作表 ID
+    llm_description: The ID of the specified worksheet which to get the fields information.
+    form: llm
+
+  - name: x_column_fields
+    type: string
+    required: true
+    label:
+      en_US: Columns (X-axis)
+      zh_Hans: 统计列字段（X轴）
+    human_description:
+      en_US: The column fields that make up the pivot table's X-axis groups or other dimensions for the X-axis in pivot charts
+      zh_Hans: 组成透视表的统计列或者统计图表的X轴分组及X轴其它维度。JSON 对象数组格式，数组元素属性：controlId-列ID，displayName-显示名称，particleSize(可选)-字段类型是日期或者地区时，通过此参数设置统计维度（日期时间：1-日，2-周，3-月；地区：1-全国，2-省，3-市）
+    llm_description: |
+      This parameter allows you to specify the columns that make up the pivot table's X-axis groups or other dimensions for the X-axis in pivot charts. It is formatted as a JSON array, with its structure defined as follows:
+      ```
+      type XColumnFields = { // X-axis or column object array
+        controlId: string; // fieldId
+        displayName: string; // displayName
+        particleSize?: number; // field type is date or area, set the statistical dimension (date time: 1-day, 2-week, 3-month; area: 1-nation, 2-province, 3-city)
+      }[];
+      ```
+    form: llm
+
+  - name: y_row_fields
+    type: string
+    required: false
+    label:
+      en_US: Rows (Y-axis)
+      zh_Hans: 统计行字段（Y轴）
+    human_description:
+      en_US: The row fields that make up the pivot table's Y-axis groups or other dimensions for the Y-axis in pivot charts
+      zh_Hans: 组成透视表的统计行或者统计图表的Y轴分组及Y轴其它维度。JSON 对象数组格式，数组元素属性：controlId-列ID，displayName-显示名称，particleSize(可选)-字段类型是日期或者地区时，通过此参数设置统计维度（日期时间：1-日，2-周，3-月；地区：1-全国，2-省，3-市）
+    llm_description: |
+      This parameter allows you to specify the rows that make up the pivot table's Y-axis groups or other dimensions for the Y-axis in pivot charts. It is formatted as a JSON array, with its structure defined as follows:
+      ```
+      type YRowFields = { // Y-axis or row object array
+        controlId: string; // fieldId
+        displayName: string; // displayName
+        particleSize?: number; // field type is date or area, set the statistical dimension (date time: 1-day, 2-week, 3-month; area: 1-nation, 2-province, 3-city)
+      }[];
+      ```
+    form: llm
+
+  - name: value_fields
+    type: string
+    required: true
+    label:
+      en_US: Aggregated Values
+      zh_Hans: 统计值字段
+    human_description:
+      en_US: The aggregated value fields in the pivot table
+      zh_Hans: 透视表中经过聚合计算后的统计值字段。JSON 对象数组格式，数组元素属性：controlId-列ID，displayName-显示名称，aggregation-聚合方式（SUM,AVG,MIN,MAX,COUNT）
+    llm_description: |
+      This parameter allows you to specify the aggregated value fields in the pivot table. It is formatted as a JSON array, with its structure defined as follows:
+      ```
+      type ValueFields = { // aggregated value object array
+        controlId: string; // fieldId
+        displayName: string; // displayName
+        aggregation: string; // aggregation method, e.g.: SUM, AVG, MIN, MAX, COUNT
+      }[];
+      ```
+    form: llm
+
+  - name: filters
+    type: string
+    required: false
+    label:
+      en_US: Filter Set
+      zh_Hans: 筛选器组合
+    human_description:
+      en_US: A combination of filters applied to query records, formatted as a JSON array. See the application's API documentation for details on its structure and usage.
+      zh_Hans: 查询记录的筛选条件组合，格式为 JSON 数组，可以从应用 API 文档中了解参数结构详情
+    llm_description: |
+      This parameter allows you to specify a set of conditions that records must meet to be included in the result set. It is formatted as a JSON array, with its structure defined as follows:
+      ```
+      type Filters = { // filter object array
+        controlId: string; // fieldId
+        dataType: number; // fieldTypeId
+        spliceType: number; // condition concatenation method, 1: And, 2: Or
+        filterType: number; // expression type, refer to the <FilterTypeEnum Reference> for enumerable values
+        values?: string[]; // values in the condition, for option-type fields, multiple values can be passed
+        value?: string; // value in the condition, a single value can be passed according to the field type
+        dateRange?: number; // date range, mandatory when filterType is 17 or 18, refer to the <DateRangeEnum Reference> for enumerable values
+        minValue?: string; // minimum value for custom range
+        maxValue?: string; // maximum value for custom range
+        isAsc?: boolean; // ascending order, false: descending, true: ascending
+      }[];
+      ```
+      For option-type fields, if this option field has `options`, then you need to get the corresponding `key` value from the `options` in the current field information via `value`, and pass it into `values` in array format. Do not use the `options` value of other fields as input conditions.
+
+      ### FilterTypeEnum Reference
+      ```
+      Enum Value, Enum Character, Description
+      1, Like, Contains
+      2, Eq, Is (Equal)
+      3, Start, Starts With
+      4, End, Ends With
+      5, NotLike, Does Not Contain
+      6, Ne, Is Not (Not Equal)
+      7, IsEmpty, Empty
+      8, HasValue, Not Empty
+      11, Between, Within Range
+      12, NotBetween, Outside Range
+      13, Gt, Greater Than
+      14, Gte, Greater Than or Equal To
+      15, Lt, Less Than
+      16, Lte, Less Than or Equal To
+      17, DateEnum, Date Is
+      18, NotDateEnum, Date Is Not
+      21, MySelf, Owned by Me
+      22, UnRead, Unread
+      23, Sub, Owned by Subordinate
+      24, RCEq, Associated Field Is
+      25, RCNe, Associated Field Is Not
+      26, ArrEq, Array Equals
+      27, ArrNe, Array Does Not Equal
+      31, DateBetween, Date Within Range (can only be used with minValue and maxValue)
+      32, DateNotBetween, Date Not Within Range (can only be used with minValue and maxValue)
+      33, DateGt, Date Later Than
+      34, DateGte, Date Later Than or Equal To
+      35, DateLt, Date Earlier Than
+      36, DateLte, Date Earlier Than or Equal To
+      ```
+
+      ### DateRangeEnum Reference
+      ```
+      Enum Value, Enum Character, Description
+      1, Today, Today
+      2, Yesterday, Yesterday
+      3, Tomorrow, Tomorrow
+      4, ThisWeek, This Week
+      5, LastWeek, Last Week
+      6, NextWeek, Next Week
+      7, ThisMonth, This Month
+      8, LastMonth, Last Month
+      9, NextMonth, Next Month
+      12, ThisQuarter, This Quarter
+      13, LastQuarter, Last Quarter
+      14, NextQuarter, Next Quarter
+      15, ThisYear, This Year
+      16, LastYear, Last Year
+      17, NextYear, Next Year
+      18, Customize, Custom
+      21, Last7Day, Past 7 Days
+      22, Last14Day, Past 14 Days
+      23, Last30Day, Past 30 Days
+      31, Next7Day, Next 7 Days
+      32, Next14Day, Next 14 Days
+      33, Next33Day, Next 33 Days
+      ```
+    form: llm
+
+  - name: sort_fields
+    type: string
+    required: false
+    label:
+      en_US: Sort Fields
+      zh_Hans: 排序字段
+    human_description:
+      en_US: The fields to used for sorting
+      zh_Hans: 用于确定排序的字段，不超过3个
+    llm_description: |
+      This optional parameter specifies the unique identifier of the fields that will be used to sort the results. It is in the format of an array of JSON objects, and its structure is defined as follows:
+      ```
+      type SortByFields = {
+        controlId: string; // Field ID used for sorting
+        isAsc: boolean; // Sorting direction, true indicates ascending order, false indicates descending order
+      }[];
+      ```
+    form: llm
+
+  - name: host
+    type: string
+    required: false
+    label:
+      en_US: Host Address
+      zh_Hans: 服务器地址
+    human_description:
+      en_US: The address for the privately deployed HAP server.
+      zh_Hans: 私有部署 HAP 服务器地址，公有云无需填写
+    llm_description: the address for the privately deployed HAP server.
+    form: form
+
+  - name: result_type
+    type: select
+    required: true
+    options:
+      - value: table
+        label:
+          en_US: table text
+          zh_Hans: 表格文本
+      - value: json
+        label:
+          en_US: json text
+          zh_Hans: JSON文本
+    default: table
+    label:
+      en_US: Result type
+      zh_Hans: 结果类型
+    human_description:
+      en_US: used for selecting the result type, table styled text or json text
+      zh_Hans: 用于选择结果类型，使用表格格式文本还是JSON格式文本
+    form: form

@@ -1,0 +1,105 @@
+identity:
+  name: crossref_query_title
+  author: Sakura4036
+  label:
+    en_US: CrossRef Title Query
+    zh_Hans: CrossRef 标题查询
+    pt_BR: CrossRef Title Query
+description:
+  human:
+    en_US: A tool for querying literature information using CrossRef by title.
+    zh_Hans: 一个使用CrossRef通过标题搜索文献信息的工具。
+    pt_BR: A tool for querying literature information using CrossRef by title.
+  llm: A tool for querying literature information using CrossRef by title.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: 标题
+      zh_Hans: 查询语句
+      pt_BR: 标题
+    human_description:
+      en_US: Query bibliographic information, useful for citation look up. Includes titles, authors, ISSNs and publication years
+      zh_Hans: 用于搜索文献信息，有助于查找引用。包括标题，作者，ISSN和出版年份
+      pt_BR: Query bibliographic information, useful for citation look up. Includes titles, authors, ISSNs and publication years
+    llm_description: key words for querying in Web of Science
+    form: llm
+  - name: fuzzy_query
+    type: boolean
+    default: false
+    label:
+      en_US: Whether to fuzzy search
+      zh_Hans: 是否模糊搜索
+      pt_BR: Whether to fuzzy search
+    human_description:
+      en_US: used for selecting the query type, fuzzy query returns more results, precise query returns 1 or none
+      zh_Hans: 用于选择搜索类型，模糊搜索返回更多结果，精确搜索返回1条结果或无
+      pt_BR: used for selecting the query type, fuzzy query returns more results, precise query returns 1 or none
+    form: form
+  - name: limit
+    type: number
+    required: false
+    label:
+      en_US: max query number
+      zh_Hans: 最大搜索数
+      pt_BR: max query number
+    human_description:
+      en_US: max query number(fuzzy search returns the maximum number of results or precise search the maximum number of matches)
+      zh_Hans: 最大搜索数(模糊搜索返回的最大结果数或精确搜索最大匹配数)
+      pt_BR: max query number(fuzzy search returns the maximum number of results or precise search the maximum number of matches)
+    form: llm
+    default: 50
+  - name: sort
+    type: select
+    required: true
+    options:
+      - value: relevance
+        label:
+          en_US: relevance
+          zh_Hans: 相关性
+          pt_BR: relevance
+      - value: published
+        label:
+          en_US: publication date
+          zh_Hans: 出版日期
+          pt_BR: publication date
+      - value: references-count
+        label:
+          en_US: references-count
+          zh_Hans: 引用次数
+          pt_BR: references-count
+    default: relevance
+    label:
+      en_US: sorting field
+      zh_Hans: 排序字段
+      pt_BR: sorting field
+    human_description:
+      en_US: Sorting of query results
+      zh_Hans: 检索结果的排序字段
+      pt_BR: Sorting of query results
+    form: form
+  - name: order
+    type: select
+    required: true
+    options:
+      - value: desc
+        label:
+          en_US: descending
+          zh_Hans: 降序
+          pt_BR: descending
+      - value: asc
+        label:
+          en_US: ascending
+          zh_Hans: 升序
+          pt_BR: ascending
+    default: desc
+    label:
+      en_US: Order
+      zh_Hans: 排序
+      pt_BR: Order
+    human_description:
+      en_US: Order of query results
+      zh_Hans: 检索结果的排序方式
+      pt_BR: Order of query results
+    form: form

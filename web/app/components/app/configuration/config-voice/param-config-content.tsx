@@ -3,9 +3,6 @@ import useSWR from 'swr'
 import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
 import React, { Fragment } from 'react'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Listbox, Transition } from '@headlessui/react'
@@ -31,12 +28,12 @@ const VoiceParamConfig: FC = () => {
 
   let languageItem = languages.find(item => item.value === textToSpeechConfig.language)
   const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
-  if (languages && !languageItem)
+  if (languages && !languageItem && languages.length > 0)
     languageItem = languages[0]
   const language = languageItem?.value
   const voiceItems = useSWR({ appId, language }, fetchAppVoices).data
   let voiceItem = voiceItems?.find(item => item.value === textToSpeechConfig.voice)
-  if (voiceItems && !voiceItem)
+  if (voiceItems && !voiceItem && voiceItems.length > 0)
     voiceItem = voiceItems[0]
 
   const localVoicePlaceholder = voiceItem?.name || t('common.placeholder.select')
@@ -50,13 +47,15 @@ const VoiceParamConfig: FC = () => {
             <div className='mb-2 flex items-center  space-x-1'>
               <div
                 className='leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.voice.voiceSettings.language')}</div>
-              <Tooltip htmlContent={<div className='w-[180px]'>
-                {t('appDebug.voice.voiceSettings.resolutionTooltip').split('\n').map(item => (
-                  <div key={item}>{item}</div>
-                ))}
-              </div>} selector='config-resolution-tooltip'>
-                <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
-              </Tooltip>
+              <Tooltip
+                popupContent={
+                  <div className='w-[180px]'>
+                    {t('appDebug.voice.voiceSettings.resolutionTooltip').split('\n').map(item => (
+                      <div key={item}>{item}</div>
+                    ))}
+                  </div>
+                }
+              />
             </div>
             <Listbox
               value={languageItem}
@@ -125,9 +124,11 @@ const VoiceParamConfig: FC = () => {
             <div
               className='mb-2 leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.voice.voiceSettings.voice')}</div>
             <Listbox
-              value={voiceItem}
+              value={voiceItem ?? {}}
               disabled={!languageItem}
               onChange={(value: Item) => {
+                if (!value.value)
+                  return
                 setTextToSpeechConfig({
                   ...textToSpeechConfig,
                   voice: String(value.value),

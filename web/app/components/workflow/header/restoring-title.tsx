@@ -12,7 +12,7 @@ const RestoringTitle = () => {
   return (
     <div className='flex items-center h-[18px] text-xs text-gray-500'>
       <ClockRefresh className='mr-1 w-3 h-3 text-gray-500' />
-      {t('workflow.common.latestPublished')}
+      {t('workflow.common.latestPublished')}<span> </span>
       {formatTimeFromNow(publishedAt)}
     </div>
   )

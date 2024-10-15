@@ -10,7 +10,7 @@ const translation = {
   pause: '일시 정지',
   playing: '실행 중',
   loading: '로드 중',
-  merMaind: {
+  merMaid: {
     rerender: '다시 렌더링',
   },
   never: '없음',
@@ -80,6 +80,7 @@ const translation = {
     pathParams: '경로 매개변수',
     query: '쿼리',
   },
+  regenerate: '재생성',
 }
 
 export default translation

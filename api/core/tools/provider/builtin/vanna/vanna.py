@@ -13,12 +13,12 @@ class VannaProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
+                user_id="",
                 tool_parameters={
                     "model": "chinook",
                     "db_type": "SQLite",
                     "url": "https://vanna.ai/Chinook.sqlite",
-                    "query": "What are the top 10 customers by sales?"
+                    "query": "What are the top 10 customers by sales?",
                 },
             )
         except Exception as e:

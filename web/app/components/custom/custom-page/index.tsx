@@ -1,6 +1,5 @@
 import { useTranslation } from 'react-i18next'
 import CustomWebAppBrand from '../custom-web-app-brand'
-import CustomAppHeaderBrand from '../custom-app-header-brand'
 import s from '../style.module.css'
 import GridMask from '@/app/components/base/grid-mask'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
@@ -13,7 +12,6 @@ const CustomPage = () => {
   const { plan, enableBilling } = useProviderContext()
 
   const showBillingTip = enableBilling && plan.type === Plan.sandbox
-  const showCustomAppHeaderBrand = enableBilling && plan.type === Plan.sandbox
   const showContact = enableBilling && (plan.type === Plan.professional || plan.type === Plan.team)
 
   return (
@@ -32,14 +30,6 @@ const CustomPage = () => {
         )
       }
       <CustomWebAppBrand />
-      {
-        showCustomAppHeaderBrand && (
-          <>
-            <div className='my-2 h-[0.5px] bg-gray-100'></div>
-            <CustomAppHeaderBrand />
-          </>
-        )
-      }
       {
         showContact && (
           <div className='absolute bottom-0 h-[50px] leading-[50px] text-xs text-gray-500'>

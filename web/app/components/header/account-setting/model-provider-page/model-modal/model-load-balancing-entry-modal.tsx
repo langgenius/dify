@@ -40,7 +40,7 @@ import {
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useToastContext } from '@/app/components/base/toast'
-import ConfirmCommon from '@/app/components/base/confirm/common'
+import Confirm from '@/app/components/base/confirm'
 
 type ModelModalProps = {
   provider: ModelProvider
@@ -192,12 +192,12 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
   })
   const getSecretValues = useCallback((v: FormValue) => {
     return secretFormSchemas.reduce((prev, next) => {
-      if (v[next.variable] === initialFormSchemasValue[next.variable])
+      if (isEditMode && v[next.variable] && v[next.variable] === initialFormSchemasValue[next.variable])
         prev[next.variable] = '[__HIDDEN__]'
 
       return prev
     }, {} as Record<string, string>)
-  }, [initialFormSchemasValue, secretFormSchemas])
+  }, [initialFormSchemasValue, isEditMode, secretFormSchemas])
 
   // const handleValueChange = ({ __model_type, __model_name, ...v }: FormValue) => {
   const handleValueChange = (v: FormValue) => {
@@ -214,6 +214,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
           ...value,
           ...getSecretValues(value),
         },
+        entry?.id,
       )
       if (res.status === ValidatedStatus.Success) {
         // notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -330,12 +331,11 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
           </div>
           {
             showConfirm && (
-              <ConfirmCommon
+              <Confirm
                 title={t('common.modelProvider.confirmDelete')}
                 isShow={showConfirm}
                 onCancel={() => setShowConfirm(false)}
                 onConfirm={handleRemove}
-                confirmWrapperClassName='z-[70]'
               />
             )
           }

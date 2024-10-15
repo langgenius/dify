@@ -1,0 +1,78 @@
+identity:
+  name: jina_tokenizer
+  author: hjlarry
+  label:
+    en_US: Segment
+    zh_Hans: 切分器
+    pt_BR: Segment
+description:
+  human:
+    en_US: Split long text into chunks and do tokenization.
+    zh_Hans: 将长文本拆分成小段落，并做分词处理。
+    pt_BR: Dividir o texto longo em pedaços e fazer tokenização.
+  llm: Free API to tokenize text and segment long text into chunks.
+parameters:
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: Content
+      zh_Hans: 内容
+      pt_BR: Conteúdo
+    llm_description: the content which need to tokenize or segment
+    form: llm
+  - name: return_tokens
+    type: boolean
+    required: false
+    label:
+      en_US: Return the tokens
+      zh_Hans: 是否返回tokens
+      pt_BR: Retornar os tokens
+    human_description:
+      en_US: Return the tokens and their corresponding ids in the response.
+      zh_Hans: 返回tokens及其对应的ids。
+      pt_BR: Retornar os tokens e seus respectivos ids na resposta.
+    form: form
+  - name: return_chunks
+    type: boolean
+    label:
+      en_US: Return the chunks
+      zh_Hans: 是否分块
+      pt_BR: Retornar os chunks
+    human_description:
+      en_US: Chunking the input into semantically meaningful segments while handling a wide variety of text types and edge cases based on common structural cues.
+      zh_Hans: 将输入文本分块为语义有意义的片段，同时基于常见的结构线索处理各种文本类型和特殊情况。
+      pt_BR: Dividir o texto de entrada em segmentos semanticamente significativos, enquanto lida com uma ampla variedade de tipos de texto e casos de borda com base em pistas estruturais comuns.
+    form: form
+  - name: tokenizer
+    type: select
+    options:
+      - value: cl100k_base
+        label:
+          en_US: cl100k_base
+      - value: o200k_base
+        label:
+          en_US: o200k_base
+      - value: p50k_base
+        label:
+          en_US: p50k_base
+      - value: r50k_base
+        label:
+          en_US: r50k_base
+      - value: p50k_edit
+        label:
+          en_US: p50k_edit
+      - value: gpt2
+        label:
+          en_US: gpt2
+    label:
+      en_US: Tokenizer
+    human_description:
+      en_US: |
+        · cl100k_base --- gpt-4, gpt-3.5-turbo, gpt-3.5
+        · o200k_base  --- gpt-4o, gpt-4o-mini
+        · p50k_base   --- text-davinci-003, text-davinci-002
+        · r50k_base   --- text-davinci-001, text-curie-001
+        · p50k_edit   --- text-davinci-edit-001, code-davinci-edit-001
+        · gpt2        --- gpt-2
+    form: form

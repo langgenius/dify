@@ -15,7 +15,7 @@ export type ICategoryProps = {
   value: string
   onChange: (value: AppCategory | string) => void
   /**
-   * default value for searchparam 'category' in en
+   * default value for search param 'category' in en
    */
   allCategoriesEn: string
 }
@@ -28,7 +28,7 @@ const Category: FC<ICategoryProps> = ({
   allCategoriesEn,
 }) => {
   const { t } = useTranslation()
-  const isAllCategories = !list.includes(value)
+  const isAllCategories = !list.includes(value as AppCategory)
 
   const itemClassName = (isSelected: boolean) => cn(
     'flex items-center px-3 py-[7px] h-[32px] rounded-lg border-[0.5px] border-transparent text-gray-700 font-medium leading-[18px] cursor-pointer hover:bg-gray-200',

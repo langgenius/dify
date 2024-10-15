@@ -5,13 +5,14 @@ from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 
 
 class APIBasedExtensionService:
-
     @staticmethod
     def get_all_by_tenant_id(tenant_id: str) -> list[APIBasedExtension]:
-        extension_list = db.session.query(APIBasedExtension) \
-                    .filter_by(tenant_id=tenant_id) \
-                    .order_by(APIBasedExtension.created_at.desc()) \
-                    .all()
+        extension_list = (
+            db.session.query(APIBasedExtension)
+            .filter_by(tenant_id=tenant_id)
+            .order_by(APIBasedExtension.created_at.desc())
+            .all()
+        )
 
         for extension in extension_list:
             extension.api_key = decrypt_token(extension.tenant_id, extension.api_key)
@@ -35,10 +36,12 @@ class APIBasedExtensionService:
 
     @staticmethod
     def get_with_tenant_id(tenant_id: str, api_based_extension_id: str) -> APIBasedExtension:
-        extension = db.session.query(APIBasedExtension) \
-            .filter_by(tenant_id=tenant_id) \
-            .filter_by(id=api_based_extension_id) \
+        extension = (
+            db.session.query(APIBasedExtension)
+            .filter_by(tenant_id=tenant_id)
+            .filter_by(id=api_based_extension_id)
             .first()
+        )
 
         if not extension:
             raise ValueError("API based extension is not found")
@@ -55,20 +58,24 @@ class APIBasedExtensionService:
 
         if not extension_data.id:
             # case one: check new data, name must be unique
-            is_name_existed = db.session.query(APIBasedExtension) \
-                .filter_by(tenant_id=extension_data.tenant_id) \
-                .filter_by(name=extension_data.name) \
+            is_name_existed = (
+                db.session.query(APIBasedExtension)
+                .filter_by(tenant_id=extension_data.tenant_id)
+                .filter_by(name=extension_data.name)
                 .first()
+            )
 
             if is_name_existed:
                 raise ValueError("name must be unique, it is already existed")
         else:
             # case two: check existing data, name must be unique
-            is_name_existed = db.session.query(APIBasedExtension) \
-                .filter_by(tenant_id=extension_data.tenant_id) \
-                .filter_by(name=extension_data.name) \
-                .filter(APIBasedExtension.id != extension_data.id) \
+            is_name_existed = (
+                db.session.query(APIBasedExtension)
+                .filter_by(tenant_id=extension_data.tenant_id)
+                .filter_by(name=extension_data.name)
+                .filter(APIBasedExtension.id != extension_data.id)
                 .first()
+            )
 
             if is_name_existed:
                 raise ValueError("name must be unique, it is already existed")
@@ -92,7 +99,7 @@ class APIBasedExtensionService:
         try:
             client = APIBasedExtensionRequestor(extension_data.api_endpoint, extension_data.api_key)
             resp = client.request(point=APIBasedExtensionPoint.PING, params={})
-            if resp.get('result') != 'pong':
+            if resp.get("result") != "pong":
                 raise ValueError(resp)
         except Exception as e:
             raise ValueError("connection error: {}".format(e))

@@ -1,0 +1,57 @@
+identity:
+  name: write_document
+  author: Doug Lea
+  label:
+    en_US: Write Document
+    zh_Hans: 在飞书文档中新增内容
+description:
+  human:
+    en_US: Adding new content to Lark documents
+    zh_Hans: 在飞书文档中新增内容
+  llm: A tool for adding new content to Lark documents.
+parameters:
+  - name: document_id
+    type: string
+    required: true
+    label:
+      en_US: document_id
+      zh_Hans: 飞书文档的唯一标识
+    human_description:
+      en_US: Unique identifier for a Feishu document. You can also input the document's URL.
+      zh_Hans: 飞书文档的唯一标识，支持输入文档的 URL。
+    llm_description: 飞书文档的唯一标识，支持输入文档的 URL。
+    form: llm
+
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: Plain text or Markdown content
+      zh_Hans: 纯文本或 Markdown 内容
+    human_description:
+      en_US: Plain text or Markdown content. Note that embedded tables in the document should not have merged cells.
+      zh_Hans: 纯文本或 Markdown 内容。注意文档的内嵌套表格不允许有单元格合并。
+    llm_description: 纯文本或 Markdown 内容，注意文档的内嵌套表格不允许有单元格合并。
+    form: llm
+
+  - name: position
+    type: select
+    required: false
+    options:
+      - value: start
+        label:
+          en_US: document start
+          zh_Hans: 文档开始
+      - value: end
+        label:
+          en_US: document end
+          zh_Hans: 文档结束
+    default: "end"
+    label:
+      en_US: position
+      zh_Hans: 内容添加位置
+    human_description:
+      en_US: Content insertion position, optional values are start, end. 'start' means adding content at the beginning of the document; 'end' means adding content at the end of the document. The default value is end.
+      zh_Hans: 内容添加位置，可选值有 start、end。start 表示在文档开头添加内容；end 表示在文档结尾添加内容，默认值为 end。
+    llm_description: 内容添加位置，可选值有 start、end。start 表示在文档开头添加内容；end 表示在文档结尾添加内容，默认值为 end。
+    form: form

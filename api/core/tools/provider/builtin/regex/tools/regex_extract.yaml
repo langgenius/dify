@@ -1,0 +1,38 @@
+identity:
+  name: regex_extract
+  author: zhuhao
+  label:
+    en_US: Regex Extract
+    zh_Hans: 正则表达式内容提取
+    pt_BR: Regex Extract
+description:
+  human:
+    en_US: A tool for extracting matching content using regular expressions.
+    zh_Hans: 一个用于利用正则表达式提取匹配内容结果的工具。
+    pt_BR: A tool for extracting matching content using regular expressions.
+  llm: A tool for extracting matching content using regular expressions.
+parameters:
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: Content to be extracted
+      zh_Hans: 内容
+      pt_BR: Content to be extracted
+    human_description:
+      en_US: Content to be extracted
+      zh_Hans: 内容
+      pt_BR: Content to be extracted
+    form: llm
+  - name: expression
+    type: string
+    required: true
+    label:
+      en_US: Regular expression
+      zh_Hans: 正则表达式
+      pt_BR: Regular expression
+    human_description:
+      en_US: Regular expression
+      zh_Hans: 正则表达式
+      pt_BR: Regular expression
+    form: llm

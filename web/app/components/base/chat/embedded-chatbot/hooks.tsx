@@ -11,10 +11,10 @@ import { useLocalStorageState } from 'ahooks'
 import produce from 'immer'
 import type {
   ChatConfig,
-  ChatItem,
   Feedback,
 } from '../types'
 import { CONVERSATION_ID_INFO } from '../constants'
+import { getPrevChatList, getProcessedInputsFromUrlParams } from '../utils'
 import {
   fetchAppInfo,
   fetchAppMeta,
@@ -28,7 +28,6 @@ import type {
   // AppData,
   ConversationItem,
 } from '@/models/share'
-import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { useToastContext } from '@/app/components/base/toast'
 import { changeLanguage } from '@/i18n/i18next-config'
 
@@ -74,32 +73,12 @@ export const useEmbeddedChatbot = () => {
   const { data: appConversationData, isLoading: appConversationDataLoading, mutate: mutateAppConversationData } = useSWR(['appConversationData', isInstalledApp, appId, false], () => fetchConversations(isInstalledApp, appId, undefined, false, 100))
   const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null, () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId))
 
-  const appPrevChatList = useMemo(() => {
-    const data = appChatListData?.data || []
-    const chatList: ChatItem[] = []
-
-    if (currentConversationId && data.length) {
-      data.forEach((item: any) => {
-        chatList.push({
-          id: `question-${item.id}`,
-          content: item.query,
-          isAnswer: false,
-          message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
-        })
-        chatList.push({
-          id: item.id,
-          content: item.answer,
-          agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
-          feedback: item.feedback,
-          isAnswer: true,
-          citation: item.retriever_resources,
-          message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-        })
-      })
-    }
-
-    return chatList
-  }, [appChatListData, currentConversationId])
+  const appPrevChatList = useMemo(
+    () => (currentConversationId && appChatListData?.data.length)
+      ? getPrevChatList(appChatListData.data)
+      : [],
+    [appChatListData, currentConversationId],
+  )
 
   const [showNewConversationItemInList, setShowNewConversationItemInList] = useState(false)
 
@@ -109,6 +88,7 @@ export const useEmbeddedChatbot = () => {
   const { t } = useTranslation()
   const newConversationInputsRef = useRef<Record<string, any>>({})
   const [newConversationInputs, setNewConversationInputs] = useState<Record<string, any>>({})
+  const [initInputs, setInitInputs] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
     setNewConversationInputs(newInputs)
@@ -116,30 +96,49 @@ export const useEmbeddedChatbot = () => {
   const inputsForms = useMemo(() => {
     return (appParams?.user_input_form || []).filter((item: any) => item.paragraph || item.select || item['text-input'] || item.number).map((item: any) => {
       if (item.paragraph) {
+        let value = initInputs[item.paragraph.variable]
+        if (value && item.paragraph.max_length && value.length > item.paragraph.max_length)
+          value = value.slice(0, item.paragraph.max_length)
+
         return {
           ...item.paragraph,
+          default: value || item.default,
           type: 'paragraph',
         }
       }
       if (item.number) {
+        const convertedNumber = Number(initInputs[item.number.variable]) ?? undefined
         return {
           ...item.number,
+          default: convertedNumber || item.default,
           type: 'number',
         }
       }
       if (item.select) {
+        const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
         return {
           ...item.select,
+          default: (isInputInOptions ? initInputs[item.select.variable] : undefined) || item.default,
           type: 'select',
         }
       }
 
+      let value = initInputs[item['text-input'].variable]
+      if (value && item['text-input'].max_length && value.length > item['text-input'].max_length)
+        value = value.slice(0, item['text-input'].max_length)
+
       return {
         ...item['text-input'],
+        default: value || item.default,
         type: 'text-input',
       }
     })
-  }, [appParams])
+  }, [initInputs, appParams])
+
+  useEffect(() => {
+    // init inputs from url params
+    setInitInputs(getProcessedInputsFromUrlParams())
+  }, [])
   useEffect(() => {
     const conversationInputs: Record<string, any> = {}
 

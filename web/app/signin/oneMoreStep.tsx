@@ -6,8 +6,7 @@ import useSWR from 'swr'
 import { useRouter } from 'next/navigation'
 // import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip/index'
-
+import Tooltip from '@/app/components/base/tooltip'
 import { SimpleSelect } from '@/app/components/base/select'
 import { timezones } from '@/utils/timezone'
 import { LanguagesSupported, languages } from '@/i18n/language'
@@ -88,9 +87,7 @@ const OneMoreStep = () => {
             <label className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
               {t('login.invitationCode')}
               <Tooltip
-                clickable
-                selector='dont-have'
-                htmlContent={
+                popupContent={
                   <div className='w-[256px] text-xs font-medium'>
                     <div className='font-medium'>{t('login.sendUsMail')}</div>
                     <div className='text-xs font-medium cursor-pointer text-primary-600'>
@@ -98,8 +95,9 @@ const OneMoreStep = () => {
                     </div>
                   </div>
                 }
+                needsDelay
               >
-                <span className='cursor-pointer text-primary-600'>{t('login.donthave')}</span>
+                <span className='cursor-pointer text-primary-600'>{t('login.dontHave')}</span>
               </Tooltip>
             </label>
             <div className="mt-1">

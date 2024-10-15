@@ -14,6 +14,7 @@ import {
   RiErrorWarningLine,
   RiLoader2Line,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import type { NodeProps } from '../../types'
 import {
   BlockEnum,
@@ -43,6 +44,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   data,
   children,
 }) => {
+  const { t } = useTranslation()
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
@@ -79,7 +81,8 @@ const BaseNode: FC<BaseNodeProps> = ({
     <div
       className={cn(
         'flex border-[2px] rounded-2xl',
-        showSelectedBorder ? 'border-primary-600' : 'border-transparent',
+        showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
+        !showSelectedBorder && data._inParallelHovering && 'border-workflow-block-border-highlight',
       )}
       ref={nodeRef}
       style={{
@@ -91,7 +94,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         className={cn(
           'group relative pb-1 shadow-xs',
           'border border-transparent rounded-[15px]',
-          data.type !== BlockEnum.Iteration && 'w-[240px] bg-[#fcfdff]',
+          data.type !== BlockEnum.Iteration && 'w-[240px] bg-workflow-block-bg',
           data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-[#fcfdff]/80',
           !data._runningStatus && 'hover:shadow-lg',
           showRunningBorder && '!border-primary-500',
@@ -100,6 +103,13 @@ const BaseNode: FC<BaseNodeProps> = ({
           data._isBundled && '!shadow-lg',
         )}
       >
+        {
+          data._inParallelHovering && (
+            <div className='absolute left-2 -top-2.5 top system-2xs-medium-uppercase text-text-tertiary z-10'>
+              {t('workflow.common.parallelRun')}
+            </div>
+          )
+        }
         {
           data._showAddVariablePopup && (
             <AddVariablePopupWithPosition
@@ -156,7 +166,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           />
           <div
             title={data.title}
-            className='grow mr-1 text-[13px] font-semibold text-gray-700 truncate'
+            className='grow mr-1 system-sm-semibold-uppercase text-text-primary truncate'
           >
             {data.title}
           </div>
@@ -197,7 +207,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         }
         {
           data.desc && data.type !== BlockEnum.Iteration && (
-            <div className='px-3 pt-1 pb-2 text-xs leading-[18px] text-gray-500 whitespace-pre-line break-words'>
+            <div className='px-3 pt-1 pb-2 system-xs-regular text-text-tertiary whitespace-pre-line break-words'>
               {data.desc}
             </div>
           )

@@ -1,0 +1,88 @@
+identity:
+  name: gitlab_commits
+  author: Leo.Wang
+  label:
+    en_US: GitLab Commits
+    zh_Hans: GitLab 提交内容查询
+description:
+  human:
+    en_US: A tool for query GitLab commits, Input should be a exists username or project.
+    zh_Hans: 一个用于查询 GitLab 代码提交内容的工具，输入的内容应该是一个已存在的用户名或者项目名。
+  llm: A tool for query GitLab commits, Input should be a exists username or project.
+parameters:
+  - name: username
+    type: string
+    required: false
+    label:
+      en_US: username
+      zh_Hans: 员工用户名
+    human_description:
+      en_US: username
+      zh_Hans: 员工用户名
+    llm_description: User name for GitLab
+    form: llm
+  - name: repository
+    type: string
+    required: false
+    label:
+      en_US: repository
+      zh_Hans: 仓库路径
+    human_description:
+      en_US: repository
+      zh_Hans: 仓库路径，以namespace/project_name的形式。
+    llm_description: Repository path for GitLab, like namespace/project_name.
+    form: llm
+  - name: project
+    type: string
+    required: false
+    label:
+      en_US: project
+      zh_Hans: 项目名
+    human_description:
+      en_US: project
+      zh_Hans: 项目名
+    llm_description: project for GitLab
+    form: llm
+  - name: start_time
+    type: string
+    required: false
+    label:
+      en_US: start_time
+      zh_Hans: 开始时间
+    human_description:
+      en_US: start_time
+      zh_Hans: 开始时间
+    llm_description: Start time for GitLab
+    form: llm
+  - name: end_time
+    type: string
+    required: false
+    label:
+      en_US: end_time
+      zh_Hans: 结束时间
+    human_description:
+      en_US: end_time
+      zh_Hans: 结束时间
+    llm_description: End time for GitLab
+    form: llm
+  - name: change_type
+    type: select
+    required: false
+    options:
+      - value: all
+        label:
+          en_US: all
+          zh_Hans: 所有
+      - value: new
+        label:
+          en_US: new
+          zh_Hans: 新增
+    default: all
+    label:
+      en_US: change_type
+      zh_Hans: 变更类型
+    human_description:
+      en_US: change_type
+      zh_Hans: 变更类型
+    llm_description: Content change type for GitLab
+    form: llm

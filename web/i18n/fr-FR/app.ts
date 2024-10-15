@@ -67,9 +67,11 @@ const translation = {
   editAppTitle: 'Modifier les informations de l\'application',
   editDone: 'Informations sur l\'application mises à jour',
   editFailed: 'Échec de la mise à jour des informations de l\'application',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Annuler',
+    emoji: 'Emoji',
+    image: 'Image',
   },
   switch: 'Passer à l\'orchestration de flux de travail',
   switchTipStart: 'Une nouvelle copie de l\'application sera créée pour vous, et la nouvelle copie passera à l\'orchestration de flux de travail. La nouvelle copie ne permettra pas le ',
@@ -85,6 +87,52 @@ const translation = {
     workflow: 'Flux de travail',
     completion: 'Terminaison',
   },
+  tracing: {
+    title: 'Traçage des performances de l\'application',
+    description: 'Configuration d\'un fournisseur LLMOps tiers et traçage des performances de l\'application.',
+    config: 'Configurer',
+    collapse: 'Réduire',
+    expand: 'Développer',
+    tracing: 'Traçage',
+    disabled: 'Désactivé',
+    disabledTip: 'Veuillez d\'abord configurer le fournisseur',
+    enabled: 'En service',
+    tracingDescription: 'Capturez le contexte complet de l\'exécution de l\'application, y compris les appels LLM, le contexte, les prompts, les requêtes HTTP et plus encore, vers une plateforme de traçage tierce.',
+    configProviderTitle: {
+      configured: 'Configuré',
+      notConfigured: 'Configurez le fournisseur pour activer le traçage',
+      moreProvider: 'Plus de fournisseurs',
+    },
+    langsmith: {
+      title: 'LangSmith',
+      description: 'Une plateforme de développement tout-en-un pour chaque étape du cycle de vie des applications basées sur LLM.',
+    },
+    langfuse: {
+      title: 'Langfuse',
+      description: 'Traces, évaluations, gestion des prompts et métriques pour déboguer et améliorer votre application LLM.',
+    },
+    inUse: 'En utilisation',
+    configProvider: {
+      title: 'Configurer ',
+      placeholder: 'Entrez votre {{key}}',
+      project: 'Projet',
+      publicKey: 'Clé Publique',
+      secretKey: 'Clé Secrète',
+      viewDocsLink: 'Voir la documentation de {{key}}',
+      removeConfirmTitle: 'Supprimer la configuration de {{key}} ?',
+      removeConfirmContent: 'La configuration actuelle est en cours d\'utilisation, sa suppression désactivera la fonction de Traçage.',
+    },
+    view: 'Vue',
+  },
+  answerIcon: {
+    description: 'S’il faut utiliser l’icône WebApp pour remplacer 🤖 dans l’application partagée',
+    title: 'Utiliser l’icône WebApp pour remplacer 🤖',
+    descriptionInExplore: 'Utilisation de l’icône WebApp pour remplacer 🤖 dans Explore',
+  },
+  importFromDSLUrlPlaceholder: 'Collez le lien DSL ici',
+  importFromDSL: 'Importation à partir d’une DSL',
+  importFromDSLUrl: 'À partir de l’URL',
+  importFromDSLFile: 'À partir d’un fichier DSL',
 }
 
 export default translation

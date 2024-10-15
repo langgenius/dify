@@ -49,13 +49,11 @@ const BlockInput: FC<IBlockInputProps> = ({
     setCurrentValue(value)
   }, [value])
 
-  const isContentChanged = value !== currentValue
-
   const contentEditableRef = useRef<HTMLTextAreaElement>(null)
   const [isEditing, setIsEditing] = useState<boolean>(false)
   useEffect(() => {
     if (isEditing && contentEditableRef.current) {
-      // TODO: Focus at the click positon
+      // TODO: Focus at the click position
       if (currentValue)
         contentEditableRef.current.setSelectionRange(currentValue.length, currentValue.length)
 
@@ -121,7 +119,7 @@ const BlockInput: FC<IBlockInputProps> = ({
             onBlur={() => {
               blur()
               setIsEditing(false)
-              // click confirm also make blur. Then outter value is change. So below code has problem.
+              // click confirm also make blur. Then outer value is change. So below code has problem.
               // setTimeout(() => {
               //   handleCancel()
               // }, 1000)

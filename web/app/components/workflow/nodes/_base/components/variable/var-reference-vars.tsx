@@ -16,6 +16,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { checkKeys } from '@/utils/var'
 
 type ObjectChildrenProps = {
@@ -48,6 +49,9 @@ const Item: FC<ItemProps> = ({
   itemWidth,
 }) => {
   const isObj = itemData.type === VarType.object && itemData.children && itemData.children.length > 0
+  const isSys = itemData.variable.startsWith('sys.')
+  const isEnv = itemData.variable.startsWith('env.')
+  const isChatVar = itemData.variable.startsWith('conversation.')
   const itemRef = useRef(null)
   const [isItemHovering, setIsItemHovering] = useState(false)
   const _ = useHover(itemRef, {
@@ -76,7 +80,7 @@ const Item: FC<ItemProps> = ({
   }, [isHovering])
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
-    if (itemData.variable.startsWith('sys.')) { // system variable
+    if (isSys || isEnv || isChatVar) { // system variable | environment variable | conversation variable
       onChange([...objPath, ...itemData.variable.split('.')], itemData)
     }
     else {
@@ -97,12 +101,21 @@ const Item: FC<ItemProps> = ({
             isHovering && (isObj ? 'bg-primary-50' : 'bg-gray-50'),
             'relative w-full flex items-center h-6 pl-3  rounded-md cursor-pointer')
           }
-          // style={{ width: itemWidth || 252 }}
           onClick={handleChosen}
         >
           <div className='flex items-center w-0 grow'>
-            <Variable02 className='shrink-0 w-3.5 h-3.5 text-primary-500' />
-            <div title={itemData.variable} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{itemData.variable}</div>
+            {!isEnv && !isChatVar && <Variable02 className='shrink-0 w-3.5 h-3.5 text-primary-500' />}
+            {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
+            {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
+            {!isEnv && !isChatVar && (
+              <div title={itemData.variable} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{itemData.variable}</div>
+            )}
+            {isEnv && (
+              <div title={itemData.variable} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{itemData.variable.replace('env.', '')}</div>
+            )}
+            {isChatVar && (
+              <div title={itemData.des} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{itemData.variable.replace('conversation.', '')}</div>
+            )}
           </div>
           <div className='ml-1 shrink-0 text-xs font-normal text-gray-500 capitalize'>{itemData.type}</div>
           {isObj && (
@@ -205,8 +218,9 @@ const VarReferenceVars: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
+
   const filteredVars = vars.filter((v) => {
-    const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.'))
+    const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.'))
     return children.length > 0
   }).filter((node) => {
     if (!searchText)
@@ -217,7 +231,7 @@ const VarReferenceVars: FC<Props> = ({
     })
     return children.length > 0
   }).map((node) => {
-    let vars = node.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.'))
+    let vars = node.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.'))
     if (searchText) {
       const searchTextLower = searchText.toLowerCase()
       if (!node.title.toLowerCase().includes(searchTextLower))
@@ -229,6 +243,7 @@ const VarReferenceVars: FC<Props> = ({
       vars,
     }
   })
+
   const [isFocus, {
     setFalse: setBlur,
     setTrue: setFocus,
