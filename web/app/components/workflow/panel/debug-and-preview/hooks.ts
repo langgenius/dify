@@ -6,6 +6,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
+import { v4 as uuidV4 } from 'uuid'
 import { useWorkflowRun } from '../../hooks'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 import type {
@@ -161,7 +162,7 @@ export const useChat = (
       message_files: params.files,
     }
 
-    const placeholderAnswerId = `answer-placeholder-${Date.now()}`
+    const placeholderAnswerId = uuidV4()
     const placeholderAnswerItem = {
       id: placeholderAnswerId,
       content: '',

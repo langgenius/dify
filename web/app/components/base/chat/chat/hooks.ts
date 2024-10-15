@@ -222,7 +222,7 @@ export const useChat = (
       message_files: data.files,
     }
 
-    const placeholderAnswerId = `answer-placeholder-${Date.now()}`
+    const placeholderAnswerId = uuidV4()
     const placeholderAnswerItem = {
       id: placeholderAnswerId,
       content: '',
