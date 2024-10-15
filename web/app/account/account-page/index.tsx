@@ -32,6 +32,7 @@ const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 export default function AccountPage() {
   const { t } = useTranslation()
+  const { systemFeatures } = useAppContext()
   const { mutateUserProfile, userProfile, apps } = useAppContext()
   const { notify } = useContext(ToastContext)
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
@@ -162,7 +163,7 @@ export default function AccountPage() {
         </div>
       </div>
       {
-        IS_CE_EDITION && (
+        systemFeatures.enable_email_password_login && (
           <div className='mb-8 flex justify-between gap-2'>
             <div>
               <div className='mb-1 text-sm font-medium text-gray-900'>{t('common.account.password')}</div>
@@ -195,8 +196,7 @@ export default function AccountPage() {
           >
             <div className='mb-6 text-lg font-medium text-gray-900'>{t('common.account.editName')}</div>
             <div className={titleClassName}>{t('common.account.name')}</div>
-            <input
-              className={inputClassName}
+            <Input className='mt-2'
               value={editName}
               onChange={e => setEditName(e.target.value)}
             />
