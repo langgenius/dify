@@ -21,6 +21,8 @@ const ChangePasswordForm = () => {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showSuccess, setShowSuccess] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const showErrorMessage = useCallback((message: string) => {
     Toast.notify({
@@ -109,14 +111,24 @@ const ChangePasswordForm = () => {
                 <label htmlFor="password" className="my-2 system-md-semibold text-text-secondary">
                   {t('common.account.newPassword')}
                 </label>
-                <Input
-                  id="password"
-                  type='password'
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder={t('login.passwordPlaceholder') || ''}
-                  className='mt-1'
-                />
+                <div className='relative mt-1'>
+                  <Input
+                    id="password" type={showPassword ? 'text' : 'password'}
+                    value={password}
+                    onChange={e => setPassword(e.target.value)}
+                    placeholder={t('login.passwordPlaceholder') || ''}
+                  />
+
+                  <div className="absolute inset-y-0 right-0 flex items-center">
+                    <Button
+                      type="button"
+                      variant='ghost'
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? '👀' : '😝'}
+                    </Button>
+                  </div>
+                </div>
                 <div className='mt-1 body-xs-regular text-text-secondary'>{t('login.error.passwordInvalid')}</div>
               </div>
               {/* Confirm Password */}
@@ -124,14 +136,24 @@ const ChangePasswordForm = () => {
                 <label htmlFor="confirmPassword" className="my-2 system-md-semibold text-text-secondary">
                   {t('common.account.confirmPassword')}
                 </label>
-                <Input
-                  id="confirmPassword"
-                  type='password'
-                  value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder={t('login.confirmPasswordPlaceholder') || ''}
-                  className='mt-1'
-                />
+                <div className='relative mt-1'>
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={e => setConfirmPassword(e.target.value)}
+                    placeholder={t('login.confirmPasswordPlaceholder') || ''}
+                  />
+                  <div className="absolute inset-y-0 right-0 flex items-center">
+                    <Button
+                      type="button"
+                      variant='ghost'
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    >
+                      {showConfirmPassword ? '👀' : '😝'}
+                    </Button>
+                  </div>
+                </div>
               </div>
               <div>
                 <Button

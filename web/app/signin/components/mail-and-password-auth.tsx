@@ -133,7 +133,7 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
           placeholder={t('login.passwordPlaceholder') || ''}
           tabIndex={2}
         />
-        <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+        <div className="absolute inset-y-0 right-0 flex items-center">
           <Button
             type="button"
             variant='ghost'
