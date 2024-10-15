@@ -45,7 +45,7 @@ class EmailOrPasswordMismatchError(BaseHTTPException):
 
 class EmailPasswordLoginLimitError(BaseHTTPException):
     error_code = "email_code_login_limit"
-    description = "The account was locked for 24 hours because the password was entered too many times."
+    description = "Too many incorrect password attempts. Please try again later."
     code = 429
 
 
