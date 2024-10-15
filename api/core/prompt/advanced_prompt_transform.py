@@ -150,7 +150,7 @@ class AdvancedPromptTransform(PromptTransform):
                     for k, v in inputs.items():
                         if k.startswith("#"):
                             vp.add(k[1:-1].split("."), v)
-                    raw_prompt.replace("{{#context#}}", context or "")
+                    raw_prompt = raw_prompt.replace("{{#context#}}", context or "")
                     prompt = vp.convert_template(raw_prompt).text
                 else:
                     parser = PromptTemplateParser(template=raw_prompt, with_variable_tmpl=self.with_variable_tmpl)
