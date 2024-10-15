@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 from typing import Any, Optional
 from urllib.parse import urlparse
 
@@ -76,7 +77,7 @@ class ElasticSearchVector(BaseVector):
             raise ValueError("Elasticsearch vector database version must be greater than 8.0.0")
 
     def get_type(self) -> str:
-        return "elasticsearch"
+        return VectorType.ELASTICSEARCH
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
@@ -112,7 +113,8 @@ class ElasticSearchVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 10)
-        knn = {"field": Field.VECTOR.value, "query_vector": query_vector, "k": top_k}
+        num_candidates = math.ceil(top_k * 1.5)
+        knn = {"field": Field.VECTOR.value, "query_vector": query_vector, "k": top_k, "num_candidates": num_candidates}
 
         results = self._client.search(index=self._collection_name, knn=knn, size=top_k)
 
