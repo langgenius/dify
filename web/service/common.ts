@@ -174,8 +174,8 @@ export const invitationCheck: Fetcher<CommonResponse & { is_valid: boolean; data
   return get<CommonResponse & { is_valid: boolean; data: { workspace_name: string; email: string; workspace_id: string } }>(url, { params })
 }
 
-export const activateMember: Fetcher<CommonResponse & { data: string }, { url: string; body: any }> = ({ url, body }) => {
-  return post<CommonResponse & { data: string }>(url, { body })
+export const activateMember: Fetcher<LoginResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post<LoginResponse>(url, { body })
 }
 
 export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (url) => {

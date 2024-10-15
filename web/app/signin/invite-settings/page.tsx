@@ -52,7 +52,8 @@ export default function InviteSettingsPage() {
         },
       })
       if (res.result === 'success') {
-        localStorage.setItem('console_token', res.data)
+        localStorage.setItem('console_token', res.data.access_token)
+        localStorage.setItem('refresh_token', res.data.refresh_token)
         setLocaleOnClient(language, false)
         router.replace('/apps')
       }
@@ -60,7 +61,7 @@ export default function InviteSettingsPage() {
     catch {
       recheck()
     }
-  }, [language, name, recheck, setLocaleOnClient, timezone, token, router])
+  }, [language, name, recheck, setLocaleOnClient, timezone, token, router, t])
 
   if (!checkRes)
     return <Loading />
