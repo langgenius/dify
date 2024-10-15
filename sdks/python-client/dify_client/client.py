@@ -9,10 +9,15 @@ class DifyClient:
         self.base_url = base_url
 
     def _send_request(self, method, endpoint, json=None, params=None, stream=False):
-        headers = {"Authorization": f"Bearer {self.api_key}", "Content-Type": "application/json"}
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
 
         url = f"{self.base_url}{endpoint}"
-        response = requests.request(method, url, json=json, params=params, headers=headers, stream=stream)
+        response = requests.request(
+            method, url, json=json, params=params, headers=headers, stream=stream
+        )
 
         return response
 
@@ -20,7 +25,9 @@ class DifyClient:
         headers = {"Authorization": f"Bearer {self.api_key}"}
 
         url = f"{self.base_url}{endpoint}"
-        response = requests.request(method, url, data=data, headers=headers, files=files)
+        response = requests.request(
+            method, url, data=data, headers=headers, files=files
+        )
 
         return response
 
@@ -34,7 +41,9 @@ class DifyClient:
 
     def file_upload(self, user, files):
         data = {"user": user}
-        return self._send_request_with_files("POST", "/files/upload", data=data, files=files)
+        return self._send_request_with_files(
+            "POST", "/files/upload", data=data, files=files
+        )
 
     def text_to_audio(self, text: str, user: str, streaming: bool = False):
         data = {"text": text, "user": user, "streaming": streaming}
@@ -47,25 +56,52 @@ class DifyClient:
 
 class CompletionClient(DifyClient):
     def create_completion_message(self, inputs, response_mode, user, files=None):
-        data = {"inputs": inputs, "response_mode": response_mode, "user": user, "files": files}
+        data = {
+            "inputs": inputs,
+            "response_mode": response_mode,
+            "user": user,
+            "files": files,
+        }
         return self._send_request(
-            "POST", "/completion-messages", data, stream=True if response_mode == "streaming" else False
+            "POST",
+            "/completion-messages",
+            data,
+            stream=True if response_mode == "streaming" else False,
         )
 
 
 class ChatClient(DifyClient):
-    def create_chat_message(self, inputs, query, user, response_mode="blocking", conversation_id=None, files=None):
-        data = {"inputs": inputs, "query": query, "user": user, "response_mode": response_mode, "files": files}
+    def create_chat_message(
+        self,
+        inputs,
+        query,
+        user,
+        response_mode="blocking",
+        conversation_id=None,
+        files=None,
+    ):
+        data = {
+            "inputs": inputs,
+            "query": query,
+            "user": user,
+            "response_mode": response_mode,
+            "files": files,
+        }
         if conversation_id:
             data["conversation_id"] = conversation_id
 
         return self._send_request(
-            "POST", "/chat-messages", data, stream=True if response_mode == "streaming" else False
+            "POST",
+            "/chat-messages",
+            data,
+            stream=True if response_mode == "streaming" else False,
         )
 
     def get_suggested(self, message_id, user: str):
         params = {"user": user}
-        return self._send_request("GET", f"/messages/{message_id}/suggested", params=params)
+        return self._send_request(
+            "GET", f"/messages/{message_id}/suggested", params=params
+        )
 
     def stop_message(self, task_id, user):
         data = {"user": user}
@@ -75,7 +111,9 @@ class ChatClient(DifyClient):
         params = {"user": user, "last_id": last_id, "limit": limit, "pinned": pinned}
         return self._send_request("GET", "/conversations", params=params)
 
-    def get_conversation_messages(self, user, conversation_id=None, first_id=None, limit=None):
+    def get_conversation_messages(
+        self, user, conversation_id=None, first_id=None, limit=None
+    ):
         params = {"user": user}
 
         if conversation_id:
@@ -87,9 +125,13 @@ class ChatClient(DifyClient):
 
         return self._send_request("GET", "/messages", params=params)
 
-    def rename_conversation(self, conversation_id, name, auto_generate: bool, user: str):
+    def rename_conversation(
+        self, conversation_id, name, auto_generate: bool, user: str
+    ):
         data = {"name": name, "auto_generate": auto_generate, "user": user}
-        return self._send_request("POST", f"/conversations/{conversation_id}/name", data)
+        return self._send_request(
+            "POST", f"/conversations/{conversation_id}/name", data
+        )
 
     def delete_conversation(self, conversation_id, user):
         data = {"user": user}
@@ -102,7 +144,9 @@ class ChatClient(DifyClient):
 
 
 class WorkflowClient(DifyClient):
-    def run(self, inputs: dict, response_mode: str = "streaming", user: str = "abc-123"):
+    def run(
+        self, inputs: dict, response_mode: str = "streaming", user: str = "abc-123"
+    ):
         data = {"inputs": inputs, "response_mode": response_mode, "user": user}
         return self._send_request("POST", "/workflows/run", data)
 
@@ -115,7 +159,9 @@ class WorkflowClient(DifyClient):
 
 
 class KnowledgeBaseClient(DifyClient):
-    def __init__(self, api_key, base_url: str = "https://api.dify.ai/v1", dataset_id: str = None):
+    def __init__(
+        self, api_key, base_url: str = "https://api.dify.ai/v1", dataset_id: str = None
+    ):
         """
         Construct a KnowledgeBaseClient object.
 
@@ -137,7 +183,9 @@ class KnowledgeBaseClient(DifyClient):
         return self._send_request("POST", "/datasets", {"name": name}, **kwargs)
 
     def list_datasets(self, page: int = 1, page_size: int = 20, **kwargs):
-        return self._send_request("GET", f"/datasets?page={page}&limit={page_size}", **kwargs)
+        return self._send_request(
+            "GET", f"/datasets?page={page}&limit={page_size}", **kwargs
+        )
 
     def create_document_by_text(self, name, text, extra_params: dict = None, **kwargs):
         """
@@ -165,13 +213,20 @@ class KnowledgeBaseClient(DifyClient):
         }
         :return: Response from the API
         """
-        data = {"indexing_technique": "high_quality", "process_rule": {"mode": "automatic"}, "name": name, "text": text}
+        data = {
+            "indexing_technique": "high_quality",
+            "process_rule": {"mode": "automatic"},
+            "name": name,
+            "text": text,
+        }
         if extra_params is not None and isinstance(extra_params, dict):
             data.update(extra_params)
         url = f"/datasets/{self._get_dataset_id()}/document/create_by_text"
         return self._send_request("POST", url, json=data, **kwargs)
 
-    def update_document_by_text(self, document_id, name, text, extra_params: dict = None, **kwargs):
+    def update_document_by_text(
+        self, document_id, name, text, extra_params: dict = None, **kwargs
+    ):
         """
         Update a document by text.
 
@@ -201,10 +256,14 @@ class KnowledgeBaseClient(DifyClient):
         data = {"name": name, "text": text}
         if extra_params is not None and isinstance(extra_params, dict):
             data.update(extra_params)
-        url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/update_by_text"
+        url = (
+            f"/datasets/{self._get_dataset_id()}/documents/{document_id}/update_by_text"
+        )
         return self._send_request("POST", url, json=data, **kwargs)
 
-    def create_document_by_file(self, file_path, original_document_id=None, extra_params: dict = None):
+    def create_document_by_file(
+        self, file_path, original_document_id=None, extra_params: dict = None
+    ):
         """
         Create a document by file.
 
@@ -231,15 +290,22 @@ class KnowledgeBaseClient(DifyClient):
         :return: Response from the API
         """
         files = {"file": open(file_path, "rb")}
-        data = {"process_rule": {"mode": "automatic"}, "indexing_technique": "high_quality"}
+        data = {
+            "process_rule": {"mode": "automatic"},
+            "indexing_technique": "high_quality",
+        }
         if extra_params is not None and isinstance(extra_params, dict):
             data.update(extra_params)
         if original_document_id is not None:
             data["original_document_id"] = original_document_id
         url = f"/datasets/{self._get_dataset_id()}/document/create_by_file"
-        return self._send_request_with_files("POST", url, {"data": json.dumps(data)}, files)
+        return self._send_request_with_files(
+            "POST", url, {"data": json.dumps(data)}, files
+        )
 
-    def update_document_by_file(self, document_id, file_path, extra_params: dict = None):
+    def update_document_by_file(
+        self, document_id, file_path, extra_params: dict = None
+    ):
         """
         Update a document by file.
 
@@ -269,8 +335,12 @@ class KnowledgeBaseClient(DifyClient):
         data = {}
         if extra_params is not None and isinstance(extra_params, dict):
             data.update(extra_params)
-        url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/update_by_file"
-        return self._send_request_with_files("POST", url, {"data": json.dumps(data)}, files)
+        url = (
+            f"/datasets/{self._get_dataset_id()}/documents/{document_id}/update_by_file"
+        )
+        return self._send_request_with_files(
+            "POST", url, {"data": json.dumps(data)}, files
+        )
 
     def batch_indexing_status(self, batch_id: str, **kwargs):
         """
@@ -301,7 +371,9 @@ class KnowledgeBaseClient(DifyClient):
         url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}"
         return self._send_request("DELETE", url)
 
-    def list_documents(self, page: int = None, page_size: int = None, keyword: str = None, **kwargs):
+    def list_documents(
+        self, page: int = None, page_size: int = None, keyword: str = None, **kwargs
+    ):
         """
         Get a list of documents in this dataset.
 
@@ -329,7 +401,9 @@ class KnowledgeBaseClient(DifyClient):
         url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/segments"
         return self._send_request("POST", url, json=data, **kwargs)
 
-    def query_segments(self, document_id, keyword: str = None, status: str = None, **kwargs):
+    def query_segments(
+        self, document_id, keyword: str = None, status: str = None, **kwargs
+    ):
         """
         Query segments in this document.
 

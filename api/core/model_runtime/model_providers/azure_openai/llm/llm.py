@@ -119,7 +119,15 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         try:
             client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
-            if ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
+            if model.startswith("o1"):
+                client.chat.completions.create(
+                    messages=[{"role": "user", "content": "ping"}],
+                    model=model,
+                    temperature=1,
+                    max_completion_tokens=20,
+                    stream=False,
+                )
+            elif ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
                 # chat model
                 client.chat.completions.create(
                     messages=[{"role": "user", "content": "ping"}],
