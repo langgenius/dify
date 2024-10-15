@@ -167,6 +167,9 @@ const translation = {
     delete: '刪除帳戶',
     deleteTip: '刪除您的帳戶將永久刪除您的所有資料並且無法恢復。',
     deleteConfirmTip: '請將以下內容從您的註冊電子郵件發送至 ',
+    account: '帳戶',
+    myAccount: '我的帳戶',
+    studio: 'Dify 工作室',
   },
   members: {
     team: '團隊',

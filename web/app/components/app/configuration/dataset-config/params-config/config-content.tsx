@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useEffect, useMemo } from 'react'
+import { memo, useCallback, useEffect, useMemo } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScore from './weighted-score'
@@ -11,7 +11,7 @@ import type {
   DatasetConfigs,
 } from '@/models/debug'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import Tooltip from '@/app/components/base/tooltip'
@@ -23,6 +23,7 @@ import { RerankingModeEnum } from '@/models/datasets'
 import cn from '@/utils/classnames'
 import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
 import Switch from '@/app/components/base/switch'
+import Toast from '@/app/components/base/toast'
 
 type Props = {
   datasetConfigs: DatasetConfigs
@@ -60,6 +61,24 @@ const ConfigContent: FC<Props> = ({
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+
+  const {
+    currentModel,
+  } = useCurrentProviderAndModel(
+    rerankModelList,
+    rerankDefaultModel
+      ? {
+        ...rerankDefaultModel,
+        provider: rerankDefaultModel.provider.provider,
+      }
+      : undefined,
+  )
+
+  const handleDisabledSwitchClick = useCallback(() => {
+    if (!currentModel)
+      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
+  }, [currentModel, rerankDefaultModel, t])
+
   const rerankModel = (() => {
     if (datasetConfigs.reranking_model?.reranking_provider_name) {
       return {
@@ -231,16 +250,22 @@ const ConfigContent: FC<Props> = ({
                 <div className='flex items-center'>
                   {
                     selectedDatasetsMode.allEconomic && (
-                      <Switch
-                        size='md'
-                        defaultValue={showRerankModel}
-                        onChange={(v) => {
-                          onChange({
-                            ...datasetConfigs,
-                            reranking_enable: v,
-                          })
-                        }}
-                      />
+                      <div
+                        className='flex items-center'
+                        onClick={handleDisabledSwitchClick}
+                      >
+                        <Switch
+                          size='md'
+                          defaultValue={currentModel ? showRerankModel : false}
+                          disabled={!currentModel}
+                          onChange={(v) => {
+                            onChange({
+                              ...datasetConfigs,
+                              reranking_enable: v,
+                            })
+                          }}
+                        />
+                      </div>
                     )
                   }
                   <div className='leading-[32px] ml-1 text-text-secondary system-sm-semibold'>{t('common.modelProvider.rerankModel.key')}</div>
