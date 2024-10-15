@@ -182,6 +182,7 @@ const translation = {
       rerankModel: 'Model de rerankare',
     },
     invalidVariable: 'Variabilă invalidă',
+    rerankModelRequired: 'Înainte de a activa modelul de reclasificare, vă rugăm să confirmați că modelul a fost configurat cu succes în setări.',
   },
   singleRun: {
     testRun: 'Rulare de test ',

@@ -1,7 +1,8 @@
 import random
 from typing import Any, Union
 
-from core.model_runtime.model_providers.zhipuai.zhipuai_sdk._client import ZhipuAI
+from zhipuai import ZhipuAI
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 

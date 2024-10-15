@@ -1,8 +1,10 @@
+import logging
 from threading import Thread
 from typing import Optional, Union
 
 from flask import Flask, current_app
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     AgentChatAppGenerateEntity,
@@ -83,7 +85,9 @@ class MessageCycleManage:
                     name = LLMGenerator.generate_conversation_name(app_model.tenant_id, query)
                     conversation.name = name
                 except Exception as e:
-                    logging.exception(f"generate conversation name failed: {e}")
+                    if dify_config.DEBUG:
+                        logging.exception(f"generate conversation name failed: {e}")
+                    pass
 
                 db.session.merge(conversation)
                 db.session.commit()

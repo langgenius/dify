@@ -171,6 +171,9 @@ const translation = {
     delete: 'Hesabı Sil',
     deleteTip: 'Hesabınızı silmek tüm verilerinizi kalıcı olarak siler ve geri alınamaz.',
     deleteConfirmTip: 'Onaylamak için, kayıtlı e-postanızdan şu adrese e-posta gönderin: ',
+    account: 'Hesap',
+    myAccount: 'Hesabım',
+    studio: 'Dify Stüdyo',
   },
   members: {
     team: 'Takım',
