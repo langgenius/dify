@@ -95,6 +95,7 @@ const translation = {
   setYourAccount: 'Set Your Account',
   enterYourName: 'Please enter your username',
   back: 'Back',
+  noLoginMethod: 'Please contact the system admin to add an authentication method.',
 }
 
 export default translation

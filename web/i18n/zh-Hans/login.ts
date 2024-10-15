@@ -96,6 +96,7 @@ const translation = {
   setYourAccount: '设置您的账户',
   enterYourName: '请输入用户名',
   back: '返回',
+  noLoginMethod: '请联系管理员添加身份认证方式',
 }
 
 export default translation

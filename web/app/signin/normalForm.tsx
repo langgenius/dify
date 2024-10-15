@@ -27,6 +27,7 @@ const NormalForm = () => {
   const [systemFeatures, setSystemFeatures] = useState(defaultSystemFeatures)
   const [authType, updateAuthType] = useState<'code' | 'password'>('password')
   const [showORLine, setShowORLine] = useState(false)
+  const [allMethodsAreDisabled, setAllMethodsAreDisabled] = useState(false)
   const [workspaceName, setWorkSpaceName] = useState('')
 
   const isInviteLink = Boolean(invite_token && invite_token !== 'null')
@@ -49,6 +50,7 @@ const NormalForm = () => {
       }
       const features = await getSystemFeatures()
       setSystemFeatures({ ...defaultSystemFeatures, ...features })
+      setAllMethodsAreDisabled(!features.enable_social_oauth_login && !features.enable_email_code_login && !features.enable_email_password_login && !features.sso_enforced_for_signin)
       setShowORLine((features.enable_social_oauth_login || features.sso_enforced_for_signin) && (features.enable_email_code_login || features.enable_email_password_login))
       updateAuthType(features.enable_email_password_login ? 'password' : 'code')
       if (isInviteLink) {
@@ -63,7 +65,7 @@ const NormalForm = () => {
     }
     catch (error) { console.error(error) }
     finally { setIsLoading(false) }
-  }, [consoleToken, message, router, invite_token, isInviteLink])
+  }, [consoleToken, refreshToken, message, router, invite_token, isInviteLink, getNewAccessToken])
   useEffect(() => {
     init()
   }, [init])
@@ -91,7 +93,7 @@ const NormalForm = () => {
             <h2 className="title-4xl-semi-bold text-text-primary">{t('login.pageTitle')}</h2>
             <p className='mt-2 body-md-regular text-text-tertiary'>{t('login.welcome')}</p>
           </div>}
-        <div className="bg-white ">
+        <div className="bg-white">
           <div className="flex flex-col gap-3 mt-6">
             {systemFeatures.enable_social_oauth_login && <SocialAuth />}
             {systemFeatures.sso_enforced_for_signin && <div className='w-full'>
@@ -123,6 +125,9 @@ const NormalForm = () => {
               </>}
             </>
           }
+          {allMethodsAreDisabled && <div className="w-hull text-center block system-md-semibold text-text-secondary">
+            {t('login.noLoginMethod')}
+          </div>}
           <div className="w-hull text-center block mt-2 system-xs-regular text-text-tertiary">
             {t('login.tosDesc')}
             &nbsp;
