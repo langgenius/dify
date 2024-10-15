@@ -23,12 +23,12 @@ const usePermission = () => {
   useEffect(() => {
     // TODO: fetch permissions from server
     setPermissions({
-      canInstall: PermissionType.everyone,
+      canManagement: PermissionType.everyone,
       canDebugger: PermissionType.everyone,
     })
   }, [])
   return {
-    canInstall: hasPermission(permissions.canInstall, isAdmin),
+    canManagement: hasPermission(permissions.canManagement, isAdmin),
     canDebugger: hasPermission(permissions.canDebugger, isAdmin),
     canSetPermissions: isAdmin,
     permissions,

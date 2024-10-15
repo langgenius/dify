@@ -49,7 +49,7 @@ const PluginSettingModal: FC<Props> = ({
         </div>
         <div className='flex px-6 py-3 flex-col justify-center items-start gap-4 self-stretch'>
           {[
-            { title: t(`${i18nPrefix}.whoCanInstall`), key: 'canInstall', value: tempPrivilege.canInstall },
+            { title: t(`${i18nPrefix}.whoCanInstall`), key: 'canManagement', value: tempPrivilege.canManagement },
             { title: t(`${i18nPrefix}.whoCanDebug`), key: 'canDebugger', value: tempPrivilege.canDebugger },
           ].map(({ title, key, value }) => (
             <div key={key} className='flex flex-col items-start gap-1 self-stretch'>

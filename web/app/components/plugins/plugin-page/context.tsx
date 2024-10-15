@@ -22,7 +22,7 @@ export type PluginPageContextValue = {
 export const PluginPageContext = createContext<PluginPageContextValue>({
   containerRef: { current: null },
   permissions: {
-    canInstall: PermissionType.noOne,
+    canManagement: PermissionType.noOne,
     canDebugger: PermissionType.noOne,
   },
   setPermissions: () => { },
@@ -41,7 +41,7 @@ export const PluginPageContextProvider = ({
 }: PluginPageContextProviderProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
   const [permissions, setPermissions] = useState<PluginPageContextValue['permissions']>({
-    canInstall: PermissionType.noOne,
+    canManagement: PermissionType.noOne,
     canDebugger: PermissionType.noOne,
   })
 

@@ -33,6 +33,6 @@ export enum PermissionType {
 }
 
 export type Permissions = {
-  canInstall: PermissionType
+  canManagement: PermissionType
   canDebugger: PermissionType
 }

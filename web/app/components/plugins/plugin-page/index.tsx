@@ -36,7 +36,7 @@ const PluginPage = ({
 }: PluginPageProps) => {
   const { t } = useTranslation()
   const {
-    canInstall,
+    canManagement,
     canDebugger,
     canSetPermissions,
     permissions,
@@ -88,7 +88,7 @@ const PluginPage = ({
             />
           </div>
           <div className='flex flex-shrink-0 items-center gap-1'>
-            {canInstall && (
+            {canManagement && (
               <InstallPluginDropdown />
             )}
             {
