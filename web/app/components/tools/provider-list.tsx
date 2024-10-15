@@ -1,8 +1,9 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import type { Collection } from './types'
+import Marketplace from './marketplace'
 import cn from '@/utils/classnames'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
@@ -12,16 +13,17 @@ import { DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
 import { Colors } from '@/app/components/base/icons/src/vender/line/others'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
-import ContributeCard from '@/app/components/tools/provider/contribute'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { fetchCollectionList } from '@/service/tools'
 import Card from '@/app/components/plugins/card'
 import { useGetLanguage } from '@/context/i18n'
+import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 
 const ProviderList = () => {
   const { t } = useTranslation()
   const language = useGetLanguage()
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'builtin',
@@ -70,7 +72,10 @@ const ProviderList = () => {
 
   return (
     <div className='relative flex overflow-hidden bg-gray-100 shrink-0 h-0 grow'>
-      <div className='relative flex flex-col overflow-y-auto bg-gray-100 grow'>
+      <div
+        ref={containerRef}
+        className='relative flex flex-col overflow-y-auto bg-gray-100 grow'
+      >
         <div className={cn(
           'sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-20 flex-wrap gap-y-2',
           currentProvider && 'pr-6',
@@ -93,7 +98,6 @@ const ProviderList = () => {
           'relative grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0',
           currentProvider && 'pr-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
         )}>
-          {activeTab === 'builtin' && <ContributeCard />}
           {activeTab === 'api' && <CustomCreateCard onRefreshData={getProviderList} />}
           {filteredCollectionList.map(collection => (
             <Card
@@ -103,10 +107,19 @@ const ProviderList = () => {
                 ...collection,
                 brief: collection.description,
               } as any}
+              footer={
+                <CardMoreInfo
+                  downloadCount={0}
+                  tags={collection.labels}
+                />
+              }
             />
           ))}
           {!filteredCollectionList.length && <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'><Empty /></div>}
         </div>
+        <Marketplace onMarketplaceScroll={() => {
+          containerRef.current?.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })
+        }} />
       </div>
       <div className={cn(
         'shrink-0 w-0 border-l-[0.5px] border-black/8 overflow-y-auto transition-all duration-200 ease-in-out',
