@@ -6,11 +6,11 @@ const difyAxios: AxiosInstance = axios.create({
         Authorization: `Bearer ${process.env.DIFY_API_KEY}`
     }
 })
-export async function getConversations() {
+export async function getConversations(email: string) {
     try {
         const conversationsResponse = await axios.get('/api/conversations', {
             params: {
-                user: 'akshay.rajeev@agent-network.com'
+                user: email
             }
         });
         return conversationsResponse.data;
@@ -18,12 +18,12 @@ export async function getConversations() {
         console.error(error);
     }
 }
-export async function getMessages(conversation_id: string) {
+export async function getMessages(conversation_id: string, email: string) {
     try {
         const messagesResponse = await axios.get('/api/messages', {
             params: {
                 conversation_id: conversation_id,
-                user: 'akshay.rajeev@agent-network.com'
+                user: email
             }
         });
         return messagesResponse.data;
