@@ -182,6 +182,7 @@ const translation = {
       rerankModel: 'Mô hình xếp hạng lại',
     },
     invalidVariable: 'Biến không hợp lệ',
+    rerankModelRequired: 'Trước khi bật Mô hình xếp hạng lại, vui lòng xác nhận rằng mô hình đã được định cấu hình thành công trong cài đặt.',
   },
   singleRun: {
     testRun: 'Chạy thử nghiệm ',
