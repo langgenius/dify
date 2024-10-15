@@ -51,6 +51,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from enums import CreatedByRole
 from enums.workflow_nodes import NodeType
 from events.message_event import message_was_created
 from extensions.ext_database import db
@@ -512,9 +513,9 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 url=file["remote_url"],
                 belongs_to="assistant",
                 upload_file_id=file["related_id"],
-                created_by_role="account"
+                created_by_role=CreatedByRole.ACCOUNT
                 if self._message.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
-                else "end_user",
+                else CreatedByRole.END_USER,
                 created_by=self._message.from_account_id or self._message.from_end_user_id or "",
             )
             for file in self._recorded_files
