@@ -3,9 +3,10 @@ import { useEffect, useRef, useState } from 'react'
 type UploaderHookProps = {
   onFileChange: (file: File | null) => void
   containerRef: React.RefObject<HTMLDivElement>
+  enabled?: boolean
 }
 
-export const useUploader = ({ onFileChange, containerRef }: UploaderHookProps) => {
+export const useUploader = ({ onFileChange, containerRef, enabled = true }: UploaderHookProps) => {
   const [dragging, setDragging] = useState(false)
   const fileUploader = useRef<HTMLInputElement>(null)
 
@@ -39,19 +40,26 @@ export const useUploader = ({ onFileChange, containerRef }: UploaderHookProps) =
       onFileChange(files[0])
   }
 
-  const fileChangeHandle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null
-    onFileChange(file)
-  }
+  const fileChangeHandle = enabled
+    ? (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0] || null
+      onFileChange(file)
+    }
+    : null
 
-  const removeFile = () => {
-    if (fileUploader.current)
-      fileUploader.current.value = ''
+  const removeFile = enabled
+    ? () => {
+      if (fileUploader.current)
+        fileUploader.current.value = ''
 
-    onFileChange(null)
-  }
+      onFileChange(null)
+    }
+    : null
 
   useEffect(() => {
+    if (!enabled)
+      return
+
     const current = containerRef.current
     if (current) {
       current.addEventListener('dragenter', handleDragEnter)
@@ -67,10 +75,10 @@ export const useUploader = ({ onFileChange, containerRef }: UploaderHookProps) =
         current.removeEventListener('drop', handleDrop)
       }
     }
-  }, [containerRef])
+  }, [containerRef, enabled])
 
   return {
-    dragging,
+    dragging: enabled ? dragging : false,
     fileUploader,
     fileChangeHandle,
     removeFile,

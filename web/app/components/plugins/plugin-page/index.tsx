@@ -36,22 +36,23 @@ const PluginPage = ({
   const { setShowPluginSettingModal } = useModalContext() as any
   const [currentFile, setCurrentFile] = useState<File | null>(null)
   const containerRef = usePluginPageContext(v => v.containerRef)
-
-  const { dragging, fileUploader, fileChangeHandle, removeFile } = useUploader({
-    onFileChange: setCurrentFile,
-    containerRef,
-  })
-
   const options = useMemo(() => {
     return [
       { value: 'plugins', text: t('common.menus.plugins') },
       { value: 'discover', text: 'Explore Marketplace' },
     ]
   }, [t])
-
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: options[0].value,
   })
+
+  const uploaderProps = useUploader({
+    onFileChange: setCurrentFile,
+    containerRef,
+    enabled: activeTab === 'plugins',
+  })
+
+  const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
 
   return (
     <div
@@ -138,21 +139,21 @@ const PluginPage = ({
             <span className="system-xs-regular">Drop plugin package here to install</span>
           </div>
           {currentFile && (
-            <InstallFromLocalPackage file={currentFile} onClose={removeFile} />
+            <InstallFromLocalPackage file={currentFile} onClose={removeFile ?? (() => {})} />
           )}
+          <input
+            ref={fileUploader}
+            className="hidden"
+            type="file"
+            id="fileUploader"
+            accept='.difypkg'
+            onChange={fileChangeHandle ?? (() => {})}
+          />
         </>
       )}
       {
         activeTab === 'discover' && marketplace
       }
-      <input
-        ref={fileUploader}
-        className="hidden"
-        type="file"
-        id="fileUploader"
-        accept='.difypkg'
-        onChange={fileChangeHandle}
-      />
     </div>
   )
 }
