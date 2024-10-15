@@ -42,7 +42,7 @@ const FileImageItem = ({
         {
           showDeleteAction && (
             <Button
-              className='hidden group-hover/file-image:flex absolute -right-1.5 -top-1.5 p-0 w-5 h-5 rounded-full z-10'
+              className='hidden group-hover/file-image:flex absolute -right-1.5 -top-1.5 p-0 w-5 h-5 rounded-full z-[11]'
               onClick={() => onRemove?.(id)}
             >
               <RiCloseLine className='w-4 h-4 text-components-button-secondary-text' />
