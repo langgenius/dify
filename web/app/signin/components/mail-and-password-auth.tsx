@@ -46,7 +46,7 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
     if (!passwordRegex.test(password)) {
       Toast.notify({
         type: 'error',
-        message: t('login.error.passwordInValid'),
+        message: t('login.error.passwordInvalid'),
       })
       return
     }
