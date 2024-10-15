@@ -35,7 +35,7 @@ const translation = {
   rightDesc: '简单构建可视化、可运营、可改进的 AI 应用',
   tos: '使用协议',
   pp: '隐私政策',
-  tosDesc: '使用即代表你并同意我们的',
+  tosDesc: '使用即代表您同意我们的',
   goToInit: '如果您还没有初始化账户，请前往初始化页面',
   dontHave: '还没有邀请码？',
   invalidInvitationCode: '无效的邀请码',

@@ -127,13 +127,13 @@ const NormalForm = () => {
             {t('login.tosDesc')}
             &nbsp;
             <Link
-              className='system-xs-medium text-text-secondary'
+              className='system-xs-medium text-text-secondary hover:underline'
               target='_blank' rel='noopener noreferrer'
               href='https://dify.ai/terms'
             >{t('login.tos')}</Link>
             &nbsp;&&nbsp;
             <Link
-              className='system-xs-medium text-text-secondary'
+              className='system-xs-medium text-text-secondary hover:underline'
               target='_blank' rel='noopener noreferrer'
               href='https://dify.ai/privacy'
             >{t('login.pp')}</Link>
@@ -143,7 +143,7 @@ const NormalForm = () => {
             {t('login.goToInit')}
             &nbsp;
             <Link
-              className='system-xs-medium text-text-secondary'
+              className='system-xs-medium text-text-secondary hover:underline'
               href='/install'
             >{t('login.setAdminAccount')}</Link>
           </div>}
