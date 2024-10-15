@@ -21,6 +21,14 @@ const translation = {
   },
   install: '{{num}} 次安装',
   installAction: '安装',
+  privilege: {
+    title: '插件偏好',
+    whoCanInstall: '谁可以安装和管理插件？',
+    whoCanDebug: '谁可以调试插件？',
+    everyone: '所有人',
+    admin: '管理员',
+    noOne: '无人',
+  },
 }
 
 export default translation

@@ -134,12 +134,16 @@ const PluginPage = ({
             }
             {
               canSetPermissions && (
-                <Button
-                  className='w-full h-full p-2 text-components-button-secondary-text group'
-                  onClick={setShowPluginSettingModal}
+                <Tooltip
+                  popupContent={t('plugin.privilege.title')}
                 >
-                  <RiEqualizer2Line className='w-4 h-4' />
-                </Button>
+                  <Button
+                    className='w-full h-full p-2 text-components-button-secondary-text group'
+                    onClick={setShowPluginSettingModal}
+                  >
+                    <RiEqualizer2Line className='w-4 h-4' />
+                  </Button>
+                </Tooltip>
               )
             }
           </div>

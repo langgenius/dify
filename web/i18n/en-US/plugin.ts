@@ -21,6 +21,14 @@ const translation = {
   },
   install: '{{num}} installs',
   installAction: 'Install',
+  privilege: {
+    title: 'Plugin Preferences',
+    whoCanInstall: 'Who can install and manage plugins?',
+    whoCanDebug: 'Who can debug plugins?',
+    everyone: 'Everyone',
+    admin: 'Admins',
+    noOne: 'No one',
+  },
 }
 
 export default translation
