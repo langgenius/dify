@@ -26,7 +26,7 @@ const Item: FC<Props> = ({
   const { locale } = useContext(I18n)
 
   return (
-    <div className='flex rounded-lg py-2 pr-1 pl-3 hover:bg-state-base-hover'>
+    <div className='group/plugin flex rounded-lg py-2 pr-1 pl-3 hover:bg-state-base-hover'>
       <div
         className='shrink-0 relative w-6 h-6 border-[0.5px] border-components-panel-border-subtle rounded-md bg-center bg-no-repeat bg-contain'
         style={{ backgroundImage: `url(${payload.icon})` }}
@@ -42,7 +42,7 @@ const Item: FC<Props> = ({
           </div>
         </div>
         {/* Action */}
-        <div className='flex items-center space-x-1 h-4 text-components-button-secondary-accent-text system-xs-medium'>
+        <div className='hidden group-hover/plugin:flex  items-center space-x-1 h-4 text-components-button-secondary-accent-text system-xs-medium'>
           <div className='px-1.5'>{t('plugin.installAction')}</div>
           <Action />
         </div>
