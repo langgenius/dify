@@ -16,6 +16,6 @@ class VectorType(str, Enum):
     TENCENT = "tencent"
     ORACLE = "oracle"
     ELASTICSEARCH = "elasticsearch"
-    PINECONE = 'pinecone'
+    PINECONE = "pinecone"
     BAIDU = "baidu"
     VIKINGDB = "vikingdb"
