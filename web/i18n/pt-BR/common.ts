@@ -167,6 +167,9 @@ const translation = {
     delete: 'Excluir conta',
     deleteTip: 'Excluir sua conta apagará permanentemente todos os seus dados e eles não poderão ser recuperados.',
     deleteConfirmTip: 'Para confirmar, envie o seguinte do seu e-mail registrado para ',
+    myAccount: 'Minha Conta',
+    account: 'Conta',
+    studio: 'Estúdio Dify',
   },
   members: {
     team: 'Equipe',

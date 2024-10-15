@@ -171,6 +171,9 @@ const translation = {
     delete: 'アカウントを削除',
     deleteTip: 'アカウントを削除すると、すべてのデータが完全に消去され、復元できなくなります。',
     deleteConfirmTip: '確認のため、登録したメールから次の内容をに送信してください ',
+    account: 'アカウント',
+    myAccount: 'マイアカウント',
+    studio: 'Difyスタジオ',
   },
   members: {
     team: 'チーム',

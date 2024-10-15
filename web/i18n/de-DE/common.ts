@@ -167,6 +167,9 @@ const translation = {
     delete: 'Konto löschen',
     deleteTip: 'Wenn Sie Ihr Konto löschen, werden alle Ihre Daten dauerhaft gelöscht und können nicht wiederhergestellt werden.',
     deleteConfirmTip: 'Zur Bestätigung senden Sie bitte Folgendes von Ihrer registrierten E-Mail-Adresse an ',
+    myAccount: 'Mein Konto',
+    studio: 'Dify Studio',
+    account: 'Konto',
   },
   members: {
     team: 'Team',

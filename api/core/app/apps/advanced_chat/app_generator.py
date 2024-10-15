@@ -10,6 +10,7 @@ from flask import Flask, current_app
 from pydantic import ValidationError
 
 import contexts
+from constants import UUID_NIL
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
@@ -122,7 +123,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             inputs=conversation.inputs if conversation else self._get_cleaned_inputs(inputs, app_config),
             query=query,
             files=file_objs,
-            parent_message_id=args.get("parent_message_id"),
+            parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,

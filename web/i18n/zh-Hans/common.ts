@@ -140,7 +140,7 @@ const translation = {
     logout: '登出',
   },
   settings: {
-    accountGroup: '账户',
+    accountGroup: '通用',
     workplaceGroup: '工作空间',
     account: '我的账户',
     members: '成员',
@@ -153,6 +153,9 @@ const translation = {
     apiBasedExtension: 'API 扩展',
   },
   account: {
+    account: '账户',
+    myAccount: '我的账户',
+    studio: 'Dify 工作室',
     avatar: '头像',
     name: '用户名',
     email: '邮箱',
