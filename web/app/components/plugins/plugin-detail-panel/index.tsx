@@ -1,8 +1,8 @@
 'use client'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useMemo } from 'react'
 import type { FC } from 'react'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { RiCloseLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import type { Plugin } from '../types'
 // import { PluginType } from '../types'
@@ -14,35 +14,26 @@ import OperationDropdown from './operation-dropdown'
 import EndpointList from './endpoint-list'
 import ActionList from './action-list'
 import ModelList from './model-list'
-import type { Locale } from '@/i18n'
-import { fetchPluginDetail } from '@/app/(commonLayout)/plugins/test/card/actions'
+// import type { Locale } from '@/i18n'
 import { BoxSparkleFill } from '@/app/components/base/icons/src/vender/plugin'
 import Button from '@/app/components/base/button'
 import ActionButton from '@/app/components/base/action-button'
 import Drawer from '@/app/components/base/drawer'
-import Loading from '@/app/components/base/loading'
+// import Loading from '@/app/components/base/loading'
+import I18n from '@/context/i18n'
 import cn from '@/utils/classnames'
-import {
-  // extensionDallE,
-  // modelGPT4,
-  toolNotion,
-} from '@/app/components/plugins/card/card-mock'
 
 type Props = {
-  locale: Locale // The component is used in both client and server side, so we can't get the locale from both side(getLocaleOnServer and useContext)
+  pluginDetail: Plugin | undefined
+  onHide: () => void
 }
 
 const PluginDetailPanel: FC<Props> = ({
-  locale,
+  pluginDetail,
+  onHide,
 }) => {
   const { t } = useTranslation()
-  const searchParams = useSearchParams()
-  const org = searchParams.get('org')
-  const name = searchParams.get('name')
-  const router = useRouter()
-  const pathname = usePathname()
-  const [loading, setLoading] = useState(true)
-  const [pluginDetail, setPluginDetail] = useState<Plugin>()
+  const { locale } = useContext(I18n)
 
   const hasNewVersion = useMemo(() => {
     if (!pluginDetail)
@@ -50,45 +41,23 @@ const PluginDetailPanel: FC<Props> = ({
     return pluginDetail.latest_version !== pluginDetail.version
   }, [pluginDetail])
 
-  const getPluginDetail = async (org: string, name: string) => {
-    console.log('organization: ', org)
-    console.log('plugin name: ', name)
-    setLoading(true)
-    const detail = await fetchPluginDetail(org, name)
-    setPluginDetail({
-      ...detail,
-      ...toolNotion,
-    } as any)
-    setLoading(false)
-  }
-
-  const handleClose = () => {
-    setPluginDetail(undefined)
-    router.replace(pathname)
-  }
-
   const handleUpdate = () => {}
 
-  useEffect(() => {
-    if (org && name)
-      getPluginDetail(org, name)
-  }, [org, name])
-
-  if (!org || !name)
+  if (!pluginDetail)
     return null
 
   return (
     <Drawer
       isOpen={!!pluginDetail}
       clickOutsideNotOpen={false}
-      onClose={handleClose}
+      onClose={onHide}
       footer={null}
       mask={false}
       positionCenter={false}
       panelClassname={cn('justify-start mt-[64px] mr-2 mb-2 !w-[420px] !max-w-[420px] !p-0 !bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl')}
     >
-      {loading && <Loading type='area' />}
-      {!loading && pluginDetail && (
+      {/* {loading && <Loading type='area' />} */}
+      {pluginDetail && (
         <>
           <div className={cn('shrink-0 p-4 pb-3 border-b border-divider-subtle bg-components-panel-bg')}>
             <div className="flex">
@@ -116,7 +85,7 @@ const PluginDetailPanel: FC<Props> = ({
               </div>
               <div className='flex gap-1'>
                 <OperationDropdown />
-                <ActionButton onClick={handleClose}>
+                <ActionButton onClick={onHide}>
                   <RiCloseLine className='w-4 h-4' />
                 </ActionButton>
               </div>

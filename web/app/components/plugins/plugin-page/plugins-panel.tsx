@@ -1,4 +1,12 @@
 'use client'
+import { useState } from 'react'
+import type { Plugin } from '../types'
+import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
+import {
+  // extensionDallE,
+  // modelGPT4,
+  toolNotion,
+} from '@/app/components/plugins/card/card-mock'
 
 import type { FilterState } from './filter-management'
 import FilterManagement from './filter-management'
@@ -9,6 +17,7 @@ const PluginsPanel = () => {
     //
   }
 
+  const [currentPluginDetail, setCurrentPluginDetail] = useState<Plugin | undefined>(toolNotion as any)
   return (
     <>
       <div className='flex flex-col pt-1 pb-3 px-12 justify-center items-start gap-3 self-stretch'>
@@ -22,6 +31,7 @@ const PluginsPanel = () => {
           <List />
         </div>
       </div>
+      <PluginDetailPanel pluginDetail={currentPluginDetail} onHide={() => setCurrentPluginDetail(undefined)} />
     </>
   )
 }
