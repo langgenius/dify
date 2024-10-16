@@ -263,6 +263,7 @@ services:
 
   node:
     image: node:20
+    container_name: node
     platform: 'linux/amd64'
     tty: true
     working_dir: /var/www/html

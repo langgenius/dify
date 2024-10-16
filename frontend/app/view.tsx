@@ -38,7 +38,7 @@ export default function View({email}: {email: string}) {
         setLoading(true);
         let firstRun = true;
         const fetchStream = async () => {
-            const response = await fetch('/api/chat-messages', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/chat-messages`, {
                 method: 'POST',
                 body: JSON.stringify({
                     query: query,
@@ -132,7 +132,7 @@ export default function View({email}: {email: string}) {
     async function changeAI(new_ai_name: string) {
         if(selectedConversation) {
             try {
-                await axios.post('/api/change-ai', {
+                await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/change-ai`, {
                     ai_name: new_ai_name ?? null,
                     conversation_id: selectedConversation?.id ?? null
                 });
