@@ -8,7 +8,8 @@ const difyAxios: AxiosInstance = axios.create({
 })
 export async function getConversations(email: string) {
     try {
-        const conversationsResponse = await axios.get('/api/conversations', {
+        const conversationsResponse = await axios.get('api/conversations', {
+            baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
             params: {
                 user: email
             }
@@ -21,6 +22,7 @@ export async function getConversations(email: string) {
 export async function getMessages(conversation_id: string, email: string) {
     try {
         const messagesResponse = await axios.get('/api/messages', {
+            baseURL: process.env.NEXT_PUBLIC_API_BASE_URL,
             params: {
                 conversation_id: conversation_id,
                 user: email
