@@ -17,8 +17,8 @@ from services.feature_service import FeatureService
 @app.celery.task(queue="dataset")
 def clean_unused_datasets_task():
     click.echo(click.style("Start clean unused datasets indexes.", fg="green"))
-    sandbox_clean_day_setting = dify_config.SANDBOX_CLEAN_DAY_SETTING
-    pro_clean_day_setting = dify_config.PRO_CLEAN_DAY_SETTING
+    sandbox_clean_day_setting = dify_config.PLAN_SANDBOX_CLEAN_DAY_SETTING
+    pro_clean_day_setting = dify_config.PLAN_PRO_CLEAN_DAY_SETTING
     start_at = time.perf_counter()
     sandbox_clean_day = datetime.datetime.now() - datetime.timedelta(days=sandbox_clean_day_setting)
     pro_clean_day = datetime.datetime.now() - datetime.timedelta(days=pro_clean_day_setting)
