@@ -246,7 +246,7 @@ alibabacloud_tea_openapi = "~0.3.9"
 chromadb = "0.5.1"
 clickhouse-connect = "~0.7.16"
 elasticsearch = "8.14.0"
-opensearch-py = "2.4.0"
+opensearch-py = "~2.5.0"
 oracledb = "~2.2.1"
 pgvecto-rs = { version = "~0.2.1", extras = ['sqlalchemy'] }
 pgvector = "0.2.5"

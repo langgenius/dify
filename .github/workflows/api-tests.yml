@@ -78,7 +78,7 @@ jobs:
       - name: Run Workflow
         run: poetry run -C api bash dev/pytest/pytest_workflow.sh
 
-      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch)
+      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, ElasticSearch, OpenSearch)
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
           compose-file: |
@@ -93,5 +93,6 @@ jobs:
             pgvector
             chroma
             elasticsearch
+            opensearch
       - name: Test Vector Stores
         run: poetry run -C api bash dev/pytest/pytest_vdb.sh

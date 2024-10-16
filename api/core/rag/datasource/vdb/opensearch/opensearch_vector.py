@@ -2,7 +2,6 @@ import json
 import logging
 import ssl
 from typing import Any, Optional
-from uuid import uuid4
 
 from opensearchpy import OpenSearch, helpers
 from opensearchpy.helpers import BulkIndexError
@@ -48,6 +47,7 @@ class OpenSearchConfig(BaseModel):
             "hosts": [{"host": self.host, "port": self.port}],
             "use_ssl": self.secure,
             "verify_certs": self.secure,
+            "timeout": 60,
         }
         if self.user and self.password:
             params["http_auth"] = (self.user, self.password)
@@ -61,6 +61,7 @@ class OpenSearchVector(BaseVector):
         super().__init__(collection_name)
         self._client_config = config
         self._client = OpenSearch(**config.to_opensearch_params())
+        self._index_name = collection_name.lower()
 
     def get_type(self) -> str:
         return VectorType.OPENSEARCH
@@ -75,8 +76,8 @@ class OpenSearchVector(BaseVector):
         for i in range(len(documents)):
             action = {
                 "_op_type": "index",
-                "_index": self._collection_name.lower(),
-                "_id": uuid4().hex,
+                "_index": self._index_name,
+                "_id": documents[i].metadata.get("doc_id"),
                 "_source": {
                     Field.CONTENT_KEY.value: documents[i].page_content,
                     Field.VECTOR.value: embeddings[i],  # Make sure you pass an array here
@@ -87,9 +88,12 @@ class OpenSearchVector(BaseVector):
 
         helpers.bulk(self._client, actions)
 
+        # Refresh index to support immediate query
+        self._client.indices.refresh(index=self._index_name)
+
     def get_ids_by_metadata_field(self, key: str, value: str):
         query = {"query": {"term": {f"{Field.METADATA_KEY.value}.{key}": value}}}
-        response = self._client.search(index=self._collection_name.lower(), body=query)
+        response = self._client.search(index=self._index_name, body=query)
         if response["hits"]["hits"]:
             return [hit["_id"] for hit in response["hits"]["hits"]]
         else:
@@ -101,9 +105,8 @@ class OpenSearchVector(BaseVector):
             self.delete_by_ids(ids)
 
     def delete_by_ids(self, ids: list[str]) -> None:
-        index_name = self._collection_name.lower()
-        if not self._client.indices.exists(index=index_name):
-            logger.warning(f"Index {index_name} does not exist")
+        if not self._client.indices.exists(index=self._index_name):
+            logger.warning(f"Index {self._index_name} does not exist")
             return
 
         # Obtaining All Actual Documents_ID
@@ -117,7 +120,7 @@ class OpenSearchVector(BaseVector):
                 logger.warning(f"Document with metadata doc_id {doc_id} not found for deletion")
 
         if actual_ids:
-            actions = [{"_op_type": "delete", "_index": index_name, "_id": es_id} for es_id in actual_ids]
+            actions = [{"_op_type": "delete", "_index": self._index_name, "_id": es_id} for es_id in actual_ids]
             try:
                 helpers.bulk(self._client, actions)
             except BulkIndexError as e:
@@ -132,11 +135,11 @@ class OpenSearchVector(BaseVector):
                         logger.error(f"Error deleting document: {error}")
 
     def delete(self) -> None:
-        self._client.indices.delete(index=self._collection_name.lower())
+        self._client.indices.delete(index=self._index_name)
 
     def text_exists(self, id: str) -> bool:
         try:
-            self._client.get(index=self._collection_name.lower(), id=id)
+            self._client.get(index=self._index_name, id=id)
             return True
         except:
             return False
@@ -156,7 +159,7 @@ class OpenSearchVector(BaseVector):
         }
 
         try:
-            response = self._client.search(index=self._collection_name.lower(), body=query)
+            response = self._client.search(index=self._index_name, body=query)
         except Exception as e:
             logger.error(f"Error executing search: {e}")
             raise
@@ -178,9 +181,11 @@ class OpenSearchVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
+        # Ensure it's defined as keyword type in the index
+        # mapping for correct matching by term query.
         full_text_query = {"query": {"match": {Field.CONTENT_KEY.value: query}}}
 
-        response = self._client.search(index=self._collection_name.lower(), body=full_text_query)
+        response = self._client.search(index=self._index_name, body=full_text_query)
 
         docs = []
         for hit in response["hits"]["hits"]:
@@ -195,14 +200,14 @@ class OpenSearchVector(BaseVector):
     def create_collection(
         self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
     ):
-        lock_name = f"vector_indexing_lock_{self._collection_name.lower()}"
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = f"vector_indexing_{self._collection_name.lower()}"
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
-                logger.info(f"Collection {self._collection_name.lower()} already exists.")
+                logger.info(f"Collection {self._collection_name} already exists.")
                 return
 
-            if not self._client.indices.exists(index=self._collection_name.lower()):
+            if not self._client.indices.exists(index=self._index_name):
                 index_body = {
                     "settings": {"index": {"knn": True}},
                     "mappings": {
@@ -221,14 +226,17 @@ class OpenSearchVector(BaseVector):
                             Field.METADATA_KEY.value: {
                                 "type": "object",
                                 "properties": {
-                                    "doc_id": {"type": "keyword"}  # Map doc_id to keyword type
+                                    "doc_id": {"type": "keyword"},  # Map doc_id to keyword type
+                                    "doc_hash": {"type": "keyword"},
+                                    "document_id": {"type": "keyword"},
+                                    "dataset_id": {"type": "keyword"},
                                 },
                             },
                         }
                     },
                 }
 
-                self._client.indices.create(index=self._collection_name.lower(), body=index_body)
+                self._client.indices.create(index=self._index_name, body=index_body)
 
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
