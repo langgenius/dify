@@ -174,7 +174,7 @@ class ToolNode(BaseNode[ToolNodeData]):
             if response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
                 url = str(response.message) if response.message else None
                 ext = path.splitext(url)[1] if url else ".bin"
-                tool_file_id = response.save_as or str(url).split("/")[-1].split(".")[0]
+                tool_file_id = str(url).split("/")[-1].split(".")[0]
                 transfer_method = response.meta.get("transfer_method", FileTransferMethod.TOOL_FILE)
 
                 with Session(db.engine) as session:
