@@ -1,0 +1,20 @@
+{
+    "label": {
+        "en-US": "regex",
+        "zh-Hans": "正则表达式"
+    },
+    "form_schema": [
+        {
+            "type": "text-input",
+            "label": {
+                "en-US": "Regular Expression",
+                "zh-Hans": "正则表达式"
+            },
+            "variable": "regex",
+            "required": true,
+            "max_length": 1000,
+            "default": "",
+            "placeholder": "Regular Expression"
+        }
+    ]
+}
