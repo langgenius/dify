@@ -1,12 +1,13 @@
 from typing import Optional
 
 from core.errors.error import LLMBadRequestError
-from core.model_manager import ModelManager
+from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
+from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.rag.models.document import Document
+from core.rag.models.document import ChildDocument, Document
 from models.dataset import Dataset, DatasetProcessRule, DocumentSegment, ChildChunk, Document as DatasetDocument
 from extensions.ext_database import db
 
@@ -15,32 +16,53 @@ from extensions.ext_database import db
 class VectorService:
     @classmethod
     def create_segments_vector(
-        cls, keywords_list: Optional[list[list[str]]], segments: list[DocumentSegment], dataset: Dataset
+        cls, keywords_list: Optional[list[list[str]]], segments: list[DocumentSegment], dataset: Dataset, doc_form: str
     ):
         documents = []
+        if doc_form == IndexType.PARENT_CHILD_INDEX:
+                                # get embedding model instance
+            if dataset.indexing_technique == "high_quality":
+                # check embedding model setting
+                model_manager = ModelManager()
+
+                if dataset.embedding_model_provider:
+                    embedding_model_instance = model_manager.get_model_instance(
+                        tenant_id=dataset.tenant_id,
+                        provider=dataset.embedding_model_provider,
+                        model_type=ModelType.TEXT_EMBEDDING,
+                        model=dataset.embedding_model,
+                    )
+                else:
+                    embedding_model_instance = model_manager.get_default_model_instance(
+                        tenant_id=dataset.tenant_id,
+                        model_type=ModelType.TEXT_EMBEDDING,
+                    )
+            else:
+                raise ValueError("The knowledge base index technique is not high quality!")
+            # get the process rule
+            processing_rule = (
+                db.session.query(DatasetProcessRule)
+                .filter(DatasetProcessRule.id == document.dataset_process_rule_id)
+                    .first()
+                )
         for segment in segments:
-            document = Document(
-                page_content=segment.content,
-                metadata={
+
+            if doc_form == IndexType.PARENT_CHILD_INDEX:
+                cls.generate_child_chunks(segment, document, dataset, embedding_model_instance, processing_rule, False)
+            else:
+                document = Document(
+                    page_content=segment.content,
+                    metadata={
                     "doc_id": segment.index_node_id,
                     "doc_hash": segment.index_node_hash,
                     "document_id": segment.document_id,
                     "dataset_id": segment.dataset_id,
-                },
-            )
-            documents.append(document)
-        if dataset.indexing_technique == "high_quality":
-            # save vector index
-            vector = Vector(dataset=dataset)
-            vector.add_texts(documents, duplicate_check=True)
-
-        # save keyword index
-        keyword = Keyword(dataset)
-
-        if keywords_list and len(keywords_list) > 0:
-            keyword.add_texts(documents, keywords_list=keywords_list)
-        else:
-            keyword.add_texts(documents)
+                    },
+                )
+                documents.append(document)
+        if len(documents) > 0:
+            index_processor = IndexProcessorFactory(doc_form).init_index_processor()
+            index_processor.load(dataset, documents, with_keywords=True, keywords_list=keywords_list)
 
     @classmethod
     def update_segment_vector(cls, keywords: Optional[list[str]], segment: DocumentSegment, dataset: Dataset):
@@ -73,37 +95,16 @@ class VectorService:
             keyword.add_texts([document])
 
     @classmethod
-    def regenerate_child_chunks(cls, segment: DocumentSegment, dataset_document: Document, dataset: Dataset):
-        # delete child chunks
-        db.session.query(ChildChunk).filter(ChildChunk.dataset_id == dataset.id, ChildChunk.document_id == dataset_document.id,
-                ChildChunk.segment_id == segment.id,
-            ).delete()
-        # regenerate child chunks
+    def generate_child_chunks(cls, segment: DocumentSegment, dataset_document: Document, dataset: Dataset, 
+                              embedding_model_instance: ModelInstance, processing_rule: DatasetProcessRule, 
+                              regenerate: bool = False):
         index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
-        index_processor.create_child_chunks(dataset, [segment.index_node_id])
-        # get embedding model instance
-        if dataset.indexing_technique == "high_quality":
-            # check embedding model setting
-            model_manager = ModelManager()
+        if regenerate:
+            # delete child chunks
+            index_processor.clean(dataset, [segment.index_node_id])
+            
+        # generate child chunks
 
-            if dataset.embedding_model_provider:
-                embedding_model_instance = model_manager.get_model_instance(
-                    tenant_id=dataset.tenant_id,
-                    provider=dataset.embedding_model_provider,
-                    model_type=ModelType.TEXT_EMBEDDING,
-                    model=dataset.embedding_model,
-                )
-            else:
-                embedding_model_instance = model_manager.get_default_model_instance(
-                    tenant_id=dataset.tenant_id,
-                model_type=ModelType.TEXT_EMBEDDING,
-            )
-        # get the process rule
-        processing_rule = (
-            db.session.query(DatasetProcessRule)
-            .filter(DatasetProcessRule.id == dataset_document.dataset_process_rule_id)
-                .first()
-            )
         document = Document(
             page_content=segment.content,
             metadata={
@@ -140,3 +141,41 @@ class VectorService:
                 )
                 db.session.add(child_segment)
         db.session.commit()
+
+    @classmethod
+    def create_child_chunk_vector(cls, child_segment: ChildChunk, dataset: Dataset):
+        child_document = Document(
+            page_content=child_segment.content,
+            metadata={
+                "doc_id": child_segment.index_node_id,
+                "doc_hash": child_segment.index_node_hash,
+                "document_id": child_segment.document_id,
+                "dataset_id": child_segment.dataset_id,
+            },
+        )
+        if dataset.indexing_technique == "high_quality":
+            # save vector index
+            vector = Vector(dataset=dataset)
+            vector.add_texts([child_document], duplicate_check=True)
+    
+    @classmethod
+    def update_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset):
+        child_document = Document(
+            page_content=child_chunk.content,
+            metadata={
+                "doc_id": child_chunk.index_node_id,
+                "doc_hash": child_chunk.index_node_hash,
+                "document_id": child_chunk.document_id,
+                "dataset_id": child_chunk.dataset_id,
+            },
+        )
+        if dataset.indexing_technique == "high_quality":
+            # update vector index
+            vector = Vector(dataset=dataset)
+            vector.delete_by_ids([child_chunk.index_node_id])
+            vector.add_texts([child_document], duplicate_check=True)
+
+    @classmethod
+    def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset):
+        vector = Vector(dataset=dataset)
+        vector.delete_by_ids([child_chunk.index_node_id])

@@ -649,11 +649,14 @@ class IndexingRunner:
         db.session.commit()
 
     @staticmethod
-    def batch_add_segments(segments: list[DocumentSegment], dataset: Dataset):
+    def batch_add_segments(segments: list[DocumentSegment], dataset_document: DatasetDocument, dataset: Dataset):
         """
         Batch add segments index processing
         """
         documents = []
+        # save vector index
+        index_type = dataset.doc_form
+        index_processor = IndexProcessorFactory(index_type).init_index_processor()
         for segment in segments:
             document = Document(
                 page_content=segment.content,
@@ -664,10 +667,10 @@ class IndexingRunner:
                     "dataset_id": segment.dataset_id,
                 },
             )
+            if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                documents.append(index_processor.transform([document], embedding_model_instance=None, process_rule=None, tenant_id=dataset.tenant_id, doc_language=None))
             documents.append(document)
-        # save vector index
-        index_type = dataset.doc_form
-        index_processor = IndexProcessorFactory(index_type).init_index_processor()
+
         index_processor.load(dataset, documents)
 
     def _transform(

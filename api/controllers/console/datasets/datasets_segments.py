@@ -10,7 +10,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 import services
 from controllers.console import api
 from controllers.console.app.error import ProviderNotInitializeError
-from controllers.console.datasets.error import InvalidActionError, NoFileUploadedError, TooManyFilesError
+from controllers.console.datasets.error import ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, NoFileUploadedError, TooManyFilesError
 from controllers.console.setup import setup_required
 from controllers.console.wraps import (
     account_initialization_required,
@@ -22,11 +22,12 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from fields.segment_fields import segment_fields
+from fields.segment_fields import segment_fields, child_chunk_fields
 from libs.login import login_required
-from models.dataset import DocumentSegment
+from models.dataset import ChildChunk, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError, ChildChunkIndexingError as ChildChunkIndexingServiceError
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
 from tasks.enable_segment_to_index_task import enable_segment_to_index_task
@@ -110,13 +111,42 @@ class DatasetDocumentSegmentListApi(Resource):
             "total": total,
         }, 200
 
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def delete(self, dataset_id, document_id):
+        # check dataset
+        dataset_id = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
+        # check document
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset_id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+        segment_ids = request.args.getlist("segment_id")
+
+        # The role of the current user in the ta table must be admin or owner
+        if not current_user.is_editor:
+            raise Forbidden()
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+        SegmentService.delete_segments(segment_ids, document, dataset)
+        return {"result": "success"}, 200
+
+
 
 class DatasetDocumentSegmentApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
-    def patch(self, dataset_id, segment_id, action):
+    def patch(self, dataset_id, action):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
@@ -148,6 +178,7 @@ class DatasetDocumentSegmentApi(Resource):
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
+        segment_ids = request.args.getlist("segment_id")
 
         segment = DocumentSegment.query.filter(
             DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
@@ -413,13 +444,13 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
 
         return {"job_id": job_id, "job_status": cache_result.decode()}, 200
 
-class DatasetDocumentSegmentAddApi(Resource):
+class ChildChunkAddApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
     @cloud_edition_billing_knowledge_limit_check("add_segment")
-    def post(self, dataset_id, document_id):
+    def post(self, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -430,6 +461,13 @@ class DatasetDocumentSegmentAddApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound("Document not found.")
+        # check segment
+        segment_id = str(segment_id)
+        segment = DocumentSegment.query.filter(
+            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not segment:
+            raise NotFound("Segment not found.")
         if not current_user.is_editor:
             raise Forbidden()
         # check embedding model setting
@@ -456,20 +494,20 @@ class DatasetDocumentSegmentAddApi(Resource):
         # validate args
         parser = reqparse.RequestParser()
         parser.add_argument("content", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("answer", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("keywords", type=list, required=False, nullable=True, location="json")
         args = parser.parse_args()
-        SegmentService.segment_create_args_validate(args, document)
-        segment = SegmentService.create_segment(args, document, dataset)
-        return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
+        try:
+            child_chunk = SegmentService.create_child_chunk(args.get("content"), segment, document, dataset)
+        except ChildChunkIndexingServiceError as e:
+            raise ChildChunkIndexingError(str(e))
+        return {"data": marshal(child_chunk, child_chunk_fields)}, 200
 
 
-class DatasetDocumentSegmentUpdateApi(Resource):
+class ChildChunkUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
-    def patch(self, dataset_id, document_id, segment_id):
+    def patch(self, dataset_id, document_id, segment_id, child_chunk_id):
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -482,23 +520,6 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound("Document not found.")
-        if dataset.indexing_technique == "high_quality":
-            # check embedding model setting
-            try:
-                model_manager = ModelManager()
-                model_manager.get_model_instance(
-                    tenant_id=current_user.current_tenant_id,
-                    provider=dataset.embedding_model_provider,
-                    model_type=ModelType.TEXT_EMBEDDING,
-                    model=dataset.embedding_model,
-                )
-            except LLMBadRequestError:
-                raise ProviderNotInitializeError(
-                    "No Embedding Model available. Please configure a valid provider "
-                    "in the Settings -> Model Provider."
-                )
-            except ProviderTokenNotInitError as ex:
-                raise ProviderNotInitializeError(ex.description)
             # check segment
         segment_id = str(segment_id)
         segment = DocumentSegment.query.filter(
@@ -506,6 +527,13 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         ).first()
         if not segment:
             raise NotFound("Segment not found.")
+        # check child chunk
+        child_chunk_id = str(child_chunk_id)
+        child_chunk = ChildChunk.query.filter(
+            ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not child_chunk:
+            raise NotFound("Child chunk not found.")
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
@@ -516,18 +544,17 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         # validate args
         parser = reqparse.RequestParser()
         parser.add_argument("content", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("answer", type=str, required=False, nullable=True, location="json")
-        parser.add_argument("keywords", type=list, required=False, nullable=True, location="json")
-        parser.add_argument("regenerate_child_chunks", type=bool, required=False, nullable=True, default=False, location="json")
         args = parser.parse_args()
-        SegmentService.segment_create_args_validate(args, document)
-        segment = SegmentService.update_segment(SegmentUpdateArgs(**args), segment, document, dataset)
-        return {"data": marshal(segment, segment_fields), "doc_form": document.doc_form}, 200
+        try:
+            child_chunk = SegmentService.update_child_chunk(args.get("content"), child_chunk, dataset)
+        except ChildChunkIndexingServiceError as e:
+            raise ChildChunkIndexingError(str(e))
+        return {"data": marshal(child_chunk, child_chunk_fields)}, 200
 
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, dataset_id, document_id, segment_id):
+    def delete(self, dataset_id, document_id, segment_id, child_chunk_id):
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -547,6 +574,13 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         ).first()
         if not segment:
             raise NotFound("Segment not found.")
+        # check child chunk
+        child_chunk_id = str(child_chunk_id)
+        child_chunk = ChildChunk.query.filter(
+            ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not child_chunk:
+            raise NotFound("Child chunk not found.")
         # The role of the current user in the ta table must be admin or owner
         if not current_user.is_editor:
             raise Forbidden()
@@ -554,7 +588,10 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
             raise Forbidden(str(e))
-        SegmentService.delete_segment(segment, document, dataset)
+        try:
+            SegmentService.delete_child_chunk(child_chunk, dataset)
+        except ChildChunkDeleteIndexServiceError as e:
+            raise ChildChunkDeleteIndexError(str(e))
         return {"result": "success"}, 200
 
 api.add_resource(DatasetDocumentSegmentListApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
@@ -568,4 +605,12 @@ api.add_resource(
     DatasetDocumentSegmentBatchImportApi,
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/batch_import",
     "/datasets/batch_import_status/<uuid:job_id>",
+)
+api.add_resource(
+    ChildChunkAddApi,
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks",
+)
+api.add_resource(
+    ChildChunkUpdateApi,
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments/<uuid:segment_id>/child_chunks/<uuid:child_chunk_id>",
 )

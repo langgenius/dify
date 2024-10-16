@@ -78,7 +78,7 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
 
         return all_documents
 
-    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True):
+    def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True, **kwargs):
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             for document in documents:
@@ -87,7 +87,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                     formatted_child_documents = [Document(**child_document.model_dump()) for child_document in child_documents]
                     vector.create(formatted_child_documents)
 
-    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True):
+    def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
+        # node_ids is segment's node_ids
         if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             if node_ids:
@@ -103,6 +104,8 @@ class ParentChildIndexProcessor(BaseIndexProcessor):
                 )
                 child_node_ids = [child_node_id[0] for child_node_id in child_node_ids]
                 vector.delete_by_ids(child_node_ids)
+                db.session.query(ChildChunk).filter(ChildChunk.dataset_id == dataset.id, ChildChunk.index_node_id.in_(child_node_ids)).delete()
+                db.session.commit()
             else:
                 vector.delete()
 

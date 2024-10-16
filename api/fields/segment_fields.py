@@ -6,6 +6,7 @@ child_chunk_fields = {
     "id": fields.String,
     "segment_id": fields.String,
     "content": fields.String,
+    "position": fields.Integer,
     "word_count": fields.Integer,
     "type": fields.String,
     "created_at": TimestampField,

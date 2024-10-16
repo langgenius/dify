@@ -40,6 +40,7 @@ from models.model import UploadFile
 from models.source import DataSourceOauthBinding
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, RetrievalModel, SegmentUpdateArgs
 from services.errors.account import NoPermissionError
+from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
@@ -1372,7 +1373,7 @@ class SegmentService:
 
             # save vector index
             try:
-                VectorService.create_segments_vector([args["keywords"]], [segment_document], dataset)
+                VectorService.create_segments_vector([args["keywords"]], [segment_document], dataset, document.doc_form)
             except Exception as e:
                 logging.exception("create segment index failed")
                 segment_document.enabled = False
@@ -1440,7 +1441,7 @@ class SegmentService:
 
             try:
                 # save vector index
-                VectorService.create_segments_vector(keywords_list, pre_segment_data_list, dataset)
+                VectorService.create_segments_vector(keywords_list, pre_segment_data_list, dataset, document.doc_form)
             except Exception as e:
                 logging.exception("create segment index failed")
                 for segment_document in segment_data_list:
@@ -1504,7 +1505,32 @@ class SegmentService:
                     keyword.add_texts([document], keywords_list=[args.keywords])
                 if document.doc_form == IndexType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
                     # regenerate child chunks
-                    VectorService.regenerate_child_chunks(segment, document, dataset)
+                    # get embedding model instance
+                    if dataset.indexing_technique == "high_quality":
+                        # check embedding model setting
+                        model_manager = ModelManager()
+
+                        if dataset.embedding_model_provider:
+                            embedding_model_instance = model_manager.get_model_instance(
+                                tenant_id=dataset.tenant_id,
+                                provider=dataset.embedding_model_provider,
+                                model_type=ModelType.TEXT_EMBEDDING,
+                                model=dataset.embedding_model,
+                            )
+                        else:
+                            embedding_model_instance = model_manager.get_default_model_instance(
+                                tenant_id=dataset.tenant_id,
+                                model_type=ModelType.TEXT_EMBEDDING,
+                            )
+                    else:
+                        raise ValueError("The knowledge base index technique is not high quality!")
+                    # get the process rule
+                    processing_rule = (
+                        db.session.query(DatasetProcessRule)
+                        .filter(DatasetProcessRule.id == document.dataset_process_rule_id)
+                            .first()
+                        )
+                    VectorService.generate_child_chunks(segment, document, dataset, embedding_model_instance, processing_rule, True)
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
@@ -1536,7 +1562,32 @@ class SegmentService:
                 db.session.add(segment)
                 db.session.commit()
                 if document.doc_form == IndexType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
-                    VectorService.regenerate_child_chunks(segment, document, dataset)
+                                        # get embedding model instance
+                    if dataset.indexing_technique == "high_quality":
+                        # check embedding model setting
+                        model_manager = ModelManager()
+
+                        if dataset.embedding_model_provider:
+                            embedding_model_instance = model_manager.get_model_instance(
+                                tenant_id=dataset.tenant_id,
+                                provider=dataset.embedding_model_provider,
+                                model_type=ModelType.TEXT_EMBEDDING,
+                                model=dataset.embedding_model,
+                            )
+                        else:
+                            embedding_model_instance = model_manager.get_default_model_instance(
+                                tenant_id=dataset.tenant_id,
+                                model_type=ModelType.TEXT_EMBEDDING,
+                            )
+                    else:
+                        raise ValueError("The knowledge base index technique is not high quality!")
+                    # get the process rule
+                    processing_rule = (
+                        db.session.query(DatasetProcessRule)
+                            .filter(DatasetProcessRule.id == document.dataset_process_rule_id)
+                            .first()
+                        )
+                    VectorService.generate_child_chunks(segment, document, dataset, embedding_model_instance, processing_rule, True)
                 elif document.doc_form == IndexType.PARAGRAPH_INDEX or document.doc_form == IndexType.QA_INDEX:
                     # update segment vector index
                     VectorService.update_segment_vector(args.keywords, segment, dataset)
@@ -1562,10 +1613,80 @@ class SegmentService:
         if segment.enabled:
             # send delete segment index task
             redis_client.setex(indexing_cache_key, 600, 1)
-            delete_segment_from_index_task.delay(segment.id, segment.index_node_id, dataset.id, document.id)
+            delete_segment_from_index_task.delay([segment.index_node_id], dataset.id, document.id)
         db.session.delete(segment)
         db.session.commit()
 
+    @classmethod
+    def delete_segments(cls, segment_ids: list, document: Document, dataset: Dataset):
+
+        index_node_ids = (
+            DocumentSegment.query.with_entities(DocumentSegment.index_node_id)
+            .filter(
+                DocumentSegment.id.in_(segment_ids), 
+                DocumentSegment.dataset_id == dataset.id,
+                DocumentSegment.document_id == document.id,
+                DocumentSegment.tenant_id == current_user.current_tenant_id
+            )
+            .all()
+        )
+        index_node_ids = [index_node_id[0] for index_node_id in index_node_ids]
+
+        delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id)
+        db.session.query(DocumentSegment).filter(DocumentSegment.id.in_(segment_ids)).delete()
+        db.session.commit()
+
+    @classmethod
+    def create_child_chunk(cls, content: str, segment: DocumentSegment, document: Document, dataset: Dataset) -> ChildChunk:
+        index_node_id = str(uuid.uuid4())
+        index_node_hash = helper.generate_text_hash(content)
+        child_chunk= ChildChunk(
+            tenant_id=current_user.current_tenant_id,
+            dataset_id=dataset.id,
+            document_id=document.id,
+            segment_id=segment.id,
+            index_node_id=index_node_id,
+            index_node_hash=index_node_hash,
+            content=content,
+            word_count=len(content),
+            type="customized",
+            created_by=current_user.id,
+        )
+        db.session.add(child_chunk)
+        # save vector index
+        try:
+            VectorService.create_child_chunk_vector(child_chunk, dataset)
+        except Exception as e:
+            logging.exception("create child chunk index failed")
+            db.session.rollback()
+            raise ChildChunkIndexingError(str(e))
+        db.session.commit()
+
+        return child_chunk
+    
+    @classmethod
+    def update_child_chunk(cls, content: str, child_chunk: ChildChunk, dataset: Dataset) -> ChildChunk:
+        child_chunk.content = content
+        db.session.add(child_chunk)
+        try:
+            VectorService.update_child_chunk_vector(child_chunk, dataset)
+        except Exception as e:
+            logging.exception("update child chunk index failed")
+            db.session.rollback()
+            raise ChildChunkIndexingError(str(e))
+        db.session.commit()
+        return child_chunk
+    
+    @classmethod
+    def delete_child_chunk(cls, child_chunk: ChildChunk, dataset: Dataset):
+        db.session.delete(child_chunk)
+        try:
+            VectorService.delete_child_chunk_vector(child_chunk, dataset)
+        except Exception as e:
+            logging.exception("delete child chunk index failed")
+            db.session.rollback()
+            raise ChildChunkDeleteIndexError(str(e))
+        db.session.commit()
 
 class DatasetCollectionBindingService:
     @classmethod
