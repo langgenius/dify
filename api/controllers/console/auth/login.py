@@ -89,6 +89,8 @@ class LogoutApi(Resource):
     @setup_required
     def get(self):
         account = cast(Account, flask_login.current_user)
+        if isinstance(account, flask_login.AnonymousUserMixin):
+            return {"result": "success"}
         AccountService.logout(account=account)
         flask_login.logout_user()
         return {"result": "success"}
