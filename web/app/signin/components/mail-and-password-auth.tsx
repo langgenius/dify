@@ -12,11 +12,12 @@ import I18NContext from '@/context/i18n'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
+  allowRegistration?: boolean
 }
 
 const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
-export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthProps) {
+export default function MailAndPasswordAuth({ isInvite, allowRegistration }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
   const { locale } = useContext(I18NContext)
   const router = useRouter()
@@ -75,10 +76,18 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
         }
       }
       else if (res.message === 'account_not_found') {
-        const params = new URLSearchParams()
-        params.append('email', encodeURIComponent(email))
-        params.append('token', encodeURIComponent(res.data))
-        router.replace(`/reset-password/check-code?${params.toString()}`)
+        if (allowRegistration) {
+          const params = new URLSearchParams()
+          params.append('email', encodeURIComponent(email))
+          params.append('token', encodeURIComponent(res.data))
+          router.replace(`/reset-password/check-code?${params.toString()}`)
+        }
+        else {
+          Toast.notify({
+            type: 'error',
+            message: t('login.error.registrationNotAllowed'),
+          })
+        }
       }
       else {
         Toast.notify({

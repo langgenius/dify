@@ -13,6 +13,8 @@ export type SystemFeatures = {
   enable_email_code_login: boolean
   enable_email_password_login: boolean
   enable_social_oauth_login: boolean
+  is_allow_create_workspace: boolean
+  is_allow_register: boolean
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
@@ -24,4 +26,6 @@ export const defaultSystemFeatures: SystemFeatures = {
   enable_email_code_login: false,
   enable_email_password_login: true,
   enable_social_oauth_login: false,
+  is_allow_create_workspace: true,
+  is_allow_register: true,
 }
