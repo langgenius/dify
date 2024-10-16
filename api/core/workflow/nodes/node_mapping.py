@@ -7,7 +7,7 @@ from core.workflow.nodes.if_else.if_else_node import IfElseNode
 from core.workflow.nodes.iteration.iteration_node import IterationNode
 from core.workflow.nodes.iteration.iteration_start_node import IterationStartNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
-from core.workflow.nodes.list_filter import ListFilterNode
+from core.workflow.nodes.list_operator import ListOperatorNode
 from core.workflow.nodes.llm.llm_node import LLMNode
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from core.workflow.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
@@ -37,5 +37,5 @@ node_classes = {
     NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode,
     NodeType.CONVERSATION_VARIABLE_ASSIGNER: VariableAssignerNode,
     NodeType.DOCUMENT_EXTRACTOR: DocumentExtractorNode,
-    NodeType.LIST_FILTER: ListFilterNode,
+    NodeType.LIST_OPERATOR: ListOperatorNode,
 }

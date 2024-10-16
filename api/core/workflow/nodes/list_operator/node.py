@@ -8,12 +8,12 @@ from core.workflow.nodes.base_node import BaseNode
 from enums.workflow_nodes import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
-from .models import ListFilterNodeData
+from .entities import ListOperatorNodeData
 
 
-class ListFilterNode(BaseNode[ListFilterNodeData]):
-    _node_data_cls = ListFilterNodeData
-    _node_type = NodeType.LIST_FILTER
+class ListOperatorNode(BaseNode[ListOperatorNodeData]):
+    _node_data_cls = ListOperatorNodeData
+    _node_type = NodeType.LIST_OPERATOR
 
     def _run(self):
         inputs = {}
@@ -41,33 +41,34 @@ class ListFilterNode(BaseNode[ListFilterNodeData]):
             process_data["variable"] = variable.value
 
         # Filter
-        for filter_by in self.node_data.filter_by:
-            if isinstance(variable, ArrayStringSegment):
-                if not isinstance(filter_by.value, str):
-                    raise ValueError(f"Invalid filter value: {filter_by.value}")
-                value = self.graph_runtime_state.variable_pool.convert_template(filter_by.value).text
-                filter_func = _get_string_filter_func(condition=filter_by.comparison_operator, value=value)
-                result = list(filter(filter_func, variable.value))
-                variable = variable.model_copy(update={"value": result})
-            elif isinstance(variable, ArrayNumberSegment):
-                if not isinstance(filter_by.value, str):
-                    raise ValueError(f"Invalid filter value: {filter_by.value}")
-                value = self.graph_runtime_state.variable_pool.convert_template(filter_by.value).text
-                filter_func = _get_number_filter_func(condition=filter_by.comparison_operator, value=float(value))
-                result = list(filter(filter_func, variable.value))
-                variable = variable.model_copy(update={"value": result})
-            elif isinstance(variable, ArrayFileSegment):
-                if isinstance(filter_by.value, str):
-                    value = self.graph_runtime_state.variable_pool.convert_template(filter_by.value).text
-                else:
-                    value = filter_by.value
-                filter_func = _get_file_filter_func(
-                    key=filter_by.key,
-                    condition=filter_by.comparison_operator,
-                    value=value,
-                )
-                result = list(filter(filter_func, variable.value))
-                variable = variable.model_copy(update={"value": result})
+        if self.node_data.filter_by.enabled:
+            for condition in self.node_data.filter_by.conditions:
+                if isinstance(variable, ArrayStringSegment):
+                    if not isinstance(condition.value, str):
+                        raise ValueError(f"Invalid filter value: {condition.value}")
+                    value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
+                    filter_func = _get_string_filter_func(condition=condition.comparison_operator, value=value)
+                    result = list(filter(filter_func, variable.value))
+                    variable = variable.model_copy(update={"value": result})
+                elif isinstance(variable, ArrayNumberSegment):
+                    if not isinstance(condition.value, str):
+                        raise ValueError(f"Invalid filter value: {condition.value}")
+                    value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
+                    filter_func = _get_number_filter_func(condition=condition.comparison_operator, value=float(value))
+                    result = list(filter(filter_func, variable.value))
+                    variable = variable.model_copy(update={"value": result})
+                elif isinstance(variable, ArrayFileSegment):
+                    if isinstance(condition.value, str):
+                        value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
+                    else:
+                        value = condition.value
+                    filter_func = _get_file_filter_func(
+                        key=condition.key,
+                        condition=condition.comparison_operator,
+                        value=value,
+                    )
+                    result = list(filter(filter_func, variable.value))
+                    variable = variable.model_copy(update={"value": result})
 
         # Order
         if self.node_data.order_by.enabled:

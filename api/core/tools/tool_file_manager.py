@@ -4,7 +4,6 @@ import hmac
 import logging
 import os
 import time
-from collections.abc import Generator
 from mimetypes import guess_extension, guess_type
 from typing import Optional, Union
 from uuid import uuid4
@@ -194,7 +193,7 @@ class ToolFileManager:
         return blob, tool_file.mimetype
 
     @staticmethod
-    def get_file_generator_by_tool_file_id(tool_file_id: str) -> Union[tuple[Generator, str], None]:
+    def get_file_generator_by_tool_file_id(tool_file_id: str):
         """
         get file binary
 
@@ -211,11 +210,11 @@ class ToolFileManager:
         )
 
         if not tool_file:
-            return None
+            return None, None
 
-        generator = storage.load_stream(tool_file.file_key)
+        stream = storage.load_stream(tool_file.file_key)
 
-        return generator, tool_file.mimetype
+        return stream, tool_file
 
 
 # init tool_file_parser
