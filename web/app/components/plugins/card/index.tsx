@@ -52,7 +52,7 @@ const Card = ({
   }
 
   return (
-    <div className={cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
+    <div className={wrapClassName}>
       {!hideCornerMark && <CornerMark text={type} />}
       {/* Header */}
       <div className="flex">

@@ -21,6 +21,10 @@ const translation = {
   },
   install: '{{num}} installs',
   installAction: 'Install',
+  debugInfo: {
+    title: 'Debugging',
+    viewDocs: 'View Docs',
+  },
   privilege: {
     title: 'Plugin Preferences',
     whoCanInstall: 'Who can install and manage plugins?',

@@ -21,6 +21,10 @@ const translation = {
   },
   install: '{{num}} 次安装',
   installAction: '安装',
+  debugInfo: {
+    title: '调试',
+    viewDocs: '查看文档',
+  },
   privilege: {
     title: '插件偏好',
     whoCanInstall: '谁可以安装和管理插件？',

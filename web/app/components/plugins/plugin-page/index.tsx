@@ -3,9 +3,6 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  RiArrowRightUpLine,
-  RiBugLine,
-  RiClipboardLine,
   RiDragDropLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
@@ -18,10 +15,10 @@ import {
 import InstallPluginDropdown from './install-plugin-dropdown'
 import { useUploader } from './use-uploader'
 import usePermission from './use-permission'
+import DebugInfo from './debug-info'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
-import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import PermissionSetModal from '@/app/components/plugins/permission-setting-modal/modal'
@@ -93,43 +90,7 @@ const PluginPage = ({
             )}
             {
               canDebugger && (
-                <Tooltip
-                  triggerMethod='click'
-                  popupContent={
-                    <>
-                      <div className='flex items-center gap-1 self-stretch'>
-                        <span className='flex flex-col justify-center items-start flex-grow flex-shrink-0 basis-0 text-text-secondary system-sm-semibold'>Debugging</span>
-                        <div className='flex items-center gap-0.5 text-text-accent-light-mode-only cursor-pointer'>
-                          <span className='system-xs-medium'>View docs</span>
-                          <RiArrowRightUpLine className='w-3 h-3' />
-                        </div>
-                      </div>
-                      <div className='flex flex-col items-start gap-0.5 self-stretch'>
-                        {['Port', 'Key'].map((label, index) => (
-                          <div key={label} className='flex items-center gap-1 self-stretch'>
-                            <span className='flex w-10 flex-col justify-center items-start text-text-tertiary system-xs-medium'>{label}</span>
-                            <div className='flex justify-center items-center gap-0.5'>
-                              <span className='system-xs-medium text-text-secondary'>
-                                {index === 0 ? 'cloud.dify,ai:2048' : 'A1B2C3D4E5F6G7H8'}
-                              </span>
-                              <ActionButton>
-                                <RiClipboardLine className='w-3.5 h-3.5 text-text-tertiary' />
-                              </ActionButton>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  }
-                  popupClassName='flex flex-col items-start w-[256px] px-4 py-3.5 gap-1 border border-components-panel-border
-                    rounded-xl bg-components-tooltip-bg shadows-shadow-lg z-50'
-                  asChild={false}
-                  position='bottom'
-                >
-                  <Button className='w-full h-full p-2 text-components-button-secondary-text'>
-                    <RiBugLine className='w-4 h-4' />
-                  </Button>
-                </Tooltip>
+                <DebugInfo />
               )
             }
             {
