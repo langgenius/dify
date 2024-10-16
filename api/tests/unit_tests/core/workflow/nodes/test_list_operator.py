@@ -5,22 +5,27 @@ import pytest
 from core.file import File
 from core.file.models import FileTransferMethod, FileType
 from core.variables import ArrayFileSegment
-from core.workflow.nodes.list_filter.entities import FilterCondition, Limit, ListFilterNodeData, OrderBy
-from core.workflow.nodes.list_filter.node import ListFilterNode
+from core.workflow.nodes.list_operator.entities import FilterBy, FilterCondition, Limit, ListOperatorNodeData, OrderBy
+from core.workflow.nodes.list_operator.node import ListOperatorNode
 from models.workflow import WorkflowNodeExecutionStatus
 
 
 @pytest.fixture
-def list_filter_node():
+def list_operator_node():
     config = {
         "variable": ["test_variable"],
-        "filter_by": [FilterCondition(key="type", comparison_operator="in", value=[FileType.IMAGE, FileType.DOCUMENT])],
+        "filter_by": FilterBy(
+            enabled=True,
+            conditions=[
+                FilterCondition(key="type", comparison_operator="in", value=[FileType.IMAGE, FileType.DOCUMENT])
+            ],
+        ),
         "order_by": OrderBy(enabled=False, value="asc"),
         "limit": Limit(enabled=False, size=0),
         "title": "Test Title",
     }
-    node_data = ListFilterNodeData(**config)
-    node = ListFilterNode(
+    node_data = ListOperatorNodeData(**config)
+    node = ListOperatorNode(
         id="test_node_id",
         config={
             "id": "test_node_id",
@@ -35,7 +40,7 @@ def list_filter_node():
     return node
 
 
-def test_filter_files_by_type(list_filter_node):
+def test_filter_files_by_type(list_operator_node):
     # Setup test data
     files = [
         File(
@@ -68,10 +73,10 @@ def test_filter_files_by_type(list_filter_node):
         ),
     ]
     variable = ArrayFileSegment(value=files)
-    list_filter_node.graph_runtime_state.variable_pool.get.return_value = variable
+    list_operator_node.graph_runtime_state.variable_pool.get.return_value = variable
 
     # Run the node
-    result = list_filter_node._run()
+    result = list_operator_node._run()
 
     # Verify the result
     expected_files = [

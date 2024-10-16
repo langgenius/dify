@@ -33,6 +33,11 @@ class FilterCondition(BaseModel):
     value: str | Sequence[str] = ""
 
 
+class FilterBy(BaseModel):
+    enabled: bool = False
+    conditions: Sequence[FilterCondition] = Field(default_factory=list)
+
+
 class OrderBy(BaseModel):
     enabled: bool = False
     key: str = ""
@@ -44,8 +49,8 @@ class Limit(BaseModel):
     size: int = -1
 
 
-class ListFilterNodeData(BaseNodeData):
+class ListOperatorNodeData(BaseNodeData):
     variable: Sequence[str] = Field(default_factory=list)
-    filter_by: Sequence[FilterCondition]
+    filter_by: FilterBy
     order_by: OrderBy
     limit: Limit
