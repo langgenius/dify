@@ -3,7 +3,7 @@ from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from random import randint
 from typing import Any, Literal
-from urllib.parse import urlencode
+from urllib.parse import urlencode, urlparse
 
 import httpx
 
@@ -275,10 +275,19 @@ class HttpExecutor:
         return self._validate_and_parse_response(response)
 
     def to_log(self):
-        url = self.url
+        url_parts = urlparse(self.url)
+        path = url_parts.path or "/"
+
+        # Add query parameters
         if self.params:
-            url += f"?{urlencode(self.params)}"
-        raw = f"{self.method.upper()} {url} HTTP/1.1\n"
+            query_string = urlencode(self.params)
+            path += f"?{query_string}"
+        elif url_parts.query:
+            path += f"?{url_parts.query}"
+
+        raw = f"{self.method.upper()} {path} HTTP/1.1\r\n"
+        raw += f"Host: {url_parts.netloc}\r\n"
+
         headers = self._assembling_headers()
         for k, v in headers.items():
             if self.auth.type == "api-key":
@@ -286,44 +295,41 @@ class HttpExecutor:
                 if self.auth.config and self.auth.config.header:
                     authorization_header = self.auth.config.header
                 if k.lower() == authorization_header.lower():
-                    raw += f'{k}: {"*" * len(v)}\n'
+                    raw += f'{k}: {"*" * len(v)}\r\n'
                     continue
-            raw += f"{k}: {v}\n"
-        raw += "\n"
+            raw += f"{k}: {v}\r\n"
 
+        body = ""
         if self.files:
-            # if files, use multipart/form-data with boundary
             boundary = self.boundary
-            raw += f"--{boundary}"
             for k, v in self.files.items():
-                raw += f'\nContent-Disposition: form-data; name="{k}"\n\n'
-                raw += f"{v[1]}\n"
-                raw += f"--{boundary}"
-            raw += "--"
+                body += f"--{boundary}\r\n"
+                body += f'Content-Disposition: form-data; name="{k}"\r\n\r\n'
+                body += f"{v[1]}\r\n"
+            body += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:
-                # for binary content
                 if isinstance(self.content, str):
-                    raw += self.content
+                    body = self.content
                 elif isinstance(self.content, bytes):
-                    raw += self.content.decode("utf-8", errors="replace")
+                    body = self.content.decode("utf-8", errors="replace")
             elif self.data and self.node_data.body.type == "x-www-form-urlencoded":
-                # for x-www-form-urlencoded
-                raw += urlencode(self.data)
+                body = urlencode(self.data)
             elif self.data and self.node_data.body.type == "form-data":
-                # for form-data
                 boundary = self.boundary
                 for key, value in self.data.items():
-                    raw += f"--{boundary}\r\n"
-                    raw += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
-                    raw += f"{value}\r\n"
-                raw += f"--{boundary}--\r\n"
+                    body += f"--{boundary}\r\n"
+                    body += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
+                    body += f"{value}\r\n"
+                body += f"--{boundary}--\r\n"
             elif self.json:
-                # for json
-                raw += json.dumps(self.json)
+                body = json.dumps(self.json)
             elif self.node_data.body.type == "raw-text":
-                # for raw text
-                raw += self.node_data.body.data[0].value
+                body = self.node_data.body.data[0].value
+        if body:
+            raw += f"Content-Length: {len(body)}\r\n"
+        raw += "\r\n"  # Empty line between headers and body
+        raw += body
 
         return raw
 
