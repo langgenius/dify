@@ -266,8 +266,11 @@ services:
     platform: 'linux/amd64'
     tty: true
     working_dir: /var/www/html
+    entrypoint: [ "/docker-entrypoint.sh" ]
+    command: [ "npm", "run", "start" ]
     volumes:
       - ../frontend:/var/www/html
+      - ./node/docker-entrypoint.sh:/docker-entrypoint.sh
     environment:
       - TZ=Asia/Tokyo
     networks:
