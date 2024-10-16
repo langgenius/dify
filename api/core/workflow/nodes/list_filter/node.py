@@ -8,7 +8,7 @@ from core.workflow.nodes.base_node import BaseNode
 from enums.workflow_nodes import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
-from .models import ListFilterNodeData
+from .entities import ListFilterNodeData
 
 
 class ListFilterNode(BaseNode[ListFilterNodeData]):
