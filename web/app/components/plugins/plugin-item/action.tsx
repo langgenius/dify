@@ -33,21 +33,21 @@ const Action: FC<Props> = ({
   return (
     <div className='flex space-x-1'>
       {isShowFetchNewVersion
-        && <div className='p-0.5 cursor-pointer' onClick={handleFetchNewVersion}>
-          <RiLoopLeftLine className='w-5 h-5 text-text-tertiary' />
-        </div>
+        && <ActionButton onClick={handleFetchNewVersion}>
+          <RiLoopLeftLine className='w-4 h-4 text-text-tertiary' />
+        </ActionButton>
       }
       {
         isShowInfo
         && <ActionButton onClick={showPluginInfo}>
-          <RiInformation2Line className='w-5 h-5 text-text-tertiary' />
+          <RiInformation2Line className='w-4 h-4 text-text-tertiary' />
         </ActionButton>
       }
       {
         isShowDelete
-        && <div className='p-0.5 cursor-pointer' onClick={onDelete}>
-          <RiDeleteBinLine className='w-5 h-5 text-text-tertiary' />
-        </div>
+        && <ActionButton className='hover:bg-state-destructive-hover text-text-tertiary hover:text-text-destructive' onClick={onDelete}>
+          <RiDeleteBinLine className='w-4 h-4' />
+        </ActionButton>
       }
 
       {isShowPluginInfo && (
