@@ -37,14 +37,19 @@ class ToolFilePreviewApi(Resource):
         except Exception:
             raise UnsupportedFileTypeError()
 
-        return Response(
+        response = Response(
             stream,
             mimetype=tool_file.mimetype,
             direct_passthrough=True,
             headers={
                 "Content-Length": str(tool_file.size),
+                "Content-Disposition": f"attachment; filename={tool_file.name}",
             },
         )
+        if tool_file.mimetype.startswith("image"):
+            response.headers["Content-Disposition"] = f"inline; filename={tool_file.name}"
+
+        return response
 
 
 api.add_resource(ToolFilePreviewApi, "/files/tools/<uuid:file_id>.<string:extension>")
