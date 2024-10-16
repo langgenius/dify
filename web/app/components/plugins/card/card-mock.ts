@@ -52,3 +52,22 @@ export const modelGPT4 = {
     'zh-Hans': '一个使用 OpenAI GPT-4 模型的简单插件。',
   },
 }
+
+export const customTool = {
+  type: PluginType.tool,
+  name: 'notion page search',
+  version: '1.2.0',
+  latest_version: '1.3.0',
+  icon: {
+    content: '🕵️',
+    background: '#FEF7C3',
+  },
+  label: {
+    'en-US': 'Notion Page Search',
+    'zh-Hans': 'Notion 页面搜索',
+  },
+  brief: {
+    'en-US': 'Description: Search Notion pages and open visited ones faster. No admin access required.More and more info...More and more info...More and more info...',
+    'zh-Hans': '搜索 Notion 页面并更快地打开已访问的页面。无需管理员访问权限。More and more info...More and more info...More and more info...',
+  },
+}

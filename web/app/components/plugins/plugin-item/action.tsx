@@ -47,6 +47,7 @@ const Action: FC<Props> = ({
   // const handleDelete = () => { }
   return (
     <div className='flex space-x-1'>
+      {/* Only plugin installed from GitHub need to check if it's the new version  */}
       {isShowFetchNewVersion
         && (
           <Tooltip popupContent={t(`${i18nPrefix}.checkForUpdates`)}>

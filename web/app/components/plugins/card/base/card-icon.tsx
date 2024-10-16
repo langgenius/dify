@@ -1,4 +1,5 @@
 import { RiCheckLine } from '@remixicon/react'
+import AppIcon from '@/app/components/base/app-icon'
 import cn from '@/utils/classnames'
 
 const Icon = ({
@@ -7,9 +8,25 @@ const Icon = ({
   installed = false,
 }: {
   className?: string
-  src: string
+  src: string | {
+    'content': string
+    'background': string
+  }
   installed?: boolean
 }) => {
+  if (typeof src === 'object') {
+    return (
+      <div className={cn('relative', className)}>
+        <AppIcon
+          size='large'
+          iconType={'emoji'}
+          icon={src.content}
+          background={src.background}
+          className='rounded-md'
+        />
+      </div>
+    )
+  }
   return (
     <div
       className={cn('shrink-0 relative w-10 h-10 rounded-md bg-center bg-no-repeat bg-contain', className)}
