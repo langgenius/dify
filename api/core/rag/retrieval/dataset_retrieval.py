@@ -217,7 +217,7 @@ class DatasetRetrieval:
                                 "data_source_type": document.data_source_type,
                                 "segment_id": segment.id,
                                 "retriever_from": invoke_from.to_source(),
-                                "score": document_score_list.get(segment.index_node_id, .0),
+                                "score": document_score_list.get(segment.index_node_id, 0.0),
                             }
 
                             if invoke_from.to_source() == "dev":
