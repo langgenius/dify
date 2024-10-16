@@ -157,6 +157,12 @@ export default function View({email}: {email: string}) {
                              checked={ai_name === 'Claude'}/>
                 <label htmlFor="Claude" className="ml-2">Claude</label>
             </div>
+            <div className="flex align-items-center">
+                <RadioButton inputId="Claude" name="ai_name" value="Gemini"
+                             onChange={(e) => changeAI(e.value)}
+                             checked={ai_name === 'Gemini'}/>
+                <label htmlFor="Claude" className="ml-2">Gemini</label>
+            </div>
         </div>
     }
 
