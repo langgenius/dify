@@ -198,6 +198,7 @@ export default function View({email}: {email: string}) {
                         onChange={(e) => onChangeSelectConversation(e.value)}
                         options={conversations?.data}
                         optionLabel="name"
+                        emptyMessage={'表示履歴はありません'}
                         className={'flex-grow-1 my-2 overflow-y-auto'}
                     />
                 </div>
@@ -206,6 +207,7 @@ export default function View({email}: {email: string}) {
                         <DataScroller
                             value={messages.data}
                             rows={100}
+                            emptyMessage={'　'}
                             itemTemplate={messageTemplate}
                         />
                         <div className={'flex justify-content-center'}>
