@@ -5,7 +5,7 @@ import pytest
 from core.file import File
 from core.file.models import FileTransferMethod, FileType
 from core.variables import ArrayFileSegment
-from core.workflow.nodes.list_filter.models import FilterBy, Limit, ListFilterNodeData, OrderBy
+from core.workflow.nodes.list_filter.entities import FilterCondition, Limit, ListFilterNodeData, OrderBy
 from core.workflow.nodes.list_filter.node import ListFilterNode
 from models.workflow import WorkflowNodeExecutionStatus
 
@@ -14,7 +14,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 def list_filter_node():
     config = {
         "variable": ["test_variable"],
-        "filter_by": [FilterBy(key="type", comparison_operator="in", value=[FileType.IMAGE, FileType.DOCUMENT])],
+        "filter_by": [FilterCondition(key="type", comparison_operator="in", value=[FileType.IMAGE, FileType.DOCUMENT])],
         "order_by": OrderBy(enabled=False, value="asc"),
         "limit": Limit(enabled=False, size=0),
         "title": "Test Title",
