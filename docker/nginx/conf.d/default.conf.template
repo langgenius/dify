@@ -24,6 +24,11 @@ server {
       include proxy.conf;
     }
 
+    location /user {
+      proxy_pass http://node:3000;
+      include proxy.conf;
+    }
+
     location / {
       proxy_pass http://web:3000;
       include proxy.conf;
