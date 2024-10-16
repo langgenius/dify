@@ -14,17 +14,41 @@ export enum PluginSource {
   debugging = 'remote',
 }
 
+export type PluginToolDeclaration = {
+  identity: {
+    author: string
+    name: string
+    description: Record<Locale, string>
+    icon: string
+    label: Record<Locale, string>
+    tags: string[]
+  }
+  credentials_schema: CredentialFormSchemaBase[] // TODO
+}
+
+export type PluginEndpointDeclaration = {
+  settings: CredentialFormSchemaBase[]
+  endpoint: EndpointItem[]
+}
+
+export type EndpointItem = {
+  path: string
+  method: string
+}
+
 export type PluginDeclaration = {
   version: string
   author: string
   icon: string
   name: string
+  category: PluginType
   label: Record<Locale, string>
+  brief: Record<Locale, string>
   created_at: string
   resource: any // useless in frontend
   plugins: any // useless in frontend
-  tool: any // TODO
-  endpoint: any // TODO
+  tool: PluginToolDeclaration
+  endpoint: PluginEndpointDeclaration
   model: any // TODO
 }
 

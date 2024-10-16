@@ -3,6 +3,12 @@ const translation = {
   fromMarketplace: 'From Marketplace',
   endpointsEnabled: '{{num}} sets of endpoints enabled',
   detailPanel: {
+    categoryTip: {
+      marketplace: 'Installed from Marketplace',
+      github: 'Installed from Github',
+      local: 'Local Plugin',
+      debugging: 'Debugging Plugin',
+    },
     operation: {
       install: 'Install',
       detail: 'Detail',

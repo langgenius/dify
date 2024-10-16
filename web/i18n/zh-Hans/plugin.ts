@@ -3,6 +3,12 @@ const translation = {
   fromMarketplace: '来自市场',
   endpointsEnabled: '{{num}} 组端点已启用',
   detailPanel: {
+    categoryTip: {
+      marketplace: '从 Marketplace 安装',
+      github: '从 Github 安装',
+      local: '本地插件',
+      debugging: '调试插件',
+    },
     operation: {
       install: '安装',
       detail: '详情',
