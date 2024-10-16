@@ -26,7 +26,7 @@ const DebugInfo: FC = () => {
               <RiArrowRightUpLine className='w-3 h-3' />
             </a>
           </div>
-          <div className='flex flex-col items-start gap-0.5 self-stretch'>
+          <div className='space-y-0.5'>
             <KeyValueItem
               label={'Port'}
               value={'cloud.dify,ai:2048'}

@@ -33,6 +33,12 @@ const translation = {
     admin: 'Admins',
     noOne: 'No one',
   },
+  pluginInfoModal: {
+    title: 'Plugin info',
+    repository: 'Repository',
+    release: 'Release',
+    packageName: 'Package',
+  },
 }
 
 export default translation

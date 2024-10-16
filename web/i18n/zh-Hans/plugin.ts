@@ -33,6 +33,12 @@ const translation = {
     admin: '管理员',
     noOne: '无人',
   },
+  pluginInfoModal: {
+    title: '插件信息',
+    repository: '仓库',
+    release: '发布版本',
+    packageName: '包',
+  },
 }
 
 export default translation

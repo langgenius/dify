@@ -9,14 +9,17 @@ import {
 import { useTranslation } from 'react-i18next'
 import { ClipboardCheck } from '../../base/icons/src/vender/line/files'
 import Tooltip from '../../base/tooltip'
+import cn from '@/utils/classnames'
 import ActionButton from '@/app/components/base/action-button'
 type Props = {
   label: string
+  labelWidthClassName?: string
   value: string
 }
 
 const KeyValueItem: FC<Props> = ({
   label,
+  labelWidthClassName = 'w-10',
   value,
 }) => {
   const { t } = useTranslation()
@@ -41,7 +44,7 @@ const KeyValueItem: FC<Props> = ({
 
   return (
     <div className='flex items-center gap-1 self-stretch'>
-      <span className='flex w-10 flex-col justify-center items-start text-text-tertiary system-xs-medium'>{label}</span>
+      <span className={cn('flex flex-col justify-center items-start text-text-tertiary system-xs-medium', labelWidthClassName)}>{label}</span>
       <div className='flex justify-center items-center gap-0.5'>
         <span className='system-xs-medium text-text-secondary'>
           {value}

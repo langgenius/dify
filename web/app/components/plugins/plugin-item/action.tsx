@@ -3,6 +3,9 @@ import type { FC } from 'react'
 import React from 'react'
 import { useRouter } from 'next/navigation'
 import { RiDeleteBinLine, RiInformation2Line, RiLoopLeftLine } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import PluginInfo from '../plugin-page/plugin-info'
+import ActionButton from '../../base/action-button'
 
 type Props = {
   pluginId: string
@@ -19,11 +22,13 @@ const Action: FC<Props> = ({
   onDelete,
 }) => {
   const router = useRouter()
+  const [isShowPluginInfo, {
+    setTrue: showPluginInfo,
+    setFalse: hidePluginInfo,
+  }] = useBoolean(false)
 
   const handleFetchNewVersion = () => { }
-  const handleShowInfo = () => {
-    router.refresh() // refresh the page ...
-  }
+
   // const handleDelete = () => { }
   return (
     <div className='flex space-x-1'>
@@ -34,9 +39,9 @@ const Action: FC<Props> = ({
       }
       {
         isShowInfo
-        && <div className='p-0.5 cursor-pointer' onClick={handleShowInfo}>
+        && <ActionButton onClick={showPluginInfo}>
           <RiInformation2Line className='w-5 h-5 text-text-tertiary' />
-        </div>
+        </ActionButton>
       }
       {
         isShowDelete
@@ -44,6 +49,15 @@ const Action: FC<Props> = ({
           <RiDeleteBinLine className='w-5 h-5 text-text-tertiary' />
         </div>
       }
+
+      {isShowPluginInfo && (
+        <PluginInfo
+          repository='https://github.com/langgenius/dify-github-plugin'
+          release='1.2.5'
+          packageName='notion-sync.difypkg'
+          onHide={hidePluginInfo}
+        />
+      )}
     </div>
   )
 }
