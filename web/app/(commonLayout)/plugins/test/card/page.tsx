@@ -8,10 +8,12 @@ import ProviderCard from '@/app/components/plugins/provider-card'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { getLocaleOnServer, useTranslation as translate } from '@/i18n/server'
 import Badge from '@/app/components/base/badge'
+
 const PluginList = async () => {
   const locale = getLocaleOnServer()
   const pluginList = [toolNotion, extensionDallE, modelGPT4, customTool]
   const { t: pluginI8n } = await translate(locale, 'plugin')
+
   return (
     <div className='pb-3 bg-white'>
       <div className='mx-3 '>

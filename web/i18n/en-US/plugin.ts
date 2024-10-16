@@ -47,6 +47,15 @@ const translation = {
     deleteContentRight: ' plugin?',
     usedInApps: 'This plugin is being used in {{num}} apps.',
   },
+  upgrade: {
+    title: 'Upgrade Plugin',
+    successfulTitle: 'Upgrade successful',
+    description: 'About to upgrade the following plugin',
+    usedInApps: 'Used in {{num}} apps',
+    upgrade: 'Upgrade',
+    upgrading: 'Upgrading...',
+    close: 'Close',
+  },
 }
 
 export default translation

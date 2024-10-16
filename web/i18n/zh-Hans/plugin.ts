@@ -47,6 +47,15 @@ const translation = {
     deleteContentRight: ' 插件?',
     usedInApps: '此插件正在 {{num}} 个应用中使用。',
   },
+  upgrade: {
+    title: '升级插件',
+    successfulTitle: '升级成功',
+    description: '即将升级以下插件',
+    usedInApps: '在 {{num}} 个应用中使用',
+    upgrade: '升级',
+    upgrading: '升级中...',
+    close: '关闭',
+  },
 }
 
 export default translation
