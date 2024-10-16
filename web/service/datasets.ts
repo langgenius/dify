@@ -275,8 +275,8 @@ export const fetchFeishuPagePreview: Fetcher<{ content: string }, { workspaceID:
   return get<{ content: string }>(`${FeishuProvider}/workspaces/${workspaceID}/pages/${objectToken}/${objectType}/preview`)
 }
 
-export const fetchApiKeysList: Fetcher<ApikeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get<ApikeysListResponse>(url, params)
+export const fetchApiKeysList: Fetcher<ApiKeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+  return get<ApiKeysListResponse>(url, params)
 }
 
 export const delApikey: Fetcher<CommonResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
