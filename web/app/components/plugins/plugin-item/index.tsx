@@ -52,6 +52,8 @@ const PluginItem: FC<Props> = ({
               <Description text={payload.brief[locale]} descriptionLineRows={1}></Description>
               <Action
                 pluginId='xxx'
+                pluginName={label[locale]}
+                usedInApps={5}
                 isShowFetchNewVersion={hasNewVersion}
                 isShowInfo
                 isShowDelete

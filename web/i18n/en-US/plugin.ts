@@ -39,6 +39,14 @@ const translation = {
     release: 'Release',
     packageName: 'Package',
   },
+  action: {
+    checkForUpdates: 'Check for updates',
+    pluginInfo: 'Plugin info',
+    delete: 'Remove plugin',
+    deleteContentLeft: 'Would you like to remove ',
+    deleteContentRight: ' plugin?',
+    usedInApps: 'This plugin is being used in {{num}} apps.',
+  },
 }
 
 export default translation

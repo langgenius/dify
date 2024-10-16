@@ -39,6 +39,14 @@ const translation = {
     release: '发布版本',
     packageName: '包',
   },
+  action: {
+    checkForUpdates: '检查更新',
+    pluginInfo: '插件信息',
+    delete: '移除插件',
+    deleteContentLeft: '是否要移除 ',
+    deleteContentRight: ' 插件?',
+    usedInApps: '此插件正在 {{num}} 个应用中使用。',
+  },
 }
 
 export default translation
