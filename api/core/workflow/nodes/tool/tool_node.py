@@ -73,6 +73,8 @@ class ToolNode(BaseNode):
                 workflow_tool_callback=DifyWorkflowCallbackHandler(),
                 workflow_call_depth=self.workflow_call_depth,
                 thread_pool_id=self.thread_pool_id,
+                app_id=self.app_id,
+                # TODO: conversation id and message id
             )
         except Exception as e:
             yield RunCompletedEvent(

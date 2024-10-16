@@ -48,7 +48,14 @@ class Tool(ABC):
         :return: the tool provider type
         """
 
-    def invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage]:
+    def invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
+    ) -> Generator[ToolInvokeMessage]:
         if self.runtime and self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
 
@@ -58,6 +65,9 @@ class Tool(ABC):
         result = self._invoke(
             user_id=user_id,
             tool_parameters=tool_parameters,
+            conversation_id=conversation_id,
+            app_id=app_id,
+            message_id=message_id,
         )
 
         if isinstance(result, ToolInvokeMessage):
@@ -91,11 +101,21 @@ class Tool(ABC):
 
     @abstractmethod
     def _invoke(
-        self, user_id: str, tool_parameters: dict[str, Any]
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
     ) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
         pass
 
-    def get_runtime_parameters(self) -> list[ToolParameter]:
+    def get_runtime_parameters(
+        self,
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
+    ) -> list[ToolParameter]:
         """
         get the runtime parameters
 
@@ -105,7 +125,12 @@ class Tool(ABC):
         """
         return self.entity.parameters
 
-    def get_merged_runtime_parameters(self) -> list[ToolParameter]:
+    def get_merged_runtime_parameters(
+        self,
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
+    ) -> list[ToolParameter]:
         """
         get merged runtime parameters
 

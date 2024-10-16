@@ -44,6 +44,9 @@ class ToolEngine:
         invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
         trace_manager: Optional[TraceQueueManager] = None,
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
     ) -> tuple[str, list[tuple[MessageFile, str]], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
@@ -66,7 +69,7 @@ class ToolEngine:
             # hit the callback handler
             agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
 
-            messages = ToolEngine._invoke(tool, tool_parameters, user_id)
+            messages = ToolEngine._invoke(tool, tool_parameters, user_id, conversation_id, app_id, message_id)
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
 
             def message_callback(
@@ -138,6 +141,9 @@ class ToolEngine:
         workflow_tool_callback: DifyWorkflowCallbackHandler,
         workflow_call_depth: int,
         thread_pool_id: Optional[str] = None,
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Workflow invokes the tool with the given arguments.
@@ -153,7 +159,13 @@ class ToolEngine:
             if tool.runtime and tool.runtime.runtime_parameters:
                 tool_parameters = {**tool.runtime.runtime_parameters, **tool_parameters}
 
-            response = tool.invoke(user_id=user_id, tool_parameters=tool_parameters)
+            response = tool.invoke(
+                user_id=user_id,
+                tool_parameters=tool_parameters,
+                conversation_id=conversation_id,
+                app_id=app_id,
+                message_id=message_id,
+            )
 
             # hit the callback handler
             response = workflow_tool_callback.on_tool_execution(
@@ -169,7 +181,12 @@ class ToolEngine:
 
     @staticmethod
     def _invoke(
-        tool: Tool, tool_parameters: dict, user_id: str
+        tool: Tool,
+        tool_parameters: dict,
+        user_id: str,
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage | ToolInvokeMeta, None, None]:
         """
         Invoke the tool with the given arguments.
@@ -190,7 +207,7 @@ class ToolEngine:
             },
         )
         try:
-            yield from tool.invoke(user_id, tool_parameters)
+            yield from tool.invoke(user_id, tool_parameters, conversation_id, app_id, message_id)
         except Exception as e:
             meta.error = str(e)
             raise ToolEngineInvokeError(meta)

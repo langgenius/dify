@@ -20,7 +20,14 @@ class PluginTool(Tool):
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.PLUGIN
 
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
+    ) -> Generator[ToolInvokeMessage, None, None]:
         manager = PluginToolManager()
         return manager.invoke(
             tenant_id=self.tenant_id,

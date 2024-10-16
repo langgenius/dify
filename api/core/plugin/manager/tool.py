@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -90,6 +90,9 @@ class PluginToolManager(BasePluginManager):
         tool_name: str,
         credentials: dict[str, Any],
         tool_parameters: dict[str, Any],
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Invoke the tool with the given tenant, user, plugin, provider, name, credentials and parameters.
@@ -103,6 +106,9 @@ class PluginToolManager(BasePluginManager):
             ToolInvokeMessage,
             data={
                 "user_id": user_id,
+                "conversation_id": conversation_id,
+                "app_id": app_id,
+                "message_id": message_id,
                 "data": {
                     "provider": provider_name,
                     "tool": tool_name,
@@ -154,6 +160,9 @@ class PluginToolManager(BasePluginManager):
         provider: str,
         credentials: dict[str, Any],
         tool: str,
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
     ) -> list[ToolParameter]:
         """
         get the runtime parameters of the tool
@@ -168,7 +177,10 @@ class PluginToolManager(BasePluginManager):
             f"plugin/{tenant_id}/dispatch/tool/get_runtime_parameters",
             RuntimeParametersResponse,
             data={
-                "user_id": "user_id",
+                "user_id": user_id,
+                "conversation_id": conversation_id,
+                "app_id": app_id,
+                "message_id": message_id,
                 "data": {
                     "provider": provider_name,
                     "tool": tool,
