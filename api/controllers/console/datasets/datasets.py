@@ -289,8 +289,8 @@ class DatasetApi(Resource):
             )
         # clear partial member list when permission is only_me or all_team_members
         elif (
-                data.get("permission") == DatasetPermissionEnum.ONLY_ME
-                or data.get("permission") == DatasetPermissionEnum.ALL_TEAM
+            data.get("permission") == DatasetPermissionEnum.ONLY_ME
+            or data.get("permission") == DatasetPermissionEnum.ALL_TEAM
         ):
             DatasetPermissionService.clear_partial_member_list(dataset_id_str)
 
@@ -445,9 +445,9 @@ class DatasetIndexingEstimateApi(Resource):
                             "feishu_workspace_id": workspace_id,
                             "obj_token": page["obj_token"],
                             "obj_type": page["obj_type"],
-                            "tenant_id": current_user.current_tenant_id
+                            "tenant_id": current_user.current_tenant_id,
                         },
-                        document_model=args["doc_form"]
+                        document_model=args["doc_form"],
                     )
                     extract_settings.append(extract_setting)
         else:
@@ -627,25 +627,25 @@ class DatasetRetrievalSettingApi(Resource):
         vector_type = dify_config.VECTOR_STORE
         match vector_type:
             case (
-            VectorType.MILVUS
-            | VectorType.RELYT
-            | VectorType.TIDB_VECTOR
-            | VectorType.CHROMA
-            | VectorType.TENCENT
-            | VectorType.PGVECTO_RS
-            | VectorType.BAIDU
-            | VectorType.VIKINGDB
+                VectorType.MILVUS
+                | VectorType.RELYT
+                | VectorType.TIDB_VECTOR
+                | VectorType.CHROMA
+                | VectorType.TENCENT
+                | VectorType.PGVECTO_RS
+                | VectorType.BAIDU
+                | VectorType.VIKINGDB
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
-            VectorType.QDRANT
-            | VectorType.WEAVIATE
-            | VectorType.OPENSEARCH
-            | VectorType.ANALYTICDB
-            | VectorType.MYSCALE
-            | VectorType.ORACLE
-            | VectorType.ELASTICSEARCH
-            | VectorType.PGVECTOR
+                VectorType.QDRANT
+                | VectorType.WEAVIATE
+                | VectorType.OPENSEARCH
+                | VectorType.ANALYTICDB
+                | VectorType.MYSCALE
+                | VectorType.ORACLE
+                | VectorType.ELASTICSEARCH
+                | VectorType.PGVECTOR
             ):
                 return {
                     "retrieval_method": [
@@ -665,25 +665,25 @@ class DatasetRetrievalSettingMockApi(Resource):
     def get(self, vector_type):
         match vector_type:
             case (
-            VectorType.MILVUS
-            | VectorType.RELYT
-            | VectorType.TIDB_VECTOR
-            | VectorType.CHROMA
-            | VectorType.TENCENT
-            | VectorType.PGVECTO_RS
-            | VectorType.BAIDU
-            | VectorType.VIKINGDB
+                VectorType.MILVUS
+                | VectorType.RELYT
+                | VectorType.TIDB_VECTOR
+                | VectorType.CHROMA
+                | VectorType.TENCENT
+                | VectorType.PGVECTO_RS
+                | VectorType.BAIDU
+                | VectorType.VIKINGDB
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
-            VectorType.QDRANT
-            | VectorType.WEAVIATE
-            | VectorType.OPENSEARCH
-            | VectorType.ANALYTICDB
-            | VectorType.MYSCALE
-            | VectorType.ORACLE
-            | VectorType.ELASTICSEARCH
-            | VectorType.PGVECTOR
+                VectorType.QDRANT
+                | VectorType.WEAVIATE
+                | VectorType.OPENSEARCH
+                | VectorType.ANALYTICDB
+                | VectorType.MYSCALE
+                | VectorType.ORACLE
+                | VectorType.ELASTICSEARCH
+                | VectorType.PGVECTOR
             ):
                 return {
                     "retrieval_method": [

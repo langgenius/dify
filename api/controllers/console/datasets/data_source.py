@@ -263,62 +263,54 @@ class DataSourceNotionDocumentSyncApi(Resource):
 
 
 class DataSourceFeishuWikiListApi(Resource):
-
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(integrate_feishuwiki_info_list_fields)
     def get(self):
-        dataset_id = request.args.get('dataset_id', default=None, type=str)
+        dataset_id = request.args.get("dataset_id", default=None, type=str)
         exist_obj_token_list = []
         if dataset_id:
             dataset = DatasetService.get_dataset(dataset_id)
             if not dataset:
-                raise NotFound('Dataset not found.')
-            if dataset.data_source_type != 'feishuwiki_import':
-                raise ValueError('Dataset is not feishuwiki type.')
+                raise NotFound("Dataset not found.")
+            if dataset.data_source_type != "feishuwiki_import":
+                raise ValueError("Dataset is not feishuwiki type.")
             documents = Document.query.filter_by(
                 dataset_id=dataset_id,
                 tenant_id=current_user.current_tenant_id,
-                data_source_type='feishuwiki_import',
-                enabled=True
+                data_source_type="feishuwiki_import",
+                enabled=True,
             ).all()
             if documents:
                 for document in documents:
                     data_source_info = json.loads(document.data_source_info)
-                    exist_obj_token_list.append(data_source_info['obj_token'])
+                    exist_obj_token_list.append(data_source_info["obj_token"])
         data_source_bindings = DataSourceOauthBinding.query.filter_by(
-            tenant_id=current_user.current_tenant_id,
-            provider='feishuwiki',
-            disabled=False
+            tenant_id=current_user.current_tenant_id, provider="feishuwiki", disabled=False
         ).all()
         if not data_source_bindings:
-            return {
-                'feishuwiki_info': []
-            }, 200
+            return {"feishuwiki_info": []}, 200
         pre_import_info_list = []
         for data_source_binding in data_source_bindings:
             source_info = data_source_binding.source_info
-            pages = source_info['pages']
+            pages = source_info["pages"]
             for page in pages:
-                if page['obj_token'] in exist_obj_token_list:
-                    page['is_bound'] = True
+                if page["obj_token"] in exist_obj_token_list:
+                    page["is_bound"] = True
                 else:
-                    page['is_bound'] = False
+                    page["is_bound"] = False
             pre_import_info = {
-                'workspace_name': source_info['workspace_name'],
-                'workspace_icon': source_info['workspace_icon'],
-                'workspace_id': source_info['workspace_id'],
-                'pages': pages,
+                "workspace_name": source_info["workspace_name"],
+                "workspace_icon": source_info["workspace_icon"],
+                "workspace_id": source_info["workspace_id"],
+                "pages": pages,
             }
             pre_import_info_list.append(pre_import_info)
-        return {
-            'feishuwiki_info': pre_import_info_list
-        }, 200
+        return {"feishuwiki_info": pre_import_info_list}, 200
 
 
 class DataSourceFeishuWikiApi(Resource):
-
     @setup_required
     @login_required
     @account_initialization_required
@@ -327,59 +319,62 @@ class DataSourceFeishuWikiApi(Resource):
         data_source_binding = DataSourceOauthBinding.query.filter(
             db.and_(
                 DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceOauthBinding.provider == 'feishuwiki',
+                DataSourceOauthBinding.provider == "feishuwiki",
                 DataSourceOauthBinding.disabled == False,
-                DataSourceOauthBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+                DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
             )
         ).first()
         if not data_source_binding:
-            raise NotFound('Data source binding not found.')
+            raise NotFound("Data source binding not found.")
 
         extractor = FeishuWikiExtractor(
             feishu_workspace_id=workspace_id,
             obj_token=obj_token,
             obj_type=obj_type,
-            tenant_id=current_user.current_tenant_id
+            tenant_id=current_user.current_tenant_id,
         )
 
         text_docs = extractor.extract()
-        return {
-            'content': "\n".join([doc.page_content for doc in text_docs])
-        }, 200
+        return {"content": "\n".join([doc.page_content for doc in text_docs])}, 200
 
     @setup_required
     @login_required
     @account_initialization_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('feishuwiki_info_list', type=list, required=True, nullable=True, location='json')
-        parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
-        parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
-        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
-                            location='json')
+        parser.add_argument("feishuwiki_info_list", type=list, required=True, nullable=True, location="json")
+        parser.add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
+        parser.add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
+        parser.add_argument(
+            "doc_language", type=str, default="English", required=False, nullable=False, location="json"
+        )
         args = parser.parse_args()
         # validate args
         DocumentService.estimate_args_validate(args)
-        feishuwiki_info_list = args['feishuwiki_info_list']
+        feishuwiki_info_list = args["feishuwiki_info_list"]
         extract_settings = []
         for feishuwiki_info in feishuwiki_info_list:
-            workspace_id = feishuwiki_info['workspace_id']
-            for page in feishuwiki_info['pages']:
+            workspace_id = feishuwiki_info["workspace_id"]
+            for page in feishuwiki_info["pages"]:
                 extract_setting = ExtractSetting(
                     datasource_type="feishuwiki_import",
                     feishuwiki_info={
                         "feishu_workspace_id": workspace_id,
-                        "obj_token": page['obj_token'],
-                        "obj_type": page['obj_type'],
-                        "tenant_id": current_user.current_tenant_id
+                        "obj_token": page["obj_token"],
+                        "obj_type": page["obj_type"],
+                        "tenant_id": current_user.current_tenant_id,
                     },
-                    document_model=args['doc_form']
+                    document_model=args["doc_form"],
                 )
                 extract_settings.append(extract_setting)
         indexing_runner = IndexingRunner()
-        response = indexing_runner.indexing_estimate(current_user.current_tenant_id, extract_settings,
-                                                     args['process_rule'], args['doc_form'],
-                                                     args['doc_language'])
+        response = indexing_runner.indexing_estimate(
+            current_user.current_tenant_id,
+            extract_settings,
+            args["process_rule"],
+            args["doc_form"],
+            args["doc_language"],
+        )
         return response, 200
 
 
@@ -393,14 +388,16 @@ api.add_resource(
 api.add_resource(
     DataSourceNotionDatasetSyncApi,
     "/datasets/<uuid:dataset_id>/notion/sync",
-    "/datasets/<uuid:dataset_id>/feishuwiki/sync")
+    "/datasets/<uuid:dataset_id>/feishuwiki/sync",
+)
 api.add_resource(
     DataSourceNotionDocumentSyncApi,
     "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/notion/sync",
-    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/feishuwiki/sync"
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/feishuwiki/sync",
 )
-api.add_resource(DataSourceFeishuWikiListApi, '/feishuwiki/pre-import/pages')
+api.add_resource(DataSourceFeishuWikiListApi, "/feishuwiki/pre-import/pages")
 api.add_resource(
     DataSourceFeishuWikiApi,
-    '/feishuwiki/workspaces/<uuid:workspace_id>/pages/<string:obj_token>/<string:obj_type>/preview',
-    '/datasets/feishuwiki-indexing-estimate')
+    "/feishuwiki/workspaces/<uuid:workspace_id>/pages/<string:obj_token>/<string:obj_type>/preview",
+    "/datasets/feishuwiki-indexing-estimate",
+)

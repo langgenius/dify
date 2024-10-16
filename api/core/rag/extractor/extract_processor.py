@@ -41,7 +41,7 @@ USER_AGENT = (
 class ExtractProcessor:
     @classmethod
     def load_from_upload_file(
-            cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False
+        cls, upload_file: UploadFile, return_text: bool = False, is_automatic: bool = False
     ) -> Union[list[Document], str]:
         extract_setting = ExtractSetting(
             datasource_type="upload_file", upload_file=upload_file, document_model="text_model"
@@ -85,7 +85,7 @@ class ExtractProcessor:
 
     @classmethod
     def extract(
-            cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: Optional[str] = None
+        cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: Optional[str] = None
     ) -> list[Document]:
         if extract_setting.datasource_type == DatasourceType.FILE.value:
             with tempfile.TemporaryDirectory() as temp_dir:

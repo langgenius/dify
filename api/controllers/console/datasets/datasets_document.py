@@ -439,15 +439,9 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 info_list.append(notion_info)
             elif data_source_info and "feishu_workspace_id" in data_source_info and "obj_token" in data_source_info:
                 pages = []
-                page = {
-                    "obj_token": data_source_info["obj_token"],
-                    "obj_type": data_source_info["obj_type"]
-                }
+                page = {"obj_token": data_source_info["obj_token"], "obj_type": data_source_info["obj_type"]}
                 pages.append(page)
-                feishuwiki_info = {
-                    "workspace_id": data_source_info["feishu_workspace_id"],
-                    "pages": pages
-                }
+                feishuwiki_info = {"workspace_id": data_source_info["feishu_workspace_id"], "pages": pages}
                 info_list.append(feishuwiki_info)
 
             if document.data_source_type == "upload_file":
@@ -499,9 +493,9 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                         "feishu_workspace_id": data_source_info["feishu_workspace_id"],
                         "obj_token": data_source_info["obj_token"],
                         "obj_type": data_source_info["obj_type"],
-                        "tenant_id": current_user.current_tenant_id
+                        "tenant_id": current_user.current_tenant_id,
                     },
-                    document_model=document.doc_form
+                    document_model=document.doc_form,
                 )
                 extract_settings.append(extract_setting)
             else:

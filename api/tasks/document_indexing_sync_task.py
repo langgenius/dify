@@ -15,7 +15,7 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.source import DataSourceOauthBinding
 
 
-@shared_task(queue='dataset')
+@shared_task(queue="dataset")
 def document_indexing_sync_task(dataset_id: str, document_id: str):
     """
     Async update document
@@ -24,57 +24,52 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
 
     Usage: document_indexing_sync_task.delay(dataset_id, document_id)
     """
-    logging.info(click.style('Start sync document: {}'.format(document_id), fg='green'))
+    logging.info(click.style("Start sync document: {}".format(document_id), fg="green"))
     start_at = time.perf_counter()
 
-    document = db.session.query(Document).filter(
-        Document.id == document_id,
-        Document.dataset_id == dataset_id
-    ).first()
+    document = db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
 
     if not document:
-        raise NotFound('Document not found')
+        raise NotFound("Document not found")
 
     data_source_info = document.data_source_info_dict
-    if document.data_source_type not in ['notion_import', 'feishuwiki_import']:
+    if document.data_source_type not in ["notion_import", "feishuwiki_import"]:
         return
 
-    page_edited_time = data_source_info.get('last_edited_time')
+    page_edited_time = data_source_info.get("last_edited_time")
     workspace_id = data_source_info.get(
-        'notion_workspace_id' if document.data_source_type == 'notion_import' else 'feishu_workspace_id')
+        "notion_workspace_id" if document.data_source_type == "notion_import" else "feishu_workspace_id"
+    )
     provider = "notion" if document.data_source_type == "notion_import" else "feishuwiki"
     data_source_binding = DataSourceOauthBinding.query.filter(
         db.and_(
             DataSourceOauthBinding.tenant_id == document.tenant_id,
             DataSourceOauthBinding.provider == provider,
             DataSourceOauthBinding.disabled == False,
-            DataSourceOauthBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+            DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
         )
     ).first()
 
     if not data_source_binding:
-        raise ValueError('Data source binding not found.')
+        raise ValueError("Data source binding not found.")
 
     last_edited_time = ""
-    if document.data_source_type == 'notion_import':
-        page_id = data_source_info.get('notion_page_id')
-        page_type = data_source_info.get('type')
+    if document.data_source_type == "notion_import":
+        page_id = data_source_info.get("notion_page_id")
+        page_type = data_source_info.get("type")
         loader = NotionExtractor(
             notion_workspace_id=workspace_id,
             notion_obj_id=page_id,
             notion_page_type=page_type,
             notion_access_token=data_source_binding.access_token,
-            tenant_id=document.tenant_id
+            tenant_id=document.tenant_id,
         )
         last_edited_time = loader.get_notion_last_edited_time()
     elif document.data_source_type == "feishuwiki":
-        obj_token = data_source_info.get('obj_token')
-        obj_type = data_source_info.get('obj_type')
+        obj_token = data_source_info.get("obj_token")
+        obj_type = data_source_info.get("obj_type")
         loader = FeishuWikiExtractor(
-            feishu_workspace_id=workspace_id,
-            obj_token=obj_token,
-            obj_type=obj_type,
-            tenant_id=document.tenant_id
+            feishu_workspace_id=workspace_id, obj_token=obj_token, obj_type=obj_type, tenant_id=document.tenant_id
         )
         last_edited_time = loader.get_feishu_wiki_node_last_edited_time()
 

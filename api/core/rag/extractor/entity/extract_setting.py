@@ -26,6 +26,7 @@ class FeishuWikiInfo(BaseModel):
     """
     FeishuWiki import info.
     """
+
     feishu_workspace_id: str
     obj_token: str
     obj_type: str

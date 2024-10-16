@@ -23,10 +23,7 @@ def get_oauth_providers():
             redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/data-source/callback/notion",
         )
 
-        feishuwiki_client = FeishuWikiOAuth(
-            app_id=dify_config.FEISHU_APP_ID,
-            app_secret=dify_config.FEISHU_APP_SECRET
-        )
+        feishuwiki_client = FeishuWikiOAuth(app_id=dify_config.FEISHU_APP_ID, app_secret=dify_config.FEISHU_APP_SECRET)
 
         OAUTH_PROVIDERS = {"notion": notion_oauth, "feishuwiki": feishuwiki_client}
         return OAUTH_PROVIDERS
@@ -44,7 +41,7 @@ class OAuthDataSource(Resource):
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
-        if provider == 'notion':
+        if provider == "notion":
             if dify_config.NOTION_INTEGRATION_TYPE == "internal":
                 internal_secret = dify_config.NOTION_INTERNAL_SECRET
                 if not internal_secret:
@@ -54,9 +51,9 @@ class OAuthDataSource(Resource):
             else:
                 auth_url = oauth_provider.get_authorization_url()
                 return {"data": auth_url}, 200
-        elif provider == 'feishuwiki':
+        elif provider == "feishuwiki":
             oauth_provider.save_feishu_wiki_data_source()
-            return {'data': ''}
+            return {"data": ""}
 
 
 class OAuthDataSourceCallback(Resource):
