@@ -2,8 +2,8 @@
 import { useTranslation } from 'react-i18next'
 import { useEffect, useRef, useState } from 'react'
 import {
-  RiBrainFill,
-  RiBrainLine,
+  RiBrain2Fill,
+  RiBrain2Line,
   RiColorFilterFill,
   RiColorFilterLine,
   RiDatabase2Fill,
@@ -63,8 +63,8 @@ export default function AccountSetting({
       {
         key: 'provider',
         name: t('common.settings.provider'),
-        icon: <RiBrainLine className={iconClassName} />,
-        activeIcon: <RiBrainFill className={iconClassName} />,
+        icon: <RiBrain2Line className={iconClassName} />,
+        activeIcon: <RiBrain2Fill className={iconClassName} />,
       },
       {
         key: 'members',
