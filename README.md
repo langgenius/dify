@@ -142,6 +142,12 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
   </tr>
 </table>
 
+Some other features are:
+-Diff JSON files with ease
+- Merge JSON files efficiently
+- Support for nested JSON objects and arrays
+- Command-line interface for simplicity
+
 ## Using Dify
 
 - **Cloud </br>**
@@ -184,6 +190,15 @@ After running, you can access the Dify dashboard in your browser at [http://loca
 
 > If you'd like to contribute to Dify or do additional development, refer to our [guide to deploying from source code](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)
 
+For command line
+```bash
+pip install dify
+```
+For python;
+```bash
+python -m pip install dify
+```
+However it' still recommend to do using Docker.
 ## Next steps
 
 If you need to customize the configuration, please refer to the comments in our [.env.example](docker/.env.example) file and update the corresponding values in your `.env` file. Additionally, you might need to make adjustments to the `docker-compose.yaml` file itself, such as changing image versions, port mappings, or volume mounts, based on your specific deployment environment and requirements. After making any changes, please re-run `docker-compose up -d`. You can find the full list of available environment variables [here](https://docs.dify.ai/getting-started/install-self-hosted/environments).
@@ -209,6 +224,7 @@ Deploy Dify to Cloud Platform with a single click using [terraform](https://www.
 For those who'd like to contribute code, see our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md). 
 At the same time, please consider supporting Dify by sharing it on social media and at events and conferences.
 
+Contributions are welcome! Please submit pull requests or issues.
 
 > We are looking for contributors to help with translating Dify to languages other than Mandarin or English. If you are interested in helping, please see the [i18n README](https://github.com/langgenius/dify/blob/main/web/i18n/README.md) for more information, and leave us a comment in the `global-users` channel of our [Discord Community Server](https://discord.gg/8Tpq4AcN9c).
 
