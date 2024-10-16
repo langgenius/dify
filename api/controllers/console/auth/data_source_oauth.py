@@ -9,7 +9,7 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from controllers.console import api
 from libs.login import login_required
-from libs.oauth_data_source import NotionOAuth
+from libs.oauth_data_source import FeishuWikiOAuth, NotionOAuth
 
 from ..setup import setup_required
 from ..wraps import account_initialization_required
@@ -23,7 +23,12 @@ def get_oauth_providers():
             redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/data-source/callback/notion",
         )
 
-        OAUTH_PROVIDERS = {"notion": notion_oauth}
+        feishuwiki_client = FeishuWikiOAuth(
+            app_id=dify_config.FEISHU_APP_ID,
+            app_secret=dify_config.FEISHU_APP_SECRET
+        )
+
+        OAUTH_PROVIDERS = {"notion": notion_oauth, "feishuwiki": feishuwiki_client}
         return OAUTH_PROVIDERS
 
 
@@ -38,15 +43,20 @@ class OAuthDataSource(Resource):
             print(vars(oauth_provider))
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
-        if dify_config.NOTION_INTEGRATION_TYPE == "internal":
-            internal_secret = dify_config.NOTION_INTERNAL_SECRET
-            if not internal_secret:
-                return ({"error": "Internal secret is not set"},)
-            oauth_provider.save_internal_access_token(internal_secret)
-            return {"data": ""}
-        else:
-            auth_url = oauth_provider.get_authorization_url()
-            return {"data": auth_url}, 200
+
+        if provider == 'notion':
+            if dify_config.NOTION_INTEGRATION_TYPE == "internal":
+                internal_secret = dify_config.NOTION_INTERNAL_SECRET
+                if not internal_secret:
+                    return ({"error": "Internal secret is not set"},)
+                oauth_provider.save_internal_access_token(internal_secret)
+                return {"data": ""}
+            else:
+                auth_url = oauth_provider.get_authorization_url()
+                return {"data": auth_url}, 200
+        elif provider == 'feishuwiki':
+            oauth_provider.save_feishu_wiki_data_source()
+            return {'data': ''}
 
 
 class OAuthDataSourceCallback(Resource):
