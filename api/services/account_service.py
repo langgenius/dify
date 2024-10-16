@@ -785,12 +785,17 @@ class RegisterService:
         provider: Optional[str] = None,
         language: Optional[str] = None,
         status: Optional[AccountStatus] = None,
+        is_setup: Optional[bool] = False,
     ) -> Account:
         db.session.begin_nested()
         """Register account"""
         try:
             account = AccountService.create_account(
-                email=email, name=name, interface_language=language or languages[0], password=password
+                email=email,
+                name=name,
+                interface_language=language or languages[0],
+                password=password,
+                is_setup=is_setup,
             )
             account.status = AccountStatus.ACTIVE.value if not status else status.value
             account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -825,7 +830,9 @@ class RegisterService:
             TenantService.check_member_permission(tenant, inviter, None, "add")
             name = email.split("@")[0]
 
-            account = cls.register(email=email, name=name, language=language, status=AccountStatus.PENDING)
+            account = cls.register(
+                email=email, name=name, language=language, status=AccountStatus.PENDING, is_setup=True
+            )
             # Create new tenant member for invited tenant
             TenantService.create_tenant_member(tenant, account, role)
             TenantService.switch_tenant(account, tenant.id)
