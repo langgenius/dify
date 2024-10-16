@@ -4,6 +4,7 @@ export type SystemFeatures = {
   sso_enforced_for_web: boolean
   sso_enforced_for_web_protocol: string
   enable_web_sso_switch_component: boolean
+  enable_marketplace: boolean
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
@@ -12,4 +13,5 @@ export const defaultSystemFeatures: SystemFeatures = {
   sso_enforced_for_web: false,
   sso_enforced_for_web_protocol: '',
   enable_web_sso_switch_component: false,
+  enable_marketplace: false,
 }

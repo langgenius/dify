@@ -22,6 +22,7 @@ import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import PermissionSetModal from '@/app/components/plugins/permission-setting-modal/modal'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 
 export type PluginPageProps = {
   plugins: React.ReactNode
@@ -45,12 +46,17 @@ const PluginPage = ({
   }] = useBoolean()
   const [currentFile, setCurrentFile] = useState<File | null>(null)
   const containerRef = usePluginPageContext(v => v.containerRef)
+  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
   const options = useMemo(() => {
     return [
       { value: 'plugins', text: t('common.menus.plugins') },
-      { value: 'discover', text: 'Explore Marketplace' },
+      ...(
+        !enable_marketplace
+          ? [{ value: 'discover', text: 'Explore Marketplace' }]
+          : []
+      ),
     ]
-  }, [t])
+  }, [t, enable_marketplace])
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: options[0].value,
   })
@@ -137,7 +143,7 @@ const PluginPage = ({
         </>
       )}
       {
-        activeTab === 'discover' && marketplace
+        activeTab === 'discover' && !enable_marketplace && marketplace
       }
 
       {showPluginSettingModal && (

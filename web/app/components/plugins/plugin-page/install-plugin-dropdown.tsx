@@ -15,12 +15,14 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 
 const InstallPluginDropdown = () => {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -62,7 +64,11 @@ const InstallPluginDropdown = () => {
             />
             <div className='p-1 w-full'>
               {[
-                { icon: MagicBox, text: 'Marketplace', action: 'marketplace' },
+                ...(
+                  enable_marketplace
+                    ? [{ icon: MagicBox, text: 'Marketplace', action: 'marketplace' }]
+                    : []
+                ),
                 { icon: Github, text: 'GitHub', action: 'github' },
                 { icon: FileZip, text: 'Local Package File', action: 'local' },
               ].map(({ icon: Icon, text, action }) => (

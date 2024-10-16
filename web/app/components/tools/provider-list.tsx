@@ -19,11 +19,13 @@ import { fetchCollectionList } from '@/service/tools'
 import Card from '@/app/components/plugins/card'
 import { useGetLanguage } from '@/context/i18n'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 
 const ProviderList = () => {
   const { t } = useTranslation()
   const language = useGetLanguage()
   const containerRef = useRef<HTMLDivElement>(null)
+  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
 
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'builtin',
@@ -109,6 +111,7 @@ const ProviderList = () => {
                   'border-[1.5px] border-transparent',
                   currentProvider?.id === collection.id && 'border-components-option-card-option-selected-border',
                 )}
+                hideCornerMark
                 locale={language}
                 payload={{
                   ...collection,
@@ -116,7 +119,6 @@ const ProviderList = () => {
                 } as any}
                 footer={
                   <CardMoreInfo
-                    downloadCount={0}
                     tags={collection.labels}
                   />
                 }
@@ -125,9 +127,13 @@ const ProviderList = () => {
           ))}
           {!filteredCollectionList.length && <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'><Empty /></div>}
         </div>
-        <Marketplace onMarketplaceScroll={() => {
-          containerRef.current?.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })
-        }} />
+        {
+          !enable_marketplace && (
+            <Marketplace onMarketplaceScroll={() => {
+              containerRef.current?.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })
+            }} />
+          )
+        }
       </div>
       <div className={cn(
         'shrink-0 w-0 border-l-[0.5px] border-black/8 overflow-y-auto transition-all duration-200 ease-in-out',
