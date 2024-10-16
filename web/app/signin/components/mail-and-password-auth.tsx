@@ -12,7 +12,7 @@ import I18NContext from '@/context/i18n'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
-  allowRegistration?: boolean
+  allowRegistration: boolean
 }
 
 const passwordRegex = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/

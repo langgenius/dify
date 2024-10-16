@@ -118,7 +118,7 @@ const NormalForm = () => {
                 </div>}
               </>}
               {systemFeatures.enable_email_password_login && authType === 'password' && <>
-                <MailAndPasswordAuth isInvite={isInviteLink} />
+                <MailAndPasswordAuth isInvite={isInviteLink} allowRegistration={systemFeatures.is_allow_register} />
                 {systemFeatures.enable_email_code_login && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('code') }}>
                   <span className='system-xs-medium text-components-button-secondary-accent-text'>{t('login.useVerificationCode')}</span>
                 </div>}
