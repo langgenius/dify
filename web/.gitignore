@@ -50,3 +50,4 @@ package-lock.json
 pnpm-lock.yaml
 
 .favorites.json
+*storybook.log
