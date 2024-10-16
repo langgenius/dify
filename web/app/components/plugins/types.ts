@@ -7,6 +7,44 @@ export enum PluginType {
   extension = 'extension',
 }
 
+export enum PluginSource {
+  marketplace = 'marketplace',
+  github = 'github',
+  local = 'package',
+  debugging = 'remote',
+}
+
+export type PluginDeclaration = {
+  version: string
+  author: string
+  icon: string
+  name: string
+  label: Record<Locale, string>
+  created_at: string
+  resource: any // useless in frontend
+  plugins: any // useless in frontend
+  tool: any // TODO
+  endpoint: any // TODO
+  model: any // TODO
+}
+
+export type PluginDetail = {
+  id: string
+  created_at: string
+  updated_at: string
+  name: string
+  plugin_id: string
+  plugin_unique_identifier: string
+  declaration: PluginDeclaration
+  installation_id: string
+  tenant_id: string
+  endpoints_setups: number
+  endpoints_active: number
+  version: string
+  source: PluginSource
+  meta?: any
+}
+
 export type Plugin = {
   'type': PluginType
   'org': string
