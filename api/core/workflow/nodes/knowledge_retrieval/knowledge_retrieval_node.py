@@ -234,7 +234,7 @@ class KnowledgeRetrievalNode(BaseNode):
                         retrieval_resource_list.append(source)
         if retrieval_resource_list:
             retrieval_resource_list = sorted(
-                retrieval_resource_list, key=lambda x: x.get("metadata").get("score"), reverse=True
+                retrieval_resource_list, key=lambda x: x.get("metadata").get("score") or 0.0, reverse=True
             )
             position = 1
             for item in retrieval_resource_list:
