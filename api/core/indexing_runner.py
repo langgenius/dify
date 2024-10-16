@@ -207,14 +207,14 @@ class IndexingRunner:
             db.session.commit()
 
     def indexing_estimate(
-        self,
-        tenant_id: str,
-        extract_settings: list[ExtractSetting],
-        tmp_processing_rule: dict,
-        doc_form: Optional[str] = None,
-        doc_language: str = "English",
-        dataset_id: Optional[str] = None,
-        indexing_technique: str = "economy",
+            self,
+            tenant_id: str,
+            extract_settings: list[ExtractSetting],
+            tmp_processing_rule: dict,
+            doc_form: Optional[str] = None,
+            doc_language: str = "English",
+            dataset_id: Optional[str] = None,
+            indexing_technique: str = "economy",
     ) -> dict:
         """
         Estimate the indexing for the document.
@@ -289,10 +289,10 @@ class IndexingRunner:
         return {"total_segments": total_segments, "preview": preview_texts}
 
     def _extract(
-        self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
+            self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
     ) -> list[Document]:
         # load file
-        if dataset_document.data_source_type not in {"upload_file", "notion_import", "website_crawl"}:
+        if dataset_document.data_source_type not in {"upload_file", "notion_import", "website_crawl", "feishuwiki_import"}:
             return []
 
         data_source_info = dataset_document.data_source_info_dict
@@ -312,9 +312,9 @@ class IndexingRunner:
                 text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
         elif dataset_document.data_source_type == "notion_import":
             if (
-                not data_source_info
-                or "notion_workspace_id" not in data_source_info
-                or "notion_page_id" not in data_source_info
+                    not data_source_info
+                    or "notion_workspace_id" not in data_source_info
+                    or "notion_page_id" not in data_source_info
             ):
                 raise ValueError("no notion import info found")
             extract_setting = ExtractSetting(
@@ -331,10 +331,10 @@ class IndexingRunner:
             text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
         elif dataset_document.data_source_type == "website_crawl":
             if (
-                not data_source_info
-                or "provider" not in data_source_info
-                or "url" not in data_source_info
-                or "job_id" not in data_source_info
+                    not data_source_info
+                    or "provider" not in data_source_info
+                    or "url" not in data_source_info
+                    or "job_id" not in data_source_info
             ):
                 raise ValueError("no website import info found")
             extract_setting = ExtractSetting(
@@ -348,6 +348,22 @@ class IndexingRunner:
                     "only_main_content": data_source_info["only_main_content"],
                 },
                 document_model=dataset_document.doc_form,
+            )
+            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+        elif dataset_document.data_source_type == "feishuwiki_import":
+            if (not data_source_info or "feishu_workspace_id" not in data_source_info
+                    or "obj_token" not in data_source_info):
+                raise ValueError("no feishuwiki import info found")
+            extract_setting = ExtractSetting(
+                datasource_type="feishuwiki_import",
+                feishuwiki_info={
+                    "feishu_workspace_id": data_source_info["feishu_workspace_id"],
+                    "obj_token": data_source_info["obj_token"],
+                    "obj_type": data_source_info["obj_type"],
+                    "document": dataset_document,
+                    "tenant_id": dataset_document.tenant_id
+                },
+                document_model=dataset_document.doc_form
             )
             text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
         # update document status to splitting
@@ -379,7 +395,7 @@ class IndexingRunner:
 
     @staticmethod
     def _get_splitter(
-        processing_rule: DatasetProcessRule, embedding_model_instance: Optional[ModelInstance]
+            processing_rule: DatasetProcessRule, embedding_model_instance: Optional[ModelInstance]
     ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
@@ -420,12 +436,12 @@ class IndexingRunner:
         return character_splitter
 
     def _step_split(
-        self,
-        text_docs: list[Document],
-        splitter: TextSplitter,
-        dataset: Dataset,
-        dataset_document: DatasetDocument,
-        processing_rule: DatasetProcessRule,
+            self,
+            text_docs: list[Document],
+            splitter: TextSplitter,
+            dataset: Dataset,
+            dataset_document: DatasetDocument,
+            processing_rule: DatasetProcessRule,
     ) -> list[Document]:
         """
         Split the text documents into documents and save them to the document segment.
@@ -470,13 +486,13 @@ class IndexingRunner:
         return documents
 
     def _split_to_documents(
-        self,
-        text_docs: list[Document],
-        splitter: TextSplitter,
-        processing_rule: DatasetProcessRule,
-        tenant_id: str,
-        document_form: str,
-        document_language: str,
+            self,
+            text_docs: list[Document],
+            splitter: TextSplitter,
+            processing_rule: DatasetProcessRule,
+            tenant_id: str,
+            document_form: str,
+            document_language: str,
     ) -> list[Document]:
         """
         Split the text documents into nodes.
@@ -512,7 +528,7 @@ class IndexingRunner:
         if document_form == "qa_model":
             for i in range(0, len(all_documents), 10):
                 threads = []
-                sub_documents = all_documents[i : i + 10]
+                sub_documents = all_documents[i: i + 10]
                 for doc in sub_documents:
                     document_format_thread = threading.Thread(
                         target=self.format_qa_document,
@@ -558,7 +574,7 @@ class IndexingRunner:
             all_qa_documents.extend(format_documents)
 
     def _split_to_documents_for_estimate(
-        self, text_docs: list[Document], splitter: TextSplitter, processing_rule: DatasetProcessRule
+            self, text_docs: list[Document], splitter: TextSplitter, processing_rule: DatasetProcessRule
     ) -> list[Document]:
         """
         Split the text documents into nodes.
@@ -626,11 +642,11 @@ class IndexingRunner:
         return [{"question": q, "answer": re.sub(r"\n\s*", "\n", a.strip())} for q, a in matches if q and a]
 
     def _load(
-        self,
-        index_processor: BaseIndexProcessor,
-        dataset: Dataset,
-        dataset_document: DatasetDocument,
-        documents: list[Document],
+            self,
+            index_processor: BaseIndexProcessor,
+            dataset: Dataset,
+            dataset_document: DatasetDocument,
+            documents: list[Document],
     ) -> None:
         """
         insert index and update document/segment status to completed
@@ -660,7 +676,7 @@ class IndexingRunner:
             with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
                 futures = []
                 for i in range(0, len(documents), chunk_size):
-                    chunk_documents = documents[i : i + chunk_size]
+                    chunk_documents = documents[i: i + chunk_size]
                     futures.append(
                         executor.submit(
                             self._process_chunk,
@@ -717,7 +733,7 @@ class IndexingRunner:
                 db.session.commit()
 
     def _process_chunk(
-        self, flask_app, index_processor, chunk_documents, dataset, dataset_document, embedding_model_instance
+            self, flask_app, index_processor, chunk_documents, dataset, dataset_document, embedding_model_instance
     ):
         with flask_app.app_context():
             # check document is paused
@@ -760,7 +776,7 @@ class IndexingRunner:
 
     @staticmethod
     def _update_document_index_status(
-        document_id: str, after_indexing_status: str, extra_update_params: Optional[dict] = None
+            document_id: str, after_indexing_status: str, extra_update_params: Optional[dict] = None
     ) -> None:
         """
         Update the document indexing status.
@@ -811,12 +827,12 @@ class IndexingRunner:
         index_processor.load(dataset, documents)
 
     def _transform(
-        self,
-        index_processor: BaseIndexProcessor,
-        dataset: Dataset,
-        text_docs: list[Document],
-        doc_language: str,
-        process_rule: dict,
+            self,
+            index_processor: BaseIndexProcessor,
+            dataset: Dataset,
+            text_docs: list[Document],
+            doc_language: str,
+            process_rule: dict,
     ) -> list[Document]:
         # get embedding model instance
         embedding_model_instance = None

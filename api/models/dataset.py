@@ -309,7 +309,7 @@ class Document(db.Model):
     doc_form = db.Column(db.String(255), nullable=False, server_default=db.text("'text_model'::character varying"))
     doc_language = db.Column(db.String(255), nullable=True)
 
-    DATA_SOURCES = ["upload_file", "notion_import", "website_crawl"]
+    DATA_SOURCES = ["upload_file", "notion_import", "website_crawl", "feishuwiki_import"]
 
     @property
     def display_status(self):
@@ -363,7 +363,7 @@ class Document(db.Model):
                             "created_at": file_detail.created_at.timestamp(),
                         }
                     }
-            elif self.data_source_type in {"notion_import", "website_crawl"}:
+            elif self.data_source_type in {"notion_import", "website_crawl", "feishuwiki_import"}:
                 return json.loads(self.data_source_info)
         return {}
 
@@ -580,7 +580,7 @@ class DocumentSegment(db.Model):
         # Reconstruct the text with signed URLs
         offset = 0
         for start, end, signed_url in signed_urls:
-            text = text[: start + offset] + signed_url + text[end + offset :]
+            text = text[: start + offset] + signed_url + text[end + offset:]
             offset += len(signed_url) - (end - start)
 
         return text

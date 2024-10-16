@@ -45,6 +45,7 @@ from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureModel, FeatureService
 from services.tag_service import TagService
 from services.vector_service import VectorService
+from tasks.clean_feishuwiki_document_task import clean_feishuwiki_document_task
 from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
@@ -138,14 +139,14 @@ class DatasetService:
 
     @staticmethod
     def create_empty_dataset(
-        tenant_id: str,
-        name: str,
-        indexing_technique: Optional[str],
-        account: Account,
-        permission: Optional[str] = None,
-        provider: str = "vendor",
-        external_knowledge_api_id: Optional[str] = None,
-        external_knowledge_id: Optional[str] = None,
+            tenant_id: str,
+            name: str,
+            indexing_technique: Optional[str],
+            account: Account,
+            permission: Optional[str] = None,
+            provider: str = "vendor",
+            external_knowledge_api_id: Optional[str] = None,
+            external_knowledge_id: Optional[str] = None,
     ):
         # check if dataset name already exists
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
@@ -243,8 +244,8 @@ class DatasetService:
                 raise ValueError("External knowledge api id is required.")
             external_knowledge_binding = ExternalKnowledgeBindings.query.filter_by(dataset_id=dataset_id).first()
             if (
-                external_knowledge_binding.external_knowledge_id != external_knowledge_id
-                or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
+                    external_knowledge_binding.external_knowledge_id != external_knowledge_id
+                    or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
             ):
                 external_knowledge_binding.external_knowledge_id = external_knowledge_id
                 external_knowledge_binding.external_knowledge_api_id = external_knowledge_api_id
@@ -290,8 +291,8 @@ class DatasetService:
                         raise ValueError(ex.description)
             else:
                 if (
-                    data["embedding_model_provider"] != dataset.embedding_model_provider
-                    or data["embedding_model"] != dataset.embedding_model
+                        data["embedding_model_provider"] != dataset.embedding_model_provider
+                        or data["embedding_model"] != dataset.embedding_model
                 ):
                     action = "update"
                     try:
@@ -373,7 +374,7 @@ class DatasetService:
 
         elif dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
             if not any(
-                dp.dataset_id == dataset.id for dp in DatasetPermission.query.filter_by(account_id=user.id).all()
+                    dp.dataset_id == dataset.id for dp in DatasetPermission.query.filter_by(account_id=user.id).all()
             ):
                 raise NoPermissionError("You do not have permission to access this dataset.")
 
@@ -671,11 +672,11 @@ class DocumentService:
 
     @staticmethod
     def save_document_with_dataset_id(
-        dataset: Dataset,
-        document_data: dict,
-        account: Account,
-        dataset_process_rule: Optional[DatasetProcessRule] = None,
-        created_from: str = "web",
+            dataset: Dataset,
+            document_data: dict,
+            account: Account,
+            dataset_process_rule: Optional[DatasetProcessRule] = None,
+            created_from: str = "web",
     ):
         # check document limit
         features = FeatureService.get_features(current_user.current_tenant_id)
@@ -693,6 +694,10 @@ class DocumentService:
                 elif document_data["data_source"]["type"] == "website_crawl":
                     website_info = document_data["data_source"]["info_list"]["website_info_list"]
                     count = len(website_info["urls"])
+                elif document_data["data_source"]["type"] == "feishuwiki_import":
+                    feishuwiki_info_list = document_data["data_source"]["info_list"]["feishuwiki_info_list"]
+                    for feishuwiki_info in feishuwiki_info_list:
+                        count = count + len(feishuwiki_info["pages"])
                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
                 if count > batch_upload_limit:
                     raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
@@ -705,8 +710,8 @@ class DocumentService:
 
         if not dataset.indexing_technique:
             if (
-                "indexing_technique" not in document_data
-                or document_data["indexing_technique"] not in Dataset.INDEXING_TECHNIQUE_LIST
+                    "indexing_technique" not in document_data
+                    or document_data["indexing_technique"] not in Dataset.INDEXING_TECHNIQUE_LIST
             ):
                 raise ValueError("Indexing technique is required")
 
@@ -909,6 +914,56 @@ class DocumentService:
                     document_ids.append(document.id)
                     documents.append(document)
                     position += 1
+            elif document_data["data_source"]["type"] == "feishuwiki_import":
+                feishuwiki_info_list = document_data["data_source"]["info_list"]["feishuwiki_info_list"]
+                exist_obj_token_list = []
+                exist_document = {}
+                documents = Document.query.filter_by(
+                    dataset_id=dataset.id,
+                    tenant_id=current_user.current_tenant_id,
+                    data_source_type="feishuwiki_import",
+                    enabled=True
+                ).all()
+                if documents:
+                    for document in documents:
+                        data_source_info = json.loads(document.data_source_info)
+                        exist_obj_token_list.append(data_source_info['obj_token'])
+                        exist_document[data_source_info['obj_token']] = document.id
+                for feishuwiki_info in feishuwiki_info_list:
+                    workspace_id = feishuwiki_info['workspace_id']
+                    data_source_binding = DataSourceOauthBinding.query.filter(
+                        db.and_(
+                            DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                            DataSourceOauthBinding.provider == 'feishuwiki',
+                            DataSourceOauthBinding.disabled == False,
+                            DataSourceOauthBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+                        )
+                    ).first()
+                    if not data_source_binding:
+                        raise ValueError('Data source binding not found.')
+                    for page in feishuwiki_info['pages']:
+                        if page['obj_token'] not in exist_obj_token_list:
+                            data_source_info = {
+                                "feishu_workspace_id": workspace_id,
+                                "obj_token": page['obj_token'],
+                                "obj_type": page['obj_type'],
+                            }
+                            document = DocumentService.build_document(dataset, dataset_process_rule.id,
+                                                                      document_data["data_source"]["type"],
+                                                                      document_data["doc_form"],
+                                                                      document_data["doc_language"],
+                                                                      data_source_info, created_from, position,
+                                                                      account, page['page_name'], batch)
+                            db.session.add(document)
+                            db.session.flush()
+                            document_ids.append(document.id)
+                            documents.append(document)
+                            position += 1
+                        else:
+                            exist_document.pop(page['obj_token'])
+                # delete not selected documents
+                if len(exist_document) > 0:
+                    clean_feishuwiki_document_task.delay(list(exist_document.values()), dataset.id)
             db.session.commit()
 
             # trigger async task
@@ -929,17 +984,17 @@ class DocumentService:
 
     @staticmethod
     def build_document(
-        dataset: Dataset,
-        process_rule_id: str,
-        data_source_type: str,
-        document_form: str,
-        document_language: str,
-        data_source_info: dict,
-        created_from: str,
-        position: int,
-        account: Account,
-        name: str,
-        batch: str,
+            dataset: Dataset,
+            process_rule_id: str,
+            data_source_type: str,
+            document_form: str,
+            document_language: str,
+            data_source_info: dict,
+            created_from: str,
+            position: int,
+            account: Account,
+            name: str,
+            batch: str,
     ):
         document = Document(
             tenant_id=dataset.tenant_id,
@@ -969,11 +1024,11 @@ class DocumentService:
 
     @staticmethod
     def update_document_with_dataset_id(
-        dataset: Dataset,
-        document_data: dict,
-        account: Account,
-        dataset_process_rule: Optional[DatasetProcessRule] = None,
-        created_from: str = "web",
+            dataset: Dataset,
+            document_data: dict,
+            account: Account,
+            dataset_process_rule: Optional[DatasetProcessRule] = None,
+            created_from: str = "web",
     ):
         DatasetService.check_dataset_model_setting(dataset)
         document = DocumentService.get_document(dataset.id, document_data["original_document_id"])
@@ -1057,6 +1112,26 @@ class DocumentService:
                         "only_main_content": website_info.get("only_main_content", False),
                         "mode": "crawl",
                     }
+            elif document_data["data_source"]["type"] == "feishuwiki_import":
+                feishuwiki_info_list = document_data["data_source"]["info_list"]["feishuwiki_info_list"]
+                for feishuwiki_info in feishuwiki_info_list:
+                    workspace_id = feishuwiki_info["workspace_id"]
+                    data_source_binding = DataSourceOauthBinding.query.filter(
+                        db.and_(
+                            DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                            DataSourceOauthBinding.provider == "feishuwiki",
+                            DataSourceOauthBinding.disabled == False,
+                            DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"'
+                        )
+                    ).first()
+                    if not data_source_binding:
+                        raise ValueError("Data source binding not found.")
+                    for page in feishuwiki_info["pages"]:
+                        data_source_info = {
+                            "feishu_workspace_id": workspace_id,
+                            "obj_token": page["obj_token"],
+                            "obj_type": page["obj_type"]
+                        }
             document.data_source_type = document_data["data_source"]["type"]
             document.data_source_info = json.dumps(data_source_info)
             document.name = file_name
@@ -1096,6 +1171,10 @@ class DocumentService:
             elif document_data["data_source"]["type"] == "website_crawl":
                 website_info = document_data["data_source"]["info_list"]["website_info_list"]
                 count = len(website_info["urls"])
+            elif document_data["data_source"]["type"] == "feishuwiki_import":
+                feishu_info_list = document_data["data_source"]["info_list"]["feishuwiki_info_list"]
+                for feishuwiki_info in feishu_info_list:
+                    count = count + len(feishuwiki_info["pages"])
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
@@ -1153,7 +1232,7 @@ class DocumentService:
             DocumentService.process_rule_args_validate(args)
         else:
             if ("data_source" not in args or not args["data_source"]) and (
-                "process_rule" not in args or not args["process_rule"]
+                    "process_rule" not in args or not args["process_rule"]
             ):
                 raise ValueError("Data source or Process rule is required")
             else:
@@ -1181,22 +1260,25 @@ class DocumentService:
 
         if args["data_source"]["type"] == "upload_file":
             if (
-                "file_info_list" not in args["data_source"]["info_list"]
-                or not args["data_source"]["info_list"]["file_info_list"]
+                    "file_info_list" not in args["data_source"]["info_list"]
+                    or not args["data_source"]["info_list"]["file_info_list"]
             ):
                 raise ValueError("File source info is required")
         if args["data_source"]["type"] == "notion_import":
             if (
-                "notion_info_list" not in args["data_source"]["info_list"]
-                or not args["data_source"]["info_list"]["notion_info_list"]
+                    "notion_info_list" not in args["data_source"]["info_list"]
+                    or not args["data_source"]["info_list"]["notion_info_list"]
             ):
                 raise ValueError("Notion source info is required")
         if args["data_source"]["type"] == "website_crawl":
             if (
-                "website_info_list" not in args["data_source"]["info_list"]
-                or not args["data_source"]["info_list"]["website_info_list"]
+                    "website_info_list" not in args["data_source"]["info_list"]
+                    or not args["data_source"]["info_list"]["website_info_list"]
             ):
                 raise ValueError("Website source info is required")
+        if args["data_source"]["type"] == "feishuwiki_import":
+            if "feishuwiki_info_list" not in args["data_source"]["info_list"] or not args["data_source"]["info_list"]["feishuwiki_info_list"]:
+                raise ValueError("FeishuWiki source info is required")
 
     @classmethod
     def process_rule_args_validate(cls, args: dict):
@@ -1222,8 +1304,8 @@ class DocumentService:
                 raise ValueError("Process rule rules is invalid")
 
             if (
-                "pre_processing_rules" not in args["process_rule"]["rules"]
-                or args["process_rule"]["rules"]["pre_processing_rules"] is None
+                    "pre_processing_rules" not in args["process_rule"]["rules"]
+                    or args["process_rule"]["rules"]["pre_processing_rules"] is None
             ):
                 raise ValueError("Process rule pre_processing_rules is required")
 
@@ -1249,8 +1331,8 @@ class DocumentService:
             args["process_rule"]["rules"]["pre_processing_rules"] = list(unique_pre_processing_rule_dicts.values())
 
             if (
-                "segmentation" not in args["process_rule"]["rules"]
-                or args["process_rule"]["rules"]["segmentation"] is None
+                    "segmentation" not in args["process_rule"]["rules"]
+                    or args["process_rule"]["rules"]["segmentation"] is None
             ):
                 raise ValueError("Process rule segmentation is required")
 
@@ -1258,8 +1340,8 @@ class DocumentService:
                 raise ValueError("Process rule segmentation is invalid")
 
             if (
-                "separator" not in args["process_rule"]["rules"]["segmentation"]
-                or not args["process_rule"]["rules"]["segmentation"]["separator"]
+                    "separator" not in args["process_rule"]["rules"]["segmentation"]
+                    or not args["process_rule"]["rules"]["segmentation"]["separator"]
             ):
                 raise ValueError("Process rule segmentation separator is required")
 
@@ -1267,8 +1349,8 @@ class DocumentService:
                 raise ValueError("Process rule segmentation separator is invalid")
 
             if (
-                "max_tokens" not in args["process_rule"]["rules"]["segmentation"]
-                or not args["process_rule"]["rules"]["segmentation"]["max_tokens"]
+                    "max_tokens" not in args["process_rule"]["rules"]["segmentation"]
+                    or not args["process_rule"]["rules"]["segmentation"]["max_tokens"]
             ):
                 raise ValueError("Process rule segmentation max_tokens is required")
 
@@ -1305,8 +1387,8 @@ class DocumentService:
                 raise ValueError("Process rule rules is invalid")
 
             if (
-                "pre_processing_rules" not in args["process_rule"]["rules"]
-                or args["process_rule"]["rules"]["pre_processing_rules"] is None
+                    "pre_processing_rules" not in args["process_rule"]["rules"]
+                    or args["process_rule"]["rules"]["pre_processing_rules"] is None
             ):
                 raise ValueError("Process rule pre_processing_rules is required")
 
@@ -1332,8 +1414,8 @@ class DocumentService:
             args["process_rule"]["rules"]["pre_processing_rules"] = list(unique_pre_processing_rule_dicts.values())
 
             if (
-                "segmentation" not in args["process_rule"]["rules"]
-                or args["process_rule"]["rules"]["segmentation"] is None
+                    "segmentation" not in args["process_rule"]["rules"]
+                    or args["process_rule"]["rules"]["segmentation"] is None
             ):
                 raise ValueError("Process rule segmentation is required")
 
@@ -1341,8 +1423,8 @@ class DocumentService:
                 raise ValueError("Process rule segmentation is invalid")
 
             if (
-                "separator" not in args["process_rule"]["rules"]["segmentation"]
-                or not args["process_rule"]["rules"]["segmentation"]["separator"]
+                    "separator" not in args["process_rule"]["rules"]["segmentation"]
+                    or not args["process_rule"]["rules"]["segmentation"]["separator"]
             ):
                 raise ValueError("Process rule segmentation separator is required")
 
@@ -1350,8 +1432,8 @@ class DocumentService:
                 raise ValueError("Process rule segmentation separator is invalid")
 
             if (
-                "max_tokens" not in args["process_rule"]["rules"]["segmentation"]
-                or not args["process_rule"]["rules"]["segmentation"]["max_tokens"]
+                    "max_tokens" not in args["process_rule"]["rules"]["segmentation"]
+                    or not args["process_rule"]["rules"]["segmentation"]["max_tokens"]
             ):
                 raise ValueError("Process rule segmentation max_tokens is required")
 
@@ -1608,7 +1690,7 @@ class SegmentService:
 class DatasetCollectionBindingService:
     @classmethod
     def get_dataset_collection_binding(
-        cls, provider_name: str, model_name: str, collection_type: str = "dataset"
+            cls, provider_name: str, model_name: str, collection_type: str = "dataset"
     ) -> DatasetCollectionBinding:
         dataset_collection_binding = (
             db.session.query(DatasetCollectionBinding)
@@ -1634,7 +1716,7 @@ class DatasetCollectionBindingService:
 
     @classmethod
     def get_dataset_collection_binding_by_id_and_type(
-        cls, collection_binding_id: str, collection_type: str = "dataset"
+            cls, collection_binding_id: str, collection_type: str = "dataset"
     ) -> DatasetCollectionBinding:
         dataset_collection_binding = (
             db.session.query(DatasetCollectionBinding)
