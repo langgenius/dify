@@ -67,7 +67,7 @@ const PluginList = async () => {
               payload={plugin as any}
               locale={locale}
               footer={
-                <CardMoreInfo downloadCount={index % 2 === 0 ? 1234 : 6} tags={index % 2 === 0 ? ['Search', 'Productivity'] : []} />
+                <CardMoreInfo downloadCount={index % 2 === 0 ? 1234 : 6} tags={index % 2 === 0 ? ['Search', 'Tag that has very very long name', 'Productivity', 'Tag2'] : []} />
               }
             />
           ))}

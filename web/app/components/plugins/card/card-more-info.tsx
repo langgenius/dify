@@ -15,11 +15,15 @@ const CardMoreInfo = ({
       {downloadCount !== undefined && tags && tags.length > 0 && <div className="mx-2 text-text-quaternary system-xs-regular">·</div>}
       {tags && tags.length > 0 && (
         <>
-          <div className="flex space-x-2">
+          <div className="flex flex-wrap space-x-2 h-4 overflow-hidden">
             {tags.map(tag => (
-              <div key={tag} className="flex space-x-1 system-xs-regular">
+              <div
+                key={tag}
+                className="flex space-x-1 system-xs-regular max-w-[120px] overflow-hidden"
+                title={`# ${tag}`}
+              >
                 <span className="text-text-quaternary">#</span>
-                <span className="text-text-tertiary">{tag}</span>
+                <span className="truncate text-text-tertiary">{tag}</span>
               </div>
             ))}
           </div>

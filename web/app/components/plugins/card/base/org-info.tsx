@@ -17,9 +17,7 @@ const OrgInfo = ({
       {orgName && (
         <>
           <span className='shrink-0 text-text-tertiary system-xs-regular'>{orgName}</span>
-          <span className='shrink-0 text-text-quaternary system-xs-regular'>
-            /
-          </span>
+          <span className='shrink-0 text-text-quaternary system-xs-regular'>/</span>
         </>
       )}
       <span className={cn('shrink-0 w-0 grow truncate text-text-tertiary system-xs-regular', packageNameClassName)}>
