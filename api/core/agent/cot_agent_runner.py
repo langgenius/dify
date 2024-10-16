@@ -369,7 +369,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         return message
 
     def _organize_historic_prompt_messages(
-        self, current_session_messages: list[PromptMessage] = None
+        self, current_session_messages: Optional[list[PromptMessage]] = None
     ) -> list[PromptMessage]:
         """
         organize historic prompt messages
