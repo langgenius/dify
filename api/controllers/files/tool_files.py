@@ -28,18 +28,23 @@ class ToolFilePreviewApi(Resource):
             raise Forbidden("Invalid request.")
 
         try:
-            result = ToolFileManager.get_file_generator_by_tool_file_id(
+            stream, tool_file = ToolFileManager.get_file_generator_by_tool_file_id(
                 file_id,
             )
 
-            if not result:
+            if not stream or not tool_file:
                 raise NotFound("file is not found")
-
-            generator, mimetype = result
         except Exception:
             raise UnsupportedFileTypeError()
 
-        return Response(generator, mimetype=mimetype)
+        return Response(
+            stream,
+            mimetype=tool_file.mimetype,
+            direct_passthrough=True,
+            headers={
+                "Content-Length": str(tool_file.size),
+            },
+        )
 
 
 api.add_resource(ToolFilePreviewApi, "/files/tools/<uuid:file_id>.<string:extension>")
