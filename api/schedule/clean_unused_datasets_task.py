@@ -163,7 +163,9 @@ def clean_unused_datasets_task():
 
                         Document.query.filter_by(dataset_id=dataset.id).update(update_params)
                         db.session.commit()
-                        click.echo(click.style("Cleaned unused dataset {} from db success!".format(dataset.id), fg="green"))
+                        click.echo(
+                            click.style("Cleaned unused dataset {} from db success!".format(dataset.id), fg="green")
+                        )
                 except Exception as e:
                     click.echo(
                         click.style("clean dataset index error: {} {}".format(e.__class__.__name__, str(e)), fg="red")
