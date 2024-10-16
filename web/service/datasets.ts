@@ -271,9 +271,6 @@ export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID:
   return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`)
 }
 
-export const fetchApiKeysList: Fetcher<ApiKeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get<ApiKeysListResponse>(url, params)
-
 export const fetchFeishuPagePreview: Fetcher<{ content: string }, { workspaceID: string; objectToken: string; objectType: string }> = ({ workspaceID, objectToken, objectType }) => {
   return get<{ content: string }>(`${FeishuProvider}/workspaces/${workspaceID}/pages/${objectToken}/${objectType}/preview`)
 }
