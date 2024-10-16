@@ -186,7 +186,7 @@ class PGVectoRS(BaseVector):
                         query_vector,
                     ).label("distance"),
                 )
-                .limit(kwargs.get("top_k", 2))
+                .limit(kwargs.get("top_k", 4))
                 .order_by("distance")
             )
             res = session.execute(stmt)
@@ -205,18 +205,6 @@ class PGVectoRS(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        # with Session(self._client) as session:
-        #     select_statement = sql_text(
-        #         f"SELECT text, meta FROM {self._collection_name} WHERE to_tsvector(text) @@ '{query}'::tsquery"
-        #     )
-        #     results = session.execute(select_statement).fetchall()
-        # if results:
-        #     docs = []
-        #     for result in results:
-        #         doc = Document(page_content=result[0],
-        #                        metadata=result[1])
-        #         docs.append(doc)
-        #     return docs
         return []
 
 

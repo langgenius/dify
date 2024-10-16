@@ -224,7 +224,7 @@ class RelytVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         results = self.similarity_search_with_score_by_vector(
-            k=int(kwargs.get("top_k")), embedding=query_vector, filter=kwargs.get("filter")
+            k=int(kwargs.get("top_k", 4)), embedding=query_vector, filter=kwargs.get("filter")
         )
 
         # Organize results.

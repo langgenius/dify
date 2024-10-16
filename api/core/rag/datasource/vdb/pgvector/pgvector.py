@@ -143,7 +143,7 @@ class PGVector(BaseVector):
         :param top_k: The number of nearest neighbors to return, default is 5.
         :return: List of Documents that are nearest to the query vector.
         """
-        top_k = kwargs.get("top_k", 5)
+        top_k = kwargs.get("top_k", 4)
 
         with self._get_cursor() as cur:
             cur.execute(
