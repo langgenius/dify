@@ -93,6 +93,16 @@ class PluginInstallationManager(BasePluginManager):
             PluginInstallTask,
         )
 
+    def delete_plugin_installation_task(self, tenant_id: str, task_id: str) -> bool:
+        """
+        Delete a plugin installation task.
+        """
+        return self._request_with_plugin_daemon_response(
+            "POST",
+            f"plugin/{tenant_id}/management/install/tasks/{task_id}/delete",
+            bool,
+        )
+
     def fetch_plugin_manifest(self, tenant_id: str, plugin_unique_identifier: str) -> PluginDeclaration:
         """
         Fetch a plugin manifest.

@@ -61,6 +61,11 @@ class PluginService:
         return manager.fetch_plugin_installation_task(tenant_id, task_id)
 
     @staticmethod
+    def delete_install_task(tenant_id: str, task_id: str) -> bool:
+        manager = PluginInstallationManager()
+        return manager.delete_plugin_installation_task(tenant_id, task_id)
+
+    @staticmethod
     def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> str:
         """
         Upload plugin package files

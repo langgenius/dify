@@ -248,6 +248,20 @@ class PluginFetchInstallTaskApi(Resource):
         return jsonable_encoder({"task": PluginService.fetch_install_task(tenant_id, task_id)})
 
 
+class PluginDeleteInstallTaskApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, task_id: str):
+        user = current_user
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        tenant_id = user.current_tenant_id
+
+        return {"success": PluginService.delete_install_task(tenant_id, task_id)}
+
+
 class PluginUninstallApi(Resource):
     @setup_required
     @login_required
@@ -277,4 +291,5 @@ api.add_resource(PluginInstallFromMarketplaceApi, "/workspaces/current/plugin/in
 api.add_resource(PluginFetchManifestApi, "/workspaces/current/plugin/fetch-manifest")
 api.add_resource(PluginFetchInstallTasksApi, "/workspaces/current/plugin/tasks")
 api.add_resource(PluginFetchInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>")
+api.add_resource(PluginDeleteInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>/delete")
 api.add_resource(PluginUninstallApi, "/workspaces/current/plugin/uninstall")
