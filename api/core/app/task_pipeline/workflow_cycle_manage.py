@@ -135,7 +135,7 @@ class WorkflowCycleManage:
         outputs = WorkflowEntry.handle_special_values(outputs)
 
         workflow_run.status = WorkflowRunStatus.SUCCEEDED.value
-        workflow_run.outputs = json.dumps(outputs) if outputs else None
+        workflow_run.outputs = json.dumps(outputs or {})
         workflow_run.elapsed_time = time.perf_counter() - start_at
         workflow_run.total_tokens = total_tokens
         workflow_run.total_steps = total_steps
