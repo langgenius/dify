@@ -128,3 +128,8 @@ class PluginInstallTask(BasePluginEntity):
     total_plugins: int = Field(description="The total number of plugins to be installed.")
     completed_plugins: int = Field(description="The number of plugins that have been installed.")
     plugins: list[PluginInstallTaskPluginStatus] = Field(description="The status of the plugins.")
+
+
+class PluginInstallTaskStartResponse(BasePluginEntity):
+    all_installed: bool = Field(description="Whether all plugins are installed.")
+    task_id: str = Field(description="The ID of the install task.")

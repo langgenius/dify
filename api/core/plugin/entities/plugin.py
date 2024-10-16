@@ -3,7 +3,7 @@ from collections.abc import Mapping
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
@@ -54,6 +54,12 @@ class PluginResourceRequirements(BaseModel):
     permission: Optional[Permission]
 
 
+class PluginCategory(str, Enum):
+    Tool = "tool"
+    Model = "model"
+    Extension = "extension"
+
+
 class PluginDeclaration(BaseModel):
     class Plugins(BaseModel):
         tools: Optional[list[str]] = Field(default_factory=list)
@@ -65,12 +71,25 @@ class PluginDeclaration(BaseModel):
     name: str = Field(..., pattern=r"^[a-z0-9_-]{1,128}$")
     icon: str
     label: I18nObject
+    category: PluginCategory
     created_at: datetime.datetime
     resource: PluginResourceRequirements
     plugins: Plugins
     tool: Optional[ToolProviderEntity] = None
     model: Optional[ProviderEntity] = None
     endpoint: Optional[EndpointProviderDeclaration] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def validate_category(cls, values: dict) -> dict:
+        # auto detect category
+        if values.get("tool"):
+            values["category"] = PluginCategory.Tool
+        elif values.get("model"):
+            values["category"] = PluginCategory.Model
+        else:
+            values["category"] = PluginCategory.Extension
+        return values
 
 
 class PluginEntity(BasePluginEntity):

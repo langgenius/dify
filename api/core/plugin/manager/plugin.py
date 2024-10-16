@@ -1,7 +1,9 @@
 from collections.abc import Sequence
 
+from pydantic import BaseModel
+
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
-from core.plugin.entities.plugin_daemon import PluginInstallTask
+from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStartResponse
 from core.plugin.manager.base import BasePluginManager
 
 
@@ -53,15 +55,15 @@ class PluginInstallationManager(BasePluginManager):
 
     def install_from_identifiers(
         self, tenant_id: str, identifiers: Sequence[str], source: PluginInstallationSource, meta: dict
-    ) -> str:
+    ) -> PluginInstallTaskStartResponse:
         """
         Install a plugin from an identifier.
         """
         # exception will be raised if the request failed
         return self._request_with_plugin_daemon_response(
             "POST",
-            f"plugin/{tenant_id}/management/install/identifier",
-            str,
+            f"plugin/{tenant_id}/management/install/identifiers",
+            PluginInstallTaskStartResponse,
             data={
                 "plugin_unique_identifiers": identifiers,
                 "source": source,
@@ -94,11 +96,16 @@ class PluginInstallationManager(BasePluginManager):
         """
         Fetch a plugin manifest.
         """
+
+        class PluginDeclarationResponse(BaseModel):
+            declaration: PluginDeclaration
+
         return self._request_with_plugin_daemon_response(
             "GET",
-            f"plugin/{tenant_id}/management/fetch/identifier",
-            PluginDeclaration,
-        )
+            f"plugin/{tenant_id}/management/fetch/manifest",
+            PluginDeclarationResponse,
+            params={"plugin_unique_identifier": plugin_unique_identifier},
+        ).declaration
 
     def uninstall(self, tenant_id: str, plugin_installation_id: str) -> bool:
         """

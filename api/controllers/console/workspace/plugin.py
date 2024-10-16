@@ -133,9 +133,7 @@ class PluginInstallFromPkgApi(Resource):
 
         response = PluginService.install_from_local_pkg(tenant_id, args["plugin_unique_identifier"])
 
-        return {
-            "task_id": response,
-        }
+        return response.model_dump()
 
 
 class PluginInstallFromGithubApi(Resource):
@@ -160,9 +158,7 @@ class PluginInstallFromGithubApi(Resource):
             tenant_id, args["repo"], args["version"], args["package"], args["plugin_unique_identifier"]
         )
 
-        return {
-            "task_id": response,
-        }
+        return response.model_dump()
 
 
 class PluginInstallFromMarketplaceApi(Resource):
@@ -182,9 +178,7 @@ class PluginInstallFromMarketplaceApi(Resource):
 
         response = PluginService.install_from_marketplace_pkg(tenant_id, args["plugin_unique_identifier"])
 
-        return {
-            "task_id": response,
-        }
+        return response.model_dump()
 
 
 class PluginFetchManifestApi(Resource):
@@ -200,7 +194,9 @@ class PluginFetchManifestApi(Resource):
 
         tenant_id = user.current_tenant_id
 
-        return {"manifest": PluginService.fetch_plugin_manifest(tenant_id, args["plugin_unique_identifier"])}
+        return jsonable_encoder(
+            {"manifest": PluginService.fetch_plugin_manifest(tenant_id, args["plugin_unique_identifier"]).model_dump()}
+        )
 
 
 class PluginFetchInstallTasksApi(Resource):

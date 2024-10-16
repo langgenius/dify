@@ -87,7 +87,7 @@ class PluginService:
         )
 
     @staticmethod
-    def install_from_local_pkg(tenant_id: str, plugin_unique_identifier: str) -> str:
+    def install_from_local_pkg(tenant_id: str, plugin_unique_identifier: str):
         manager = PluginInstallationManager()
         return manager.install_from_identifiers(
             tenant_id,
@@ -97,9 +97,7 @@ class PluginService:
         )
 
     @staticmethod
-    def install_from_github(
-        tenant_id: str, plugin_unique_identifier: str, repo: str, version: str, package: str
-    ) -> str:
+    def install_from_github(tenant_id: str, plugin_unique_identifier: str, repo: str, version: str, package: str):
         """
         Install plugin from github release package files,
         returns plugin_unique_identifier
@@ -117,7 +115,7 @@ class PluginService:
         )
 
     @staticmethod
-    def install_from_marketplace_pkg(tenant_id: str, plugin_unique_identifier: str) -> str:
+    def install_from_marketplace_pkg(tenant_id: str, plugin_unique_identifier: str):
         """
         Install plugin from marketplace package files,
         returns installation task id
