@@ -20,8 +20,8 @@ def clean_unused_datasets_task():
     plan_sandbox_clean_day_setting = dify_config.PLAN_SANDBOX_CLEAN_DAY_SETTING
     plan_pro_clean_day_setting = dify_config.PLAN_PRO_CLEAN_DAY_SETTING
     start_at = time.perf_counter()
-    sandbox_clean_day = datetime.datetime.now() - datetime.timedelta(days=plan_sandbox_clean_day_setting)
-    pro_clean_day = datetime.datetime.now() - datetime.timedelta(days=plan_pro_clean_day_setting)
+    plan_sandbox_clean_day = datetime.datetime.now() - datetime.timedelta(days=plan_sandbox_clean_day_setting)
+    plan_pro_clean_day = datetime.datetime.now() - datetime.timedelta(days=plan_pro_clean_day_setting)
     page = 1
     while True:
         try:
@@ -32,7 +32,7 @@ def clean_unused_datasets_task():
                     Document.indexing_status == "completed",
                     Document.enabled == True,
                     Document.archived == False,
-                    Document.updated_at > sandbox_clean_day,
+                    Document.updated_at > plan_sandbox_clean_day,
                 )
                 .group_by(Document.dataset_id)
                 .subquery()
@@ -45,7 +45,7 @@ def clean_unused_datasets_task():
                     Document.indexing_status == "completed",
                     Document.enabled == True,
                     Document.archived == False,
-                    Document.updated_at < sandbox_clean_day,
+                    Document.updated_at < plan_sandbox_clean_day,
                 )
                 .group_by(Document.dataset_id)
                 .subquery()
@@ -57,7 +57,7 @@ def clean_unused_datasets_task():
                 .outerjoin(document_subquery_new, Dataset.id == document_subquery_new.c.dataset_id)
                 .outerjoin(document_subquery_old, Dataset.id == document_subquery_old.c.dataset_id)
                 .filter(
-                    Dataset.created_at < sandbox_clean_day,
+                    Dataset.created_at < plan_sandbox_clean_day,
                     func.coalesce(document_subquery_new.c.document_count, 0) == 0,
                     func.coalesce(document_subquery_old.c.document_count, 0) > 0,
                 )
@@ -73,7 +73,7 @@ def clean_unused_datasets_task():
         for dataset in datasets:
             dataset_query = (
                 db.session.query(DatasetQuery)
-                .filter(DatasetQuery.created_at > sandbox_clean_day, DatasetQuery.dataset_id == dataset.id)
+                .filter(DatasetQuery.created_at > plan_sandbox_clean_day, DatasetQuery.dataset_id == dataset.id)
                 .all()
             )
             if not dataset_query or len(dataset_query) == 0:
@@ -102,7 +102,7 @@ def clean_unused_datasets_task():
                     Document.indexing_status == "completed",
                     Document.enabled == True,
                     Document.archived == False,
-                    Document.updated_at > pro_clean_day,
+                    Document.updated_at > plan_pro_clean_day,
                 )
                 .group_by(Document.dataset_id)
                 .subquery()
@@ -115,7 +115,7 @@ def clean_unused_datasets_task():
                     Document.indexing_status == "completed",
                     Document.enabled == True,
                     Document.archived == False,
-                    Document.updated_at < pro_clean_day,
+                    Document.updated_at < plan_pro_clean_day,
                 )
                 .group_by(Document.dataset_id)
                 .subquery()
@@ -127,7 +127,7 @@ def clean_unused_datasets_task():
                 .outerjoin(document_subquery_new, Dataset.id == document_subquery_new.c.dataset_id)
                 .outerjoin(document_subquery_old, Dataset.id == document_subquery_old.c.dataset_id)
                 .filter(
-                    Dataset.created_at < pro_clean_day,
+                    Dataset.created_at < plan_pro_clean_day,
                     func.coalesce(document_subquery_new.c.document_count, 0) == 0,
                     func.coalesce(document_subquery_old.c.document_count, 0) > 0,
                 )
@@ -143,7 +143,7 @@ def clean_unused_datasets_task():
         for dataset in datasets:
             dataset_query = (
                 db.session.query(DatasetQuery)
-                .filter(DatasetQuery.created_at > pro_clean_day, DatasetQuery.dataset_id == dataset.id)
+                .filter(DatasetQuery.created_at > plan_pro_clean_day, DatasetQuery.dataset_id == dataset.id)
                 .all()
             )
             if not dataset_query or len(dataset_query) == 0:
