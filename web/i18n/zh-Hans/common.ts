@@ -23,6 +23,7 @@ const translation = {
     remove: '移除',
     send: '发送',
     copy: '复制',
+    copied: ' 已复制',
     lineBreak: '换行',
     sure: '我确定',
     download: '下载',

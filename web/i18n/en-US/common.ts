@@ -23,6 +23,7 @@ const translation = {
     remove: 'Remove',
     send: 'Send',
     copy: 'Copy',
+    copied: 'Copied',
     lineBreak: 'Line break',
     sure: 'I\'m sure',
     download: 'Download',
