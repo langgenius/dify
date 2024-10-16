@@ -51,9 +51,9 @@ class PluginService:
         return manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
 
     @staticmethod
-    def fetch_install_tasks(tenant_id: str) -> Sequence[PluginInstallTask]:
+    def fetch_install_tasks(tenant_id: str, page: int, page_size: int) -> Sequence[PluginInstallTask]:
         manager = PluginInstallationManager()
-        return manager.fetch_plugin_installation_tasks(tenant_id)
+        return manager.fetch_plugin_installation_tasks(tenant_id, page, page_size)
 
     @staticmethod
     def fetch_install_task(tenant_id: str, task_id: str) -> PluginInstallTask:
@@ -61,17 +61,19 @@ class PluginService:
         return manager.fetch_plugin_installation_task(tenant_id, task_id)
 
     @staticmethod
-    def upload_pkg(tenant_id: str, pkg: bytes) -> str:
+    def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> str:
         """
         Upload plugin package files
 
         returns: plugin_unique_identifier
         """
         manager = PluginInstallationManager()
-        return manager.upload_pkg(tenant_id, pkg)
+        return manager.upload_pkg(tenant_id, pkg, verify_signature)
 
     @staticmethod
-    def upload_pkg_from_github(tenant_id: str, repo: str, version: str, package: str) -> str:
+    def upload_pkg_from_github(
+        tenant_id: str, repo: str, version: str, package: str, verify_signature: bool = False
+    ) -> str:
         """
         Install plugin from github release package files,
         returns plugin_unique_identifier
@@ -84,14 +86,15 @@ class PluginService:
         return manager.upload_pkg(
             tenant_id,
             pkg,
+            verify_signature,
         )
 
     @staticmethod
-    def install_from_local_pkg(tenant_id: str, plugin_unique_identifier: str):
+    def install_from_local_pkg(tenant_id: str, plugin_unique_identifiers: Sequence[str]):
         manager = PluginInstallationManager()
         return manager.install_from_identifiers(
             tenant_id,
-            [plugin_unique_identifier],
+            plugin_unique_identifiers,
             PluginInstallationSource.Package,
             {},
         )
@@ -115,21 +118,28 @@ class PluginService:
         )
 
     @staticmethod
-    def install_from_marketplace_pkg(tenant_id: str, plugin_unique_identifier: str):
+    def install_from_marketplace_pkg(
+        tenant_id: str, plugin_unique_identifiers: Sequence[str], verify_signature: bool = False
+    ):
         """
         Install plugin from marketplace package files,
         returns installation task id
         """
         manager = PluginInstallationManager()
 
-        pkg = download_plugin_pkg(plugin_unique_identifier)
-
-        # upload pkg to plugin daemon
-        pkg_id = manager.upload_pkg(tenant_id, pkg)
+        # check if already downloaded
+        for plugin_unique_identifier in plugin_unique_identifiers:
+            try:
+                manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
+                # already downloaded, skip
+            except Exception:
+                # plugin not installed, download and upload pkg
+                pkg = download_plugin_pkg(plugin_unique_identifier)
+                manager.upload_pkg(tenant_id, pkg, verify_signature)
 
         return manager.install_from_identifiers(
             tenant_id,
-            [pkg_id],
+            plugin_unique_identifiers,
             PluginInstallationSource.Marketplace,
             {
                 "plugin_unique_identifier": plugin_unique_identifier,

@@ -130,6 +130,6 @@ class PluginInstallTask(BasePluginEntity):
     plugins: list[PluginInstallTaskPluginStatus] = Field(description="The status of the plugins.")
 
 
-class PluginInstallTaskStartResponse(BasePluginEntity):
+class PluginInstallTaskStartResponse(BaseModel):
     all_installed: bool = Field(description="Whether all plugins are installed.")
     task_id: str = Field(description="The ID of the install task.")

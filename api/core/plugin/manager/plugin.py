@@ -72,7 +72,7 @@ class PluginInstallationManager(BasePluginManager):
             headers={"Content-Type": "application/json"},
         )
 
-    def fetch_plugin_installation_tasks(self, tenant_id: str) -> Sequence[PluginInstallTask]:
+    def fetch_plugin_installation_tasks(self, tenant_id: str, page: int, page_size: int) -> Sequence[PluginInstallTask]:
         """
         Fetch plugin installation tasks.
         """
@@ -80,6 +80,7 @@ class PluginInstallationManager(BasePluginManager):
             "GET",
             f"plugin/{tenant_id}/management/install/tasks",
             list[PluginInstallTask],
+            params={"page": page, "page_size": page_size},
         )
 
     def fetch_plugin_installation_task(self, tenant_id: str, task_id: str) -> PluginInstallTask:

@@ -128,10 +128,15 @@ class PluginInstallFromPkgApi(Resource):
         tenant_id = user.current_tenant_id
 
         parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="json")
+        parser.add_argument("plugin_unique_identifiers", type=list, required=True, location="json")
         args = parser.parse_args()
 
-        response = PluginService.install_from_local_pkg(tenant_id, args["plugin_unique_identifier"])
+        # check if all plugin_unique_identifiers are valid string
+        for plugin_unique_identifier in args["plugin_unique_identifiers"]:
+            if not isinstance(plugin_unique_identifier, str):
+                raise ValueError("Invalid plugin unique identifier")
+
+        response = PluginService.install_from_local_pkg(tenant_id, args["plugin_unique_identifiers"])
 
         return response.model_dump()
 
@@ -155,7 +160,11 @@ class PluginInstallFromGithubApi(Resource):
         args = parser.parse_args()
 
         response = PluginService.install_from_github(
-            tenant_id, args["repo"], args["version"], args["package"], args["plugin_unique_identifier"]
+            tenant_id,
+            args["plugin_unique_identifier"],
+            args["repo"],
+            args["version"],
+            args["package"],
         )
 
         return response.model_dump()
@@ -173,10 +182,15 @@ class PluginInstallFromMarketplaceApi(Resource):
         tenant_id = user.current_tenant_id
 
         parser = reqparse.RequestParser()
-        parser.add_argument("plugin_unique_identifier", type=str, required=True, location="json")
+        parser.add_argument("plugin_unique_identifiers", type=list, required=True, location="json")
         args = parser.parse_args()
 
-        response = PluginService.install_from_marketplace_pkg(tenant_id, args["plugin_unique_identifier"])
+        # check if all plugin_unique_identifiers are valid string
+        for plugin_unique_identifier in args["plugin_unique_identifiers"]:
+            if not isinstance(plugin_unique_identifier, str):
+                raise ValueError("Invalid plugin unique identifier")
+
+        response = PluginService.install_from_marketplace_pkg(tenant_id, args["plugin_unique_identifiers"])
 
         return response.model_dump()
 
@@ -210,7 +224,14 @@ class PluginFetchInstallTasksApi(Resource):
 
         tenant_id = user.current_tenant_id
 
-        return {"tasks": PluginService.fetch_install_tasks(tenant_id)}
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=int, required=True, location="args")
+        parser.add_argument("page_size", type=int, required=True, location="args")
+        args = parser.parse_args()
+
+        return jsonable_encoder(
+            {"tasks": PluginService.fetch_install_tasks(tenant_id, args["page"], args["page_size"])}
+        )
 
 
 class PluginFetchInstallTaskApi(Resource):
@@ -224,7 +245,7 @@ class PluginFetchInstallTaskApi(Resource):
 
         tenant_id = user.current_tenant_id
 
-        return {"task": PluginService.fetch_install_task(tenant_id, task_id)}
+        return jsonable_encoder({"task": PluginService.fetch_install_task(tenant_id, task_id)})
 
 
 class PluginUninstallApi(Resource):
