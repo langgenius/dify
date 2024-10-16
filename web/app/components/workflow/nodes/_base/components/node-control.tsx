@@ -19,7 +19,7 @@ import PanelOperator from './panel-operator'
 import {
   Stop,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 type NodeControlProps = Pick<Node, 'id' | 'data'>
 const NodeControl: FC<NodeControlProps> = ({
@@ -68,11 +68,12 @@ const NodeControl: FC<NodeControlProps> = ({
                 data._isSingleRun
                   ? <Stop className='w-3 h-3' />
                   : (
-                    <TooltipPlus
+                    <Tooltip
                       popupContent={t('workflow.panel.runThisStep')}
+                      asChild={false}
                     >
                       <RiPlayLargeLine className='w-3 h-3' />
-                    </TooltipPlus>
+                    </Tooltip>
                   )
               }
             </div>

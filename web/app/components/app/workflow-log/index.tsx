@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import useSWR from 'swr'
 import { usePathname } from 'next/navigation'
 import { Pagination } from 'react-headless-pagination'
+import { useDebounce } from 'ahooks'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import { Trans, useTranslation } from 'react-i18next'
 import Link from 'next/link'
@@ -51,12 +52,13 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
   const [queryParams, setQueryParams] = useState<QueryParam>({ status: 'all' })
   const [currPage, setCurrPage] = React.useState<number>(0)
+  const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
 
   const query = {
     page: currPage + 1,
     limit: APP_PAGE_LIMIT,
-    ...(queryParams.status !== 'all' ? { status: queryParams.status } : {}),
-    ...(queryParams.keyword ? { keyword: queryParams.keyword } : {}),
+    ...(debouncedQueryParams.status !== 'all' ? { status: debouncedQueryParams.status } : {}),
+    ...(debouncedQueryParams.keyword ? { keyword: debouncedQueryParams.keyword } : {}),
   }
 
   const getWebAppType = (appType: AppMode) => {

@@ -4,8 +4,9 @@ const translation = {
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
-      time: 'Time',
-      endUser: 'End User',
+      updatedTime: 'Updated time',
+      time: 'Created time',
+      endUser: 'End User or Account',
       input: 'Input',
       output: 'Output',
       summary: 'Title',
@@ -16,7 +17,7 @@ const translation = {
       status: 'STATUS',
       runtime: 'RUN TIME',
       tokens: 'TOKENS',
-      user: 'END-USER',
+      user: 'End User or Account',
       version: 'VERSION',
     },
     pagination: {
@@ -69,6 +70,9 @@ const translation = {
       annotated: 'Annotated Improvements ({{count}} items)',
       not_annotated: 'Not Annotated',
     },
+    sortBy: 'Sort by:',
+    descending: 'descending',
+    ascending: 'ascending',
   },
   workflowTitle: 'Workflow Logs',
   workflowSubtitle: 'The log recorded the operation of Automate.',

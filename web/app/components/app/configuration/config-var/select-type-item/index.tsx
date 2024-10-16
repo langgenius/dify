@@ -18,7 +18,7 @@ const SelectTypeItem: FC<ISelectTypeItemProps> = ({
   onClick,
 }) => {
   const { t } = useTranslation()
-  const typeName = t(`appDebug.variableConig.${type}`)
+  const typeName = t(`appDebug.variableConfig.${type}`)
 
   return (
     <div

@@ -14,7 +14,7 @@ from core.workflow.nodes.llm.llm_node import LLMNode
 PREFIX = """Respond to the human as helpfully and accurately as possible. You have access to the following tools:"""
 
 SUFFIX = """Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:```$JSON_BLOB```then Observation:.
-Thought:"""
+Thought:"""  # noqa: E501
 
 FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
 The nouns in the format of "Thought", "Action", "Action Input", "Final Answer" must be expressed in English.
@@ -46,20 +46,18 @@ Action:
   "action": "Final Answer",
   "action_input": "Final response to human"
 }}
-```"""
+```"""  # noqa: E501
 
 
 class ReactMultiDatasetRouter:
-
     def invoke(
-            self,
-            query: str,
-            dataset_tools: list[PromptMessageTool],
-            model_config: ModelConfigWithCredentialsEntity,
-            model_instance: ModelInstance,
-            user_id: str,
-            tenant_id: str
-
+        self,
+        query: str,
+        dataset_tools: list[PromptMessageTool],
+        model_config: ModelConfigWithCredentialsEntity,
+        model_instance: ModelInstance,
+        user_id: str,
+        tenant_id: str,
     ) -> Union[str, None]:
         """Given input, decided what to do.
         Returns:
@@ -71,23 +69,28 @@ class ReactMultiDatasetRouter:
             return dataset_tools[0].name
 
         try:
-            return self._react_invoke(query=query, model_config=model_config,
-                                      model_instance=model_instance,
-                                      tools=dataset_tools, user_id=user_id, tenant_id=tenant_id)
+            return self._react_invoke(
+                query=query,
+                model_config=model_config,
+                model_instance=model_instance,
+                tools=dataset_tools,
+                user_id=user_id,
+                tenant_id=tenant_id,
+            )
         except Exception as e:
             return None
 
     def _react_invoke(
-            self,
-            query: str,
-            model_config: ModelConfigWithCredentialsEntity,
-            model_instance: ModelInstance,
-            tools: Sequence[PromptMessageTool],
-            user_id: str,
-            tenant_id: str,
-            prefix: str = PREFIX,
-            suffix: str = SUFFIX,
-            format_instructions: str = FORMAT_INSTRUCTIONS,
+        self,
+        query: str,
+        model_config: ModelConfigWithCredentialsEntity,
+        model_instance: ModelInstance,
+        tools: Sequence[PromptMessageTool],
+        user_id: str,
+        tenant_id: str,
+        prefix: str = PREFIX,
+        suffix: str = SUFFIX,
+        format_instructions: str = FORMAT_INSTRUCTIONS,
     ) -> Union[str, None]:
         if model_config.mode == "chat":
             prompt = self.create_chat_prompt(
@@ -103,18 +106,18 @@ class ReactMultiDatasetRouter:
                 prefix=prefix,
                 format_instructions=format_instructions,
             )
-        stop = ['Observation:']
+        stop = ["Observation:"]
         # handle invoke result
         prompt_transform = AdvancedPromptTransform()
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt,
             inputs={},
-            query='',
+            query="",
             files=[],
-            context='',
+            context="",
             memory_config=None,
             memory=None,
-            model_config=model_config
+            model_config=model_config,
         )
         result_text, usage = self._invoke_llm(
             completion_param=model_config.parameters,
@@ -122,7 +125,7 @@ class ReactMultiDatasetRouter:
             prompt_messages=prompt_messages,
             stop=stop,
             user_id=user_id,
-            tenant_id=tenant_id
+            tenant_id=tenant_id,
         )
         output_parser = StructuredChatOutputParser()
         react_decision = output_parser.parse(result_text)
@@ -130,17 +133,21 @@ class ReactMultiDatasetRouter:
             return react_decision.tool
         return None
 
-    def _invoke_llm(self, completion_param: dict,
-                    model_instance: ModelInstance,
-                    prompt_messages: list[PromptMessage],
-                    stop: list[str], user_id: str, tenant_id: str
-                    ) -> tuple[str, LLMUsage]:
+    def _invoke_llm(
+        self,
+        completion_param: dict,
+        model_instance: ModelInstance,
+        prompt_messages: list[PromptMessage],
+        stop: list[str],
+        user_id: str,
+        tenant_id: str,
+    ) -> tuple[str, LLMUsage]:
         """
-            Invoke large language model
-            :param model_instance: model instance
-            :param prompt_messages: prompt messages
-            :param stop: stop
-            :return:
+        Invoke large language model
+        :param model_instance: model instance
+        :param prompt_messages: prompt messages
+        :param stop: stop
+        :return:
         """
         invoke_result = model_instance.invoke_llm(
             prompt_messages=prompt_messages,
@@ -151,9 +158,7 @@ class ReactMultiDatasetRouter:
         )
 
         # handle invoke result
-        text, usage = self._handle_invoke_result(
-            invoke_result=invoke_result
-        )
+        text, usage = self._handle_invoke_result(invoke_result=invoke_result)
 
         # deduct quota
         LLMNode.deduct_llm_quota(tenant_id=tenant_id, model_instance=model_instance, usage=usage)
@@ -168,7 +173,7 @@ class ReactMultiDatasetRouter:
         """
         model = None
         prompt_messages = []
-        full_text = ''
+        full_text = ""
         usage = None
         for result in invoke_result:
             text = result.delta.message.content
@@ -189,40 +194,36 @@ class ReactMultiDatasetRouter:
         return full_text, usage
 
     def create_chat_prompt(
-            self,
-            query: str,
-            tools: Sequence[PromptMessageTool],
-            prefix: str = PREFIX,
-            suffix: str = SUFFIX,
-            format_instructions: str = FORMAT_INSTRUCTIONS,
+        self,
+        query: str,
+        tools: Sequence[PromptMessageTool],
+        prefix: str = PREFIX,
+        suffix: str = SUFFIX,
+        format_instructions: str = FORMAT_INSTRUCTIONS,
     ) -> list[ChatModelMessage]:
         tool_strings = []
         for tool in tools:
             tool_strings.append(
-                f"{tool.name}: {tool.description}, args: {{'query': {{'title': 'Query', 'description': 'Query for the dataset to be used to retrieve the dataset.', 'type': 'string'}}}}")
+                f"{tool.name}: {tool.description}, args: {{'query': {{'title': 'Query',"
+                f" 'description': 'Query for the dataset to be used to retrieve the dataset.', 'type': 'string'}}}}"
+            )
         formatted_tools = "\n".join(tool_strings)
         unique_tool_names = {tool.name for tool in tools}
         tool_names = ", ".join('"' + name + '"' for name in unique_tool_names)
         format_instructions = format_instructions.format(tool_names=tool_names)
         template = "\n\n".join([prefix, formatted_tools, format_instructions, suffix])
         prompt_messages = []
-        system_prompt_messages = ChatModelMessage(
-            role=PromptMessageRole.SYSTEM,
-            text=template
-        )
+        system_prompt_messages = ChatModelMessage(role=PromptMessageRole.SYSTEM, text=template)
         prompt_messages.append(system_prompt_messages)
-        user_prompt_message = ChatModelMessage(
-            role=PromptMessageRole.USER,
-            text=query
-        )
+        user_prompt_message = ChatModelMessage(role=PromptMessageRole.USER, text=query)
         prompt_messages.append(user_prompt_message)
         return prompt_messages
 
     def create_completion_prompt(
-            self,
-            tools: Sequence[PromptMessageTool],
-            prefix: str = PREFIX,
-            format_instructions: str = FORMAT_INSTRUCTIONS,
+        self,
+        tools: Sequence[PromptMessageTool],
+        prefix: str = PREFIX,
+        format_instructions: str = FORMAT_INSTRUCTIONS,
     ) -> CompletionModelPromptTemplate:
         """Create prompt in the style of the zero shot agent.
 
@@ -236,7 +237,7 @@ class ReactMultiDatasetRouter:
         suffix = """Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:```$JSON_BLOB```then Observation:.
 Question: {input}
 Thought: {agent_scratchpad}
-"""
+"""  # noqa: E501
 
         tool_strings = "\n".join([f"{tool.name}: {tool.description}" for tool in tools])
         tool_names = ", ".join([tool.name for tool in tools])

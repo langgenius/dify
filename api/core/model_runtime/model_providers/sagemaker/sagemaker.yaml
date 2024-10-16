@@ -1,0 +1,193 @@
+provider: sagemaker
+label:
+  zh_Hans: Sagemaker
+  en_US: Sagemaker
+icon_small:
+  en_US: icon_s_en.png
+icon_large:
+  en_US: icon_l_en.png
+description:
+  en_US: Customized model on Sagemaker
+  zh_Hans: Sagemaker上的私有化部署的模型
+background: "#ECE9E3"
+help:
+  title:
+    en_US: How to deploy customized model on Sagemaker
+    zh_Hans: 如何在Sagemaker上的私有化部署的模型
+  url:
+    en_US: https://github.com/aws-samples/dify-aws-tool/blob/main/README.md#how-to-deploy-sagemaker-endpoint
+    zh_Hans: https://github.com/aws-samples/dify-aws-tool/blob/main/README_ZH.md#%E5%A6%82%E4%BD%95%E9%83%A8%E7%BD%B2sagemaker%E6%8E%A8%E7%90%86%E7%AB%AF%E7%82%B9
+supported_model_types:
+  - llm
+  - text-embedding
+  - rerank
+  - speech2text
+  - tts
+configurate_methods:
+  - customizable-model
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter your model name
+      zh_Hans: 输入模型名称
+  credential_form_schemas:
+    - variable: mode
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        en_US: Completion mode
+      type: select
+      required: false
+      default: chat
+      placeholder:
+        zh_Hans: 选择对话类型
+        en_US: Select completion mode
+      options:
+        - value: chat
+          label:
+            en_US: Chat
+            zh_Hans: Chat
+    - variable: sagemaker_endpoint
+      label:
+        en_US: sagemaker endpoint
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 请输出你的Sagemaker推理端点
+        en_US: Enter your Sagemaker Inference endpoint
+    - variable: audio_s3_cache_bucket
+      show_on:
+        - variable: __model_type
+          value: speech2text
+      label:
+        zh_Hans: 音频缓存桶(s3 bucket)
+        en_US: audio cache bucket(s3 bucket)
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: sagemaker-us-east-1-******207838
+        en_US: sagemaker-us-east-1-*******7838
+    - variable: audio_model_type
+      show_on:
+        - variable: __model_type
+          value: tts
+      label:
+        en_US: Audio model type
+      type: select
+      required: true
+      placeholder:
+        zh_Hans: 语音模型类型
+        en_US: Audio model type
+      options:
+        - value: PresetVoice
+          label:
+            en_US: preset voice
+            zh_Hans: 内置音色
+        - value: CloneVoice
+          label:
+            en_US: clone voice
+            zh_Hans: 克隆音色
+        - value: CloneVoice_CrossLingual
+          label:
+            en_US: crosslingual clone voice
+            zh_Hans: 跨语种克隆音色
+        - value: InstructVoice
+          label:
+            en_US: Instruct voice
+            zh_Hans: 文字指令音色
+    - variable: prompt_audio
+      show_on:
+        - variable: __model_type
+          value: tts
+      label:
+        en_US: Mock Audio Source
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: 被模仿的音色音频
+        en_US: source audio to be mocked
+    - variable: prompt_text
+      show_on:
+        - variable: __model_type
+          value: tts
+      label:
+        en_US: Prompt Audio Text
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: 模仿音色的对应文本
+        en_US: text for the mocked source audio
+    - variable: instruct_text
+      show_on:
+        - variable: __model_type
+          value: tts
+      label:
+        en_US: instruct text for speaker
+      type: text-input
+      required: false
+    - variable: aws_access_key_id
+      required: false
+      label:
+        en_US: Access Key (If not provided, credentials are obtained from the running environment.)
+        zh_Hans: Access Key (如果未提供，凭证将从运行环境中获取。)
+      type: secret-input
+      placeholder:
+        en_US: Enter your Access Key
+        zh_Hans: 在此输入您的 Access Key
+    - variable: aws_secret_access_key
+      required: false
+      label:
+        en_US: Secret Access Key
+        zh_Hans: Secret Access Key
+      type: secret-input
+      placeholder:
+        en_US: Enter your Secret Access Key
+        zh_Hans: 在此输入您的 Secret Access Key
+    - variable: aws_region
+      required: false
+      label:
+        en_US: AWS Region
+        zh_Hans: AWS 地区
+      type: select
+      default: us-east-1
+      options:
+        - value: us-east-1
+          label:
+            en_US: US East (N. Virginia)
+            zh_Hans: 美国东部 (弗吉尼亚北部)
+        - value: us-west-2
+          label:
+            en_US: US West (Oregon)
+            zh_Hans: 美国西部 (俄勒冈州)
+        - value: ap-southeast-1
+          label:
+            en_US: Asia Pacific (Singapore)
+            zh_Hans: 亚太地区 (新加坡)
+        - value: ap-northeast-1
+          label:
+            en_US: Asia Pacific (Tokyo)
+            zh_Hans: 亚太地区 (东京)
+        - value: eu-central-1
+          label:
+            en_US: Europe (Frankfurt)
+            zh_Hans: 欧洲 (法兰克福)
+        - value: us-gov-west-1
+          label:
+            en_US: AWS GovCloud (US-West)
+            zh_Hans: AWS GovCloud (US-West)
+        - value: ap-southeast-2
+          label:
+            en_US: Asia Pacific (Sydney)
+            zh_Hans: 亚太地区 (悉尼)
+        - value: cn-north-1
+          label:
+            en_US: AWS Beijing (cn-north-1)
+            zh_Hans: 中国北京 (cn-north-1)
+        - value: cn-northwest-1
+          label:
+            en_US: AWS Ningxia (cn-northwest-1)
+            zh_Hans: 中国宁夏 (cn-northwest-1)

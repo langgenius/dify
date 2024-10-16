@@ -117,7 +117,6 @@ const Panel: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const [isFold, setFold] = useState(false)
   const [controlShowPopup, setControlShowPopup] = useState<number>(0)
   const showPopup = useCallback(() => {
     setControlShowPopup(Date.now())

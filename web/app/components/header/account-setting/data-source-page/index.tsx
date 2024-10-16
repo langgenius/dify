@@ -6,6 +6,7 @@ import DataSourceWebsite from './data-source-website'
 import { FeishuProvider } from './data-source-feishu/constants'
 import type { DataSourceFeishu as TDataSourceFeishu } from '@/models/common'
 import { fetchDataSource } from '@/service/common'
+import { DataSourceProvider } from '@/models/common'
 
 export default function DataSourcePage() {
   const { t } = useTranslation()
@@ -17,6 +18,8 @@ export default function DataSourcePage() {
     <div className='mb-8'>
       <div className='mb-2 text-sm font-medium text-gray-900'>{t('common.dataSource.add')}</div>
       <DataSourceNotion workspaces={notionWorkspaces} />
+      <DataSourceWebsite provider={DataSourceProvider.jinaReader} />
+      <DataSourceWebsite provider={DataSourceProvider.fireCrawl} />
       <DataSourceFeishu workspaces={feishuWorkspaces} />
       <DataSourceWebsite />
     </div>

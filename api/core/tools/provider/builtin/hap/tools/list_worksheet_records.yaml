@@ -1,0 +1,226 @@
+identity:
+  name: list_worksheet_records
+  author: Ryan Tian
+  label:
+    en_US: List Worksheet Records
+    zh_Hans: 查询工作表记录数据
+description:
+  human:
+    en_US: List records from the worksheet
+    zh_Hans: 查询工作表的记录列表数据，一次最多1000行，可分页获取
+  llm: A tool to retrieve record data from the specific worksheet.
+parameters:
+  - name: appkey
+    type: secret-input
+    required: true
+    label:
+      en_US: App Key
+      zh_Hans: App Key
+    human_description:
+      en_US: The AppKey parameter for the HAP application, typically found in the application's API documentation.
+      zh_Hans: HAP 应用的 AppKey 参数，可以从应用 API 文档中查找到
+    llm_description: the AppKey parameter for the HAP application
+    form: form
+
+  - name: sign
+    type: secret-input
+    required: true
+    label:
+      en_US: Sign
+      zh_Hans: Sign
+    human_description:
+      en_US: The Sign parameter for the HAP application
+      zh_Hans: HAP 应用的 Sign 参数
+    llm_description: the Sign parameter for the HAP application
+    form: form
+
+  - name: worksheet_id
+    type: string
+    required: true
+    label:
+      en_US: Worksheet ID
+      zh_Hans: 工作表 ID
+    human_description:
+      en_US: The ID of the worksheet from which to retrieve record data
+      zh_Hans: 要获取记录数据的工作表 ID
+    llm_description: This parameter specifies the ID of the worksheet where the records are stored.
+    form: llm
+
+  - name: field_ids
+    type: string
+    required: false
+    label:
+      en_US: Field IDs
+      zh_Hans: 字段 ID 列表
+    human_description:
+      en_US: A comma-separated list of field IDs whose data to retrieve. If not provided, all fields' data will be fetched
+      zh_Hans: 要获取记录数据的字段 ID，多个 ID 间用英文逗号隔开，不传此参数则将获取所有字段的数据
+    llm_description: This optional parameter lets you specify a comma-separated list of field IDs. Unless the user explicitly requests to output the specified field in the question, this parameter should usually be omitted. If this parameter is omitted, the API will return data for all fields by default. When provided, only the data associated with these fields will be included in the response.
+    form: llm
+
+  - name: filters
+    type: string
+    required: false
+    label:
+      en_US: Filter Set
+      zh_Hans: 筛选器组合
+    human_description:
+      en_US: A combination of filters applied to query records, formatted as a JSON array. See the application's API documentation for details on its structure and usage.
+      zh_Hans: 查询记录的筛选条件组合，格式为 JSON 数组，可以从应用 API 文档中了解参数结构详情
+    llm_description: |
+      This parameter allows you to specify a set of conditions that records must meet to be included in the result set. It is formatted as a JSON array, with its structure defined as follows:
+      ```
+      type Filters = { // filter object array
+        controlId: string; // fieldId
+        dataType: number; // fieldTypeId
+        spliceType: number; // condition concatenation method, 1: And, 2: Or
+        filterType: number; // expression type, refer to the <FilterTypeEnum Reference> for enumerable values
+        values?: string[]; // values in the condition, for option-type fields, multiple values can be passed
+        value?: string; // value in the condition, a single value can be passed according to the field type
+        dateRange?: number; // date range, mandatory when filterType is 17 or 18, refer to the <DateRangeEnum Reference> for enumerable values
+        minValue?: string; // minimum value for custom range
+        maxValue?: string; // maximum value for custom range
+        isAsc?: boolean; // ascending order, false: descending, true: ascending
+      }[];
+      ```
+      For option-type fields, if this option field has `options`, then you need to get the corresponding `key` value from the `options` in the current field information via `value`, and pass it into `values` in array format. Do not use the `options` value of other fields as input conditions.
+
+      ### FilterTypeEnum Reference
+      ```
+      Enum Value, Enum Character, Description
+      1, Like, Contains(Include)
+      2, Eq, Is (Equal)
+      3, Start, Starts With
+      4, End, Ends With
+      5, NotLike, Does Not Contain(Not Include)
+      6, Ne, Is Not (Not Equal)
+      7, IsEmpty, Empty
+      8, HasValue, Not Empty
+      11, Between, Within Range(Belong to)
+      12, NotBetween, Outside Range(Not belong to)
+      13, Gt, Greater Than
+      14, Gte, Greater Than or Equal To
+      15, Lt, Less Than
+      16, Lte, Less Than or Equal To
+      17, DateEnum, Date Is
+      18, NotDateEnum, Date Is Not
+      24, RCEq, Associated Field Is
+      25, RCNe, Associated Field Is Not
+      26, ArrEq, Array Equals
+      27, ArrNe, Array Does Not Equal
+      31, DateBetween, Date Within Range (can only be used with minValue and maxValue)
+      32, DateNotBetween, Date Not Within Range (can only be used with minValue and maxValue)
+      33, DateGt, Date Later Than
+      34, DateGte, Date Later Than or Equal To
+      35, DateLt, Date Earlier Than
+      36, DateLte, Date Earlier Than or Equal To
+      ```
+
+      ### DateRangeEnum Reference
+      ```
+      Enum Value, Enum Character, Description
+      1, Today, Today
+      2, Yesterday, Yesterday
+      3, Tomorrow, Tomorrow
+      4, ThisWeek, This Week
+      5, LastWeek, Last Week
+      6, NextWeek, Next Week
+      7, ThisMonth, This Month
+      8, LastMonth, Last Month
+      9, NextMonth, Next Month
+      12, ThisQuarter, This Quarter
+      13, LastQuarter, Last Quarter
+      14, NextQuarter, Next Quarter
+      15, ThisYear, This Year
+      16, LastYear, Last Year
+      17, NextYear, Next Year
+      18, Customize, Custom
+      21, Last7Day, Past 7 Days
+      22, Last14Day, Past 14 Days
+      23, Last30Day, Past 30 Days
+      31, Next7Day, Next 7 Days
+      32, Next14Day, Next 14 Days
+      33, Next33Day, Next 33 Days
+      ```
+    form: llm
+
+  - name: sort_id
+    type: string
+    required: false
+    label:
+      en_US: Sort Field ID
+      zh_Hans: 排序字段 ID
+    human_description:
+      en_US: The ID of the field used for sorting
+      zh_Hans: 用以排序的字段 ID
+    llm_description: This optional parameter specifies the unique identifier of the field that will be used to sort the results. It should be set to the ID of an existing field within your data structure.
+    form: llm
+
+  - name: sort_is_asc
+    type: boolean
+    required: false
+    label:
+      en_US: Ascending Order
+      zh_Hans: 是否升序排列
+    human_description:
+      en_US: Determines whether the sorting is in ascending (true) or descending (false) order
+      zh_Hans: 排序字段的排序方式：true-升序，false-降序
+    llm_description: This optional parameter controls the direction of the sort. If set to true, the results will be sorted in ascending order; if false, they will be sorted in descending order.
+    form: llm
+
+  - name: limit
+    type: number
+    required: false
+    label:
+      en_US: Record Limit
+      zh_Hans: 记录数量限制
+    human_description:
+      en_US: The maximum number of records to retrieve
+      zh_Hans: 要获取的记录数量限制条数
+    llm_description: This optional parameter allows you to specify the maximum number of records that should be returned in the result set. When retrieving paginated record data, this parameter indicates the number of rows to fetch per page, and must be used in conjunction with the `page_index` parameter.
+    form: llm
+
+  - name: page_index
+    type: number
+    required: false
+    label:
+      en_US: Page Index
+      zh_Hans: 页码
+    human_description:
+      en_US: The page number when paginating through a list of records
+      zh_Hans: 分页读取记录列表时的页码
+    llm_description: This parameter is used when you need to paginate through a large set of records. The default value is 1, which refers to the first page. When it is used, the meaning of the `limit` parameter becomes the number of records per page.
+    form: llm
+
+  - name: host
+    type: string
+    required: false
+    label:
+      en_US: Host Address
+      zh_Hans: 服务器地址
+    human_description:
+      en_US: The address for the privately deployed HAP server.
+      zh_Hans: 私有部署 HAP 服务器地址，公有云无需填写
+    llm_description: the address for the privately deployed HAP server.
+    form: form
+
+  - name: result_type
+    type: select
+    required: true
+    options:
+      - value: table
+        label:
+          en_US: table text
+          zh_Hans: 表格文本
+      - value: json
+        label:
+          en_US: json text
+          zh_Hans: JSON文本
+    default: table
+    label:
+      en_US: Result type
+      zh_Hans: 结果类型
+    human_description:
+      en_US: used for selecting the result type, table styled text or json text
+      zh_Hans: 用于选择结果类型，使用表格格式文本还是JSON格式文本
+    form: form

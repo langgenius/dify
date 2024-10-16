@@ -1,0 +1,71 @@
+identity:
+  name: delete_worksheet_record
+  author: Ryan Tian
+  label:
+    en_US: Delete Worksheet Record
+    zh_Hans: 删除指定的一条工作表记录
+description:
+  human:
+    en_US: Deletes a single record from a worksheet based on the specified record row ID
+    zh_Hans: 根据指定的记录ID删除一条工作表记录数据
+  llm: A tool to remove a particular record from a worksheet by specifying its unique record identifier.
+parameters:
+  - name: appkey
+    type: secret-input
+    required: true
+    label:
+      en_US: App Key
+      zh_Hans: App Key
+    human_description:
+      en_US: The AppKey parameter for the HAP application, typically found in the application's API documentation.
+      zh_Hans: HAP 应用的 AppKey 参数，可以从应用 API 文档中查找到
+    llm_description: the AppKey parameter for the HAP application
+    form: form
+
+  - name: sign
+    type: secret-input
+    required: true
+    label:
+      en_US: Sign
+      zh_Hans: Sign
+    human_description:
+      en_US: The Sign parameter for the HAP application
+      zh_Hans: HAP 应用的 Sign 参数
+    llm_description: the Sign parameter for the HAP application
+    form: form
+
+  - name: worksheet_id
+    type: string
+    required: true
+    label:
+      en_US: Worksheet ID
+      zh_Hans: 工作表 ID
+    human_description:
+      en_US: The ID of the specified worksheet
+      zh_Hans: 要获取字段信息的工作表 ID
+    llm_description: The ID of the specified worksheet which to get the fields information.
+    form: llm
+
+  - name: row_id
+    type: string
+    required: true
+    label:
+      en_US: Record Row ID
+      zh_Hans: 记录 ID
+    human_description:
+      en_US: The row ID of the specified record
+      zh_Hans: 要删除的记录 ID
+    llm_description: The row ID of the specified record which to be deleted.
+    form: llm
+
+  - name: host
+    type: string
+    required: false
+    label:
+      en_US: Host Address
+      zh_Hans: 服务器地址
+    human_description:
+      en_US: The address for the privately deployed HAP server.
+      zh_Hans: 私有部署 HAP 服务器地址，公有云无需填写
+    llm_description: the address for the privately deployed HAP server.
+    form: form

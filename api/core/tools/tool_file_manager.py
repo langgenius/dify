@@ -9,9 +9,9 @@ from mimetypes import guess_extension, guess_type
 from typing import Optional, Union
 from uuid import uuid4
 
-from flask import current_app
 from httpx import get
 
+from configs import dify_config
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import MessageFile
@@ -26,13 +26,13 @@ class ToolFileManager:
         """
         sign file to get a temporary url
         """
-        base_url = current_app.config.get('FILES_URL')
-        file_preview_url = f'{base_url}/files/tools/{tool_file_id}{extension}'
+        base_url = dify_config.FILES_URL
+        file_preview_url = f"{base_url}/files/tools/{tool_file_id}{extension}"
 
         timestamp = str(int(time.time()))
         nonce = os.urandom(16).hex()
         data_to_sign = f"file-preview|{tool_file_id}|{timestamp}|{nonce}"
-        secret_key = current_app.config['SECRET_KEY'].encode()
+        secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
         sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
         encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
@@ -44,7 +44,7 @@ class ToolFileManager:
         verify signature
         """
         data_to_sign = f"file-preview|{file_id}|{timestamp}|{nonce}"
-        secret_key = current_app.config['SECRET_KEY'].encode()
+        secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
         recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
         recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
 
@@ -53,23 +53,23 @@ class ToolFileManager:
             return False
 
         current_time = int(time.time())
-        return current_time - int(timestamp) <= current_app.config.get('FILES_ACCESS_TIMEOUT')
+        return current_time - int(timestamp) <= dify_config.FILES_ACCESS_TIMEOUT
 
     @staticmethod
-    def create_file_by_raw(user_id: str, tenant_id: str,
-                           conversation_id: Optional[str], file_binary: bytes,
-                           mimetype: str
-                           ) -> ToolFile:
+    def create_file_by_raw(
+        user_id: str, tenant_id: str, conversation_id: Optional[str], file_binary: bytes, mimetype: str
+    ) -> ToolFile:
         """
         create file
         """
-        extension = guess_extension(mimetype) or '.bin'
+        extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
         filename = f"tools/{tenant_id}/{unique_name}{extension}"
         storage.save(filename, file_binary)
 
-        tool_file = ToolFile(user_id=user_id, tenant_id=tenant_id,
-                             conversation_id=conversation_id, file_key=filename, mimetype=mimetype)
+        tool_file = ToolFile(
+            user_id=user_id, tenant_id=tenant_id, conversation_id=conversation_id, file_key=filename, mimetype=mimetype
+        )
 
         db.session.add(tool_file)
         db.session.commit()
@@ -77,9 +77,12 @@ class ToolFileManager:
         return tool_file
 
     @staticmethod
-    def create_file_by_url(user_id: str, tenant_id: str,
-                           conversation_id: str, file_url: str,
-                           ) -> ToolFile:
+    def create_file_by_url(
+        user_id: str,
+        tenant_id: str,
+        conversation_id: str,
+        file_url: str,
+    ) -> ToolFile:
         """
         create file
         """
@@ -87,15 +90,20 @@ class ToolFileManager:
         response = get(file_url)
         response.raise_for_status()
         blob = response.content
-        mimetype = guess_type(file_url)[0] or 'octet/stream'
-        extension = guess_extension(mimetype) or '.bin'
+        mimetype = guess_type(file_url)[0] or "octet/stream"
+        extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
         filename = f"tools/{tenant_id}/{unique_name}{extension}"
         storage.save(filename, blob)
 
-        tool_file = ToolFile(user_id=user_id, tenant_id=tenant_id,
-                             conversation_id=conversation_id, file_key=filename,
-                             mimetype=mimetype, original_url=file_url)
+        tool_file = ToolFile(
+            user_id=user_id,
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
+            file_key=filename,
+            mimetype=mimetype,
+            original_url=file_url,
+        )
 
         db.session.add(tool_file)
         db.session.commit()
@@ -103,15 +111,15 @@ class ToolFileManager:
         return tool_file
 
     @staticmethod
-    def create_file_by_key(user_id: str, tenant_id: str,
-                           conversation_id: str, file_key: str,
-                           mimetype: str
-                           ) -> ToolFile:
+    def create_file_by_key(
+        user_id: str, tenant_id: str, conversation_id: str, file_key: str, mimetype: str
+    ) -> ToolFile:
         """
         create file
         """
-        tool_file = ToolFile(user_id=user_id, tenant_id=tenant_id,
-                             conversation_id=conversation_id, file_key=file_key, mimetype=mimetype)
+        tool_file = ToolFile(
+            user_id=user_id, tenant_id=tenant_id, conversation_id=conversation_id, file_key=file_key, mimetype=mimetype
+        )
         return tool_file
 
     @staticmethod
@@ -123,9 +131,13 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        tool_file: ToolFile = db.session.query(ToolFile).filter(
-            ToolFile.id == id,
-        ).first()
+        tool_file: ToolFile = (
+            db.session.query(ToolFile)
+            .filter(
+                ToolFile.id == id,
+            )
+            .first()
+        )
 
         if not tool_file:
             return None
@@ -143,18 +155,30 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        message_file: MessageFile = db.session.query(MessageFile).filter(
-            MessageFile.id == id,
-        ).first()
+        message_file: MessageFile = (
+            db.session.query(MessageFile)
+            .filter(
+                MessageFile.id == id,
+            )
+            .first()
+        )
 
-        # get tool file id
-        tool_file_id = message_file.url.split('/')[-1]
-        # trim extension
-        tool_file_id = tool_file_id.split('.')[0]
+        # Check if message_file is not None
+        if message_file is not None:
+            # get tool file id
+            tool_file_id = message_file.url.split("/")[-1]
+            # trim extension
+            tool_file_id = tool_file_id.split(".")[0]
+        else:
+            tool_file_id = None
 
-        tool_file: ToolFile = db.session.query(ToolFile).filter(
-            ToolFile.id == tool_file_id,
-        ).first()
+        tool_file: ToolFile = (
+            db.session.query(ToolFile)
+            .filter(
+                ToolFile.id == tool_file_id,
+            )
+            .first()
+        )
 
         if not tool_file:
             return None
@@ -172,9 +196,13 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        tool_file: ToolFile = db.session.query(ToolFile).filter(
-            ToolFile.id == tool_file_id,
-        ).first()
+        tool_file: ToolFile = (
+            db.session.query(ToolFile)
+            .filter(
+                ToolFile.id == tool_file_id,
+            )
+            .first()
+        )
 
         if not tool_file:
             return None
@@ -187,4 +215,4 @@ class ToolFileManager:
 # init tool_file_parser
 from core.file.tool_file_parser import tool_file_manager
 
-tool_file_manager['manager'] = ToolFileManager
+tool_file_manager["manager"] = ToolFileManager

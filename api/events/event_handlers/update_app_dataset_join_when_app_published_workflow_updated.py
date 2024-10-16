@@ -11,21 +11,18 @@ from models.workflow import Workflow
 @app_published_workflow_was_updated.connect
 def handle(sender, **kwargs):
     app = sender
-    published_workflow = kwargs.get('published_workflow')
+    published_workflow = kwargs.get("published_workflow")
     published_workflow = cast(Workflow, published_workflow)
 
     dataset_ids = get_dataset_ids_from_workflow(published_workflow)
-    app_dataset_joins = db.session.query(AppDatasetJoin).filter(
-        AppDatasetJoin.app_id == app.id
-    ).all()
+    app_dataset_joins = db.session.query(AppDatasetJoin).filter(AppDatasetJoin.app_id == app.id).all()
 
     removed_dataset_ids = []
     if not app_dataset_joins:
         added_dataset_ids = dataset_ids
     else:
         old_dataset_ids = set()
-        for app_dataset_join in app_dataset_joins:
-            old_dataset_ids.add(app_dataset_join.dataset_id)
+        old_dataset_ids.update(app_dataset_join.dataset_id for app_dataset_join in app_dataset_joins)
 
         added_dataset_ids = dataset_ids - old_dataset_ids
         removed_dataset_ids = old_dataset_ids - dataset_ids
@@ -33,16 +30,12 @@ def handle(sender, **kwargs):
     if removed_dataset_ids:
         for dataset_id in removed_dataset_ids:
             db.session.query(AppDatasetJoin).filter(
-                AppDatasetJoin.app_id == app.id,
-                AppDatasetJoin.dataset_id == dataset_id
+                AppDatasetJoin.app_id == app.id, AppDatasetJoin.dataset_id == dataset_id
             ).delete()
 
     if added_dataset_ids:
         for dataset_id in added_dataset_ids:
-            app_dataset_join = AppDatasetJoin(
-                app_id=app.id,
-                dataset_id=dataset_id
-            )
+            app_dataset_join = AppDatasetJoin(app_id=app.id, dataset_id=dataset_id)
             db.session.add(app_dataset_join)
 
     db.session.commit()
@@ -54,18 +47,19 @@ def get_dataset_ids_from_workflow(published_workflow: Workflow) -> set:
     if not graph:
         return dataset_ids
 
-    nodes = graph.get('nodes', [])
+    nodes = graph.get("nodes", [])
 
     # fetch all knowledge retrieval nodes
-    knowledge_retrieval_nodes = [node for node in nodes
-                                 if node.get('data', {}).get('type') == NodeType.KNOWLEDGE_RETRIEVAL.value]
+    knowledge_retrieval_nodes = [
+        node for node in nodes if node.get("data", {}).get("type") == NodeType.KNOWLEDGE_RETRIEVAL.value
+    ]
 
     if not knowledge_retrieval_nodes:
         return dataset_ids
 
     for node in knowledge_retrieval_nodes:
         try:
-            node_data = KnowledgeRetrievalNodeData(**node.get('data', {}))
+            node_data = KnowledgeRetrievalNodeData(**node.get("data", {}))
             dataset_ids.update(node_data.dataset_ids)
         except Exception as e:
             continue

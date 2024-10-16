@@ -73,9 +73,11 @@ const translation = {
   editAppTitle: 'Edytuj informacje o aplikacji',
   editDone: 'Informacje o aplikacji zaktualizowane',
   editFailed: 'Nie udało się zaktualizować informacji o aplikacji',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Anuluj',
+    emoji: 'Emoji',
+    image: 'Obraz',
   },
   switch: 'Przełącz na Orkiestrację Przepływu Pracy',
   switchTipStart:
@@ -92,6 +94,52 @@ const translation = {
     workflow: 'Przepływ pracy',
     completion: 'Zakończenie',
   },
+  tracing: {
+    title: 'Śledzenie wydajności aplikacji',
+    description: 'Konfiguracja zewnętrznego dostawcy LLMOps i śledzenie wydajności aplikacji.',
+    config: 'Konfiguruj',
+    collapse: 'Zwiń',
+    expand: 'Rozwiń',
+    tracing: 'Śledzenie',
+    disabled: 'Wyłączone',
+    disabledTip: 'Najpierw skonfiguruj dostawcę',
+    enabled: 'W użyciu',
+    tracingDescription: 'Przechwytywanie pełnego kontekstu wykonania aplikacji, w tym wywołań LLM, kontekstu, promptów, żądań HTTP i więcej, do platformy śledzenia stron trzecich.',
+    configProviderTitle: {
+      configured: 'Skonfigurowano',
+      notConfigured: 'Skonfiguruj dostawcę, aby włączyć śledzenie',
+      moreProvider: 'Więcej dostawców',
+    },
+    langsmith: {
+      title: 'LangSmith',
+      description: 'Kompleksowa platforma deweloperska dla każdego etapu cyklu życia aplikacji opartej na LLM.',
+    },
+    langfuse: {
+      title: 'Langfuse',
+      description: 'Śledzenie, oceny, zarządzanie promptami i metryki do debugowania i ulepszania twojej aplikacji LLM.',
+    },
+    inUse: 'W użyciu',
+    configProvider: {
+      title: 'Konfiguruj ',
+      placeholder: 'Wprowadź swój {{key}}',
+      project: 'Projekt',
+      publicKey: 'Klucz publiczny',
+      secretKey: 'Klucz tajny',
+      viewDocsLink: 'Zobacz dokumentację {{key}}',
+      removeConfirmTitle: 'Usunąć konfigurację {{key}}?',
+      removeConfirmContent: 'Obecna konfiguracja jest w użyciu, jej usunięcie wyłączy funkcję Śledzenia.',
+    },
+    view: 'Widok',
+  },
+  answerIcon: {
+    description: 'Czy w aplikacji udostępnionej ma być używana ikona aplikacji internetowej do zamiany 🤖.',
+    title: 'Użyj ikony WebApp, aby zastąpić 🤖',
+    descriptionInExplore: 'Czy używać ikony aplikacji internetowej do zastępowania 🤖 w Eksploruj',
+  },
+  importFromDSL: 'Importowanie z DSL',
+  importFromDSLUrl: 'Z adresu URL',
+  importFromDSLFile: 'Z pliku DSL',
+  importFromDSLUrlPlaceholder: 'Wklej tutaj link DSL',
 }
 
 export default translation

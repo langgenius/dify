@@ -15,6 +15,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.rerank_model import RerankModel
+from core.model_runtime.model_providers.xinference.xinference_helper import validate_model_uid
 
 
 class XinferenceRerankModel(RerankModel):
@@ -22,10 +23,16 @@ class XinferenceRerankModel(RerankModel):
     Model class for Xinference rerank model.
     """
 
-    def _invoke(self, model: str, credentials: dict,
-                query: str, docs: list[str], score_threshold: Optional[float] = None, top_n: Optional[int] = None,
-                user: Optional[str] = None) \
-            -> RerankResult:
+    def _invoke(
+        self,
+        model: str,
+        credentials: dict,
+        query: str,
+        docs: list[str],
+        score_threshold: Optional[float] = None,
+        top_n: Optional[int] = None,
+        user: Optional[str] = None,
+    ) -> RerankResult:
         """
         Invoke rerank model
 
@@ -39,43 +46,42 @@ class XinferenceRerankModel(RerankModel):
         :return: rerank result
         """
         if len(docs) == 0:
-            return RerankResult(
-                model=model,
-                docs=[]
-            )
+            return RerankResult(model=model, docs=[])
 
-        if credentials['server_url'].endswith('/'):
-            credentials['server_url'] = credentials['server_url'][:-1]
+        server_url = credentials["server_url"]
+        model_uid = credentials["model_uid"]
+        api_key = credentials.get("api_key")
+        server_url = server_url.removesuffix("/")
+        auth_headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
 
-        handle = RESTfulRerankModelHandle(credentials['model_uid'], credentials['server_url'],auth_headers={})
-        response = handle.rerank(
-            documents=docs,
-            query=query,
-            top_n=top_n,
-        )
+        params = {"documents": docs, "query": query, "top_n": top_n, "return_documents": True}
+        try:
+            handle = RESTfulRerankModelHandle(model_uid, server_url, auth_headers)
+            response = handle.rerank(**params)
+        except RuntimeError as e:
+            if "rerank hasn't support extra parameter" not in str(e):
+                raise InvokeServerUnavailableError(str(e))
+
+            # compatible xinference server between v0.10.1 - v0.12.1, not support 'return_len'
+            handle = RESTfulRerankModelHandleWithoutExtraParameter(model_uid, server_url, auth_headers)
+            response = handle.rerank(**params)
 
         rerank_documents = []
-        for idx, result in enumerate(response['results']):
+        for idx, result in enumerate(response["results"]):
             # format document
-            index = result['index']
-            page_content = result['document']
+            index = result["index"]
+            page_content = result["document"] if isinstance(result["document"], str) else result["document"]["text"]
             rerank_document = RerankDocument(
                 index=index,
                 text=page_content,
-                score=result['relevance_score'],
+                score=result["relevance_score"],
             )
 
             # score threshold check
-            if score_threshold is not None:
-                if result['relevance_score'] >= score_threshold:
-                    rerank_documents.append(rerank_document)
-            else:
+            if score_threshold is None or result["relevance_score"] >= score_threshold:
                 rerank_documents.append(rerank_document)
 
-        return RerankResult(
-            model=model,
-            docs=rerank_documents
-        )
+        return RerankResult(model=model, docs=rerank_documents)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
@@ -86,33 +92,34 @@ class XinferenceRerankModel(RerankModel):
         :return:
         """
         try:
-            if "/" in credentials['model_uid'] or "?" in credentials['model_uid'] or "#" in credentials['model_uid']:
+            if not validate_model_uid(credentials):
                 raise CredentialsValidateFailedError("model_uid should not contain /, ?, or #")
 
-            if credentials['server_url'].endswith('/'):
-                credentials['server_url'] = credentials['server_url'][:-1]
+            credentials["server_url"] = credentials["server_url"].removesuffix("/")
 
             # initialize client
             client = Client(
-                base_url=credentials['server_url']
+                base_url=credentials["server_url"],
+                api_key=credentials.get("api_key"),
             )
 
-            xinference_client = client.get_model(model_uid=credentials['model_uid'])
+            xinference_client = client.get_model(model_uid=credentials["model_uid"])
 
             if not isinstance(xinference_client, RESTfulRerankModelHandle):
                 raise InvokeBadRequestError(
-                    'please check model type, the model you want to invoke is not a rerank model')
-            
+                    "please check model type, the model you want to invoke is not a rerank model"
+                )
+
             self.invoke(
                 model=model,
                 credentials=credentials,
                 query="Whose kasumi",
                 docs=[
-                    "Kasumi is a girl's name of Japanese origin meaning \"mist\".",
+                    'Kasumi is a girl\'s name of Japanese origin meaning "mist".',
                     "Her music is a kawaii bass, a mix of future bass, pop, and kawaii music ",
-                    "and she leads a team named PopiParty."
+                    "and she leads a team named PopiParty.",
                 ],
-                score_threshold=0.8
+                score_threshold=0.8,
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
@@ -128,38 +135,53 @@ class XinferenceRerankModel(RerankModel):
         :return: Invoke error mapping
         """
         return {
-            InvokeConnectionError: [
-                InvokeConnectionError
-            ],
-            InvokeServerUnavailableError: [
-                InvokeServerUnavailableError
-            ],
-            InvokeRateLimitError: [
-                InvokeRateLimitError
-            ],
-            InvokeAuthorizationError: [
-                InvokeAuthorizationError
-            ],
-            InvokeBadRequestError: [
-                InvokeBadRequestError,
-                KeyError,
-                ValueError
-            ]
+            InvokeConnectionError: [InvokeConnectionError],
+            InvokeServerUnavailableError: [InvokeServerUnavailableError],
+            InvokeRateLimitError: [InvokeRateLimitError],
+            InvokeAuthorizationError: [InvokeAuthorizationError],
+            InvokeBadRequestError: [InvokeBadRequestError, KeyError, ValueError],
         }
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
         """
-            used to define customizable model schema
+        used to define customizable model schema
         """
         entity = AIModelEntity(
             model=model,
-            label=I18nObject(
-                en_US=model
-            ),
+            label=I18nObject(en_US=model),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.RERANK,
-            model_properties={ },
-            parameter_rules=[]
+            model_properties={},
+            parameter_rules=[],
         )
 
         return entity
+
+
+class RESTfulRerankModelHandleWithoutExtraParameter(RESTfulRerankModelHandle):
+    def rerank(
+        self,
+        documents: list[str],
+        query: str,
+        top_n: Optional[int] = None,
+        max_chunks_per_doc: Optional[int] = None,
+        return_documents: Optional[bool] = None,
+        **kwargs,
+    ):
+        url = f"{self._base_url}/v1/rerank"
+        request_body = {
+            "model": self._model_uid,
+            "documents": documents,
+            "query": query,
+            "top_n": top_n,
+            "max_chunks_per_doc": max_chunks_per_doc,
+            "return_documents": return_documents,
+        }
+
+        import requests
+
+        response = requests.post(url, json=request_body, headers=self.auth_headers)
+        if response.status_code != 200:
+            raise InvokeServerUnavailableError(f"Failed to rerank documents, detail: {response.json()['detail']}")
+        response_data = response.json()
+        return response_data

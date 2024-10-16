@@ -6,11 +6,12 @@ const translation = {
   ok: '运行中',
   copy: '复制',
   copied: '已复制',
+  regenerate: '重新生成',
   play: '播放',
   pause: '暂停',
   playing: '播放中',
   loading: '加载中',
-  merMaind: {
+  merMaid: {
     rerender: '重新渲染',
   },
   never: '从未',

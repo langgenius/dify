@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.6.13
+    image: langgenius/dify-api:0.9.2
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -40,7 +40,7 @@ services:
       # The default value is 300 seconds.
       FILES_ACCESS_TIMEOUT: 300
       # The maximum number of active requests for the application, where 0 means unlimited, should be a non-negative integer.
-      APP_MAX_ACTIVE_REQUESTS: ${FILES_ACCESS_TIMEOUT:-0}
+      APP_MAX_ACTIVE_REQUESTS: 0
       # When enabled, migrations will be executed prior to application startup and the application will start after the migrations have completed.
       MIGRATION_ENABLED: 'true'
       # The configurations of postgres database connection.
@@ -128,16 +128,14 @@ services:
       # The Qdrant server gRPC mode PORT.
       QDRANT_GRPC_PORT: 6334
       # Milvus configuration Only available when VECTOR_STORE is `milvus`.
-      # The milvus host.
-      MILVUS_HOST: 127.0.0.1
-      # The milvus host.
-      MILVUS_PORT: 19530
+      # The milvus uri.
+      MILVUS_URI: http://127.0.0.1:19530
+      # The milvus token.
+      MILVUS_TOKEN: ''
       # The milvus username.
       MILVUS_USER: root
       # The milvus password.
       MILVUS_PASSWORD: Milvus
-      # The milvus tls switch.
-      MILVUS_SECURE: 'false'
       # relyt configurations
       RELYT_HOST: db
       RELYT_PORT: 5432
@@ -169,6 +167,11 @@ services:
       CHROMA_DATABASE: default_database
       CHROMA_AUTH_PROVIDER: chromadb.auth.token_authn.TokenAuthClientProvider
       CHROMA_AUTH_CREDENTIALS: xxxxxx
+      # ElasticSearch Config
+      ELASTICSEARCH_HOST: 127.0.0.1
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: elastic
       # Mail configuration, support: resend, smtp
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -224,7 +227,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.13
+    image: langgenius/dify-api:0.9.2
     restart: always
     environment:
       CONSOLE_WEB_URL: ''
@@ -303,16 +306,14 @@ services:
       # The Qdrant server gRPC mode PORT.
       QDRANT_GRPC_PORT: 6334
       # Milvus configuration Only available when VECTOR_STORE is `milvus`.
-      # The milvus host.
-      MILVUS_HOST: 127.0.0.1
-      # The milvus host.
-      MILVUS_PORT: 19530
+      # The milvus uri.
+      MILVUS_URI: http://127.0.0.1:19530
+      # The milvus token.
+      MILVUS_PORT: ''
       # The milvus username.
       MILVUS_USER: root
       # The milvus password.
       MILVUS_PASSWORD: Milvus
-      # The milvus tls switch.
-      MILVUS_SECURE: 'false'
       # Mail configuration, support: resend
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -371,6 +372,11 @@ services:
       CHROMA_DATABASE: default_database
       CHROMA_AUTH_PROVIDER: chromadb.auth.token_authn.TokenAuthClientProvider
       CHROMA_AUTH_CREDENTIALS: xxxxxx
+      # ElasticSearch Config
+      ELASTICSEARCH_HOST: 127.0.0.1
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: elastic
       # Notion import configuration, support public and internal
       NOTION_INTEGRATION_TYPE: public
       NOTION_CLIENT_SECRET: you-client-secret
@@ -390,7 +396,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.6.13
+    image: langgenius/dify-web:0.9.2
     restart: always
     environment:
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is
@@ -494,7 +500,7 @@ services:
 
   # ssrf_proxy server
   # for more information, please refer to
-  # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-ssrf_proxy-needed
+  # https://docs.dify.ai/learn-more/faq/install-faq#id-18.-why-is-ssrf_proxy-needed
   ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always

@@ -1,9 +1,10 @@
 import os
 
-from flask import current_app, session
+from flask import session
 from flask_restful import Resource, reqparse
 
-from libs.helper import str_len
+from configs import dify_config
+from libs.helper import StrLen
 from models.model import DifySetup
 from services.account_service import TenantService
 
@@ -13,12 +14,11 @@ from .wraps import only_edition_self_hosted
 
 
 class InitValidateAPI(Resource):
-
     def get(self):
         init_status = get_init_validate_status()
         if init_status:
-            return { 'status': 'finished' }
-        return {'status': 'not_started' }
+            return {"status": "finished"}
+        return {"status": "not_started"}
 
     @only_edition_self_hosted
     def post(self):
@@ -28,22 +28,23 @@ class InitValidateAPI(Resource):
             raise AlreadySetupError()
 
         parser = reqparse.RequestParser()
-        parser.add_argument('password', type=str_len(30),
-                            required=True, location='json')
-        input_password = parser.parse_args()['password']
+        parser.add_argument("password", type=StrLen(30), required=True, location="json")
+        input_password = parser.parse_args()["password"]
 
-        if input_password != os.environ.get('INIT_PASSWORD'):
-            session['is_init_validated'] = False
+        if input_password != os.environ.get("INIT_PASSWORD"):
+            session["is_init_validated"] = False
             raise InitValidateFailedError()
-            
-        session['is_init_validated'] = True
-        return {'result': 'success'}, 201
+
+        session["is_init_validated"] = True
+        return {"result": "success"}, 201
+
 
 def get_init_validate_status():
-    if current_app.config['EDITION'] == 'SELF_HOSTED':
-        if os.environ.get('INIT_PASSWORD'):
-            return session.get('is_init_validated') or DifySetup.query.first()
-    
+    if dify_config.EDITION == "SELF_HOSTED":
+        if os.environ.get("INIT_PASSWORD"):
+            return session.get("is_init_validated") or DifySetup.query.first()
+
     return True
 
-api.add_resource(InitValidateAPI, '/init')
+
+api.add_resource(InitValidateAPI, "/init")

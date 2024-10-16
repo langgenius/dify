@@ -10,10 +10,14 @@ class Document(BaseModel):
 
     page_content: str
 
+    vector: Optional[list[float]] = None
+
     """Arbitrary metadata about the page content (e.g., source, relationships to other
         documents, etc.).
     """
     metadata: Optional[dict] = Field(default_factory=dict)
+
+    provider: Optional[str] = "dify"
 
 
 class BaseDocumentTransformer(ABC):
@@ -53,9 +57,7 @@ class BaseDocumentTransformer(ABC):
     """
 
     @abstractmethod
-    def transform_documents(
-        self, documents: Sequence[Document], **kwargs: Any
-    ) -> Sequence[Document]:
+    def transform_documents(self, documents: Sequence[Document], **kwargs: Any) -> Sequence[Document]:
         """Transform a list of documents.
 
         Args:
@@ -66,9 +68,7 @@ class BaseDocumentTransformer(ABC):
         """
 
     @abstractmethod
-    async def atransform_documents(
-        self, documents: Sequence[Document], **kwargs: Any
-    ) -> Sequence[Document]:
+    async def atransform_documents(self, documents: Sequence[Document], **kwargs: Any) -> Sequence[Document]:
         """Asynchronously transform a list of documents.
 
         Args:

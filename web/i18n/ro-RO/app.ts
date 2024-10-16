@@ -67,9 +67,11 @@ const translation = {
   editAppTitle: 'Editează Info Aplicație',
   editDone: 'Informațiile despre aplicație au fost actualizate',
   editFailed: 'Actualizarea informațiilor despre aplicație a eșuat',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Anulează',
+    emoji: 'Emoji',
+    image: 'Imagine',
   },
   switch: 'Comută la Orchestrare Flux de Lucru',
   switchTipStart: 'O nouă copie a aplicației va fi creată pentru tine, iar noua copie va comuta la Orchestrare Flux de Lucru. Noua copie ',
@@ -85,6 +87,52 @@ const translation = {
     workflow: 'Flux de lucru',
     completion: 'Finalizare',
   },
+  tracing: {
+    title: 'Urmărirea performanței aplicației',
+    description: 'Configurarea unui furnizor LLMOps terț și urmărirea performanței aplicației.',
+    config: 'Configurare',
+    collapse: 'Restrânge',
+    expand: 'Extinde',
+    tracing: 'Urmărire',
+    disabled: 'Dezactivat',
+    disabledTip: 'Vă rugăm să configurați mai întâi furnizorul',
+    enabled: 'În serviciu',
+    tracingDescription: 'Captează contextul complet al execuției aplicației, inclusiv apelurile LLM, context, prompt-uri, cereri HTTP și altele, către o platformă de urmărire terță.',
+    configProviderTitle: {
+      configured: 'Configurat',
+      notConfigured: 'Configurați furnizorul pentru a activa urmărirea',
+      moreProvider: 'Mai mulți furnizori',
+    },
+    langsmith: {
+      title: 'LangSmith',
+      description: 'O platformă de dezvoltare all-in-one pentru fiecare etapă a ciclului de viață al aplicației bazate pe LLM.',
+    },
+    langfuse: {
+      title: 'Langfuse',
+      description: 'Urmărire, evaluări, gestionarea prompt-urilor și metrici pentru depanarea și îmbunătățirea aplicației dvs. LLM.',
+    },
+    inUse: 'În utilizare',
+    configProvider: {
+      title: 'Configurare ',
+      placeholder: 'Introduceți {{key}}-ul dvs.',
+      project: 'Proiect',
+      publicKey: 'Cheie publică',
+      secretKey: 'Cheie secretă',
+      viewDocsLink: 'Vizualizați documentația {{key}}',
+      removeConfirmTitle: 'Eliminați configurația {{key}}?',
+      removeConfirmContent: 'Configurația curentă este în uz, eliminarea acesteia va dezactiva funcția de Urmărire.',
+    },
+    view: 'Vedere',
+  },
+  answerIcon: {
+    descriptionInExplore: 'Dacă să utilizați pictograma WebApp pentru a înlocui 🤖 în Explore',
+    description: 'Dacă se utilizează pictograma WebApp pentru a înlocui 🤖 în aplicația partajată',
+    title: 'Utilizați pictograma WebApp pentru a înlocui 🤖',
+  },
+  importFromDSL: 'Import din DSL',
+  importFromDSLUrl: 'De la URL',
+  importFromDSLUrlPlaceholder: 'Lipiți linkul DSL aici',
+  importFromDSLFile: 'Din fișierul DSL',
 }
 
 export default translation

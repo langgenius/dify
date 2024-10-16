@@ -1,136 +1,103 @@
 from abc import ABC, abstractmethod
-from enum import Enum
-from typing import Optional
+from collections.abc import Generator, Mapping, Sequence
+from typing import Any, Optional
 
-from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
-from core.workflow.entities.base_node_data_entities import BaseIterationState, BaseNodeData
+from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import VariablePool
-
-
-class UserFrom(Enum):
-    """
-    User from
-    """
-    ACCOUNT = "account"
-    END_USER = "end-user"
-
-    @classmethod
-    def value_of(cls, value: str) -> "UserFrom":
-        """
-        Value of
-        :param value: value
-        :return:
-        """
-        for item in cls:
-            if item.value == value:
-                return item
-        raise ValueError(f"Invalid value: {value}")
+from core.workflow.graph_engine.entities.event import InNodeEvent
+from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
+from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.workflow.nodes.event import RunCompletedEvent, RunEvent
 
 
 class BaseNode(ABC):
     _node_data_cls: type[BaseNodeData]
     _node_type: NodeType
 
-    tenant_id: str
-    app_id: str
-    workflow_id: str
-    user_id: str
-    user_from: UserFrom
-    invoke_from: InvokeFrom
-    
-    workflow_call_depth: int
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: GraphInitParams,
+        graph: Graph,
+        graph_runtime_state: GraphRuntimeState,
+        previous_node_id: Optional[str] = None,
+        thread_pool_id: Optional[str] = None,
+    ) -> None:
+        self.id = id
+        self.tenant_id = graph_init_params.tenant_id
+        self.app_id = graph_init_params.app_id
+        self.workflow_type = graph_init_params.workflow_type
+        self.workflow_id = graph_init_params.workflow_id
+        self.graph_config = graph_init_params.graph_config
+        self.user_id = graph_init_params.user_id
+        self.user_from = graph_init_params.user_from
+        self.invoke_from = graph_init_params.invoke_from
+        self.workflow_call_depth = graph_init_params.call_depth
+        self.graph = graph
+        self.graph_runtime_state = graph_runtime_state
+        self.previous_node_id = previous_node_id
+        self.thread_pool_id = thread_pool_id
 
-    node_id: str
-    node_data: BaseNodeData
-    node_run_result: Optional[NodeRunResult] = None
-
-    callbacks: list[BaseWorkflowCallback]
-
-    def __init__(self, tenant_id: str,
-                 app_id: str,
-                 workflow_id: str,
-                 user_id: str,
-                 user_from: UserFrom,
-                 invoke_from: InvokeFrom,
-                 config: dict,
-                 callbacks: list[BaseWorkflowCallback] = None,
-                 workflow_call_depth: int = 0) -> None:
-        self.tenant_id = tenant_id
-        self.app_id = app_id
-        self.workflow_id = workflow_id
-        self.user_id = user_id
-        self.user_from = user_from
-        self.invoke_from = invoke_from
-        self.workflow_call_depth = workflow_call_depth
-
-        self.node_id = config.get("id")
-        if not self.node_id:
+        node_id = config.get("id")
+        if not node_id:
             raise ValueError("Node ID is required.")
 
+        self.node_id = node_id
         self.node_data = self._node_data_cls(**config.get("data", {}))
-        self.callbacks = callbacks or []
 
     @abstractmethod
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult | Generator[RunEvent | InNodeEvent, None, None]:
         """
         Run node
-        :param variable_pool: variable pool
         :return:
         """
         raise NotImplementedError
 
-    def run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def run(self) -> Generator[RunEvent | InNodeEvent, None, None]:
         """
         Run node entry
-        :param variable_pool: variable pool
         :return:
         """
-        result = self._run(
-            variable_pool=variable_pool
-        )
+        result = self._run()
 
-        self.node_run_result = result
-        return result
-
-    def publish_text_chunk(self, text: str, value_selector: list[str] = None) -> None:
-        """
-        Publish text chunk
-        :param text: chunk text
-        :param value_selector: value selector
-        :return:
-        """
-        if self.callbacks:
-            for callback in self.callbacks:
-                callback.on_node_text_chunk(
-                    node_id=self.node_id,
-                    text=text,
-                    metadata={
-                        "node_type": self.node_type,
-                        "value_selector": value_selector
-                    }
-                )
+        if isinstance(result, NodeRunResult):
+            yield RunCompletedEvent(run_result=result)
+        else:
+            yield from result
 
     @classmethod
-    def extract_variable_selector_to_variable_mapping(cls, config: dict) -> dict[str, list[str]]:
+    def extract_variable_selector_to_variable_mapping(
+        cls, graph_config: Mapping[str, Any], config: dict
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
         :param config: node config
         :return:
         """
+        node_id = config.get("id")
+        if not node_id:
+            raise ValueError("Node ID is required when extracting variable selector to variable mapping.")
+
         node_data = cls._node_data_cls(**config.get("data", {}))
-        return cls._extract_variable_selector_to_variable_mapping(node_data)
+        return cls._extract_variable_selector_to_variable_mapping(
+            graph_config=graph_config, node_id=node_id, node_data=node_data
+        )
 
     @classmethod
-    @abstractmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls, graph_config: Mapping[str, Any], node_id: str, node_data: BaseNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """
-        raise NotImplementedError
+        return {}
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
@@ -148,38 +115,3 @@ class BaseNode(ABC):
         :return:
         """
         return self._node_type
-
-class BaseIterationNode(BaseNode):
-    @abstractmethod
-    def _run(self, variable_pool: VariablePool) -> BaseIterationState:
-        """
-        Run node
-        :param variable_pool: variable pool
-        :return:
-        """
-        raise NotImplementedError
-
-    def run(self, variable_pool: VariablePool) -> BaseIterationState:
-        """
-        Run node entry
-        :param variable_pool: variable pool
-        :return:
-        """
-        return self._run(variable_pool=variable_pool)
-
-    def get_next_iteration(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
-        """
-        Get next iteration start node id based on the graph.
-        :param graph: graph
-        :return: next node id
-        """
-        return self._get_next_iteration(variable_pool, state)
-    
-    @abstractmethod
-    def _get_next_iteration(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
-        """
-        Get next iteration start node id based on the graph.
-        :param graph: graph
-        :return: next node id
-        """
-        raise NotImplementedError

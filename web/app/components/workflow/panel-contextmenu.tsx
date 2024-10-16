@@ -1,5 +1,6 @@
 import {
   memo,
+  useEffect,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,10 +24,15 @@ const PanelContextmenu = () => {
   const clipboardElements = useStore(s => s.clipboardElements)
   const setShowImportDSLModal = useStore(s => s.setShowImportDSLModal)
   const { handleNodesPaste } = useNodesInteractions()
-  const { handlePaneContextmenuCancel } = usePanelInteractions()
+  const { handlePaneContextmenuCancel, handleNodeContextmenuCancel } = usePanelInteractions()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
   const { handleAddNote } = useOperator()
-  const { handleExportDSL } = useDSL()
+  const { exportCheck } = useDSL()
+
+  useEffect(() => {
+    if (panelMenu)
+      handleNodeContextmenuCancel()
+  }, [panelMenu, handleNodeContextmenuCancel])
 
   useClickAway(() => {
     handlePaneContextmenuCancel()
@@ -105,7 +111,7 @@ const PanelContextmenu = () => {
       <div className='p-1'>
         <div
           className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
-          onClick={() => handleExportDSL()}
+          onClick={() => exportCheck()}
         >
           {t('app.export')}
         </div>

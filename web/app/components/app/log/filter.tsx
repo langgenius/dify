@@ -10,6 +10,7 @@ import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import type { QueryParam } from './index'
 import { SimpleSelect } from '@/app/components/base/select'
+import Sort from '@/app/components/base/sort'
 import { fetchAnnotationsCount } from '@/service/log'
 dayjs.extend(quarterOfYear)
 
@@ -28,18 +29,19 @@ export const TIME_PERIOD_LIST = [
 ]
 
 type IFilterProps = {
+  isChatMode?: boolean
   appId: string
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void
 }
 
-const Filter: FC<IFilterProps> = ({ appId, queryParams, setQueryParams }: IFilterProps) => {
+const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryParams }: IFilterProps) => {
   const { data } = useSWR({ url: `/apps/${appId}/annotations/count` }, fetchAnnotationsCount)
   const { t } = useTranslation()
   if (!data)
     return null
   return (
-    <div className='flex flex-row flex-wrap gap-y-2 gap-x-4 items-center mb-4 text-gray-900 text-base'>
+    <div className='flex flex-row flex-wrap gap-2 items-center mb-4 text-gray-900 text-base'>
       <SimpleSelect
         items={TIME_PERIOD_LIST.map(item => ({ value: item.value, name: t(`appLog.filter.period.${item.name}`) }))}
         className='mt-0 !w-40'
@@ -53,6 +55,8 @@ const Filter: FC<IFilterProps> = ({ appId, queryParams, setQueryParams }: IFilte
           className='!w-[300px]'
           onSelect={
             (item) => {
+              if (!item.value)
+                return
               setQueryParams({ ...queryParams, annotation_status: item.value as string })
             }
           }
@@ -68,7 +72,7 @@ const Filter: FC<IFilterProps> = ({ appId, queryParams, setQueryParams }: IFilte
         <input
           type="text"
           name="query"
-          className="block w-[240px] bg-gray-100 shadow-sm rounded-md border-0 py-1.5 pl-10 text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus-visible:outline-none sm:text-sm sm:leading-6"
+          className="block w-[180px] bg-gray-100 shadow-sm rounded-md border-0 py-1.5 pl-10 text-gray-900 placeholder:text-gray-400 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus-visible:outline-none sm:text-sm sm:leading-6"
           placeholder={t('common.operation.search')!}
           value={queryParams.keyword}
           onChange={(e) => {
@@ -76,6 +80,22 @@ const Filter: FC<IFilterProps> = ({ appId, queryParams, setQueryParams }: IFilte
           }}
         />
       </div>
+      {isChatMode && (
+        <>
+          <div className='w-px h-3.5 bg-divider-regular'></div>
+          <Sort
+            order={queryParams.sort_by?.startsWith('-') ? '-' : ''}
+            value={queryParams.sort_by?.replace('-', '') || 'created_at'}
+            items={[
+              { value: 'created_at', name: t('appLog.table.header.time') },
+              { value: 'updated_at', name: t('appLog.table.header.updatedTime') },
+            ]}
+            onSelect={(value) => {
+              setQueryParams({ ...queryParams, sort_by: value as string })
+            }}
+          />
+        </>
+      )}
     </div>
   )
 }

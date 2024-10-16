@@ -148,7 +148,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - original_document_id Source document ID (optional)
           - Used to re-upload the document or modify the document cleaning and segmentation configuration. The missing information is copied from the source document
           - The source document cannot be an archived document
-          - When original_document_id is passed in, the update operation is performed on behalf of the document. process_rule is a fillable item. If not filled in, the segmentation method of the source document will be used by defaul
+          - When original_document_id is passed in, the update operation is performed on behalf of the document. process_rule is a fillable item. If not filled in, the segmentation method of the source document will be used by default
           - When original_document_id is not passed in, the new operation is performed on behalf of the document, and process_rule is required
 
         - indexing_technique Index mode
@@ -236,6 +236,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='name' type='string' key='name'>
         Knowledge name
       </Property>
+      <Property name='permission' type='string' key='permission'>
+        Permission
+          - <code>only_me</code> Only me
+          - <code>all_team_members</code> All team members
+          - <code>partial_members</code> Partial members
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -243,14 +249,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       title="Request" 
       tag="POST" 
       label="/datasets"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name"}'`}
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name", "permission": "only_me"}'`}
     >
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${apiBaseUrl}/v1/datasets' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
-      "name": "name"
+      "name": "name",
+      "permission": "only_me"
     }'
     ```
     </CodeGroup>
@@ -922,6 +929,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
       </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        Document ID
+      </Property>
       <Property name='segment_id' type='string' key='segment_id'>
         Document Segment ID
       </Property>
@@ -965,6 +975,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
       </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        Document ID
+      </Property>
       <Property name='segment_id' type='string' key='segment_id'>
         Document Segment ID
       </Property>
@@ -972,7 +985,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
     ### Request Body
     <Properties>
-      <Property name='segment' type='object list' key='segment'>
+      <Property name='segment' type='object' key='segment'>
         - <code>content</code> (text) text content/question content，required
         - <code>answer</code> (text) Answer content, not required, passed if the Knowledge is in qa mode
         - <code>keywords</code> (list) keyword, not required
@@ -1029,6 +1042,151 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         "stopped_at": null
       }],
       "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/hit_testing'
+  method='POST'
+  title='Dataset hit testing'
+  name='#dataset_hit_testing'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        Dataset ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='query' type='string' key='query'>
+        retrieval keywordc
+      </Property>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        retrieval keyword(Optional, if not filled, it will be recalled according to the default method)
+        - <code>search_method</code> (text) Search method: One of the following four keywords is required
+          - <code>keyword_search</code> Keyword search
+          - <code>semantic_search</code> Semantic search
+          - <code>full_text_search</code> Full-text search
+          - <code>hybrid_search</code> Hybrid search
+        - <code>reranking_enable</code> (bool) Whether to enable reranking, optional, required if the search mode is semantic_search or hybrid_search
+        - <code>reranking_mode</code> (object) Rerank model configuration, optional, required if reranking is enabled
+            - <code>reranking_provider_name</code> (string) Rerank model provider
+            - <code>reranking_model_name</code> (string) Rerank model name
+        - <code>weights</code> (double) Semantic search weight setting in hybrid search mode
+        - <code>top_k</code> (integer) Number of results to return, optional
+        - <code>score_threshold_enabled</code> (bool) Whether to enable score threshold
+        - <code>score_threshold</code> (double) Score threshold
+      </Property>
+      <Property name='external_retrieval_model' type='object' key='external_retrieval_model'>
+          Unused field
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/hit_testing"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/hit_testing' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
+        "query": "test",
+        "retrieval_model": {
+            "search_method": "keyword_search",
+            "reranking_enable": false,
+            "reranking_mode": null,
+            "reranking_model": {
+                "reranking_provider_name": "",
+                "reranking_model_name": ""
+            },
+            "weights": null,
+            "top_k": 1,
+            "score_threshold_enabled": false,
+            "score_threshold": null
+        }
+    }'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/hit_testing' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "query": "test",
+        "retrieval_model": {
+            "search_method": "keyword_search",
+            "reranking_enable": false,
+            "reranking_mode": null,
+            "reranking_model": {
+                "reranking_provider_name": "",
+                "reranking_model_name": ""
+            },
+            "weights": null,
+            "top_k": 2,
+            "score_threshold_enabled": false,
+            "score_threshold": null
+        }
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "query": {
+        "content": "test"
+      },
+      "records": [
+        {
+          "segment": {
+            "id": "7fa6f24f-8679-48b3-bc9d-bdf28d73f218",
+            "position": 1,
+            "document_id": "a8c6c36f-9f5d-4d7a-8472-f5d7b75d71d2",
+            "content": "Operation guide",
+            "answer": null,
+            "word_count": 847,
+            "tokens": 280,
+            "keywords": [
+              "install",
+              "java",
+              "base",
+              "scripts",
+              "jdk",
+              "manual",
+              "internal",
+              "opens",
+              "add",
+              "vmoptions"
+            ],
+            "index_node_id": "39dd8443-d960-45a8-bb46-7275ad7fbc8e",
+            "index_node_hash": "0189157697b3c6a418ccf8264a09699f25858975578f3467c76d6bfc94df1d73",
+            "hit_count": 0,
+            "enabled": true,
+            "disabled_at": null,
+            "disabled_by": null,
+            "status": "completed",
+            "created_by": "dbcb1ab5-90c8-41a7-8b78-73b235eb6f6f",
+            "created_at": 1728734540,
+            "indexing_at": 1728734552,
+            "completed_at": 1728734584,
+            "error": null,
+            "stopped_at": null,
+            "document": {
+              "id": "a8c6c36f-9f5d-4d7a-8472-f5d7b75d71d2",
+              "data_source_type": "upload_file",
+              "name": "readme.txt",
+              "doc_type": null
+            }
+          },
+          "score": 3.730463140527718e-05,
+          "tsne_position": null
+        }
+      ]
     }
     ```
     </CodeGroup>

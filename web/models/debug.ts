@@ -1,4 +1,7 @@
 import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
+import type {
+  RerankingModeEnum,
+} from '@/models/datasets'
 export type Inputs = Record<string, string | number | object>
 
 export enum PromptMode {
@@ -144,13 +147,25 @@ export type DatasetConfigs = {
   }
   top_k: number
   score_threshold_enabled: boolean
-  score_threshold?: number | null
+  score_threshold: number | null | undefined
   datasets: {
     datasets: {
       enabled: boolean
       id: string
     }[]
   }
+  reranking_mode?: RerankingModeEnum
+  weights?: {
+    vector_setting: {
+      vector_weight: number
+      embedding_provider_name: string
+      embedding_model_name: string
+    }
+    keyword_setting: {
+      keyword_weight: number
+    }
+  }
+  reranking_enable?: boolean
 }
 
 export type DebugRequestBody = {
@@ -200,7 +215,7 @@ export type LogSessionListResponse = {
     query: string // user's query question
     message: string // prompt send to LLM
     answer: string
-    creat_at: string
+    created_at: string
   }[]
   total: number
   page: number
@@ -209,7 +224,7 @@ export type LogSessionListResponse = {
 // log session detail and debug
 export type LogSessionDetailResponse = {
   id: string
-  cnversation_id: string
+  conversation_id: string
   model_provider: string
   query: string
   inputs: Record<string, string | number | object>[]

@@ -9,31 +9,29 @@ from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
 
-@shared_task(queue='dataset')
-def clean_notion_or_feishuwiki_document_task(document_ids: list[str], dataset_id: str):
+@shared_task(queue="dataset")
+def clean_notion_document_task(document_ids: list[str], dataset_id: str):
     """
     Clean document when document deleted.
     :param document_ids: document ids
     :param dataset_id: dataset id
 
-    Usage: clean_notion_or_feishuwiki_document_task.delay(document_ids, dataset_id)
+    Usage: clean_notion_document_task.delay(document_ids, dataset_id)
     """
-    logging.info(click.style(
-        'Start clean document when import form notion or feishuwiki document deleted: {}'.format(dataset_id),
-        fg='green'))
+    logging.info(
+        click.style("Start clean document when import form notion document deleted: {}".format(dataset_id), fg="green")
+    )
     start_at = time.perf_counter()
 
     try:
         dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise Exception('Document has no dataset')
+            raise Exception("Document has no dataset")
         index_type = dataset.doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
         for document_id in document_ids:
-            document = db.session.query(Document).filter(
-                Document.id == document_id
-            ).first()
+            document = db.session.query(Document).filter(Document.id == document_id).first()
             db.session.delete(document)
 
             segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
@@ -47,8 +45,11 @@ def clean_notion_or_feishuwiki_document_task(document_ids: list[str], dataset_id
         end_at = time.perf_counter()
         logging.info(
             click.style(
-                'Clean document when import form notion or feishuwiki document deleted end :: {} latency: {}'.format(
-                dataset_id, end_at - start_at),
-                        fg='green'))
+                "Clean document when import form notion document deleted end :: {} latency: {}".format(
+                    dataset_id, end_at - start_at
+                ),
+                fg="green",
+            )
+        )
     except Exception:
-        logging.exception("Cleaned document when import form notion or feishuwiki document deleted  failed")
+        logging.exception("Cleaned document when import form notion document deleted  failed")

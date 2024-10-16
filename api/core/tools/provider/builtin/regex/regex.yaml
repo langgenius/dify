@@ -1,0 +1,15 @@
+identity:
+  author: zhuhao
+  name: regex
+  label:
+    en_US: Regex
+    zh_Hans: 正则表达式提取
+    pt_BR: Regex
+  description:
+    en_US: A tool for regex extraction.
+    zh_Hans: 一个用于正则表达式内容提取的工具。
+    pt_BR: A tool for regex extraction.
+  icon: icon.svg
+  tags:
+    - utilities
+    - productivity

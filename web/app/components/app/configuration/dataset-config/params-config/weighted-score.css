@@ -1,0 +1,7 @@
+.weightedScoreSliderTrack {
+  background: var(--color-util-colors-blue-light-blue-light-500) !important;
+}
+
+.weightedScoreSliderTrack-1 {
+  background: transparent !important;
+}

@@ -1,0 +1,31 @@
+identity:
+  author: zhuhao
+  name: alphavantage
+  label:
+    en_US: AlphaVantage
+    zh_Hans: AlphaVantage
+    pt_BR: AlphaVantage
+  description:
+    en_US: AlphaVantage is an online platform that provides financial market data and APIs, making it convenient for individual investors and developers to access stock quotes, technical indicators, and stock analysis.
+    zh_Hans: AlphaVantage是一个在线平台，它提供金融市场数据和API，便于个人投资者和开发者获取股票报价、技术指标和股票分析。
+    pt_BR: AlphaVantage is an online platform that provides financial market data and APIs, making it convenient for individual investors and developers to access stock quotes, technical indicators, and stock analysis.
+  icon: icon.svg
+  tags:
+    - finance
+credentials_for_provider:
+  api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: AlphaVantage API key
+      zh_Hans: AlphaVantage API key
+      pt_BR: AlphaVantage API key
+    placeholder:
+      en_US: Please input your AlphaVantage API key
+      zh_Hans: 请输入你的 AlphaVantage API key
+      pt_BR: Please input your AlphaVantage API key
+    help:
+      en_US: Get your AlphaVantage API key from AlphaVantage
+      zh_Hans: 从 AlphaVantage 获取您的 AlphaVantage API key
+      pt_BR: Get your AlphaVantage API key from AlphaVantage
+    url: https://www.alphavantage.co/support/#api-key

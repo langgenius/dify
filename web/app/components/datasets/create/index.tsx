@@ -12,7 +12,7 @@ import { DataSourceType } from '@/models/datasets'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource } from '@/service/common'
 import { fetchDatasetDetail } from '@/service/datasets'
-import type { FeishuPage, NotionPage } from '@/models/common'
+import { DataSourceProvider, type NotionPage, type FeishuPage } from '@/models/common'
 import { useModalContext } from '@/context/modal-context'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
@@ -27,6 +27,7 @@ const DEFAULT_CRAWL_OPTIONS: CrawlOptions = {
   excludes: '',
   limit: 10,
   max_depth: '',
+  use_sitemap: true,
 }
 
 const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
@@ -57,7 +58,8 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const updateFileList = (preparedFiles: FileItem[]) => {
     setFiles(preparedFiles)
   }
-  const [fireCrawlJobId, setFireCrawlJobId] = useState('')
+  const [websiteCrawlProvider, setWebsiteCrawlProvider] = useState<DataSourceProvider>(DataSourceProvider.fireCrawl)
+  const [websiteCrawlJobId, setWebsiteCrawlJobId] = useState('')
 
   const updateFile = (fileItem: FileItem, progress: number, list: FileItem[]) => {
     const targetIndex = list.findIndex(file => file.fileID === fileItem.fileID)
@@ -152,7 +154,8 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
             onStepChange={nextStep}
             websitePages={websitePages}
             updateWebsitePages={setWebsitePages}
-            onFireCrawlJobIdChange={setFireCrawlJobId}
+            onWebsiteCrawlProviderChange={setWebsiteCrawlProvider}
+            onWebsiteCrawlJobIdChange={setWebsiteCrawlJobId}
             crawlOptions={crawlOptions}
             onCrawlOptionsChange={setCrawlOptions}
           />
@@ -167,7 +170,8 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           notionPages={notionPages}
           feishuPages={feishuPages}
           websitePages={websitePages}
-          fireCrawlJobId={fireCrawlJobId}
+          websiteCrawlProvider={websiteCrawlProvider}
+          websiteCrawlJobId={websiteCrawlJobId}
           onStepChange={changeStep}
           updateIndexingTypeCache={updateIndexingTypeCache}
           updateResultCache={updateResultCache}

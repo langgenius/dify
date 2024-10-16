@@ -39,27 +39,34 @@ ENV DEPLOY_ENV=PRODUCTION
 ENV CONSOLE_API_URL=http://127.0.0.1:5001
 ENV APP_API_URL=http://127.0.0.1:5001
 ENV PORT=3000
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # set timezone
 ENV TZ=UTC
 RUN ln -s /usr/share/zoneinfo/${TZ} /etc/localtime \
     && echo ${TZ} > /etc/timezone
 
-# global runtime packages
-RUN yarn global add pm2 \
-    && yarn cache clean
 
 WORKDIR /app/web
 COPY --from=builder /app/web/public ./public
 COPY --from=builder /app/web/.next/standalone ./
 COPY --from=builder /app/web/.next/static ./.next/static
 
-
 COPY docker/pm2.json ./pm2.json
 COPY docker/entrypoint.sh ./entrypoint.sh
+
+
+# global runtime packages
+RUN yarn global add pm2 \
+    && yarn cache clean \
+    && mkdir /.pm2 \
+    && chown -R 1001:0 /.pm2 /app/web \
+    && chmod -R g=u /.pm2 /app/web
+
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
 
+USER 1001
 EXPOSE 3000
 ENTRYPOINT ["/bin/sh", "./entrypoint.sh"]

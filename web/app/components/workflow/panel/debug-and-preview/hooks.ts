@@ -35,7 +35,7 @@ export const useChat = (
   const { notify } = useToastContext()
   const { handleRun } = useWorkflowRun()
   const hasStopResponded = useRef(false)
-  const connversationId = useRef('')
+  const conversationId = useRef('')
   const taskIdRef = useRef('')
   const [chatList, setChatList] = useState<ChatItem[]>(prevChatList || [])
   const chatListRef = useRef<ChatItem[]>(prevChatList || [])
@@ -100,7 +100,7 @@ export const useChat = (
   }, [handleResponding, stopChat])
 
   const handleRestart = useCallback(() => {
-    connversationId.current = ''
+    conversationId.current = ''
     taskIdRef.current = ''
     handleStop()
     const newChatList = config?.opening_statement
@@ -180,12 +180,10 @@ export const useChat = (
       isAnswer: true,
     }
 
-    let isInIteration = false
-
     handleResponding(true)
 
     const bodyParams = {
-      conversation_id: connversationId.current,
+      conversation_id: conversationId.current,
       ...params,
     }
     if (bodyParams?.files?.length) {
@@ -214,7 +212,7 @@ export const useChat = (
           }
 
           if (isFirstMessage && newConversationId)
-            connversationId.current = newConversationId
+            conversationId.current = newConversationId
 
           taskIdRef.current = taskId
           if (messageId)
@@ -248,11 +246,16 @@ export const useChat = (
           }
 
           if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
-            const { data }: any = await onGetSuggestedQuestions(
-              responseItem.id,
-              newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
-            )
-            setSuggestQuestions(data)
+            try {
+              const { data }: any = await onGetSuggestedQuestions(
+                responseItem.id,
+                newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
+              )
+              setSuggestQuestions(data)
+            }
+            catch (error) {
+              setSuggestQuestions([])
+            }
           }
         },
         onMessageEnd: (messageEnd) => {
@@ -312,11 +315,11 @@ export const useChat = (
               ...responseItem,
             }
           }))
-          isInIteration = true
         },
-        onIterationNext: () => {
+        onIterationNext: ({ data }) => {
           const tracing = responseItem.workflowProcess!.tracing!
-          const iterations = tracing[tracing.length - 1]
+          const iterations = tracing.find(item => item.node_id === data.node_id
+            && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
           iterations.details!.push([])
 
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
@@ -326,9 +329,10 @@ export const useChat = (
         },
         onIterationFinish: ({ data }) => {
           const tracing = responseItem.workflowProcess!.tracing!
-          const iterations = tracing[tracing.length - 1]
-          tracing[tracing.length - 1] = {
-            ...iterations,
+          const iterationsIndex = tracing.findIndex(item => item.node_id === data.node_id
+            && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+          tracing[iterationsIndex] = {
+            ...tracing[iterationsIndex],
             ...data,
             status: NodeRunningStatus.Succeeded,
           } as any
@@ -336,75 +340,55 @@ export const useChat = (
             const currentIndex = draft.length - 1
             draft[currentIndex] = responseItem
           }))
-
-          isInIteration = false
         },
         onNodeStarted: ({ data }) => {
-          if (isInIteration) {
-            const tracing = responseItem.workflowProcess!.tracing!
-            const iterations = tracing[tracing.length - 1]
-            const currIteration = iterations.details![iterations.details!.length - 1]
-            currIteration.push({
-              ...data,
-              status: NodeRunningStatus.Running,
-            } as any)
-            handleUpdateChatList(produce(chatListRef.current, (draft) => {
-              const currentIndex = draft.length - 1
-              draft[currentIndex] = responseItem
-            }))
-          }
-          else {
-            responseItem.workflowProcess!.tracing!.push({
-              ...data,
-              status: NodeRunningStatus.Running,
-            } as any)
-            handleUpdateChatList(produce(chatListRef.current, (draft) => {
-              const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-              draft[currentIndex] = {
-                ...draft[currentIndex],
-                ...responseItem,
-              }
-            }))
-          }
+          if (data.iteration_id)
+            return
+
+          responseItem.workflowProcess!.tracing!.push({
+            ...data,
+            status: NodeRunningStatus.Running,
+          } as any)
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
         },
         onNodeFinished: ({ data }) => {
-          if (isInIteration) {
-            const tracing = responseItem.workflowProcess!.tracing!
-            const iterations = tracing[tracing.length - 1]
-            const currIteration = iterations.details![iterations.details!.length - 1]
-            currIteration[currIteration.length - 1] = {
-              ...data,
-              status: NodeRunningStatus.Succeeded,
-            } as any
-            handleUpdateChatList(produce(chatListRef.current, (draft) => {
-              const currentIndex = draft.length - 1
-              draft[currentIndex] = responseItem
-            }))
-          }
-          else {
-            const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
-            responseItem.workflowProcess!.tracing[currentIndex] = {
-              ...(responseItem.workflowProcess!.tracing[currentIndex].extras
-                ? { extras: responseItem.workflowProcess!.tracing[currentIndex].extras }
-                : {}),
-              ...data,
-            } as any
-            handleUpdateChatList(produce(chatListRef.current, (draft) => {
-              const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-              draft[currentIndex] = {
-                ...draft[currentIndex],
-                ...responseItem,
-              }
-            }))
-          }
+          if (data.iteration_id)
+            return
+
+          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
+            if (!item.execution_metadata?.parallel_id)
+              return item.node_id === data.node_id
+            return item.node_id === data.node_id && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id)
+          })
+          responseItem.workflowProcess!.tracing[currentIndex] = {
+            ...(responseItem.workflowProcess!.tracing[currentIndex]?.extras
+              ? { extras: responseItem.workflowProcess!.tracing[currentIndex].extras }
+              : {}),
+            ...data,
+          } as any
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
         },
       },
     )
   }, [handleRun, handleResponding, handleUpdateChatList, notify, t, updateCurrentQA, config.suggested_questions_after_answer?.enabled])
 
   return {
-    conversationId: connversationId.current,
+    conversationId: conversationId.current,
     chatList,
+    chatListRef,
+    handleUpdateChatList,
     handleSend,
     handleStop,
     handleRestart,

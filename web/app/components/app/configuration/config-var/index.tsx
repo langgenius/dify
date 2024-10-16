@@ -8,7 +8,6 @@ import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import {
   RiDeleteBinLine,
-  RiQuestionLine,
 } from '@remixicon/react'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
@@ -24,7 +23,7 @@ import { checkKeys, getNewVar } from '@/utils/var'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
-import ConfirmModal from '@/app/components/base/confirm/common'
+import Confirm from '@/app/components/base/confirm'
 import ConfigContext from '@/context/debug-configuration'
 import { AppType } from '@/types/app'
 import type { ExternalDataTool } from '@/models/common'
@@ -89,14 +88,13 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     } as InputVar
   })()
   const updatePromptVariableItem = (payload: InputVar) => {
-    console.log(payload)
     const newPromptVariables = produce(promptVariables, (draft) => {
       const { variable, label, type, ...rest } = payload
       draft[currIndex] = {
         ...rest,
         type: type === InputVarType.textInput ? 'string' : type,
         key: variable,
-        name: label,
+        name: label as string,
       }
 
       if (payload.type === InputVarType.textInput)
@@ -282,11 +280,13 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         <div className='flex items-center'>
           <div className='mr-1'>{t('appDebug.variableTitle')}</div>
           {!readonly && (
-            <Tooltip htmlContent={<div className='w-[180px]'>
-              {t('appDebug.variableTip')}
-            </div>} selector='config-var-tooltip'>
-              <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
-            </Tooltip>
+            <Tooltip
+              popupContent={
+                <div className='w-[180px]'>
+                  {t('appDebug.variableTip')}
+                </div>
+              }
+            />
           )}
         </div>
       }
@@ -389,11 +389,10 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       )}
 
       {isShowDeleteContextVarModal && (
-        <ConfirmModal
+        <Confirm
           isShow={isShowDeleteContextVarModal}
           title={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTitle', { varName: promptVariables[removeIndex as number]?.name })}
-          desc={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTip') as string}
-          confirmBtnClassName='bg-[#B42318] hover:bg-[#B42318]'
+          content={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTip')}
           onConfirm={() => {
             didRemoveVar(removeIndex as number)
             hideDeleteContextVarModal()

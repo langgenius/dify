@@ -153,8 +153,12 @@ docker-legacy/volumes/etcd/*
 docker-legacy/volumes/minio/*
 docker-legacy/volumes/milvus/*
 docker-legacy/volumes/chroma/*
+docker-legacy/volumes/opensearch/data/*
+docker-legacy/volumes/pgvectors/data/*
+docker-legacy/volumes/pgvector/data/*
 
 docker/volumes/app/storage/*
+docker/volumes/certbot/*
 docker/volumes/db/data/*
 docker/volumes/redis/data/*
 docker/volumes/weaviate/*
@@ -163,6 +167,12 @@ docker/volumes/etcd/*
 docker/volumes/minio/*
 docker/volumes/milvus/*
 docker/volumes/chroma/*
+docker/volumes/opensearch/data/*
+docker/volumes/myscale/data/*
+docker/volumes/myscale/log/*
+docker/volumes/unstructured/*
+docker/volumes/pgvector/data/*
+docker/volumes/pgvecto_rs/data/*
 
 docker/nginx/conf.d/default.conf
 docker/middleware.env
@@ -174,5 +184,7 @@ sdks/python-client/dify_client.egg-info
 .vscode/*
 !.vscode/launch.json
 pyrightconfig.json
+api/.vscode
 
 .idea/
+.vscode

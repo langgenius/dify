@@ -1,6 +1,9 @@
 provider: novita
 label:
   en_US: novita.ai
+description:
+  en_US: An LLM API that matches various application scenarios with high cost-effectiveness.
+  zh_Hans: 适配多种海外应用场景的高性价比 LLM API
 icon_small:
   en_US: icon_s_en.svg
 icon_large:
@@ -11,7 +14,7 @@ help:
     en_US: Get your API key from novita.ai
     zh_Hans: 从 novita.ai 获取 API Key
   url:
-    en_US: https://novita.ai/dashboard/key?utm_source=dify
+    en_US: https://novita.ai/settings#key-management?utm_source=dify&utm_medium=ch&utm_campaign=api
 supported_model_types:
   - llm
 configurate_methods:

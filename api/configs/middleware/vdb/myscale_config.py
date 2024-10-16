@@ -1,39 +1,37 @@
-from typing import Optional
-
 from pydantic import BaseModel, Field, PositiveInt
 
 
 class MyScaleConfig(BaseModel):
     """
-    MyScale configs
+    Configuration settings for MyScale vector database
     """
 
-    MYSCALE_HOST: Optional[str] = Field(
-        description='MyScale host',
-        default=None,
+    MYSCALE_HOST: str = Field(
+        description="Hostname or IP address of the MyScale server (e.g., 'localhost' or 'myscale.example.com')",
+        default="localhost",
     )
 
-    MYSCALE_PORT: Optional[PositiveInt] = Field(
-        description='MyScale port',
+    MYSCALE_PORT: PositiveInt = Field(
+        description="Port number on which the MyScale server is listening (default is 8123)",
         default=8123,
     )
 
-    MYSCALE_USER: Optional[str] = Field(
-        description='MyScale user',
-        default=None,
+    MYSCALE_USER: str = Field(
+        description="Username for authenticating with MyScale (default is 'default')",
+        default="default",
     )
 
-    MYSCALE_PASSWORD: Optional[str] = Field(
-        description='MyScale password',
-        default=None,
+    MYSCALE_PASSWORD: str = Field(
+        description="Password for authenticating with MyScale (default is an empty string)",
+        default="",
     )
 
-    MYSCALE_DATABASE: Optional[str] = Field(
-        description='MyScale database name',
-        default=None,
+    MYSCALE_DATABASE: str = Field(
+        description="Name of the MyScale database to connect to (default is 'default')",
+        default="default",
     )
 
-    MYSCALE_FTS_PARAMS: Optional[str] = Field(
-        description='MyScale fts index parameters',
-        default=None,
+    MYSCALE_FTS_PARAMS: str = Field(
+        description="Additional parameters for MyScale Full Text Search index)",
+        default="",
     )

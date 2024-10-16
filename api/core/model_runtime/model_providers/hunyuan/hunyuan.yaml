@@ -18,6 +18,7 @@ help:
     en_US: https://console.cloud.tencent.com/cam/capi
 supported_model_types:
   - llm
+  - text-embedding
 configurate_methods:
   - predefined-model
 provider_credential_schema:

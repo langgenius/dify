@@ -83,7 +83,7 @@ class FeishuWikiExtractor(BaseExtractor):
             "token": self._feishu_obj_token,
             "obj_type": self._feishu_obj_type,
         }
-        response = requests.get(url=FEISHU_WIKI_NODE_URL, params=params, headers=headers, timeout=(60,120))
+        response = requests.get(url=FEISHU_WIKI_NODE_URL, params=params, headers=headers, timeout=(60, 120))
         response_json = response.json()
         if not response.ok:
             raise Exception(

@@ -9,4 +9,5 @@ class NVIDIANIMProvider(OAIAPICompatLargeLanguageModel):
     """
     Model class for NVIDIA NIM large language model.
     """
+
     pass

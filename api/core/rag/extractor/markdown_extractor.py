@@ -1,5 +1,7 @@
 """Abstract interface for document loader implementations."""
+
 import re
+from pathlib import Path
 from typing import Optional, cast
 
 from core.rag.extractor.extractor_base import BaseExtractor
@@ -16,12 +18,12 @@ class MarkdownExtractor(BaseExtractor):
     """
 
     def __init__(
-            self,
-            file_path: str,
-            remove_hyperlinks: bool = True,
-            remove_images: bool = True,
-            encoding: Optional[str] = None,
-            autodetect_encoding: bool = True,
+        self,
+        file_path: str,
+        remove_hyperlinks: bool = False,
+        remove_images: bool = False,
+        encoding: Optional[str] = None,
+        autodetect_encoding: bool = True,
     ):
         """Initialize with file path."""
         self._file_path = file_path
@@ -54,8 +56,16 @@ class MarkdownExtractor(BaseExtractor):
 
         current_header = None
         current_text = ""
+        code_block_flag = False
 
         for line in lines:
+            if line.startswith("```"):
+                code_block_flag = not code_block_flag
+                current_text += line + "\n"
+                continue
+            if code_block_flag:
+                current_text += line + "\n"
+                continue
             header_match = re.match(r"^#+\s", line)
             if header_match:
                 if current_header is not None:
@@ -70,13 +80,10 @@ class MarkdownExtractor(BaseExtractor):
         if current_header is not None:
             # pass linting, assert keys are defined
             markdown_tups = [
-                (re.sub(r"#", "", cast(str, key)).strip(), re.sub(r"<.*?>", "", value))
-                for key, value in markdown_tups
+                (re.sub(r"#", "", cast(str, key)).strip(), re.sub(r"<.*?>", "", value)) for key, value in markdown_tups
             ]
         else:
-            markdown_tups = [
-                (key, re.sub("\n", "", value)) for key, value in markdown_tups
-            ]
+            markdown_tups = [(key, re.sub("\n", "", value)) for key, value in markdown_tups]
 
         return markdown_tups
 
@@ -96,15 +103,13 @@ class MarkdownExtractor(BaseExtractor):
         """Parse file into tuples."""
         content = ""
         try:
-            with open(filepath, encoding=self._encoding) as f:
-                content = f.read()
+            content = Path(filepath).read_text(encoding=self._encoding)
         except UnicodeDecodeError as e:
             if self._autodetect_encoding:
                 detected_encodings = detect_file_encodings(filepath)
                 for encoding in detected_encodings:
                     try:
-                        with open(filepath, encoding=encoding.encoding) as f:
-                            content = f.read()
+                        content = Path(filepath).read_text(encoding=encoding.encoding)
                         break
                     except UnicodeDecodeError:
                         continue

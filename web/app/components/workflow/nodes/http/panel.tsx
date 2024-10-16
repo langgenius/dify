@@ -125,6 +125,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
       </div>
       {(isShowAuthorization && !readOnly) && (
         <AuthorizationModal
+          nodeId={id}
           isShow
           onHide={hideAuthorization}
           payload={inputs.authorization}

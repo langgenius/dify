@@ -7,7 +7,7 @@ import Button from '@/app/components/base/button'
 
 export type IConfirmAddVarProps = {
   varNameArr: string[]
-  onConfrim: () => void
+  onConfirm: () => void
   onCancel: () => void
   onHide: () => void
 }
@@ -22,9 +22,9 @@ const VarIcon = (
 
 const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
   varNameArr,
-  onConfrim,
+  onConfirm,
   onCancel,
-  onHide,
+  // onHide,
 }) => {
   const { t } = useTranslation()
   const mainContentRef = useRef<HTMLDivElement>(null)
@@ -63,7 +63,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
         </div>
         <div className='mt-7 flex justify-end space-x-2'>
           <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-          <Button variant='primary' onClick={onConfrim}>{t('common.operation.add')}</Button>
+          <Button variant='primary' onClick={onConfirm}>{t('common.operation.add')}</Button>
         </div>
       </div>
 

@@ -67,8 +67,10 @@ const Sidebar = () => {
             <AppIcon
               className='mr-3'
               size='small'
+              iconType={appData?.site.icon_type}
               icon={appData?.site.icon}
               background={appData?.site.icon_background}
+              imageUrl={appData?.site.icon_url}
             />
             <div className='py-1 text-base font-semibold text-gray-800'>
               {appData?.site.title}
@@ -121,7 +123,6 @@ const Sidebar = () => {
           title={t('share.chat.deleteConversation.title')}
           content={t('share.chat.deleteConversation.content') || ''}
           isShow
-          onClose={handleCancelConfirm}
           onCancel={handleCancelConfirm}
           onConfirm={handleDelete}
         />

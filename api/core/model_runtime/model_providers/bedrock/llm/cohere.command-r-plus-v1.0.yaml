@@ -3,8 +3,7 @@ label:
   en_US: Command R+
 model_type: llm
 features:
-  #- multi-tool-call
-  - agent-thought
+  - tool-call
   #- stream-tool-call
 model_properties:
   mode: chat

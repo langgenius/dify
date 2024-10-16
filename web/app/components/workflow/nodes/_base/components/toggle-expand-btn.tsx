@@ -5,6 +5,7 @@ import {
   RiCollapseDiagonalLine,
   RiExpandDiagonalLine,
 } from '@remixicon/react'
+import ActionButton from '@/app/components/base/action-button'
 
 type Props = {
   isExpand: boolean
@@ -21,7 +22,9 @@ const ExpandBtn: FC<Props> = ({
 
   const Icon = isExpand ? RiCollapseDiagonalLine : RiExpandDiagonalLine
   return (
-    <Icon className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={handleToggle} />
+    <ActionButton onClick={handleToggle}>
+      <Icon className='w-4 h-4' />
+    </ActionButton>
   )
 }
 export default React.memo(ExpandBtn)

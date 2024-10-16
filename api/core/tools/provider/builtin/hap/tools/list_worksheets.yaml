@@ -1,0 +1,68 @@
+identity:
+  name: list_worksheets
+  author: Ryan Tian
+  label:
+    en_US: List Worksheets
+    zh_Hans: 获取应用下所有工作表
+description:
+  human:
+    en_US: List worksheets within an application
+    zh_Hans: 获取应用下的所有工作表和说明信息
+  llm: A tool to list worksheets info within an application, imported parameter is AppKey and Sign of the application.
+parameters:
+  - name: appkey
+    type: secret-input
+    required: true
+    label:
+      en_US: App Key
+      zh_Hans: App Key
+    human_description:
+      en_US: The AppKey parameter for the HAP application, typically found in the application's API documentation.
+      zh_Hans: HAP 应用的 AppKey 参数，可以从应用 API 文档中查找到
+    llm_description: the AppKey parameter for the HAP application
+    form: form
+
+  - name: sign
+    type: secret-input
+    required: true
+    label:
+      en_US: Sign
+      zh_Hans: Sign
+    human_description:
+      en_US: The Sign parameter for the HAP application
+      zh_Hans: HAP 应用的 Sign 参数
+    llm_description: the Sign parameter for the HAP application
+    form: form
+
+  - name: host
+    type: string
+    required: false
+    label:
+      en_US: Host Address
+      zh_Hans: 服务器地址
+    human_description:
+      en_US: The address for the privately deployed HAP server.
+      zh_Hans: 私有部署 HAP 服务器地址，公有云无需填写
+    llm_description: the address for the privately deployed HAP server.
+    form: form
+
+  - name: result_type
+    type: select
+    required: true
+    options:
+      - value: table
+        label:
+          en_US: table text
+          zh_Hans: 表格文本
+      - value: json
+        label:
+          en_US: json text
+          zh_Hans: JSON文本
+    default: table
+    label:
+      en_US: Result type
+      zh_Hans: 结果类型
+    human_description:
+      en_US: used for selecting the result type, table styled text or json text
+      zh_Hans: 用于选择结果类型，使用表格格式文本还是JSON格式文本
+    form: form

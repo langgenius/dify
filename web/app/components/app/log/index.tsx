@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import useSWR from 'swr'
 import { usePathname } from 'next/navigation'
 import { Pagination } from 'react-headless-pagination'
+import { useDebounce } from 'ahooks'
 import { omit } from 'lodash-es'
 import dayjs from 'dayjs'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
@@ -24,6 +25,7 @@ export type QueryParam = {
   period?: number | string
   annotation_status?: string
   keyword?: string
+  sort_by?: string
 }
 
 const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
@@ -52,19 +54,28 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
-  const [queryParams, setQueryParams] = useState<QueryParam>({ period: 7, annotation_status: 'all' })
+  const [queryParams, setQueryParams] = useState<QueryParam>({
+    period: 7,
+    annotation_status: 'all',
+    sort_by: '-created_at',
+  })
   const [currPage, setCurrPage] = React.useState<number>(0)
+  const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
+
+  // Get the app type first
+  const isChatMode = appDetail.mode !== 'completion'
 
   const query = {
     page: currPage + 1,
     limit: APP_PAGE_LIMIT,
-    ...(queryParams.period !== 'all'
+    ...(debouncedQueryParams.period !== 'all'
       ? {
-        start: dayjs().subtract(queryParams.period as number, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
-        end: dayjs().format('YYYY-MM-DD HH:mm'),
+        start: dayjs().subtract(debouncedQueryParams.period as number, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+        end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
       }
       : {}),
-    ...omit(queryParams, ['period']),
+    ...(isChatMode ? { sort_by: debouncedQueryParams.sort_by } : {}),
+    ...omit(debouncedQueryParams, ['period']),
   }
 
   const getWebAppType = (appType: AppMode) => {
@@ -72,9 +83,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       return 'chat'
     return appType
   }
-
-  // Get the app type first
-  const isChatMode = appDetail.mode !== 'completion'
 
   // When the details are obtained, proceed to the next request
   const { data: chatConversations, mutate: mutateChatList } = useSWR(() => isChatMode
@@ -97,7 +105,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     <div className='flex flex-col h-full'>
       <p className='flex text-sm font-normal text-gray-500'>{t('appLog.description')}</p>
       <div className='flex flex-col py-4 flex-1'>
-        <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams} />
+        <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams} />
         {total === undefined
           ? <Loading type='app' />
           : total > 0

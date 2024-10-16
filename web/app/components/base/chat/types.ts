@@ -22,7 +22,7 @@ export type UserInputForm = {
 }
 
 export type UserInputFormTextInput = {
-  'text-inpput': UserInputForm & {
+  'text-input': UserInputForm & {
     max_length: number
   }
 }
@@ -63,7 +63,9 @@ export type ChatItem = IChatItem & {
   conversationId?: string
 }
 
-export type OnSend = (message: string, files?: VisionFile[]) => void
+export type OnSend = (message: string, files?: VisionFile[], last_answer?: ChatItem | null) => void
+
+export type OnRegenerate = (chatItem: ChatItem) => void
 
 export type Callback = {
   onSuccess: () => void
