@@ -105,12 +105,13 @@ class ToolInvokeMessage(BaseModel):
         JSON = "json"
         IMAGE_LINK = "image_link"
         FILE_VAR = "file_var"
+        ARRAY = "array"
 
     type: MessageType = MessageType.TEXT
     """
         plain text, image url or link url
     """
-    message: str | bytes | dict | None = None
+    message: str | bytes | dict | list | None = None
     meta: dict[str, Any] | None = None
     save_as: str = ""
 

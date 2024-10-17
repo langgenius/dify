@@ -79,11 +79,11 @@ class ToolNode(BaseNode):
             )
 
         # convert tool messages
-        plain_text, files, json = self._convert_tool_messages(messages)
+        plain_text, files, json, array = self._convert_tool_messages(messages)
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            outputs={"text": plain_text, "files": files, "json": json},
+            outputs={"text": plain_text, "files": files, "json": json, "array": array},
             metadata={NodeRunMetadataKey.TOOL_INFO: tool_info},
             inputs=parameters_for_log,
         )
@@ -153,8 +153,9 @@ class ToolNode(BaseNode):
         files = self._extract_tool_response_binary(messages)
         plain_text = self._extract_tool_response_text(messages)
         json = self._extract_tool_response_json(messages)
+        array = self._extract_tool_response_array(messages)
 
-        return plain_text, files, json
+        return plain_text, files, json, array
 
     def _extract_tool_response_binary(self, tool_response: list[ToolInvokeMessage]) -> list[FileVar]:
         """
@@ -220,6 +221,9 @@ class ToolNode(BaseNode):
 
     def _extract_tool_response_json(self, tool_response: list[ToolInvokeMessage]) -> list[dict]:
         return [message.message for message in tool_response if message.type == ToolInvokeMessage.MessageType.JSON]
+
+    def _extract_tool_response_array(self, tool_response: list[ToolInvokeMessage]) -> list[list]:
+        return [message.message for message in tool_response if message.type == ToolInvokeMessage.MessageType.ARRAY]
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
