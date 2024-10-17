@@ -38,3 +38,27 @@ class AlreadyActivateError(BaseHTTPException):
     error_code = "already_activate"
     description = "Auth Token is invalid or account already activated, please check again."
     code = 403
+
+
+class NotAllowedCreateWorkspace(BaseHTTPException):
+    error_code = "unauthorized"
+    description = "Workspace not found, please contact system admin to invite you to join in a workspace."
+    code = 400
+
+
+class AccountBannedOrClosedError(BaseHTTPException):
+    error_code = "account_banned_or_closed"
+    description = "Account is banned or closed."
+    code = 400
+
+
+class NotAllowedRegister(BaseHTTPException):
+    error_code = "unauthorized"
+    description = "account_not_found"
+    code = 400
+
+
+class EmailSendIpLimitError(BaseHTTPException):
+    error_code = "email_send_ip_limit"
+    description = "Too many emails have been sent from this IP address recently. Please try again later."
+    code = 429
