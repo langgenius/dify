@@ -644,7 +644,7 @@ button:focus-within {
 }
 
 .text-gradient {
-  background: linear-gradient(91.58deg, #2250F2 -29.55%, #0EBCF3 75.22%);
+  background: linear-gradient(91.58deg, #0d0e0e -29.55%, #393b3b 75.22%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -653,7 +653,7 @@ button:focus-within {
 
 /* overwrite paging active dark model style  */
 [class*=style_paginatio] li .text-primary-600 {
-  color: rgb(28 100 242);
+  color: #111 ! important;
   background-color: rgb(235 245 255);
 }
 

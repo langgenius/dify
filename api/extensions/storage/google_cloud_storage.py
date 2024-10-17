@@ -2,7 +2,6 @@ import base64
 import io
 import json
 from collections.abc import Generator
-from contextlib import closing
 
 from flask import Flask
 from google.cloud import storage as google_cloud_storage
@@ -43,7 +42,7 @@ class GoogleCloudStorage(BaseStorage):
         def generate(filename: str = filename) -> Generator:
             bucket = self.client.get_bucket(self.bucket_name)
             blob = bucket.get_blob(filename)
-            with closing(blob.open(mode="rb")) as blob_stream:
+            with blob.open(mode="rb") as blob_stream:
                 while chunk := blob_stream.read(4096):
                     yield chunk
 

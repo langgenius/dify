@@ -99,7 +99,7 @@ const NormalForm = () => {
       if (res.result === 'success') {
         localStorage.setItem('console_token', res.data.access_token)
         localStorage.setItem('refresh_token', res.data.refresh_token)
-        getNewAccessToken(res.data.access_token, res.data.refresh_token)
+        getNewAccessToken()
         router.replace('/apps')
       }
       else {
@@ -279,13 +279,13 @@ const NormalForm = () => {
             <Link
               className='text-primary-600'
               target='_blank' rel='noopener noreferrer'
-              href='https://dify.ai/terms'
+              href='#'
             >{t('login.tos')}</Link>
             &nbsp;&&nbsp;
             <Link
               className='text-primary-600'
               target='_blank' rel='noopener noreferrer'
-              href='https://dify.ai/privacy'
+              href='#'
             >{t('login.pp')}</Link>
           </div>
 
