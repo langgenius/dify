@@ -112,7 +112,7 @@ class ElasticSearchVector(BaseVector):
         self._client.indices.delete(index=self._collection_name)
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        top_k = kwargs.get("top_k", 10)
+        top_k = kwargs.get("top_k", 4)
         num_candidates = math.ceil(top_k * 1.5)
         knn = {"field": Field.VECTOR.value, "query_vector": query_vector, "k": top_k, "num_candidates": num_candidates}
 

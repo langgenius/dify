@@ -173,7 +173,7 @@ class VikingDBVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         results = self._client.get_index(self._collection_name, self._index_name).search_by_vector(
-            query_vector, limit=kwargs.get("top_k", 50)
+            query_vector, limit=kwargs.get("top_k", 4)
         )
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._get_search_res(results, score_threshold)
