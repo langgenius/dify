@@ -36,6 +36,7 @@ export const TitleInput = memo(({
         grow mr-2 px-1 h-6 text-base text-gray-900 font-semibold rounded-lg border border-transparent appearance-none outline-none
         hover:bg-gray-50 
         focus:border-gray-300 focus:shadow-xs focus:bg-white caret-[#295EFF]
+        min-w-0
       `}
       placeholder={t('workflow.common.addTitle') || ''}
       onBlur={handleBlur}
