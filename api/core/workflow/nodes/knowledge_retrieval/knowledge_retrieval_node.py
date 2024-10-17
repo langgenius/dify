@@ -203,7 +203,7 @@ class KnowledgeRetrievalNode(BaseNode):
                                 "document_data_source_type": document.data_source_type,
                                 "segment_id": segment.id,
                                 "retriever_from": "workflow",
-                                "score": record.score,
+                                "score": record.score or 0.0,
                                 "segment_hit_count": segment.hit_count,
                                 "segment_word_count": segment.word_count,
                                 "segment_position": segment.position,

@@ -203,7 +203,7 @@ class DatasetRetrieval:
                                 "data_source_type": document.data_source_type,
                                 "segment_id": segment.id,
                                 "retriever_from": invoke_from.to_source(),
-                                "score": record.score,
+                                "score": record.score or 0.0,
                             }
 
                             if invoke_from.to_source() == "dev":
