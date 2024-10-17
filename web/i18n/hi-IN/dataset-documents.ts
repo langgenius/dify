@@ -13,6 +13,7 @@ const translation = {
         uploadTime: 'अपलोड का समय',
         status: 'स्थिति',
         action: 'क्रिया',
+        total: 'कुल',
       },
       rename: 'नाम बदलें',
       name: 'नाम',
