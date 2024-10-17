@@ -1,9 +1,10 @@
 import concurrent.futures
+import io
 import random
-import struct
 from typing import Any, Literal, Optional, Union
 
 import openai
+from pydub import AudioSegment
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolParameterValidationError, ToolProviderCredentialValidationError
@@ -12,17 +13,10 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 class PodcastAudioGeneratorTool(BuiltinTool):
     @staticmethod
-    def _generate_silence(duration):
-        # Generate silent MP3 data
-        # This is a simplified version and may not work perfectly with all MP3 players
-        # For production use, consider using a proper audio library or pre-generated silence MP3
-        sample_rate = 44100
-        num_samples = int(duration * sample_rate)
-        silence_data = struct.pack("<" + "h" * num_samples, *([0] * num_samples))
-
-        # Add a simple MP3 header (this is not a complete MP3 file, but might work for basic needs)
-        mp3_header = b"\xff\xfb\x90\x04"  # A very basic MP3 header
-        return mp3_header + silence_data
+    def _generate_silence(duration: float):
+        # Generate silent WAV data using pydub
+        silence = AudioSegment.silent(duration=int(duration * 1000))  # pydub uses milliseconds
+        return silence
 
     @staticmethod
     def _generate_audio_segment(
@@ -30,11 +24,11 @@ class PodcastAudioGeneratorTool(BuiltinTool):
         line: str,
         voice: Literal["alloy", "echo", "fable", "onyx", "nova", "shimmer"],
         index: int,
-    ) -> tuple[int, Union[bytes, str], Optional[bytes]]:
+    ) -> tuple[int, Union[AudioSegment, str], Optional[AudioSegment]]:
         try:
             response = client.audio.speech.create(model="tts-1", voice=voice, input=line.strip())
-            audio = response.content
-            silence_duration = random.uniform(2, 5)
+            audio = AudioSegment.from_file(io.BytesIO(response.content), format="mp3")
+            silence_duration = random.uniform(0.1, 1.5)
             silence = PodcastAudioGeneratorTool._generate_silence(silence_duration)
             return index, audio, silence
         except Exception as e:
@@ -83,19 +77,24 @@ class PodcastAudioGeneratorTool(BuiltinTool):
                 audio_segments[index] = (audio, silence)
 
         # Combine audio segments in the correct order
-        combined_audio = b""
+        combined_audio = AudioSegment.empty()
         for i, (audio, silence) in enumerate(audio_segments):
             if audio:
                 combined_audio += audio
                 if i < len(audio_segments) - 1 and silence:
                     combined_audio += silence
 
+        # Export the combined audio to a WAV file in memory
+        buffer = io.BytesIO()
+        combined_audio.export(buffer, format="wav")
+        wav_bytes = buffer.getvalue()
+
         # Create a blob message with the combined audio
         return [
             self.create_text_message("Audio generated successfully"),
             self.create_blob_message(
-                blob=combined_audio,
-                meta={"mime_type": "audio/mpeg"},
+                blob=wav_bytes,
+                meta={"mime_type": "audio/x-wav"},
                 save_as=self.VariableKey.AUDIO,
             ),
         ]
