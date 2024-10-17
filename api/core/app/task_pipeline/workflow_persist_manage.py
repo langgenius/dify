@@ -24,6 +24,7 @@ class WorkflowPersistEvent(BaseModel):
     """
     WorkflowPersistEvent abstract entity
     """
+
     pass
 
 
@@ -31,6 +32,7 @@ class WorkflowRunStartEvent(WorkflowPersistEvent):
     """
     Workflow run start
     """
+
     workflow_run: dict
 
 
@@ -38,6 +40,7 @@ class WorkflowRunSuccessEvent(WorkflowPersistEvent):
     """
     Workflow run success
     """
+
     workflow_run_id: str
     elapsed_time: float
     total_tokens: int
@@ -50,6 +53,7 @@ class WorkflowRunFailedEvent(WorkflowPersistEvent):
     """
     Workflow run failed
     """
+
     workflow_run_id: str
     elapsed_time: float
     total_tokens: int
@@ -63,6 +67,7 @@ class NodeExecutionStartEvent(WorkflowPersistEvent):
     """
     Workflow node execution start
     """
+
     workflow_node_execution: dict
 
 
@@ -70,6 +75,7 @@ class NodeExecutionSuccessEvent(WorkflowPersistEvent):
     """
     Workflow node execution success
     """
+
     node_execution_id: str
     inputs: Optional[dict]
     outputs: Optional[dict]
@@ -83,6 +89,7 @@ class NodeExecutionFailedEvent(WorkflowPersistEvent):
     """
     Workflow node execution failed
     """
+
     node_execution_id: str
     inputs: Optional[dict]
     outputs: Optional[dict]
@@ -143,7 +150,7 @@ class WorkflowPersistManage:
             target=self._persist_worker,
             kwargs={
                 "flask_app": current_app._get_current_object(),
-            }
+            },
         )
         worker_thread.start()
 
@@ -169,8 +176,12 @@ class WorkflowPersistManage:
         :param finished_at: workflow run finished time
         """
         event = WorkflowRunSuccessEvent(
-            workflow_run_id=workflow_run_id, elapsed_time=elapsed_time, total_tokens=total_tokens,
-            total_steps=total_steps, outputs=outputs, finished_at=finished_at
+            workflow_run_id=workflow_run_id,
+            elapsed_time=elapsed_time,
+            total_tokens=total_tokens,
+            total_steps=total_steps,
+            outputs=outputs,
+            finished_at=finished_at,
         )
         self._q.put(event)
         self._stop()
@@ -197,8 +208,13 @@ class WorkflowPersistManage:
         :return:
         """
         event = WorkflowRunFailedEvent(
-            workflow_run_id=workflow_run_id, elapsed_time=elapsed_time, total_tokens=total_tokens,
-            total_steps=total_steps, status=status, error=error, finished_at=finished_at
+            workflow_run_id=workflow_run_id,
+            elapsed_time=elapsed_time,
+            total_tokens=total_tokens,
+            total_steps=total_steps,
+            status=status,
+            error=error,
+            finished_at=finished_at,
         )
         self._q.put(event)
         self._stop()
@@ -234,8 +250,13 @@ class WorkflowPersistManage:
         :return:
         """
         event = NodeExecutionSuccessEvent(
-            node_execution_id=node_execution_id, inputs=inputs, outputs=outputs, execution_metadata=execution_metadata,
-            process_data=process_data, finished_at=finished_at, elapsed_time=elapsed_time
+            node_execution_id=node_execution_id,
+            inputs=inputs,
+            outputs=outputs,
+            execution_metadata=execution_metadata,
+            process_data=process_data,
+            finished_at=finished_at,
+            elapsed_time=elapsed_time,
         )
         self._q.put(event)
 
@@ -261,8 +282,13 @@ class WorkflowPersistManage:
         :return:
         """
         event = NodeExecutionFailedEvent(
-            node_execution_id=node_execution_id, inputs=inputs, outputs=outputs, finished_at=finished_at,
-            elapsed_time=elapsed_time, process_data=process_data, error=error
+            node_execution_id=node_execution_id,
+            inputs=inputs,
+            outputs=outputs,
+            finished_at=finished_at,
+            elapsed_time=elapsed_time,
+            process_data=process_data,
+            error=error,
         )
         self._q.put(event)
 
@@ -316,7 +342,7 @@ class WorkflowPersistManage:
             workflow_node_execution.error = event.error
             workflow_node_execution.finished_at = event.finished_at
             workflow_node_execution.elapsed_time = (
-                    workflow_node_execution.finished_at - workflow_node_execution.created_at
+                workflow_node_execution.finished_at - workflow_node_execution.created_at
             ).total_seconds()
             db.session.commit()
 
@@ -368,4 +394,3 @@ class WorkflowPersistManage:
 
         db.session.commit()
         db.session.close()
-

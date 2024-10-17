@@ -245,8 +245,13 @@ class WorkflowCycleManage:
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
         self._workflow_persist_manage.node_execution_success(
-            workflow_node_execution.id, inputs, outputs, execution_metadata, event.process_data, finished_at,
-            elapsed_time
+            workflow_node_execution.id,
+            inputs,
+            outputs,
+            execution_metadata,
+            event.process_data,
+            finished_at,
+            elapsed_time,
         )
         self._wip_workflow_node_executions.pop(workflow_node_execution.node_execution_id)
         # Caller need use some fields, so need update the fields
