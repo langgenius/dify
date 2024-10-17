@@ -88,7 +88,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         conversation_filter = [
             Conversation.id == conversation_id,
             Conversation.app_id == app_model.id,
-            Conversation.status == "normal",
         ]
 
         if isinstance(user, Account):
@@ -232,19 +231,22 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         db.session.commit()
         db.session.refresh(message)
 
+        message_files = []
         for file in application_generate_entity.files:
             message_file = MessageFile(
                 message_id=message.id,
                 type=file.type.value,
                 transfer_method=file.transfer_method.value,
-                belongs_to="user",
+                belongs_to='user',
                 url=file.url,
                 upload_file_id=file.related_id,
-                created_by_role=("account" if account_id else "end_user"),
+                created_by_role=('account' if account_id else 'end_user'),
                 created_by=account_id or end_user_id,
             )
-            db.session.add(message_file)
-            db.session.commit()
+            message_files.append(message_file)
+
+        db.session.add_all(message_files)
+        db.session.commit()
 
         return conversation, message
 
