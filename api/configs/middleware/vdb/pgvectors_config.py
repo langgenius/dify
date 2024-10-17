@@ -14,7 +14,7 @@ class PGVectoRSConfig(BaseSettings):
         default=None,
     )
 
-    PGVECTO_RS_PORT: Optional[PositiveInt] = Field(
+    PGVECTO_RS_PORT: PositiveInt = Field(
         description="Port number on which the PostgreSQL server with PGVecto.RS is listening (default is 5431)",
         default=5431,
     )

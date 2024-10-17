@@ -122,6 +122,7 @@ export const OperationAction: FC<{
 }> = ({ embeddingAvailable, datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
   const { id, enabled = false, archived = false, data_source_type } = detail || {}
   const [showModal, setShowModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
   const router = useRouter()
@@ -153,6 +154,7 @@ export const OperationAction: FC<{
         break
       default:
         opApi = deleteDocument
+        setDeleting(true)
         break
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
@@ -160,6 +162,8 @@ export const OperationAction: FC<{
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     else
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+    if (operationName === 'delete')
+      setDeleting(false)
     onUpdate(operationName)
   }
 
@@ -295,6 +299,8 @@ export const OperationAction: FC<{
     {showModal
       && <Confirm
         isShow={showModal}
+        isLoading={deleting}
+        isDisabled={deleting}
         title={t('datasetDocuments.list.delete.title')}
         content={t('datasetDocuments.list.delete.content')}
         confirmText={t('common.operation.sure')}

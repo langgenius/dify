@@ -27,7 +27,7 @@ class CotChatAgentRunner(CotAgentRunner):
 
         return SystemPromptMessage(content=system_prompt)
 
-    def _organize_user_query(self, query, prompt_messages: list[PromptMessage] = None) -> list[PromptMessage]:
+    def _organize_user_query(self, query, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
         Organize user query
         """

@@ -182,6 +182,7 @@ const translation = {
       rerankModel: 'Rerankモデル',
     },
     invalidVariable: '無効な変数',
+    rerankModelRequired: 'モデルの再ランク付けをオンにする前に、モデルが設定で正常に構成されていることを確認してください。',
   },
   singleRun: {
     testRun: 'テスト実行',
