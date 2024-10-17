@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import urllib.parse
 from collections import deque
@@ -6,6 +7,7 @@ from typing import Any, Optional
 
 import httpx
 import requests
+from bs4 import BeautifulSoup
 from flask_login import current_user
 
 from extensions.ext_database import db
@@ -298,6 +300,67 @@ def transform_nodes(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return level
 
 
+def html_table_to_json(html: str) -> str:
+    soup = BeautifulSoup(html, "html.parser")
+    table = soup.find("table")
+
+    if not table:
+        return html
+
+    data: list[dict[str, Optional[str]]] = []
+    headers: list[str] = []
+
+    header_row = table.find("tr")
+    if header_row:
+        headers = [header.get_text(strip=True) for header in header_row.find_all("th")]
+
+    if not headers:
+        first_row = table.find("tr")
+        if first_row:
+            headers = [cell.get_text(strip=True) for cell in first_row.find_all("td")]
+
+    rows = table.find_all("tr")[1:]
+    row_count = len(rows)
+    filled_rows: list[list[Optional[str]]] = [[None] * len(headers) for _ in range(row_count)]
+
+    for i, row in enumerate(rows):
+        cells = row.find_all(["td", "th"])
+        cell_index = 0
+
+        for cell in cells:
+            colspan = int(cell.get("colspan", 1))
+            rowspan = int(cell.get("rowspan", 1))
+            cell_text = cell.get_text(strip=True).replace("**", "")
+
+            while cell_index < len(headers) and filled_rows[i][cell_index] is not None:
+                cell_index += 1
+
+            if cell_index < len(headers):
+                filled_rows[i][cell_index] = cell_text
+
+                for j in range(1, colspan):
+                    if cell_index + j < len(headers):
+                        filled_rows[i][cell_index + j] = ""
+
+                for r in range(1, rowspan):
+                    if i + r < row_count:
+                        if filled_rows[i + r][cell_index] is None:
+                            filled_rows[i + r][cell_index] = ""
+
+    for i in range(row_count):
+        row_data = {}
+        for j in range(len(headers)):
+            if filled_rows[i][j] is not None:
+                row_data[headers[j]] = filled_rows[i][j]
+        if row_data:
+            data.append(row_data)
+
+    json_output = json.dumps(data, ensure_ascii=False, indent=2)
+    table.replace_with(f"\n{json_output}\n")
+
+    return str(soup)
+
+
 class FeishuWiki:
     API_BASE_URL = "https://open.feishu.cn/open-apis"
 
@@ -407,7 +470,8 @@ class FeishuWiki:
         }
         url = "https://lark-plugin-api.solutionsuite.cn/lark-plugin/document/get_document_content"
         res = self._send_request(url, method="GET", require_token=False, params=params)
-        return res.get("data", {}).get("content")
+        content = res.get("data", {}).get("content")
+        return html_table_to_json(content)
 
     def save_feishu_wiki_data_source(self):
         workspace_name = self.app_id
