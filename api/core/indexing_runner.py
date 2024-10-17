@@ -24,7 +24,7 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.rag.models.document import Document
+from core.rag.models.document import ChildDocument, Document
 from core.rag.splitter.fixed_text_splitter import (
     EnhanceRecursiveCharacterTextSplitter,
     FixedRecursiveCharacterTextSplitter,
@@ -34,7 +34,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
 from libs import helper
-from models.dataset import Dataset, DatasetProcessRule, DocumentSegment
+from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import UploadFile
 from services.feature_service import FeatureService
@@ -112,6 +112,9 @@ class IndexingRunner:
 
             for document_segment in document_segments:
                 db.session.delete(document_segment)
+                if  dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                    # delete child chunks
+                    db.session.query(ChildChunk).filter(ChildChunk.segment_id == document_segment.id).delete()
             db.session.commit()
             # get the process rule
             processing_rule = (
@@ -178,7 +181,22 @@ class IndexingRunner:
                                 "dataset_id": document_segment.dataset_id,
                             },
                         )
-
+                        if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                            child_chunks = document_segment.child_chunks
+                            if child_chunks:
+                                child_documents = []
+                                for child_chunk in child_chunks:
+                                    child_document = ChildDocument(
+                                        page_content=child_chunk.content,
+                                        metadata={
+                                            "doc_id": child_chunk.index_node_id,    
+                                            "doc_hash": child_chunk.index_node_hash,
+                                            "document_id": document_segment.document_id,
+                                            "dataset_id": document_segment.dataset_id,
+                                        },
+                                    )
+                                    child_documents.append(child_document)
+                                document.children = child_documents
                         documents.append(document)
 
             # build index

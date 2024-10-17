@@ -146,11 +146,15 @@ class DatasetDocumentSegmentApi(Resource):
     @login_required
     @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
-    def patch(self, dataset_id, action):
+    def patch(self, dataset_id, document_id, action):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
             raise NotFound("Dataset not found.")
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset_id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # The role of the current user in the ta table must be admin, owner, or editor
@@ -180,58 +184,16 @@ class DatasetDocumentSegmentApi(Resource):
                 raise ProviderNotInitializeError(ex.description)
         segment_ids = request.args.getlist("segment_id")
 
-        segment = DocumentSegment.query.filter(
-            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
-        ).first()
-
-        if not segment:
-            raise NotFound("Segment not found.")
-
-        if segment.status != "completed":
-            raise NotFound("Segment is not completed, enable or disable function is not allowed")
-
-        document_indexing_cache_key = "document_{}_indexing".format(segment.document_id)
+        document_indexing_cache_key = "document_{}_indexing".format(document.id)
         cache_result = redis_client.get(document_indexing_cache_key)
         if cache_result is not None:
             raise InvalidActionError("Document is being indexed, please try again later")
+        try: 
+            SegmentService.update_segments_status(segment_ids, action, dataset, document)
+        except Exception as e:
+            raise InvalidActionError(str(e))
+        return {"result": "success"}, 200
 
-        indexing_cache_key = "segment_{}_indexing".format(segment.id)
-        cache_result = redis_client.get(indexing_cache_key)
-        if cache_result is not None:
-            raise InvalidActionError("Segment is being indexed, please try again later")
-
-        if action == "enable":
-            if segment.enabled:
-                raise InvalidActionError("Segment is already enabled.")
-
-            segment.enabled = True
-            segment.disabled_at = None
-            segment.disabled_by = None
-            db.session.commit()
-
-            # Set cache to prevent indexing the same segment multiple times
-            redis_client.setex(indexing_cache_key, 600, 1)
-
-            enable_segment_to_index_task.delay(segment.id)
-
-            return {"result": "success"}, 200
-        elif action == "disable":
-            if not segment.enabled:
-                raise InvalidActionError("Segment is already disabled.")
-
-            segment.enabled = False
-            segment.disabled_at = datetime.now(timezone.utc).replace(tzinfo=None)
-            segment.disabled_by = current_user.id
-            db.session.commit()
-
-            # Set cache to prevent indexing the same segment multiple times
-            redis_client.setex(indexing_cache_key, 600, 1)
-
-            disable_segment_from_index_task.delay(segment.id)
-
-            return {"result": "success"}, 200
-        else:
-            raise InvalidActionError()
 
 
 class DatasetDocumentSegmentAddApi(Resource):
@@ -595,7 +557,7 @@ class ChildChunkUpdateApi(Resource):
         return {"result": "success"}, 200
 
 api.add_resource(DatasetDocumentSegmentListApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
-api.add_resource(DatasetDocumentSegmentApi, "/datasets/<uuid:dataset_id>/segments/<uuid:segment_id>/<string:action>")
+api.add_resource(DatasetDocumentSegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/<string:action>")
 api.add_resource(DatasetDocumentSegmentAddApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segment")
 api.add_resource(
     DatasetDocumentSegmentUpdateApi,

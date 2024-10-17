@@ -101,7 +101,7 @@ class VectorService:
         index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
         if regenerate:
             # delete child chunks
-            index_processor.clean(dataset, [segment.index_node_id])
+            index_processor.clean(dataset, [segment.index_node_id], with_keywords=True, delete_child_chunks=True)
             
         # generate child chunks
 

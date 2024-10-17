@@ -39,7 +39,7 @@ from models.dataset import (
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, RetrievalModel, SegmentUpdateArgs
-from services.errors.account import NoPermissionError
+from services.errors.account import InvalidActionError, NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
@@ -52,9 +52,12 @@ from tasks.clean_notion_document_task import clean_notion_document_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
+from tasks.disable_segments_from_index_task import disable_segments_from_index_task
 from tasks.document_indexing_task import document_indexing_task
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.duplicate_document_indexing_task import duplicate_document_indexing_task
+from tasks.enable_segment_to_index_task import enable_segment_to_index_task
+from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
 from tasks.retry_document_indexing_task import retry_document_indexing_task
 from tasks.sync_website_document_indexing_task import sync_website_document_indexing_task
@@ -790,7 +793,7 @@ class DocumentService:
                         ).first()
                         if document:
                             document.dataset_process_rule_id = dataset_process_rule.id
-                            document.updated_at = datetime.datetime.utcnow()
+                            document.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
                             document.created_from = created_from
                             document.doc_form = knowledge_config.doc_form
                             document.doc_language = knowledge_config.doc_language
@@ -1635,6 +1638,58 @@ class SegmentService:
         delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id)
         db.session.query(DocumentSegment).filter(DocumentSegment.id.in_(segment_ids)).delete()
         db.session.commit()
+    
+    @classmethod
+    def update_segments_status(cls, segment_ids: list, action: str, dataset: Dataset, document: Document):
+
+        if action == "enable":
+            segments = db.session.query(DocumentSegment).filter(
+                DocumentSegment.id.in_(segment_ids),
+                DocumentSegment.dataset_id == dataset.id,
+                DocumentSegment.document_id == document.id,
+                DocumentSegment.enabled == False,
+            ).all()
+            if not segments:
+                return
+            real_deal_segmment_ids = []
+            for segment in segments:
+                indexing_cache_key = "segment_{}_indexing".format(segment.id)
+                cache_result = redis_client.get(indexing_cache_key)
+                if cache_result is not None:
+                    continue
+                segment.enabled = True
+                segment.disabled_at = None
+                segment.disabled_by = None
+                db.session.add(segment)
+                real_deal_segmment_ids.append(segment.id)
+            db.session.commit()
+
+            enable_segments_to_index_task.delay(real_deal_segmment_ids, dataset.id, document.id)
+        elif action == "disable":
+            segments = db.session.query(DocumentSegment).filter(
+                DocumentSegment.id.in_(segment_ids),
+                DocumentSegment.dataset_id == dataset.id,
+                DocumentSegment.document_id == document.id,
+                DocumentSegment.enabled == True,
+            ).all()
+            if not segments:
+                return
+            real_deal_segmment_ids = []
+            for segment in segments:
+                indexing_cache_key = "segment_{}_indexing".format(segment.id)
+                cache_result = redis_client.get(indexing_cache_key)
+                if cache_result is not None:
+                    continue
+                segment.enabled = False
+                segment.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                segment.disabled_by = current_user.id
+                db.session.add(segment)
+                real_deal_segmment_ids.append(segment.id)
+            db.session.commit()
+
+            disable_segments_from_index_task.delay(real_deal_segmment_ids, dataset.id, document.id)
+        else:
+            raise InvalidActionError()
 
     @classmethod
     def create_child_chunk(cls, content: str, segment: DocumentSegment, document: Document, dataset: Dataset) -> ChildChunk:
