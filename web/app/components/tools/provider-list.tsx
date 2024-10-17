@@ -112,7 +112,6 @@ const ProviderList = () => {
                   currentProvider?.id === collection.id && 'border-components-option-card-option-selected-border',
                 )}
                 hideCornerMark
-                locale={language}
                 payload={{
                   ...collection,
                   brief: collection.description,

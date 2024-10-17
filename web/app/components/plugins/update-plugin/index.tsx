@@ -1,14 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useMemo, useState } from 'react'
-import { useContext } from 'use-context-selector'
 import { RiInformation2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Card from '@/app/components/plugins/card'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import I18n from '@/context/i18n'
 import { toolNotion } from '@/app/components/plugins/card/card-mock'
 
 const i18nPrefix = 'plugin.upgrade'
@@ -26,7 +24,6 @@ enum UploadStep {
 const UpdatePluginModal: FC<Props> = ({
   onHide,
 }) => {
-  const { locale } = useContext(I18n)
   const { t } = useTranslation()
   const [uploadStep, setUploadStep] = useState<UploadStep>(UploadStep.notStarted)
   const configBtnText = useMemo(() => {
@@ -62,7 +59,6 @@ const UpdatePluginModal: FC<Props> = ({
         <Card
           installed={uploadStep === UploadStep.installed}
           payload={toolNotion as any}
-          locale={locale}
           className='w-full'
           titleLeft={
             <>

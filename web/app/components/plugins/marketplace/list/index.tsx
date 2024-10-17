@@ -13,35 +13,30 @@ const List = () => {
         <div className='system-xs-regular text-text-tertiary'>Our top picks to get you started</div>
         <div className='grid grid-cols-4 gap-3 mt-2'>
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
@@ -54,168 +49,144 @@ const List = () => {
         <div className='system-xs-regular text-text-tertiary'>Explore the library and discover the incredible work of our community</div>
         <div className='grid grid-cols-4 gap-3 mt-2'>
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />
             }
           />
           <Card
-            locale={locale}
             payload={toolNotion as any}
             footer={
               <CardMoreInfo downloadCount={1234} tags={['Search', 'Productivity']} />

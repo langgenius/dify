@@ -1,6 +1,9 @@
+'use client'
 import type { FC } from 'react'
 import React from 'react'
+import { useContext } from 'use-context-selector'
 import { RiArrowRightUpLine, RiLoginCircleLine, RiVerifiedBadgeLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import { Github } from '../../base/icons/src/public/common'
 import Badge from '../../base/badge'
 import type { Plugin } from '../types'
@@ -11,26 +14,21 @@ import OrgInfo from '../card/base/org-info'
 import Title from '../card/base/title'
 import Action from './action'
 import cn from '@/utils/classnames'
-import type { Locale } from '@/i18n'
+import I18n from '@/context/i18n'
 
 type Props = {
   className?: string
   payload: Plugin
-  locale: Locale
   onDelete: () => void
-  pluginI8n: any
-  isClient?: boolean
 }
 
 const PluginItem: FC<Props> = ({
   className,
   payload,
   onDelete,
-  locale,
-  pluginI8n,
-  isClient,
 }) => {
-  const t = (key: string, param?: object) => pluginI8n(`${isClient ? 'plugin.' : ''}${key}`, param)
+  const { locale } = useContext(I18n)
+  const { t } = useTranslation()
 
   const { type, name, org, label } = payload
   const hasNewVersion = payload.latest_version !== payload.version
@@ -74,12 +72,12 @@ const PluginItem: FC<Props> = ({
           <div className='mx-2 text-text-quaternary system-xs-regular'>·</div>
           <div className='flex text-text-tertiary system-xs-regular space-x-1'>
             <RiLoginCircleLine className='w-4 h-4' />
-            <span>{t('endpointsEnabled', { num: 2 })}</span>
+            <span>{t('plugin.endpointsEnabled', { num: 2 })}</span>
           </div>
         </div>
 
         <div className='flex items-center'>
-          <a href='' target='_blank' className='mr-1 text-text-tertiary system-2xs-medium-uppercase'>{t('from')}</a>
+          <a href='' target='_blank' className='mr-1 text-text-tertiary system-2xs-medium-uppercase'>{t('plugin.from')}</a>
           <div className='flex items-center space-x-0.5 text-text-secondary'>
             <Github className='ml-1 w-3 h-3' />
             <div className='system-2xs-semibold-uppercase'>GitHub</div>
@@ -91,4 +89,4 @@ const PluginItem: FC<Props> = ({
   )
 }
 
-export default PluginItem
+export default React.memo(PluginItem)
