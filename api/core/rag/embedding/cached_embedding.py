@@ -6,11 +6,11 @@ import numpy as np
 from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
-from core.embedding.embedding_constant import EmbeddingInputType
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.rag.datasource.entity.embedding import Embeddings
+from core.rag.embedding.embedding_base import Embeddings
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper

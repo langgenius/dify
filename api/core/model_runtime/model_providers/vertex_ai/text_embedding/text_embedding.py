@@ -9,7 +9,7 @@ from google.cloud import aiplatform
 from google.oauth2 import service_account
 from vertexai.language_models import TextEmbeddingModel as VertexTextEmbeddingModel
 
-from core.embedding.embedding_constant import EmbeddingInputType
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
