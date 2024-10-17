@@ -16,7 +16,7 @@ class ToolFilePreviewApi(Resource):
         parser.add_argument("timestamp", type=str, required=True, location="args")
         parser.add_argument("nonce", type=str, required=True, location="args")
         parser.add_argument("sign", type=str, required=True, location="args")
-        parser.add_argument("as_attachment", type=bool, default=False, required=False, location="args")
+        parser.add_argument("as_attachment", type=bool, required=False, default=False, location="args")
 
         args = parser.parse_args()
 
@@ -48,8 +48,6 @@ class ToolFilePreviewApi(Resource):
         )
         if args["as_attachment"]:
             response.headers["Content-Disposition"] = f"attachment; filename={tool_file.name}"
-        else:
-            response.headers["Content-Disposition"] = f"inline; filename={tool_file.name}"
 
         return response
 
