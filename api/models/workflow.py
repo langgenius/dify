@@ -638,6 +638,33 @@ class WorkflowNodeExecution(db.Model):
     created_by = db.Column(StringUUID, nullable=False)
     finished_at = db.Column(db.DateTime)
 
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "tenant_id": self.tenant_id,
+            "app_id": self.app_id,
+            "workflow_id": self.workflow_id,
+            "triggered_from": self.triggered_from,
+            "workflow_run_id": self.workflow_run_id,
+            "index": self.index,
+            "predecessor_node_id": self.predecessor_node_id,
+            "node_execution_id": self.node_execution_id,
+            "node_id": self.node_id,
+            "node_type": self.node_type,
+            "title": self.title,
+            "inputs": self.inputs_dict,
+            "process_data": self.process_data_dict,
+            "outputs": self.outputs_dict,
+            "status": self.status,
+            "error": self.error,
+            "elapsed_time": self.elapsed_time,
+            "execution_metadata": self.execution_metadata_dict,
+            "created_at": self.created_at,
+            "created_by_role": self.created_by_role,
+            "created_by": self.created_by,
+            "finished_at": self.finished_at,
+        }
+
     @property
     def created_by_account(self):
         created_by_role = CreatedByRole.value_of(self.created_by_role)
