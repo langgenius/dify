@@ -6,10 +6,10 @@ from controllers.inner_api.plugin.wraps import get_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
 from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocationResponse
+from core.plugin.backwards_invocation.encrypt import PluginEncrypter
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
 from core.plugin.backwards_invocation.node import PluginNodeBackwardsInvocation
 from core.plugin.backwards_invocation.tool import PluginToolBackwardsInvocation
-from core.plugin.encrypt import PluginEncrypter
 from core.plugin.entities.request import (
     RequestInvokeApp,
     RequestInvokeEncrypt,

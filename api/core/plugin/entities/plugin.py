@@ -69,6 +69,7 @@ class PluginDeclaration(BaseModel):
     version: str = Field(..., pattern=r"^\d{1,4}(\.\d{1,4}){1,3}(-\w{1,16})?$")
     author: Optional[str] = Field(..., pattern=r"^[a-zA-Z0-9_-]{1,64}$")
     name: str = Field(..., pattern=r"^[a-z0-9_-]{1,128}$")
+    description: I18nObject
     icon: str
     label: I18nObject
     category: PluginCategory
