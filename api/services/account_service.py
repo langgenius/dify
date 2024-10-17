@@ -32,7 +32,6 @@ from models.account import (
     TenantStatus,
 )
 from models.model import DifySetup
-from services.enterprise.enterprise_service import EnterpriseService
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
@@ -954,13 +953,3 @@ class RegisterService:
 def _generate_refresh_token(length: int = 64):
     token = secrets.token_hex(length)
     return token
-
-
-class InitLoginType:
-    @staticmethod
-    def init_login_type():
-        enterprise_info = EnterpriseService.get_info()
-        dify_config.ENABLE_EMAIL_CODE_LOGIN = enterprise_info["enable_email_code_login"]
-        dify_config.ENABLE_EMAIL_PASSWORD_LOGIN = enterprise_info["enable_email_password_login"]
-        dify_config.ALLOW_REGISTER = enterprise_info["is_allow_register"]
-        dify_config.ALLOW_CREATE_WORKSPACE = enterprise_info["is_allow_create_workspace"]

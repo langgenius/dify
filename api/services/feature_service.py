@@ -1,7 +1,6 @@
 from pydantic import BaseModel, ConfigDict
 
 from configs import dify_config
-from services.account_service import InitLoginType
 from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 
@@ -127,7 +126,6 @@ class FeatureService:
 
     @classmethod
     def _fulfill_params_from_enterprise(cls, features):
-        InitLoginType.init_login_type()
         enterprise_info = EnterpriseService.get_info()
 
         features.sso_enforced_for_signin = enterprise_info["sso_enforced_for_signin"]

@@ -20,11 +20,11 @@ class SecurityConfig(BaseSettings):
     Security-related configurations for the application
     """
 
-    SECRET_KEY: str = Field(
+    SECRET_KEY: Optional[str] = Field(
         description="Secret key for secure session cookie signing."
         "Make sure you are changing this key for your deployment with a strong key."
         "Generate a strong key using `openssl rand -base64 42` or set via the `SECRET_KEY` environment variable.",
-        default="",
+        default=None,
     )
 
     RESET_PASSWORD_TOKEN_EXPIRY_HOURS: PositiveInt = Field(
@@ -184,16 +184,6 @@ class FileUploadConfig(BaseSettings):
     UPLOAD_IMAGE_FILE_SIZE_LIMIT: NonNegativeInt = Field(
         description="Maximum allowed image file size for uploads in megabytes",
         default=10,
-    )
-
-    UPLOAD_VIDEO_FILE_SIZE_LIMIT: NonNegativeInt = Field(
-        description="video file size limit in Megabytes for uploading files",
-        default=100,
-    )
-
-    UPLOAD_AUDIO_FILE_SIZE_LIMIT: NonNegativeInt = Field(
-        description="audio file size limit in Megabytes for uploading files",
-        default=50,
     )
 
     BATCH_UPLOAD_LIMIT: NonNegativeInt = Field(
@@ -503,7 +493,6 @@ class RagEtlConfig(BaseSettings):
     Configuration for RAG ETL processes
     """
 
-    # TODO: This config is not only for rag etl, it is also for file upload, we should move it to file upload config
     ETL_TYPE: str = Field(
         description="RAG ETL type ('dify' or 'Unstructured'), default to 'dify'",
         default="dify",
@@ -546,11 +535,6 @@ class DataSetConfig(BaseSettings):
         default=False,
     )
 
-    TIDB_SERVERLESS_NUMBER: PositiveInt = Field(
-        description="number of tidb serverless cluster",
-        default=500,
-    )
-
 
 class WorkspaceConfig(BaseSettings):
     """
@@ -575,7 +559,7 @@ class IndexingConfig(BaseSettings):
 
 
 class ImageFormatConfig(BaseSettings):
-    MULTIMODAL_SEND_IMAGE_FORMAT: Literal["base64", "url"] = Field(
+    MULTIMODAL_SEND_IMAGE_FORMAT: str = Field(
         description="Format for sending images in multimodal contexts ('base64' or 'url'), default is base64",
         default="base64",
     )
@@ -669,9 +653,6 @@ class LoginConfig(BaseSettings):
         description="whether to enable create workspace",
         default=False,
     )
-
-    class Config:
-        frozen = False
 
 
 class FeatureConfig(
