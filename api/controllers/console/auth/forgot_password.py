@@ -4,7 +4,6 @@ import secrets
 from flask import request
 from flask_restful import Resource, reqparse
 
-from configs import dify_config
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
@@ -22,6 +21,7 @@ from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.feature_service import SystemFeatureModel
 
 
 class ForgotPasswordSendEmailApi(Resource):
@@ -44,7 +44,7 @@ class ForgotPasswordSendEmailApi(Resource):
         account = Account.query.filter_by(email=args["email"]).first()
         token = None
         if account is None:
-            if dify_config.ALLOW_REGISTER:
+            if SystemFeatureModel.is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
             else:
                 raise NotAllowedRegister()
@@ -114,7 +114,7 @@ class ForgotPasswordResetApi(Resource):
             db.session.commit()
             tenant = TenantService.get_join_tenants(account)
             if not tenant:
-                if not dify_config.ALLOW_CREATE_WORKSPACE:
+                if not SystemFeatureModel.is_allow_create_workspace:
                     raise NotAllowedCreateWorkspace()
                 else:
                     tenant = TenantService.create_tenant(f"{account.name}'s Workspace")

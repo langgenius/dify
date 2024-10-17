@@ -45,8 +45,8 @@ class SystemFeatureModel(BaseModel):
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
-    is_allow_register: bool = True
-    is_allow_create_workspace: bool = True
+    is_allow_register: bool = False
+    is_allow_create_workspace: bool = False
 
 
 class FeatureService:
@@ -74,7 +74,7 @@ class FeatureService:
         return system_features
 
     @classmethod
-    def __fulfill_login_params_from_env(cls, features: FeatureModel):
+    def _fulfill_login_params_from_env(cls, features: FeatureModel):
         features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
         features.enable_email_password_login = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
         features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN

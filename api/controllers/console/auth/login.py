@@ -28,6 +28,7 @@ from libs.password import valid_password
 from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.feature_service import SystemFeatureModel
 
 
 class LoginApi(Resource):
@@ -72,7 +73,7 @@ class LoginApi(Resource):
             AccountService.add_login_error_rate_limit(args["email"])
             raise EmailOrPasswordMismatchError()
         except services.errors.account.AccountNotFoundError:
-            if not dify_config.ALLOW_REGISTER:
+            if not SystemFeatureModel.is_allow_register:
                 raise NotAllowedRegister()
 
             token = AccountService.send_reset_password_email(email=args["email"], language=language)
@@ -116,7 +117,7 @@ class ResetPasswordSendEmailApi(Resource):
 
         account = AccountService.get_user_through_email(args["email"])
         if account is None:
-            if dify_config.ALLOW_REGISTER:
+            if SystemFeatureModel.is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
             else:
                 raise NotAllowedRegister()
@@ -145,7 +146,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 
         account = AccountService.get_user_through_email(args["email"])
         if account is None:
-            if dify_config.ALLOW_REGISTER:
+            if SystemFeatureModel.is_allow_register:
                 token = AccountService.send_email_code_login_email(email=args["email"], language=language)
             else:
                 raise NotAllowedRegister()
@@ -181,7 +182,7 @@ class EmailCodeLoginApi(Resource):
         if account:
             tenant = TenantService.get_join_tenants(account)
             if not tenant:
-                if not dify_config.ALLOW_CREATE_WORKSPACE:
+                if not SystemFeatureModel.is_allow_create_workspace:
                     raise NotAllowedCreateWorkspace()
                 else:
                     tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
