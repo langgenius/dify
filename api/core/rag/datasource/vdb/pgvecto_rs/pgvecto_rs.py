@@ -216,7 +216,7 @@ class PGVectoRSFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
-            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.PGVECTO_RS, collection_name))
         dim = len(embeddings.embed_query("pgvecto_rs"))
 
         return PGVectoRS(
