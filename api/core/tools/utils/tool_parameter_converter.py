@@ -8,9 +8,9 @@ class ToolParameterConverter:
     def get_parameter_type(parameter_type: str | ToolParameter.ToolParameterType) -> str:
         match parameter_type:
             case (
-                ToolParameter.ToolParameterType.STRING
-                | ToolParameter.ToolParameterType.SECRET_INPUT
-                | ToolParameter.ToolParameterType.SELECT
+            ToolParameter.ToolParameterType.STRING
+            | ToolParameter.ToolParameterType.SECRET_INPUT
+            | ToolParameter.ToolParameterType.SELECT
             ):
                 return "string"
 
@@ -32,9 +32,9 @@ class ToolParameterConverter:
         try:
             match parameter_type:
                 case (
-                    ToolParameter.ToolParameterType.STRING
-                    | ToolParameter.ToolParameterType.SECRET_INPUT
-                    | ToolParameter.ToolParameterType.SELECT
+                ToolParameter.ToolParameterType.STRING
+                | ToolParameter.ToolParameterType.SECRET_INPUT
+                | ToolParameter.ToolParameterType.SELECT
                 ):
                     if value is None:
                         return ""

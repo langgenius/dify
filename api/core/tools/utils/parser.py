@@ -17,7 +17,7 @@ from core.tools.errors import ToolApiSchemaError, ToolNotSupportedError, ToolPro
 class ApiBasedToolSchemaParser:
     @staticmethod
     def parse_openapi_to_tool_bundle(
-        openapi: dict, extra_info: Optional[dict], warning: Optional[dict]
+            openapi: dict, extra_info: Optional[dict], warning: Optional[dict]
     ) -> list[ApiToolBundle]:
         warning = warning if warning is not None else {}
         extra_info = extra_info if extra_info is not None else {}
@@ -177,7 +177,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def parse_openapi_yaml_to_tool_bundle(
-        yaml: str, extra_info: Optional[dict], warning: Optional[dict]
+            yaml: str, extra_info: Optional[dict], warning: Optional[dict]
     ) -> list[ApiToolBundle]:
         """
         parse openapi yaml to tool bundle
@@ -233,7 +233,7 @@ class ApiBasedToolSchemaParser:
                     raise ToolApiSchemaError(f"No operationId found in operation {method} {path}.")
 
                 if ("summary" not in operation or len(operation["summary"]) == 0) and (
-                    "description" not in operation or len(operation["description"]) == 0
+                        "description" not in operation or len(operation["description"]) == 0
                 ):
                     warning["missing_summary"] = f"No summary or description found in operation {method} {path}."
 
@@ -256,7 +256,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def parse_openai_plugin_json_to_tool_bundle(
-        json: str, extra_info: Optional[dict], warning: Optional[dict]
+            json: str, extra_info: Optional[dict], warning: Optional[dict]
     ) -> list[ApiToolBundle]:
         """
         parse openapi plugin yaml to tool bundle
@@ -290,7 +290,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def auto_parse_to_tool_bundle(
-        content: str, extra_info: Optional[dict] = None, warning: Optional[dict] = None
+            content: str, extra_info: Optional[dict] = None, warning: Optional[dict] = None
     ) -> tuple[list[ApiToolBundle], str]:
         """
         auto parse to tool bundle
