@@ -22,6 +22,22 @@ class NotionInfo(BaseModel):
         super().__init__(**data)
 
 
+class FeishuWikiInfo(BaseModel):
+    """
+    FeishuWiki import info.
+    """
+
+    feishu_workspace_id: str
+    obj_token: str
+    obj_type: str
+    document: Document = None
+    tenant_id: str
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    def __init__(self, **data) -> None:
+        super().__init__(**data)
+
+
 class WebsiteInfo(BaseModel):
     """
     website import info.
@@ -49,6 +65,7 @@ class ExtractSetting(BaseModel):
     datasource_type: str
     upload_file: Optional[UploadFile] = None
     notion_info: Optional[NotionInfo] = None
+    feishuwiki_info: Optional[FeishuWikiInfo] = None
     website_info: Optional[WebsiteInfo] = None
     document_model: Optional[str] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
