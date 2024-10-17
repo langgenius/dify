@@ -26,8 +26,8 @@ class PodcastAudioGeneratorTool(BuiltinTool):
         index: int,
     ) -> tuple[int, Union[AudioSegment, str], Optional[AudioSegment]]:
         try:
-            response = client.audio.speech.create(model="tts-1", voice=voice, input=line.strip())
-            audio = AudioSegment.from_file(io.BytesIO(response.content), format="wav")
+            response = client.audio.speech.create(model="tts-1", voice=voice, input=line.strip(), response_format="wav")
+            audio = AudioSegment.from_wav(io.BytesIO(response.content))
             silence_duration = random.uniform(0.1, 1.5)
             silence = PodcastAudioGeneratorTool._generate_silence(silence_duration)
             return index, audio, silence
