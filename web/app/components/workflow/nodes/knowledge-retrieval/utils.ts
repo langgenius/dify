@@ -113,7 +113,7 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
     reranking_mode,
     reranking_model,
     weights,
-    reranking_enable: allEconomic ? reranking_enable : true,
+    reranking_enable: ((allInternal && allEconomic) || allExternal) ? reranking_enable : true,
   }
 
   if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || allExternal || mixtureInternalAndExternal)
