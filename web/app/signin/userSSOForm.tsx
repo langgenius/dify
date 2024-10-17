@@ -31,7 +31,7 @@ const UserSSOForm: FC<UserSSOFormProps> = ({
     if (refreshToken && consoleToken) {
       localStorage.setItem('console_token', consoleToken)
       localStorage.setItem('refresh_token', refreshToken)
-      getNewAccessToken(consoleToken, refreshToken)
+      getNewAccessToken()
       router.replace('/apps')
     }
 
