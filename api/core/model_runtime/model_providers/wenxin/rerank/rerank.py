@@ -15,7 +15,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.rerank_model import RerankModel
-from core.model_runtime.model_providers.wenxin._common import BaiduAccessToken, _CommonWenxin
+from core.model_runtime.model_providers.wenxin._common import _CommonWenxin
 
 
 class WenxinRerank(_CommonWenxin):
