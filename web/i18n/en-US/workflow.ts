@@ -227,7 +227,7 @@ const translation = {
     'iteration': 'Iteration',
     'parameter-extractor': 'Parameter Extractor',
     'document-extractor': 'Doc Extractor',
-    'list-filter': 'List Filter',
+    'list-operator': 'List Operator',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -246,7 +246,7 @@ const translation = {
     'iteration': 'Perform multiple steps on a list object until all results are outputted.',
     'parameter-extractor': 'Use LLM to extract structured parameters from natural language for tool invocations or HTTP requests.',
     'document-extractor': 'Used to parse uploaded documents into text content that is easily understandable by LLM.',
-    'list-filter': 'Used to filter or sort array content.',
+    'list-operator': 'Used to filter or sort array content.',
   },
   operator: {
     zoomIn: 'Zoom In',
@@ -588,7 +588,7 @@ const translation = {
       filterConditionComparisonOperator: 'Filter Condition Comparison Operator',
       filterConditionComparisonValue: 'Filter Condition value',
       selectVariableKeyPlaceholder: 'Select sub variable key',
-      limit: 'Limit',
+      limit: 'Top N',
       orderBy: 'Order by',
       asc: 'ASC',
       desc: 'DESC',

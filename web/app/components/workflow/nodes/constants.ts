@@ -32,8 +32,8 @@ import IterationNode from './iteration/node'
 import IterationPanel from './iteration/panel'
 import DocExtractorNode from './document-extractor/node'
 import DocExtractorPanel from './document-extractor/panel'
-import ListFilterNode from './list-filter/node'
-import ListFilterPanel from './list-filter/panel'
+import ListFilterNode from './list-operator/node'
+import ListFilterPanel from './list-operator/panel'
 
 export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Start]: StartNode,

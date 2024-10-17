@@ -16,7 +16,7 @@ import AssignerDefault from './nodes/assigner/default'
 import EndNodeDefault from './nodes/end/default'
 import IterationDefault from './nodes/iteration/default'
 import DocExtractorDefault from './nodes/document-extractor/default'
-import ListFilterDefault from './nodes/list-filter/default'
+import ListFilterDefault from './nodes/list-operator/default'
 import IterationStartDefault from './nodes/iteration-start/default'
 
 type NodesExtraData = {

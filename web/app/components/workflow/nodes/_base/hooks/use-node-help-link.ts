@@ -31,7 +31,7 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
         [BlockEnum.HttpRequest]: 'http-request',
         [BlockEnum.Tool]: 'tools',
         [BlockEnum.DocExtractor]: 'doc-extractor',
-        [BlockEnum.ListFilter]: 'list-filter',
+        [BlockEnum.ListFilter]: 'list-operator',
       }
     }
 
@@ -54,7 +54,7 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
       [BlockEnum.HttpRequest]: 'http-request',
       [BlockEnum.Tool]: 'tools',
       [BlockEnum.DocExtractor]: 'doc-extractor',
-      [BlockEnum.ListFilter]: 'list-filter',
+      [BlockEnum.ListFilter]: 'list-operator',
     }
   }, [language])
 

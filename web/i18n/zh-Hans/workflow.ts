@@ -227,7 +227,7 @@ const translation = {
     'iteration': '迭代',
     'parameter-extractor': '参数提取器',
     'document-extractor': '文档提取器',
-    'list-filter': '列表过滤器',
+    'list-operator': '列表操作',
   },
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
@@ -246,7 +246,7 @@ const translation = {
     'iteration': '对列表对象执行多次步骤直至输出所有结果。',
     'parameter-extractor': '利用 LLM 从自然语言内推理提取出结构化参数，用于后置的工具调用或 HTTP 请求。',
     'document-extractor': '用于将用户上传的文档解析为 LLM 便于理解的文本内容。',
-    'list-filter': '用于过滤或排序数组内容。',
+    'list-operator': '用于过滤或排序数组内容。',
   },
   operator: {
     zoomIn: '放大',
@@ -588,7 +588,7 @@ const translation = {
       filterConditionComparisonOperator: '过滤条件比较操作符',
       filterConditionComparisonValue: '过滤条件比较值',
       selectVariableKeyPlaceholder: '选择子变量的 Key',
-      limit: '限制',
+      limit: '取前 N 项',
       orderBy: '排序',
       asc: '升序',
       desc: '降序',
