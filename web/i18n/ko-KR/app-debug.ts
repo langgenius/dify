@@ -321,6 +321,16 @@ const translation = {
       autoPlayDisabled: '폐쇄',
     },
   },
+  speechToText: {
+    settings: '설정',
+    speechToTextSettings: {
+      title: '음성 인식 설정',
+      languageRecognition: '언어 인식',
+      resolutionTooltip: '음성 인식 음성 지원 언어.',
+      auto: '자동',
+      custom: '사용자 정의',
+    },
+  },
   openingStatement: {
     title: '대화 시작',
     add: '추가',

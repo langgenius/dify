@@ -366,6 +366,16 @@ const translation = {
       autoPlayDisabled: 'Turn Off',
     },
   },
+  speechToText: {
+    settings: 'Settings',
+    speechToTextSettings: {
+      title: 'Speech to Text Settings',
+      languageRecognition: 'Language recognition',
+      resolutionTooltip: 'Speech-to-text voice support language。',
+      auto: 'Auto',
+      custom: 'Custom',
+    },
+  },
   openingStatement: {
     title: 'Conversation Opener',
     add: 'Add',
