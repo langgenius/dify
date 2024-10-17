@@ -12,6 +12,8 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.source import DataSourceOauthBinding
 
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+
 
 class OAuthDataSource:
     def __init__(self, client_id: str, client_secret: str, redirect_uri: str):
@@ -304,12 +306,12 @@ class FeishuWiki:
         self.app_secret = app_secret
 
     def _send_request(
-        self,
-        url: str,
-        method: str = "post",
-        require_token: bool = True,
-        payload: Optional[dict] = None,
-        params: Optional[dict] = None,
+            self,
+            url: str,
+            method: str = "post",
+            require_token: bool = True,
+            payload: Optional[dict] = None,
+            params: Optional[dict] = None,
     ):
         headers = {
             "Content-Type": "application/json",
@@ -351,10 +353,11 @@ class FeishuWiki:
             page_token = res.get("page_token", "")
             if not page_token:
                 break
+        logging.info(f"all_spaces: {all_spaces}")
         return all_spaces
 
     def get_all_feishu_wiki_space_nodes(
-        self, space_id: str, parent_node_token: str = "", page_size: int = 50
+            self, space_id: str, parent_node_token: str = "", page_size: int = 50
     ) -> list[dict[str, Any]]:
         url = f"{self.API_BASE_URL}/wiki/v2/spaces/{space_id}/nodes"
         all_nodes = []
@@ -413,10 +416,7 @@ class FeishuWiki:
 
         spaces = self.get_all_feishu_wiki_spaces()
         pages = []
-        logging.info(f"Attempting to retrieve tenant access token for app_id: {spaces}")
         for space in spaces:
-            logging.info(f"Attempting to retrieve tenant access token for app_id: {space}")
-
             space_type = space["space_type"]
             if space_type == "team":
                 space_id = space["space_id"]
