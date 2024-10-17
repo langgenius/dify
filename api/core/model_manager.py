@@ -3,7 +3,7 @@ import os
 from collections.abc import Callable, Generator, Sequence
 from typing import IO, Optional, Union, cast
 
-from core.embedding.embedding_constant import EmbeddingInputType
+from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.errors.error import ProviderTokenNotInitError
