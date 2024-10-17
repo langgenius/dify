@@ -20,6 +20,9 @@ class ToolParameterConverter:
             case ToolParameter.ToolParameterType.NUMBER:
                 return "number"
 
+            case ToolParameter.ToolParameterType.OBJECT:
+                return "object"
+
             case _:
                 raise ValueError(f"Unsupported parameter type {parameter_type}")
 
