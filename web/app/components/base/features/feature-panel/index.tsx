@@ -13,16 +13,19 @@ import TextToSpeech from './text-to-speech'
 import SpeechToText from './speech-to-text'
 import Citation from './citation'
 import Moderation from './moderation'
+import type { InputVar } from '@/app/components/workflow/types'
 
 export type FeaturePanelProps = {
   onChange?: OnFeaturesChange
   openingStatementProps: OpeningStatementProps
   disabled?: boolean
+  workflowVariables: InputVar[]
 }
 const FeaturePanel = ({
   onChange,
   openingStatementProps,
   disabled,
+  workflowVariables,
 }: FeaturePanelProps) => {
   const { t } = useTranslation()
   const features = useFeatures(s => s.features)
@@ -60,6 +63,7 @@ const FeaturePanel = ({
                     {...openingStatementProps}
                     onChange={onChange}
                     readonly={disabled}
+                    workflowVariables={workflowVariables}
                   />
                 )
               }
