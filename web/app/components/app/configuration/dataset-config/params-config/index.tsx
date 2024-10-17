@@ -42,6 +42,7 @@ const ParamsConfig = ({
       allHighQuality,
       allHighQualityFullTextSearch,
       allHighQualityVectorSearch,
+      allInternal,
       allExternal,
       mixtureHighQualityAndEconomic,
       inconsistentEmbeddingModel,
@@ -50,7 +51,7 @@ const ParamsConfig = ({
     const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
     let rerankEnable = restConfigs.reranking_enable
 
-    if ((allEconomic && !restConfigs.reranking_model?.reranking_provider_name && rerankEnable === undefined) || allExternal)
+    if (((allInternal && allEconomic) || allExternal) && !restConfigs.reranking_model?.reranking_provider_name && rerankEnable === undefined)
       rerankEnable = false
 
     if (allEconomic || allHighQuality || allHighQualityFullTextSearch || allHighQualityVectorSearch || (allExternal && selectedDatasets.length === 1))
