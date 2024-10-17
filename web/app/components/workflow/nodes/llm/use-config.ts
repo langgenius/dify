@@ -281,8 +281,8 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber].includes(varPayload.type)
   }, [])
 
-  const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.arrayObject, VarType.array, VarType.number, VarType.string, VarType.secret].includes(varPayload.type)
+  const filterMemoryPromptVar = useCallback((varPayload: Var) => {
+    return [VarType.arrayObject, VarType.array, VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber].includes(varPayload.type)
   }, [])
 
   const {
@@ -290,7 +290,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     availableNodesWithParent,
   } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
-    filterVar,
+    filterVar: filterMemoryPromptVar,
   })
 
   // single run
@@ -385,7 +385,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleAddEmptyVariable,
     handleContextVarChange,
     filterInputVar,
-    filterVar,
+    filterVar: filterMemoryPromptVar,
     availableVars,
     availableNodesWithParent,
     handlePromptChange,
