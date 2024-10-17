@@ -80,8 +80,8 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
 
       draft.var_type = varType
       draft.item_var_type = itemVarType
-      draft.filter_by = [{
-        key: (isFileArray && !draft.filter_by[0]?.key) ? 'name' : '',
+      draft.filter_by.conditions = [{
+        key: (isFileArray && !draft.filter_by.conditions[0]?.key) ? 'name' : '',
         comparison_operator: getOperators(itemVarType, isFileArray ? { key: 'name' } : undefined)[0],
         value: '',
       }]
@@ -96,9 +96,18 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
     return [VarType.arrayNumber, VarType.arrayString, VarType.arrayFile].includes(varPayload.type)
   }, [])
 
+  const handleFilterEnabledChange = useCallback((enabled: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.filter_by.enabled = enabled
+      if (enabled && !draft.filter_by.conditions)
+        draft.filter_by.conditions = []
+    })
+    setInputs(newInputs)
+  }, [hasSubVariable, inputs, setInputs])
+
   const handleFilterChange = useCallback((condition: Condition) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.filter_by[0] = condition
+      draft.filter_by.conditions[0] = condition
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -147,6 +156,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
     itemVarTypeShowName,
     hasSubVariable,
     handleVarChanges,
+    handleFilterEnabledChange,
     handleFilterChange,
     handleLimitChange,
     handleOrderByEnabledChange,

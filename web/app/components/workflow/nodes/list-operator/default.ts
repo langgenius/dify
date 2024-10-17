@@ -8,7 +8,10 @@ const i18nPrefix = 'workflow.errorMsg'
 const nodeDefault: NodeDefault<ListFilterNodeType> = {
   defaultValue: {
     variable: [],
-    filter_by: [],
+    filter_by: {
+      enabled: false,
+      conditions: [],
+    },
     order_by: {
       enabled: false,
       key: '',
@@ -37,14 +40,14 @@ const nodeDefault: NodeDefault<ListFilterNodeType> = {
       errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.inputVar') })
 
     // Check filter condition
-    if (!errorMessages) {
-      if (var_type === VarType.arrayFile && !filter_by[0]?.key)
+    if (!errorMessages && filter_by?.enabled) {
+      if (var_type === VarType.arrayFile && !filter_by.conditions[0]?.key)
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.filterConditionKey') })
 
-      if (!errorMessages && !filter_by[0]?.comparison_operator)
+      if (!errorMessages && !filter_by.conditions[0]?.comparison_operator)
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.filterConditionComparisonOperator') })
 
-      if (!errorMessages && !comparisonOperatorNotRequireValue(filter_by[0]?.comparison_operator) && !filter_by[0]?.value)
+      if (!errorMessages && !comparisonOperatorNotRequireValue(filter_by.conditions[0]?.comparison_operator) && !filter_by.conditions[0]?.value)
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.filterConditionComparisonValue') })
     }
 

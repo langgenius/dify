@@ -30,6 +30,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
     hasSubVariable,
     handleVarChanges,
     filterVar,
+    handleFilterEnabledChange,
     handleFilterChange,
     handleLimitChange,
     handleOrderByEnabledChange,
@@ -56,15 +57,26 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
 
         <Field
           title={t(`${i18nPrefix}.filterCondition`)}
-          isSubTitle
+          operations={
+            <Switch
+              defaultValue={inputs.filter_by?.enabled}
+              onChange={handleFilterEnabledChange}
+              size='md'
+              disabled={readOnly}
+            />
+          }
         >
-          <FilterCondition
-            condition={inputs.filter_by[0]}
-            onChange={handleFilterChange}
-            varType={itemVarType}
-            hasSubVariable={hasSubVariable}
-            readOnly={readOnly}
-          />
+          {inputs.filter_by?.enabled
+            ? (
+              <FilterCondition
+                condition={inputs.filter_by.conditions[0]}
+                onChange={handleFilterChange}
+                varType={itemVarType}
+                hasSubVariable={hasSubVariable}
+                readOnly={readOnly}
+              />
+            )
+            : null}
         </Field>
         <Split />
         <Field
