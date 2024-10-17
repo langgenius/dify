@@ -1,9 +1,9 @@
-import uuid
 import json
 import random
+import uuid
 
-from websocket import WebSocket
 import httpx
+from websocket import WebSocket
 from yarl import URL
 
 
