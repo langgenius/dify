@@ -151,7 +151,7 @@ const OneMoreStep = () => {
               {t('login.go')}
             </Button>
           </div>
-          <div className="block w-hull mt-2 system-xs-regular text-text-tertiary">
+          <div className="block w-full mt-2 system-xs-regular text-text-tertiary">
             {t('login.license.tip')}
             &nbsp;
             <Link

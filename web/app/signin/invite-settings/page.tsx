@@ -141,7 +141,7 @@ export default function InviteSettingsPage() {
         </Button>
       </div>
     </form>
-    <div className="block w-hull mt-2 system-xs-regular">
+    <div className="block w-full mt-2 system-xs-regular">
       {t('login.license.tip')}
       &nbsp;
       <Link

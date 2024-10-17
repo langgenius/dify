@@ -2,17 +2,18 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { RiDoorLockLine } from '@remixicon/react'
 import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SocialAuth from './components/social-auth'
 import SSOAuth from './components/sso-auth'
 import cn from '@/utils/classnames'
-import { IS_CE_EDITION } from '@/config'
 import { getSystemFeatures, invitationCheck } from '@/service/common'
 import { defaultSystemFeatures } from '@/types/feature'
 import Toast from '@/app/components/base/toast'
 import useRefreshToken from '@/hooks/use-refresh-token'
+import { IS_CE_EDITION } from '@/config'
 
 const NormalForm = () => {
   const { getNewAccessToken } = useRefreshToken()
@@ -49,10 +50,12 @@ const NormalForm = () => {
         })
       }
       const features = await getSystemFeatures()
-      setSystemFeatures({ ...defaultSystemFeatures, ...features })
-      setAllMethodsAreDisabled(!features.enable_social_oauth_login && !features.enable_email_code_login && !features.enable_email_password_login && !features.sso_enforced_for_signin)
-      setShowORLine((features.enable_social_oauth_login || features.sso_enforced_for_signin) && (features.enable_email_code_login || features.enable_email_password_login))
-      updateAuthType(features.enable_email_password_login ? 'password' : 'code')
+      const allFeatures = { ...defaultSystemFeatures, ...features }
+      console.log('🚀 ~ init ~ allFeatures:', allFeatures)
+      setSystemFeatures(allFeatures)
+      setAllMethodsAreDisabled(!allFeatures.enable_social_oauth_login && !allFeatures.enable_email_code_login && !allFeatures.enable_email_password_login && !allFeatures.sso_enforced_for_signin)
+      setShowORLine((allFeatures.enable_social_oauth_login || allFeatures.sso_enforced_for_signin) && (allFeatures.enable_email_code_login || allFeatures.enable_email_password_login))
+      updateAuthType(allFeatures.enable_email_password_login ? 'password' : 'code')
       if (isInviteLink) {
         const checkRes = await invitationCheck({
           url: '/activate/check',
@@ -63,7 +66,11 @@ const NormalForm = () => {
         setWorkSpaceName(checkRes?.data?.workspace_name || '')
       }
     }
-    catch (error) { console.error(error) }
+    catch (error) {
+      console.error(error)
+      setAllMethodsAreDisabled(true)
+      setSystemFeatures(defaultSystemFeatures)
+    }
     finally { setIsLoading(false) }
   }, [consoleToken, refreshToken, message, router, invite_token, isInviteLink, getNewAccessToken])
   useEffect(() => {
@@ -125,10 +132,21 @@ const NormalForm = () => {
               </>}
             </>
           }
-          {allMethodsAreDisabled && <div className="w-hull text-center block system-md-semibold text-text-secondary">
-            {t('login.noLoginMethod')}
-          </div>}
-          <div className="w-hull text-center block mt-2 system-xs-regular text-text-tertiary">
+          {allMethodsAreDisabled && <>
+            <div className="p-4 rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2">
+              <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-components-card-bg shadow shadows-shadow-lg mb-2'>
+                <RiDoorLockLine className='w-5 h-5' />
+              </div>
+              <p className='system-sm-medium text-text-primary'>{t('login.noLoginMethod')}</p>
+              <p className='system-xs-regular text-text-tertiary mt-1'>{t('login.noLoginMethodTip')}</p>
+            </div>
+            <div className="relative my-2 py-2">
+              <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                <div className='bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px w-full'></div>
+              </div>
+            </div>
+          </>}
+          <div className="w-full block mt-2 system-xs-regular text-text-tertiary">
             {t('login.tosDesc')}
             &nbsp;
             <Link
@@ -143,8 +161,7 @@ const NormalForm = () => {
               href='https://dify.ai/privacy'
             >{t('login.pp')}</Link>
           </div>
-
-          {IS_CE_EDITION && <div className="w-hull text-center block mt-2 system-xs-regular text-text-tertiary">
+          {IS_CE_EDITION && <div className="w-hull block mt-2 system-xs-regular text-text-tertiary">
             {t('login.goToInit')}
             &nbsp;
             <Link

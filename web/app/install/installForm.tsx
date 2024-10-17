@@ -153,7 +153,7 @@ const InstallForm = () => {
                 </Button>
               </div>
             </form>
-            <div className="block w-hull mt-2 text-xs text-gray-600">
+            <div className="block w-full mt-2 text-xs text-gray-600">
               {t('login.license.tip')}
               &nbsp;
               <Link
