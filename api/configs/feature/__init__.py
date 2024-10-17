@@ -670,6 +670,9 @@ class LoginConfig(BaseSettings):
         default=False,
     )
 
+    class Config:
+        frozen = False
+
 
 class FeatureConfig(
     # place the configs in alphabet order
