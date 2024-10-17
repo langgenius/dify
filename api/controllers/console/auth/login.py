@@ -15,7 +15,12 @@ from controllers.console.auth.error import (
     InvalidEmailError,
     InvalidTokenError,
 )
-from controllers.console.error import EmailSendIpLimitError, NotAllowedCreateWorkspace, NotAllowedRegister
+from controllers.console.error import (
+    AccountBannedOrClosedError,
+    EmailSendIpLimitError,
+    NotAllowedCreateWorkspace,
+    NotAllowedRegister,
+)
 from controllers.console.setup import setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
@@ -62,7 +67,7 @@ class LoginApi(Resource):
             else:
                 account = AccountService.authenticate(args["email"], args["password"])
         except services.errors.account.AccountLoginError:
-            raise NotAllowedRegister()
+            raise AccountBannedOrClosedError()
         except services.errors.account.AccountPasswordError:
             AccountService.add_login_error_rate_limit(args["email"])
             raise EmailOrPasswordMismatchError()

@@ -46,9 +46,15 @@ class NotAllowedCreateWorkspace(BaseHTTPException):
     code = 400
 
 
+class AccountBannedOrClosedError(BaseHTTPException):
+    error_code = "account_banned_or_closed"
+    description = "Account is banned or closed."
+    code = 400
+
+
 class NotAllowedRegister(BaseHTTPException):
     error_code = "unauthorized"
-    description = "Account not found."
+    description = "account_not_found"
     code = 400
 
 
