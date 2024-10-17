@@ -20,3 +20,4 @@ credentials_for_provider:
     placeholder:
       en_US: Please input your ComfyUI server's Base URL
       zh_Hans: 请输入你的 ComfyUI 服务器的 Base URL
+    url: https://docs.dify.ai/guides/tools/tool-configuration/comfyui

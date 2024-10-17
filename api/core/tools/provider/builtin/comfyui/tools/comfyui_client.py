@@ -17,19 +17,17 @@ class ComfyUiClient:
         return history
 
     def get_image(self, filename: str, subfolder: str, folder_type: str):
-        response = httpx.get(str(self.base_url / "view"),
-                             params={"filename": filename, "subfolder": subfolder, "type": folder_type},
-                             )
+        response = httpx.get(
+            str(self.base_url / "view"),
+            params={"filename": filename, "subfolder": subfolder, "type": folder_type},
+        )
         return response.content
 
     def upload_image(self, input_path: str, name: str, image_type: str = "input", overwrite: bool = False):
         # plan to support img2img in dify 0.10.0
-        with open(input_path, 'rb') as file:
-            files = {'image': (name, file, 'image/png')}
-            data = {
-                'type': image_type,
-                'overwrite': str(overwrite).lower()
-            }
+        with open(input_path, "rb") as file:
+            files = {"image": (name, file, "image/png")}
+            data = {"type": image_type, "overwrite": str(overwrite).lower()}
 
         res = httpx.post(str(self.base_url / "upload/image"), data=data, files=files)
         return res
@@ -46,20 +44,20 @@ class ComfyUiClient:
         ws.connect(ws_address)
         return ws, client_id
 
-    def set_prompt(self, origin_prompt: dict, positive_prompt: str, negative_prompt: str = ''):
+    def set_prompt(self, origin_prompt: dict, positive_prompt: str, negative_prompt: str = ""):
         """
         find the first KSampler, then can find the prompt node through it.
         """
         prompt = origin_prompt.copy()
-        id_to_class_type = {id: details['class_type'] for id, details in prompt.items()}
-        k_sampler = [key for key, value in id_to_class_type.items() if value == 'KSampler'][0]
-        prompt.get(k_sampler)['inputs']['seed'] = random.randint(10 ** 14, 10 ** 15 - 1)
-        postive_input_id = prompt.get(k_sampler)['inputs']['positive'][0]
-        prompt.get(postive_input_id)['inputs']['text'] = positive_prompt
+        id_to_class_type = {id: details["class_type"] for id, details in prompt.items()}
+        k_sampler = [key for key, value in id_to_class_type.items() if value == "KSampler"][0]
+        prompt.get(k_sampler)["inputs"]["seed"] = random.randint(10**14, 10**15 - 1)
+        positive_input_id = prompt.get(k_sampler)["inputs"]["positive"][0]
+        prompt.get(positive_input_id)["inputs"]["text"] = positive_prompt
 
-        if negative_prompt != '':
-            negative_input_id = prompt.get(k_sampler)['inputs']['negative'][0]
-            prompt.get(negative_input_id)['inputs']['text'] = negative_prompt
+        if negative_prompt != "":
+            negative_input_id = prompt.get(k_sampler)["inputs"]["negative"][0]
+            prompt.get(negative_input_id)["inputs"]["text"] = negative_prompt
         return prompt
 
     def track_progress(self, prompt: dict, ws: WebSocket, prompt_id: str):
@@ -70,23 +68,23 @@ class ComfyUiClient:
             out = ws.recv()
             if isinstance(out, str):
                 message = json.loads(out)
-                if message['type'] == 'progress':
-                    data = message['data']
-                    current_step = data['value']
-                    print('In K-Sampler -> Step: ', current_step, ' of: ', data['max'])
-                if message['type'] == 'execution_cached':
-                    data = message['data']
-                    for itm in data['nodes']:
+                if message["type"] == "progress":
+                    data = message["data"]
+                    current_step = data["value"]
+                    print("In K-Sampler -> Step: ", current_step, " of: ", data["max"])
+                if message["type"] == "execution_cached":
+                    data = message["data"]
+                    for itm in data["nodes"]:
                         if itm not in finished_nodes:
                             finished_nodes.append(itm)
-                            print('Progess: ', len(finished_nodes), '/', len(node_ids), ' Tasks done')
-                if message['type'] == 'executing':
-                    data = message['data']
-                    if data['node'] not in finished_nodes:
-                        finished_nodes.append(data['node'])
-                        print('Progess: ', len(finished_nodes), '/', len(node_ids), ' Tasks done')
+                            print("Progress: ", len(finished_nodes), "/", len(node_ids), " Tasks done")
+                if message["type"] == "executing":
+                    data = message["data"]
+                    if data["node"] not in finished_nodes:
+                        finished_nodes.append(data["node"])
+                        print("Progress: ", len(finished_nodes), "/", len(node_ids), " Tasks done")
 
-                    if data['node'] is None and data['prompt_id'] == prompt_id:
+                    if data["node"] is None and data["prompt_id"] == prompt_id:
                         break  # Execution is done
             else:
                 continue
@@ -98,9 +96,9 @@ class ComfyUiClient:
             self.track_progress(prompt, ws, prompt_id)
             history = self.get_history(prompt_id)
             images = []
-            for output in history['outputs'].values():
-                for img in output.get('images', []):
-                    image_data = self.get_image(img['filename'], img['subfolder'], img['type'])
+            for output in history["outputs"].values():
+                for img in output.get("images", []):
+                    image_data = self.get_image(img["filename"], img["subfolder"], img["type"])
                     images.append(image_data)
             return images
         finally:
