@@ -27,7 +27,7 @@ from core.prompt.simple_prompt_transform import ModelMode, SimplePromptTransform
 from models.model import App, AppMode, Message, MessageAnnotation
 
 if TYPE_CHECKING:
-    from core.file.file_obj import FileVar
+    from core.file.models import File
 
 
 class AppRunner:
@@ -37,7 +37,7 @@ class AppRunner:
         model_config: ModelConfigWithCredentialsEntity,
         prompt_template_entity: PromptTemplateEntity,
         inputs: dict[str, str],
-        files: list["FileVar"],
+        files: list["File"],
         query: Optional[str] = None,
     ) -> int:
         """
@@ -137,7 +137,7 @@ class AppRunner:
         model_config: ModelConfigWithCredentialsEntity,
         prompt_template_entity: PromptTemplateEntity,
         inputs: dict[str, str],
-        files: list["FileVar"],
+        files: list["File"],
         query: Optional[str] = None,
         context: Optional[str] = None,
         memory: Optional[TokenBufferMemory] = None,

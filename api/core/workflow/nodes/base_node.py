@@ -1,17 +1,24 @@
-from abc import ABC, abstractmethod
+import logging
+from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional
+from typing import Any, Generic, Optional, TypeVar, cast
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.event import RunCompletedEvent, RunEvent
+from enums import NodeType
+from models.workflow import WorkflowNodeExecutionStatus
+
+logger = logging.getLogger(__name__)
+
+GenericNodeData = TypeVar("GenericNodeData", bound=BaseNodeData)
 
 
-class BaseNode(ABC):
+class BaseNode(Generic[GenericNodeData]):
     _node_data_cls: type[BaseNodeData]
     _node_type: NodeType
 
@@ -45,7 +52,7 @@ class BaseNode(ABC):
             raise ValueError("Node ID is required.")
 
         self.node_id = node_id
-        self.node_data = self._node_data_cls(**config.get("data", {}))
+        self.node_data: GenericNodeData = cast(GenericNodeData, self._node_data_cls(**config.get("data", {})))
 
     @abstractmethod
     def _run(self) -> NodeRunResult | Generator[RunEvent | InNodeEvent, None, None]:
@@ -56,11 +63,14 @@ class BaseNode(ABC):
         raise NotImplementedError
 
     def run(self) -> Generator[RunEvent | InNodeEvent, None, None]:
-        """
-        Run node entry
-        :return:
-        """
-        result = self._run()
+        try:
+            result = self._run()
+        except Exception as e:
+            logger.error(f"Node {self.node_id} failed to run: {e}")
+            result = NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=str(e),
+            )
 
         if isinstance(result, NodeRunResult):
             yield RunCompletedEvent(run_result=result)
@@ -69,7 +79,10 @@ class BaseNode(ABC):
 
     @classmethod
     def extract_variable_selector_to_variable_mapping(
-        cls, graph_config: Mapping[str, Any], config: dict
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        config: Mapping[str, Any],
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -83,12 +96,16 @@ class BaseNode(ABC):
 
         node_data = cls._node_data_cls(**config.get("data", {}))
         return cls._extract_variable_selector_to_variable_mapping(
-            graph_config=graph_config, node_id=node_id, node_data=node_data
+            graph_config=graph_config, node_id=node_id, node_data=cast(GenericNodeData, node_data)
         )
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, graph_config: Mapping[str, Any], node_id: str, node_data: BaseNodeData
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: GenericNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping

@@ -1,3 +1,4 @@
+from enums import WorkflowRunTriggeredFrom
 from extensions.ext_database import db
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.model import App
@@ -5,7 +6,6 @@ from models.workflow import (
     WorkflowNodeExecution,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
-    WorkflowRunTriggeredFrom,
 )
 
 

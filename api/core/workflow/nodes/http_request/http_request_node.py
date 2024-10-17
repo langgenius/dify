@@ -2,19 +2,21 @@ import logging
 from collections.abc import Mapping, Sequence
 from mimetypes import guess_extension
 from os import path
-from typing import Any, cast
+from typing import Any
 
 from configs import dify_config
-from core.app.segments import parser
-from core.file.file_obj import FileTransferMethod, FileType, FileVar
+from core.file import File, FileTransferMethod, FileType
 from core.tools.tool_file_manager import ToolFileManager
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.http_request.entities import (
     HttpRequestNodeData,
     HttpRequestNodeTimeout,
 )
 from core.workflow.nodes.http_request.http_executor import HttpExecutor, HttpExecutorResponse
+from core.workflow.utils import variable_template_parser
+from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeTimeout(
@@ -23,8 +25,10 @@ HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeTimeout(
     write=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
 )
 
+logger = logging.getLogger(__name__)
 
-class HttpRequestNode(BaseNode):
+
+class HttpRequestNode(BaseNode[HttpRequestNodeData]):
     _node_data_cls = HttpRequestNodeData
     _node_type = NodeType.HTTP_REQUEST
 
@@ -48,50 +52,36 @@ class HttpRequestNode(BaseNode):
         }
 
     def _run(self) -> NodeRunResult:
-        node_data: HttpRequestNodeData = cast(HttpRequestNodeData, self.node_data)
-        # TODO: Switch to use segment directly
-        if node_data.authorization.config and node_data.authorization.config.api_key:
-            node_data.authorization.config.api_key = parser.convert_template(
-                template=node_data.authorization.config.api_key, variable_pool=self.graph_runtime_state.variable_pool
-            ).text
-
-        # init http executor
-        http_executor = None
+        process_data = {}
         try:
             http_executor = HttpExecutor(
-                node_data=node_data,
-                timeout=self._get_request_timeout(node_data),
+                node_data=self.node_data,
+                timeout=self._get_request_timeout(self.node_data),
                 variable_pool=self.graph_runtime_state.variable_pool,
             )
+            process_data["request"] = http_executor.to_log()
 
-            # invoke http executor
             response = http_executor.invoke()
+            files = self.extract_files(url=http_executor.url, response=response)
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                outputs={
+                    "status_code": response.status_code,
+                    "body": response.text if not files else "",
+                    "headers": response.headers,
+                    "files": files,
+                },
+                process_data={
+                    "request": http_executor.to_log(),
+                },
+            )
         except Exception as e:
-            process_data = {}
-            if http_executor:
-                process_data = {
-                    "request": http_executor.to_raw_request(),
-                }
+            logger.warning(f"http request node {self.node_id} failed to run: {e}")
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e),
                 process_data=process_data,
             )
-
-        files = self.extract_files(http_executor.server_url, response)
-
-        return NodeRunResult(
-            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            outputs={
-                "status_code": response.status_code,
-                "body": response.content if not files else "",
-                "headers": response.headers,
-                "files": files,
-            },
-            process_data={
-                "request": http_executor.to_raw_request(),
-            },
-        )
 
     @staticmethod
     def _get_request_timeout(node_data: HttpRequestNodeData) -> HttpRequestNodeTimeout:
@@ -106,59 +96,76 @@ class HttpRequestNode(BaseNode):
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, graph_config: Mapping[str, Any], node_id: str, node_data: HttpRequestNodeData
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: HttpRequestNodeData,
     ) -> Mapping[str, Sequence[str]]:
-        """
-        Extract variable selector to variable mapping
-        :param graph_config: graph config
-        :param node_id: node id
-        :param node_data: node data
-        :return:
-        """
-        try:
-            http_executor = HttpExecutor(node_data=node_data, timeout=HTTP_REQUEST_DEFAULT_TIMEOUT)
+        selectors: list[VariableSelector] = []
+        selectors += variable_template_parser.extract_selectors_from_template(node_data.headers)
+        selectors += variable_template_parser.extract_selectors_from_template(node_data.params)
+        if node_data.body:
+            body_type = node_data.body.type
+            data = node_data.body.data
+            match body_type:
+                case "binary":
+                    selector = data[0].file
+                    selectors.append(VariableSelector(variable="#" + ".".join(selector) + "#", value_selector=selector))
+                case "json" | "raw-text":
+                    selectors += variable_template_parser.extract_selectors_from_template(data[0].key)
+                    selectors += variable_template_parser.extract_selectors_from_template(data[0].value)
+                case "x-www-form-urlencoded":
+                    for item in data:
+                        selectors += variable_template_parser.extract_selectors_from_template(item.key)
+                        selectors += variable_template_parser.extract_selectors_from_template(item.value)
+                case "form-data":
+                    for item in data:
+                        selectors += variable_template_parser.extract_selectors_from_template(item.key)
+                        if item.type == "text":
+                            selectors += variable_template_parser.extract_selectors_from_template(item.value)
+                        elif item.type == "file":
+                            selectors.append(
+                                VariableSelector(variable="#" + ".".join(item.file) + "#", value_selector=item.file)
+                            )
 
-            variable_selectors = http_executor.variable_selectors
+        mapping = {}
+        for selector in selectors:
+            mapping[node_id + "." + selector.variable] = selector.value_selector
 
-            variable_mapping = {}
-            for variable_selector in variable_selectors:
-                variable_mapping[node_id + "." + variable_selector.variable] = variable_selector.value_selector
+        return mapping
 
-            return variable_mapping
-        except Exception as e:
-            logging.exception(f"Failed to extract variable selector to variable mapping: {e}")
-            return {}
-
-    def extract_files(self, url: str, response: HttpExecutorResponse) -> list[FileVar]:
+    def extract_files(self, url: str, response: HttpExecutorResponse) -> list[File]:
         """
         Extract files from response
         """
         files = []
-        mimetype, file_binary = response.extract_file()
+        content_type = response.content_type
+        content = response.content
 
-        if mimetype:
+        if content_type:
             # extract filename from url
             filename = path.basename(url)
             # extract extension if possible
-            extension = guess_extension(mimetype) or ".bin"
+            extension = guess_extension(content_type) or ".bin"
 
             tool_file = ToolFileManager.create_file_by_raw(
                 user_id=self.user_id,
                 tenant_id=self.tenant_id,
                 conversation_id=None,
-                file_binary=file_binary,
-                mimetype=mimetype,
+                file_binary=content,
+                mimetype=content_type,
             )
 
             files.append(
-                FileVar(
+                File(
                     tenant_id=self.tenant_id,
                     type=FileType.IMAGE,
                     transfer_method=FileTransferMethod.TOOL_FILE,
                     related_id=tool_file.id,
                     filename=filename,
                     extension=extension,
-                    mime_type=mimetype,
+                    mime_type=content_type,
                 )
             )
 

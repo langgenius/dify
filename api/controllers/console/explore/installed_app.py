@@ -11,7 +11,7 @@ from controllers.console.wraps import account_initialization_required, cloud_edi
 from extensions.ext_database import db
 from fields.installed_app_fields import installed_app_list_fields
 from libs.login import login_required
-from models.model import App, InstalledApp, RecommendedApp
+from models import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
 
 

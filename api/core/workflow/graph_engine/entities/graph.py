@@ -4,12 +4,12 @@ from typing import Any, Optional, cast
 
 from pydantic import BaseModel, Field
 
-from core.workflow.entities.node_entities import NodeType
 from core.workflow.graph_engine.entities.run_condition import RunCondition
 from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
 from core.workflow.nodes.answer.entities import AnswerStreamGenerateRoute
 from core.workflow.nodes.end.end_stream_generate_router import EndStreamGeneratorRouter
 from core.workflow.nodes.end.entities import EndStreamParam
+from enums import NodeType
 
 
 class GraphEdge(BaseModel):
