@@ -1,6 +1,6 @@
 import datetime
 import urllib.parse
-from typing import Optional
+from typing import Any, Optional
 
 import httpx
 import requests
@@ -275,7 +275,7 @@ class NotionOAuth(OAuthDataSource):
         return results
 
 
-def transform_nodes(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def transform_nodes(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     level = []
     for node in nodes:
         obj_type = node.get("obj_type")
@@ -315,7 +315,10 @@ class FeishuWiki:
         }
         if require_token:
             headers["tenant-access-token"] = f"{self.tenant_access_token}"
-        res = httpx.request(method=method, url=url, headers=headers, json=payload, params=params, timeout=30).json()
+        else:
+            headers["app_id"] = f"{self.app_id}"
+            headers["app_secret"] = f"{self.app_secret}"
+        res = httpx.request(method=method, url=url, headers=headers, json=payload, params=params, timeout=60).json()
         if res.get("code") != 0:
             raise Exception(res)
         return res
@@ -336,24 +339,22 @@ class FeishuWiki:
         return res
 
     def get_all_feishu_wiki_spaces(self, page_size: int = 50):
-        url = f"{self.API_BASE_URL}/open-apis/wiki/v2/spaces"
+        url = f"{self.API_BASE_URL}/wiki/v2/spaces"
         all_spaces = []
         page_token = ""
         while True:
-            params = {
-                "page_size": page_size,
-                "page_token": page_token,
-                "lang": "en"
-            }
-            res = self._send_request(url, params=params)
-            all_spaces.extend(res.get('data', []))
+            params = {"page_size": page_size, "page_token": page_token, "lang": "en"}
+            res = self._send_request(url, method="GET", params=params)
+            all_spaces.extend(res.get("data", []))
             page_token = res.get("page_token", "")
             if not page_token:
                 break
         return all_spaces
 
-    def get_all_feishu_wiki_space_nodes(self, space_id: str, parent_node_token: str = "", page_size: int = 50) -> List[Dict[str, Any]]:
-        url = f"{self.API_BASE_URL}/open-apis/wiki/v2/spaces/{space_id}/nodes"
+    def get_all_feishu_wiki_space_nodes(
+            self, space_id: str, parent_node_token: str = "", page_size: int = 50
+    ) -> list[dict[str, Any]]:
+        url = f"{self.API_BASE_URL}/wiki/v2/spaces/{space_id}/nodes"
         all_nodes = []
         queue = deque([parent_node_token])
         while queue:
@@ -366,7 +367,7 @@ class FeishuWiki:
                     "page_size": page_size,
                     "parent_node_token": current_parent_token,
                 }
-                res = self._send_request(url, params=params)
+                res = self._send_request(url, method="GET", params=params)
                 data = res.get("data", {})
                 items = data.get("items", [])
                 all_nodes.extend(items)
@@ -381,6 +382,27 @@ class FeishuWiki:
                     queue.append(item.get("node_token"))
 
         return all_nodes
+
+    def get_feishu_wiki_node_last_edited_time(self):
+        url = f"{self.API_BASE_URL}/wiki/v2/spaces/get_node"
+        params = {
+            "token": self._feishu_obj_token,
+            "obj_type": self._feishu_obj_type,
+        }
+        res = self._send_request(url, method="GET", params=params)
+        data = res.get("data", [])
+        node = data.get("node", {})
+        if node:
+            return node.get("last_edited_time", "")
+        return ""
+
+    def get_document_markdown_content(self, document_id: str):
+        params = {
+            "document_id": document_id,
+        }
+        url = f"https://lark-plugin-api.solutionsuite.cn/lark-plugin/document/get_document_content"
+        res = self._send_request(url, method="GET", params=params)
+        return res.get("data", {}).get("content")
 
     def save_feishu_wiki_data_source(self):
         workspace_name = self.app_id
