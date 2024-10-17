@@ -16,7 +16,7 @@ class ToolFilePreviewApi(Resource):
         parser.add_argument("timestamp", type=str, required=True, location="args")
         parser.add_argument("nonce", type=str, required=True, location="args")
         parser.add_argument("sign", type=str, required=True, location="args")
-        parser.add_argument("as_attachment", type=bool, defaule=False, required=False, location="args")
+        parser.add_argument("as_attachment", type=bool, default=False, required=False, location="args")
 
         args = parser.parse_args()
 
