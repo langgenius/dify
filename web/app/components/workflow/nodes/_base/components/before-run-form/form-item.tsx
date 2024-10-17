@@ -164,6 +164,8 @@ const FormItem: FC<Props> = ({
             onChange={(files) => {
               if (files.length)
                 onChange(files[0])
+              else
+                onChange(null)
             }}
             fileConfig={{
               allowed_file_types: inStepRun ? [SupportUploadFileTypes.custom] : payload.allowed_file_types,

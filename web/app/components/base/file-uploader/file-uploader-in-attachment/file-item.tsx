@@ -1,4 +1,7 @@
-import { memo } from 'react'
+import {
+  memo,
+  useMemo,
+} from 'react'
 import {
   RiDeleteBinLine,
   RiDownloadLine,
@@ -35,6 +38,14 @@ const FileInAttachmentItem = ({
   const { id, name, type, progress, supportFileType, base64Url, url } = file
   const ext = getFileExtension(name, type)
   const isImageFile = supportFileType === SupportUploadFileTypes.image
+  const nameArr = useMemo(() => {
+    const nameMatch = name.match(/(.+)\.([^.]+)$/)
+
+    if (nameMatch)
+      return [nameMatch[1], nameMatch[2]]
+
+    return [name, '']
+  }, [name])
 
   return (
     <div className={cn(
@@ -59,12 +70,17 @@ const FileInAttachmentItem = ({
           )
         }
       </div>
-      <div className='grow w-0'>
+      <div className='grow w-0 mr-1'>
         <div
-          className='mb-0.5 system-xs-medium text-text-secondary truncate'
+          className='flex items-center mb-0.5 system-xs-medium text-text-secondary truncate'
           title={file.name}
         >
-          {file.name}
+          <div className='truncate'>{nameArr[0]}</div>
+          {
+            nameArr[1] && (
+              <span>.{nameArr[1]}</span>
+            )
+          }
         </div>
         <div className='flex items-center system-2xs-medium-uppercase text-text-tertiary'>
           {

@@ -54,7 +54,10 @@ const FileItem = ({
           </Button>
         )
       }
-      <div className='mb-1 h-8 line-clamp-2 system-xs-medium text-text-tertiary'>
+      <div
+        className='mb-1 h-8 line-clamp-2 system-xs-medium text-text-tertiary break-all'
+        title={name}
+      >
         {name}
       </div>
       <div className='relative flex items-center justify-between'>
