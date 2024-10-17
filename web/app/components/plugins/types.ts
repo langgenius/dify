@@ -43,7 +43,7 @@ export type PluginDeclaration = {
   name: string
   category: PluginType
   label: Record<Locale, string>
-  brief: Record<Locale, string>
+  description: Record<Locale, string>
   created_at: string
   resource: any // useless in frontend
   plugins: any // useless in frontend

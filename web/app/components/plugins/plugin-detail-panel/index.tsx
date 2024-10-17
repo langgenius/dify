@@ -11,7 +11,7 @@ import {
 } from '@remixicon/react'
 import type { PluginDetail } from '../types'
 import { PluginSource } from '../types'
-// import Description from '../card/base/description'
+import Description from '../card/base/description'
 import Icon from '../card/base/card-icon'
 import Title from '../card/base/title'
 import OrgInfo from '../card/base/org-info'
@@ -122,8 +122,7 @@ const PluginDetailPanel: FC<Props> = ({
                 </ActionButton>
               </div>
             </div>
-            {/* category === extension TODO */}
-            {/* <Description className='mt-3' text={pluginDetail.declaration.brief[locale]} descriptionLineRows={2}></Description> */}
+            <Description className='mt-3' text={pluginDetail.declaration.description[locale]} descriptionLineRows={2}></Description>
           </div>
           <div className='grow overflow-y-auto'>
             <ActionList />

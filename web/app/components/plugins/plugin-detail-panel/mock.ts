@@ -17,7 +17,7 @@ export const toolNotion = {
       'en-US': 'Notion Page Search',
       'zh-Hans': 'Notion 页面搜索',
     },
-    brief: {
+    description: {
       'en-US': 'Description: Search Notion pages and open visited ones faster. No admin access required.More and more info...More and more info...More and more info...',
       'zh-Hans': '搜索 Notion 页面并更快地打开已访问的页面。无需管理员访问权限。More and more info...More and more info...More and more info...',
     },
