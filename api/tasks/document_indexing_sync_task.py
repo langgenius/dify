@@ -71,7 +71,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         loader = FeishuWikiExtractor(
             feishu_workspace_id=workspace_id, obj_token=obj_token, obj_type=obj_type, tenant_id=document.tenant_id
         )
-        last_edited_time = loader.feishuwiki().get_feishu_wiki_node_last_edited_time()
+        last_edited_time = loader.feishuwiki().get_feishu_wiki_node_last_edited_time(obj_token, obj_type)
 
     # check the page is updated
     if last_edited_time != page_edited_time:

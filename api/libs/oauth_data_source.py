@@ -1,5 +1,7 @@
 import datetime
+import logging
 import urllib.parse
+from collections import deque
 from typing import Any, Optional
 
 import httpx
@@ -295,7 +297,7 @@ def transform_nodes(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 
 class FeishuWiki:
-    API_BASE_URL = "https://open.larkoffice.com/open-apis"
+    API_BASE_URL = "https://open.feishu.cn/open-apis"
 
     def __init__(self, app_id: str, app_secret: str):
         self.app_id = app_id
@@ -314,10 +316,10 @@ class FeishuWiki:
             "user-agent": "Dify",
         }
         if require_token:
-            headers["tenant-access-token"] = f"{self.tenant_access_token}"
+            headers["Authorization"] = f"Bearer {self.tenant_access_token}"
         else:
-            headers["app_id"] = f"{self.app_id}"
-            headers["app_secret"] = f"{self.app_secret}"
+            headers["appid"] = f"{self.app_id}"
+            headers["appsecret"] = f"{self.app_secret}"
         res = httpx.request(method=method, url=url, headers=headers, json=payload, params=params, timeout=60).json()
         if res.get("code") != 0:
             raise Exception(res)
@@ -325,18 +327,18 @@ class FeishuWiki:
 
     @property
     def tenant_access_token(self):
-        feishu_tenant_access_token = f"tools:{self.app_id}:feishu_tenant_access_token"
-        if redis_client.exists(feishu_tenant_access_token):
-            return redis_client.get(feishu_tenant_access_token).decode()
-        res = self.get_tenant_access_token(self.app_id, self.app_secret)
-        redis_client.setex(feishu_tenant_access_token, res.get("expire"), res.get("tenant_access_token"))
-        return res.get("tenant_access_token")
+        redis_key = f"datasource:{self.app_id}:tenant_access_token"
+        token = redis_client.get(redis_key)
+        if token:
+            return token.decode()
+        resp = self.fetch_tenant_access_token(self.app_id, self.app_secret)
+        redis_client.setex(redis_key, resp["expire"], resp["tenant_access_token"])
+        return resp["tenant_access_token"]
 
-    def get_tenant_access_token(self, app_id: str, app_secret: str) -> dict:
+    def fetch_tenant_access_token(self, app_id: str, app_secret: str) -> dict:
         url = f"{self.API_BASE_URL}/auth/v3/tenant_access_token/internal"
         payload = {"app_id": app_id, "app_secret": app_secret}
-        res = self._send_request(url, require_token=False, payload=payload)
-        return res
+        return self._send_request(url, require_token=False, payload=payload)
 
     def get_all_feishu_wiki_spaces(self, page_size: int = 50):
         url = f"{self.API_BASE_URL}/wiki/v2/spaces"
@@ -345,7 +347,7 @@ class FeishuWiki:
         while True:
             params = {"page_size": page_size, "page_token": page_token, "lang": "en"}
             res = self._send_request(url, method="GET", params=params)
-            all_spaces.extend(res.get("data", []))
+            all_spaces.extend(res.get("data", {}).get("items", []))
             page_token = res.get("page_token", "")
             if not page_token:
                 break
@@ -383,11 +385,11 @@ class FeishuWiki:
 
         return all_nodes
 
-    def get_feishu_wiki_node_last_edited_time(self):
+    def get_feishu_wiki_node_last_edited_time(self, token: str, obj_type: str) -> str:
         url = f"{self.API_BASE_URL}/wiki/v2/spaces/get_node"
         params = {
-            "token": self._feishu_obj_token,
-            "obj_type": self._feishu_obj_type,
+            "token": token,
+            "obj_type": obj_type,
         }
         res = self._send_request(url, method="GET", params=params)
         data = res.get("data", [])
@@ -401,7 +403,7 @@ class FeishuWiki:
             "document_id": document_id,
         }
         url = "https://lark-plugin-api.solutionsuite.cn/lark-plugin/document/get_document_content"
-        res = self._send_request(url, method="GET", params=params)
+        res = self._send_request(url, method="GET", require_token=False, params=params)
         return res.get("data", {}).get("content")
 
     def save_feishu_wiki_data_source(self):
@@ -411,13 +413,15 @@ class FeishuWiki:
 
         spaces = self.get_all_feishu_wiki_spaces()
         pages = []
-
+        logging.info(f"Attempting to retrieve tenant access token for app_id: {spaces}")
         for space in spaces:
+            logging.info(f"Attempting to retrieve tenant access token for app_id: {space}")
+
             space_type = space["space_type"]
             if space_type == "team":
                 space_id = space["space_id"]
                 all_nodes = self.get_all_feishu_wiki_space_nodes(space_id)
-                nodes = self.transform_nodes(all_nodes)
+                nodes = transform_nodes(all_nodes)
                 pages.extend(nodes)
 
         source_info = {
@@ -438,6 +442,7 @@ class FeishuWiki:
         if data_source_binding:
             data_source_binding.source_info = source_info
             data_source_binding.disabled = False
+            data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
         else:
             new_data_source_binding = DataSourceOauthBinding(
@@ -471,7 +476,7 @@ class FeishuWiki:
                 if space_type == "team":
                     space_id = space["space_id"]
                     all_nodes = self.get_all_feishu_wiki_space_nodes(space_id)
-                    nodes = self.transform_nodes(all_nodes)
+                    nodes = transform_nodes(all_nodes)
                     pages.extend(nodes)
 
             source_info = {
@@ -484,6 +489,7 @@ class FeishuWiki:
 
             data_source_binding.source_info = source_info
             data_source_binding.disabled = False
+            data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             db.session.commit()
         else:
             raise ValueError("Data source binding not found")

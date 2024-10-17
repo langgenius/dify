@@ -39,7 +39,9 @@ class FeishuWikiExtractor(BaseExtractor):
     def update_last_edited_time(self, document_model: DocumentModel):
         if not document_model:
             return
-        last_edited_time = self.feishuwiki().get_feishu_wiki_node_last_edited_time()
+        last_edited_time = self.feishuwiki().get_feishu_wiki_node_last_edited_time(
+            self._feishu_obj_token, self._feishu_obj_type
+        )
 
         data_source_info = document_model.data_source_info_dict
         data_source_info["last_edited_time"] = last_edited_time
