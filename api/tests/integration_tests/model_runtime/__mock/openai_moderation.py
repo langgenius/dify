@@ -41,6 +41,8 @@ class MockModerationClass:
                     "sexual/minors": False,
                     "violence": False,
                     "violence/graphic": False,
+                    "illicit": False,
+                    "illicit/violent": False,
                 }
                 moderation_categories_scores = {
                     "harassment": 1.0,
@@ -54,13 +56,30 @@ class MockModerationClass:
                     "sexual/minors": 1.0,
                     "violence": 1.0,
                     "violence/graphic": 1.0,
+                    "illicit": 1.0,
+                    "illicit/violent": 1.0,
                 }
-
+                category_applied_input_types = {
+                    "sexual": ["text", "image"],
+                    "hate": ["text"],
+                    "harassment": ["text"],
+                    "self-harm": ["text", "image"],
+                    "sexual/minors": ["text"],
+                    "hate/threatening": ["text"],
+                    "violence/graphic": ["text", "image"],
+                    "self-harm/intent": ["text", "image"],
+                    "self-harm/instructions": ["text", "image"],
+                    "harassment/threatening": ["text"],
+                    "violence": ["text", "image"],
+                    "illicit": ["text"],
+                    "illicit/violent": ["text"],
+                }
                 result.append(
                     Moderation(
                         flagged=True,
                         categories=Categories(**moderation_categories),
                         category_scores=CategoryScores(**moderation_categories_scores),
+                        category_applied_input_types=category_applied_input_types,
                     )
                 )
             else:
@@ -76,6 +95,8 @@ class MockModerationClass:
                     "sexual/minors": False,
                     "violence": False,
                     "violence/graphic": False,
+                    "illicit": False,
+                    "illicit/violent": False,
                 }
                 moderation_categories_scores = {
                     "harassment": 0.0,
@@ -89,12 +110,30 @@ class MockModerationClass:
                     "sexual/minors": 0.0,
                     "violence": 0.0,
                     "violence/graphic": 0.0,
+                    "illicit": 0.0,
+                    "illicit/violent": 0.0,
+                }
+                category_applied_input_types = {
+                    "sexual": ["text", "image"],
+                    "hate": ["text"],
+                    "harassment": ["text"],
+                    "self-harm": ["text", "image"],
+                    "sexual/minors": ["text"],
+                    "hate/threatening": ["text"],
+                    "violence/graphic": ["text", "image"],
+                    "self-harm/intent": ["text", "image"],
+                    "self-harm/instructions": ["text", "image"],
+                    "harassment/threatening": ["text"],
+                    "violence": ["text", "image"],
+                    "illicit": ["text"],
+                    "illicit/violent": ["text"],
                 }
                 result.append(
                     Moderation(
                         flagged=False,
                         categories=Categories(**moderation_categories),
                         category_scores=CategoryScores(**moderation_categories_scores),
+                        category_applied_input_types=category_applied_input_types,
                     )
                 )
 
