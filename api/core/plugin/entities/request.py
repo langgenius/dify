@@ -186,3 +186,12 @@ class RequestInvokeEncrypt(BaseModel):
     identity: str
     data: dict = Field(default_factory=dict)
     config: list[BasicProviderConfig] = Field(default_factory=list)
+
+
+class RequestInvokeSummary(BaseModel):
+    """
+    Request to summary
+    """
+
+    text: str
+    instruction: str

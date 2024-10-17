@@ -19,6 +19,7 @@ from core.plugin.entities.request import (
     RequestInvokeQuestionClassifierNode,
     RequestInvokeRerank,
     RequestInvokeSpeech2Text,
+    RequestInvokeSummary,
     RequestInvokeTextEmbedding,
     RequestInvokeTool,
     RequestInvokeTTS,
@@ -230,6 +231,24 @@ class PluginInvokeEncryptApi(Resource):
             return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
+class PluginInvokeSummaryApi(Resource):
+    @setup_required
+    @plugin_inner_api_only
+    @get_tenant
+    @plugin_data(payload_type=RequestInvokeSummary)
+    def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeSummary):
+        try:
+            return BaseBackwardsInvocationResponse(
+                data=PluginModelBackwardsInvocation.invoke_summary(
+                    user_id=user_id,
+                    tenant=tenant_model,
+                    payload=payload,
+                )
+            ).model_dump()
+        except Exception as e:
+            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
+
+
 api.add_resource(PluginInvokeLLMApi, "/invoke/llm")
 api.add_resource(PluginInvokeTextEmbeddingApi, "/invoke/text-embedding")
 api.add_resource(PluginInvokeRerankApi, "/invoke/rerank")
@@ -241,3 +260,4 @@ api.add_resource(PluginInvokeParameterExtractorNodeApi, "/invoke/parameter-extra
 api.add_resource(PluginInvokeQuestionClassifierNodeApi, "/invoke/question-classifier")
 api.add_resource(PluginInvokeAppApi, "/invoke/app")
 api.add_resource(PluginInvokeEncryptApi, "/invoke/encrypt")
+api.add_resource(PluginInvokeSummaryApi, "/invoke/summary")
