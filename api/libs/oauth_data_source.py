@@ -369,12 +369,12 @@ class FeishuWiki:
         self.app_secret = app_secret
 
     def _send_request(
-            self,
-            url: str,
-            method: str = "post",
-            require_token: bool = True,
-            payload: Optional[dict] = None,
-            params: Optional[dict] = None,
+        self,
+        url: str,
+        method: str = "post",
+        require_token: bool = True,
+        payload: Optional[dict] = None,
+        params: Optional[dict] = None,
     ):
         headers = {
             "Content-Type": "application/json",
@@ -420,7 +420,7 @@ class FeishuWiki:
         return all_spaces
 
     def get_all_feishu_wiki_space_nodes(
-            self, space_id: str, parent_node_token: str = "", page_size: int = 50
+        self, space_id: str, parent_node_token: str = "", page_size: int = 50
     ) -> list[dict[str, Any]]:
         url = f"{self.API_BASE_URL}/wiki/v2/spaces/{space_id}/nodes"
         all_nodes = []
