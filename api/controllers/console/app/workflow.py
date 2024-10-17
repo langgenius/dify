@@ -451,6 +451,25 @@ class ConvertToWorkflowApi(Resource):
         }
 
 
+class PublishedAllWorkflowApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    @marshal_with(workflow_fields)
+    def get(self, app_model: App):
+        """
+        Get published workflows
+        """
+
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        workflow_service = WorkflowService()
+        workflows = workflow_service.get_all_published_workflow(app_model=app_model)
+        return workflows
+
+
 api.add_resource(DraftWorkflowApi, "/apps/<uuid:app_id>/workflows/draft")
 api.add_resource(DraftWorkflowImportApi, "/apps/<uuid:app_id>/workflows/draft/import")
 api.add_resource(AdvancedChatDraftWorkflowRunApi, "/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
@@ -465,6 +484,7 @@ api.add_resource(
     WorkflowDraftRunIterationNodeApi, "/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run"
 )
 api.add_resource(PublishedWorkflowApi, "/apps/<uuid:app_id>/workflows/publish")
+api.add_resource(PublishedAllWorkflowApi, "/apps/<uuid:app_id>/workflows/publish/all")
 api.add_resource(DefaultBlockConfigsApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 api.add_resource(
     DefaultBlockConfigApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>"
