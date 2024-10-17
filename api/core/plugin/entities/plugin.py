@@ -76,6 +76,7 @@ class PluginDeclaration(BaseModel):
     created_at: datetime.datetime
     resource: PluginResourceRequirements
     plugins: Plugins
+    verified: bool = Field(default=False)
     tool: Optional[ToolProviderEntity] = None
     model: Optional[ProviderEntity] = None
     endpoint: Optional[EndpointProviderDeclaration] = None
