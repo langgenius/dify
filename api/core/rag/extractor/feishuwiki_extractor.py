@@ -11,12 +11,12 @@ from models.source import DataSourceOauthBinding
 
 class FeishuWikiExtractor(BaseExtractor):
     def __init__(
-            self,
-            feishu_workspace_id: str,
-            obj_token: str,
-            obj_type: str,
-            tenant_id: str,
-            document_model: Optional[DocumentModel] = None,
+        self,
+        feishu_workspace_id: str,
+        obj_token: str,
+        obj_type: str,
+        tenant_id: str,
+        document_model: Optional[DocumentModel] = None,
     ):
         self._tenant_id = tenant_id
         self._feishu_workspace_id = feishu_workspace_id
