@@ -65,7 +65,7 @@ class FeatureService:
     def get_system_features(cls) -> SystemFeatureModel:
         system_features = SystemFeatureModel()
 
-        cls.__fulfill_login_params_from_env(system_features)
+        cls._fulfill_login_params_from_env(system_features)
 
         if dify_config.ENTERPRISE_ENABLED:
             system_features.enable_web_sso_switch_component = True
