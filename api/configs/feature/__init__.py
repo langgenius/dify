@@ -364,8 +364,8 @@ class WorkflowConfig(BaseSettings):
     )
 
     MAX_VARIABLE_SIZE: PositiveInt = Field(
-        description="Maximum size in bytes for a single variable in workflows. Default to 200 KB.",
-        default=200 * 1024,
+        description="Maximum size in bytes for a single variable in workflows. Default to 5 KB.",
+        default=5 * 1024,
     )
 
 
