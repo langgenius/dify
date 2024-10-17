@@ -69,7 +69,6 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({ onClo
         <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap rounded-2xl bg-background-section-burn'>
           <Card
             className='w-full'
-            locale={locale}
             payload={status === 'uploading' ? { name: 'notion-sync' } as any : toolNotion as any}
             isLoading={status === 'uploading'}
             loadingFileName='notion-sync.difypkg'
@@ -85,7 +84,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({ onClo
           : (
             <>
               <Button variant='secondary' className='min-w-[72px]' onClick={onClose}>
-              Cancel
+                Cancel
               </Button>
               <Button
                 variant='primary'

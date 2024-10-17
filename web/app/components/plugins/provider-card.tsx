@@ -1,4 +1,6 @@
+'use client'
 import React from 'react'
+import { useContext } from 'use-context-selector'
 import type { FC } from 'react'
 import Link from 'next/link'
 import { RiArrowRightUpLine, RiVerifiedBadgeLine } from '@remixicon/react'
@@ -9,22 +11,21 @@ import Icon from './card/base/card-icon'
 import Title from './card/base/title'
 import DownloadCount from './card/base/download-count'
 import Button from '@/app/components/base/button'
-import type { Locale } from '@/i18n'
 import cn from '@/utils/classnames'
+import I18n from '@/context/i18n'
 
 type Props = {
   className?: string
-  locale: Locale // The component is used in both client and server side, so we can't get the locale from both side(getLocaleOnServer and useContext)
   payload: Plugin
   installed?: boolean
 }
 
 const ProviderCard: FC<Props> = ({
   className,
-  locale,
   payload,
   installed = true,
 }) => {
+  const { locale } = useContext(I18n)
   const { org, label } = payload
 
   return (

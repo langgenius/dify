@@ -1,7 +1,6 @@
 'use client'
 
 import React, { useMemo, useState } from 'react'
-import { useContext } from 'use-context-selector'
 import { RiInformation2Line } from '@remixicon/react'
 import Card from '../../card'
 import { extensionDallE, modelGPT4, toolNotion } from '../../card/card-mock'
@@ -9,14 +8,12 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import I18n from '@/context/i18n'
 
 type InstallFromMarketplaceProps = {
   onClose: () => void
 }
 
 const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({ onClose }) => {
-  const { locale } = useContext(I18n)
   const plugins = useMemo(() => [toolNotion, extensionDallE, modelGPT4], [])
   const [selectedPlugins, setSelectedPlugins] = useState<Set<number>>(new Set())
   const [isInstalling, setIsInstalling] = useState(false)
@@ -40,7 +37,6 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({ onClose
       key={index}
       installed={nextStep && !isInstalling}
       payload={plugin}
-      locale={locale}
       className='w-full'
       titleLeft={
         plugin.version === plugin.latest_version
@@ -115,7 +111,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({ onClose
           : (
             <>
               <Button variant='secondary' className='min-w-[72px]' onClick={onClose}>
-              Cancel
+                Cancel
               </Button>
               <Button
                 variant='primary'
@@ -126,7 +122,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({ onClose
                   mockInstall()
                 }}
               >
-              Install
+                Install
               </Button>
             </>
           )}

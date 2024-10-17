@@ -115,7 +115,7 @@ const ModelProviderPage = () => {
           'shrink-0 relative flex items-center justify-end gap-2 p-0.5 rounded-lg border border-transparent',
           defaultModelNotConfigured && 'pl-2 bg-components-panel-bg-blur border-components-panel-border shadow-xs',
         )}>
-          {defaultModelNotConfigured && <div className='absolute top-0 bottom-0 right-0 left-0 opacity-40' style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }}/>}
+          {defaultModelNotConfigured && <div className='absolute top-0 bottom-0 right-0 left-0 opacity-40' style={{ background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.25) 0%, rgba(255, 255, 255, 0.00) 100%)' }} />}
           {defaultModelNotConfigured && (
             <div className='flex items-center gap-1 text-text-primary system-xs-medium'>
               <RiAlertFill className='w-4 h-4 text-text-warning-secondary' />
@@ -185,7 +185,7 @@ const ModelProviderPage = () => {
         {!collapse && (
           <div className='grid grid-cols-2 gap-2'>
             {pluginList.map((plugin, index) => (
-              <ProviderCard key={index} installed={false} locale={locale} payload={plugin as any} />
+              <ProviderCard key={index} installed={false} payload={plugin as any} />
             ))}
           </div>
         )}

@@ -1,4 +1,6 @@
+'use client'
 import React from 'react'
+import { useContext } from 'use-context-selector'
 import { RiVerifiedBadgeLine } from '@remixicon/react'
 import type { Plugin } from '../types'
 import Icon from '../card/base/card-icon'
@@ -8,18 +10,16 @@ import OrgInfo from './base/org-info'
 import Description from './base/description'
 import Placeholder from './base/placeholder'
 import cn from '@/utils/classnames'
-import type { Locale } from '@/i18n'
+import I18n from '@/context/i18n'
 
 type Props = {
   className?: string
   payload: Plugin
-  locale: Locale // The component is used in both client and server side, so we can't get the locale from both side(getLocaleOnServer and useContext)
   titleLeft?: React.ReactNode
   installed?: boolean
   hideCornerMark?: boolean
   descriptionLineRows?: number
   footer?: React.ReactNode
-  serverLocale?: Locale
   isLoading?: boolean
   loadingFileName?: string
 }
@@ -32,10 +32,11 @@ const Card = ({
   hideCornerMark,
   descriptionLineRows = 2,
   footer,
-  locale,
   isLoading = false,
   loadingFileName,
 }: Props) => {
+  const { locale } = useContext(I18n)
+
   const { type, name, org, label, brief, icon } = payload
 
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
@@ -80,4 +81,4 @@ const Card = ({
   )
 }
 
-export default Card
+export default React.memo(Card)
