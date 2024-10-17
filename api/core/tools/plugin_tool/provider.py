@@ -11,10 +11,12 @@ from core.tools.plugin_tool.tool import PluginTool
 class PluginToolProviderController(BuiltinToolProviderController):
     entity: ToolProviderEntityWithPlugin
     tenant_id: str
+    plugin_id: str
 
-    def __init__(self, entity: ToolProviderEntityWithPlugin, tenant_id: str) -> None:
+    def __init__(self, entity: ToolProviderEntityWithPlugin, plugin_id: str, tenant_id: str) -> None:
         self.entity = entity
         self.tenant_id = tenant_id
+        self.plugin_id = plugin_id
 
     @property
     def provider_type(self) -> ToolProviderType:

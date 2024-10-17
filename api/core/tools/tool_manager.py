@@ -91,6 +91,7 @@ class ToolManager:
 
         return PluginToolProviderController(
             entity=provider_entity.declaration,
+            plugin_id=provider_entity.plugin_id,
             tenant_id=tenant_id,
         )
 
@@ -454,6 +455,7 @@ class ToolManager:
         return [
             PluginToolProviderController(
                 entity=provider.declaration,
+                plugin_id=provider.plugin_id,
                 tenant_id=tenant_id,
             )
             for provider in provider_entities

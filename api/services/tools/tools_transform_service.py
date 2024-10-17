@@ -80,9 +80,13 @@ class ToolTransformService:
             type=ToolProviderType.BUILT_IN,
             masked_credentials={},
             is_team_authorization=False,
+            plugin_id=None,
             tools=[],
             labels=provider_controller.tool_labels,
         )
+
+        if isinstance(provider_controller, PluginToolProviderController):
+            result.plugin_id = provider_controller.plugin_id
 
         # get credentials schema
         schema = {x.to_basic_provider_config().name: x for x in provider_controller.get_credentials_schema()}
@@ -158,6 +162,7 @@ class ToolTransformService:
             type=ToolProviderType.WORKFLOW,
             masked_credentials={},
             is_team_authorization=True,
+            plugin_id=None,
             tools=[],
             labels=labels or [],
         )
@@ -199,6 +204,7 @@ class ToolTransformService:
                 zh_Hans=db_provider.name,
             ),
             type=ToolProviderType.API,
+            plugin_id=None,
             masked_credentials={},
             is_team_authorization=True,
             tools=[],
