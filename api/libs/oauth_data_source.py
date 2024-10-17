@@ -400,7 +400,7 @@ class FeishuWiki:
         params = {
             "document_id": document_id,
         }
-        url = f"https://lark-plugin-api.solutionsuite.cn/lark-plugin/document/get_document_content"
+        url = "https://lark-plugin-api.solutionsuite.cn/lark-plugin/document/get_document_content"
         res = self._send_request(url, method="GET", params=params)
         return res.get("data", {}).get("content")
 
