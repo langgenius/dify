@@ -1,6 +1,8 @@
 import datetime
 import urllib.parse
+from typing import Optional
 
+import httpx
 import requests
 from flask_login import current_user
 
@@ -273,84 +275,127 @@ class NotionOAuth(OAuthDataSource):
         return results
 
 
-class FeishuWikiOAuthDataSource:
+def transform_nodes(nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    level = []
+    for node in nodes:
+        obj_type = node.get("obj_type")
+        node_type = node.get("node_type")
+        if obj_type == "docx" and node_type == "origin":
+            level.append(
+                {
+                    "page_id": node.get("node_token"),
+                    "page_name": node.get("title") or "未命名文档",
+                    "parent_id": node.get("parent_node_token") or "root",
+                    "obj_token": node.get("obj_token"),
+                    "obj_type": node.get("obj_type"),
+                    "space_id": node.get("space_id"),
+                }
+            )
+    return level
+
+
+class FeishuWiki:
+    API_BASE_URL = "https://open.larkoffice.com/open-apis"
+
     def __init__(self, app_id: str, app_secret: str):
         self.app_id = app_id
         self.app_secret = app_secret
 
-
-class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
-    _FEISHU_TENANT_ACCESS_TOKEN_URL = "https://open.larkoffice.com/open-apis/auth/v3/tenant_access_token/internal"
-    _FEISHU_WIKI_SPACES_SEARCH = "https://open.larkoffice.com/open-apis/wiki/v2/spaces"
-    _FEISHU_WIKI_NODES_SEARCH = "https://open.larkoffice.com/open-apis/wiki/v2/spaces/{space_id}/nodes"
-
-    def get_tenant_access_token(self):
-        tenant_access_token_cache_key = f"tenant_access_token_{self.app_id}"
-
-        cache_result = redis_client.get(tenant_access_token_cache_key)
-        if cache_result is not None:
-            return cache_result.decode("utf-8")
-
-        data = {"app_id": self.app_id, "app_secret": self.app_secret}
-        headers = {"Accept": "application/json"}
-        response = requests.post(self._FEISHU_TENANT_ACCESS_TOKEN_URL, data=data, headers=headers, timeout=(60, 120))
-        response_json = response.json()
-
-        code = response_json.get("code")
-        tenant_access_token = response_json.get("tenant_access_token")
-
-        expire = response_json.get("expire")
-        if expire > 3600:
-            redis_client.setex(tenant_access_token_cache_key, 3600, tenant_access_token)
-        else:
-            redis_client.setex(tenant_access_token_cache_key, expire, tenant_access_token)
-
-        if code != 0:
-            raise ValueError(f"Error in Feishu OAuth: {response_json}")
-        return tenant_access_token
-
-    def get_feishu_wiki_spaces(self, page_token: str = "", page_size: int = 50):
+    def _send_request(
+            self,
+            url: str,
+            method: str = "post",
+            require_token: bool = True,
+            payload: Optional[dict] = None,
+            params: Optional[dict] = None,
+    ):
         headers = {
             "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.get_tenant_access_token()}",
+            "user-agent": "Dify",
         }
+        if require_token:
+            headers["tenant-access-token"] = f"{self.tenant_access_token}"
+        res = httpx.request(method=method, url=url, headers=headers, json=payload, params=params, timeout=30).json()
+        if res.get("code") != 0:
+            raise Exception(res)
+        return res
 
-        params = {
-            "page_size": page_size,
-            "page_token": page_token,
-        }
+    @property
+    def tenant_access_token(self):
+        feishu_tenant_access_token = f"tools:{self.app_id}:feishu_tenant_access_token"
+        if redis_client.exists(feishu_tenant_access_token):
+            return redis_client.get(feishu_tenant_access_token).decode()
+        res = self.get_tenant_access_token(self.app_id, self.app_secret)
+        redis_client.setex(feishu_tenant_access_token, res.get("expire"), res.get("tenant_access_token"))
+        return res.get("tenant_access_token")
 
-        response = requests.get(url=self._FEISHU_WIKI_SPACES_SEARCH, params=params, headers=headers, timeout=(60, 120))
-        response_json = response.json()
+    def get_tenant_access_token(self, app_id: str, app_secret: str) -> dict:
+        url = f"{self.API_BASE_URL}/auth/v3/tenant_access_token/internal"
+        payload = {"app_id": app_id, "app_secret": app_secret}
+        res = self._send_request(url, require_token=False, payload=payload)
+        return res
 
-        if not response.ok:
-            raise Exception(
-                f"get feishu wiki spaces fail！status_code：{response.status_code}, code: {response_json['code']}, msg：{response_json['msg']}"
-            )
+    def get_all_feishu_wiki_spaces(self, page_size: int = 50):
+        url = f"{self.API_BASE_URL}/open-apis/wiki/v2/spaces"
+        all_spaces = []
+        page_token = ""
+        while True:
+            params = {
+                "page_size": page_size,
+                "page_token": page_token,
+                "lang": "en"
+            }
+            res = self._send_request(url, params=params)
+            all_spaces.extend(res.get('data', []))
+            page_token = res.get("page_token", "")
+            if not page_token:
+                break
+        return all_spaces
 
-        spaces = response_json["data"]["items"]
-        has_more = response_json["data"]["has_more"]
+    def get_all_feishu_wiki_space_nodes(self, space_id: str, parent_node_token: str = "", page_size: int = 50) -> List[Dict[str, Any]]:
+        url = f"{self.API_BASE_URL}/open-apis/wiki/v2/spaces/{space_id}/nodes"
+        all_nodes = []
+        queue = deque([parent_node_token])
+        while queue:
+            current_parent_token = queue.popleft()
+            page_token = ""
 
-        if has_more:
-            next_page_token = response_json["data"]["page_token"]
-            next_spaces = self.get_feishu_wiki_spaces(next_page_token)
-            spaces.extend(next_spaces)
+            while True:
+                params = {
+                    "page_token": page_token,
+                    "page_size": page_size,
+                    "parent_node_token": current_parent_token,
+                }
+                res = self._send_request(url, params=params)
+                data = res.get("data", {})
+                items = data.get("items", [])
+                all_nodes.extend(items)
 
-        return spaces
+                has_more = data.get("has_more", False)
+                page_token = data.get("page_token", "")
+                if not has_more or not page_token:
+                    break
+
+            for item in items:
+                if item.get("has_child"):
+                    queue.append(item.get("node_token"))
+
+        return all_nodes
 
     def save_feishu_wiki_data_source(self):
         workspace_name = self.app_id
         workspace_icon = None
         workspace_id = current_user.current_tenant_id
 
-        spaces = self.get_feishu_wiki_spaces()
+        spaces = self.get_all_feishu_wiki_spaces()
         pages = []
 
         for space in spaces:
             space_type = space["space_type"]
             if space_type == "team":
                 space_id = space["space_id"]
-                nodes = self.get_all_feishu_wiki_nodes(space_id)
+                all_nodes = self.get_all_feishu_wiki_space_nodes(space_id)
+                nodes = self.transform_nodes(all_nodes)
                 pages.extend(nodes)
 
         source_info = {
@@ -396,14 +441,15 @@ class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
             workspace_icon = None
             workspace_id = current_user.current_tenant_id
 
-            spaces = self.get_feishu_wiki_spaces()
+            spaces = self.get_all_feishu_wiki_spaces()
             pages = []
 
             for space in spaces:
                 space_type = space["space_type"]
                 if space_type == "team":
                     space_id = space["space_id"]
-                    nodes = self.get_all_feishu_wiki_nodes(space_id)
+                    all_nodes = self.get_all_feishu_wiki_space_nodes(space_id)
+                    nodes = self.transform_nodes(all_nodes)
                     pages.extend(nodes)
 
             source_info = {
@@ -419,70 +465,3 @@ class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
             db.session.commit()
         else:
             raise ValueError("Data source binding not found")
-
-    def get_all_feishu_wiki_nodes(self, space_id: str):
-        nodes = self.get_feishu_wiki_nodes(space_id)
-        res = []
-        for node in nodes:
-            queue = [node]
-            while queue:
-                level, size = [], len(queue)
-                for _ in range(size):
-                    node = queue.pop(0)
-                    obj_type = node["obj_type"]
-                    node_type = node["node_type"]
-                    if obj_type == "docx" and node_type == "origin":
-                        level.append(
-                            {
-                                "page_id": node["node_token"],
-                                "page_name": node["title"] if node["title"] else "未命名文档",
-                                "parent_id": node["parent_node_token"] if node["parent_node_token"] else "root",
-                                "obj_token": node["obj_token"],
-                                "obj_type": node["obj_type"],
-                                "space_id": node["space_id"],
-                            }
-                        )
-                    has_child = node["has_child"]
-                    if has_child:
-                        node_token = node["node_token"]
-                        child_nodes = self.get_feishu_wiki_nodes(space_id, "", node_token)
-                        queue.extend(child_nodes)
-                res.extend(level)
-        return res
-
-    def get_feishu_wiki_nodes(
-        self, space_id: str, page_token: str = "", parent_node_token: str = "", page_size: int = 50
-    ):
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.get_tenant_access_token()}",
-        }
-
-        params = {
-            "page_size": page_size,
-            "page_token": page_token,
-            "parent_node_token": parent_node_token,
-        }
-
-        response = requests.get(
-            url=self._FEISHU_WIKI_NODES_SEARCH.format(space_id=space_id),
-            params=params,
-            headers=headers,
-            timeout=(60, 120),
-        )
-        response_json = response.json()
-
-        if not response.ok:
-            raise Exception(
-                f"get feishu wiki nodes fail！status_code：{response.status_code}, code: {response_json['code']}, msg：{response_json['msg']}"
-            )
-
-        nodes = response_json["data"]["items"]
-        has_more = response_json["data"]["has_more"]
-
-        if has_more:
-            next_page_token = response_json["data"]["page_token"]
-            next_nodes = self.get_feishu_wiki_nodes(space_id, next_page_token, parent_node_token)
-            nodes.extend(next_nodes)
-
-        return nodes
