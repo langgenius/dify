@@ -417,6 +417,25 @@ class ToolConfig(BaseSettings):
         default=3600,
     )
 
+    TOOL_DATABASE_URI: Optional[str] = Field(
+        description="the database tool connect to the existed database's uri",
+        default=None,
+    )
+
+    @computed_field
+    @property
+    def TOOL_DATABASE_FORBIDDEN(self) -> list[str]:
+        return self.inner_TOOL_DATABASE_FORBIDDEN.split(",")
+
+    inner_TOOL_DATABASE_FORBIDDEN: str = Field(
+        description="the database tool forbidden execute sql keywords",
+        validation_alias=AliasChoices("TOOL_DATABASE_FORBIDDEN"),
+        default="create,alter,drop,truncate,comment,rename,"
+        "insert,update,delete,merge,call,explain,lock,unlock,"
+        "grant,revoke,commit,rollback,savepoint,transaction,execute,analyze,"
+        "shutdown,--,/*,*/,database,mysql,information_schema,sys,pg_,dba_,loop,for,while,rand",
+    )
+
 
 class MailConfig(BaseSettings):
     """
