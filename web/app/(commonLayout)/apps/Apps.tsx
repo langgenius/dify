@@ -87,13 +87,13 @@ const Apps = () => {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()
     }
-  }, [])
+  }, [mutate, t])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
       return router.replace('/datasets')
-  }, [isCurrentWorkspaceDatasetOperator])
-  
+  }, [router, isCurrentWorkspaceDatasetOperator])
+
   useEffect(() => {
     const hasMore = data?.at(-1)?.has_more ?? true
     let observer: IntersectionObserver | undefined
