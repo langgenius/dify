@@ -25,6 +25,7 @@ export const toolNotion = {
     resource: {},
     plugins: {},
     tool: {}, // TODO
+    verified: true,
   },
   installation_id: 'jflkdsjoewingljlsadjgoijg-dkfjldajglkajglask-dlfkajdg',
   tenant_id: 'jflkdsjoewingljlsadjgoijg',

@@ -7,7 +7,7 @@ import {
   RiBugLine,
   RiCloseLine,
   RiHardDrive3Line,
-  // RiVerifiedBadgeLine,
+  RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import type { PluginDetail } from '../types'
 import { PluginSource } from '../types'
@@ -73,7 +73,7 @@ const PluginDetailPanel: FC<Props> = ({
               <div className="ml-3 w-0 grow">
                 <div className="flex items-center h-5">
                   <Title title={pluginDetail.declaration.label[locale]} />
-                  {/* <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" /> */}
+                  {pluginDetail.declaration.verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
                   <Badge
                     className='mx-1'
                     text={pluginDetail.version}
