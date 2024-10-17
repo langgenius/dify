@@ -12,56 +12,41 @@ import {
 import { useWorkflowRun } from '../../hooks'
 import UserInput from './user-input'
 import Chat from '@/app/components/base/chat/chat'
-import type { ChatItem } from '@/app/components/base/chat/types'
+import type { ChatItem, ChatItemInTree } from '@/app/components/base/chat/types'
 import { fetchConversationMessages } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import { UUID_NIL } from '@/app/components/base/chat/constants'
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 
-function appendQAToChatList(newChatList: ChatItem[], item: any) {
-  newChatList.push({
-    id: item.id,
-    content: item.answer,
-    feedback: item.feedback,
-    isAnswer: true,
-    citation: item.metadata?.retriever_resources,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-    workflow_run_id: item.workflow_run_id,
+const getFormattedChatList = (messages: any[]) => {
+  const res: ChatItem[] = []
+  messages.forEach((item: any) => {
+    res.push({
+      id: `question-${item.id}`,
+      content: item.query,
+      isAnswer: false,
+      message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
+      parentMessageId: item.parent_message_id || undefined,
+    })
+    res.push({
+      id: item.id,
+      content: item.answer,
+      feedback: item.feedback,
+      isAnswer: true,
+      citation: item.metadata?.retriever_resources,
+      message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+      workflow_run_id: item.workflow_run_id,
+      parentMessageId: `question-${item.id}`,
+    })
   })
-  newChatList.push({
-    id: `question-${item.id}`,
-    content: item.query,
-    isAnswer: false,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
-  })
-}
-
-function getFormattedChatList(messages: any[]) {
-  const newChatList: ChatItem[] = []
-  let nextMessageId = null
-  for (const item of messages) {
-    if (!item.parent_message_id) {
-      appendQAToChatList(newChatList, item)
-      break
-    }
-
-    if (!nextMessageId) {
-      appendQAToChatList(newChatList, item)
-      nextMessageId = item.parent_message_id
-    }
-    else {
-      if (item.id === nextMessageId || nextMessageId === UUID_NIL) {
-        appendQAToChatList(newChatList, item)
-        nextMessageId = item.parent_message_id
-      }
-    }
-  }
-  return newChatList.reverse()
+  return res
 }
 
 const ChatRecord = () => {
   const [fetched, setFetched] = useState(false)
-  const [chatList, setChatList] = useState<ChatItem[]>([])
+  const [chatItemTree, setChatItemTree] = useState<ChatItemInTree[]>([])
+  const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
   const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()
   const { handleLoadBackupDraft } = useWorkflowRun()
@@ -73,19 +58,28 @@ const ChatRecord = () => {
       try {
         setFetched(false)
         const res = await fetchConversationMessages(appDetail.id, currentConversationID)
-        setChatList(getFormattedChatList((res as any).data))
+
+        const newAllChatItems = getFormattedChatList((res as any).data)
+
+        const tree = buildChatItemTree(newAllChatItems)
+        setChatItemTree(tree)
+        setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
       }
       catch (e) {
-        console.error(e)
       }
       finally {
         setFetched(true)
       }
     }
   }, [appDetail, currentConversationID])
+
   useEffect(() => {
     handleFetchConversationMessages()
   }, [currentConversationID, appDetail, handleFetchConversationMessages])
+
+  const switchSibling = useCallback((siblingMessageId: string) => {
+    setThreadChatItems(getThreadMessages(chatItemTree, siblingMessageId))
+  }, [chatItemTree])
 
   return (
     <div
@@ -120,7 +114,7 @@ const ChatRecord = () => {
               config={{
                 supportCitationHitInfo: true,
               } as any}
-              chatList={chatList}
+              chatList={threadChatItems}
               chatContainerClassName='px-3'
               chatContainerInnerClassName='pt-6 w-full max-w-full mx-auto'
               chatFooterClassName='px-4 rounded-b-2xl'
@@ -129,6 +123,7 @@ const ChatRecord = () => {
               noChatInput
               allToolIcons={{}}
               showPromptLog
+              switchSibling={switchSibling}
               noSpacing
               chatAnswerContainerInner='!pr-2'
             />

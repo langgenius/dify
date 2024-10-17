@@ -62,6 +62,7 @@ export type ChatProps = {
   hideProcessDetail?: boolean
   hideLogModal?: boolean
   themeBuilder?: ThemeBuilder
+  switchSibling?: (siblingMessageId: string) => void
   noSpacing?: boolean
 }
 
@@ -93,6 +94,7 @@ const Chat: FC<ChatProps> = ({
   hideProcessDetail,
   hideLogModal,
   themeBuilder,
+  switchSibling,
   noSpacing,
 }) => {
   const { t } = useTranslation()
@@ -224,6 +226,7 @@ const Chat: FC<ChatProps> = ({
                       chatAnswerContainerInner={chatAnswerContainerInner}
                       hideProcessDetail={hideProcessDetail}
                       noChatInput={noChatInput}
+                      switchSibling={switchSibling}
                     />
                   )
                 }
