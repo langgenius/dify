@@ -535,7 +535,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
             ],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         Architecture for defining customizable models
 
