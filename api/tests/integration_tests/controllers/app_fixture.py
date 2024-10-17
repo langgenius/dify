@@ -1,4 +1,5 @@
 import pytest
+
 from app_factory import create_app
 
 mock_user = type('MockUser', (object,), {
@@ -10,6 +11,7 @@ mock_user = type('MockUser', (object,), {
     "get_id": "123", 
     'current_tenant_id': "9d2074fc-6f86-45a9-b09d-6ecc63b9056b"
 })    
+
 
 @pytest.fixture
 def app():

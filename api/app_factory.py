@@ -12,7 +12,6 @@ if os.environ.get("DEBUG", "false").lower() != "true":
 import json
 import logging
 import sys
-import time
 from logging.handlers import RotatingFileHandler
 
 from flask import Flask, Response, request
@@ -22,9 +21,6 @@ from werkzeug.exceptions import Unauthorized
 import contexts
 from commands import register_commands
 from configs import dify_config
-
-from extensions.ext_login import login_manager
-
 from extensions import (
     ext_celery,
     ext_code_based_extension,
@@ -40,9 +36,10 @@ from extensions import (
     ext_storage,
 )
 from extensions.ext_database import db
+from extensions.ext_login import login_manager
 from libs.passport import PassportService
-
 from services.account_service import AccountService
+
 
 class DifyApp(Flask):
     pass

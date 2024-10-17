@@ -1,5 +1,7 @@
 from unittest.mock import patch
+
 from app_fixture import app, mock_user
+
 
 def test_post_requires_login(app):
     with app.test_client() as client:

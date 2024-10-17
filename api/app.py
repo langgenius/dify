@@ -13,18 +13,17 @@ import json
 import threading
 import time
 import warnings
-from flask import Response
 
+from flask import Response
 
 from app_factory import create_app
 
 # DO NOT REMOVE BELOW
 from events import event_handlers  # noqa: F401
 
-
 # TODO: Find a way to avoid importing models here
 from models import account, dataset, model, source, task, tool, tools, web  # noqa: F401
-from services.account_service import AccountService
+
 # DO NOT REMOVE ABOVE
 
 
