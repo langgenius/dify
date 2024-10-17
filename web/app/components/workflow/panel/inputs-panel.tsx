@@ -23,6 +23,7 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import {
   getProcessedInputs,
 } from '@/app/components/base/chat/chat/utils'
+import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
 
 type Props = {
   onRun: () => void
@@ -41,6 +42,7 @@ const InputsPanel = ({ onRun }: Props) => {
   } = useWorkflowRun()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
+  const { checkInputsForm } = useCheckInputsForms()
 
   const variables = useMemo(() => {
     const data = startVariables || []
@@ -78,9 +80,11 @@ const InputsPanel = ({ onRun }: Props) => {
   }
 
   const doRun = useCallback(() => {
+    if (!checkInputsForm(inputs, variables as any))
+      return
     onRun()
     handleRun({ inputs: getProcessedInputs(inputs, variables as any), files })
-  }, [files, handleRun, inputs, onRun, variables])
+  }, [files, handleRun, inputs, onRun, variables, checkInputsForm])
 
   const canRun = useMemo(() => {
     if (files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
