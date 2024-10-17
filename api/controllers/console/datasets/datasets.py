@@ -630,6 +630,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.ORACLE
                 | VectorType.ELASTICSEARCH
                 | VectorType.PGVECTOR
+                | VectorType.SUPABASE
             ):
                 return {
                     "retrieval_method": [
@@ -668,6 +669,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.ORACLE
                 | VectorType.ELASTICSEARCH
                 | VectorType.PGVECTOR
+                | VectorType.SUPABASE
             ):
                 return {
                     "retrieval_method": [
