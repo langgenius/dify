@@ -259,6 +259,25 @@ def migrate_knowledge_vector_database():
     skipped_count = 0
     total_count = 0
     vector_type = dify_config.VECTOR_STORE
+    upper_colletion_vector_types = {
+        VectorType.MILVUS,
+        VectorType.PGVECTOR,
+        VectorType.RELYT,
+        VectorType.WEAVIATE,
+        VectorType.ORACLE,
+        VectorType.ELASTICSEARCH,
+    }
+    lower_colletion_vector_types = {
+        VectorType.ANALYTICDB,
+        VectorType.CHROMA,
+        VectorType.MYSCALE,
+        VectorType.PGVECTO_RS,
+        VectorType.TIDB_VECTOR,
+        VectorType.OPENSEARCH,
+        VectorType.TENCENT,
+        VectorType.BAIDU,
+        VectorType.VIKINGDB,
+    }
     page = 1
     while True:
         try:
@@ -284,11 +303,9 @@ def migrate_knowledge_vector_database():
                         skipped_count = skipped_count + 1
                         continue
                 collection_name = ""
-                if vector_type == VectorType.WEAVIATE:
-                    dataset_id = dataset.id
+                dataset_id = dataset.id
+                if vector_type in upper_colletion_vector_types:
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": VectorType.WEAVIATE, "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
                 elif vector_type == VectorType.QDRANT:
                     if dataset.collection_binding_id:
                         dataset_collection_binding = (
@@ -301,63 +318,15 @@ def migrate_knowledge_vector_database():
                         else:
                             raise ValueError("Dataset Collection Binding not found")
                     else:
-                        dataset_id = dataset.id
                         collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": VectorType.QDRANT, "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
 
-                elif vector_type == VectorType.MILVUS:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": VectorType.MILVUS, "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.RELYT:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": "relyt", "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.TENCENT:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": VectorType.TENCENT, "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.PGVECTOR:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": VectorType.PGVECTOR, "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.OPENSEARCH:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {
-                        "type": VectorType.OPENSEARCH,
-                        "vector_store": {"class_prefix": collection_name},
-                    }
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.ANALYTICDB:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {
-                        "type": VectorType.ANALYTICDB,
-                        "vector_store": {"class_prefix": collection_name},
-                    }
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.ELASTICSEARCH:
-                    dataset_id = dataset.id
-                    index_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": "elasticsearch", "vector_store": {"class_prefix": index_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.BAIDU:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {
-                        "type": VectorType.BAIDU,
-                        "vector_store": {"class_prefix": collection_name},
-                    }
-                    dataset.index_struct = json.dumps(index_struct_dict)
+                elif vector_type in lower_colletion_vector_types:
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
                 else:
                     raise ValueError(f"Vector store {vector_type} is not supported.")
 
+                index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
+                dataset.index_struct = json.dumps(index_struct_dict)
                 vector = Vector(dataset)
                 click.echo(f"Migrating dataset {dataset.id}.")
 
