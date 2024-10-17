@@ -235,7 +235,7 @@ class WeaviateVector(BaseVector):
             query_obj = query_obj.with_where(kwargs.get("where_filter"))
         query_obj = query_obj.with_additional(["vector"])
         properties = ["text"]
-        result = query_obj.with_bm25(query=query, properties=properties).with_limit(kwargs.get("top_k", 2)).do()
+        result = query_obj.with_bm25(query=query, properties=properties).with_limit(kwargs.get("top_k", 4)).do()
         if "errors" in result:
             raise ValueError(f"Error during query: {result['errors']}")
         docs = []

@@ -30,15 +30,6 @@ parameter_rules:
       zh_Hans: do_sample 为 true 时启用采样策略，do_sample 为 false 时采样策略 temperature、top_p 将不生效。默认值为 true。
       en_US: When `do_sample` is set to true, the sampling strategy is enabled. When `do_sample` is set to false, the sampling strategies such as `temperature` and `top_p` will not take effect. The default value is true.
     default: true
-  - name: stream
-    label:
-      zh_Hans: 流处理
-      en_US: Event Stream
-    type: boolean
-    help:
-      zh_Hans: 使用同步调用时，此参数应当设置为 fasle 或者省略。表示模型生成完所有内容后一次性返回所有内容。默认值为 false。如果设置为 true，模型将通过标准 Event Stream ，逐块返回模型生成内容。Event Stream 结束时会返回一条data：[DONE]消息。注意：在模型流式输出生成内容的过程中，我们会分批对模型生成内容进行检测，当检测到违法及不良信息时，API会返回错误码（1301）。开发者识别到错误码（1301），应及时采取（清屏、重启对话）等措施删除生成内容，并确保不将含有违法及不良信息的内容传递给模型继续生成，避免其造成负面影响。
-      en_US: When using synchronous invocation, this parameter should be set to false or omitted. It indicates that the model will return all the generated content at once after the generation is complete. The default value is false. If set to true, the model will return the generated content in chunks via the standard Event Stream. A data：[DONE] message will be sent at the end of the Event Stream.Note：During the model's streaming output process, we will batch check the generated content. If illegal or harmful information is detected, the API will return an error code (1301). Developers who identify error code (1301) should promptly take actions such as clearing the screen or restarting the conversation to delete the generated content. They should also ensure that no illegal or harmful content is passed back to the model for continued generation to avoid negative impacts.
-    default: false
   - name: max_tokens
     use_template: max_tokens
     default: 1024

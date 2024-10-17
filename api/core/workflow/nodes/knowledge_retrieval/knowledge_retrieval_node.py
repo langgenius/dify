@@ -80,8 +80,9 @@ class KnowledgeRetrievalNode(BaseNode):
 
         results = (
             db.session.query(Dataset)
-            .join(subquery, Dataset.id == subquery.c.dataset_id)
+            .outerjoin(subquery, Dataset.id == subquery.c.dataset_id)
             .filter(Dataset.tenant_id == self.tenant_id, Dataset.id.in_(dataset_ids))
+            .filter((subquery.c.available_document_count > 0) | (Dataset.provider == "external"))
             .all()
         )
 
@@ -122,10 +123,13 @@ class KnowledgeRetrievalNode(BaseNode):
                 )
         elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value:
             if node_data.multiple_retrieval_config.reranking_mode == "reranking_model":
-                reranking_model = {
-                    "reranking_provider_name": node_data.multiple_retrieval_config.reranking_model.provider,
-                    "reranking_model_name": node_data.multiple_retrieval_config.reranking_model.model,
-                }
+                if node_data.multiple_retrieval_config.reranking_model:
+                    reranking_model = {
+                        "reranking_provider_name": node_data.multiple_retrieval_config.reranking_model.provider,
+                        "reranking_model_name": node_data.multiple_retrieval_config.reranking_model.model,
+                    }
+                else:
+                    reranking_model = None
                 weights = None
             elif node_data.multiple_retrieval_config.reranking_mode == "weighted_score":
                 reranking_model = None
@@ -214,7 +218,7 @@ class KnowledgeRetrievalNode(BaseNode):
                         retrieval_resource_list.append(source)
         if retrieval_resource_list:
             retrieval_resource_list = sorted(
-                retrieval_resource_list, key=lambda x: x.get("metadata").get("score"), reverse=True
+                retrieval_resource_list, key=lambda x: x.get("metadata").get("score") or 0.0, reverse=True
             )
             for position, item in enumerate(retrieval_resource_list, start=1):
                 item["metadata"]["position"] = position

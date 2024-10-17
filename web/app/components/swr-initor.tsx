@@ -4,6 +4,7 @@ import { SWRConfig } from 'swr'
 import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import useRefreshToken from '@/hooks/use-refresh-token'
 
 type SwrInitorProps = {
   children: ReactNode
@@ -13,18 +14,31 @@ const SwrInitor = ({
 }: SwrInitorProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const consoleToken = searchParams.get('console_token')
+  const { getNewAccessToken } = useRefreshToken()
+  const consoleToken = searchParams.get('access_token')
+  const refreshToken = searchParams.get('refresh_token')
   const consoleTokenFromLocalStorage = localStorage?.getItem('console_token')
+  const refreshTokenFromLocalStorage = localStorage?.getItem('refresh_token')
   const [init, setInit] = useState(false)
 
   useEffect(() => {
-    if (!(consoleToken || consoleTokenFromLocalStorage))
+    if (!(consoleToken || refreshToken || consoleTokenFromLocalStorage || refreshTokenFromLocalStorage)) {
       router.replace('/signin')
-
-    if (consoleToken) {
-      localStorage?.setItem('console_token', consoleToken!)
-      router.replace('/apps', { forceOptimisticNavigation: false } as any)
+      return
     }
+    if (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage)
+      getNewAccessToken()
+
+    if (consoleToken && refreshToken) {
+      localStorage.setItem('console_token', consoleToken)
+      localStorage.setItem('refresh_token', refreshToken)
+      getNewAccessToken().then(() => {
+        router.replace('/apps', { forceOptimisticNavigation: false } as any)
+      }).catch(() => {
+        router.replace('/signin')
+      })
+    }
+
     setInit(true)
   }, [])
 

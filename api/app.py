@@ -36,6 +36,7 @@ from extensions import (
     ext_login,
     ext_mail,
     ext_migrate,
+    ext_proxy_fix,
     ext_redis,
     ext_sentry,
     ext_storage,
@@ -156,6 +157,7 @@ def initialize_extensions(app):
     ext_mail.init_app(app)
     ext_hosting_provider.init_app(app)
     ext_sentry.init_app(app)
+    ext_proxy_fix.init_app(app)
 
 
 # Flask-Login configuration
@@ -181,7 +183,7 @@ def load_user_from_request(request_from_flask_login):
     decoded = PassportService().verify(auth_token)
     user_id = decoded.get("user_id")
 
-    logged_in_account = AccountService.load_logged_in_account(account_id=user_id, token=auth_token)
+    logged_in_account = AccountService.load_logged_in_account(account_id=user_id)
     if logged_in_account:
         contexts.tenant_id.set(logged_in_account.current_tenant_id)
     return logged_in_account
