@@ -84,6 +84,11 @@ class PluginUploadFromPkgApi(Resource):
         tenant_id = user.current_tenant_id
 
         file = request.files["pkg"]
+
+        # check file size
+        if file.content_length > dify_config.PLUGIN_MAX_PACKAGE_SIZE:
+            raise ValueError("File size exceeds the maximum allowed size")
+
         content = file.read()
         response = PluginService.upload_pkg(tenant_id, content)
 

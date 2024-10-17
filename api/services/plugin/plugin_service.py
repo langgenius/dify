@@ -1,6 +1,7 @@
 from collections.abc import Sequence
 from mimetypes import guess_type
 
+from configs import dify_config
 from core.helper.download import download_with_size_limit
 from core.helper.marketplace import download_plugin_pkg
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
@@ -84,7 +85,7 @@ class PluginService:
         returns plugin_unique_identifier
         """
         pkg = download_with_size_limit(
-            f"https://github.com/{repo}/releases/download/{version}/{package}", 15 * 1024 * 1024
+            f"https://github.com/{repo}/releases/download/{version}/{package}", dify_config.PLUGIN_MAX_PACKAGE_SIZE
         )
 
         manager = PluginInstallationManager()

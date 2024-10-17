@@ -137,6 +137,11 @@ class PluginConfig(BaseSettings):
         default=5003,
     )
 
+    PLUGIN_MAX_PACKAGE_SIZE: PositiveInt = Field(
+        description="Maximum allowed size for plugin packages in bytes",
+        default=15728640,
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """
