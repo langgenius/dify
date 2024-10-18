@@ -87,15 +87,15 @@ const Apps = () => {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()
     }
-  }, [])
+  }, [mutate, t])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
       return router.replace('/datasets')
-  }, [isCurrentWorkspaceDatasetOperator])
+  }, [router, isCurrentWorkspaceDatasetOperator])
 
-  const hasMore = data?.at(-1)?.has_more ?? true
   useEffect(() => {
+    const hasMore = data?.at(-1)?.has_more ?? true
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
@@ -105,7 +105,7 @@ const Apps = () => {
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, setSize, anchorRef, mutate, hasMore])
+  }, [isLoading, setSize, anchorRef, mutate, data])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)
