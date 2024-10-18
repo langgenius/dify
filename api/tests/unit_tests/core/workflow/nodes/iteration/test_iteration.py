@@ -185,8 +185,6 @@ def test_run():
             outputs={"output": "dify 123"},
         )
 
-    # print("")
-
     with patch.object(TemplateTransformNode, "_run", new=tt_generator):
         # execute node
         result = iteration_node._run()
@@ -404,15 +402,12 @@ def test_run_parallel():
             outputs={"output": "dify 123"},
         )
 
-    # print("")
-
     with patch.object(TemplateTransformNode, "_run", new=tt_generator):
         # execute node
         result = iteration_node._run()
 
         count = 0
         for item in result:
-            # print(type(item), item)
             count += 1
             if isinstance(item, RunCompletedEvent):
                 assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
@@ -789,12 +784,12 @@ def test_iteration_run_error_handle():
             "id": "1728357129226",
         },
     )
-    # print("")
 
     # execute continue on error node
     result = iteration_node._run()
     count = 0
     for item in result:
+        print(type(item))
         count += 1
         if isinstance(item, RunCompletedEvent):
             assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
