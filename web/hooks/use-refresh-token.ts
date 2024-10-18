@@ -14,7 +14,6 @@ const useRefreshToken = () => {
   const router = useRouter()
   const timer = useRef<NodeJS.Timeout>()
   const advanceTime = useRef<number>(5 * 60 * 1000)
-  const interval = useRef<number>(55 * 60 * 1000)
 
   const getExpireTime = useCallback((token: string) => {
     if (!token)
@@ -31,18 +30,24 @@ const useRefreshToken = () => {
     localStorage?.removeItem('is_refreshing')
     localStorage?.removeItem('console_token')
     localStorage?.removeItem('refresh_token')
-    localStorage?.removeItem('last_refresh_time')
     router.replace('/signin')
   }, [])
 
-  const getNewAccessToken = useCallback(async (currentAccessToken: string, currentRefreshToken: string) => {
-    if (localStorage?.getItem('is_refreshing') === '1')
+  const getNewAccessToken = useCallback(async () => {
+    const currentAccessToken = localStorage?.getItem('console_token')
+    const currentRefreshToken = localStorage?.getItem('refresh_token')
+    if (!currentAccessToken || !currentRefreshToken) {
+      handleError()
+      return new Error('No access token or refresh token found')
+    }
+    if (localStorage?.getItem('is_refreshing') === '1') {
+      timer.current = setTimeout(() => {
+        getNewAccessToken()
+      }, 1000)
       return null
+    }
     const currentTokenExpireTime = getExpireTime(currentAccessToken)
-    let lastRefreshTime = parseInt(localStorage?.getItem('last_refresh_time') || '0')
-    lastRefreshTime = isNaN(lastRefreshTime) ? 0 : lastRefreshTime
-    if (getCurrentTimeStamp() + advanceTime.current > currentTokenExpireTime
-      && lastRefreshTime + interval.current < getCurrentTimeStamp()) {
+    if (getCurrentTimeStamp() + advanceTime.current > currentTokenExpireTime) {
       localStorage?.setItem('is_refreshing', '1')
       const [e, res] = await fetchWithRetry(fetchNewToken({
         body: { refresh_token: currentRefreshToken },
@@ -53,24 +58,17 @@ const useRefreshToken = () => {
       }
       const { access_token, refresh_token } = res.data
       localStorage?.setItem('is_refreshing', '0')
-      localStorage?.setItem('last_refresh_time', getCurrentTimeStamp().toString())
       localStorage?.setItem('console_token', access_token)
       localStorage?.setItem('refresh_token', refresh_token)
       const newTokenExpireTime = getExpireTime(access_token)
       timer.current = setTimeout(() => {
-        const consoleTokenFromLocalStorage = localStorage?.getItem('console_token')
-        const refreshTokenFromLocalStorage = localStorage?.getItem('refresh_token')
-        if (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage)
-          getNewAccessToken(consoleTokenFromLocalStorage, refreshTokenFromLocalStorage)
+        getNewAccessToken()
       }, newTokenExpireTime - advanceTime.current - getCurrentTimeStamp())
     }
     else {
       const newTokenExpireTime = getExpireTime(currentAccessToken)
       timer.current = setTimeout(() => {
-        const consoleTokenFromLocalStorage = localStorage?.getItem('console_token')
-        const refreshTokenFromLocalStorage = localStorage?.getItem('refresh_token')
-        if (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage)
-          getNewAccessToken(consoleTokenFromLocalStorage, refreshTokenFromLocalStorage)
+        getNewAccessToken()
       }, newTokenExpireTime - advanceTime.current - getCurrentTimeStamp())
     }
     return null
@@ -80,7 +78,6 @@ const useRefreshToken = () => {
     return () => {
       clearTimeout(timer.current)
       localStorage?.removeItem('is_refreshing')
-      localStorage?.removeItem('last_refresh_time')
     }
   }, [])
 
