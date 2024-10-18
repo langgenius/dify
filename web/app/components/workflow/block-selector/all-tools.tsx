@@ -1,5 +1,6 @@
 import {
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import type {
@@ -51,6 +52,10 @@ const AllTools = ({
       })
     })
   }, [activeTab, buildInTools, customTools, workflowTools, searchText, language])
+
+  const pluginRef = useRef(null)
+  const wrapElemRef = useRef<HTMLDivElement>(null)
+
   return (
     <div>
       <div className='flex items-center justify-between px-3 bg-background-default-hover border-b-[0.5px] border-black/[0.08] shadow-xs'>
@@ -73,13 +78,19 @@ const AllTools = ({
         </div>
         <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
       </div>
-      <PluginList list={[toolNotion, extensionDallE, modelGPT4] as any} />
-      <Tools
-        showWorkflowEmpty={activeTab === ToolTypeEnum.Workflow}
-        tools={tools}
-        onSelect={onSelect}
-        viewType={activeView}
-      />
+      <div
+        ref={wrapElemRef}
+        className='max-h-[464px] overflow-y-auto'
+        onScroll={(pluginRef.current as any)?.handleScroll}
+      >
+        <Tools
+          showWorkflowEmpty={activeTab === ToolTypeEnum.Workflow}
+          tools={tools}
+          onSelect={onSelect}
+          viewType={activeView}
+        />
+        <PluginList wrapElemRef={wrapElemRef} list={[toolNotion, extensionDallE, modelGPT4] as any} ref={pluginRef} />
+      </div>
     </div>
   )
 }

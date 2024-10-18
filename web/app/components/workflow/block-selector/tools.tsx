@@ -75,7 +75,7 @@ const Blocks = ({
   }
 
   return (
-    <div className='p-1 max-w-[320px] max-h-[464px] overflow-y-auto'>
+    <div className='p-1 max-w-[320px]'>
       {
         !tools.length && !showWorkflowEmpty && (
           <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>{t('workflow.tabs.noResult')}</div>
