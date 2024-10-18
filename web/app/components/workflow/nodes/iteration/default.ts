@@ -1,4 +1,4 @@
-import { BlockEnum } from '../../types'
+import { BlockEnum, ErrorHandleMode } from '../../types'
 import type { NodeDefault } from '../../types'
 import type { IterationNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
@@ -10,6 +10,11 @@ const nodeDefault: NodeDefault<IterationNodeType> = {
     iterator_selector: [],
     output_selector: [],
     _children: [],
+    _isFirstTime: true,
+    _isShowTips: false,
+    is_parallel: false,
+    parallel_nums: 10,
+    error_handle_mode: ErrorHandleMode.Terminated,
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode

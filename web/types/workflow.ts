@@ -30,6 +30,7 @@ export type NodeTracing = {
     parallel_start_node_id?: string
     parent_parallel_id?: string
     parent_parallel_start_node_id?: string
+    parallel_mode_run_id?: string
   }
   metadata: {
     iterator_length: number

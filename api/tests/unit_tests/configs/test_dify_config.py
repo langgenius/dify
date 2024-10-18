@@ -50,10 +50,10 @@ def test_dify_config(example_env_file):
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0
 
     # annotated field with default value
-    assert config.HTTP_REQUEST_MAX_READ_TIMEOUT == 60
+    assert config.HTTP_REQUEST_MAX_READ_TIMEOUT == 600
 
     # annotated field with configured value
-    assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 30
+    assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 600
 
 
 # NOTE: If there is a `.env` file in your Workspace, this test might not succeed as expected.

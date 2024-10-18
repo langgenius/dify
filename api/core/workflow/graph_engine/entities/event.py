@@ -81,6 +81,10 @@ class NodeRunFailedEvent(BaseNodeEvent):
     error: str = Field(..., description="error")
 
 
+class NodeInIterationFailedEvent(BaseNodeEvent):
+    error: str = Field(..., description="error")
+
+
 ###########################################
 # Parallel Branch Events
 ###########################################
@@ -129,6 +133,7 @@ class BaseIterationEvent(GraphEngineEvent):
     """parent parallel id if node is in parallel"""
     parent_parallel_start_node_id: Optional[str] = None
     """parent parallel start node id if node is in parallel"""
+    parallel_mode_run_id: Optional[str] = None
 
 
 class IterationRunStartedEvent(BaseIterationEvent):

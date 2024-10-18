@@ -305,6 +305,37 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     error: Optional[str] = None
 
 
+class QueueNodeInIterationFailedEvent(AppQueueEvent):
+    """
+    QueueNodeInIterationFailedEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.NODE_FAILED
+
+    node_execution_id: str
+    node_id: str
+    node_type: NodeType
+    node_data: BaseNodeData
+    parallel_id: Optional[str] = None
+    """parallel id if node is in parallel"""
+    parallel_start_node_id: Optional[str] = None
+    """parallel start node id if node is in parallel"""
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
+    start_at: datetime
+
+    inputs: Optional[dict[str, Any]] = None
+    process_data: Optional[dict[str, Any]] = None
+    outputs: Optional[dict[str, Any]] = None
+    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+
+    error: str
+
+
 class QueueNodeFailedEvent(AppQueueEvent):
     """
     QueueNodeFailedEvent entity
@@ -331,6 +362,7 @@ class QueueNodeFailedEvent(AppQueueEvent):
     inputs: Optional[dict[str, Any]] = None
     process_data: Optional[dict[str, Any]] = None
     outputs: Optional[dict[str, Any]] = None
+    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
 
     error: str
 
