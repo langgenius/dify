@@ -109,7 +109,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         {total === undefined
           ? <Loading type='app' />
           : total > 0
-            ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
+            ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} total={total} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
             : <EmptyElement appUrl={`${appDetail.site.app_base_url}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} />
         }
         {/* Show Pagination only if the total is more than the limit */}

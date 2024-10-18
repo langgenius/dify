@@ -12,6 +12,7 @@ const translation = {
         uploadTime: 'HOCHLADEZEIT',
         status: 'STATUS',
         action: 'AKTION',
+        total: 'Gesamt',
       },
       name: 'Name',
       rename: 'Umbenennen',

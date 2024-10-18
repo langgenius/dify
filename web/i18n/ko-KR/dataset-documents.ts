@@ -12,6 +12,7 @@ const translation = {
         uploadTime: '업로드 시간',
         status: '상태',
         action: '동작',
+        total: '총계',
       },
       name: '이름',
       rename: '이름 바꾸기',

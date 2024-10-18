@@ -20,6 +20,7 @@ const translation = {
       user: 'अंतिम उपयोगकर्ता या खाता',
       version: 'संस्करण',
     },
+    total: 'कुल',
     pagination: {
       previous: 'पिछला',
       next: 'अगला',
@@ -63,7 +64,7 @@ const translation = {
       last3months: 'पिछले 3 महीने',
       last12months: 'पिछले 12 महीने',
       monthToDate: 'माह तक तिथि',
-      quarterToDate: 'तिमाही तक तिथि',
+      quarterToDate: 'तिमाही तक त���थि',
       yearToDate: 'वर्ष तक तिथि',
       allTime: 'सभी समय',
     },

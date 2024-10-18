@@ -20,6 +20,7 @@ const translation = {
       tokens: 'TOKEN',
       startTime: 'STARTZEIT',
     },
+    total: 'Gesamt',
     pagination: {
       previous: 'Vorherige',
       next: 'Nächste',

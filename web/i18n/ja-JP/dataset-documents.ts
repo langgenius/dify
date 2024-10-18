@@ -13,6 +13,7 @@ const translation = {
         uploadTime: 'アップロード時間',
         status: 'ステータス',
         action: 'アクション',
+        total: '合計',
       },
       rename: '名前を変更',
       name: '名前',
