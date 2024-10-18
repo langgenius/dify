@@ -117,7 +117,7 @@ class ForgotPasswordResetApi(Resource):
                 TenantService.create_tenant_member(tenant, account, role="owner")
                 account.current_tenant = tenant
                 tenant_was_created.send(tenant)
-        else: 
+        else:
             account = AccountService.create_account_and_tenant(
                 email=reset_data.get("email"),
                 name=reset_data.get("email"),
