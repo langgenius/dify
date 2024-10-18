@@ -2,8 +2,16 @@ from decimal import Decimal
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode
-from core.model_runtime.entities.model_entities import AIModelEntity, ModelType, FetchFrom, ModelPropertyKey, \
-    ParameterRule, DefaultParameterName, ParameterType, PriceConfig
+from core.model_runtime.entities.model_entities import (
+    AIModelEntity,
+    DefaultParameterName,
+    FetchFrom,
+    ModelPropertyKey,
+    ModelType,
+    ParameterRule,
+    ParameterType,
+    PriceConfig,
+)
 from core.model_runtime.model_providers.openai_api_compatible.llm.llm import OAIAPICompatLargeLanguageModel
 
 
