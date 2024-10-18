@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from core.app.segments import (
+from core.variables import (
     FloatVariable,
     IntegerVariable,
     ObjectVariable,

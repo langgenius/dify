@@ -17,3 +17,8 @@ file_fields = {
     "created_by": fields.String,
     "created_at": TimestampField,
 }
+
+remote_file_info_fields = {
+    "file_type": fields.String(attribute="file_type"),
+    "file_length": fields.Integer(attribute="file_length"),
+}

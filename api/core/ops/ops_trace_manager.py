@@ -358,8 +358,8 @@ class TraceTask:
         workflow_run_id = workflow_run.id
         workflow_run_elapsed_time = workflow_run.elapsed_time
         workflow_run_status = workflow_run.status
-        workflow_run_inputs = json.loads(workflow_run.inputs) if workflow_run.inputs else {}
-        workflow_run_outputs = json.loads(workflow_run.outputs) if workflow_run.outputs else {}
+        workflow_run_inputs = workflow_run.inputs_dict
+        workflow_run_outputs = workflow_run.outputs_dict
         workflow_run_version = workflow_run.version
         error = workflow_run.error or ""
 
