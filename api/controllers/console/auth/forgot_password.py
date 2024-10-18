@@ -20,6 +20,7 @@ from libs.helper import email, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
+from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
 
 
@@ -118,16 +119,17 @@ class ForgotPasswordResetApi(Resource):
                 account.current_tenant = tenant
                 tenant_was_created.send(tenant)
         else:
-            account = AccountService.create_account_and_tenant(
-                email=reset_data.get("email"),
-                name=reset_data.get("email"),
-                password=password_confirm,
-                interface_language=languages[0],
-            )
+            try:
+                account = AccountService.create_account_and_tenant(
+                    email=reset_data.get("email"),
+                    name=reset_data.get("email"),
+                    password=password_confirm,
+                    interface_language=languages[0],
+                )
+            except WorkSpaceNotAllowedCreateError:
+                pass
 
-        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
-
-        return {"result": "success", "data": token_pair.model_dump()}
+        return {"result": "success"}
 
 
 api.add_resource(ForgotPasswordSendEmailApi, "/forgot-password")
