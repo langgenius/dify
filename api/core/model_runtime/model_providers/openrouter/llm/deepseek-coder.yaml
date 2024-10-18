@@ -18,6 +18,15 @@ parameter_rules:
     min: 0
     max: 1
     default: 1
+  - name: top_k
+    label:
+      zh_Hans: 取样数量
+      en_US: Top k
+    type: int
+    help:
+      zh_Hans: 仅从每个后续标记的前 K 个选项中采样。
+      en_US: Only sample from the top K options for each subsequent token.
+    required: false
   - name: max_tokens
     use_template: max_tokens
     min: 1
