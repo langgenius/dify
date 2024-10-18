@@ -51,7 +51,6 @@ const NormalForm = () => {
       }
       const features = await getSystemFeatures()
       const allFeatures = { ...defaultSystemFeatures, ...features }
-      console.log('🚀 ~ init ~ allFeatures:', allFeatures)
       setSystemFeatures(allFeatures)
       setAllMethodsAreDisabled(!allFeatures.enable_social_oauth_login && !allFeatures.enable_email_code_login && !allFeatures.enable_email_password_login && !allFeatures.sso_enforced_for_signin)
       setShowORLine((allFeatures.enable_social_oauth_login || allFeatures.sso_enforced_for_signin) && (allFeatures.enable_email_code_login || allFeatures.enable_email_password_login))
