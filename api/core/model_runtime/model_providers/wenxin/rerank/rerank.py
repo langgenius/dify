@@ -36,14 +36,14 @@ class WenxinRerankModel(RerankModel):
     """
 
     def _invoke(
-            self,
-            model: str,
-            credentials: dict,
-            query: str,
-            docs: list[str],
-            score_threshold: Optional[float] = None,
-            top_n: Optional[int] = None,
-            user: Optional[str] = None,
+        self,
+        model: str,
+        credentials: dict,
+        query: str,
+        docs: list[str],
+        score_threshold: Optional[float] = None,
+        top_n: Optional[int] = None,
+        user: Optional[str] = None,
     ) -> RerankResult:
         """
         Invoke rerank model
