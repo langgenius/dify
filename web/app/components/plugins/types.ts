@@ -28,12 +28,27 @@ export type PluginToolDeclaration = {
 
 export type PluginEndpointDeclaration = {
   settings: CredentialFormSchemaBase[]
-  endpoint: EndpointItem[]
+  endpoints: EndpointItem[]
 }
 
 export type EndpointItem = {
   path: string
   method: string
+}
+
+export type EndpointListItem = {
+  id: string
+  created_at: string
+  updated_at: string
+  settings: Record<string, any>
+  tenant_id: string
+  plugin_id: string
+  expired_at: string
+  declaration: PluginEndpointDeclaration
+  name: string
+  enabled: boolean
+  url: string
+  hook_id: string
 }
 
 export type PluginDeclaration = {

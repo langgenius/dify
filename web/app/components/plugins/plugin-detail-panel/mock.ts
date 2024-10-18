@@ -35,3 +35,46 @@ export const toolNotion = {
   source: PluginSource.marketplace,
   meta: null,
 }
+
+export const toolNotionEndpoints = [
+  {
+    id: 'dlfajkgjdga-dfjalksjfglkds-dfjakld',
+    created_at: '2024-10-16 16:05:33',
+    updated_at: '2024-10-16 16:05:33',
+    settings: {
+      'api-key': '*******',
+    },
+    tenant_id: 'jflkdsjoewingljlsadjgoijg',
+    plugin_id: 'Notion/notion-page-search',
+    expired_at: '2024-10-16 16:05:33',
+    declaration: {
+      settings: [
+        {
+          type: 'secret-input',
+          name: 'api-key',
+          required: true,
+          default: null,
+          options: null,
+          label: {
+            'en-US': 'API-key',
+            'zh-Hans': 'API-key',
+          },
+          help: null,
+          url: null,
+          placeholder: {
+            'en-US': 'Please input your API key',
+            'zh-Hans': '请输入你的 API key',
+          },
+        },
+      ],
+      endpoint: [
+        { path: '/duck/<app_id>', method: 'GET' },
+        { path: '/neko', method: 'GET' },
+      ],
+    },
+    name: 'default',
+    enabled: true,
+    url: 'http://localhost:5002/e/45rj9V4TRxAjL0I2wXRZgZdXjdHEKBh8',
+    hook_id: '45rj9V4TRxAjL0I2wXRZgZdXjdHEKBh8',
+  },
+]
