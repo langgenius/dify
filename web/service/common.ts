@@ -45,6 +45,7 @@ type LoginSuccess = {
 type LoginFail = {
   result: 'fail'
   data: string
+  code: string
   message: string
 }
 type LoginResponse = LoginSuccess | LoginFail
@@ -330,7 +331,7 @@ export const emailLoginWithCode = (data: { email: string;code: string;token: str
   post<LoginResponse>('/email-code-login/validity', { body: data })
 
 export const sendResetPasswordCode = (email: string, language = 'en-US') =>
-  post<CommonResponse & { data: string;message?: string }>('/forgot-password', { body: { email, language } })
+  post<CommonResponse & { data: string;message?: string ;code?: string }>('/forgot-password', { body: { email, language } })
 
 export const verifyResetPasswordCode = (body: { email: string;code: string;token: string }) =>
   post<CommonResponse & { is_valid: boolean }>('/forgot-password/validity', { body })

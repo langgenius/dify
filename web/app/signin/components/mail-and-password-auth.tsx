@@ -75,7 +75,7 @@ export default function MailAndPasswordAuth({ isInvite, allowRegistration }: Mai
           router.replace('/apps')
         }
       }
-      else if (res.message === 'account_not_found') {
+      else if (res.code === 'account_not_found') {
         if (allowRegistration) {
           const params = new URLSearchParams()
           params.append('email', encodeURIComponent(email))
