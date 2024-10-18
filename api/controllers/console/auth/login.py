@@ -16,7 +16,7 @@ from controllers.console.auth.error import (
     InvalidTokenError,
 )
 from controllers.console.error import (
-    AccountBannedOrClosedError,
+    AccountBannedError,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
     NotAllowedRegister,
@@ -68,12 +68,12 @@ class LoginApi(Resource):
             else:
                 account = AccountService.authenticate(args["email"], args["password"])
         except services.errors.account.AccountLoginError:
-            raise AccountBannedOrClosedError()
+            raise AccountBannedError()
         except services.errors.account.AccountPasswordError:
             AccountService.add_login_error_rate_limit(args["email"])
             raise EmailOrPasswordMismatchError()
         except services.errors.account.AccountNotFoundError:
-            if FeatureService.system_features.is_allow_register:
+            if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
                 return {"result": "fail", "data": token, "code": "account_not_found"}
             else:
@@ -117,7 +117,7 @@ class ResetPasswordSendEmailApi(Resource):
 
         account = AccountService.get_user_through_email(args["email"])
         if account is None:
-            if FeatureService.system_features.is_allow_register:
+            if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
             else:
                 raise NotAllowedRegister()
@@ -146,7 +146,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 
         account = AccountService.get_user_through_email(args["email"])
         if account is None:
-            if FeatureService.system_features.is_allow_register:
+            if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_email_code_login_email(email=args["email"], language=language)
             else:
                 raise NotAllowedRegister()
@@ -182,7 +182,7 @@ class EmailCodeLoginApi(Resource):
         if account:
             tenant = TenantService.get_join_tenants(account)
             if not tenant:
-                if not FeatureService.system_features.is_allow_create_workspace:
+                if not FeatureService.get_system_features().is_allow_create_workspace:
                     raise NotAllowedCreateWorkspace()
                 else:
                     tenant = TenantService.create_tenant(f"{account.name}'s Workspace")

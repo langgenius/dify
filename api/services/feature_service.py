@@ -50,8 +50,6 @@ class SystemFeatureModel(BaseModel):
 
 
 class FeatureService:
-    system_features = SystemFeatureModel()
-
     @classmethod
     def get_features(cls, tenant_id: str) -> FeatureModel:
         features = FeatureModel()
@@ -65,20 +63,24 @@ class FeatureService:
 
     @classmethod
     def get_system_features(cls) -> SystemFeatureModel:
-        cls._fulfill_login_params_from_env(cls.system_features)
-        if dify_config.ENTERPRISE_ENABLED:
-            cls.system_features.enable_web_sso_switch_component = True
-            cls._fulfill_params_from_enterprise(cls.system_features)
+        system_features = SystemFeatureModel()
 
-        return cls.system_features
+        cls._fulfill_system_params_from_env(system_features)
+
+        if dify_config.ENTERPRISE_ENABLED:
+            system_features.enable_web_sso_switch_component = True
+
+            cls._fulfill_params_from_enterprise(system_features)
+
+        return system_features
 
     @classmethod
-    def _fulfill_login_params_from_env(cls, features: SystemFeatureModel):
-        features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
-        features.enable_email_password_login = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
-        features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
-        features.is_allow_register = dify_config.ALLOW_REGISTER
-        features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
+    def _fulfill_system_params_from_env(cls, system_features: SystemFeatureModel):
+        system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
+        system_features.enable_email_password_login = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
+        system_features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
+        system_features.is_allow_register = dify_config.ALLOW_REGISTER
+        system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):

@@ -44,7 +44,7 @@ class ForgotPasswordSendEmailApi(Resource):
         account = Account.query.filter_by(email=args["email"]).first()
         token = None
         if account is None:
-            if FeatureService.system_features.is_allow_register:
+            if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
                 return {"result": "fail", "data": token, "code": "account_not_found"}
             else:
@@ -114,7 +114,7 @@ class ForgotPasswordResetApi(Resource):
             account.password_salt = base64_salt
             db.session.commit()
             tenant = TenantService.get_join_tenants(account)
-            if not tenant and not FeatureService.system_features.is_allow_create_workspace:
+            if not tenant and not FeatureService.get_system_features().is_allow_create_workspace:
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                 TenantService.create_tenant_member(tenant, account, role="owner")
                 account.current_tenant = tenant

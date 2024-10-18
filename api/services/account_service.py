@@ -197,7 +197,7 @@ class AccountService:
         is_setup: Optional[bool] = False,
     ) -> Account:
         """create account"""
-        if not FeatureService.system_features.is_allow_register and not is_setup:
+        if not FeatureService.get_system_features().is_allow_register and not is_setup:
             from controllers.console.error import NotAllowedRegister
 
             raise NotAllowedRegister()
@@ -488,7 +488,7 @@ class TenantService:
     @staticmethod
     def create_tenant(name: str, is_setup: Optional[bool] = False) -> Tenant:
         """Create tenant"""
-        if not FeatureService.system_features.is_allow_create_workspace and not is_setup:
+        if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
             from controllers.console.error import NotAllowedCreateWorkspace
 
             raise NotAllowedCreateWorkspace()
@@ -506,7 +506,7 @@ class TenantService:
         account: Account, name: Optional[str] = None, is_setup: Optional[bool] = False
     ):
         """Create owner tenant if not exist"""
-        if not FeatureService.system_features.is_allow_create_workspace and not is_setup:
+        if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
             raise WorkSpaceNotAllowedCreateError()
         available_ta = (
             TenantAccountJoin.query.filter_by(account_id=account.id).order_by(TenantAccountJoin.id.asc()).first()
@@ -804,7 +804,7 @@ class RegisterService:
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
 
-            if FeatureService.system_features.is_allow_create_workspace:
+            if FeatureService.get_system_features().is_allow_create_workspace:
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                 TenantService.create_tenant_member(tenant, account, role="owner")
                 account.current_tenant = tenant

@@ -146,7 +146,7 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     if account:
         tenant = TenantService.get_join_tenants(account)
         if not tenant:
-            if not FeatureService.system_features.is_allow_create_workspace:
+            if not FeatureService.get_system_features().is_allow_create_workspace:
                 raise WorkSpaceNotAllowedCreateError()
             else:
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
@@ -155,7 +155,7 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
                 tenant_was_created.send(tenant)
 
     if not account:
-        if not FeatureService.system_features.is_allow_register:
+        if not FeatureService.get_system_features().is_allow_register:
             raise AccountNotFoundError()
         account_name = user_info.name or "Dify"
         account = RegisterService.register(
