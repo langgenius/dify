@@ -21,9 +21,8 @@ import {
 import type { PromptVariable } from '@/models/debug'
 
 const Features = () => {
-  const { t } = useTranslation()
-  const isChatMode = useIsChatMode()
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
+  const isChatMode = useIsChatMode()
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const nodes = useNodes<CommonNodeType>()
@@ -47,7 +46,8 @@ const Features = () => {
 
   const handleFeaturesChange = useCallback(() => {
     handleSyncWorkflowDraft()
-  }, [handleSyncWorkflowDraft])
+    setShowFeaturesPanel(true)
+  }, [handleSyncWorkflowDraft, setShowFeaturesPanel])
 
   return (
     <div className='fixed top-16 left-2 bottom-2 w-[600px] rounded-2xl border-[0.5px] border-gray-200 bg-white shadow-xl z-10'>

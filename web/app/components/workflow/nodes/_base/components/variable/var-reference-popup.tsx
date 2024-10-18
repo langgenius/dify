@@ -23,7 +23,9 @@ const VarReferencePopup: FC<Props> = ({
         searchBoxClassName='mt-1'
         vars={vars}
         onChange={onChange}
-        itemWidth={itemWidth} />
+        itemWidth={itemWidth}
+        isSupportFileVar
+      />
     </div >
   )
 }
