@@ -65,6 +65,7 @@ const InstallForm = () => {
   useEffect(() => {
     fetchSetupStatus().then((res: SetupStatusResponse) => {
       if (res.step === 'finished') {
+        localStorage.setItem('setup_status', 'finished')
         window.location.href = '/signin'
       }
       else {
