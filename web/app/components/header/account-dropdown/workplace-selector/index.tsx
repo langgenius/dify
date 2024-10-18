@@ -41,7 +41,7 @@ const WorkplaceSelector = () => {
               `,
             )}>
               <div className='flex items-center justify-center w-7 h-7 bg-[#EFF4FF] rounded-md text-xs font-medium text-primary-600'>{currentWorkspace?.name[0].toLocaleUpperCase()}</div>
-              <div className={'truncate max-w-[80px] line-clamp-1 overflow-hidden text-text-secondary text-ellipsis system-sm-medium'}>{currentWorkspace?.name}</div>
+              <div className={'truncate max-w-[80px] text-text-secondary system-sm-medium'}>{currentWorkspace?.name}</div>
               <RiArrowDownSLine className='w-4 h-4 text-text-secondary' />
             </Menu.Button>
             <Transition
