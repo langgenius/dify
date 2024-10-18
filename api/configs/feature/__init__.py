@@ -506,9 +506,14 @@ class DataSetConfig(BaseSettings):
     Configuration for dataset management
     """
 
-    CLEAN_DAY_SETTING: PositiveInt = Field(
-        description="Interval in days for dataset cleanup operations",
+    PLAN_SANDBOX_CLEAN_DAY_SETTING: PositiveInt = Field(
+        description="Interval in days for dataset cleanup operations - plan: sandbox",
         default=30,
+    )
+
+    PLAN_PRO_CLEAN_DAY_SETTING: PositiveInt = Field(
+        description="Interval in days for dataset cleanup operations - plan: pro and team",
+        default=7,
     )
 
     DATASET_OPERATOR_ENABLED: bool = Field(

@@ -13,10 +13,10 @@ from nltk.corpus import stopwords
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -168,14 +168,6 @@ class OracleVector(BaseVector):
                 docs.append(Document(page_content=record[1], metadata=record[0]))
         return docs
 
-    # def get_ids_by_metadata_field(self, key: str, value: str):
-    #    with self._get_cursor() as cur:
-    #        cur.execute(f"SELECT id FROM {self.table_name} d WHERE d.meta.{key}='{value}'" )
-    #        idss = []
-    #        for record in cur:
-    #            idss.append(record[0])
-    #    return idss
-
     def delete_by_ids(self, ids: list[str]) -> None:
         with self._get_cursor() as cur:
             cur.execute(f"DELETE FROM {self.table_name} WHERE id IN %s" % (tuple(ids),))
@@ -192,7 +184,7 @@ class OracleVector(BaseVector):
         :param top_k: The number of nearest neighbors to return, default is 5.
         :return: List of Documents that are nearest to the query vector.
         """
-        top_k = kwargs.get("top_k", 5)
+        top_k = kwargs.get("top_k", 4)
         with self._get_cursor() as cur:
             cur.execute(
                 f"SELECT meta, text, vector_distance(embedding,:1) AS distance FROM {self.table_name}"

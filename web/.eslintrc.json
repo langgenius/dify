@@ -2,7 +2,8 @@
   "root": true,
   "extends": [
     "next",
-    "@antfu"
+    "@antfu",
+    "plugin:storybook/recommended"
   ],
   "rules": {
     "@typescript-eslint/consistent-type-definitions": [

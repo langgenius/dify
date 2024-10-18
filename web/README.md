@@ -74,6 +74,18 @@ If you want to customize the host and port:
 npm run start --port=3001 --host=0.0.0.0
 ```
 
+## Storybook
+
+This project uses [Storybook](https://storybook.js.org/) for UI component development.
+
+To start the storybook server, run:
+
+```bash
+yarn storybook
+```
+
+Open [http://localhost:6006](http://localhost:6006) with your browser to see the result.
+
 ## Lint Code
 
 If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscode/settings.json` for lint code setting.
