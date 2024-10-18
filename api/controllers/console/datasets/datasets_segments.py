@@ -26,7 +26,7 @@ from fields.segment_fields import segment_fields, child_chunk_fields
 from libs.login import login_required
 from models.dataset import ChildChunk, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
-from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateArgs
+from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
 from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError, ChildChunkIndexingError as ChildChunkIndexingServiceError
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
@@ -489,13 +489,6 @@ class ChildChunkUpdateApi(Resource):
         ).first()
         if not segment:
             raise NotFound("Segment not found.")
-        # check child chunk
-        child_chunk_id = str(child_chunk_id)
-        child_chunk = ChildChunk.query.filter(
-            ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id
-        ).first()
-        if not child_chunk:
-            raise NotFound("Child chunk not found.")
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
@@ -505,10 +498,11 @@ class ChildChunkUpdateApi(Resource):
             raise Forbidden(str(e))
         # validate args
         parser = reqparse.RequestParser()
-        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("chunks", type=list, required=True, nullable=False, location="json")
         args = parser.parse_args()
         try:
-            child_chunk = SegmentService.update_child_chunk(args.get("content"), child_chunk, dataset)
+            chunks = [ChildChunkUpdateArgs(**chunk) for chunk in args.get("chunks")]
+            child_chunk = SegmentService.update_child_chunk(chunks, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return {"data": marshal(child_chunk, child_chunk_fields)}, 200

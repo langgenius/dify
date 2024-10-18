@@ -20,6 +20,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import Document
 from libs import helper
 from models.dataset import Dataset
+from services.entities.knowledge_entities.knowledge_entities import Rule
 
 
 class QAIndexProcessor(BaseIndexProcessor):
@@ -30,9 +31,15 @@ class QAIndexProcessor(BaseIndexProcessor):
         return text_docs
 
     def transform(self, documents: list[Document], **kwargs) -> list[Document]:
+        process_rule = kwargs.get("process_rule")
+        rules = Rule(**process_rule.get("rules"))
         splitter = self._get_splitter(
-            processing_rule=kwargs.get("process_rule"), embedding_model_instance=kwargs.get("embedding_model_instance")
-        )
+            processing_rule_mode=process_rule.get("mode"),
+            max_tokens=rules.segmentation.max_tokens,
+            chunk_overlap=rules.segmentation.chunk_overlap,
+            separator=rules.segmentation.separator,
+            embedding_model_instance=kwargs.get("embedding_model_instance")
+            )
 
         # Split the text documents into nodes.
         all_documents = []

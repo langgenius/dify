@@ -39,7 +39,7 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
-from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, RetrievalModel, SegmentUpdateArgs
+from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, KnowledgeConfig, RetrievalModel, SegmentUpdateArgs
 from services.errors.account import InvalidActionError, NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.dataset import DatasetNameDuplicateError
@@ -1697,34 +1697,51 @@ class SegmentService:
 
     @classmethod
     def create_child_chunk(cls, content: str, segment: DocumentSegment, document: Document, dataset: Dataset) -> ChildChunk:
-        index_node_id = str(uuid.uuid4())
-        index_node_hash = helper.generate_text_hash(content)
-        child_chunk= ChildChunk(
-            tenant_id=current_user.current_tenant_id,
-            dataset_id=dataset.id,
-            document_id=document.id,
-            segment_id=segment.id,
-            index_node_id=index_node_id,
-            index_node_hash=index_node_hash,
-            content=content,
-            word_count=len(content),
-            type="customized",
-            created_by=current_user.id,
-        )
-        db.session.add(child_chunk)
-        # save vector index
-        try:
-            VectorService.create_child_chunk_vector(child_chunk, dataset)
-        except Exception as e:
-            logging.exception("create child chunk index failed")
-            db.session.rollback()
-            raise ChildChunkIndexingError(str(e))
-        db.session.commit()
+        lock_name = "add_child_lock_{}".format(segment.id)
+        with redis_client.lock(lock_name, timeout=20):
+            index_node_id = str(uuid.uuid4())
+            index_node_hash = helper.generate_text_hash(content)
+            child_chunk_count = db.session.query(ChildChunk).filter(
+                ChildChunk.tenant_id == current_user.current_tenant_id,
+                ChildChunk.dataset_id == dataset.id,
+                ChildChunk.document_id == document.id,
+                ChildChunk.segment_id == segment.id,
+            ).count()
+            child_chunk= ChildChunk(
+                tenant_id=current_user.current_tenant_id,
+                dataset_id=dataset.id,
+                document_id=document.id,
+                segment_id=segment.id,
+                position=child_chunk_count + 1,
+                index_node_id=index_node_id,
+                index_node_hash=index_node_hash,
+                content=content,
+                word_count=len(content),
+                type="customized",
+                created_by=current_user.id,
+            )
+            db.session.add(child_chunk)
+            # save vector index
+            try:
+                VectorService.create_child_chunk_vector(child_chunk, dataset)
+            except Exception as e:
+                logging.exception("create child chunk index failed")
+                db.session.rollback()
+                raise ChildChunkIndexingError(str(e))
+            db.session.commit()
 
-        return child_chunk
+            return child_chunk
     
     @classmethod
-    def update_child_chunk(cls, content: str, child_chunk: ChildChunk, dataset: Dataset) -> ChildChunk:
+    def update_child_chunk(cls, child_chunks_update_args: list[ChildChunkUpdateArgs], segment: DocumentSegment, document: Document, dataset: Dataset) -> ChildChunk:
+        child_chunk = db.session.query(ChildChunk).filter(
+            ChildChunk.dataset_id == dataset.id,
+            ChildChunk.document_id == document.id,
+            ChildChunk.segment_id == segment.id,
+        ).all()
+        
+        if not child_chunk:
+            raise NotFound("Child chunk not found.")
         child_chunk.content = content
         db.session.add(child_chunk)
         try:

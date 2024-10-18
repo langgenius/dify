@@ -275,9 +275,6 @@ class IndexingRunner:
         total_segments = 0
         index_type = doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
-        processing_rule = DatasetProcessRule(
-                mode=tmp_processing_rule["mode"], rules=json.dumps(tmp_processing_rule["rules"])
-            )
         for extract_setting in extract_settings:
             # extract
             processing_rule = DatasetProcessRule(
@@ -288,7 +285,7 @@ class IndexingRunner:
                 text_docs,
                 embedding_model_instance=embedding_model_instance,
                 process_rule=processing_rule.to_dict(),
-                tenant_id=dataset.tenant_id,
+                tenant_id=current_user.current_tenant_id,
                 doc_language=doc_language,  
             )
             total_segments += len(documents)
@@ -665,31 +662,6 @@ class IndexingRunner:
         """
         DocumentSegment.query.filter_by(document_id=dataset_document_id).update(update_params)
         db.session.commit()
-
-    @staticmethod
-    def batch_add_segments(segments: list[DocumentSegment], dataset_document: DatasetDocument, dataset: Dataset):
-        """
-        Batch add segments index processing
-        """
-        documents = []
-        # save vector index
-        index_type = dataset.doc_form
-        index_processor = IndexProcessorFactory(index_type).init_index_processor()
-        for segment in segments:
-            document = Document(
-                page_content=segment.content,
-                metadata={
-                    "doc_id": segment.index_node_id,
-                    "doc_hash": segment.index_node_hash,
-                    "document_id": segment.document_id,
-                    "dataset_id": segment.dataset_id,
-                },
-            )
-            if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                documents.append(index_processor.transform([document], embedding_model_instance=None, process_rule=None, tenant_id=dataset.tenant_id, doc_language=None))
-            documents.append(document)
-
-        index_processor.load(dataset, documents)
 
     def _transform(
         self,

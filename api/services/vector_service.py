@@ -126,12 +126,13 @@ class VectorService:
         if len(documents) > 0 and len(documents[0].child_chunks) > 0:
             index_processor.load(dataset, documents)
 
-            for child_chunk in documents[0].child_chunks:
+            for position, child_chunk in enumerate(documents[0].child_chunks, start=1):
                 child_segment = ChildChunk(
                     tenant_id=dataset.tenant_id,
                     dataset_id=dataset.id,
                     document_id=dataset_document.id,
                     segment_id=segment.id,
+                    position=position,
                     index_node_id=child_chunk.metadata["doc_id"],
                     index_node_hash=child_chunk.metadata["doc_hash"],
                     content=child_chunk.page_content,

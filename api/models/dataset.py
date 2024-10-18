@@ -603,6 +603,7 @@ class ChildChunk(db.Model):
     dataset_id = db.Column(StringUUID, nullable=False)
     document_id = db.Column(StringUUID, nullable=False)
     segment_id = db.Column(StringUUID, nullable=False)
+    position = db.Column(db.Integer, nullable=False)
     content = db.Column(db.Text, nullable=False)
     word_count = db.Column(db.Integer, nullable=False)
     # indexing fields
