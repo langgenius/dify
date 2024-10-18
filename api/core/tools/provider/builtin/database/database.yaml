@@ -1,0 +1,23 @@
+identity:
+  author: Dify
+  name: database
+  label:
+    en_US: Database
+  description:
+    en_US: This tool is used to execute SQL in an existing database.
+    zh_Hans: 该工具用于在已有数据库中执行SQL。
+  icon: icon.svg
+  tags:
+    - utilities
+credentials_for_provider:
+  openai_base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: Test Connection
+    help:
+      en_US: Please config your database uri in .env file
+      zh_Hans: 请在'.env'文件中配置数据库 uri
+    placeholder:
+      en_US: Directly click the save button to test db connection
+      zh_Hans: 直接点击保存按钮即可测试数据库连接
