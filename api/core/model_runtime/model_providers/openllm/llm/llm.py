@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from typing import Optional
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
@@ -193,7 +194,7 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
                     ),
                 )
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """
