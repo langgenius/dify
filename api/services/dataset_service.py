@@ -1733,25 +1733,64 @@ class SegmentService:
             return child_chunk
     
     @classmethod
-    def update_child_chunk(cls, child_chunks_update_args: list[ChildChunkUpdateArgs], segment: DocumentSegment, document: Document, dataset: Dataset) -> ChildChunk:
-        child_chunk = db.session.query(ChildChunk).filter(
+    def update_child_chunk(cls, child_chunks_update_args: list[ChildChunkUpdateArgs], segment: DocumentSegment, document: Document, dataset: Dataset) -> list[ChildChunk]:
+        child_chunks = db.session.query(ChildChunk).filter(
             ChildChunk.dataset_id == dataset.id,
             ChildChunk.document_id == document.id,
             ChildChunk.segment_id == segment.id,
         ).all()
-        
-        if not child_chunk:
-            raise NotFound("Child chunk not found.")
-        child_chunk.content = content
-        db.session.add(child_chunk)
+        child_chunks_map = {chunk.id: chunk for chunk in child_chunks}
+
+        new_child_chunks, update_child_chunks, delete_child_chunks, new_child_chunks_args = [], [], [], []
+
+        for child_chunk_update_args in child_chunks_update_args:
+            if child_chunk_update_args.id:
+                child_chunk = child_chunks_map.pop(child_chunk_update_args.id, None)
+                if child_chunk:
+                    if child_chunk.content != child_chunk_update_args.content:
+                        child_chunk.content = child_chunk_update_args.content
+                        child_chunk.word_count = len(child_chunk.content)
+                        update_child_chunks.append(child_chunk)
+            else:
+                new_child_chunks_args.append(child_chunk_update_args)
+        if child_chunks_map:
+            delete_child_chunks = list(child_chunks_map.values())
         try:
-            VectorService.update_child_chunk_vector(child_chunk, dataset)
+            if update_child_chunks:
+                db.session.bulk_save_objects(update_child_chunks)
+
+            if delete_child_chunks:
+                for child_chunk in delete_child_chunks:
+                    db.session.delete(child_chunk)  
+            if new_child_chunks_args:
+                child_chunk_count = len(child_chunks)
+                for position, args in enumerate(new_child_chunks_args, start=child_chunk_count + 1):
+                    index_node_id = str(uuid.uuid4())
+                    index_node_hash = helper.generate_text_hash(args.content)
+                    child_chunk= ChildChunk(
+                        tenant_id=current_user.current_tenant_id,
+                        dataset_id=dataset.id,
+                        document_id=document.id,
+                        segment_id=segment.id,
+                        position=position,
+                        index_node_id=index_node_id,
+                        index_node_hash=index_node_hash,
+                        content=args.content,
+                        word_count=len(args.content),
+                        type="customized",
+                        created_by=current_user.id,
+                    )
+
+                    db.session.add(child_chunk)
+                    db.session.flush()
+                    new_child_chunks.append(child_chunk)
+            VectorService.update_child_chunk_vector(new_child_chunks, update_child_chunks, delete_child_chunks, dataset)
+            db.session.commit()
         except Exception as e:
             logging.exception("update child chunk index failed")
             db.session.rollback()
             raise ChildChunkIndexingError(str(e))
-        db.session.commit()
-        return child_chunk
+        return sorted(new_child_chunks + update_child_chunks, key=lambda x: x.position)
     
     @classmethod
     def delete_child_chunk(cls, child_chunk: ChildChunk, dataset: Dataset):
@@ -1763,6 +1802,15 @@ class SegmentService:
             db.session.rollback()
             raise ChildChunkDeleteIndexError(str(e))
         db.session.commit()
+    
+    @classmethod
+    def get_child_chunks(cls, segment_id: str, document_id: str, dataset_id: str):
+        return db.session.query(ChildChunk).filter(
+            ChildChunk.tenant_id == current_user.current_tenant_id,
+            ChildChunk.dataset_id == dataset_id,
+            ChildChunk.document_id == document_id,
+            ChildChunk.segment_id == segment_id,
+        ).all()
 
 class DatasetCollectionBindingService:
     @classmethod

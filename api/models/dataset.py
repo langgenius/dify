@@ -610,8 +610,6 @@ class ChildChunk(db.Model):
     index_node_id = db.Column(db.String(255), nullable=True)
     index_node_hash = db.Column(db.String(255), nullable=True)
     type = db.Column(db.String(255), nullable=False, server_default=db.text("'automatic'::character varying"))
-
-    status = db.Column(db.String(255), nullable=False, server_default=db.text("'waiting'::character varying"))
     created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     updated_by = db.Column(StringUUID, nullable=True)

@@ -468,8 +468,34 @@ class ChildChunkUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    def get(self, dataset_id, document_id, segment_id):
+        # check dataset
+        dataset_id = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
+        # check document
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset_id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+        # check segment
+        segment_id = str(segment_id)
+        segment = DocumentSegment.query.filter(
+            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not segment:
+            raise NotFound("Segment not found.")
+        child_chunks = SegmentService.get_child_chunks(segment_id, document_id, dataset_id)
+        return {"data": marshal(child_chunks, child_chunk_fields)}, 200
+
+    @setup_required
+    @login_required
+    @account_initialization_required
     @cloud_edition_billing_resource_check("vector_space")
-    def patch(self, dataset_id, document_id, segment_id, child_chunk_id):
+    def patch(self, dataset_id, document_id, segment_id):
         # check dataset
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
@@ -502,10 +528,10 @@ class ChildChunkUpdateApi(Resource):
         args = parser.parse_args()
         try:
             chunks = [ChildChunkUpdateArgs(**chunk) for chunk in args.get("chunks")]
-            child_chunk = SegmentService.update_child_chunk(chunks, segment, document, dataset)
+            child_chunks = SegmentService.update_child_chunk(chunks, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
-        return {"data": marshal(child_chunk, child_chunk_fields)}, 200
+        return {"data": marshal(child_chunks, child_chunk_fields)}, 200
 
     @setup_required
     @login_required

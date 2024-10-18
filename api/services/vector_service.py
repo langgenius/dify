@@ -160,21 +160,41 @@ class VectorService:
             vector.add_texts([child_document], duplicate_check=True)
     
     @classmethod
-    def update_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset):
-        child_document = Document(
-            page_content=child_chunk.content,
-            metadata={
-                "doc_id": child_chunk.index_node_id,
-                "doc_hash": child_chunk.index_node_hash,
-                "document_id": child_chunk.document_id,
-                "dataset_id": child_chunk.dataset_id,
-            },
-        )
+    def update_child_chunk_vector(cls, new_child_chunks: list[ChildChunk], update_child_chunks: list[ChildChunk], delete_child_chunks: list[ChildChunk], dataset: Dataset):
+        documents = []
+        delete_node_ids = []
+        for new_child_chunk in new_child_chunks:
+            new_child_document = Document(
+                page_content=new_child_chunk.content,
+                metadata={
+                    "doc_id": new_child_chunk.index_node_id,
+                    "doc_hash": new_child_chunk.index_node_hash,
+                    "document_id": new_child_chunk.document_id,
+                    "dataset_id": new_child_chunk.dataset_id,
+                },
+            )
+            documents.append(new_child_document)
+        for update_child_chunk in update_child_chunks:
+            child_document = Document(
+                page_content=update_child_chunk.content,
+                metadata={
+                    "doc_id": update_child_chunk.index_node_id,
+                    "doc_hash": update_child_chunk.index_node_hash,
+                    "document_id": update_child_chunk.document_id,
+                    "dataset_id": update_child_chunk.dataset_id,
+                },
+            )
+            documents.append(child_document)
+            delete_node_ids.append(update_child_chunk.index_node_id)
+        for delete_child_chunk in delete_child_chunks:
+            delete_node_ids.append(delete_child_chunk.index_node_id)
         if dataset.indexing_technique == "high_quality":
             # update vector index
             vector = Vector(dataset=dataset)
-            vector.delete_by_ids([child_chunk.index_node_id])
-            vector.add_texts([child_document], duplicate_check=True)
+            if delete_node_ids:
+                vector.delete_by_ids(delete_node_ids)
+            if documents:
+                vector.add_texts(documents, duplicate_check=True)
 
     @classmethod
     def delete_child_chunk_vector(cls, child_chunk: ChildChunk, dataset: Dataset):
