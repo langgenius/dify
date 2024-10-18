@@ -333,6 +333,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
         endpoint_url = credentials["endpoint_url"]
         if not endpoint_url.endswith("/"):
             endpoint_url += "/"
+        if not endpoint_url.endswith("v1/"):
+            endpoint_url += "v1/"
 
         data = {"model": model, "stream": stream, **model_parameters}
 
