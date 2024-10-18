@@ -45,6 +45,7 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
+from core.app.task_pipeline.workflow_persist_manage import WorkflowPersistManage
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -74,6 +75,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
     _user: Union[Account, EndUser]
     _workflow_system_variables: dict[SystemVariableKey, Any]
     _wip_workflow_node_executions: dict[str, WorkflowNodeExecution]
+    _workflow_persist_manage: WorkflowPersistManage
 
     def __init__(
         self,
@@ -120,6 +122,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         self._wip_workflow_node_executions = {}
 
         self._conversation_name_generate_thread = None
+        self._workflow_persist_manage = WorkflowPersistManage()
 
     def process(self):
         """

@@ -43,6 +43,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
+from core.app.task_pipeline.workflow_persist_manage import WorkflowPersistManage
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import SystemVariableKey
 from extensions.ext_database import db
@@ -71,6 +72,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
     _application_generate_entity: WorkflowAppGenerateEntity
     _workflow_system_variables: dict[SystemVariableKey, Any]
     _wip_workflow_node_executions: dict[str, WorkflowNodeExecution]
+    _workflow_persist_manage: WorkflowPersistManage
 
     def __init__(
         self,
@@ -106,6 +108,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
         self._task_state = WorkflowTaskState()
         self._wip_workflow_node_executions = {}
+        self._workflow_persist_manage = WorkflowPersistManage()
 
     def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
         """
