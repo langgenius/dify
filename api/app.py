@@ -20,6 +20,7 @@ from app_factory import create_app
 
 # DO NOT REMOVE BELOW
 from events import event_handlers  # noqa: F401
+from extensions.ext_database import db
 
 # TODO: Find a way to avoid importing models here
 from models import account, dataset, model, source, task, tool, tools, web  # noqa: F401
