@@ -216,7 +216,7 @@ matplotlib = "~3.8.2"
 newspaper3k = "0.2.8"
 nltk = "3.8.1"
 numexpr = "~2.9.0"
-pydub = "^0.25.1"
+pydub = "~0.25.1"
 qrcode = "~7.4.2"
 twilio = "~9.0.4"
 vanna = { version = "0.7.3", extras = ["postgres", "mysql", "clickhouse", "duckdb"] }
