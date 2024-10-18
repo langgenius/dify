@@ -8,6 +8,8 @@ from core.llm_generator.output_parser.suggested_questions_after_answer import Su
 from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
     GENERATOR_QA_PROMPT,
+    JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
+    PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
 from core.model_manager import ModelManager
@@ -238,6 +240,54 @@ class LLMGenerator:
         rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
         return rule_config
+
+    @classmethod
+    def generate_code(
+        cls,
+        tenant_id: str,
+        instruction: str,
+        model_config: dict,
+        code_language: str = "javascript",
+        max_tokens: int = 1000,
+    ) -> dict:
+        if code_language == "python":
+            prompt_template = PromptTemplateParser(PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE)
+        else:
+            prompt_template = PromptTemplateParser(JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE)
+
+        prompt = prompt_template.format(
+            inputs={
+                "INSTRUCTION": instruction,
+                "CODE_LANGUAGE": code_language,
+            },
+            remove_template_variables=False,
+        )
+
+        model_manager = ModelManager()
+        model_instance = model_manager.get_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
+            provider=model_config.get("provider") if model_config else None,
+            model=model_config.get("name") if model_config else None,
+        )
+
+        prompt_messages = [UserPromptMessage(content=prompt)]
+        model_parameters = {"max_tokens": max_tokens, "temperature": 0.01}
+
+        try:
+            response = model_instance.invoke_llm(
+                prompt_messages=prompt_messages, model_parameters=model_parameters, stream=False
+            )
+
+            generated_code = response.message.content
+            return {"code": generated_code, "language": code_language, "error": ""}
+
+        except InvokeError as e:
+            error = str(e)
+            return {"code": "", "language": code_language, "error": f"Failed to generate code. Error: {error}"}
+        except Exception as e:
+            logging.exception(e)
+            return {"code": "", "language": code_language, "error": f"An unexpected error occurred: {str(e)}"}
 
     @classmethod
     def generate_qa_document(cls, tenant_id: str, query, document_language: str):
