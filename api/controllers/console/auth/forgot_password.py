@@ -13,7 +13,7 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import EmailSendIpLimitError, NotAllowedCreateWorkspace, NotAllowedRegister
+from controllers.console.error import EmailSendIpLimitError, NotAllowedRegister
 from controllers.console.setup import setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
@@ -135,7 +135,11 @@ class ForgotPasswordResetApi(Resource):
                     interface_language=languages[0],
                 )
             except WorkSpaceNotAllowedCreateError:
-                raise NotAllowedCreateWorkspace()
+                return redirect(
+                    f"{dify_config.CONSOLE_WEB_URL}/signin"
+                    "?message=Workspace not found, "
+                    + "please contact system admin to invite you to join in a workspace."
+                )
 
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
 
