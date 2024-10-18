@@ -29,7 +29,12 @@ class JSONParseTool(BuiltinTool):
         ensure_ascii = tool_parameters.get("ensure_ascii", True)
         try:
             result = self._extract(content, json_filter, ensure_ascii)
-            return self.create_text_message(str(result))
+            if isinstance(result, str):
+                return self.create_text_message(str(result))
+            elif isinstance(result, list):
+                return self.create_array_message(result)
+            else:
+                return self.create_json_message(result)
         except Exception:
             return self.create_text_message("Failed to extract JSON content")
 
@@ -44,7 +49,7 @@ class JSONParseTool(BuiltinTool):
                 result = result[0]
 
             if isinstance(result, dict | list):
-                return json.dumps(result, ensure_ascii=ensure_ascii)
+                return result
             elif isinstance(result, str | int | float | bool) or result is None:
                 return str(result)
             else:
