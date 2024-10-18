@@ -30,6 +30,7 @@ import type { ModelLoadBalancingModalProps } from '@/app/components/header/accou
 import ModelLoadBalancingModal from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 import OpeningSettingModal from '@/app/components/base/features/new-feature-panel/conversation-opener/modal'
 import type { OpeningStatement } from '@/app/components/base/features/types'
+import type { InputVar } from '@/app/components/workflow/types'
 
 export type ModalState<T> = {
   payload: T
@@ -64,6 +65,7 @@ export type ModalContextState = {
   setShowModelLoadBalancingEntryModal: Dispatch<SetStateAction<ModalState<LoadBalancingEntryModalType> | null>>
   setShowOpeningModal: Dispatch<SetStateAction<ModalState<OpeningStatement & {
     promptVariables?: PromptVariable[]
+    workflowVariables?: InputVar[]
     onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
   }> | null>>
 }
@@ -105,6 +107,7 @@ export const ModalContextProvider = ({
   const [showModelLoadBalancingEntryModal, setShowModelLoadBalancingEntryModal] = useState<ModalState<LoadBalancingEntryModalType> | null>(null)
   const [showOpeningModal, setShowOpeningModal] = useState<ModalState<OpeningStatement & {
     promptVariables?: PromptVariable[]
+    workflowVariables?: InputVar[]
     onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
   }> | null>(null)
   const searchParams = useSearchParams()
@@ -332,6 +335,7 @@ export const ModalContextProvider = ({
             onSave={handleSaveOpeningModal}
             onCancel={handleCancelOpeningModal}
             promptVariables={showOpeningModal.payload.promptVariables}
+            workflowVariables={showOpeningModal.payload.workflowVariables}
             onAutoAddPromptVariable={showOpeningModal.payload.onAutoAddPromptVariable}
           />
         )}

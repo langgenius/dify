@@ -17,6 +17,7 @@ import ImageUpload from '@/app/components/base/features/new-feature-panel/image-
 import Moderation from '@/app/components/base/features/new-feature-panel/moderation'
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
 import type { PromptVariable } from '@/models/debug'
+import type { InputVar } from '@/app/components/workflow/types'
 
 type Props = {
   show: boolean
@@ -27,6 +28,7 @@ type Props = {
   inWorkflow?: boolean
   showFileUpload?: boolean
   promptVariables?: PromptVariable[]
+  workflowVariables?: InputVar[]
   onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
 }
 
@@ -39,6 +41,7 @@ const NewFeaturePanel = ({
   inWorkflow = true,
   showFileUpload = true,
   promptVariables,
+  workflowVariables,
   onAutoAddPromptVariable,
 }: Props) => {
   const { t } = useTranslation()
@@ -70,6 +73,7 @@ const NewFeaturePanel = ({
               disabled={disabled}
               onChange={onChange}
               promptVariables={promptVariables}
+              workflowVariables={workflowVariables}
               onAutoAddPromptVariable={onAutoAddPromptVariable}
             />
           )}

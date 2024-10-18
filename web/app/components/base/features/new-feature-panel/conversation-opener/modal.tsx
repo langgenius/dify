@@ -10,6 +10,7 @@ import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/conf
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import { getInputKeys } from '@/app/components/base/block-input'
 import type { PromptVariable } from '@/models/debug'
+import type { InputVar } from '@/app/components/workflow/types'
 import { getNewVar } from '@/utils/var'
 
 type OpeningSettingModalProps = {
@@ -17,6 +18,7 @@ type OpeningSettingModalProps = {
   onSave: (newState: OpeningStatement) => void
   onCancel: () => void
   promptVariables?: PromptVariable[]
+  workflowVariables?: InputVar[]
   onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
 }
 
@@ -27,6 +29,7 @@ const OpeningSettingModal = ({
   onSave,
   onCancel,
   promptVariables = [],
+  workflowVariables = [],
   onAutoAddPromptVariable,
 }: OpeningSettingModalProps) => {
   const { t } = useTranslation()
@@ -42,14 +45,17 @@ const OpeningSettingModal = ({
     if (!ignoreVariablesCheck) {
       const keys = getInputKeys(tempValue)
       const promptKeys = promptVariables.map(item => item.key)
+      const workflowVariableKeys = workflowVariables.map(item => item.variable)
       let notIncludeKeys: string[] = []
 
-      if (promptKeys.length === 0) {
+      if (promptKeys.length === 0 && workflowVariables.length === 0) {
         if (keys.length > 0)
           notIncludeKeys = keys
       }
       else {
-        notIncludeKeys = keys.filter(key => !promptKeys.includes(key))
+        if (workflowVariables.length > 0)
+          notIncludeKeys = keys.filter(key => !workflowVariableKeys.includes(key))
+        else notIncludeKeys = keys.filter(key => !promptKeys.includes(key))
       }
 
       if (notIncludeKeys.length > 0) {
@@ -65,7 +71,7 @@ const OpeningSettingModal = ({
       }
     })
     onSave(newOpening)
-  }, [data, onSave, promptVariables, showConfirmAddVar, tempSuggestedQuestions, tempValue])
+  }, [data, onSave, promptVariables, workflowVariables, showConfirmAddVar, tempSuggestedQuestions, tempValue])
 
   const cancelAutoAddVar = useCallback(() => {
     hideConfirmAddVar()
@@ -74,12 +80,11 @@ const OpeningSettingModal = ({
 
   const autoAddVar = useCallback(() => {
     onAutoAddPromptVariable?.([
-      ...promptVariables,
       ...notIncludeKeys.map(key => getNewVar(key, 'string')),
     ])
     hideConfirmAddVar()
     handleSave(true)
-  }, [handleSave, hideConfirmAddVar, notIncludeKeys, onAutoAddPromptVariable, promptVariables])
+  }, [handleSave, hideConfirmAddVar, notIncludeKeys, onAutoAddPromptVariable])
 
   const renderQuestions = () => {
     return (
@@ -189,7 +194,7 @@ const OpeningSettingModal = ({
       {isShowConfirmAddVar && (
         <ConfirmAddVar
           varNameArr={notIncludeKeys}
-          onConfrim={autoAddVar}
+          onConfirm={autoAddVar}
           onCancel={cancelAutoAddVar}
           onHide={hideConfirmAddVar}
         />

@@ -10,11 +10,13 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { useModalContext } from '@/context/modal-context'
 import type { PromptVariable } from '@/models/debug'
+import type { InputVar } from '@/app/components/workflow/types'
 
 type Props = {
   disabled?: boolean
   onChange?: OnFeaturesChange
   promptVariables?: PromptVariable[]
+  workflowVariables?: InputVar[]
   onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
 }
 
@@ -22,6 +24,7 @@ const ConversationOpener = ({
   disabled,
   onChange,
   promptVariables,
+  workflowVariables,
   onAutoAddPromptVariable,
 }: Props) => {
   const { t } = useTranslation()
@@ -40,6 +43,7 @@ const ConversationOpener = ({
       payload: {
         ...opening,
         promptVariables,
+        workflowVariables,
         onAutoAddPromptVariable,
       },
       onSaveCallback: (newOpening) => {
