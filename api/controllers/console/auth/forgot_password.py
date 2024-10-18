@@ -1,9 +1,10 @@
 import base64
 import secrets
 
-from flask import request
+from flask import redirect, request
 from flask_restful import Resource, reqparse
 
+from configs import dify_config
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
@@ -115,7 +116,11 @@ class ForgotPasswordResetApi(Resource):
             tenant = TenantService.get_join_tenants(account)
             if not tenant:
                 if not FeatureService.system_features.is_allow_create_workspace:
-                    raise NotAllowedCreateWorkspace()
+                    return redirect(
+                        f"{dify_config.CONSOLE_WEB_URL}/signin"
+                        "?message=Workspace not found, "
+                        + "please contact system admin to invite you to join in a workspace."
+                    )
                 else:
                     tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                     TenantService.create_tenant_member(tenant, account, role="owner")

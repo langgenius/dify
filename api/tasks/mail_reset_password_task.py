@@ -26,10 +26,10 @@ def send_reset_password_mail_task(language: str, to: str, code: str):
     try:
         if language == "zh-Hans":
             html_content = render_template("reset_password_mail_template_zh-CN.html", to=to, code=code)
-            mail.send(to=to, subject="重置您的 Dify 密码", html=html_content)
+            mail.send(to=to, subject="设置您的 Dify 密码", html=html_content)
         else:
             html_content = render_template("reset_password_mail_template_en-US.html", to=to, code=code)
-            mail.send(to=to, subject="Reset Your Dify Password", html=html_content)
+            mail.send(to=to, subject="Set Your Dify Password", html=html_content)
 
         end_at = time.perf_counter()
         logging.info(
