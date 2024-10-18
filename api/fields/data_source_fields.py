@@ -11,6 +11,10 @@ integrate_page_fields = {
     "is_bound": fields.Boolean,
     "parent_id": fields.String,
     "type": fields.String,
+    # feishu wiki
+    "obj_token": fields.String,
+    "obj_type": fields.String,
+    "space_id": fields.String,
 }
 
 integrate_workspace_fields = {
@@ -24,6 +28,10 @@ integrate_notion_info_list_fields = {
     "notion_info": fields.List(fields.Nested(integrate_workspace_fields)),
 }
 
+integrate_feishuwiki_info_list_fields = {
+    "feishuwiki_info": fields.List(fields.Nested(integrate_workspace_fields)),
+}
+
 integrate_icon_fields = {"type": fields.String, "url": fields.String, "emoji": fields.String}
 
 integrate_page_fields = {
@@ -32,6 +40,11 @@ integrate_page_fields = {
     "page_icon": fields.Nested(integrate_icon_fields, allow_null=True),
     "parent_id": fields.String,
     "type": fields.String,
+    # feishu wiki
+    "obj_token": fields.String,
+    "obj_type": fields.String,
+    "space_id": fields.String,
+    "level": fields.Integer,
 }
 
 integrate_workspace_fields = {
