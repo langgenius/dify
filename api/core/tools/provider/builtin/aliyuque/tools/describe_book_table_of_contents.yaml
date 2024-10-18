@@ -1,0 +1,25 @@
+identity:
+  name: aliyuque_describe_book_table_of_contents
+  author: 佐井
+  label:
+    en_US: Get Book's Table of Contents
+    zh_Hans: 获取知识库的目录
+  icon: icon.svg
+description:
+  human:
+    en_US: Get Book's Table of Contents.
+    zh_Hans: 获取知识库的目录。
+  llm: Get Book's Table of Contents.
+
+parameters:
+  - name: book_id
+    type: number
+    required: true
+    form: llm
+    label:
+      en_US: Book ID
+      zh_Hans: 知识库 ID
+    human_description:
+      en_US: Book ID.
+      zh_Hans: 知识库 ID。
+    llm_description: Book ID.
