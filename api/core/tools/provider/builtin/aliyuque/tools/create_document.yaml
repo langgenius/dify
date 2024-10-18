@@ -1,0 +1,99 @@
+identity:
+  name: aliyuque_create_document
+  author: 佐井
+  label:
+    en_US: Create Document
+    zh_Hans: 创建文档
+  icon: icon.svg
+description:
+  human:
+    en_US: Creates a new document within a knowledge base without automatic addition to the table of contents. Requires a subsequent call to the "knowledge base directory update API". Supports setting visibility, format, and content. # 接口英文描述
+    zh_Hans: 在知识库中创建新文档，但不会自动加入目录，需额外调用“知识库目录更新接口”。允许设置公开性、格式及正文内容。
+  llm: Creates docs in a KB.
+
+parameters:
+  - name: book_id
+    type: number
+    required: true
+    form: llm
+    label:
+      en_US: Knowledge Base ID
+      zh_Hans: 知识库ID
+    human_description:
+      en_US: The unique identifier of the knowledge base where the document will be created.
+      zh_Hans: 文档将被创建的知识库的唯一标识。
+    llm_description: ID of the target knowledge base.
+
+  - name: title
+    type: string
+    required: false
+    form: llm
+    label:
+      en_US: Title
+      zh_Hans: 标题
+    human_description:
+      en_US: The title of the document, defaults to 'Untitled' if not provided.
+      zh_Hans: 文档标题，默认为'无标题'如未提供。
+    llm_description: Title of the document, defaults to 'Untitled'.
+
+  - name: public
+    type: select
+    required: false
+    form: llm
+    options:
+      - value: 0
+        label:
+          en_US: Private
+          zh_Hans: 私密
+      - value: 1
+        label:
+          en_US: Public
+          zh_Hans: 公开
+      - value: 2
+        label:
+          en_US: Enterprise-only
+          zh_Hans: 企业内公开
+    label:
+      en_US: Visibility
+      zh_Hans: 公开性
+    human_description:
+      en_US: Document visibility (0 Private, 1 Public, 2 Enterprise-only).
+      zh_Hans: 文档可见性（0 私密, 1 公开, 2 企业内公开）。
+    llm_description: Doc visibility options, 0-private, 1-public, 2-enterprise.
+
+  - name: format
+    type: select
+    required: false
+    form: llm
+    options:
+      - value: markdown
+        label:
+          en_US: markdown
+          zh_Hans: markdown
+      - value: html
+        label:
+          en_US: html
+          zh_Hans: html
+      - value: lake
+        label:
+          en_US: lake
+          zh_Hans: lake
+    label:
+      en_US: Content Format
+      zh_Hans: 内容格式
+    human_description:
+      en_US: Format of the document content (markdown, HTML, Lake).
+      zh_Hans: 文档内容格式（markdown, HTML, Lake）。
+    llm_description: Content format choices, markdown, HTML, Lake.
+
+  - name: body
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Body Content
+      zh_Hans: 正文内容
+    human_description:
+      en_US: The actual content of the document.
+      zh_Hans: 文档的实际内容。
+    llm_description: Content of the document.

@@ -1,0 +1,38 @@
+identity:
+  name: aliyuque_describe_documents
+  author: 佐井
+  label:
+    en_US: Get Doc Detail
+    zh_Hans: 获取文档详情
+  icon: icon.svg
+
+description:
+  human:
+    en_US: Retrieves detailed information of a specific document identified by its ID or path within a knowledge base.
+    zh_Hans: 根据知识库ID和文档ID或路径获取文档详细信息。
+  llm: Fetches detailed doc info using ID/path from a knowledge base; supports doc lookup in Yuque.
+
+parameters:
+  - name: book_id
+    type: number
+    required: true
+    form: llm
+    label:
+      en_US: Knowledge Base ID
+      zh_Hans: 知识库 ID
+    human_description:
+      en_US: Identifier for the knowledge base where the document resides.
+      zh_Hans: 文档所属知识库的唯一标识。
+    llm_description: ID of the knowledge base holding the document.
+
+  - name: id
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Document ID or Path
+      zh_Hans: 文档 ID 或路径
+    human_description:
+      en_US: The unique identifier or path of the document to retrieve.
+      zh_Hans: 需要获取的文档的ID或其在知识库中的路径。
+    llm_description: Unique doc ID or its path for retrieval.
