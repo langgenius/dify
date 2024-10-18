@@ -46,6 +46,7 @@ class ForgotPasswordSendEmailApi(Resource):
         if account is None:
             if FeatureService.system_features.is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
+                return {"result": "fail", "data": token, "code": "account_not_found"}
             else:
                 raise NotAllowedRegister()
         else:

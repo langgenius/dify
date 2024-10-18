@@ -73,11 +73,11 @@ class LoginApi(Resource):
             AccountService.add_login_error_rate_limit(args["email"])
             raise EmailOrPasswordMismatchError()
         except services.errors.account.AccountNotFoundError:
-            if not FeatureService.system_features.is_allow_register:
+            if FeatureService.system_features.is_allow_register:
+                token = AccountService.send_reset_password_email(email=args["email"], language=language)
+                return {"result": "fail", "data": token, "code": "account_not_found"}
+            else:
                 raise NotAllowedRegister()
-
-            token = AccountService.send_reset_password_email(email=args["email"], language=language)
-            return {"result": "fail", "data": token, "message": "account_not_found"}
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
         if len(tenants) == 0:
