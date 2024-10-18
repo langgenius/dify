@@ -1,6 +1,20 @@
+from enum import Enum
 from typing import Any, Optional
 
 from core.workflow.entities.base_node_data_entities import BaseIterationNodeData, BaseIterationState, BaseNodeData
+
+
+class ErrorHandleMode(Enum):
+    TERMINATED = "Terminated"
+    CONTINUE_ON_ERROR = "Continue on error"
+    REMOVE_ABNORMAL_OUTPUT = "Remove abnormal output"
+
+    def to_json(self):
+        return self.value
+
+    @classmethod
+    def from_json(cls, value):
+        return cls(value)
 
 
 class IterationNodeData(BaseIterationNodeData):
@@ -11,6 +25,9 @@ class IterationNodeData(BaseIterationNodeData):
     parent_loop_id: Optional[str] = None  # redundant field, not used currently
     iterator_selector: list[str]  # variable selector
     output_selector: list[str]  # output selector
+    is_parallel: bool = False  # open the parallel mode or not
+    parallel_nums: int = 10  # the numbers of parallel
+    error_handle_mode: ErrorHandleMode = ErrorHandleMode.TERMINATED  # how to handle the error
 
 
 class IterationStartNodeData(BaseNodeData):

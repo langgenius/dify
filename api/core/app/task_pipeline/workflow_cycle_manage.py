@@ -9,6 +9,7 @@ from core.app.entities.queue_entities import (
     QueueIterationNextEvent,
     QueueIterationStartEvent,
     QueueNodeFailedEvent,
+    QueueNodeInIterationFailedEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueueParallelBranchRunFailedEvent,
@@ -299,7 +300,9 @@ class WorkflowCycleManage:
 
         return workflow_node_execution
 
-    def _handle_workflow_node_execution_failed(self, event: QueueNodeFailedEvent) -> WorkflowNodeExecution:
+    def _handle_workflow_node_execution_failed(
+        self, event: QueueNodeFailedEvent | QueueNodeInIterationFailedEvent
+    ) -> WorkflowNodeExecution:
         """
         Workflow node execution failed
         :param event: queue node failed event
@@ -311,17 +314,21 @@ class WorkflowCycleManage:
         outputs = WorkflowEntry.handle_special_values(event.outputs)
         finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
-
+        execution_metadata = (
+            json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
+        )
+        update_data = {
+            WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.FAILED.value,
+            WorkflowNodeExecution.error: event.error,
+            WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
+            WorkflowNodeExecution.process_data: json.dumps(event.process_data) if event.process_data else None,
+            WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
+            WorkflowNodeExecution.finished_at: finished_at,
+            WorkflowNodeExecution.elapsed_time: elapsed_time,
+        }
+        update_data[WorkflowNodeExecution.execution_metadata] = execution_metadata
         db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
-            {
-                WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.FAILED.value,
-                WorkflowNodeExecution.error: event.error,
-                WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
-                WorkflowNodeExecution.process_data: json.dumps(event.process_data) if event.process_data else None,
-                WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
-                WorkflowNodeExecution.finished_at: finished_at,
-                WorkflowNodeExecution.elapsed_time: elapsed_time,
-            }
+            update_data
         )
 
         db.session.commit()

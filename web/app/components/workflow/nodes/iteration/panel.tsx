@@ -10,9 +10,14 @@ import ResultPanel from '../../run/result-panel'
 import IterationResultPanel from '../../run/iteration-result-panel'
 import type { IterationNodeType } from './types'
 import useConfig from './use-config'
-import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
+import { ErrorHandleMode, InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import Switch from '@/app/components/base/switch'
+import Select from '@/app/components/base/select'
+import Slider from '@/app/components/base/slider'
+import Input from '@/app/components/base/input'
+import Divider from '@/app/components/base/divider'
 
 const i18nPrefix = 'workflow.nodes.iteration'
 
@@ -21,7 +26,20 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-
+  const responseMethod = [
+    {
+      value: ErrorHandleMode.Terminated,
+      name: t(`${i18nPrefix}.ErrorMethod.operationTerminated`),
+    },
+    {
+      value: ErrorHandleMode.ContinueOnError,
+      name: t(`${i18nPrefix}.ErrorMethod.continueOnError`),
+    },
+    {
+      value: ErrorHandleMode.RemoveAbnormalOutput,
+      name: t(`${i18nPrefix}.ErrorMethod.removeAbnormalOutput`),
+    },
+  ]
   const {
     readOnly,
     inputs,
@@ -47,6 +65,9 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
     setIterator,
     iteratorInputKey,
     iterationRunResult,
+    changeParallel,
+    changeErrorResponseMode,
+    changeParallelNums,
   } = useConfig(id, data)
 
   return (
@@ -87,6 +108,34 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           />
         </Field>
       </div>
+      <div className='px-4 pb-4 space-y-4'>
+        <Field title={t(`${i18nPrefix}.parallelMode`)} tooltip={<div className='w-[230px]'>{t(`${i18nPrefix}.parallelPanelDesc`)}</div>} inline>
+          <Switch defaultValue={inputs.is_parallel} onChange={changeParallel} />
+        </Field>
+      </div>
+      <div className='px-4 pb-4 space-y-4'>
+        <Field title={t(`${i18nPrefix}.MaxParallelismTitle`)} tooltip={<div className='w-[230px]'>{t(`${i18nPrefix}.MaxParallelismDesc`)}</div>}>
+          <div className='flex row'>
+            <Input type='number' wrapperClassName='w-18 mr-4 ' max={10} min={1} value={inputs.parallel_nums} onChange={(e) => { changeParallelNums(Number(e.target.value)) }} />
+            <Slider
+              value={inputs.parallel_nums}
+              onChange={changeParallelNums}
+              max={10}
+              min={1}
+              className=' flex-shrink-0 flex-1 mt-4'
+            />
+          </div>
+
+        </Field>
+      </div>
+      <Divider className='ml-4 mr-4' />
+      <div className='px-4 pb-4 space-y-4'>
+        <Field title={t(`${i18nPrefix}.errorResponseMethod`)} >
+          <Select items={responseMethod} defaultValue={inputs.error_handle_mode} onSelect={changeErrorResponseMode}>
+          </Select>
+        </Field>
+      </div>
+
       {isShowSingleRun && (
         <BeforeRunForm
           nodeName={inputs.title}
