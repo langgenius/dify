@@ -1,10 +1,9 @@
 import base64
 import secrets
 
-from flask import redirect, request
+from flask import request
 from flask_restful import Resource, reqparse
 
-from configs import dify_config
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
@@ -21,7 +20,6 @@ from libs.helper import email, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
-from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
 
 
@@ -114,32 +112,18 @@ class ForgotPasswordResetApi(Resource):
             account.password_salt = base64_salt
             db.session.commit()
             tenant = TenantService.get_join_tenants(account)
-            if not tenant:
-                if not FeatureService.system_features.is_allow_create_workspace:
-                    return redirect(
-                        f"{dify_config.CONSOLE_WEB_URL}/signin"
-                        "?message=Workspace not found, "
-                        + "please contact system admin to invite you to join in a workspace."
-                    )
-                else:
-                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                    TenantService.create_tenant_member(tenant, account, role="owner")
-                    account.current_tenant = tenant
-                    tenant_was_created.send(tenant)
-        else:
-            try:
-                account = AccountService.create_account_and_tenant(
-                    email=reset_data.get("email"),
-                    name=reset_data.get("email"),
-                    password=password_confirm,
-                    interface_language=languages[0],
-                )
-            except WorkSpaceNotAllowedCreateError:
-                return redirect(
-                    f"{dify_config.CONSOLE_WEB_URL}/signin"
-                    "?message=Workspace not found, "
-                    + "please contact system admin to invite you to join in a workspace."
-                )
+            if not tenant and not FeatureService.system_features.is_allow_create_workspace:
+                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                TenantService.create_tenant_member(tenant, account, role="owner")
+                account.current_tenant = tenant
+                tenant_was_created.send(tenant)
+        else: 
+            account = AccountService.create_account_and_tenant(
+                email=reset_data.get("email"),
+                name=reset_data.get("email"),
+                password=password_confirm,
+                interface_language=languages[0],
+            )
 
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
 
