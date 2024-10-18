@@ -20,7 +20,6 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.workflow.entities.node_entities import NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
@@ -45,6 +44,7 @@ from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.iteration.entities import IterationNodeData
 from core.workflow.nodes.node_mapping import node_classes
 from core.workflow.workflow_entry import WorkflowEntry
+from enums import NodeType
 from extensions.ext_database import db
 from models.model import App
 from models.workflow import Workflow

@@ -8,7 +8,7 @@ import Log from '@/app/components/app/log'
 import WorkflowLog from '@/app/components/app/workflow-log'
 import Annotation from '@/app/components/app/annotation'
 import Loading from '@/app/components/base/loading'
-import { PageType } from '@/app/components/app/configuration/toolbox/annotation/type'
+import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
@@ -41,7 +41,7 @@ const LogAnnotation: FC<Props> = ({
   }
 
   return (
-    <div className='pt-4 px-6 h-full flex flex-col'>
+    <div className='pt-3 px-6 h-full flex flex-col'>
       {appDetail.mode !== 'workflow' && (
         <TabSlider
           className='shrink-0'

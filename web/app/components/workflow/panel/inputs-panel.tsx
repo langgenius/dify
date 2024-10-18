@@ -1,5 +1,6 @@
 import {
   memo,
+  useCallback,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +20,9 @@ import type { StartNodeType } from '../nodes/start/types'
 import { TransferMethod } from '../../base/text-generation/types'
 import Button from '@/app/components/base/button'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import {
+  getProcessedInputs,
+} from '@/app/components/base/chat/chat/utils'
 
 type Props = {
   onRun: () => void
@@ -56,34 +60,38 @@ const InputsPanel = ({ onRun }: Props) => {
   }, [fileSettings?.image?.enabled, startVariables])
 
   const handleValueChange = (variable: string, v: any) => {
+    const {
+      inputs,
+      setInputs,
+    } = workflowStore.getState()
     if (variable === '__image') {
       workflowStore.setState({
         files: v,
       })
     }
     else {
-      workflowStore.getState().setInputs({
+      setInputs({
         ...inputs,
         [variable]: v,
       })
     }
   }
 
-  const doRun = () => {
+  const doRun = useCallback(() => {
     onRun()
-    handleRun({ inputs, files })
-  }
+    handleRun({ inputs: getProcessedInputs(inputs, variables as any), files })
+  }, [files, handleRun, inputs, onRun, variables])
 
-  const canRun = (() => {
+  const canRun = useMemo(() => {
     if (files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
       return false
 
     return true
-  })()
+  }, [files])
 
   return (
     <>
-      <div className='px-4 pb-2'>
+      <div className='pt-3 px-4 pb-2'>
         {
           variables.map((variable, index) => (
             <div
