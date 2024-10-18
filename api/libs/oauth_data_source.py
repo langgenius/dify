@@ -8,6 +8,7 @@ from typing import Any, Optional
 import httpx
 import requests
 from bs4 import BeautifulSoup
+from flask import request
 from flask_login import current_user
 
 from extensions.ext_database import db
@@ -281,6 +282,111 @@ class NotionOAuth(OAuthDataSource):
         return results
 
 
+class FeishuWikiOAuth:
+    def save_feishu_wiki_data_source(self, app_id: str, app_secret: str):
+        workspace_name = app_id
+        workspace_icon = None
+        workspace_id = current_user.current_tenant_id
+
+        feishu_wiki = FeishuWiki(app_id, app_secret)
+
+        spaces = feishu_wiki.get_all_feishu_wiki_spaces()
+        pages = []
+        for space in spaces:
+            space_id = space["space_id"]
+            all_nodes = feishu_wiki.get_all_feishu_wiki_space_nodes(space_id)
+            nodes = transform_nodes(all_nodes)
+            pages.extend(nodes)
+
+        source_info = {
+            "workspace_name": workspace_name,
+            "workspace_icon": workspace_icon,
+            "workspace_id": workspace_id,
+            "pages": pages,
+            "total": len(pages),
+        }
+
+        app_info = {"app_id": app_id, "app_secret": app_secret}
+        access_token = json.dumps(app_info)
+
+        data_source_binding = DataSourceOauthBinding.query.filter(
+            db.and_(
+                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.provider == "feishuwiki",
+                DataSourceOauthBinding.access_token == access_token,
+            )
+        ).first()
+        if data_source_binding:
+            data_source_binding.source_info = source_info
+            data_source_binding.disabled = False
+            data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            db.session.commit()
+        else:
+            new_data_source_binding = DataSourceOauthBinding(
+                tenant_id=current_user.current_tenant_id,
+                access_token=access_token,
+                source_info=source_info,
+                provider="feishuwiki",
+            )
+            db.session.add(new_data_source_binding)
+            db.session.commit()
+
+    def sync_data_source(self, binding_id: str):
+        data_source_binding = DataSourceOauthBinding.query.filter(
+            db.and_(
+                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.provider == "feishuwiki",
+                DataSourceOauthBinding.id == binding_id,
+                DataSourceOauthBinding.disabled == False,
+            )
+        ).first()
+        if data_source_binding:
+            access_token = data_source_binding.access_token
+            app_info = json.loads(access_token)
+            app_id = app_info["app_id"]
+            app_secret = app_info["app_secret"]
+            feishu_wiki = FeishuWiki(app_id, app_secret)
+
+            workspace_name = app_id
+            workspace_icon = None
+            workspace_id = current_user.current_tenant_id
+
+            spaces = feishu_wiki.get_all_feishu_wiki_spaces()
+            pages = []
+
+            for space in spaces:
+                space_id = space["space_id"]
+                all_nodes = feishu_wiki.get_all_feishu_wiki_space_nodes(space_id)
+                nodes = transform_nodes(all_nodes)
+                pages.extend(nodes)
+
+            source_info = {
+                "workspace_name": workspace_name,
+                "workspace_icon": workspace_icon,
+                "workspace_id": workspace_id,
+                "pages": pages,
+                "total": len(pages),
+            }
+
+            data_source_binding.source_info = source_info
+            data_source_binding.disabled = False
+            data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            db.session.commit()
+        else:
+            raise ValueError("Data source binding not found")
+
+    def validate_certificate(self):
+        app_id = request.args.get("app_id", default=None, type=str)
+        app_secret = request.args.get("app_secret", default=None, type=str)
+        if not app_id or not app_secret:
+            raise ValueError("app_id and app_secret is required")
+        try:
+            assert FeishuWiki(app_id, app_secret).tenant_access_token is not None
+            FeishuWikiOAuth().save_feishu_wiki_data_source(app_id, app_secret)
+        except Exception as e:
+            raise Exception(str(e))
+
+
 def transform_nodes(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
     level = []
     for node in nodes:
@@ -369,12 +475,12 @@ class FeishuWiki:
         self.app_secret = app_secret
 
     def _send_request(
-        self,
-        url: str,
-        method: str = "post",
-        require_token: bool = True,
-        payload: Optional[dict] = None,
-        params: Optional[dict] = None,
+            self,
+            url: str,
+            method: str = "post",
+            require_token: bool = True,
+            payload: Optional[dict] = None,
+            params: Optional[dict] = None,
     ):
         headers = {
             "Content-Type": "application/json",
@@ -420,7 +526,7 @@ class FeishuWiki:
         return all_spaces
 
     def get_all_feishu_wiki_space_nodes(
-        self, space_id: str, parent_node_token: str = "", page_size: int = 50
+            self, space_id: str, parent_node_token: str = "", page_size: int = 50
     ) -> list[dict[str, Any]]:
         url = f"{self.API_BASE_URL}/wiki/v2/spaces/{space_id}/nodes"
         all_nodes = []
@@ -472,88 +578,3 @@ class FeishuWiki:
         res = self._send_request(url, method="GET", require_token=False, params=params)
         content = res.get("data", {}).get("content")
         return html_table_to_json(content)
-
-    def save_feishu_wiki_data_source(self):
-        workspace_name = self.app_id
-        workspace_icon = None
-        workspace_id = current_user.current_tenant_id
-
-        spaces = self.get_all_feishu_wiki_spaces()
-        pages = []
-        for space in spaces:
-            space_type = space["space_type"]
-            if space_type == "team":
-                space_id = space["space_id"]
-                all_nodes = self.get_all_feishu_wiki_space_nodes(space_id)
-                nodes = transform_nodes(all_nodes)
-                pages.extend(nodes)
-
-        source_info = {
-            "workspace_name": workspace_name,
-            "workspace_icon": workspace_icon,
-            "workspace_id": workspace_id,
-            "pages": pages,
-            "total": len(pages),
-        }
-
-        data_source_binding = DataSourceOauthBinding.query.filter(
-            db.and_(
-                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceOauthBinding.provider == "feishuwiki",
-                DataSourceOauthBinding.access_token == self.app_secret,
-            )
-        ).first()
-        if data_source_binding:
-            data_source_binding.source_info = source_info
-            data_source_binding.disabled = False
-            data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-            db.session.commit()
-        else:
-            new_data_source_binding = DataSourceOauthBinding(
-                tenant_id=current_user.current_tenant_id,
-                access_token=self.app_secret,
-                source_info=source_info,
-                provider="feishuwiki",
-            )
-            db.session.add(new_data_source_binding)
-            db.session.commit()
-
-    def sync_data_source(self, binding_id: str):
-        data_source_binding = DataSourceOauthBinding.query.filter(
-            db.and_(
-                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceOauthBinding.provider == "feishuwiki",
-                DataSourceOauthBinding.id == binding_id,
-                DataSourceOauthBinding.disabled == False,
-            )
-        ).first()
-        if data_source_binding:
-            workspace_name = self.app_id
-            workspace_icon = None
-            workspace_id = current_user.current_tenant_id
-
-            spaces = self.get_all_feishu_wiki_spaces()
-            pages = []
-
-            for space in spaces:
-                space_type = space["space_type"]
-                if space_type == "team":
-                    space_id = space["space_id"]
-                    all_nodes = self.get_all_feishu_wiki_space_nodes(space_id)
-                    nodes = transform_nodes(all_nodes)
-                    pages.extend(nodes)
-
-            source_info = {
-                "workspace_name": workspace_name,
-                "workspace_icon": workspace_icon,
-                "workspace_id": workspace_id,
-                "pages": pages,
-                "total": len(pages),
-            }
-
-            data_source_binding.source_info = source_info
-            data_source_binding.disabled = False
-            data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-            db.session.commit()
-        else:
-            raise ValueError("Data source binding not found")

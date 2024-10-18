@@ -9,7 +9,7 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from controllers.console import api
 from libs.login import login_required
-from libs.oauth_data_source import FeishuWiki, NotionOAuth
+from libs.oauth_data_source import FeishuWiki, NotionOAuth, FeishuWikiOAuth
 
 from ..setup import setup_required
 from ..wraps import account_initialization_required
@@ -23,9 +23,9 @@ def get_oauth_providers():
             redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/data-source/callback/notion",
         )
 
-        feishuwiki = FeishuWiki(app_id=dify_config.FEISHU_APP_ID, app_secret=dify_config.FEISHU_APP_SECRET)
+        feishuwiki_oauth = FeishuWikiOAuth()
 
-        OAUTH_PROVIDERS = {"notion": notion_oauth, "feishuwiki": feishuwiki}
+        OAUTH_PROVIDERS = {"notion": notion_oauth, "feishuwiki": feishuwiki_oauth}
         return OAUTH_PROVIDERS
 
 
@@ -52,8 +52,20 @@ class OAuthDataSource(Resource):
                 auth_url = oauth_provider.get_authorization_url()
                 return {"data": auth_url}, 200
         elif provider == "feishuwiki":
-            oauth_provider.save_feishu_wiki_data_source()
-            return {"data": ""}
+            if dify_config.FEISHU_WIKI_INTEGRATION_TYPE == "internal":
+                app_id = dify_config.FEISHU_APP_ID
+                app_secret = dify_config.FEISHU_APP_SECRET
+                if not app_id or not app_secret:
+                    return ({"error": "Internal app_id or app_secret is not set"},)
+                oauth_provider.save_feishu_wiki_data_source(app_id, app_secret)
+                return {"data": ""}
+            else:
+                try:
+                    oauth_provider.validate_certificate()
+                except Exception as e:
+                    return {"error": str(e)}, 400
+
+                return {"data": ""}, 200
 
 
 class OAuthDataSourceCallback(Resource):
