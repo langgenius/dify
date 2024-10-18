@@ -64,7 +64,6 @@ class OAuthDataSource(Resource):
                     oauth_provider.validate_certificate()
                 except Exception as e:
                     return {"error": str(e)}, 400
-
                 return {"data": ""}, 200
 
 
