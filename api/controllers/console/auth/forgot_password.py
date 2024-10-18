@@ -21,7 +21,7 @@ from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
-from services.feature_service import SystemFeatureModel
+from services.feature_service import FeatureService
 
 
 class ForgotPasswordSendEmailApi(Resource):
@@ -44,7 +44,7 @@ class ForgotPasswordSendEmailApi(Resource):
         account = Account.query.filter_by(email=args["email"]).first()
         token = None
         if account is None:
-            if SystemFeatureModel.is_allow_register:
+            if FeatureService.system_features.is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
             else:
                 raise NotAllowedRegister()
@@ -114,7 +114,7 @@ class ForgotPasswordResetApi(Resource):
             db.session.commit()
             tenant = TenantService.get_join_tenants(account)
             if not tenant:
-                if not SystemFeatureModel.is_allow_create_workspace:
+                if not FeatureService.system_features.is_allow_create_workspace:
                     raise NotAllowedCreateWorkspace()
                 else:
                     tenant = TenantService.create_tenant(f"{account.name}'s Workspace")

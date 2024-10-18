@@ -50,6 +50,8 @@ class SystemFeatureModel(BaseModel):
 
 
 class FeatureService:
+    system_features = SystemFeatureModel()
+
     @classmethod
     def get_features(cls, tenant_id: str) -> FeatureModel:
         features = FeatureModel()
@@ -63,15 +65,12 @@ class FeatureService:
 
     @classmethod
     def get_system_features(cls) -> SystemFeatureModel:
-        system_features = SystemFeatureModel()
-
-        cls._fulfill_login_params_from_env(system_features)
-
+        cls._fulfill_login_params_from_env(cls.system_features)
         if dify_config.ENTERPRISE_ENABLED:
-            system_features.enable_web_sso_switch_component = True
-            cls._fulfill_params_from_enterprise(system_features)
+            cls.system_features.enable_web_sso_switch_component = True
+            cls._fulfill_params_from_enterprise(cls.system_features)
 
-        return system_features
+        return cls.system_features
 
     @classmethod
     def _fulfill_login_params_from_env(cls, features: FeatureModel):
