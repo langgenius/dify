@@ -68,7 +68,6 @@ const SwrInitor = ({
           return
         }
         await setRefreshToken()
-        router.replace('/apps', { forceOptimisticNavigation: false } as any)
         setInit(true)
       }
       catch (error) {
