@@ -9,7 +9,7 @@ from werkzeug.exceptions import Forbidden
 from configs import dify_config
 from controllers.console import api
 from libs.login import login_required
-from libs.oauth_data_source import FeishuWiki, NotionOAuth, FeishuWikiOAuth
+from libs.oauth_data_source import FeishuWikiOAuth, NotionOAuth
 
 from ..setup import setup_required
 from ..wraps import account_initialization_required

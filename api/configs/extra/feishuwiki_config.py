@@ -10,7 +10,7 @@ class FeishuWikiConfig(BaseModel):
 
     FEISHU_WIKI_INTEGRATION_TYPE: Optional[str] = Field(
         description="Type of Feishu Wiki integration."
-                    " Set to 'internal' for internal integrations, or None for public integrations.",
+        " Set to 'internal' for internal integrations, or None for public integrations.",
         default=None,
     )
 
