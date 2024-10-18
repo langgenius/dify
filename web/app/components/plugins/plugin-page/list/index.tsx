@@ -1,12 +1,7 @@
-import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import PluginItem from '../../plugin-item'
 import { customTool, extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/card/card-mock'
-import I18n from '@/context/i18n'
 
 const PluginList = () => {
-  const { locale } = useContext(I18n)
-  const { t } = useTranslation()
   const pluginList = [toolNotion, extensionDallE, modelGPT4, customTool]
 
   return (
@@ -18,8 +13,7 @@ const PluginList = () => {
               key={index}
               payload={plugin as any}
               onDelete={() => {}}
-              pluginI8n={t}
-              locale={locale}
+              source={'debug'}
             />
           ))}
         </div>

@@ -4,7 +4,6 @@ import { useState } from 'react'
 import {
   RiArrowDownSLine,
   RiCloseCircleFill,
-  RiFilter3Line,
 } from '@remixicon/react'
 import {
   PortalToFollowElem,
@@ -15,24 +14,32 @@ import Checkbox from '@/app/components/base/checkbox'
 import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
 
-type TagsFilterProps = {
+type CategoriesFilterProps = {
   value: string[]
-  onChange: (tags: string[]) => void
+  onChange: (categories: string[]) => void
 }
-const TagsFilter = ({
+const CategoriesFilter = ({
   value,
   onChange,
-}: TagsFilterProps) => {
+}: CategoriesFilterProps) => {
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const options = [
     {
-      value: 'search',
-      text: 'Search',
+      value: 'model',
+      text: 'Model',
     },
     {
-      value: 'image',
-      text: 'Image',
+      value: 'tool',
+      text: 'Tool',
+    },
+    {
+      value: 'extension',
+      text: 'Extension',
+    },
+    {
+      value: 'bundle',
+      text: 'Bundle',
     },
   ]
   const filteredOptions = options.filter(option => option.text.toLowerCase().includes(searchText.toLowerCase()))
@@ -49,25 +56,21 @@ const TagsFilter = ({
       placement='bottom-start'
       offset={{
         mainAxis: 4,
-        crossAxis: -6,
       }}
       open={open}
       onOpenChange={setOpen}
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <div className={cn(
-          'flex items-center px-2 py-1 h-8 text-text-tertiary rounded-lg hover:bg-state-base-hover cursor-pointer',
+          'flex items-center px-2 py-1 h-8 text-text-tertiary rounded-lg bg-components-input-bg-normal hover:bg-state-base-hover-alt cursor-pointer',
           selectedTagsLength && 'text-text-secondary',
           open && 'bg-state-base-hover',
         )}>
-          <div className='p-0.5'>
-            <RiFilter3Line className='w-4 h-4' />
-          </div>
           <div className={cn(
             'flex items-center p-1 system-sm-medium',
           )}>
             {
-              !selectedTagsLength && 'All Tags'
+              !selectedTagsLength && 'All Categories'
             }
             {
               !!selectedTagsLength && value.slice(0, 2).join(',')
@@ -102,7 +105,7 @@ const TagsFilter = ({
               showLeftIcon
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder='Search tags'
+              placeholder='Search categories'
             />
           </div>
           <div className='p-1 max-h-[448px] overflow-y-auto'>
@@ -130,4 +133,4 @@ const TagsFilter = ({
   )
 }
 
-export default TagsFilter
+export default CategoriesFilter

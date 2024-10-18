@@ -4,7 +4,6 @@ import { useState } from 'react'
 import {
   RiArrowDownSLine,
   RiCloseCircleFill,
-  RiFilter3Line,
 } from '@remixicon/react'
 import {
   PortalToFollowElem,
@@ -49,20 +48,16 @@ const TagsFilter = ({
       placement='bottom-start'
       offset={{
         mainAxis: 4,
-        crossAxis: -6,
       }}
       open={open}
       onOpenChange={setOpen}
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <div className={cn(
-          'flex items-center px-2 py-1 h-8 text-text-tertiary rounded-lg hover:bg-state-base-hover cursor-pointer',
+          'flex items-center px-2 py-1 h-8 text-text-tertiary rounded-lg bg-components-input-bg-normal hover:bg-state-base-hover-alt cursor-pointer',
           selectedTagsLength && 'text-text-secondary',
           open && 'bg-state-base-hover',
         )}>
-          <div className='p-0.5'>
-            <RiFilter3Line className='w-4 h-4' />
-          </div>
           <div className={cn(
             'flex items-center p-1 system-sm-medium',
           )}>
