@@ -7,19 +7,6 @@ import time
 from configs import dify_config
 
 
-def get_signed_image_url(upload_file_id: str) -> str:
-    url = f"{dify_config.FILES_URL}/files/{upload_file_id}/image-preview"
-
-    timestamp = str(int(time.time()))
-    nonce = os.urandom(16).hex()
-    key = dify_config.SECRET_KEY.encode()
-    msg = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
-    sign = hmac.new(key, msg.encode(), hashlib.sha256).digest()
-    encoded_sign = base64.urlsafe_b64encode(sign).decode()
-
-    return f"{url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
-
-
 def get_signed_file_url(upload_file_id: str) -> str:
     url = f"{dify_config.FILES_URL}/files/{upload_file_id}/file-preview"
 

@@ -33,7 +33,7 @@ class AppIconUrlField(fields.Raw):
         from models.model import IconType
 
         if obj.icon_type == IconType.IMAGE.value:
-            return file_helpers.get_signed_image_url(obj.icon)
+            return file_helpers.get_signed_file_url(obj.icon)
         return None
 
 

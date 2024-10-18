@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from core.file.models import File
 
 
-class ModelMode(enum.Enum):
+class ModelMode(str, enum.Enum):
     COMPLETION = "completion"
     CHAT = "chat"
 

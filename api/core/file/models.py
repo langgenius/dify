@@ -72,7 +72,7 @@ class File(BaseModel):
             elif self.transfer_method == FileTransferMethod.LOCAL_FILE:
                 if self.related_id is None:
                     raise ValueError("Missing file related_id")
-                return helpers.get_signed_image_url(upload_file_id=self.related_id)
+                return helpers.get_signed_file_url(upload_file_id=self.related_id)
             elif self.transfer_method == FileTransferMethod.TOOL_FILE:
                 assert self.related_id is not None
                 assert self.extension is not None

@@ -10,6 +10,10 @@ from services.file_service import FileService
 
 
 class ImagePreviewApi(Resource):
+    """
+    Deprecated
+    """
+
     def get(self, file_id):
         file_id = str(file_id)
 

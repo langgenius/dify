@@ -169,9 +169,7 @@ class HttpExecutor:
                     if file_variable is None:
                         raise ValueError(f"cannot fetch file with selector {file_selector}")
                     file = file_variable.value
-                    if file.related_id is None:
-                        raise ValueError(f"file {file.related_id} not found")
-                    self.content = file_manager.download(upload_file_id=file.related_id, tenant_id=file.tenant_id)
+                    self.content = file_manager.download(file)
                 case "x-www-form-urlencoded":
                     form_data = {
                         self.variable_pool.convert_template(item.key).text: self.variable_pool.convert_template(
@@ -194,11 +192,7 @@ class HttpExecutor:
                     files = {k: self.variable_pool.get_file(selector) for k, selector in file_selectors.items()}
                     files = {k: v for k, v in files.items() if v is not None}
                     files = {k: variable.value for k, variable in files.items()}
-                    files = {
-                        k: file_manager.download(upload_file_id=v.related_id, tenant_id=v.tenant_id)
-                        for k, v in files.items()
-                        if v.related_id is not None
-                    }
+                    files = {k: file_manager.download(v) for k, v in files.items() if v.related_id is not None}
 
                     self.data = form_data
                     self.files = files

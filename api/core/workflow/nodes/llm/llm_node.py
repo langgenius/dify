@@ -10,12 +10,14 @@ from core.entities.provider_entities import QuotaUnit
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
-from core.model_runtime.entities.message_entities import (
+from core.model_runtime.entities import (
+    AudioPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
+    TextPromptMessageContent,
 )
+from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -547,7 +549,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                         # cuz vision detail is related to the configuration from FileUpload feature.
                         content_item.detail = vision_detail
                         prompt_message_content.append(content_item)
-                    elif content_item.type == PromptMessageContentType.TEXT:
+                    elif isinstance(content_item, TextPromptMessageContent | AudioPromptMessageContent):
                         prompt_message_content.append(content_item)
 
                 if len(prompt_message_content) > 1:

@@ -829,19 +829,29 @@ class Message(db.Model):
                 sign_url = ToolFileParser.get_tool_file_manager().sign_file(
                     tool_file_id=tool_file_id, extension=extension
                 )
-            else:
+            elif "file-preview" in url:
                 # get upload file id
-                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview?\?timestamp="
+                upload_file_id_pattern = r"\/files\/([\w-]+)\/file-preview?\?timestamp="
                 result = re.search(upload_file_id_pattern, url)
                 if not result:
                     continue
 
                 upload_file_id = result.group(1)
-
                 if not upload_file_id:
                     continue
-
-                sign_url = file_helpers.get_signed_image_url(upload_file_id)
+                sign_url = file_helpers.get_signed_file_url(upload_file_id)
+            elif "image-preview" in url:
+                # image-preview is deprecated, use file-preview instead
+                upload_file_id_pattern = r"\/files\/([\w-]+)\/image-preview?\?timestamp="
+                result = re.search(upload_file_id_pattern, url)
+                if not result:
+                    continue
+                upload_file_id = result.group(1)
+                if not upload_file_id:
+                    continue
+                sign_url = file_helpers.get_signed_file_url(upload_file_id)
+            else:
+                continue
 
             re_sign_file_url_answer = re_sign_file_url_answer.replace(url, sign_url)
 

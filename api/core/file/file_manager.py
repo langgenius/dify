@@ -1,10 +1,11 @@
 import base64
 
 from configs import dify_config
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+from core.file import file_repository
+from core.helper import ssrf_proxy
+from core.model_runtime.entities import AudioPromptMessageContent, ImagePromptMessageContent
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models import UploadFile
 
 from . import helpers
 from .enums import FileAttribute
@@ -12,7 +13,7 @@ from .models import File, FileTransferMethod, FileType
 from .tool_file_parser import ToolFileParser
 
 
-def get_attr(*, file: "File", attr: "FileAttribute"):
+def get_attr(*, file: File, attr: FileAttribute):
     match attr:
         case FileAttribute.TYPE:
             return file.type.value
@@ -32,7 +33,7 @@ def get_attr(*, file: "File", attr: "FileAttribute"):
             raise ValueError(f"Invalid file attribute: {attr}")
 
 
-def to_prompt_message_content(file: "File", /):
+def to_prompt_message_content(f: File, /):
     """
     Convert a File object to an ImagePromptMessageContent object.
 
@@ -52,34 +53,34 @@ def to_prompt_message_content(file: "File", /):
         The detail level of the image prompt is determined by the file's extra_config.
         If not specified, it defaults to ImagePromptMessageContent.DETAIL.LOW.
     """
-    if file.type != FileType.IMAGE:
-        raise ValueError("Only image file can convert to prompt message content")
+    match f.type:
+        case FileType.IMAGE:
+            if dify_config.MULTIMODAL_SEND_IMAGE_FORMAT == "url":
+                data = _to_url(f)
+            else:
+                data = _to_base64_data_string(f)
 
-    url_or_b64_data = _get_url_or_b64_data(file=file)
-    if url_or_b64_data is None:
-        raise ValueError("Missing file data")
+            if f._extra_config and f._extra_config.image_config and f._extra_config.image_config.detail:
+                detail = f._extra_config.image_config.detail
+            else:
+                detail = ImagePromptMessageContent.DETAIL.LOW
 
-    # decide the detail of image prompt message content
-    if file._extra_config and file._extra_config.image_config and file._extra_config.image_config.detail:
-        detail = file._extra_config.image_config.detail
-    else:
-        detail = ImagePromptMessageContent.DETAIL.LOW
-
-    return ImagePromptMessageContent(data=url_or_b64_data, detail=detail)
-
-
-def download(*, upload_file_id: str, tenant_id: str):
-    upload_file = (
-        db.session.query(UploadFile).filter(UploadFile.id == upload_file_id, UploadFile.tenant_id == tenant_id).first()
-    )
-
-    if not upload_file:
-        raise ValueError("upload file not found")
-
-    return _download(upload_file.key)
+            return ImagePromptMessageContent(data=data, detail=detail)
+        case FileType.AUDIO:
+            encoded_string = _file_to_encoded_string(f)
+            if f.extension is None:
+                raise ValueError("Missing file extension")
+            return AudioPromptMessageContent(data=encoded_string, format=f.extension.lstrip("."))
+        case _:
+            raise ValueError(f"file type {f.type} is not supported")
 
 
-def _download(path: str, /):
+def download(f: File, /):
+    upload_file = file_repository.get_upload_file(session=db.session(), file=f)
+    return _download_file_content(upload_file.key)
+
+
+def _download_file_content(path: str, /):
     """
     Download and return the contents of a file as bytes.
 
@@ -100,37 +101,56 @@ def _download(path: str, /):
     return data
 
 
-def _get_base64(*, upload_file_id: str, tenant_id: str) -> str | None:
-    upload_file = (
-        db.session.query(UploadFile).filter(UploadFile.id == upload_file_id, UploadFile.tenant_id == tenant_id).first()
-    )
+def _get_encoded_string(f: File, /):
+    match f.transfer_method:
+        case FileTransferMethod.REMOTE_URL:
+            response = ssrf_proxy.get(f.remote_url)
+            response.raise_for_status()
+            content = response.content
+            encoded_string = base64.b64encode(content).decode("utf-8")
+            return encoded_string
+        case FileTransferMethod.LOCAL_FILE:
+            upload_file = file_repository.get_upload_file(session=db.session(), file=f)
+            data = _download_file_content(upload_file.key)
+            encoded_string = base64.b64encode(data).decode("utf-8")
+            return encoded_string
+        case FileTransferMethod.TOOL_FILE:
+            tool_file = file_repository.get_tool_file(session=db.session(), file=f)
+            data = _download_file_content(tool_file.file_key)
+            encoded_string = base64.b64encode(data).decode("utf-8")
+            return encoded_string
+        case _:
+            raise ValueError(f"Unsupported transfer method: {f.transfer_method}")
 
-    if not upload_file:
-        return None
 
-    data = _download(upload_file.key)
-    if data is None:
-        return None
-
-    encoded_string = base64.b64encode(data).decode("utf-8")
-    return f"data:{upload_file.mime_type};base64,{encoded_string}"
+def _to_base64_data_string(f: File, /):
+    encoded_string = _get_encoded_string(f)
+    return f"data:{f.mime_type};base64,{encoded_string}"
 
 
-def _get_url_or_b64_data(file: "File"):
-    if file.type == FileType.IMAGE:
-        if file.transfer_method == FileTransferMethod.REMOTE_URL:
-            return file.remote_url
-        elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
-            if file.related_id is None:
-                raise ValueError("Missing file related_id")
+def _file_to_encoded_string(f: File, /):
+    match f.type:
+        case FileType.IMAGE:
+            return _to_base64_data_string(f)
+        case FileType.AUDIO:
+            return _get_encoded_string(f)
+        case _:
+            raise ValueError(f"file type {f.type} is not supported")
 
-            if dify_config.MULTIMODAL_SEND_IMAGE_FORMAT == "url":
-                return helpers.get_signed_image_url(upload_file_id=file.related_id)
-            return _get_base64(upload_file_id=file.related_id, tenant_id=file.tenant_id)
-        elif file.transfer_method == FileTransferMethod.TOOL_FILE:
-            # add sign url
-            if file.related_id is None or file.extension is None:
-                raise ValueError("Missing file related_id or extension")
-            return ToolFileParser.get_tool_file_manager().sign_file(
-                tool_file_id=file.related_id, extension=file.extension
-            )
+
+def _to_url(f: File, /):
+    if f.transfer_method == FileTransferMethod.REMOTE_URL:
+        if f.remote_url is None:
+            raise ValueError("Missing file remote_url")
+        return f.remote_url
+    elif f.transfer_method == FileTransferMethod.LOCAL_FILE:
+        if f.related_id is None:
+            raise ValueError("Missing file related_id")
+        return helpers.get_signed_file_url(upload_file_id=f.related_id)
+    elif f.transfer_method == FileTransferMethod.TOOL_FILE:
+        # add sign url
+        if f.related_id is None or f.extension is None:
+            raise ValueError("Missing file related_id or extension")
+        return ToolFileParser.get_tool_file_manager().sign_file(tool_file_id=f.related_id, extension=f.extension)
+    else:
+        raise ValueError(f"Unsupported transfer method: {f.transfer_method}")

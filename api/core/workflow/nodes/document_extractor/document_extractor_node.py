@@ -148,9 +148,7 @@ def _download_file_content(file: File) -> bytes:
             response.raise_for_status()
             return response.content
         elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
-            if file.related_id is None:
-                raise FileDownloadError("Missing file ID for local file")
-            return file_manager.download(upload_file_id=file.related_id, tenant_id=file.tenant_id)
+            return file_manager.download(file)
         else:
             raise ValueError(f"Unsupported transfer method: {file.transfer_method}")
     except Exception as e:

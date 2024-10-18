@@ -107,7 +107,16 @@ class LargeLanguageModel(AIModel):
                     callbacks=callbacks,
                 )
             else:
-                result = self._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
+                result = self._invoke(
+                    model=model,
+                    credentials=credentials,
+                    prompt_messages=prompt_messages,
+                    model_parameters=model_parameters,
+                    tools=tools,
+                    stop=stop,
+                    stream=stream,
+                    user=user,
+                )
         except Exception as e:
             self._trigger_invoke_error_callbacks(
                 model=model,

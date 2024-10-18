@@ -1,18 +1,15 @@
 import mimetypes
 from collections.abc import Mapping, Sequence
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from sqlalchemy import select
 
 from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 from core.file import File, FileBelongsTo, FileExtraConfig, FileTransferMethod, FileType
 from core.helper import ssrf_proxy
+from enums import CreatedByRole
 from extensions.ext_database import db
-from models import ToolFile, UploadFile
-
-if TYPE_CHECKING:
-    from enums import CreatedByRole
-    from models import MessageFile
+from models import MessageFile, ToolFile, UploadFile
 
 
 def build_from_message_files(
@@ -35,14 +32,19 @@ def build_from_message_file(
     tenant_id: str,
     config: FileExtraConfig,
 ):
-    return File(
-        id=message_file.id,
+    mapping = {
+        "transfer_method": message_file.transfer_method,
+        "url": message_file.url,
+        "id": message_file.id,
+        "type": message_file.type,
+        "upload_file_id": message_file.upload_file_id,
+    }
+    return build_from_mapping(
+        mapping=mapping,
         tenant_id=tenant_id,
-        type=FileType.value_of(message_file.type),
-        transfer_method=FileTransferMethod.value_of(message_file.transfer_method),
-        remote_url=message_file.url,
-        related_id=message_file.upload_file_id or None,
-        _extra_config=config,
+        user_id=message_file.created_by,
+        role=CreatedByRole(message_file.created_by_role),
+        config=config,
     )
 
 
