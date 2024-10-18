@@ -45,7 +45,14 @@ class BaseIndexProcessor(ABC):
     ) -> list[Document]:
         raise NotImplementedError
 
-    def _get_splitter(self, processing_rule_mode: str, max_tokens: int, chunk_overlap: int, separator: str, embedding_model_instance: Optional[ModelInstance]) -> TextSplitter:
+    def _get_splitter(
+        self,
+        processing_rule_mode: str,
+        max_tokens: int,
+        chunk_overlap: int,
+        separator: str,
+        embedding_model_instance: Optional[ModelInstance],
+    ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
         """
@@ -54,7 +61,7 @@ class BaseIndexProcessor(ABC):
             max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
             if max_tokens < 50 or max_tokens > max_segmentation_tokens_length:
                 raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}.")
-            
+
             if separator:
                 separator = separator.replace("\\n", "\n")
 

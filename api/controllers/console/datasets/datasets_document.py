@@ -332,7 +332,6 @@ class DatasetInitApi(Resource):
         DocumentService.document_create_args_validate(knowledge_config)
 
         try:
-            
             dataset, documents, batch = DocumentService.save_document_without_dataset_id(
                 tenant_id=current_user.current_tenant_id, knowledge_config=knowledge_config, account=current_user
             )

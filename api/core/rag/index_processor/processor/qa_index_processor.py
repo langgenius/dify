@@ -26,7 +26,10 @@ from services.entities.knowledge_entities.knowledge_entities import Rule
 class QAIndexProcessor(BaseIndexProcessor):
     def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
         text_docs = ExtractProcessor.extract(
-            extract_setting=extract_setting, is_automatic=(kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical")
+            extract_setting=extract_setting,
+            is_automatic=(
+                kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical"
+            ),
         )
         return text_docs
 
@@ -38,8 +41,8 @@ class QAIndexProcessor(BaseIndexProcessor):
             max_tokens=rules.segmentation.max_tokens,
             chunk_overlap=rules.segmentation.chunk_overlap,
             separator=rules.segmentation.separator,
-            embedding_model_instance=kwargs.get("embedding_model_instance")
-            )
+            embedding_model_instance=kwargs.get("embedding_model_instance"),
+        )
 
         # Split the text documents into nodes.
         all_documents = []

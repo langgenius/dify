@@ -12,7 +12,8 @@ from core.rag.models.document import Document
 from core.rag.rerank.constants.rerank_mode import RerankMode
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from models.dataset import ChildChunk, Dataset, DocumentSegment, Document as DatasetDocument
+from models.dataset import ChildChunk, Dataset, DocumentSegment
+from models.dataset import Document as DatasetDocument
 from services.external_knowledge_service import ExternalDatasetService
 
 default_retrieval_model = {
@@ -250,7 +251,7 @@ class RetrievalService:
                         ChildChunk.index_node_id == child_index_node_id,
                         DocumentSegment.dataset_id == dataset_document.dataset_id,
                         DocumentSegment.enabled == True,
-                        DocumentSegment.status == "completed"
+                        DocumentSegment.status == "completed",
                     )
                     .first()
                 )
@@ -261,7 +262,7 @@ class RetrievalService:
                     if segment.id not in include_segment_ids:
                         include_segment_ids.append(segment.id)
                         map_detail = {
-                            "max_score": document.metadata.get("score", .0),
+                            "max_score": document.metadata.get("score", 0.0),
                             "child_chunks": [child_chunk],
                         }
                         segment_child_map[segment.id] = map_detail
@@ -271,7 +272,9 @@ class RetrievalService:
                         records.append(record)
                     else:
                         segment_child_map[segment.id]["child_chunks"].append(child_chunk)
-                        segment_child_map[segment.id]["max_score"] = max(segment_child_map[segment.id]["max_score"], document.metadata.get("score", .0))
+                        segment_child_map[segment.id]["max_score"] = max(
+                            segment_child_map[segment.id]["max_score"], document.metadata.get("score", 0.0)
+                        )
                 else:
                     continue
             else:

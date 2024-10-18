@@ -1,7 +1,7 @@
-from typing import Literal, Optional, Union
+from enum import Enum
+from typing import Literal, Optional
 
 from pydantic import BaseModel
-from enum import Enum
 
 
 class ParentMode(str, Enum):

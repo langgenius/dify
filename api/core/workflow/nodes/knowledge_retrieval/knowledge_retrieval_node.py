@@ -19,7 +19,7 @@ from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from extensions.ext_database import db
-from models.dataset import Dataset, Document, DocumentSegment
+from models.dataset import Dataset, Document
 from models.workflow import WorkflowNodeExecutionStatus
 
 logger = logging.getLogger(__name__)

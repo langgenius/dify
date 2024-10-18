@@ -39,7 +39,12 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
-from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, KnowledgeConfig, RetrievalModel, SegmentUpdateArgs
+from services.entities.knowledge_entities.knowledge_entities import (
+    ChildChunkUpdateArgs,
+    KnowledgeConfig,
+    RetrievalModel,
+    SegmentUpdateArgs,
+)
 from services.errors.account import InvalidActionError, NoPermissionError
 from services.errors.chunk import ChildChunkDeleteIndexError, ChildChunkIndexingError
 from services.errors.dataset import DatasetNameDuplicateError
@@ -57,7 +62,6 @@ from tasks.disable_segments_from_index_task import disable_segments_from_index_t
 from tasks.document_indexing_task import document_indexing_task
 from tasks.document_indexing_update_task import document_indexing_update_task
 from tasks.duplicate_document_indexing_task import duplicate_document_indexing_task
-from tasks.enable_segment_to_index_task import enable_segment_to_index_task
 from tasks.enable_segments_to_index_task import enable_segments_to_index_task
 from tasks.recover_document_indexing_task import recover_document_indexing_task
 from tasks.retry_document_indexing_task import retry_document_indexing_task
@@ -711,9 +715,7 @@ class DocumentService:
             dataset.data_source_type = knowledge_config.data_source.info_list.data_source_type
 
         if not dataset.indexing_technique:
-            if (
-                 knowledge_config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST
-            ):
+            if knowledge_config.indexing_technique not in Dataset.INDEXING_TECHNIQUE_LIST:
                 raise ValueError("Indexing technique is invalid")
 
             dataset.indexing_technique = knowledge_config.indexing_technique
@@ -748,7 +750,7 @@ class DocumentService:
             # save process rule
             if not dataset_process_rule:
                 process_rule = knowledge_config.process_rule
-                if process_rule.mode== "custom" or process_rule.mode== "hierarchical":
+                if process_rule.mode == "custom" or process_rule.mode == "hierarchical":
                     dataset_process_rule = DatasetProcessRule(
                         dataset_id=dataset.id,
                         mode=process_rule.mode,
@@ -1139,7 +1141,7 @@ class DocumentService:
             retrieval_model=retrieval_model.model_dump_json() if retrieval_model else None,
         )
 
-        db.session.add(dataset) # type: ignore  
+        db.session.add(dataset)  # type: ignore
         db.session.flush()
 
         documents, batch = DocumentService.save_document_with_dataset_id(dataset, knowledge_config, account)
@@ -1209,7 +1211,7 @@ class DocumentService:
 
             if knowledge_config.process_rule.rules.pre_processing_rules is None:
                 raise ValueError("Process rule pre_processing_rules is required")
-            
+
             unique_pre_processing_rule_dicts = {}
             for pre_processing_rule in knowledge_config.process_rule.rules.pre_processing_rules:
                 if not pre_processing_rule.id:
@@ -1230,11 +1232,13 @@ class DocumentService:
 
             if not isinstance(knowledge_config.process_rule.rules.segmentation.separator, str):
                 raise ValueError("Process rule segmentation separator is invalid")
-            
-            if not (knowledge_config.process_rule.mode == "hierarchical" and knowledge_config.process_rule.rules.parent_mode == "full-doc"):
 
+            if not (
+                knowledge_config.process_rule.mode == "hierarchical"
+                and knowledge_config.process_rule.rules.parent_mode == "full-doc"
+            ):
                 if not knowledge_config.process_rule.rules.segmentation.max_tokens:
-                    raise ValueError("Process rule segmentation max_tokens is required")   
+                    raise ValueError("Process rule segmentation max_tokens is required")
 
                 if not isinstance(knowledge_config.process_rule.rules.segmentation.max_tokens, int):
                     raise ValueError("Process rule segmentation max_tokens is invalid")
@@ -1535,9 +1539,11 @@ class SegmentService:
                     processing_rule = (
                         db.session.query(DatasetProcessRule)
                         .filter(DatasetProcessRule.id == document.dataset_process_rule_id)
-                            .first()
-                        )
-                    VectorService.generate_child_chunks(segment, document, dataset, embedding_model_instance, processing_rule, True)
+                        .first()
+                    )
+                    VectorService.generate_child_chunks(
+                        segment, document, dataset, embedding_model_instance, processing_rule, True
+                    )
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
@@ -1569,7 +1575,7 @@ class SegmentService:
                 db.session.add(segment)
                 db.session.commit()
                 if document.doc_form == IndexType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
-                                        # get embedding model instance
+                    # get embedding model instance
                     if dataset.indexing_technique == "high_quality":
                         # check embedding model setting
                         model_manager = ModelManager()
@@ -1591,10 +1597,12 @@ class SegmentService:
                     # get the process rule
                     processing_rule = (
                         db.session.query(DatasetProcessRule)
-                            .filter(DatasetProcessRule.id == document.dataset_process_rule_id)
-                            .first()
-                        )
-                    VectorService.generate_child_chunks(segment, document, dataset, embedding_model_instance, processing_rule, True)
+                        .filter(DatasetProcessRule.id == document.dataset_process_rule_id)
+                        .first()
+                    )
+                    VectorService.generate_child_chunks(
+                        segment, document, dataset, embedding_model_instance, processing_rule, True
+                    )
                 elif document.doc_form == IndexType.PARAGRAPH_INDEX or document.doc_form == IndexType.QA_INDEX:
                     # update segment vector index
                     VectorService.update_segment_vector(args.keywords, segment, dataset)
@@ -1626,14 +1634,13 @@ class SegmentService:
 
     @classmethod
     def delete_segments(cls, segment_ids: list, document: Document, dataset: Dataset):
-
         index_node_ids = (
             DocumentSegment.query.with_entities(DocumentSegment.index_node_id)
             .filter(
-                DocumentSegment.id.in_(segment_ids), 
+                DocumentSegment.id.in_(segment_ids),
                 DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.document_id == document.id,
-                DocumentSegment.tenant_id == current_user.current_tenant_id
+                DocumentSegment.tenant_id == current_user.current_tenant_id,
             )
             .all()
         )
@@ -1642,17 +1649,20 @@ class SegmentService:
         delete_segment_from_index_task.delay(index_node_ids, dataset.id, document.id)
         db.session.query(DocumentSegment).filter(DocumentSegment.id.in_(segment_ids)).delete()
         db.session.commit()
-    
+
     @classmethod
     def update_segments_status(cls, segment_ids: list, action: str, dataset: Dataset, document: Document):
-
         if action == "enable":
-            segments = db.session.query(DocumentSegment).filter(
-                DocumentSegment.id.in_(segment_ids),
-                DocumentSegment.dataset_id == dataset.id,
-                DocumentSegment.document_id == document.id,
-                DocumentSegment.enabled == False,
-            ).all()
+            segments = (
+                db.session.query(DocumentSegment)
+                .filter(
+                    DocumentSegment.id.in_(segment_ids),
+                    DocumentSegment.dataset_id == dataset.id,
+                    DocumentSegment.document_id == document.id,
+                    DocumentSegment.enabled == False,
+                )
+                .all()
+            )
             if not segments:
                 return
             real_deal_segmment_ids = []
@@ -1670,12 +1680,16 @@ class SegmentService:
 
             enable_segments_to_index_task.delay(real_deal_segmment_ids, dataset.id, document.id)
         elif action == "disable":
-            segments = db.session.query(DocumentSegment).filter(
-                DocumentSegment.id.in_(segment_ids),
-                DocumentSegment.dataset_id == dataset.id,
-                DocumentSegment.document_id == document.id,
-                DocumentSegment.enabled == True,
-            ).all()
+            segments = (
+                db.session.query(DocumentSegment)
+                .filter(
+                    DocumentSegment.id.in_(segment_ids),
+                    DocumentSegment.dataset_id == dataset.id,
+                    DocumentSegment.document_id == document.id,
+                    DocumentSegment.enabled == True,
+                )
+                .all()
+            )
             if not segments:
                 return
             real_deal_segmment_ids = []
@@ -1696,18 +1710,24 @@ class SegmentService:
             raise InvalidActionError()
 
     @classmethod
-    def create_child_chunk(cls, content: str, segment: DocumentSegment, document: Document, dataset: Dataset) -> ChildChunk:
+    def create_child_chunk(
+        cls, content: str, segment: DocumentSegment, document: Document, dataset: Dataset
+    ) -> ChildChunk:
         lock_name = "add_child_lock_{}".format(segment.id)
         with redis_client.lock(lock_name, timeout=20):
             index_node_id = str(uuid.uuid4())
             index_node_hash = helper.generate_text_hash(content)
-            child_chunk_count = db.session.query(ChildChunk).filter(
-                ChildChunk.tenant_id == current_user.current_tenant_id,
-                ChildChunk.dataset_id == dataset.id,
-                ChildChunk.document_id == document.id,
-                ChildChunk.segment_id == segment.id,
-            ).count()
-            child_chunk= ChildChunk(
+            child_chunk_count = (
+                db.session.query(ChildChunk)
+                .filter(
+                    ChildChunk.tenant_id == current_user.current_tenant_id,
+                    ChildChunk.dataset_id == dataset.id,
+                    ChildChunk.document_id == document.id,
+                    ChildChunk.segment_id == segment.id,
+                )
+                .count()
+            )
+            child_chunk = ChildChunk(
                 tenant_id=current_user.current_tenant_id,
                 dataset_id=dataset.id,
                 document_id=document.id,
@@ -1731,14 +1751,24 @@ class SegmentService:
             db.session.commit()
 
             return child_chunk
-    
+
     @classmethod
-    def update_child_chunk(cls, child_chunks_update_args: list[ChildChunkUpdateArgs], segment: DocumentSegment, document: Document, dataset: Dataset) -> list[ChildChunk]:
-        child_chunks = db.session.query(ChildChunk).filter(
-            ChildChunk.dataset_id == dataset.id,
-            ChildChunk.document_id == document.id,
-            ChildChunk.segment_id == segment.id,
-        ).all()
+    def update_child_chunk(
+        cls,
+        child_chunks_update_args: list[ChildChunkUpdateArgs],
+        segment: DocumentSegment,
+        document: Document,
+        dataset: Dataset,
+    ) -> list[ChildChunk]:
+        child_chunks = (
+            db.session.query(ChildChunk)
+            .filter(
+                ChildChunk.dataset_id == dataset.id,
+                ChildChunk.document_id == document.id,
+                ChildChunk.segment_id == segment.id,
+            )
+            .all()
+        )
         child_chunks_map = {chunk.id: chunk for chunk in child_chunks}
 
         new_child_chunks, update_child_chunks, delete_child_chunks, new_child_chunks_args = [], [], [], []
@@ -1750,6 +1780,9 @@ class SegmentService:
                     if child_chunk.content != child_chunk_update_args.content:
                         child_chunk.content = child_chunk_update_args.content
                         child_chunk.word_count = len(child_chunk.content)
+                        child_chunk.updated_by = current_user.id
+                        child_chunk.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                        child_chunk.type = "customized"
                         update_child_chunks.append(child_chunk)
             else:
                 new_child_chunks_args.append(child_chunk_update_args)
@@ -1761,13 +1794,13 @@ class SegmentService:
 
             if delete_child_chunks:
                 for child_chunk in delete_child_chunks:
-                    db.session.delete(child_chunk)  
+                    db.session.delete(child_chunk)
             if new_child_chunks_args:
                 child_chunk_count = len(child_chunks)
                 for position, args in enumerate(new_child_chunks_args, start=child_chunk_count + 1):
                     index_node_id = str(uuid.uuid4())
                     index_node_hash = helper.generate_text_hash(args.content)
-                    child_chunk= ChildChunk(
+                    child_chunk = ChildChunk(
                         tenant_id=current_user.current_tenant_id,
                         dataset_id=dataset.id,
                         document_id=document.id,
@@ -1791,7 +1824,7 @@ class SegmentService:
             db.session.rollback()
             raise ChildChunkIndexingError(str(e))
         return sorted(new_child_chunks + update_child_chunks, key=lambda x: x.position)
-    
+
     @classmethod
     def delete_child_chunk(cls, child_chunk: ChildChunk, dataset: Dataset):
         db.session.delete(child_chunk)
@@ -1802,15 +1835,20 @@ class SegmentService:
             db.session.rollback()
             raise ChildChunkDeleteIndexError(str(e))
         db.session.commit()
-    
+
     @classmethod
     def get_child_chunks(cls, segment_id: str, document_id: str, dataset_id: str):
-        return db.session.query(ChildChunk).filter(
-            ChildChunk.tenant_id == current_user.current_tenant_id,
-            ChildChunk.dataset_id == dataset_id,
-            ChildChunk.document_id == document_id,
-            ChildChunk.segment_id == segment_id,
-        ).all()
+        return (
+            db.session.query(ChildChunk)
+            .filter(
+                ChildChunk.tenant_id == current_user.current_tenant_id,
+                ChildChunk.dataset_id == dataset_id,
+                ChildChunk.document_id == document_id,
+                ChildChunk.segment_id == segment_id,
+            )
+            .all()
+        )
+
 
 class DatasetCollectionBindingService:
     @classmethod

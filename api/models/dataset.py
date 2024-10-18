@@ -558,7 +558,7 @@ class DocumentSegment(db.Model):
             .filter(DocumentSegment.document_id == self.document_id, DocumentSegment.position == self.position + 1)
             .first()
         )
-    
+
     @property
     def child_chunks(self):
         child_chunks = db.session.query(ChildChunk).filter(ChildChunk.segment_id == self.id).all()
@@ -589,6 +589,7 @@ class DocumentSegment(db.Model):
             offset += len(signed_url) - (end - start)
 
         return text
+
 
 class ChildChunk(db.Model):
     __tablename__ = "child_chunks"
@@ -625,10 +626,11 @@ class ChildChunk(db.Model):
     @property
     def document(self):
         return db.session.query(Document).filter(Document.id == self.document_id).first()
-    
+
     @property
     def segment(self):
         return db.session.query(DocumentSegment).filter(DocumentSegment.id == self.segment_id).first()
+
 
 class AppDatasetJoin(db.Model):
     __tablename__ = "app_dataset_joins"

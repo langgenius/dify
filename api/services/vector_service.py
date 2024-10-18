@@ -1,16 +1,14 @@
 from typing import Optional
 
-from core.errors.error import LLMBadRequestError
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
-from core.rag.models.document import ChildDocument, Document
-from models.dataset import Dataset, DatasetProcessRule, DocumentSegment, ChildChunk, Document as DatasetDocument
+from core.rag.models.document import Document
 from extensions.ext_database import db
-
+from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
 
 
 class VectorService:
@@ -20,7 +18,7 @@ class VectorService:
     ):
         documents = []
         if doc_form == IndexType.PARENT_CHILD_INDEX:
-                                # get embedding model instance
+            # get embedding model instance
             if dataset.indexing_technique == "high_quality":
                 # check embedding model setting
                 model_manager = ModelManager()
@@ -43,20 +41,19 @@ class VectorService:
             processing_rule = (
                 db.session.query(DatasetProcessRule)
                 .filter(DatasetProcessRule.id == document.dataset_process_rule_id)
-                    .first()
-                )
+                .first()
+            )
         for segment in segments:
-
             if doc_form == IndexType.PARENT_CHILD_INDEX:
                 cls.generate_child_chunks(segment, document, dataset, embedding_model_instance, processing_rule, False)
             else:
                 document = Document(
                     page_content=segment.content,
                     metadata={
-                    "doc_id": segment.index_node_id,
-                    "doc_hash": segment.index_node_hash,
-                    "document_id": segment.document_id,
-                    "dataset_id": segment.dataset_id,
+                        "doc_id": segment.index_node_id,
+                        "doc_hash": segment.index_node_hash,
+                        "document_id": segment.document_id,
+                        "dataset_id": segment.dataset_id,
                     },
                 )
                 documents.append(document)
@@ -95,14 +92,20 @@ class VectorService:
             keyword.add_texts([document])
 
     @classmethod
-    def generate_child_chunks(cls, segment: DocumentSegment, dataset_document: Document, dataset: Dataset, 
-                              embedding_model_instance: ModelInstance, processing_rule: DatasetProcessRule, 
-                              regenerate: bool = False):
+    def generate_child_chunks(
+        cls,
+        segment: DocumentSegment,
+        dataset_document: Document,
+        dataset: Dataset,
+        embedding_model_instance: ModelInstance,
+        processing_rule: DatasetProcessRule,
+        regenerate: bool = False,
+    ):
         index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
         if regenerate:
             # delete child chunks
             index_processor.clean(dataset, [segment.index_node_id], with_keywords=True, delete_child_chunks=True)
-            
+
         # generate child chunks
 
         document = Document(
@@ -158,9 +161,15 @@ class VectorService:
             # save vector index
             vector = Vector(dataset=dataset)
             vector.add_texts([child_document], duplicate_check=True)
-    
+
     @classmethod
-    def update_child_chunk_vector(cls, new_child_chunks: list[ChildChunk], update_child_chunks: list[ChildChunk], delete_child_chunks: list[ChildChunk], dataset: Dataset):
+    def update_child_chunk_vector(
+        cls,
+        new_child_chunks: list[ChildChunk],
+        update_child_chunks: list[ChildChunk],
+        delete_child_chunks: list[ChildChunk],
+        dataset: Dataset,
+    ):
         documents = []
         delete_node_ids = []
         for new_child_chunk in new_child_chunks:

@@ -8,7 +8,7 @@ import time
 import uuid
 from typing import Optional, cast
 
-from flask import Flask, current_app
+from flask import current_app
 from flask_login import current_user
 from sqlalchemy.orm.exc import ObjectDeletedError
 
@@ -112,7 +112,7 @@ class IndexingRunner:
 
             for document_segment in document_segments:
                 db.session.delete(document_segment)
-                if  dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
+                if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                     # delete child chunks
                     db.session.query(ChildChunk).filter(ChildChunk.segment_id == document_segment.id).delete()
             db.session.commit()
@@ -189,7 +189,7 @@ class IndexingRunner:
                                     child_document = ChildDocument(
                                         page_content=child_chunk.content,
                                         metadata={
-                                            "doc_id": child_chunk.index_node_id,    
+                                            "doc_id": child_chunk.index_node_id,
                                             "doc_hash": child_chunk.index_node_hash,
                                             "document_id": document_segment.document_id,
                                             "dataset_id": document_segment.dataset_id,
@@ -286,7 +286,7 @@ class IndexingRunner:
                 embedding_model_instance=embedding_model_instance,
                 process_rule=processing_rule.to_dict(),
                 tenant_id=current_user.current_tenant_id,
-                doc_language=doc_language,  
+                doc_language=doc_language,
             )
             total_segments += len(documents)
             for document in documents:
@@ -304,7 +304,9 @@ class IndexingRunner:
                 )
                 document_qa_list = self.format_split_text(response)
 
-                return IndexingEstimate(total_segments=total_segments * 20, qa_preview=document_qa_list, preview=preview_texts)
+                return IndexingEstimate(
+                    total_segments=total_segments * 20, qa_preview=document_qa_list, preview=preview_texts
+                )
         return IndexingEstimate(total_segments=total_segments, preview=preview_texts)
 
     def _extract(
@@ -398,8 +400,11 @@ class IndexingRunner:
 
     @staticmethod
     def _get_splitter(
-       processing_rule_mode: str, max_tokens: int, chunk_overlap: int, separator: str, 
-       embedding_model_instance: Optional[ModelInstance]
+        processing_rule_mode: str,
+        max_tokens: int,
+        chunk_overlap: int,
+        separator: str,
+        embedding_model_instance: Optional[ModelInstance],
     ) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
@@ -409,7 +414,7 @@ class IndexingRunner:
             max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
             if max_tokens < 50 or max_tokens > max_segmentation_tokens_length:
                 raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}.")
-            
+
             if separator:
                 separator = separator.replace("\\n", "\n")
 

@@ -4,14 +4,14 @@ import time
 
 import click
 from celery import shared_task
-from werkzeug.exceptions import NotFound
 
 from core.rag.index_processor.constant.index_type import IndexType
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from core.rag.models.document import ChildDocument, Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import DocumentSegment, Dataset, Document as DatasetDocument
+from models.dataset import Dataset, DocumentSegment
+from models.dataset import Document as DatasetDocument
 
 
 @shared_task(queue="dataset")
@@ -39,11 +39,15 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
     # sync index processor
     index_processor = IndexProcessorFactory(dataset_document.doc_form).init_index_processor()
 
-    segments = db.session.query(DocumentSegment).filter(
-        DocumentSegment.id.in_(segment_ids),
-        DocumentSegment.dataset_id == dataset_id,
-        DocumentSegment.document_id == document_id,
-    ).all()
+    segments = (
+        db.session.query(DocumentSegment)
+        .filter(
+            DocumentSegment.id.in_(segment_ids),
+            DocumentSegment.dataset_id == dataset_id,
+            DocumentSegment.document_id == document_id,
+        )
+        .all()
+    )
     if not segments:
         return
 
@@ -58,7 +62,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
                     "document_id": document_id,
                     "dataset_id": dataset_id,
                 },
-            )   
+            )
 
             if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
                 child_chunks = segment.child_chunks
@@ -81,9 +85,7 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
         index_processor.load(dataset, documents)
 
         end_at = time.perf_counter()
-        logging.info(
-            click.style("Segments enabled to index latency: {}".format(end_at - start_at), fg="green")
-        )
+        logging.info(click.style("Segments enabled to index latency: {}".format(end_at - start_at), fg="green"))
     except Exception as e:
         logging.exception("enable segments to index failed")
         # update segment error msg
@@ -102,5 +104,5 @@ def enable_segments_to_index_task(segment_ids: list, dataset_id: str, document_i
         db.session.commit()
     finally:
         for segment in segments:
-            indexing_cache_key = "segment_{}_indexing".format(segment.id)   
+            indexing_cache_key = "segment_{}_indexing".format(segment.id)
             redis_client.delete(indexing_cache_key)

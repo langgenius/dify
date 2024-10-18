@@ -19,7 +19,10 @@ from services.entities.knowledge_entities.knowledge_entities import Rule
 class ParagraphIndexProcessor(BaseIndexProcessor):
     def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
         text_docs = ExtractProcessor.extract(
-            extract_setting=extract_setting, is_automatic=(kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical")
+            extract_setting=extract_setting,
+            is_automatic=(
+                kwargs.get("process_rule_mode") == "automatic" or kwargs.get("process_rule_mode") == "hierarchical"
+            ),
         )
 
         return text_docs
@@ -33,7 +36,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             max_tokens=rules.segmentation.max_tokens,
             chunk_overlap=rules.segmentation.chunk_overlap,
             separator=rules.segmentation.separator,
-            embedding_model_instance=kwargs.get("embedding_model_instance")
+            embedding_model_instance=kwargs.get("embedding_model_instance"),
         )
         all_documents = []
         for document in documents:
@@ -72,7 +75,6 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                 keyword.add_texts(documents, keywords_list=keywords_list)
             else:
                 keyword.add_texts(documents)
-
 
     def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True, **kwargs):
         if dataset.indexing_technique == "high_quality":

@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime, timezone
 
 import pandas as pd
 from flask import request
@@ -10,7 +9,13 @@ from werkzeug.exceptions import Forbidden, NotFound
 import services
 from controllers.console import api
 from controllers.console.app.error import ProviderNotInitializeError
-from controllers.console.datasets.error import ChildChunkDeleteIndexError, ChildChunkIndexingError, InvalidActionError, NoFileUploadedError, TooManyFilesError
+from controllers.console.datasets.error import (
+    ChildChunkDeleteIndexError,
+    ChildChunkIndexingError,
+    InvalidActionError,
+    NoFileUploadedError,
+    TooManyFilesError,
+)
 from controllers.console.setup import setup_required
 from controllers.console.wraps import (
     account_initialization_required,
@@ -22,15 +27,14 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from fields.segment_fields import segment_fields, child_chunk_fields
+from fields.segment_fields import child_chunk_fields, segment_fields
 from libs.login import login_required
 from models.dataset import ChildChunk, DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from services.entities.knowledge_entities.knowledge_entities import ChildChunkUpdateArgs, SegmentUpdateArgs
-from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError, ChildChunkIndexingError as ChildChunkIndexingServiceError
+from services.errors.chunk import ChildChunkDeleteIndexError as ChildChunkDeleteIndexServiceError
+from services.errors.chunk import ChildChunkIndexingError as ChildChunkIndexingServiceError
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
-from tasks.disable_segment_from_index_task import disable_segment_from_index_task
-from tasks.enable_segment_to_index_task import enable_segment_to_index_task
 
 
 class DatasetDocumentSegmentListApi(Resource):
@@ -140,7 +144,6 @@ class DatasetDocumentSegmentListApi(Resource):
         return {"result": "success"}, 200
 
 
-
 class DatasetDocumentSegmentApi(Resource):
     @setup_required
     @login_required
@@ -188,12 +191,11 @@ class DatasetDocumentSegmentApi(Resource):
         cache_result = redis_client.get(document_indexing_cache_key)
         if cache_result is not None:
             raise InvalidActionError("Document is being indexed, please try again later")
-        try: 
+        try:
             SegmentService.update_segments_status(segment_ids, action, dataset, document)
         except Exception as e:
             raise InvalidActionError(str(e))
         return {"result": "success"}, 200
-
 
 
 class DatasetDocumentSegmentAddApi(Resource):
@@ -301,7 +303,9 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         parser.add_argument("content", type=str, required=True, nullable=False, location="json")
         parser.add_argument("answer", type=str, required=False, nullable=True, location="json")
         parser.add_argument("keywords", type=list, required=False, nullable=True, location="json")
-        parser.add_argument("regenerate_child_chunks", type=bool, required=False, nullable=True, default=False, location="json")
+        parser.add_argument(
+            "regenerate_child_chunks", type=bool, required=False, nullable=True, default=False, location="json"
+        )
         args = parser.parse_args()
         SegmentService.segment_create_args_validate(args, document)
         segment = SegmentService.update_segment(SegmentUpdateArgs(**args), segment, document, dataset)
@@ -405,6 +409,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
             raise ValueError("The job is not exist.")
 
         return {"job_id": job_id, "job_status": cache_result.decode()}, 200
+
 
 class ChildChunkAddApi(Resource):
     @setup_required
@@ -575,6 +580,7 @@ class ChildChunkUpdateApi(Resource):
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
         return {"result": "success"}, 200
+
 
 api.add_resource(DatasetDocumentSegmentListApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")
 api.add_resource(DatasetDocumentSegmentApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/<string:action>")

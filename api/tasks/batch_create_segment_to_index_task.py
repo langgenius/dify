@@ -7,7 +7,6 @@ import click
 from celery import shared_task
 from sqlalchemy import func
 
-from core.indexing_runner import IndexingRunner
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from extensions.ext_database import db

@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
+
 class ChildDocument(BaseModel):
     """Class for storing a piece of text and associated metadata."""
 
