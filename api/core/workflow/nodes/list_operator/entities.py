@@ -27,10 +27,15 @@ _Condition = Literal[
 ]
 
 
-class FilterBy(BaseModel):
+class FilterCondition(BaseModel):
     key: str = ""
     comparison_operator: _Condition = "contains"
     value: str | Sequence[str] = ""
+
+
+class FilterBy(BaseModel):
+    enabled: bool = False
+    conditions: Sequence[FilterCondition] = Field(default_factory=list)
 
 
 class OrderBy(BaseModel):
@@ -44,8 +49,8 @@ class Limit(BaseModel):
     size: int = -1
 
 
-class ListFilterNodeData(BaseNodeData):
+class ListOperatorNodeData(BaseNodeData):
     variable: Sequence[str] = Field(default_factory=list)
-    filter_by: Sequence[FilterBy]
+    filter_by: FilterBy
     order_by: OrderBy
     limit: Limit

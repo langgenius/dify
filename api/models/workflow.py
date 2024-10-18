@@ -391,7 +391,7 @@ class WorkflowRun(db.Model):
     graph = db.Column(db.Text)
     inputs = db.Column(db.Text)
     status = db.Column(db.String(255), nullable=False)
-    outputs = db.Column(db.Text)
+    outputs: Mapped[str] = db.Column(db.Text)
     error = db.Column(db.Text)
     elapsed_time = db.Column(db.Float, nullable=False, server_default=db.text("0"))
     total_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
@@ -415,15 +415,15 @@ class WorkflowRun(db.Model):
 
     @property
     def graph_dict(self):
-        return json.loads(self.graph) if self.graph else None
+        return json.loads(self.graph) if self.graph else {}
 
     @property
-    def inputs_dict(self):
-        return json.loads(self.inputs) if self.inputs else None
+    def inputs_dict(self) -> Mapping[str, Any]:
+        return json.loads(self.inputs) if self.inputs else {}
 
     @property
-    def outputs_dict(self):
-        return json.loads(self.outputs) if self.outputs else None
+    def outputs_dict(self) -> Mapping[str, Any]:
+        return json.loads(self.outputs) if self.outputs else {}
 
     @property
     def message(self) -> Optional["Message"]:

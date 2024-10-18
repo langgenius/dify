@@ -4,9 +4,6 @@ from core.rag.datasource.vdb.baidu.baidu_vector import BaiduConfig, BaiduVector
 from tests.integration_tests.vdb.__mock.baiduvectordb import setup_baiduvectordb_mock
 from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text, setup_mock_redis
 
-mock_client = MagicMock()
-mock_client.list_databases.return_value = [{"name": "test"}]
-
 
 class BaiduVectorTest(AbstractVectorTest):
     def __init__(self):

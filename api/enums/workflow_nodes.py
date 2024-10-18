@@ -21,7 +21,7 @@ class NodeType(str, Enum):
     PARAMETER_EXTRACTOR = "parameter-extractor"
     CONVERSATION_VARIABLE_ASSIGNER = "assigner"
     DOCUMENT_EXTRACTOR = "document-extractor"
-    LIST_FILTER = "list-filter"
+    LIST_OPERATOR = "list-operator"
 
     @classmethod
     def value_of(cls, value: str):

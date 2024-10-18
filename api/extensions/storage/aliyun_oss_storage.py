@@ -1,5 +1,4 @@
 from collections.abc import Generator
-from contextlib import closing
 
 import oss2 as aliyun_s3
 from flask import Flask
@@ -34,15 +33,15 @@ class AliyunOssStorage(BaseStorage):
         self.client.put_object(self.__wrapper_folder_filename(filename), data)
 
     def load_once(self, filename: str) -> bytes:
-        with closing(self.client.get_object(self.__wrapper_folder_filename(filename))) as obj:
-            data = obj.read()
+        obj = self.client.get_object(self.__wrapper_folder_filename(filename))
+        data = obj.read()
         return data
 
     def load_stream(self, filename: str) -> Generator:
         def generate(filename: str = filename) -> Generator:
-            with closing(self.client.get_object(self.__wrapper_folder_filename(filename))) as obj:
-                while chunk := obj.read(4096):
-                    yield chunk
+            obj = self.client.get_object(self.__wrapper_folder_filename(filename))
+            while chunk := obj.read(4096):
+                yield chunk
 
         return generate()
 
