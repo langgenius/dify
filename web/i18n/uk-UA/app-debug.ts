@@ -321,6 +321,16 @@ const translation = {
       autoPlayDisabled: 'закриття',
     },
   },
+  speechToText: {
+    settings: 'Налаштування',
+    speechToTextSettings: {
+      title: 'Налаштування розпізнавання мовлення',
+      languageRecognition: 'Розпізнавання мови',
+      resolutionTooltip: 'Мова підтримки голосу для розпізнавання мовлення.',
+      auto: 'Автоматично',
+      custom: 'Користувацький',
+    },
+  },
   openingStatement: {
     title: 'Вступ до розмови', // Conversation Opener
     add: 'Додати', // Add

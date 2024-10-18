@@ -327,6 +327,16 @@ const translation = {
       autoPlayDisabled: 'închidere',
     },
   },
+  speechToText: {
+    settings: 'Setări',
+    speechToTextSettings: {
+      title: 'Setări recunoaștere vocală',
+      languageRecognition: 'Recunoașterea limbii',
+      resolutionTooltip: 'Limba de suport vocal pentru recunoașterea vocală.',
+      auto: 'Automat',
+      custom: 'Personalizat',
+    },
+  },
   openingStatement: {
     title: 'Deschizător de conversație',
     add: 'Adăugare',
