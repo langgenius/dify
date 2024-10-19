@@ -13,9 +13,14 @@ import {
 import cn from '@/utils/classnames'
 
 type Props = {
+  onInfo: () => void
+  onRemove: () => void
 }
 
-const OperationDropdown: FC<Props> = () => {
+const OperationDropdown: FC<Props> = ({
+  onInfo,
+  onRemove,
+}) => {
   const { t } = useTranslation()
   const [open, doSetOpen] = useState(false)
   const openRef = useRef(open)
@@ -45,14 +50,16 @@ const OperationDropdown: FC<Props> = () => {
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-50'>
         <div className='w-[160px] p-1 bg-components-panel-bg-blur rounded-xl border-[0.5px] border-components-panel-border shadow-lg'>
-          <div className='px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>{t('plugin.detailPanel.operation.info')}</div>
+          <div onClick={onInfo} className='px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>{t('plugin.detailPanel.operation.info')}</div>
+          {/* ##plugin TODO## check update */}
           <div className='px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>{t('plugin.detailPanel.operation.checkUpdate')}</div>
+          {/* ##plugin TODO## router action */}
           <div className='flex items-center px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>
             <div className='grow'>{t('plugin.detailPanel.operation.viewDetail')}</div>
             <RiArrowRightUpLine className='shrink-0 w-3.5 h-3.5 text-text-tertiary' />
           </div>
           <div className='my-1 h-px bg-divider-subtle'></div>
-          <div className='px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>{t('plugin.detailPanel.operation.remove')}</div>
+          <div onClick={onRemove} className='px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>{t('plugin.detailPanel.operation.remove')}</div>
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>
