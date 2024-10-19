@@ -14,6 +14,7 @@ import {
   deleteEndpoint,
   disableEndpoint,
   enableEndpoint,
+  updateEndpoint,
 } from '@/service/plugins'
 
 type Props = {
@@ -94,6 +95,22 @@ const EndpointCard = ({
     return addDefaultValue(data.settings, formSchemas)
   }, [data.settings, formSchemas])
 
+  const handleUpdate = (state: any) => {
+    try {
+      updateEndpoint({
+        url: '/workspaces/current/endpoints',
+        body: {
+          endpoint_id: data.id,
+          settings: state,
+          name: state.name,
+        },
+      })
+    }
+    catch (error) {
+      console.error(error)
+    }
+  }
+
   return (
     <div className='p-0.5 bg-background-section-burn rounded-xl'>
       <div className='group p-2.5 pl-3 bg-components-panel-on-panel-item-bg rounded-[10px] border-[0.5px] border-components-panel-border'>
@@ -168,10 +185,10 @@ const EndpointCard = ({
       )}
       {isShowEndpointModal && (
         <EndpointModal
-          id={data.id}
           formSchemas={formSchemas}
           defaultValues={formValue}
           onCancel={hideEndpointModalConfirm}
+          onSaved={handleUpdate}
         />
       )}
     </div>

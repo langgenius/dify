@@ -8,6 +8,9 @@ import EndpointCard from './endpoint-card'
 import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
+import {
+  createEndpoint,
+} from '@/service/plugins'
 
 type Props = {
   pluginUniqueID: string
@@ -30,6 +33,22 @@ const EndpointList = ({
   const formSchemas = useMemo(() => {
     return toolCredentialToFormSchemas(declaration.settings)
   }, [declaration.settings])
+
+  const handleCreate = (state: any) => {
+    try {
+      createEndpoint({
+        url: '/workspaces/current/endpoints',
+        body: {
+          plugin_unique_identifier: pluginUniqueID,
+          settings: state,
+          name: state.name,
+        },
+      })
+    }
+    catch (error) {
+      console.error(error)
+    }
+  }
 
   return (
     <div className='px-4 py-2 border-t border-divider-subtle'>
@@ -59,9 +78,9 @@ const EndpointList = ({
       </div>
       {isShowEndpointModal && (
         <EndpointModal
-          id={pluginUniqueID}
           formSchemas={formSchemas}
           onCancel={hideEndpointModal}
+          onSaved={handleCreate}
         />
       )}
     </div>

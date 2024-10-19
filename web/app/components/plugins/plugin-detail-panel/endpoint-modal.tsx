@@ -7,37 +7,35 @@ import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
-// import Toast from '@/app/components/base/toast'
+import Toast from '@/app/components/base/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import cn from '@/utils/classnames'
 
 type Props = {
-  id: string
   formSchemas: any
   defaultValues?: any
   onCancel: () => void
-  // onSaved: (value: Record<string, any>) => void
+  onSaved: (value: Record<string, any>) => void
 }
 
 const EndpointModal: FC<Props> = ({
-  id,
   formSchemas,
   defaultValues = {},
   onCancel,
-  // onSaved,
+  onSaved,
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
   const [tempCredential, setTempCredential] = React.useState<any>(defaultValues)
 
   const handleSave = () => {
-    // for (const field of credentialSchema) {
-    //   if (field.required && !tempCredential[field.name]) {
-    //     Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: field.label[language] || field.label.en_US }) })
-    //     return
-    //   }
-    // }
-    // onSaved(tempCredential)
+    for (const field of formSchemas) {
+      if (field.required && !tempCredential[field.name]) {
+        Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: field.label[language] || field.label.en_US }) })
+        return
+      }
+    }
+    onSaved(tempCredential)
   }
 
   return (
