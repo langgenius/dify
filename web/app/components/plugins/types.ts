@@ -114,3 +114,30 @@ export type Permissions = {
   canManagement: PermissionType
   canDebugger: PermissionType
 }
+
+// endpoint
+export type CreateEndpointRequest = {
+  plugin_unique_identifier: string
+  settings: Record<string, any>
+  name: string
+}
+export type EndpointOperationResponse = {
+  result: 'success' | 'error'
+}
+export type EndpointsRequest = {
+  limit: number
+  page: number
+  plugin_id: string
+}
+export type EndpointsResponse = {
+  endpoints: EndpointListItem[]
+  has_more: boolean
+  limit: number
+  total: number
+  page: number
+}
+export type UpdateEndpointRequest = {
+  endpoint_id: string
+  settings: Record<string, any>
+  name: string
+}
