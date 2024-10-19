@@ -106,23 +106,22 @@ const SettingBuiltInTool: FC<Props> = ({
       </div>
 
       {infoSchemas.length > 0 && (
-        <div className='mt-6'>
-          <div className='flex items-center mb-4 leading-[18px] text-xs font-semibold text-gray-500 uppercase'>
-            <div className='mr-3'>{t('tools.setBuiltInTools.parameters')}</div>
-            <div className='grow w-0 h-px bg-[#f3f4f6]'></div>
+        <div className='my-2'>
+          <div className='pt-3 text-text-secondary system-sm-semibold-uppercase'>
+            {t('tools.setBuiltInTools.parameters')}
           </div>
-          <div className='space-y-4'>
+          <div className='py-2 space-y-3'>
             {infoSchemas.map((item: any, index) => (
-              <div key={index}>
-                <div className='flex items-center space-x-2 leading-[18px]'>
-                  <div className='text-[13px] font-semibold text-gray-900'>{item.label[language]}</div>
-                  <div className='text-xs font-medium text-gray-500'>{item.type === 'number-input' ? t('tools.setBuiltInTools.number') : t('tools.setBuiltInTools.string')}</div>
+              <div key={index} className='py-1'>
+                <div className='flex items-center gap-2'>
+                  <div className='text-text-secondary code-sm-semibold'>{item.label[language]}</div>
+                  <div className='text-text-tertiary system-xs-regular'>{item.type === 'number-input' ? t('tools.setBuiltInTools.number') : t('tools.setBuiltInTools.string')}</div>
                   {item.required && (
-                    <div className='text-xs font-medium text-[#EC4A0A]'>{t('tools.setBuiltInTools.required')}</div>
+                    <div className='text-text-warning-secondary system-xs-medium'>{t('tools.setBuiltInTools.required')}</div>
                   )}
                 </div>
                 {item.human_description && (
-                  <div className='mt-1 leading-[18px] text-xs font-normal text-gray-600'>
+                  <div className='mt-0.5 text-text-tertiary system-xs-regular'>
                     {item.human_description?.[language]}
                   </div>
                 )}
@@ -192,9 +191,9 @@ const SettingBuiltInTool: FC<Props> = ({
           </>)}
         </div>
       )}
-      panelClassName='mt-[65px] !w-[405px]'
-      maxWidthClassName='!max-w-[405px]'
-      height='calc(100vh - 65px)'
+      panelClassName='mt-[64px] mb-2 !w-[420px]'
+      maxWidthClassName='!max-w-[420px]'
+      height='calc(100vh - 64px)'
       headerClassName='!border-b-black/5'
       body={
         <div className='h-full pt-3'>
@@ -203,7 +202,7 @@ const SettingBuiltInTool: FC<Props> = ({
               <Loading type='app' />
             </div>
             : (<div className='flex flex-col h-full'>
-              <div className='grow h-0 overflow-y-auto  px-6'>
+              <div className='grow h-0 overflow-y-auto px-4'>
                 {isInfoActive ? infoUI : settingUI}
               </div>
               {!readonly && !isInfoActive && (
