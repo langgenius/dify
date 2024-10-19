@@ -1,7 +1,6 @@
 'use client'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
 import type { Collection } from './types'
 import Marketplace from './marketplace'
 import cn from '@/utils/classnames'
@@ -9,18 +8,15 @@ import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import LabelFilter from '@/app/components/tools/labels/filter'
 import SearchInput from '@/app/components/base/search-input'
-// import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { fetchCollectionList } from '@/service/tools'
 import Card from '@/app/components/plugins/card'
-import { useGetLanguage } from '@/context/i18n'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 
 const ProviderList = () => {
   const { t } = useTranslation()
-  const language = useGetLanguage()
   const containerRef = useRef<HTMLDivElement>(null)
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
 
@@ -97,7 +93,6 @@ const ProviderList = () => {
           'relative grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0',
           currentProvider && 'pr-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
         )}>
-          {/* {activeTab === 'api' && <CustomCreateCard onRefreshData={getProviderList} />} */}
           {filteredCollectionList.map(collection => (
             <div
               key={collection.id}
@@ -131,13 +126,13 @@ const ProviderList = () => {
           )
         }
       </div>
-      <div className={cn(
-        'shrink-0 w-0 border-l-[0.5px] border-black/8 overflow-y-auto transition-all duration-200 ease-in-out',
-        currentProvider && 'w-[420px]',
-      )}>
-        {currentProvider && <ProviderDetail collection={currentProvider} onRefreshData={getProviderList} />}
-      </div>
-      <div className='absolute top-5 right-5 p-1 cursor-pointer' onClick={() => setCurrentProvider(undefined)}><RiCloseLine className='w-4 h-4' /></div>
+      {currentProvider && (
+        <ProviderDetail
+          collection={currentProvider}
+          onHide={() => setCurrentProvider(undefined)}
+          onRefreshData={getProviderList}
+        />
+      )}
     </div>
   )
 }

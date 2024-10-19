@@ -17,6 +17,7 @@ import ConfigCredential from '@/app/components/tools/setting/build-in/config-cre
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import WorkflowToolModal from '@/app/components/tools/workflow-tool'
 import Toast from '@/app/components/base/toast'
+import Drawer from '@/app/components/base/drawer'
 import {
   deleteWorkflowTool,
   fetchBuiltInToolList,
@@ -38,11 +39,13 @@ import { useAppContext } from '@/context/app-context'
 
 type Props = {
   collection: Collection
+  onHide: () => void
   onRefreshData: () => void
 }
 
 const ProviderDetail = ({
   collection,
+  onHide,
   onRefreshData,
 }: Props) => {
   const { t } = useTranslation()
@@ -213,164 +216,174 @@ const ProviderDetail = ({
   }, [collection.name, collection.type, getCustomProvider, getProviderToolList, getWorkflowToolProvider])
 
   return (
-    <div className='px-6 py-3'>
-      <div className='flex items-center py-1 gap-2'>
-        <div className='relative shrink-0'>
-          {typeof collection.icon === 'string' && (
-            <div className='w-8 h-8 bg-center bg-cover bg-no-repeat rounded-md' style={{ backgroundImage: `url(${collection.icon})` }} />
-          )}
-          {typeof collection.icon !== 'string' && (
-            <AppIcon
-              size='small'
-              icon={collection.icon.content}
-              background={collection.icon.background}
-            />
-          )}
-        </div>
-        <div className='grow w-0 py-[1px]'>
-          <div className='flex items-center text-md leading-6 font-semibold text-gray-900'>
-            <div className='truncate' title={collection.label[language]}>{collection.label[language]}</div>
-          </div>
-        </div>
-      </div>
-      <div className='mt-2 min-h-[36px] text-gray-500 text-sm leading-[18px]'>{collection.description[language]}</div>
-      <div className='flex gap-1 border-b-[0.5px] border-black/5'>
-        {(collection.type === CollectionType.builtIn) && needAuth && (
-          <Button
-            variant={isAuthed ? 'secondary' : 'primary'}
-            className={cn('shrink-0 my-3 w-full', isAuthed && 'bg-white')}
-            onClick={() => {
-              if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
-                showSettingAuthModal()
-            }}
-            disabled={!isCurrentWorkspaceManager}
-          >
-            {isAuthed && <Indicator className='mr-2' color={'green'} />}
-            <div className={cn('text-white leading-[18px] text-[13px] font-medium', isAuthed && '!text-gray-700')}>
-              {isAuthed ? t('tools.auth.authorized') : t('tools.auth.unauthorized')}
-            </div>
-          </Button>
-        )}
-        {collection.type === CollectionType.custom && !isDetailLoading && (
-          <Button
-            className={cn('shrink-0 my-3 w-full')}
-            onClick={() => setIsShowEditCustomCollectionModal(true)}
-          >
-            <Settings01 className='mr-1 w-4 h-4 text-gray-500' />
-            <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
-          </Button>
-        )}
-        {collection.type === CollectionType.workflow && !isDetailLoading && customCollection && (
-          <>
-            <Button
-              variant='primary'
-              className={cn('shrink-0 my-3 w-[183px]')}
-            >
-              <a className='flex items-center text-white' href={`/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
-                <div className='leading-5 text-sm font-medium'>{t('tools.openInStudio')}</div>
-                <LinkExternal02 className='ml-1 w-4 h-4' />
-              </a>
-            </Button>
-            <Button
-              className={cn('shrink-0 my-3 w-[183px]')}
-              onClick={() => setIsShowEditWorkflowToolModal(true)}
-              disabled={!isCurrentWorkspaceManager}
-            >
-              <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
-            </Button>
-          </>
-        )}
-      </div>
-      {/* Tools */}
-      <div className='pt-3'>
-        {isDetailLoading && <div className='flex h-[200px]'><Loading type='app' /></div>}
-        {!isDetailLoading && (
-          <div className='text-xs font-medium leading-6 text-gray-500'>
-            {collection.type === CollectionType.workflow && <span className=''>{t('tools.createTool.toolInput.title').toLocaleUpperCase()}</span>}
-            {collection.type !== CollectionType.workflow && <span className=''>{t('tools.includeToolNum', { num: toolList.length }).toLocaleUpperCase()}</span>}
-            {needAuth && (isBuiltIn || isModel) && !isAuthed && (
-              <>
-                <span className='px-1'>·</span>
-                <span className='text-[#DC6803]'>{t('tools.auth.setup').toLocaleUpperCase()}</span>
-              </>
+    <Drawer
+      isOpen={!!collection}
+      clickOutsideNotOpen={false}
+      onClose={onHide}
+      footer={null}
+      mask={false}
+      positionCenter={false}
+      panelClassname={cn('justify-start mt-[64px] mr-2 mb-2 !w-[420px] !max-w-[420px] !p-0 !bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl')}
+    >
+      <div className='px-6 py-3'>
+        <div className='flex items-center py-1 gap-2'>
+          <div className='relative shrink-0'>
+            {typeof collection.icon === 'string' && (
+              <div className='w-8 h-8 bg-center bg-cover bg-no-repeat rounded-md' style={{ backgroundImage: `url(${collection.icon})` }} />
+            )}
+            {typeof collection.icon !== 'string' && (
+              <AppIcon
+                size='small'
+                icon={collection.icon.content}
+                background={collection.icon.background}
+              />
             )}
           </div>
-        )}
-        {!isDetailLoading && (
-          <div className='mt-1'>
-            {collection.type !== CollectionType.workflow && toolList.map(tool => (
-              <ToolItem
-                key={tool.name}
-                disabled={needAuth && (isBuiltIn || isModel) && !isAuthed}
-                collection={collection}
-                tool={tool}
-                isBuiltIn={isBuiltIn}
-                isModel={isModel}
-              />
-            ))}
-            {collection.type === CollectionType.workflow && (customCollection as WorkflowToolProviderResponse)?.tool?.parameters.map(item => (
-              <div key={item.name} className='mb-2 px-4 py-3 rounded-xl bg-gray-25 border-[0.5px] border-gray-200'>
-                <div className='flex items-center gap-2'>
-                  <span className='font-medium text-sm text-gray-900'>{item.name}</span>
-                  <span className='text-xs leading-[18px] text-gray-500'>{item.type}</span>
-                  <span className='font-medium text-xs leading-[18px] text-[#ec4a0a]'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
-                </div>
-                <div className='h-[18px] leading-[18px] text-gray-500 text-xs'>{item.llm_description}</div>
-              </div>
-            ))}
+          <div className='grow w-0 py-[1px]'>
+            <div className='flex items-center text-md leading-6 font-semibold text-gray-900'>
+              <div className='truncate' title={collection.label[language]}>{collection.label[language]}</div>
+            </div>
           </div>
+        </div>
+        <div className='mt-2 min-h-[36px] text-gray-500 text-sm leading-[18px]'>{collection.description[language]}</div>
+        <div className='flex gap-1 border-b-[0.5px] border-black/5'>
+          {(collection.type === CollectionType.builtIn) && needAuth && (
+            <Button
+              variant={isAuthed ? 'secondary' : 'primary'}
+              className={cn('shrink-0 my-3 w-full', isAuthed && 'bg-white')}
+              onClick={() => {
+                if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
+                  showSettingAuthModal()
+              }}
+              disabled={!isCurrentWorkspaceManager}
+            >
+              {isAuthed && <Indicator className='mr-2' color={'green'} />}
+              <div className={cn('text-white leading-[18px] text-[13px] font-medium', isAuthed && '!text-gray-700')}>
+                {isAuthed ? t('tools.auth.authorized') : t('tools.auth.unauthorized')}
+              </div>
+            </Button>
+          )}
+          {collection.type === CollectionType.custom && !isDetailLoading && (
+            <Button
+              className={cn('shrink-0 my-3 w-full')}
+              onClick={() => setIsShowEditCustomCollectionModal(true)}
+            >
+              <Settings01 className='mr-1 w-4 h-4 text-gray-500' />
+              <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
+            </Button>
+          )}
+          {collection.type === CollectionType.workflow && !isDetailLoading && customCollection && (
+            <>
+              <Button
+                variant='primary'
+                className={cn('shrink-0 my-3 w-[183px]')}
+              >
+                <a className='flex items-center text-white' href={`/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
+                  <div className='leading-5 text-sm font-medium'>{t('tools.openInStudio')}</div>
+                  <LinkExternal02 className='ml-1 w-4 h-4' />
+                </a>
+              </Button>
+              <Button
+                className={cn('shrink-0 my-3 w-[183px]')}
+                onClick={() => setIsShowEditWorkflowToolModal(true)}
+                disabled={!isCurrentWorkspaceManager}
+              >
+                <div className='leading-5 text-sm font-medium text-gray-700'>{t('tools.createTool.editAction')}</div>
+              </Button>
+            </>
+          )}
+        </div>
+        {/* Tools */}
+        <div className='pt-3'>
+          {isDetailLoading && <div className='flex h-[200px]'><Loading type='app' /></div>}
+          {!isDetailLoading && (
+            <div className='text-xs font-medium leading-6 text-gray-500'>
+              {collection.type === CollectionType.workflow && <span className=''>{t('tools.createTool.toolInput.title').toLocaleUpperCase()}</span>}
+              {collection.type !== CollectionType.workflow && <span className=''>{t('tools.includeToolNum', { num: toolList.length }).toLocaleUpperCase()}</span>}
+              {needAuth && (isBuiltIn || isModel) && !isAuthed && (
+                <>
+                  <span className='px-1'>·</span>
+                  <span className='text-[#DC6803]'>{t('tools.auth.setup').toLocaleUpperCase()}</span>
+                </>
+              )}
+            </div>
+          )}
+          {!isDetailLoading && (
+            <div className='mt-1'>
+              {collection.type !== CollectionType.workflow && toolList.map(tool => (
+                <ToolItem
+                  key={tool.name}
+                  disabled={needAuth && (isBuiltIn || isModel) && !isAuthed}
+                  collection={collection}
+                  tool={tool}
+                  isBuiltIn={isBuiltIn}
+                  isModel={isModel}
+                />
+              ))}
+              {collection.type === CollectionType.workflow && (customCollection as WorkflowToolProviderResponse)?.tool?.parameters.map(item => (
+                <div key={item.name} className='mb-2 px-4 py-3 rounded-xl bg-gray-25 border-[0.5px] border-gray-200'>
+                  <div className='flex items-center gap-2'>
+                    <span className='font-medium text-sm text-gray-900'>{item.name}</span>
+                    <span className='text-xs leading-[18px] text-gray-500'>{item.type}</span>
+                    <span className='font-medium text-xs leading-[18px] text-[#ec4a0a]'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
+                  </div>
+                  <div className='h-[18px] leading-[18px] text-gray-500 text-xs'>{item.llm_description}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {showSettingAuth && (
+          <ConfigCredential
+            collection={collection}
+            onCancel={() => setShowSettingAuth(false)}
+            onSaved={async (value) => {
+              await updateBuiltInToolCredential(collection.name, value)
+              Toast.notify({
+                type: 'success',
+                message: t('common.api.actionSuccess'),
+              })
+              await onRefreshData()
+              setShowSettingAuth(false)
+            }}
+            onRemove={async () => {
+              await removeBuiltInToolCredential(collection.name)
+              Toast.notify({
+                type: 'success',
+                message: t('common.api.actionSuccess'),
+              })
+              await onRefreshData()
+              setShowSettingAuth(false)
+            }}
+          />
+        )}
+        {isShowEditCollectionToolModal && (
+          <EditCustomToolModal
+            payload={customCollection}
+            onHide={() => setIsShowEditCustomCollectionModal(false)}
+            onEdit={doUpdateCustomToolCollection}
+            onRemove={onClickCustomToolDelete}
+          />
+        )}
+        {isShowEditWorkflowToolModal && (
+          <WorkflowToolModal
+            payload={customCollection}
+            onHide={() => setIsShowEditWorkflowToolModal(false)}
+            onRemove={onClickWorkflowToolDelete}
+            onSave={updateWorkflowToolProvider}
+          />
+        )}
+        {showConfirmDelete && (
+          <Confirm
+            title={t('tools.createTool.deleteToolConfirmTitle')}
+            content={t('tools.createTool.deleteToolConfirmContent')}
+            isShow={showConfirmDelete}
+            onConfirm={handleConfirmDelete}
+            onCancel={() => setShowConfirmDelete(false)}
+          />
         )}
       </div>
-      {showSettingAuth && (
-        <ConfigCredential
-          collection={collection}
-          onCancel={() => setShowSettingAuth(false)}
-          onSaved={async (value) => {
-            await updateBuiltInToolCredential(collection.name, value)
-            Toast.notify({
-              type: 'success',
-              message: t('common.api.actionSuccess'),
-            })
-            await onRefreshData()
-            setShowSettingAuth(false)
-          }}
-          onRemove={async () => {
-            await removeBuiltInToolCredential(collection.name)
-            Toast.notify({
-              type: 'success',
-              message: t('common.api.actionSuccess'),
-            })
-            await onRefreshData()
-            setShowSettingAuth(false)
-          }}
-        />
-      )}
-      {isShowEditCollectionToolModal && (
-        <EditCustomToolModal
-          payload={customCollection}
-          onHide={() => setIsShowEditCustomCollectionModal(false)}
-          onEdit={doUpdateCustomToolCollection}
-          onRemove={onClickCustomToolDelete}
-        />
-      )}
-      {isShowEditWorkflowToolModal && (
-        <WorkflowToolModal
-          payload={customCollection}
-          onHide={() => setIsShowEditWorkflowToolModal(false)}
-          onRemove={onClickWorkflowToolDelete}
-          onSave={updateWorkflowToolProvider}
-        />
-      )}
-      {showConfirmDelete && (
-        <Confirm
-          title={t('tools.createTool.deleteToolConfirmTitle')}
-          content={t('tools.createTool.deleteToolConfirmContent')}
-          isShow={showConfirmDelete}
-          onConfirm={handleConfirmDelete}
-          onCancel={() => setShowConfirmDelete(false)}
-        />
-      )}
-    </div>
+    </Drawer>
   )
 }
 export default ProviderDetail
