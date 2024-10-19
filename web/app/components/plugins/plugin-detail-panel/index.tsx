@@ -48,6 +48,7 @@ const PluginDetailPanel: FC<Props> = ({
           <div className='grow overflow-y-auto'>
             {!!pluginDetail.declaration.endpoint && (
               <EndpointList
+                pluginUniqueID={pluginDetail.plugin_unique_identifier}
                 list={endpointList}
                 declaration={pluginDetail.declaration.endpoint}
               />

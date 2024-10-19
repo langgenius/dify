@@ -1,4 +1,5 @@
 import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
+import type { ToolCredential } from '@/app/components/tools/types'
 import type { Locale } from '@/i18n'
 
 export enum PluginType {
@@ -23,11 +24,11 @@ export type PluginToolDeclaration = {
     label: Record<Locale, string>
     tags: string[]
   }
-  credentials_schema: CredentialFormSchemaBase[] // TODO
+  credentials_schema: ToolCredential[] // TODO
 }
 
 export type PluginEndpointDeclaration = {
-  settings: CredentialFormSchemaBase[]
+  settings: ToolCredential[]
   endpoints: EndpointItem[]
 }
 

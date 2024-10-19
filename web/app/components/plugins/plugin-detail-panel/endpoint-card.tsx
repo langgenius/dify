@@ -1,9 +1,10 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
 import type { EndpointListItem } from '../types'
 import EndpointModal from './endpoint-modal'
+import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ActionButton from '@/app/components/base/action-button'
 import CopyBtn from '@/app/components/base/copy-btn'
 import Confirm from '@/app/components/base/confirm'
@@ -86,6 +87,13 @@ const EndpointCard = ({
     setFalse: hideEndpointModalConfirm,
   }] = useBoolean(false)
 
+  const formSchemas = useMemo(() => {
+    return toolCredentialToFormSchemas(data.declaration.settings)
+  }, [data.declaration.settings])
+  const formValue = useMemo(() => {
+    return addDefaultValue(data.settings, formSchemas)
+  }, [data.settings, formSchemas])
+
   return (
     <div className='p-0.5 bg-background-section-burn rounded-xl'>
       <div className='group p-2.5 pl-3 bg-components-panel-on-panel-item-bg rounded-[10px] border-[0.5px] border-components-panel-border'>
@@ -160,6 +168,9 @@ const EndpointCard = ({
       )}
       {isShowEndpointModal && (
         <EndpointModal
+          id={data.id}
+          formSchemas={formSchemas}
+          defaultValues={formValue}
           onCancel={hideEndpointModalConfirm}
         />
       )}

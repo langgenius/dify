@@ -25,6 +25,8 @@ const translation = {
     endpointDisableContent: '是否要停用 {{name}} 的 Endpoint ？',
     endpointDeleteTip: '移除 Endpoint',
     endpointDeleteContent: '是否要移除 {{name}} ？',
+    endpointModalTitle: '设置 Endpoint',
+    endpointModalDesc: '配置表单后，工作区内的所有成员都可以在编排应用时使用此端点。',
     serviceOk: '服务正常',
     disabled: '停用',
     modelNum: '{{num}} 模型已包含',

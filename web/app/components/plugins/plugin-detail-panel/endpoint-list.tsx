@@ -1,21 +1,36 @@
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useBoolean } from 'ahooks'
 import { RiAddLine } from '@remixicon/react'
 import type { EndpointListItem, PluginEndpointDeclaration } from '../types'
+import EndpointModal from './endpoint-modal'
 import EndpointCard from './endpoint-card'
+import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
+  pluginUniqueID: string
   declaration: PluginEndpointDeclaration
   list: EndpointListItem[]
 }
 
 const EndpointList = ({
+  pluginUniqueID,
   declaration,
   list,
 }: Props) => {
   const { t } = useTranslation()
+
+  const [isShowEndpointModal, {
+    setTrue: showEndpointModal,
+    setFalse: hideEndpointModal,
+  }] = useBoolean(false)
+
+  const formSchemas = useMemo(() => {
+    return toolCredentialToFormSchemas(declaration.settings)
+  }, [declaration.settings])
+
   return (
     <div className='px-4 py-2 border-t border-divider-subtle'>
       <div className='mb-1 h-6 flex items-center justify-between text-text-secondary system-sm-semibold-uppercase'>
@@ -27,7 +42,7 @@ const EndpointList = ({
             }
           />
         </div>
-        <ActionButton>
+        <ActionButton onClick={showEndpointModal}>
           <RiAddLine className='w-4 h-4' />
         </ActionButton>
       </div>
@@ -42,6 +57,13 @@ const EndpointList = ({
           />
         ))}
       </div>
+      {isShowEndpointModal && (
+        <EndpointModal
+          id={pluginUniqueID}
+          formSchemas={formSchemas}
+          onCancel={hideEndpointModal}
+        />
+      )}
     </div>
   )
 }
