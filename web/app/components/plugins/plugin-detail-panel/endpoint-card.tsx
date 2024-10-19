@@ -6,6 +6,10 @@ import ActionButton from '@/app/components/base/action-button'
 import CopyBtn from '@/app/components/base/copy-btn'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
+import {
+  disableEndpoint,
+  enableEndpoint,
+} from '@/service/plugins'
 
 type Props = {
   data: EndpointListItem
@@ -16,9 +20,37 @@ const EndpointCard = ({
 }: Props) => {
   const { t } = useTranslation()
   const [active, setActive] = useState(data.enabled)
+  const endpointID = data.id
 
-  const handleSwitch = () => {
-    setActive(!active)
+  const activeEndpoint = async () => {
+    try {
+      await enableEndpoint({
+        url: '/workspaces/current/endpoints/enable',
+        endpointID,
+      })
+    }
+    catch (error) {
+      console.error(error)
+      setActive(true)
+    }
+  }
+  const inactiveEndpoint = async () => {
+    try {
+      await disableEndpoint({
+        url: '/workspaces/current/endpoints/disable',
+        endpointID,
+      })
+    }
+    catch (error) {
+      console.error(error)
+      setActive(false)
+    }
+  }
+  const handleSwitch = (state: boolean) => {
+    if (state)
+      activeEndpoint()
+    else
+      inactiveEndpoint()
   }
 
   return (
