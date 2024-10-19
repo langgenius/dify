@@ -4,7 +4,7 @@ const translation = {
   customToolTip: 'Learn more about Dify custom tools',
   type: {
     all: 'All',
-    builtIn: 'Built-in',
+    builtIn: 'Tools',
     custom: 'Custom',
     workflow: 'Workflow',
   },

@@ -4,7 +4,7 @@ const translation = {
   customToolTip: '了解更多关于 Dify 自定义工具的信息',
   type: {
     all: '全部',
-    builtIn: '内置',
+    builtIn: '工具',
     custom: '自定义',
     workflow: '工作流',
   },

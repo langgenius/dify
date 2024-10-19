@@ -1,6 +1,5 @@
 'use client'
 import React from 'react'
-import { useContext } from 'use-context-selector'
 import { RiVerifiedBadgeLine } from '@remixicon/react'
 import type { Plugin } from '../types'
 import Icon from '../card/base/card-icon'
@@ -10,7 +9,7 @@ import OrgInfo from './base/org-info'
 import Description from './base/description'
 import Placeholder from './base/placeholder'
 import cn from '@/utils/classnames'
-import I18n from '@/context/i18n'
+import { useGetLanguage } from '@/context/i18n'
 
 type Props = {
   className?: string
@@ -35,7 +34,7 @@ const Card = ({
   isLoading = false,
   loadingFileName,
 }: Props) => {
-  const { locale } = useContext(I18n)
+  const locale = useGetLanguage()
 
   const { type, name, org, label, brief, icon } = payload
 
