@@ -1,0 +1,35 @@
+identity:
+  name: workflow
+  author: hjlarry
+  label:
+    en_US: workflow
+    zh_Hans: 工作流
+description:
+  human:
+    en_US: Run ComfyUI workflow.
+    zh_Hans: 运行ComfyUI工作流。
+  llm: Run ComfyUI workflow.
+parameters:
+  - name: positive_prompt
+    type: string
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    llm_description: Image prompt, you should describe the image you want to generate as a list of words as possible as detailed, the prompt must be written in English.
+    form: llm
+  - name: negative_prompt
+    type: string
+    label:
+      en_US: Negative Prompt
+      zh_Hans: 负面提示词
+    llm_description: Negative prompt, you should describe the image you don't want to generate as a list of words as possible as detailed, the prompt must be written in English.
+    form: llm
+  - name: workflow_json
+    type: string
+    required: true
+    label:
+      en_US: Workflow JSON
+    human_description:
+      en_US: exported from ComfyUI workflow
+      zh_Hans: 从ComfyUI的工作流中导出
+    form: form
