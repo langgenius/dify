@@ -8,7 +8,6 @@ import EndpointList from './endpoint-list'
 import ActionList from './action-list'
 import ModelList from './model-list'
 import Drawer from '@/app/components/base/drawer'
-// import Loading from '@/app/components/base/loading'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -39,7 +38,6 @@ const PluginDetailPanel: FC<Props> = ({
       positionCenter={false}
       panelClassname={cn('justify-start mt-[64px] mr-2 mb-2 !w-[420px] !max-w-[420px] !p-0 !bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl')}
     >
-      {/* {loading && <Loading type='area' />} */}
       {pluginDetail && (
         <>
           <DetailHeader

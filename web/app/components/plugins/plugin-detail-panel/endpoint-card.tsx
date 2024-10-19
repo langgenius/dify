@@ -1,55 +1,74 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiLoginCircleLine } from '@remixicon/react'
+import { RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
+import type { EndpointListItem } from '../types'
+import ActionButton from '@/app/components/base/action-button'
 import CopyBtn from '@/app/components/base/copy-btn'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
 
-const EndpointCard = () => {
+type Props = {
+  data: EndpointListItem
+}
+
+const EndpointCard = ({
+  data,
+}: Props) => {
   const { t } = useTranslation()
+  const [active, setActive] = useState(data.enabled)
+
+  const handleSwitch = () => {
+    setActive(!active)
+  }
+
   return (
     <div className='p-0.5 bg-background-section-burn rounded-xl'>
-      <div className='p-2.5 pl-3 bg-components-panel-on-panel-item-bg rounded-[10px] border-[0.5px] border-components-panel-border'>
-        <div className='mb-1 h-6 flex items-center gap-1 text-text-secondary system-md-semibold'>
-          <RiLoginCircleLine className='w-4 h-4' />
-          <div>Endpoint for Unreal workspace</div>
-        </div>
-        <div className='h-6 flex items-center'>
-          <div className='shrink-0 w-24 text-text-tertiary system-xs-regular'>Start Callback</div>
-          <div className='group grow flex items-center text-text-secondary system-xs-regular truncate'>
-            <div className='truncate'>https://extension.dify.ai/a1b2c3d4/onStart</div>
-            <CopyBtn
-              className='hidden shrink-0 ml-2 group-hover:block'
-              value={'https://extension.dify.ai/a1b2c3d4/onStart'}
-              isPlain
-            />
+      <div className='group p-2.5 pl-3 bg-components-panel-on-panel-item-bg rounded-[10px] border-[0.5px] border-components-panel-border'>
+        <div className='flex items-center'>
+          <div className='grow mb-1 h-6 flex items-center gap-1 text-text-secondary system-md-semibold'>
+            <RiLoginCircleLine className='w-4 h-4' />
+            <div>{data.name}</div>
+          </div>
+          <div className='hidden group-hover:flex items-center'>
+            <ActionButton>
+              <RiEditLine className='w-4 h-4' />
+            </ActionButton>
+            <ActionButton className='hover:bg-state-destructive-hover text-text-tertiary hover:text-text-destructive'>
+              <RiDeleteBinLine className='w-4 h-4' />
+            </ActionButton>
           </div>
         </div>
-        <div className='h-6 flex items-center'>
-          <div className='shrink-0 w-24 text-text-tertiary system-xs-regular'>Finish Callback</div>
-          <div className='group grow flex items-center text-text-secondary system-xs-regular truncate'>
-            <div className='truncate'>https://extension.dify.ai/a1b2c3d4/onFinish</div>
-            <CopyBtn
-              className='hidden shrink-0 ml-2 group-hover:block'
-              value={'https://extension.dify.ai/a1b2c3d4/onFinish'}
-              isPlain
-            />
+        {data.declaration.endpoints.map((endpoint, index) => (
+          <div key={index} className='h-6 flex items-center'>
+            <div className='shrink-0 w-12 text-text-tertiary system-xs-regular'>{endpoint.method}</div>
+            <div className='group/item grow flex items-center text-text-secondary system-xs-regular truncate'>
+              <div className='truncate'>{`${data.url}${endpoint.path}`}</div>
+              <CopyBtn
+                className='hidden shrink-0 ml-2 group-hover/item:block'
+                value={`${data.url}${endpoint.path}`}
+                isPlain
+              />
+            </div>
           </div>
-        </div>
+        ))}
       </div>
-      <div className='px-3 py-2 flex items-center justify-between'>
-        <div className='flex items-center gap-1 system-xs-semibold-uppercase text-util-colors-green-green-600'>
-          <Indicator color='green' />
-          {t('plugin.detailPanel.serviceOk')}
-        </div>
-        {/* <div className='flex items-center gap-1 system-xs-semibold-uppercase text-text-tertiary'>
-          <Indicator color='gray' />
-          {t('plugin.detailPanel.disabled')}
-        </div> */}
+      <div className='p-2 pl-3 flex items-center justify-between'>
+        {active && (
+          <div className='flex items-center gap-1 system-xs-semibold-uppercase text-util-colors-green-green-600'>
+            <Indicator color='green' />
+            {t('plugin.detailPanel.serviceOk')}
+          </div>
+        )}
+        {!active && (
+          <div className='flex items-center gap-1 system-xs-semibold-uppercase text-text-tertiary'>
+            <Indicator color='gray' />
+            {t('plugin.detailPanel.disabled')}
+          </div>
+        )}
         <Switch
           className='ml-3'
-          defaultValue={true}
-          onChange={() => {}}
+          defaultValue={active}
+          onChange={handleSwitch}
           size='sm'
         />
       </div>

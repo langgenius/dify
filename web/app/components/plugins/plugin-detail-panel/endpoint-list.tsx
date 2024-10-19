@@ -1,13 +1,14 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiAddLine } from '@remixicon/react'
+import type { EndpointListItem, PluginEndpointDeclaration } from '../types'
 import EndpointCard from './endpoint-card'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
-  declaration: any
-  list: any[]
+  declaration: PluginEndpointDeclaration
+  list: EndpointListItem[]
 }
 
 const EndpointList = ({
@@ -22,11 +23,7 @@ const EndpointList = ({
           {t('plugin.detailPanel.endpoints')}
           <Tooltip
             popupContent={
-              <div className='w-[180px]'>
-                {t('appDebug.voice.voiceSettings.resolutionTooltip').split('\n').map(item => (
-                  <div key={item}>{item}</div>
-                ))}
-              </div>
+              <div className='w-[180px]'>TODO</div>
             }
           />
         </div>
@@ -39,7 +36,10 @@ const EndpointList = ({
       )}
       <div className='flex flex-col gap-2'>
         {list.map((item, index) => (
-          <EndpointCard key={index} />
+          <EndpointCard
+            key={index}
+            data={item}
+          />
         ))}
       </div>
     </div>
