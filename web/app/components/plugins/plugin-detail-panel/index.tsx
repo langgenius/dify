@@ -2,7 +2,7 @@
 import React from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { PluginDetail } from '../types'
+import type { EndpointListItem, PluginDetail } from '../types'
 import DetailHeader from './detail-header'
 import EndpointList from './endpoint-list'
 import ActionList from './action-list'
@@ -13,11 +13,13 @@ import cn from '@/utils/classnames'
 
 type Props = {
   pluginDetail: PluginDetail | undefined
+  endpointList: EndpointListItem[]
   onHide: () => void
 }
 
 const PluginDetailPanel: FC<Props> = ({
   pluginDetail,
+  endpointList = [],
   onHide,
 }) => {
   const { t } = useTranslation()
@@ -46,9 +48,14 @@ const PluginDetailPanel: FC<Props> = ({
             onDelete={handleDelete}
           />
           <div className='grow overflow-y-auto'>
-            <ActionList />
-            <EndpointList />
-            <ModelList />
+            {!!pluginDetail.declaration.endpoint && (
+              <EndpointList
+                list={endpointList}
+                declaration={pluginDetail.declaration.endpoint}
+              />
+            )}
+            {!!pluginDetail.declaration.tool && <ActionList />}
+            {!!pluginDetail.declaration.model && <ModelList />}
           </div>
         </>
       )}

@@ -24,7 +24,32 @@ export const toolNotion = {
     created_at: '2024-10-16 16:05:33',
     resource: {},
     plugins: {},
-    tool: {}, // TODO
+    endpoint: {
+      settings: [
+        {
+          type: 'secret-input',
+          name: 'api-key',
+          required: true,
+          default: null,
+          options: null,
+          label: {
+            'en-US': 'API-key',
+            'zh-Hans': 'API-key',
+          },
+          help: null,
+          url: null,
+          placeholder: {
+            'en-US': 'Please input your API key',
+            'zh-Hans': '请输入你的 API key',
+          },
+        },
+      ],
+      endpoints: [
+        { path: '/duck/<app_id>', method: 'GET' },
+        { path: '/neko', method: 'GET' },
+      ],
+    },
+    tool: null, // TODO
     verified: true,
   },
   installation_id: 'jflkdsjoewingljlsadjgoijg-dkfjldajglkajglask-dlfkajdg',
@@ -67,7 +92,7 @@ export const toolNotionEndpoints = [
           },
         },
       ],
-      endpoint: [
+      endpoints: [
         { path: '/duck/<app_id>', method: 'GET' },
         { path: '/neko', method: 'GET' },
       ],

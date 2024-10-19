@@ -63,8 +63,8 @@ export type PluginDeclaration = {
   resource: any // useless in frontend
   plugins: any // useless in frontend
   verified: boolean
-  tool: PluginToolDeclaration
   endpoint: PluginEndpointDeclaration
+  tool: PluginToolDeclaration
   model: any // TODO
 }
 

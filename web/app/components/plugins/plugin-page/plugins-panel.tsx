@@ -1,12 +1,11 @@
 'use client'
 import { useState } from 'react'
-import type { PluginDetail } from '../types'
-import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
-import { toolNotion } from '@/app/components/plugins/plugin-detail-panel/mock'
-
+import type { EndpointListItem, PluginDetail } from '../types'
 import type { FilterState } from './filter-management'
 import FilterManagement from './filter-management'
 import List from './list'
+import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
+import { toolNotion, toolNotionEndpoints } from '@/app/components/plugins/plugin-detail-panel/mock'
 
 const PluginsPanel = () => {
   const handleFilterChange = (filters: FilterState) => {
@@ -14,6 +13,7 @@ const PluginsPanel = () => {
   }
 
   const [currentPluginDetail, setCurrentPluginDetail] = useState<PluginDetail | undefined>(toolNotion as any)
+  const [currentPluginEndpoints, setCurrentEndpoints] = useState<EndpointListItem[]>(toolNotionEndpoints as any)
   return (
     <>
       <div className='flex flex-col pt-1 pb-3 px-12 justify-center items-start gap-3 self-stretch'>
@@ -27,7 +27,14 @@ const PluginsPanel = () => {
           <List />
         </div>
       </div>
-      <PluginDetailPanel pluginDetail={currentPluginDetail} onHide={() => setCurrentPluginDetail(undefined)} />
+      <PluginDetailPanel
+        pluginDetail={currentPluginDetail}
+        endpointList={currentPluginEndpoints}
+        onHide={() => {
+          setCurrentPluginDetail(undefined)
+          setCurrentEndpoints([])
+        }}
+      />
     </>
   )
 }
