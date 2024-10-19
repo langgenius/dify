@@ -1,12 +1,16 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useBoolean } from 'ahooks'
 import { RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
 import type { EndpointListItem } from '../types'
+import EndpointModal from './endpoint-modal'
 import ActionButton from '@/app/components/base/action-button'
 import CopyBtn from '@/app/components/base/copy-btn'
+import Confirm from '@/app/components/base/confirm'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
 import {
+  deleteEndpoint,
   disableEndpoint,
   enableEndpoint,
 } from '@/service/plugins'
@@ -22,6 +26,10 @@ const EndpointCard = ({
   const [active, setActive] = useState(data.enabled)
   const endpointID = data.id
 
+  const [isShowDisableConfirm, {
+    setTrue: showDisableConfirm,
+    setFalse: hideDisableConfirm,
+  }] = useBoolean(false)
   const activeEndpoint = async () => {
     try {
       await enableEndpoint({
@@ -31,7 +39,7 @@ const EndpointCard = ({
     }
     catch (error) {
       console.error(error)
-      setActive(true)
+      setActive(false)
     }
   }
   const inactiveEndpoint = async () => {
@@ -43,15 +51,40 @@ const EndpointCard = ({
     }
     catch (error) {
       console.error(error)
-      setActive(false)
+      setActive(true)
     }
   }
   const handleSwitch = (state: boolean) => {
-    if (state)
+    if (state) {
+      setActive(true)
       activeEndpoint()
-    else
-      inactiveEndpoint()
+    }
+    else {
+      setActive(false)
+      showDisableConfirm()
+    }
   }
+
+  const [isShowDeleteConfirm, {
+    setTrue: showDeleteConfirm,
+    setFalse: hideDeleteConfirm,
+  }] = useBoolean(false)
+  const handleDelete = async () => {
+    try {
+      await deleteEndpoint({
+        url: '/workspaces/current/endpoints/delete',
+        endpointID,
+      })
+    }
+    catch (error) {
+      console.error(error)
+    }
+  }
+
+  const [isShowEndpointModal, {
+    setTrue: showEndpointModalConfirm,
+    setFalse: hideEndpointModalConfirm,
+  }] = useBoolean(false)
 
   return (
     <div className='p-0.5 bg-background-section-burn rounded-xl'>
@@ -62,10 +95,10 @@ const EndpointCard = ({
             <div>{data.name}</div>
           </div>
           <div className='hidden group-hover:flex items-center'>
-            <ActionButton>
+            <ActionButton onClick={showEndpointModalConfirm}>
               <RiEditLine className='w-4 h-4' />
             </ActionButton>
-            <ActionButton className='hover:bg-state-destructive-hover text-text-tertiary hover:text-text-destructive'>
+            <ActionButton onClick={showDeleteConfirm} className='hover:bg-state-destructive-hover text-text-tertiary hover:text-text-destructive'>
               <RiDeleteBinLine className='w-4 h-4' />
             </ActionButton>
           </div>
@@ -74,7 +107,7 @@ const EndpointCard = ({
           <div key={index} className='h-6 flex items-center'>
             <div className='shrink-0 w-12 text-text-tertiary system-xs-regular'>{endpoint.method}</div>
             <div className='group/item grow flex items-center text-text-secondary system-xs-regular truncate'>
-              <div className='truncate'>{`${data.url}${endpoint.path}`}</div>
+              <div title={`${data.url}${endpoint.path}`} className='truncate'>{`${data.url}${endpoint.path}`}</div>
               <CopyBtn
                 className='hidden shrink-0 ml-2 group-hover/item:block'
                 value={`${data.url}${endpoint.path}`}
@@ -104,6 +137,32 @@ const EndpointCard = ({
           size='sm'
         />
       </div>
+      {isShowDisableConfirm && (
+        <Confirm
+          isShow
+          title={t('plugin.detailPanel.endpointDisableTip')}
+          content={<div>{t('plugin.detailPanel.endpointDisableContent', { name: data.name })}</div>}
+          onCancel={() => {
+            hideDisableConfirm()
+            setActive(true)
+          }}
+          onConfirm={inactiveEndpoint}
+        />
+      )}
+      {isShowDeleteConfirm && (
+        <Confirm
+          isShow
+          title={t('plugin.detailPanel.endpointDeleteTip')}
+          content={<div>{t('plugin.detailPanel.endpointDeleteContent', { name: data.name })}</div>}
+          onCancel={hideDeleteConfirm}
+          onConfirm={handleDelete}
+        />
+      )}
+      {isShowEndpointModal && (
+        <EndpointModal
+          onCancel={hideEndpointModalConfirm}
+        />
+      )}
     </div>
   )
 }
