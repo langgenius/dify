@@ -2,6 +2,9 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import {
+  RiCloseLine,
+} from '@remixicon/react'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '../types'
 import ToolItem from './tool-item'
@@ -9,15 +12,20 @@ import cn from '@/utils/classnames'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
 import Confirm from '@/app/components/base/confirm'
-import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import { LinkExternal02, Settings01 } from '@/app/components/base/icons/src/vender/line/general'
+import Icon from '@/app/components/plugins/card/base/card-icon'
+import Title from '@/app/components/plugins/card/base/title'
+import OrgInfo from '@/app/components/plugins/card/base/org-info'
+import Description from '@/app/components/plugins/card/base/description'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import WorkflowToolModal from '@/app/components/tools/workflow-tool'
 import Toast from '@/app/components/base/toast'
 import Drawer from '@/app/components/base/drawer'
+import ActionButton from '@/app/components/base/action-button'
+
 import {
   deleteWorkflowTool,
   fetchBuiltInToolList,
@@ -225,27 +233,29 @@ const ProviderDetail = ({
       positionCenter={false}
       panelClassname={cn('justify-start mt-[64px] mr-2 mb-2 !w-[420px] !max-w-[420px] !p-0 !bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl')}
     >
-      <div className='px-6 py-3'>
-        <div className='flex items-center py-1 gap-2'>
-          <div className='relative shrink-0'>
-            {typeof collection.icon === 'string' && (
-              <div className='w-8 h-8 bg-center bg-cover bg-no-repeat rounded-md' style={{ backgroundImage: `url(${collection.icon})` }} />
-            )}
-            {typeof collection.icon !== 'string' && (
-              <AppIcon
-                size='small'
-                icon={collection.icon.content}
-                background={collection.icon.background}
+      <div className='p-4'>
+        <div className='flex'>
+          <Icon src={collection.icon} />
+          <div className="ml-3 w-0 grow">
+            <div className="flex items-center h-5">
+              <Title title={collection.label[language]} />
+            </div>
+            <div className='mb-1 flex justify-between items-center h-4'>
+              <OrgInfo
+                className="mt-0.5"
+                packageNameClassName='w-auto'
+                orgName={collection.author}
+                packageName={collection.name}
               />
-            )}
-          </div>
-          <div className='grow w-0 py-[1px]'>
-            <div className='flex items-center text-md leading-6 font-semibold text-gray-900'>
-              <div className='truncate' title={collection.label[language]}>{collection.label[language]}</div>
             </div>
           </div>
+          <div className='flex gap-1'>
+            <ActionButton onClick={onHide}>
+              <RiCloseLine className='w-4 h-4' />
+            </ActionButton>
+          </div>
         </div>
-        <div className='mt-2 min-h-[36px] text-gray-500 text-sm leading-[18px]'>{collection.description[language]}</div>
+        <Description className='mt-3' text={collection.description[language]} descriptionLineRows={2}></Description>
         <div className='flex gap-1 border-b-[0.5px] border-black/5'>
           {(collection.type === CollectionType.builtIn) && needAuth && (
             <Button
@@ -297,7 +307,7 @@ const ProviderDetail = ({
         <div className='pt-3'>
           {isDetailLoading && <div className='flex h-[200px]'><Loading type='app' /></div>}
           {!isDetailLoading && (
-            <div className='text-xs font-medium leading-6 text-gray-500'>
+            <div className='text-text-secondary system-sm-semibold-uppercase'>
               {collection.type === CollectionType.workflow && <span className=''>{t('tools.createTool.toolInput.title').toLocaleUpperCase()}</span>}
               {collection.type !== CollectionType.workflow && <span className=''>{t('tools.includeToolNum', { num: toolList.length }).toLocaleUpperCase()}</span>}
               {needAuth && (isBuiltIn || isModel) && !isAuthed && (
@@ -309,7 +319,7 @@ const ProviderDetail = ({
             </div>
           )}
           {!isDetailLoading && (
-            <div className='mt-1'>
+            <div className='mt-1 py-2'>
               {collection.type !== CollectionType.workflow && toolList.map(tool => (
                 <ToolItem
                   key={tool.name}
@@ -321,13 +331,13 @@ const ProviderDetail = ({
                 />
               ))}
               {collection.type === CollectionType.workflow && (customCollection as WorkflowToolProviderResponse)?.tool?.parameters.map(item => (
-                <div key={item.name} className='mb-2 px-4 py-3 rounded-xl bg-gray-25 border-[0.5px] border-gray-200'>
-                  <div className='flex items-center gap-2'>
-                    <span className='font-medium text-sm text-gray-900'>{item.name}</span>
-                    <span className='text-xs leading-[18px] text-gray-500'>{item.type}</span>
-                    <span className='font-medium text-xs leading-[18px] text-[#ec4a0a]'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
+                <div key={item.name} className='mb-1 py-1'>
+                  <div className='mb-1 flex items-center gap-2'>
+                    <span className='text-text-secondary code-sm-semibold'>{item.name}</span>
+                    <span className='text-text-tertiary system-xs-regular'>{item.type}</span>
+                    <span className='text-text-warning-secondary system-xs-medium'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
                   </div>
-                  <div className='h-[18px] leading-[18px] text-gray-500 text-xs'>{item.llm_description}</div>
+                  <div className='text-text-tertiary system-xs-regular'>{item.llm_description}</div>
                 </div>
               ))}
             </div>
