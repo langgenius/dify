@@ -19,8 +19,8 @@ from core.workflow.nodes.base_node import BaseNode
 from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
+from .entities import DocumentExtractorNodeData
 from .exc import DocumentExtractorError, FileDownloadError, TextExtractionError, UnsupportedFileTypeError
-from .models import DocumentExtractorNodeData
 
 
 class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):

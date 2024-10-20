@@ -1,4 +1,4 @@
-from .document_extractor_node import DocumentExtractorNode
-from .models import DocumentExtractorNodeData
+from .entities import DocumentExtractorNodeData
+from .node import DocumentExtractorNode
 
 __all__ = ["DocumentExtractorNode", "DocumentExtractorNodeData"]
