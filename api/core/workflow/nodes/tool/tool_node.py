@@ -14,9 +14,9 @@ from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
-from enums import NodeType
 from extensions.ext_database import db
 from models import ToolFile
 from models.workflow import WorkflowNodeExecutionStatus

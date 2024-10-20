@@ -12,7 +12,7 @@ from core.workflow.nodes.document_extractor.node import (
     _extract_text_from_pdf,
     _extract_text_from_plain_text,
 )
-from enums import NodeType
+from core.workflow.nodes.enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 

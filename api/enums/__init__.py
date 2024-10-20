@@ -1,7 +1,5 @@
 from enum import Enum
 
-from .workflow_nodes import NodeType
-
 
 class CreatedByRole(str, Enum):
     """
@@ -27,7 +25,6 @@ class WorkflowRunTriggeredFrom(str, Enum):
 
 
 __all__ = [
-    "NodeType",
     "CreatedByRole",
     "UserFrom",
     "WorkflowRunTriggeredFrom",

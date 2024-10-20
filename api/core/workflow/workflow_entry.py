@@ -17,11 +17,12 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.graph_engine import GraphEngine
+from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode, BaseNodeData
 from core.workflow.nodes.event import NodeEvent
 from core.workflow.nodes.llm import LLMNodeData
 from core.workflow.nodes.node_mapping import node_classes
-from enums import NodeType, UserFrom
+from enums import UserFrom
 from models.workflow import (
     Workflow,
     WorkflowType,

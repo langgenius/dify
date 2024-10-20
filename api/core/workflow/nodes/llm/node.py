@@ -28,6 +28,7 @@ from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResu
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import (
     ModelInvokeCompletedEvent,
     NodeEvent,
@@ -36,7 +37,6 @@ from core.workflow.nodes.event import (
     RunStreamChunkEvent,
 )
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
-from enums import NodeType
 from extensions.ext_database import db
 from models.model import Conversation
 from models.provider import Provider, ProviderType

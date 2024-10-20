@@ -21,9 +21,9 @@ from core.workflow.graph_engine.entities.event import (
 )
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.iteration.entities import IterationNodeData
-from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 logger = logging.getLogger(__name__)

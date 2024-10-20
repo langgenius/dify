@@ -4,8 +4,8 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
 
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
-from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import BaseNodeData

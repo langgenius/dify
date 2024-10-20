@@ -10,10 +10,11 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.errors import WorkflowNodeRunFailedError
+from core.workflow.nodes import NodeType
 from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.node_mapping import node_classes
 from core.workflow.workflow_entry import WorkflowEntry
-from enums import CreatedByRole, NodeType
+from enums import CreatedByRole
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from models.account import Account

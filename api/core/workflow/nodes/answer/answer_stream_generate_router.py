@@ -6,8 +6,8 @@ from core.workflow.nodes.answer.entities import (
     TextGenerateRouteChunk,
     VarGenerateRouteChunk,
 )
+from core.workflow.nodes.enums import NodeType
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
-from enums import NodeType
 
 
 class AnswerStreamGeneratorRouter:

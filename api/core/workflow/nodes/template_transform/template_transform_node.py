@@ -5,8 +5,8 @@ from typing import Any, Optional
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
-from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = int(os.environ.get("TEMPLATE_TRANSFORM_MAX_LENGTH", "80000"))

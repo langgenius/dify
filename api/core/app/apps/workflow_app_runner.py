@@ -40,11 +40,10 @@ from core.workflow.graph_engine.entities.event import (
     ParallelBranchRunSucceededEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes import NodeType
 from core.workflow.nodes.iteration.entities import IterationNodeData
 from core.workflow.nodes.node_mapping import node_classes
 from core.workflow.workflow_entry import WorkflowEntry
-from enums import NodeType
 from extensions.ext_database import db
 from models.model import App
 from models.workflow import Workflow
@@ -138,8 +137,7 @@ class WorkflowBasedAppRunner(AppRunner):
 
         # Get node class
         node_type = NodeType.value_of(iteration_node_config.get("data", {}).get("type"))
-        node_cls = node_classes.get(node_type)
-        node_cls = cast(type[BaseNode], node_cls)
+        node_cls = node_classes[node_type]
 
         # init variable pool
         variable_pool = VariablePool(

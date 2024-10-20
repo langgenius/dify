@@ -12,6 +12,7 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import ModelInvokeCompletedEvent
 from core.workflow.nodes.llm import (
     LLMNode,
@@ -19,7 +20,6 @@ from core.workflow.nodes.llm import (
     LLMNodeCompletionModelPromptTemplate,
 )
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
-from enums import NodeType
 from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.workflow import WorkflowNodeExecutionStatus
 

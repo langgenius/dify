@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from core.variables import SegmentType, Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode, BaseNodeData
-from enums import NodeType
+from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from factories import variable_factory
 from models import ConversationVariable

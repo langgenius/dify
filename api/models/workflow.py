@@ -662,7 +662,7 @@ class WorkflowNodeExecution(db.Model):
 
         extras = {}
         if self.execution_metadata_dict:
-            from enums import NodeType
+            from core.workflow.nodes import NodeType
 
             if self.node_type == NodeType.TOOL.value and "tool_info" in self.execution_metadata_dict:
                 tool_info = self.execution_metadata_dict["tool_info"]

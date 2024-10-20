@@ -1,5 +1,5 @@
 from core.workflow.nodes.end.entities import EndNodeData, EndStreamParam
-from enums import NodeType
+from core.workflow.nodes.enums import NodeType
 
 
 class EndStreamGeneratorRouter:

@@ -16,7 +16,7 @@ from core.variables import ArrayFileSegment
 from core.variables.segments import FileSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
-from enums import NodeType
+from core.workflow.nodes.enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import DocumentExtractorNodeData

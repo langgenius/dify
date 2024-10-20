@@ -9,7 +9,7 @@ from core.helper.code_executor.python3.python3_code_provider import Python3CodeP
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.code.entities import CodeNodeData
-from enums import NodeType
+from core.workflow.nodes.enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 
