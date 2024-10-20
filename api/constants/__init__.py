@@ -12,10 +12,11 @@ VIDEO_EXTENSIONS.extend([ext.upper() for ext in VIDEO_EXTENSIONS])
 AUDIO_EXTENSIONS = ["mp3", "m4a", "wav", "webm", "amr"]
 AUDIO_EXTENSIONS.extend([ext.upper() for ext in AUDIO_EXTENSIONS])
 
-DOCUMENT_EXTENSIONS = ["txt", "markdown", "md", "pdf", "html", "htm", "xlsx", "xls", "docx", "csv"]
-DOCUMENT_EXTENSIONS.extend([ext.upper() for ext in DOCUMENT_EXTENSIONS])
 
 if dify_config.ETL_TYPE == "Unstructured":
     DOCUMENT_EXTENSIONS = ["txt", "markdown", "md", "pdf", "html", "htm", "xlsx", "xls"]
     DOCUMENT_EXTENSIONS.extend(("docx", "csv", "eml", "msg", "pptx", "ppt", "xml", "epub"))
+    DOCUMENT_EXTENSIONS.extend([ext.upper() for ext in DOCUMENT_EXTENSIONS])
+else:
+    DOCUMENT_EXTENSIONS = ["txt", "markdown", "md", "pdf", "html", "htm", "xlsx", "xls", "docx", "csv"]
     DOCUMENT_EXTENSIONS.extend([ext.upper() for ext in DOCUMENT_EXTENSIONS])
