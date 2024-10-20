@@ -4,7 +4,7 @@ from typing import Literal
 from core.file import File
 from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 from enums.workflow_nodes import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 

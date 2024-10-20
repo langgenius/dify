@@ -9,7 +9,7 @@ from core.file import File, FileTransferMethod, FileType
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.entities.variable_entities import VariableSelector
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.http_request.executor import Executor
 from core.workflow.utils import variable_template_parser
 from enums import NodeType

@@ -15,7 +15,7 @@ from core.helper import ssrf_proxy
 from core.variables import ArrayFileSegment
 from core.variables.segments import FileSegment
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 

@@ -33,7 +33,7 @@ from core.workflow.graph_engine.entities.graph_init_params import GraphInitParam
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.node_mapping import node_classes

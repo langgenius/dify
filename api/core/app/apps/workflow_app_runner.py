@@ -40,7 +40,7 @@ from core.workflow.graph_engine.entities.event import (
     ParallelBranchRunSucceededEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.iteration.entities import IterationNodeData
 from core.workflow.nodes.node_mapping import node_classes
 from core.workflow.workflow_entry import WorkflowEntry

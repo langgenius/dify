@@ -3,7 +3,7 @@ from typing import Any
 
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.start.entities import StartNodeData
 from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus

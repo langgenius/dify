@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 from enums import UserFrom
 from models.workflow import Workflow, WorkflowType
 

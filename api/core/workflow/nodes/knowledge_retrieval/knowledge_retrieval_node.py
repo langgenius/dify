@@ -15,7 +15,7 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from enums import NodeType
 from extensions.ext_database import db

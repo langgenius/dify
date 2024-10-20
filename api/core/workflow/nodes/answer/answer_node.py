@@ -10,7 +10,7 @@ from core.workflow.nodes.answer.entities import (
     TextGenerateRouteChunk,
     VarGenerateRouteChunk,
 )
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus

@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
 from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus

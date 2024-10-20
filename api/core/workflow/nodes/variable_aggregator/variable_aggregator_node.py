@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.variable_aggregator.entities import VariableAssignerNodeData
 from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
