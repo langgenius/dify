@@ -1,5 +1,6 @@
 from pydantic import BaseModel, Field
 
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.entities.node_entities import NodeRunResult
 
 
@@ -17,3 +18,11 @@ class RunRetrieverResourceEvent(BaseModel):
     context: str = Field(..., description="context")
 
 
+class ModelInvokeCompletedEvent(BaseModel):
+    """
+    Model invoke completed
+    """
+
+    text: str
+    usage: LLMUsage
+    finish_reason: str | None = None

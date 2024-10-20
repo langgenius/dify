@@ -25,8 +25,7 @@ from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.nodes.llm.entities import ModelConfig
-from core.workflow.nodes.llm.llm_node import LLMNode
+from core.workflow.nodes.llm import LLMNode, ModelConfig
 from core.workflow.utils import variable_template_parser
 from enums import NodeType
 from extensions.ext_database import db

@@ -12,11 +12,11 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
+from core.workflow.nodes.event import ModelInvokeCompletedEvent
 from core.workflow.nodes.llm import (
     LLMNode,
     LLMNodeChatModelMessage,
     LLMNodeCompletionModelPromptTemplate,
-    ModelInvokeCompleted,
 )
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from enums import NodeType
@@ -103,7 +103,7 @@ class QuestionClassifierNode(LLMNode):
         usage = LLMUsage.empty_usage()
         finish_reason = None
         for event in generator:
-            if isinstance(event, ModelInvokeCompleted):
+            if isinstance(event, ModelInvokeCompletedEvent):
                 result_text = event.text
                 usage = event.usage
                 finish_reason = event.finish_reason

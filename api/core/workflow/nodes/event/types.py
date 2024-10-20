@@ -1,3 +1,3 @@
-from .event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
+from .event import ModelInvokeCompletedEvent, RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 
-NodeEvent = RunCompletedEvent | RunStreamChunkEvent | RunRetrieverResourceEvent
+NodeEvent = RunCompletedEvent | RunStreamChunkEvent | RunRetrieverResourceEvent | ModelInvokeCompletedEvent

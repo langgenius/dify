@@ -8,7 +8,7 @@ from core.workflow.nodes.iteration.iteration_node import IterationNode
 from core.workflow.nodes.iteration.iteration_start_node import IterationStartNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from core.workflow.nodes.list_operator import ListOperatorNode
-from core.workflow.nodes.llm.llm_node import LLMNode
+from core.workflow.nodes.llm import LLMNode
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from core.workflow.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
 from core.workflow.nodes.start.start_node import StartNode

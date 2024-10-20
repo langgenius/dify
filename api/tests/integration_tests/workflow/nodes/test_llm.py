@@ -19,7 +19,7 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.event import RunCompletedEvent
-from core.workflow.nodes.llm.llm_node import LLMNode
+from core.workflow.nodes.llm.node import LLMNode
 from enums import UserFrom
 from extensions.ext_database import db
 from models.provider import ProviderType

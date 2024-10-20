@@ -19,7 +19,7 @@ from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntime
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.base import BaseNode, BaseNodeData
 from core.workflow.nodes.event import NodeEvent
-from core.workflow.nodes.llm.entities import LLMNodeData
+from core.workflow.nodes.llm import LLMNodeData
 from core.workflow.nodes.node_mapping import node_classes
 from enums import NodeType, UserFrom
 from models.workflow import (

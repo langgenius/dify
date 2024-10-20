@@ -5,11 +5,10 @@ from .entities import (
     ModelConfig,
     VisionConfig,
 )
-from .llm_node import LLMNode, ModelInvokeCompleted
+from .node import LLMNode
 
 __all__ = [
     "LLMNode",
-    "ModelInvokeCompleted",
     "LLMNodeChatModelMessage",
     "LLMNodeCompletionModelPromptTemplate",
     "LLMNodeData",

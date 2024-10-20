@@ -2,8 +2,6 @@ import json
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, cast
 
-from pydantic import BaseModel
-
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import QuotaUnit
@@ -30,12 +28,12 @@ from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResu
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.event import NodeEvent, RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
-from core.workflow.nodes.llm import (
-    LLMNodeChatModelMessage,
-    LLMNodeCompletionModelPromptTemplate,
-    LLMNodeData,
-    ModelConfig,
+from core.workflow.nodes.event import (
+    ModelInvokeCompletedEvent,
+    NodeEvent,
+    RunCompletedEvent,
+    RunRetrieverResourceEvent,
+    RunStreamChunkEvent,
 )
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from enums import NodeType
@@ -44,18 +42,15 @@ from models.model import Conversation
 from models.provider import Provider, ProviderType
 from models.workflow import WorkflowNodeExecutionStatus
 
+from .entities import (
+    LLMNodeChatModelMessage,
+    LLMNodeCompletionModelPromptTemplate,
+    LLMNodeData,
+    ModelConfig,
+)
+
 if TYPE_CHECKING:
     from core.file.models import File
-
-
-class ModelInvokeCompleted(BaseModel):
-    """
-    Model invoke completed
-    """
-
-    text: str
-    usage: LLMUsage
-    finish_reason: Optional[str] = None
 
 
 class LLMNode(BaseNode[LLMNodeData]):
@@ -152,7 +147,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             for event in generator:
                 if isinstance(event, RunStreamChunkEvent):
                     yield event
-                elif isinstance(event, ModelInvokeCompleted):
+                elif isinstance(event, ModelInvokeCompletedEvent):
                     result_text = event.text
                     usage = event.usage
                     finish_reason = event.finish_reason
@@ -191,7 +186,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         model_instance: ModelInstance,
         prompt_messages: list[PromptMessage],
         stop: Optional[list[str]] = None,
-    ) -> Generator[NodeEvent | ModelInvokeCompleted, None, None]:
+    ) -> Generator[NodeEvent, None, None]:
         db.session.close()
 
         invoke_result = model_instance.invoke_llm(
@@ -208,15 +203,13 @@ class LLMNode(BaseNode[LLMNodeData]):
         usage = LLMUsage.empty_usage()
         for event in generator:
             yield event
-            if isinstance(event, ModelInvokeCompleted):
+            if isinstance(event, ModelInvokeCompletedEvent):
                 usage = event.usage
 
         # deduct quota
         self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
 
-    def _handle_invoke_result(
-        self, invoke_result: LLMResult | Generator
-    ) -> Generator[NodeEvent | ModelInvokeCompleted, None, None]:
+    def _handle_invoke_result(self, invoke_result: LLMResult | Generator) -> Generator[NodeEvent, None, None]:
         if isinstance(invoke_result, LLMResult):
             return
 
@@ -246,7 +239,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         if not usage:
             usage = LLMUsage.empty_usage()
 
-        yield ModelInvokeCompleted(text=full_text, usage=usage, finish_reason=finish_reason)
+        yield ModelInvokeCompletedEvent(text=full_text, usage=usage, finish_reason=finish_reason)
 
     def _transform_chat_messages(
         self, messages: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate, /
