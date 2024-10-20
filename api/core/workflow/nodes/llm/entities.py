@@ -5,8 +5,8 @@ from pydantic import BaseModel, Field
 
 from core.model_runtime.entities import ImagePromptMessageContent
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.variable_entities import VariableSelector
+from core.workflow.nodes.base import BaseNodeData
 
 
 class ModelConfig(BaseModel):

@@ -30,7 +30,7 @@ from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResu
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.event import RunCompletedEvent, RunEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
+from core.workflow.nodes.event import NodeEvent, RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.llm import (
     LLMNodeChatModelMessage,
     LLMNodeCompletionModelPromptTemplate,
@@ -62,7 +62,7 @@ class LLMNode(BaseNode[LLMNodeData]):
     _node_data_cls = LLMNodeData
     _node_type = NodeType.LLM
 
-    def _run(self) -> NodeRunResult | Generator[RunEvent | InNodeEvent, None, None]:
+    def _run(self) -> NodeRunResult | Generator[NodeEvent | InNodeEvent, None, None]:
         node_inputs = None
         process_data = None
 
@@ -191,7 +191,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         model_instance: ModelInstance,
         prompt_messages: list[PromptMessage],
         stop: Optional[list[str]] = None,
-    ) -> Generator[RunEvent | ModelInvokeCompleted, None, None]:
+    ) -> Generator[NodeEvent | ModelInvokeCompleted, None, None]:
         db.session.close()
 
         invoke_result = model_instance.invoke_llm(
@@ -216,7 +216,7 @@ class LLMNode(BaseNode[LLMNodeData]):
 
     def _handle_invoke_result(
         self, invoke_result: LLMResult | Generator
-    ) -> Generator[RunEvent | ModelInvokeCompleted, None, None]:
+    ) -> Generator[NodeEvent | ModelInvokeCompleted, None, None]:
         if isinstance(invoke_result, LLMResult):
             return
 

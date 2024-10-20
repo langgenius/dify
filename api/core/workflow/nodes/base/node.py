@@ -1,17 +1,20 @@
 import logging
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Generic, Optional, TypeVar, cast
+from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
 
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.graph_engine.entities.event import InNodeEvent
-from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
-from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.nodes.event import RunCompletedEvent, RunEvent
+from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
+
+from .entities import BaseNodeData
+
+if TYPE_CHECKING:
+    from core.workflow.graph_engine.entities.event import InNodeEvent
+    from core.workflow.graph_engine.entities.graph import Graph
+    from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
+    from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 
 logger = logging.getLogger(__name__)
 
@@ -26,9 +29,9 @@ class BaseNode(Generic[GenericNodeData]):
         self,
         id: str,
         config: Mapping[str, Any],
-        graph_init_params: GraphInitParams,
-        graph: Graph,
-        graph_runtime_state: GraphRuntimeState,
+        graph_init_params: "GraphInitParams",
+        graph: "Graph",
+        graph_runtime_state: "GraphRuntimeState",
         previous_node_id: Optional[str] = None,
         thread_pool_id: Optional[str] = None,
     ) -> None:
@@ -55,14 +58,14 @@ class BaseNode(Generic[GenericNodeData]):
         self.node_data: GenericNodeData = cast(GenericNodeData, self._node_data_cls(**config.get("data", {})))
 
     @abstractmethod
-    def _run(self) -> NodeRunResult | Generator[RunEvent | InNodeEvent, None, None]:
+    def _run(self) -> NodeRunResult | Generator[Union[NodeEvent, "InNodeEvent"], None, None]:
         """
         Run node
         :return:
         """
         raise NotImplementedError
 
-    def run(self) -> Generator[RunEvent | InNodeEvent, None, None]:
+    def run(self) -> Generator[Union[NodeEvent, "InNodeEvent"], None, None]:
         try:
             result = self._run()
         except Exception as e:

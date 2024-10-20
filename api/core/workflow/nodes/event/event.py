@@ -17,4 +17,3 @@ class RunRetrieverResourceEvent(BaseModel):
     context: str = Field(..., description="context")
 
 
-RunEvent = RunCompletedEvent | RunStreamChunkEvent | RunRetrieverResourceEvent

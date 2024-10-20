@@ -21,7 +21,7 @@ from core.workflow.graph_engine.entities.event import (
 )
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.event import RunCompletedEvent, RunEvent
+from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.iteration.entities import IterationNodeData
 from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
@@ -37,7 +37,7 @@ class IterationNode(BaseNode[IterationNodeData]):
     _node_data_cls = IterationNodeData
     _node_type = NodeType.ITERATION
 
-    def _run(self) -> Generator[RunEvent | InNodeEvent, None, None]:
+    def _run(self) -> Generator[NodeEvent | InNodeEvent, None, None]:
         """
         Run the node.
         """

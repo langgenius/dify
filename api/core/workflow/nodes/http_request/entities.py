@@ -5,7 +5,7 @@ import httpx
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
 from configs import dify_config
-from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.nodes.base import BaseNodeData
 
 NON_FILE_CONTENT_TYPES = (
     "application/json",

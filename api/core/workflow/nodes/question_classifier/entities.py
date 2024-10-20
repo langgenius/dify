@@ -3,7 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.llm import ModelConfig, VisionConfig
 
 

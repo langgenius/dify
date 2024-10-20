@@ -3,11 +3,10 @@ from typing import Optional
 from pydantic import BaseModel
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.base import BaseIterationState, BaseNode
 from enums import UserFrom
 from models.workflow import Workflow, WorkflowType
 
-from .base_node_data_entities import BaseIterationState
 from .node_entities import NodeRunResult
 from .variable_pool import VariablePool
 

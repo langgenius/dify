@@ -10,7 +10,6 @@ from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.models import File, FileTransferMethod, FileType, ImageConfig
 from core.workflow.callbacks import WorkflowCallback
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent, InNodeEvent
@@ -18,8 +17,8 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.graph_engine import GraphEngine
-from core.workflow.nodes.base import BaseNode
-from core.workflow.nodes.event import RunEvent
+from core.workflow.nodes.base import BaseNode, BaseNodeData
+from core.workflow.nodes.event import NodeEvent
 from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.node_mapping import node_classes
 from enums import NodeType, UserFrom
@@ -115,7 +114,7 @@ class WorkflowEntry:
     @classmethod
     def single_step_run(
         cls, workflow: Workflow, node_id: str, user_id: str, user_inputs: dict
-    ) -> tuple[BaseNode, Generator[RunEvent | InNodeEvent, None, None]]:
+    ) -> tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]:
         """
         Single step run workflow node
         :param workflow: Workflow instance

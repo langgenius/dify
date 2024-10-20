@@ -1,6 +1,6 @@
 from collections.abc import Sequence
 
-from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.nodes.base import BaseNodeData
 
 
 class DocumentExtractorNodeData(BaseNodeData):
