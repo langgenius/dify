@@ -1,10 +1,14 @@
 import base64
 import json
 import logging
+import os
 import secrets
+import time
+from pathlib import Path
 from typing import Optional
 
 import click
+from api.extensions.ext_storage import storage
 from flask import current_app
 from werkzeug.exceptions import NotFound
 
@@ -22,7 +26,7 @@ from libs.rsa import generate_key_pair
 from models.account import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
-from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
+from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation, UploadFile
 from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
 
@@ -639,6 +643,125 @@ where sites.id is null limit 1000"""
     click.echo(click.style("Fix for missing app-related sites completed successfully!", fg="green"))
 
 
+@click.command("upload-private-key-file-to-cloud-storage", help="upload private key file to cloud storage")
+@click.option("--tenant_id", prompt=False, help="tenant_id")
+def upload_private_key_file_cloud_storage(tenant_id: Optional[str] = None):
+    """
+    upload private.pem to cloud storage
+    """
+    click.echo(
+        click.style(
+            "Start upload private.pem to cloud storage",
+            fg="green",
+        )
+    )
+
+    if not tenant_id:
+        click.echo(
+            click.style(
+                "Warning: did not provide an tenant_id, it will be auto queried in the database",
+                fg="yellow",
+            )
+        )
+        tenants_list: list[Tenant] = Tenant.query.all()
+        tenants = [item.id for item in tenants_list]
+    else:
+        tenants = [
+            tenant_id,
+        ]
+
+    for tenant_id in tenants:
+        click.echo(
+            click.style(
+                f"Current tenant_id is: {tenant_id}",
+                fg="green",
+            )
+        )
+
+        file_key = f"privkeys/{tenant_id}/private.pem"
+        file_content = Path(f"{os.environ.get('STORAGE_LOCAL_PATH', 'storage')}/{file_key}").read_bytes()
+        storage.save(filename=file_key, data=file_content)
+        click.echo(
+            click.style(
+                f"Congratulations! file uploaded. file.key: {file_key}",
+                fg="green",
+            )
+        )
+
+
+@click.command("upload-local-files-to-cloud-storage", help="upload local files to cloud storage")
+def upload_local_files_to_cloud_storage():
+    """
+    upload local files to cloud storage
+    """
+    click.echo(
+        click.style(
+            "Start upload local files to cloud storage",
+            fg="green",
+        )
+    )
+
+    total_count = UploadFile.query.filter_by(storage_type="local").count()
+    click.echo(click.style(f"Total files to process: {total_count}", fg="green"))
+
+    batch_size = 100
+    processed_count = 0
+    while processed_count < total_count:
+        files: list[UploadFile] = UploadFile.query.filter_by(storage_type="local").limit(batch_size).all()
+
+        for file in files:
+            target_filepath = f"{os.environ.get('STORAGE_LOCAL_PATH', 'storage')}/{file.key}"
+
+            # if the file exists
+            if not os.path.exists(target_filepath):
+                click.echo(
+                    click.style(
+                        f"Warning! file not exist. filepath: {target_filepath}, ignore this, continue",
+                        fg="yellow",
+                    )
+                )
+                processed_count += 1
+                if processed_count % 10 == 0 or processed_count == total_count:
+                    click.echo(click.style(f"Processed {processed_count}/{total_count} files\n", fg="blue"))
+                continue
+
+            # Upload to cloud storage
+            file_content = Path(target_filepath).read_bytes()
+            storage.save(filename=file.key, data=file_content)
+            click.echo(
+                click.style(
+                    f"File uploaded. file.key: {file.key}",
+                    fg="green",
+                )
+            )
+
+            # Update database record
+            try:
+                file.storage_type = os.environ["STORAGE_TYPE"]
+                db.session.commit()
+                click.echo(
+                    click.style(
+                        f"file.storage_type updated to database. file.key: {file.key}",
+                        fg="green",
+                    )
+                )
+            except Exception as e:
+                click.echo(click.style(f"An error occurred: {str(e)}", fg="red"))
+                db.session.rollback()
+
+            processed_count += 1
+            if processed_count % 10 == 0 or processed_count == total_count:
+                click.echo(click.style(f"Processed {processed_count}/{total_count} files\n", fg="blue"))
+
+    time.sleep(3)
+    click.echo(
+        click.style(
+            "Congratulations! finish files uploaded.",
+            fg="green",
+        )
+    )
+
+
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
@@ -649,3 +772,5 @@ def register_commands(app):
     app.cli.add_command(create_tenant)
     app.cli.add_command(upgrade_db)
     app.cli.add_command(fix_app_site_missing)
+    app.cli.add_command(upload_private_key_file_cloud_storage)
+    app.cli.add_command(upload_local_files_to_cloud_storage)
