@@ -175,6 +175,8 @@ docker/volumes/pgvector/data/*
 docker/volumes/pgvecto_rs/data/*
 
 docker/nginx/conf.d/default.conf
+docker/nginx/ssl/*
+!docker/nginx/ssl/.gitkeep
 docker/middleware.env
 
 sdks/python-client/build
