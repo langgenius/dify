@@ -1,4 +1,4 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -140,16 +140,18 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
 
     prompt_transform = AdvancedPromptTransform()
     prompt_transform._calculate_rest_token = MagicMock(return_value=2000)
-    prompt_messages = prompt_transform._get_chat_model_prompt_messages(
-        prompt_template=messages,
-        inputs=inputs,
-        query=None,
-        files=files,
-        context=context,
-        memory_config=None,
-        memory=None,
-        model_config=model_config_mock,
-    )
+    with patch("core.file.file_manager.to_prompt_message_content") as mock_get_encoded_string:
+        mock_get_encoded_string.return_value = ImagePromptMessageContent(data=str(files[0].remote_url))
+        prompt_messages = prompt_transform._get_chat_model_prompt_messages(
+            prompt_template=messages,
+            inputs=inputs,
+            query=None,
+            files=files,
+            context=context,
+            memory_config=None,
+            memory=None,
+            model_config=model_config_mock,
+        )
 
     assert len(prompt_messages) == 4
     assert prompt_messages[0].role == PromptMessageRole.SYSTEM

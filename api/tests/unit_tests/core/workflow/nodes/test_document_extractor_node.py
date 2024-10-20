@@ -92,7 +92,6 @@ def test_run_extract_text(
     mock_file.transfer_method = transfer_method
     mock_file.related_id = "test_file_id" if transfer_method == FileTransferMethod.LOCAL_FILE else None
     mock_file.remote_url = "https://example.com/file.txt" if transfer_method == FileTransferMethod.REMOTE_URL else None
-    mock_file.tenant_id = "test_tenant_id"
 
     mock_array_file_segment = Mock(spec=ArrayFileSegment)
     mock_array_file_segment.value = [mock_file]
@@ -128,7 +127,7 @@ def test_run_extract_text(
     if transfer_method == FileTransferMethod.REMOTE_URL:
         mock_ssrf_proxy_get.assert_called_once_with("https://example.com/file.txt")
     elif transfer_method == FileTransferMethod.LOCAL_FILE:
-        mock_download.assert_called_once_with(upload_file_id="test_file_id", tenant_id="test_tenant_id")
+        mock_download.assert_called_once_with(mock_file)
 
 
 def test_extract_text_from_plain_text():
