@@ -24,14 +24,15 @@ jobs:
         with:
           files: api/**
 
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v3
-
       - name: Set up Python
         uses: actions/setup-python@v5
         if: steps.changed-files.outputs.any_changed == 'true'
         with:
           python-version: '3.10'
+
+      - name: Install Poetry
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: abatilo/actions-poetry@v3
 
       - name: Python dependencies
         if: steps.changed-files.outputs.any_changed == 'true'

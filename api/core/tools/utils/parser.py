@@ -288,7 +288,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def auto_parse_to_tool_bundle(
-        content: str, extra_info: Optional[dict], warning: Optional[dict]
+        content: str, extra_info: Optional[dict] = None, warning: Optional[dict] = None
     ) -> tuple[list[ApiToolBundle], str]:
         """
         auto parse to tool bundle

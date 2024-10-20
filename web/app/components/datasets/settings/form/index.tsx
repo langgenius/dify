@@ -335,6 +335,8 @@ const Form = () => {
           <Button
             className='min-w-24'
             variant='primary'
+            loading={loading}
+            disabled={loading}
             onClick={handleSave}
           >
             {t('datasetSettings.form.save')}
