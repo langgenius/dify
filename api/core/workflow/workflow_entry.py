@@ -21,7 +21,7 @@ from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode, BaseNodeData
 from core.workflow.nodes.event import NodeEvent
 from core.workflow.nodes.llm import LLMNodeData
-from core.workflow.nodes.node_mapping import node_classes
+from core.workflow.nodes.node_mapping import node_type_classes_mapping
 from enums import UserFrom
 from models.workflow import (
     Workflow,
@@ -144,8 +144,8 @@ class WorkflowEntry:
             raise ValueError("node id not found in workflow graph")
 
         # Get node class
-        node_type = NodeType.value_of(node_config.get("data", {}).get("type"))
-        node_cls = node_classes.get(node_type)
+        node_type = NodeType(node_config.get("data", {}).get("type"))
+        node_cls = node_type_classes_mapping.get(node_type)
         node_cls = cast(type[BaseNode], node_cls)
 
         if not node_cls:
@@ -162,7 +162,7 @@ class WorkflowEntry:
         graph = Graph.init(graph_config=workflow.graph_dict)
 
         # init workflow run state
-        node_instance: BaseNode = node_cls(
+        node_instance = node_cls(
             id=str(uuid.uuid4()),
             config=node_config,
             graph_init_params=GraphInitParams(

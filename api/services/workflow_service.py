@@ -12,7 +12,7 @@ from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.event import RunCompletedEvent
-from core.workflow.nodes.node_mapping import node_classes
+from core.workflow.nodes.node_mapping import node_type_classes_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from enums import CreatedByRole
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
@@ -176,7 +176,7 @@ class WorkflowService:
         """
         # return default block config
         default_block_configs = []
-        for node_type, node_class in node_classes.items():
+        for node_type, node_class in node_type_classes_mapping.items():
             default_config = node_class.get_default_config()
             if default_config:
                 default_block_configs.append(default_config)
@@ -190,10 +190,10 @@ class WorkflowService:
         :param filters: filter by node config parameters.
         :return:
         """
-        node_type_enum: NodeType = NodeType.value_of(node_type)
+        node_type_enum: NodeType = NodeType(node_type)
 
         # return default block config
-        node_class = node_classes.get(node_type_enum)
+        node_class = node_type_classes_mapping.get(node_type_enum)
         if not node_class:
             return None
 

@@ -39,7 +39,7 @@ def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEve
 
     node_execution_id = str(uuid.uuid4())
     node_config = graph.node_id_config_mapping[next_node_id]
-    node_type = NodeType.value_of(node_config.get("data", {}).get("type"))
+    node_type = NodeType(node_config.get("data", {}).get("type"))
     mock_node_data = StartNodeData(**{"title": "demo", "variables": []})
 
     yield NodeRunStartedEvent(

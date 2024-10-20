@@ -277,14 +277,12 @@ class IterationNode(BaseNode[IterationNodeData]):
             # variable selector to variable mapping
             try:
                 # Get node class
-                from core.workflow.nodes.node_mapping import node_classes
+                from core.workflow.nodes.node_mapping import node_type_classes_mapping
 
-                node_type = NodeType.value_of(sub_node_config.get("data", {}).get("type"))
-                node_cls = node_classes.get(node_type)
+                node_type = NodeType(sub_node_config.get("data", {}).get("type"))
+                node_cls = node_type_classes_mapping.get(node_type)
                 if not node_cls:
                     continue
-
-                node_cls = cast(BaseNode, node_cls)
 
                 sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
                     graph_config=graph_config, config=sub_node_config

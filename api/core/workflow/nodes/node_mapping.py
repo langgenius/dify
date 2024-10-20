@@ -18,7 +18,7 @@ from core.workflow.nodes.tool import ToolNode
 from core.workflow.nodes.variable_aggregator import VariableAggregatorNode
 from core.workflow.nodes.variable_assigner import VariableAssignerNode
 
-node_classes: dict[NodeType, type[BaseNode]] = {
+node_type_classes_mapping: dict[NodeType, type[BaseNode]] = {
     NodeType.START: StartNode,
     NodeType.END: EndNode,
     NodeType.ANSWER: AnswerNode,

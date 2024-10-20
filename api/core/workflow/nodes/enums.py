@@ -22,16 +22,3 @@ class NodeType(str, Enum):
     CONVERSATION_VARIABLE_ASSIGNER = "assigner"
     DOCUMENT_EXTRACTOR = "document-extractor"
     LIST_OPERATOR = "list-operator"
-
-    @classmethod
-    def value_of(cls, value: str):
-        """
-        Get value of given node type.
-
-        :param value: node type value
-        :return: node type
-        """
-        for node_type in cls:
-            if node_type.value == value:
-                return node_type
-        raise ValueError(f"invalid node type value {value}")

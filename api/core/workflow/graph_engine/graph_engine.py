@@ -37,7 +37,7 @@ from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProce
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
-from core.workflow.nodes.node_mapping import node_classes
+from core.workflow.nodes.node_mapping import node_type_classes_mapping
 from enums import UserFrom
 from extensions.ext_database import db
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
@@ -227,10 +227,8 @@ class GraphEngine:
                 raise GraphRunFailedError(f"Node {node_id} config not found.")
 
             # convert to specific node
-            node_type = NodeType.value_of(node_config.get("data", {}).get("type"))
-            node_cls = node_classes.get(node_type)
-            if not node_cls:
-                raise GraphRunFailedError(f"Node {node_id} type {node_type} not found.")
+            node_type = NodeType(node_config.get("data", {}).get("type"))
+            node_cls = node_type_classes_mapping[node_type]
 
             previous_node_id = previous_route_node_state.node_id if previous_route_node_state else None
 
