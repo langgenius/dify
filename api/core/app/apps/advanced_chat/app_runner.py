@@ -20,8 +20,8 @@ from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.workflow_entry import WorkflowEntry
-from enums import UserFrom
 from extensions.ext_database import db
+from models.enums import UserFrom
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import ConversationVariable, WorkflowType
 

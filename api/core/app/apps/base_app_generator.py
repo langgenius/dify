@@ -7,7 +7,7 @@ from factories import file_factory
 
 if TYPE_CHECKING:
     from core.app.app_config.entities import AppConfig, VariableEntity
-    from enums import CreatedByRole
+    from models.enums import CreatedByRole
 
 
 class BaseAppGenerator:

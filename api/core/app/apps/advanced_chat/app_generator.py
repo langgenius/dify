@@ -23,10 +23,10 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
-from enums import CreatedByRole
 from extensions.ext_database import db
 from factories import file_factory
 from models.account import Account
+from models.enums import CreatedByRole
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import Workflow
 

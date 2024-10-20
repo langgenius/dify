@@ -16,9 +16,9 @@ from configs import dify_config
 from core.file import FILE_MODEL_IDENTITY, File, FileExtraConfig, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
-from enums import CreatedByRole
 from extensions.ext_database import db
 from libs.helper import generate_string
+from models.enums import CreatedByRole
 
 from .account import Account, Tenant
 from .types import StringUUID

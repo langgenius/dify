@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.nodes.base import BaseIterationState, BaseNode
-from enums import UserFrom
+from models.enums import UserFrom
 from models.workflow import Workflow, WorkflowType
 
 from .node_entities import NodeRunResult

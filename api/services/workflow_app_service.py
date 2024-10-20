@@ -3,9 +3,9 @@ import uuid
 from flask_sqlalchemy.pagination import Pagination
 from sqlalchemy import and_, or_
 
-from enums import CreatedByRole
 from extensions.ext_database import db
 from models import App, EndUser, WorkflowAppLog, WorkflowRun
+from models.enums import CreatedByRole
 from models.workflow import WorkflowRunStatus
 
 

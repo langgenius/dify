@@ -15,7 +15,7 @@ from core.workflow.nodes.http_request import (
     HttpRequestNodeData,
 )
 from core.workflow.nodes.http_request.executor import _plain_text_to_dict
-from enums import UserFrom
+from models.enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 
 

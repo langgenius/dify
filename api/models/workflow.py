@@ -11,10 +11,10 @@ import contexts
 from constants import HIDDEN_VALUE
 from core.helper import encrypter
 from core.variables import SecretVariable, Variable
-from enums import CreatedByRole
 from extensions.ext_database import db
 from factories import variable_factory
 from libs import helper
+from models.enums import CreatedByRole
 
 from .account import Account
 from .types import StringUUID

@@ -22,7 +22,7 @@ from core.workflow.nodes.base import BaseNode, BaseNodeData
 from core.workflow.nodes.event import NodeEvent
 from core.workflow.nodes.llm import LLMNodeData
 from core.workflow.nodes.node_mapping import node_type_classes_mapping
-from enums import UserFrom
+from models.enums import UserFrom
 from models.workflow import (
     Workflow,
     WorkflowType,

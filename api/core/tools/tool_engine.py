@@ -26,8 +26,8 @@ from core.tools.errors import (
 from core.tools.tool.tool import Tool
 from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from enums import CreatedByRole
 from extensions.ext_database import db
+from models.enums import CreatedByRole
 from models.model import Message, MessageFile
 
 

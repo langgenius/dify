@@ -11,7 +11,7 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.http_request.node import HttpRequestNode
-from enums import UserFrom
+from models.enums import UserFrom
 from models.workflow import WorkflowType
 from tests.integration_tests.workflow.nodes.__mock.http import setup_http_mock
 
