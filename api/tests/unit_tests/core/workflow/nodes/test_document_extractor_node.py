@@ -108,14 +108,10 @@ def test_run_extract_text(
 
     if mime_type == "application/pdf":
         mock_pdf_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr(
-            "core.workflow.nodes.document_extractor.document_extractor_node._extract_text_from_pdf", mock_pdf_extract
-        )
+        monkeypatch.setattr("core.workflow.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
     elif mime_type.startswith("application/vnd.openxmlformats"):
         mock_docx_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr(
-            "core.workflow.nodes.document_extractor.document_extractor_node._extract_text_from_doc", mock_docx_extract
-        )
+        monkeypatch.setattr("core.workflow.nodes.document_extractor.node._extract_text_from_doc", mock_docx_extract)
 
     result = document_extractor_node._run()
 

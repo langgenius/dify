@@ -14,7 +14,7 @@ from core.workflow.nodes.http_request.entities import (
     HttpRequestNodeData,
     HttpRequestNodeTimeout,
 )
-from core.workflow.nodes.http_request.http_executor import HttpExecutor, HttpExecutorResponse
+from core.workflow.nodes.http_request.executor import Executor
 from core.workflow.utils import variable_template_parser
 from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
@@ -24,6 +24,7 @@ HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeTimeout(
     read=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
     write=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
 )
+from .entities import Response
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +55,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
     def _run(self) -> NodeRunResult:
         process_data = {}
         try:
-            http_executor = HttpExecutor(
+            http_executor = Executor(
                 node_data=self.node_data,
                 timeout=self._get_request_timeout(self.node_data),
                 variable_pool=self.graph_runtime_state.variable_pool,
@@ -135,7 +136,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
 
         return mapping
 
-    def extract_files(self, url: str, response: HttpExecutorResponse) -> list[File]:
+    def extract_files(self, url: str, response: Response) -> list[File]:
         """
         Extract files from response
         """

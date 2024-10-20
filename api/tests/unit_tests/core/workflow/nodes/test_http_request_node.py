@@ -14,7 +14,7 @@ from core.workflow.nodes.http_request import (
     HttpRequestNodeBody,
     HttpRequestNodeData,
 )
-from core.workflow.nodes.http_request.http_executor import _plain_text_to_dict
+from core.workflow.nodes.http_request.executor import _plain_text_to_dict
 from enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 
@@ -96,7 +96,7 @@ def test_http_request_node_binary_file(monkeypatch):
         ),
     )
     monkeypatch.setattr(
-        "core.workflow.nodes.http_request.http_executor.file_manager.download",
+        "core.workflow.nodes.http_request.executor.file_manager.download",
         lambda *args, **kwargs: b"test",
     )
     monkeypatch.setattr(
@@ -183,7 +183,7 @@ def test_http_request_node_form_with_file(monkeypatch):
         ),
     )
     monkeypatch.setattr(
-        "core.workflow.nodes.http_request.http_executor.file_manager.download",
+        "core.workflow.nodes.http_request.executor.file_manager.download",
         lambda *args, **kwargs: b"test",
     )
 
