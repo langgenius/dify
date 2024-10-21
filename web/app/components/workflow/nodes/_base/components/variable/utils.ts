@@ -739,6 +739,11 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       res = [(data as IterationNodeType).iterator_selector]
       break
     }
+
+    case BlockEnum.ListFilter: {
+      res = [(data as ListFilterNodeType).variable]
+      break
+    }
   }
   return res || []
 }
@@ -995,6 +1000,12 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
         if (payload.iterator_selector.join('.') === oldVarSelector.join('.'))
           payload.iterator_selector = newVarSelector
 
+        break
+      }
+      case BlockEnum.ListFilter: {
+        const payload = data as ListFilterNodeType
+        if (payload.variable.join('.') === oldVarSelector.join('.'))
+          payload.variable = newVarSelector
         break
       }
     }
