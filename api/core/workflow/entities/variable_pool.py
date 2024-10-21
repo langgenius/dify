@@ -96,9 +96,6 @@ class VariablePool(BaseModel):
         if len(selector) < 2:
             raise ValueError("Invalid selector")
 
-        if value is None:
-            return
-
         if isinstance(value, Segment):
             v = value
         else:
