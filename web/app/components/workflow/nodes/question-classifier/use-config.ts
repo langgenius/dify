@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import produce from 'immer'
 import { BlockEnum, VarType } from '../../types'
 import type { Memory, ValueSelector, Var } from '../../types'
@@ -8,6 +8,7 @@ import {
 } from '../../hooks'
 import { useStore } from '../../store'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
+import useConfigVision from '../../hooks/use-config-vision'
 import type { QuestionClassifierNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
@@ -28,7 +29,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     inputRef.current = inputs
   }, [inputs])
 
-  // model
+  const [modelChanged, setModelChanged] = useState(false)
   const {
     currentProvider,
     currentModel,
@@ -38,6 +39,21 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
   const modelMode = inputs.model?.mode
   const isChatModel = modelMode === 'chat'
 
+  const {
+    isVisionModel,
+    handleVisionResolutionEnabledChange,
+    handleVisionResolutionChange,
+    handleModelChanged: handleVisionConfigAfterModelChanged,
+  } = useConfigVision(model, {
+    payload: inputs.vision,
+    onChange: (newPayload) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.vision = newPayload
+      })
+      setInputs(newInputs)
+    },
+  })
+
   const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
@@ -45,6 +61,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
       draft.model.mode = model.mode!
     })
     setInputs(newInputs)
+    setModelChanged(true)
   }, [setInputs])
 
   useEffect(() => {
@@ -63,6 +80,15 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
+
+  // change to vision model to set vision enabled, else disabled
+  useEffect(() => {
+    if (!modelChanged)
+      return
+    setModelChanged(false)
+    handleVisionConfigAfterModelChanged()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVisionModel, modelChanged])
 
   const handleQueryVarChange = useCallback((newVar: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
@@ -191,6 +217,9 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     inputVarValues,
     setInputVarValues,
     handleMemoryChange,
+    isVisionModel,
+    handleVisionResolutionEnabledChange,
+    handleVisionResolutionChange,
     isShowSingleRun,
     hideSingleRun,
     runningStatus,

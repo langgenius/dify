@@ -18,10 +18,10 @@ import { AnswerTriangle } from '@/app/components/base/icons/src/vender/solid/gen
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import Citation from '@/app/components/base/chat/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
-import type { Emoji } from '@/app/components/tools/types'
 import type { AppData } from '@/models/share'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import cn from '@/utils/classnames'
+import { FileList } from '@/app/components/base/file-uploader'
 
 type AnswerProps = {
   item: ChatItem
@@ -30,7 +30,6 @@ type AnswerProps = {
   config?: ChatConfig
   answerIcon?: ReactNode
   responding?: boolean
-  allToolIcons?: Record<string, string | Emoji>
   showPromptLog?: boolean
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
@@ -44,7 +43,6 @@ const Answer: FC<AnswerProps> = ({
   config,
   answerIcon,
   responding,
-  allToolIcons,
   showPromptLog,
   chatAnswerContainerInner,
   hideProcessDetail,
@@ -59,6 +57,8 @@ const Answer: FC<AnswerProps> = ({
     more,
     annotation,
     workflowProcess,
+    allFiles,
+    message_files,
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
@@ -135,7 +135,6 @@ const Answer: FC<AnswerProps> = ({
                 <WorkflowProcess
                   data={workflowProcess}
                   item={item}
-                  hideInfo
                   hideProcessDetail={hideProcessDetail}
                 />
               )
@@ -146,7 +145,6 @@ const Answer: FC<AnswerProps> = ({
                 <WorkflowProcess
                   data={workflowProcess}
                   item={item}
-                  hideInfo
                   hideProcessDetail={hideProcessDetail}
                 />
               )
@@ -168,7 +166,28 @@ const Answer: FC<AnswerProps> = ({
                 <AgentContent
                   item={item}
                   responding={responding}
-                  allToolIcons={allToolIcons}
+                />
+              )
+            }
+            {
+              !!allFiles?.length && (
+                <FileList
+                  className='my-1'
+                  files={allFiles}
+                  showDeleteAction={false}
+                  showDownloadAction
+                  canPreview
+                />
+              )
+            }
+            {
+              !!message_files?.length && (
+                <FileList
+                  className='my-1'
+                  files={message_files}
+                  showDeleteAction={false}
+                  showDownloadAction
+                  canPreview
                 />
               )
             }

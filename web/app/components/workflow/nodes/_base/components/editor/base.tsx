@@ -11,6 +11,8 @@ import {
 } from '@/app/components/base/icons/src/vender/line/files'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
 
 type Props = {
   className?: string
@@ -21,6 +23,8 @@ type Props = {
   value: string
   isFocus: boolean
   isInNode?: boolean
+  fileList?: FileEntity[]
+  showFileList?: boolean
 }
 
 const Base: FC<Props> = ({
@@ -32,6 +36,8 @@ const Base: FC<Props> = ({
   value,
   isFocus,
   isInNode,
+  fileList = [],
+  showFileList,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
   const {
@@ -87,6 +93,9 @@ const Base: FC<Props> = ({
             {children}
           </div>
         </PromptEditorHeightResizeWrap>
+        {showFileList && fileList.length > 0 && (
+          <FileListInLog fileList={fileList} />
+        )}
       </div>
     </Wrap>
   )

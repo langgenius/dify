@@ -14,6 +14,7 @@ import WorkflowPreview from './workflow-preview'
 import ChatRecord from './chat-record'
 import ChatVariablePanel from './chat-variable-panel'
 import EnvPanel from './env-panel'
+import GlobalVariablePanel from './global-variable-panel'
 import cn from '@/utils/classnames'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import MessageLogModal from '@/app/components/base/message-log-modal'
@@ -26,6 +27,7 @@ const Panel: FC = () => {
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   const showEnvPanel = useStore(s => s.showEnvPanel)
   const showChatVariablePanel = useStore(s => s.showChatVariablePanel)
+  const showGlobalVariablePanel = useStore(s => s.showGlobalVariablePanel)
   const isRestoring = useStore(s => s.isRestoring)
   const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
@@ -88,6 +90,11 @@ const Panel: FC = () => {
       {
         showChatVariablePanel && (
           <ChatVariablePanel />
+        )
+      }
+      {
+        showGlobalVariablePanel && (
+          <GlobalVariablePanel />
         )
       }
     </div>

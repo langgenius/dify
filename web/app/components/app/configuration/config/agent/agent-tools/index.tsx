@@ -58,7 +58,7 @@ const AgentTools: FC = () => {
   return (
     <>
       <Panel
-        className="mt-4"
+        className="mt-2"
         noBodySpacing={tools.length === 0}
         headerIcon={
           <RiHammerFill className='w-4 h-4 text-primary-500' />

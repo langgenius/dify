@@ -146,8 +146,8 @@ const WorkflowPreview = () => {
                 >{t('runLog.tracing')}</div>
               </div>
               <div className={cn(
-                'grow bg-white h-0 overflow-y-auto rounded-b-2xl',
-                (currentTab === 'RESULT' || currentTab === 'TRACING') && '!bg-gray-50',
+                'grow bg-components-panel-bg h-0 overflow-y-auto rounded-b-2xl',
+                (currentTab === 'RESULT' || currentTab === 'TRACING') && '!bg-background-section-burn',
               )}>
                 {currentTab === 'INPUT' && showInputsPanel && (
                   <InputsPanel onRun={() => switchTab('RESULT')} />
@@ -157,6 +157,7 @@ const WorkflowPreview = () => {
                     <ResultText
                       isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
                       outputs={workflowRunningData?.resultText}
+                      allFiles={workflowRunningData?.result?.files as any}
                       error={workflowRunningData?.result?.error}
                       onClick={() => switchTab('DETAIL')}
                     />
@@ -191,18 +192,19 @@ const WorkflowPreview = () => {
                   />
                 )}
                 {currentTab === 'DETAIL' && !workflowRunningData?.result && (
-                  <div className='flex h-full items-center justify-center bg-white'>
+                  <div className='flex h-full items-center justify-center bg-components-panel-bg'>
                     <Loading />
                   </div>
                 )}
                 {currentTab === 'TRACING' && (
                   <TracingPanel
+                    className='bg-background-section-burn'
                     list={workflowRunningData?.tracing || []}
                     onShowIterationDetail={handleShowIterationDetail}
                   />
                 )}
                 {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
-                  <div className='flex h-full items-center justify-center bg-gray-50'>
+                  <div className='flex h-full items-center justify-center !bg-background-section-burn'>
                     <Loading />
                   </div>
                 )}

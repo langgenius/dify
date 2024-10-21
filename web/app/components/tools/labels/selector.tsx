@@ -11,7 +11,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import SearchInput from '@/app/components/base/search-input'
+import Input from '@/app/components/base/input'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Checkbox from '@/app/components/base/checkbox'
 import type { Label } from '@/app/components/tools/labels/constant'
@@ -79,7 +79,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
           className='block'
         >
           <div className={cn(
-            'flex items-center gap-1 px-3 h-9 rounded-lg border-[0.5px] border-transparent bg-gray-100 cursor-pointer hover:bg-gray-200',
+            'flex items-center gap-1 px-3 h-10 rounded-lg border-[0.5px] border-transparent bg-gray-100 cursor-pointer hover:bg-gray-200',
             open && '!bg-gray-200 hover:bg-gray-200',
           )}>
             <div title={value.length > 0 ? selectedLabels : ''} className={cn('grow text-[13px] leading-[18px] text-gray-700 truncate', !value.length && '!text-gray-400')}>
@@ -94,7 +94,13 @@ const LabelSelector: FC<LabelSelectorProps> = ({
         <PortalToFollowElemContent className='z-[1040]'>
           <div className='relative w-[591px] bg-white rounded-lg border-[0.5px] border-gray-200  shadow-lg'>
             <div className='p-2 border-b-[0.5px] border-black/5'>
-              <SearchInput white value={keywords} onChange={handleKeywordsChange} />
+              <Input
+                showLeftIcon
+                showClearIcon
+                value={keywords}
+                onChange={e => handleKeywordsChange(e.target.value)}
+                onClear={() => handleKeywordsChange('')}
+              />
             </div>
             <div className='p-1 max-h-[264px] overflow-y-auto'>
               {filteredLabelList.map(label => (

@@ -24,6 +24,9 @@ import {
 } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import {
+  getProcessedFilesFromResponse,
+} from '@/app/components/base/file-uploader/utils'
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
@@ -207,6 +210,7 @@ export const useWorkflowRun = () => {
             draft.result = {
               ...draft.result,
               ...data,
+              files: getProcessedFilesFromResponse(data.files || []),
             } as any
             if (isStringOutput) {
               draft.resultTabActive = true

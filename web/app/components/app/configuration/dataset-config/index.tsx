@@ -70,7 +70,7 @@ const DatasetConfig: FC = () => {
 
   return (
     <FeaturePanel
-      className='mt-3'
+      className='mt-2'
       headerIcon={Icon}
       title={t('appDebug.feature.dataSet.title')}
       headerRight={

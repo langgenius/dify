@@ -22,10 +22,9 @@ export type RunProps = {
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   runID: string
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
-  onShowIterationDetail: (detail: NodeTracing[][]) => void
 }
 
-const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getResultCallback, onShowIterationDetail }) => {
+const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getResultCallback }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
@@ -167,35 +166,35 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
   return (
     <div className='grow relative flex flex-col'>
       {/* tab */}
-      <div className='shrink-0 flex items-center px-4 border-b-[0.5px] border-[rgba(0,0,0,0.05)]'>
+      <div className='shrink-0 flex items-center px-4 border-b-[0.5px] border-divider-subtle'>
         {!hideResult && (
           <div
             className={cn(
-              'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
-              currentTab === 'RESULT' && '!border-[rgb(21,94,239)] text-gray-700',
+              'mr-6 py-3 border-b-2 border-transparent system-sm-semibold-uppercase text-text-tertiary cursor-pointer',
+              currentTab === 'RESULT' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
             )}
             onClick={() => switchTab('RESULT')}
           >{t('runLog.result')}</div>
         )}
         <div
           className={cn(
-            'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
-            currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-gray-700',
+            'mr-6 py-3 border-b-2 border-transparent system-sm-semibold-uppercase text-text-tertiary cursor-pointer',
+            currentTab === 'DETAIL' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
           )}
           onClick={() => switchTab('DETAIL')}
         >{t('runLog.detail')}</div>
         <div
           className={cn(
-            'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
-            currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-gray-700',
+            'mr-6 py-3 border-b-2 border-transparent system-sm-semibold-uppercase text-text-tertiary cursor-pointer',
+            currentTab === 'TRACING' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
           )}
           onClick={() => switchTab('TRACING')}
         >{t('runLog.tracing')}</div>
       </div>
       {/* panel detail */}
-      <div ref={ref} className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-gray-50')}>
+      <div ref={ref} className={cn('grow bg-components-panel-bg h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-background-section-burn')}>
         {loading && (
-          <div className='flex h-full items-center justify-center bg-white'>
+          <div className='flex h-full items-center justify-center bg-components-panel-bg'>
             <Loading />
           </div>
         )}
@@ -221,6 +220,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
         )}
         {!loading && currentTab === 'TRACING' && (
           <TracingPanel
+            className='bg-background-section-burn'
             list={list}
             onShowIterationDetail={handleShowIterationDetail}
           />

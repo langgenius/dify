@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import Uploader from './uploader'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
 import {
@@ -171,9 +172,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           currentTab === CreateFromDSLModalTab.FROM_URL && (
             <div>
               <div className='mb-1 system-md-semibold leading6'>DSL URL</div>
-              <input
+              <Input
                 placeholder={t('app.importFromDSLUrlPlaceholder') || ''}
-                className='px-2 w-full h-8 border border-components-input-border-active bg-components-input-bg-active rounded-lg outline-none appearance-none placeholder:text-components-input-text-placeholder system-sm-regular'
                 value={dslUrlValue}
                 onChange={e => setDslUrlValue(e.target.value)}
               />

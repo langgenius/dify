@@ -1,6 +1,7 @@
 import { addFileInfos, sortAgentSorts } from '../../tools/utils'
 import { UUID_NIL } from './constants'
 import type { ChatItem } from './types'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 
 async function decodeBase64AndDecompress(base64String: string) {
   const binaryString = atob(base64String)
@@ -30,6 +31,7 @@ function getLastAnswer(chatList: ChatItem[]) {
 
 function appendQAToChatList(chatList: ChatItem[], item: any) {
   // we append answer first and then question since will reverse the whole chatList later
+  const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
   chatList.push({
     id: item.id,
     content: item.answer,
@@ -37,13 +39,14 @@ function appendQAToChatList(chatList: ChatItem[], item: any) {
     feedback: item.feedback,
     isAnswer: true,
     citation: item.retriever_resources,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+    message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
   })
+  const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
   chatList.push({
     id: `question-${item.id}`,
     content: item.query,
     isAnswer: false,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
+    message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
   })
 }
 
