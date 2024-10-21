@@ -33,7 +33,10 @@ def _get_resource(resource_id, tenant_id, resource_model):
                 select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
             ).scalar_one_or_none()
     else:
-        resource = resource_model.query.filter_by(id=resource_id, tenant_id=tenant_id).first()
+        with Session(db.engine) as session:
+            resource = session.execute(
+                select(resource_model).filter_by(id=resource_id, tenant_id=tenant_id)
+            ).scalar_one_or_none()
 
     if resource is None:
         flask_restful.abort(404, message=f"{resource_model.__name__} not found.")

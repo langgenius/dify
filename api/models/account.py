@@ -4,6 +4,7 @@ import json
 from flask_login import UserMixin
 
 from extensions.ext_database import db
+from models.base import Base
 
 from .types import StringUUID
 
@@ -16,7 +17,7 @@ class AccountStatus(str, enum.Enum):
     CLOSED = "closed"
 
 
-class Account(UserMixin, db.Model):
+class Account(UserMixin, Base):
     __tablename__ = "accounts"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="account_pkey"), db.Index("account_email_idx", "email"))
 

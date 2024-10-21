@@ -3,6 +3,8 @@ import secrets
 
 from flask import request
 from flask_restful import Resource, reqparse
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 
 from constants.languages import languages
 from controllers.console import api
@@ -41,7 +43,8 @@ class ForgotPasswordSendEmailApi(Resource):
         else:
             language = "en-US"
 
-        account = Account.query.filter_by(email=args["email"]).first()
+        with Session(db.engine) as session:
+            account = session.execute(select(Account).filter_by(email=args["email"])).scalar_one_or_none()
         token = None
         if account is None:
             if FeatureService.get_system_features().is_allow_register:
@@ -108,7 +111,8 @@ class ForgotPasswordResetApi(Resource):
         password_hashed = hash_password(new_password, salt)
         base64_password_hashed = base64.b64encode(password_hashed).decode()
 
-        account = Account.query.filter_by(email=reset_data.get("email")).first()
+        with Session(db.engine) as session:
+            account = session.execute(select(Account).filter_by(email=reset_data.get("email"))).scalar_one_or_none()
         if account:
             account.password = base64_password_hashed
             account.password_salt = base64_salt
