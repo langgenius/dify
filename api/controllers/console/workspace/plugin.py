@@ -69,7 +69,8 @@ class PluginUploadPkgApi(Resource):
         tenant_id = user.current_tenant_id
         file = request.files["pkg"]
         content = file.read()
-        return {"plugin_unique_identifier": PluginService.upload_pkg(tenant_id, content)}
+
+        return jsonable_encoder(PluginService.upload_pkg(tenant_id, content))
 
 
 class PluginUploadFromPkgApi(Resource):
@@ -92,9 +93,7 @@ class PluginUploadFromPkgApi(Resource):
         content = file.read()
         response = PluginService.upload_pkg(tenant_id, content)
 
-        return {
-            "plugin_unique_identifier": response,
-        }
+        return jsonable_encoder(response)
 
 
 class PluginUploadFromGithubApi(Resource):
@@ -143,7 +142,7 @@ class PluginInstallFromPkgApi(Resource):
 
         response = PluginService.install_from_local_pkg(tenant_id, args["plugin_unique_identifiers"])
 
-        return response.model_dump()
+        return jsonable_encoder(response)
 
 
 class PluginInstallFromGithubApi(Resource):
@@ -172,7 +171,7 @@ class PluginInstallFromGithubApi(Resource):
             args["package"],
         )
 
-        return response.model_dump()
+        return jsonable_encoder(response)
 
 
 class PluginInstallFromMarketplaceApi(Resource):
@@ -197,7 +196,7 @@ class PluginInstallFromMarketplaceApi(Resource):
 
         response = PluginService.install_from_marketplace_pkg(tenant_id, args["plugin_unique_identifiers"])
 
-        return response.model_dump()
+        return jsonable_encoder(response)
 
 
 class PluginFetchManifestApi(Resource):

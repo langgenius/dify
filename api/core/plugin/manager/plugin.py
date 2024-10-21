@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from pydantic import BaseModel
 
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
-from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStartResponse
+from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStartResponse, PluginUploadResponse
 from core.plugin.manager.base import BasePluginManager
 
 
@@ -33,7 +33,7 @@ class PluginInstallationManager(BasePluginManager):
         tenant_id: str,
         pkg: bytes,
         verify_signature: bool = False,
-    ) -> str:
+    ) -> PluginUploadResponse:
         """
         Upload a plugin package and return the plugin unique identifier.
         """
@@ -48,7 +48,7 @@ class PluginInstallationManager(BasePluginManager):
         return self._request_with_plugin_daemon_response(
             "POST",
             f"plugin/{tenant_id}/management/install/upload",
-            str,
+            PluginUploadResponse,
             files=body,
             data=data,
         )

@@ -5,7 +5,7 @@ from configs import dify_config
 from core.helper.download import download_with_size_limit
 from core.helper.marketplace import download_plugin_pkg
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
-from core.plugin.entities.plugin_daemon import PluginInstallTask
+from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginUploadResponse
 from core.plugin.manager.asset import PluginAssetManager
 from core.plugin.manager.debugging import PluginDebuggingManager
 from core.plugin.manager.plugin import PluginInstallationManager
@@ -67,7 +67,7 @@ class PluginService:
         return manager.delete_plugin_installation_task(tenant_id, task_id)
 
     @staticmethod
-    def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> str:
+    def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> PluginUploadResponse:
         """
         Upload plugin package files
 
@@ -79,7 +79,7 @@ class PluginService:
     @staticmethod
     def upload_pkg_from_github(
         tenant_id: str, repo: str, version: str, package: str, verify_signature: bool = False
-    ) -> str:
+    ) -> PluginUploadResponse:
         """
         Install plugin from github release package files,
         returns plugin_unique_identifier

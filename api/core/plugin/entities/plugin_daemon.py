@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
+from core.plugin.entities.plugin import PluginDeclaration
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 
 T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
@@ -133,3 +134,8 @@ class PluginInstallTask(BasePluginEntity):
 class PluginInstallTaskStartResponse(BaseModel):
     all_installed: bool = Field(description="Whether all plugins are installed.")
     task_id: str = Field(description="The ID of the install task.")
+
+
+class PluginUploadResponse(BaseModel):
+    unique_identifier: str = Field(description="The unique identifier of the plugin.")
+    manifest: PluginDeclaration
