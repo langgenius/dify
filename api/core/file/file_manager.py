@@ -26,6 +26,8 @@ def get_attr(*, file: File, attr: FileAttribute):
         case FileAttribute.TRANSFER_METHOD:
             return file.transfer_method.value
         case FileAttribute.URL:
+            return file.url
+        case FileAttribute.REMOTE_URL:
             return file.remote_url
         case FileAttribute.EXTENSION:
             return file.extension

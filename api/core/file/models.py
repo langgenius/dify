@@ -40,7 +40,7 @@ class File(BaseModel):
     tenant_id: str
     type: FileType
     transfer_method: FileTransferMethod
-    remote_url: Optional[str] = None  # remote url
+    remote_url: Optional[str] = None
     related_id: Optional[str] = None
     filename: Optional[str] = None
     extension: Optional[str] = Field(default=None, description="File extension, should contains dot")
@@ -52,16 +52,19 @@ class File(BaseModel):
         data = self.model_dump(mode="json")
         return {
             **data,
-            "url": self.generate_url(),
+            "url": self.url,
         }
 
     @property
+    def url(self) -> Optional[str]:
+        return self.generate_url()
+
+    @property
     def markdown(self) -> str:
-        url = self.generate_url()
         if self.type == FileType.IMAGE:
-            text = f'![{self.filename or ""}]({url})'
+            text = f'![{self.filename or ""}]({self.url})'
         else:
-            text = f"[{self.filename or url}]({url})"
+            text = f"[{self.filename or self.url}]({self.url})"
 
         return text
 
