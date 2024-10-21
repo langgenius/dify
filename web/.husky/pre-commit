@@ -63,7 +63,7 @@ if $web_modified; then
             # check if the test file exists
             if [ -f "../$test_file" ]; then
                 echo "Detected changes in $file, running corresponding unit tests..."
-                npm run test "../$test_file"
+                pnpm run test "../$test_file"
 
                 if [ $? -ne 0 ]; then
                     echo "Unit tests failed. Please fix the errors before committing."
