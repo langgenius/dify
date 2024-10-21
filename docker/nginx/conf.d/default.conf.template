@@ -4,34 +4,43 @@ server {
     listen ${NGINX_PORT};
     server_name ${NGINX_SERVER_NAME};
 
+    return 301 https://$server_name$request_uri;
+}
+
+
+server {
     location /console/api {
-      proxy_pass http://api:5001;
+      proxy_pass http://ai.swanbpm.com:5001;
       include proxy.conf;
+      add_header Content-Security-Policy "upgrade-insecure-requests";
     }
 
     location /api {
-      proxy_pass http://api:5001;
+      proxy_pass http://ai.swanbpm.com:5001;
       include proxy.conf;
+      add_header Content-Security-Policy "upgrade-insecure-requests";
     }
 
     location /v1 {
-      proxy_pass http://api:5001;
+      proxy_pass http://ai.swanbpm.com:5001;
       include proxy.conf;
+      add_header Content-Security-Policy "upgrade-insecure-requests";
     }
 
     location /files {
-      proxy_pass http://api:5001;
+      proxy_pass http://ai.swanbpm.com:5001;
       include proxy.conf;
+      add_header Content-Security-Policy "upgrade-insecure-requests";
     }
 
     location / {
-      proxy_pass http://web:3000;
+      proxy_pass http://ai.swanbpm.com:3000;
       include proxy.conf;
+      add_header Content-Security-Policy "upgrade-insecure-requests";
     }
 
     # placeholder for acme challenge location
     ${ACME_CHALLENGE_LOCATION}
-
     # placeholder for https config defined in https.conf.template
     ${HTTPS_CONFIG}
 }
