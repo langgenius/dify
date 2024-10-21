@@ -46,6 +46,15 @@ class IterationNode(BaseNode[IterationNodeData]):
         if not iterator_list_segment:
             raise ValueError(f"Iterator variable {self.node_data.iterator_selector} not found")
 
+        if len(iterator_list_segment.value) == 0:
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                    outputs={"output": []},
+                )
+            )
+            return
+
         iterator_list_value = iterator_list_segment.to_object()
 
         if not isinstance(iterator_list_value, list):
