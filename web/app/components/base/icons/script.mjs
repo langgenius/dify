@@ -1,8 +1,9 @@
-const path = require('node:path')
-const { open, readdir, access, mkdir, writeFile, appendFile, rm } = require('node:fs/promises')
-const { parseXml } = require('@rgrove/parse-xml')
-const camelCase = require('lodash/camelCase')
-const template = require('lodash/template')
+import path from 'node:path'
+import { access, appendFile, mkdir, open, readdir, rm, writeFile } from 'node:fs/promises'
+import { parseXml } from '@rgrove/parse-xml'
+import { camelCase, template } from 'lodash-es'
+
+const __dirname = path.dirname(new URL(import.meta.url).pathname)
 
 const generateDir = async (currentPath) => {
   try {
