@@ -38,6 +38,10 @@ const translation = {
     duplicate: '重複',
     rename: '名前の変更',
     audioSourceUnavailable: 'AudioSource が利用できません',
+    zoomIn: 'ズームインする',
+    openInNewTab: '新しいタブで開く',
+    zoomOut: 'ズームアウト',
+    copyImage: '画像をコピー',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',
@@ -503,6 +507,7 @@ const translation = {
       vectorHash: 'ベクトルハッシュ:',
       hitScore: '検索スコア:',
     },
+    inputPlaceholder: 'ボットと話す',
   },
   promptEditor: {
     placeholder: 'ここにプロンプトワードを入力してください。変数を挿入するには「{」を、プロンプトコンテンツブロックを挿入するには「/」を入力します。',
@@ -575,6 +580,16 @@ const translation = {
     deleteTip: 'タグは使用されています、削除しますか',
     created: 'タグは正常に作成されました',
     failed: 'タグの作成に失敗しました',
+  },
+  fileUploader: {
+    uploadFromComputer: 'ローカルアップロード',
+    pasteFileLink: 'ファイルリンクの貼り付け',
+    pasteFileLinkInputPlaceholder: 'URLを入力...',
+    uploadFromComputerLimit: 'アップロードファイルは{{size}}を超えてはなりません',
+    uploadFromComputerUploadError: 'ファイルのアップロードに失敗しました。再度アップロードしてください。',
+    uploadFromComputerReadError: 'ファイルの読み取りに失敗しました。もう一度やり直してください。',
+    fileExtensionNotSupport: 'ファイル拡張子はサポートされていません',
+    pasteFileLinkInvalid: '無効なファイルリンク',
   },
 }
 
