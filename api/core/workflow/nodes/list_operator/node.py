@@ -132,9 +132,9 @@ def _get_string_filter_func(*, condition: str, value: str) -> Callable[[str], bo
     match condition:
         case "contains":
             return _contains(value)
-        case "startswith":
+        case "start with":
             return _startswith(value)
-        case "endswith":
+        case "end with":
             return _endswith(value)
         case "is":
             return _is(value)
@@ -144,7 +144,7 @@ def _get_string_filter_func(*, condition: str, value: str) -> Callable[[str], bo
             return lambda x: x == ""
         case "not contains":
             return lambda x: not _contains(value)(x)
-        case "not is":
+        case "is not":
             return lambda x: not _is(value)(x)
         case "not in":
             return lambda x: not _in(value)(x)
@@ -168,7 +168,7 @@ def _get_number_filter_func(*, condition: str, value: int | float) -> Callable[[
     match condition:
         case "=":
             return _eq(value)
-        case "!=":
+        case "≠":
             return _ne(value)
         case "<":
             return _lt(value)
