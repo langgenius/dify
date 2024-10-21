@@ -491,6 +491,10 @@ export const FILE_STRUCT: Var[] = [
     variable: 'url',
     type: VarType.string,
   },
+  {
+    variable: 'remote_url',
+    type: VarType.string,
+  },
 ]
 
 export const DEFAULT_FILE_UPLOAD_SETTING = {

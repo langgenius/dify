@@ -185,7 +185,7 @@ def _get_number_filter_func(*, condition: str, value: int | float) -> Callable[[
 
 
 def _get_file_filter_func(*, key: str, condition: str, value: str | Sequence[str]) -> Callable[[File], bool]:
-    if key in {"name", "extension", "mime_type", "url"} and isinstance(value, str):
+    if key in {"name", "extension", "mime_type", "url", "remote_url"} and isinstance(value, str):
         extract_func = _get_file_extract_string_func(key=key)
         return lambda x: _get_string_filter_func(condition=condition, value=value)(extract_func(x))
     if key in {"type", "transfer_method"} and isinstance(value, Sequence):

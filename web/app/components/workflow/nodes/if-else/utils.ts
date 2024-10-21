@@ -81,6 +81,17 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
           ComparisonOperator.empty,
           ComparisonOperator.notEmpty,
         ]
+      case 'remote_url':
+        return [
+          ComparisonOperator.contains,
+          ComparisonOperator.notContains,
+          ComparisonOperator.startWith,
+          ComparisonOperator.endWith,
+          ComparisonOperator.is,
+          ComparisonOperator.isNot,
+          ComparisonOperator.empty,
+          ComparisonOperator.notEmpty,
+        ]
     }
     return []
   }
