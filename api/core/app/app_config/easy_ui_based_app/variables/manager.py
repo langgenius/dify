@@ -53,11 +53,11 @@ class BasicVariablesConfigManager:
                     VariableEntity(
                         type=variable_type,
                         variable=variable.get("variable"),
-                        description=variable.get("description", ""),
+                        description=variable.get("description") or "",
                         label=variable.get("label"),
                         required=variable.get("required", False),
                         max_length=variable.get("max_length"),
-                        options=variable.get("options", []),
+                        options=variable.get("options") or [],
                     )
                 )
 

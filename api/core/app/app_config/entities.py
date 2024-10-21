@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from core.file import FileExtraConfig, FileTransferMethod, FileType
 from core.model_runtime.entities.message_entities import PromptMessageRole
@@ -113,6 +113,16 @@ class VariableEntity(BaseModel):
     allowed_file_types: Sequence[FileType] = Field(default_factory=list)
     allowed_file_extensions: Sequence[str] = Field(default_factory=list)
     allowed_file_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def convert_none_description(cls, v: Any) -> str:
+        return v or ""
+
+    @field_validator("options", mode="before")
+    @classmethod
+    def convert_none_options(cls, v: Any) -> Sequence[str]:
+        return v or []
 
 
 class ExternalDataVariableEntity(BaseModel):

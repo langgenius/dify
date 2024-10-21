@@ -22,7 +22,7 @@ class WorkflowToolConfigurationUtils:
         if not start_node:
             return []
 
-        return [VariableEntity(**variable) for variable in start_node.get("data", {}).get("variables", [])]
+        return [VariableEntity.model_validate(variable) for variable in start_node.get("data", {}).get("variables", [])]
 
     @classmethod
     def check_is_synced(
