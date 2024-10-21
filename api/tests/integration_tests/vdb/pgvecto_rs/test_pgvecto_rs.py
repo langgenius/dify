@@ -2,7 +2,6 @@ from core.rag.datasource.vdb.pgvecto_rs.pgvecto_rs import PGVectoRS, PgvectoRSCo
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
     get_example_text,
-    setup_mock_redis,
 )
 
 

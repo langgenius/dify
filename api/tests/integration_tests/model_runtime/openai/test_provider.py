@@ -4,7 +4,6 @@ import pytest
 
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.openai.openai import OpenAIProvider
-from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
 
 
 @pytest.mark.parametrize("setup_openai_mock", [["chat"]], indirect=True)

@@ -1,6 +1,5 @@
 from core.tools.tool.api_tool import ApiTool
 from core.tools.tool.tool import Tool
-from tests.integration_tests.tools.__mock.http import setup_http_mock
 
 tool_bundle = {
     "server_url": "http://www.example.com/{path_param}",

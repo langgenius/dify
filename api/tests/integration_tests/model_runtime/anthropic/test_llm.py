@@ -7,7 +7,6 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, 
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, SystemPromptMessage, UserPromptMessage
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.anthropic.llm.llm import AnthropicLargeLanguageModel
-from tests.integration_tests.model_runtime.__mock.anthropic import setup_anthropic_mock
 
 
 @pytest.mark.parametrize("setup_anthropic_mock", [["none"]], indirect=True)

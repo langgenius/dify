@@ -11,7 +11,6 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.azure_ai_studio.llm.llm import AzureAIStudioLargeLanguageModel
-from tests.integration_tests.model_runtime.__mock.azure_ai_studio import setup_azure_ai_studio_mock
 
 
 @pytest.mark.parametrize("setup_azure_ai_studio_mock", [["chat"]], indirect=True)

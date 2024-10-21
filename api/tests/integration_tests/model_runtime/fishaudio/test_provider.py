@@ -5,7 +5,6 @@ import pytest
 
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.fishaudio.fishaudio import FishAudioProvider
-from tests.integration_tests.model_runtime.__mock.fishaudio import setup_fishaudio_mock
 
 
 @pytest.mark.parametrize("setup_fishaudio_mock", [["list-models"]], indirect=True)

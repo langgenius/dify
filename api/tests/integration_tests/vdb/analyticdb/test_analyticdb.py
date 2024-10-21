@@ -1,5 +1,5 @@
 from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbConfig, AnalyticdbVector
-from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, setup_mock_redis
+from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest
 
 
 class AnalyticdbVectorTest(AbstractVectorTest):
