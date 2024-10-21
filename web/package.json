@@ -13,7 +13,7 @@
     "fix": "next lint --fix",
     "eslint-fix": "eslint --fix",
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky install ./web/.husky",
-    "gen-icons": "node ./app/components/base/icons/script.js",
+    "gen-icons": "node ./app/components/base/icons/script.mjs",
     "uglify-embed": "node ./bin/uglify-embed",
     "check-i18n": "node ./i18n/check-i18n.js",
     "auto-gen-i18n": "node ./i18n/auto-gen-i18n.js",
