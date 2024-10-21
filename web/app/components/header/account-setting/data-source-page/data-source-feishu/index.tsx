@@ -5,6 +5,7 @@ import useSWR from 'swr'
 import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
 import { FeishuProvider } from './constants'
+import FeishuConfigModal from './config-feishu-modal'
 import type { DataSourceFeishu as TDataSourceFeishu } from '@/models/common'
 import { useAppContext } from '@/context/app-context'
 import { fetchFeishuConnection } from '@/service/common'
@@ -31,16 +32,33 @@ const DataSourceFeishu: FC<Props> = ({
   workspaces,
 }) => {
   const { isCurrentWorkspaceManager } = useAppContext()
+  const [showFeishuConfigModal, setShowFeishuConfigModal] = useState(false)
   const [canConnectFeishu, setCanConnectFeishu] = useState(false)
   const { data } = useSWR(canConnectFeishu ? `/oauth/data-source/${FeishuProvider}` : null, fetchFeishuConnection)
 
   const connected = !!workspaces.length
 
   const handleConnectFeishu = () => {
-    if (!isCurrentWorkspaceManager)
-      return
+    console.log('click feishu config')
+    setShowFeishuConfigModal(true)
 
-    setCanConnectFeishu(true)
+    // TODO 展示配置弹窗
+
+    // 原始逻辑：
+    // console.log('config feishu')
+    // if (!isCurrentWorkspaceManager)
+    //   return
+
+    // setCanConnectFeishu(true)
+  }
+
+  const handleAdded = () => {
+    console.log('after feishu config')
+    // setCanConnectFeishu(true)
+  }
+
+  const hideConfig = () => {
+    setShowFeishuConfigModal(false)
   }
 
   const handleAuthAgain = () => {
@@ -56,31 +74,36 @@ const DataSourceFeishu: FC<Props> = ({
       window.location.href = data.data
   }, [data])
   return (
-    <Panel
-      type={DataSourceType.feishu}
-      isConfigured={connected}
-      onConfigure={handleConnectFeishu}
-      readOnly={!isCurrentWorkspaceManager}
-      isSupportList
-      configuredList={workspaces.map(workspace => ({
-        id: workspace.id,
-        logo: ({ className }: { className: string }) => (
-          <Icon
-            src={workspace.source_info.workspace_icon!}
-            name={workspace.source_info.workspace_name}
-            className={className}
-          />),
-        name: workspace.source_info.workspace_name,
-        isActive: workspace.is_bound,
-        feishuConfig: {
-          total: workspace.source_info.total || 0,
-        },
-      }))}
-      onRemove={() => { }} // handled in operation/index.tsx
-      notionActions={{
-        onChangeAuthorizedPage: handleAuthAgain,
-      }}
-    />
+    <>
+      <Panel
+        type={DataSourceType.feishu}
+        isConfigured={connected}
+        onConfigure={handleConnectFeishu}
+        readOnly={!isCurrentWorkspaceManager}
+        isSupportList
+        configuredList={workspaces.map(workspace => ({
+          id: workspace.id,
+          logo: ({ className }: { className: string }) => (
+            <Icon
+              src={workspace.source_info.workspace_icon!}
+              name={workspace.source_info.workspace_name}
+              className={className}
+            />),
+          name: workspace.source_info.workspace_name,
+          isActive: workspace.is_bound,
+          feishuConfig: {
+            total: workspace.source_info.total || 0,
+          },
+        }))}
+        onRemove={() => { }} // handled in operation/index.tsx
+        notionActions={{
+          onChangeAuthorizedPage: handleAuthAgain,
+        }}
+      />
+      {showFeishuConfigModal && (
+        <FeishuConfigModal onSaved={handleAdded} onCancel={hideConfig} />
+      )}
+    </>
   )
 }
 export default React.memo(DataSourceFeishu)

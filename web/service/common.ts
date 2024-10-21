@@ -7,6 +7,7 @@ import type {
   CommonResponse,
   DataSourceFeishu,
   DataSourceNotion,
+  FeishuConfigBody,
   FileUploadConfigResponse,
   ICurrentWorkspace,
   IWorkspace,
@@ -319,6 +320,10 @@ export const fetchFeishuDataSource: Fetcher<{ data: DataSourceFeishu[] }, { url:
 
 export const syncDataSourceFeishu: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
   return get<CommonResponse>(url)
+}
+
+export const updateDataSourceFeishuConfig: Fetcher<FeishuConfigBody, { url: string; body: FeishuConfigBody }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<FeishuConfigBody>
 }
 
 export const updateDataSourceFeishuAction: Fetcher<CommonResponse, { url: string }> = ({ url }) => {

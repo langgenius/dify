@@ -185,6 +185,11 @@ export type FirecrawlConfig = {
   base_url: string
 }
 
+export type FeishuConfig = {
+  app_id: string
+  app_secret: string
+}
+
 export type DataSourceItem = {
   id: string
   category: DataSourceCategory
@@ -301,6 +306,11 @@ export type DataSourceFeishuPage = {
 
 export type FeishuPage = DataSourceFeishuPage & {
   workspace_id: string
+}
+
+export type FeishuConfigBody = {
+  app_id: string
+  app_secret: string
 }
 
 export type DataSourceFeishuPageMap = Record<string, DataSourceFeishuPage & { workspace_id: string }>

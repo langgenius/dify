@@ -21,6 +21,12 @@ const translation = {
     apiKeyPlaceholder: '从 jina.ai 获取 API Key',
     getApiKeyLinkText: '从 jina.ai 获取您的免费 API Key',
   },
+  feishu: {
+    configFeishu: '配置 飞书 Wiki',
+    appIdPlaceholder: '从 飞书开放平台 获取 App Id',
+    appSecretPlaceholder: '从 飞书开放平台 获取 App Secret',
+    getApiKeyLinkText: '从 飞书开放平台 获取您的 App ID 和 App Secret',
+  },
   stepOne: {
     filePreview: '文件预览',
     pagePreview: '页面预览',

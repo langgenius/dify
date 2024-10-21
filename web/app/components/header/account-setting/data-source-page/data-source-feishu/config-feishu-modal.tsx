@@ -2,35 +2,33 @@
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { FeishuProvider } from './constants'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Button from '@/app/components/base/button'
-import type { FirecrawlConfig } from '@/models/common'
+import type { FeishuConfig } from '@/models/common'
 import Field from '@/app/components/datasets/create/website/base/field'
 import Toast from '@/app/components/base/toast'
-import { createDataSourceApiKeyBinding } from '@/service/datasets'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
+import { updateDataSourceFeishuConfig } from '@/service/common'
 type Props = {
   onCancel: () => void
   onSaved: () => void
 }
 
-const I18N_PREFIX = 'datasetCreation.firecrawl'
+const I18N_PREFIX = 'datasetCreation.feishu'
 
-const DEFAULT_BASE_URL = 'https://api.firecrawl.dev'
-
-const ConfigFirecrawlModal: FC<Props> = ({
+const FeishuConfigModal: FC<Props> = ({
   onCancel,
   onSaved,
 }) => {
   const { t } = useTranslation()
   const [isSaving, setIsSaving] = useState(false)
-  const [config, setConfig] = useState<FirecrawlConfig>({
-    api_key: '',
-    base_url: '',
+  const [config, setConfig] = useState<FeishuConfig>({
+    app_id: '',
+    app_secret: '',
   })
 
   const handleConfigChange = useCallback((key: string) => {
@@ -43,12 +41,16 @@ const ConfigFirecrawlModal: FC<Props> = ({
     if (isSaving)
       return
     let errorMsg = ''
-    if (config.base_url && !((config.base_url.startsWith('http://') || config.base_url.startsWith('https://'))))
-      errorMsg = t('common.errorMsg.urlError')
+
     if (!errorMsg) {
-      if (!config.api_key) {
+      if (!config.app_id) {
         errorMsg = t('common.errorMsg.fieldRequired', {
-          field: 'API Key',
+          field: 'App Id',
+        })
+      }
+      if (!config.app_secret) {
+        errorMsg = t('common.errorMsg.fieldRequired', {
+          field: 'App Secret',
         })
       }
     }
@@ -60,20 +62,27 @@ const ConfigFirecrawlModal: FC<Props> = ({
       })
       return
     }
-    const postData = {
-      category: 'website',
-      provider: 'firecrawl',
-      credentials: {
-        auth_type: 'bearer',
-        config: {
-          api_key: config.api_key,
-          base_url: config.base_url || DEFAULT_BASE_URL,
-        },
-      },
-    }
+    // const postData = {
+    //   category: 'website',
+    //   provider: 'firecrawl',
+    //   credentials: {
+    //     auth_type: 'bearer',
+    //     config: {
+    //       app_id: config.app_id,
+    //       app_secret: config.app_secret,
+    //     },
+    //   },
+    // }
     try {
       setIsSaving(true)
-      await createDataSourceApiKeyBinding(postData)
+      await updateDataSourceFeishuConfig({
+        url: `/oauth/data-source/${FeishuProvider}`,
+        body: {
+          app_id: config.app_id,
+          app_secret: config.app_secret,
+        },
+      })
+
       Toast.notify({
         type: 'success',
         message: t('common.api.success'),
@@ -84,7 +93,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
     }
 
     onSaved()
-  }, [config.api_key, config.base_url, onSaved, t, isSaving])
+  }, [config.app_id, config.app_secret, onSaved, t, isSaving])
 
   return (
     <PortalToFollowElem open>
@@ -93,27 +102,28 @@ const ConfigFirecrawlModal: FC<Props> = ({
           <div className='mx-2 w-[640px] max-h-[calc(100vh-120px)] bg-white shadow-xl rounded-2xl overflow-y-auto'>
             <div className='px-8 pt-8'>
               <div className='flex justify-between items-center mb-4'>
-                <div className='text-xl font-semibold text-gray-900'>{t(`${I18N_PREFIX}.configFirecrawl`)}</div>
+                <div className='text-xl font-semibold text-gray-900'>{t(`${I18N_PREFIX}.configFeishu`)}</div>
               </div>
               <div className='space-y-4'>
                 <Field
-                  label='API Key'
+                  label='App Id'
                   labelClassName='!text-sm'
                   isRequired
-                  value={config.api_key}
-                  onChange={handleConfigChange('api_key')}
-                  placeholder={t(`${I18N_PREFIX}.apiKeyPlaceholder`)!}
+                  value={config.app_id}
+                  onChange={handleConfigChange('app_id')}
+                  placeholder={t(`${I18N_PREFIX}.appIdPlaceholder`)!}
                 />
                 <Field
-                  label='Base URL'
+                  label='App Secret'
                   labelClassName='!text-sm'
-                  value={config.base_url}
-                  onChange={handleConfigChange('base_url')}
-                  placeholder={DEFAULT_BASE_URL}
+                  isRequired
+                  value={config.app_secret}
+                  onChange={handleConfigChange('app_secret')}
+                  placeholder={t(`${I18N_PREFIX}.appSecretPlaceholder`)!}
                 />
               </div>
               <div className='my-8 flex justify-between items-center h-8'>
-                <a className='flex items-center space-x-1 leading-[18px] text-xs font-normal text-[#155EEF]' target='_blank' href='https://www.firecrawl.dev/account'>
+                <a className='flex items-center space-x-1 leading-[18px] text-xs font-normal text-[#155EEF]' target='_blank' href='https://open.larkoffice.com/app'>
                   <span>{t(`${I18N_PREFIX}.getApiKeyLinkText`)}</span>
                   <LinkExternal02 className='w-3 h-3' />
                 </a>
@@ -137,24 +147,10 @@ const ConfigFirecrawlModal: FC<Props> = ({
 
               </div>
             </div>
-            <div className='border-t-[0.5px] border-t-black/5'>
-              <div className='flex justify-center items-center py-3 bg-gray-50 text-xs text-gray-500'>
-                <Lock01 className='mr-1 w-3 h-3 text-gray-500' />
-                {t('common.modelProvider.encrypted.front')}
-                <a
-                  className='text-primary-600 mx-1'
-                  target='_blank' rel='noopener noreferrer'
-                  href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
-                >
-                  PKCS1_OAEP
-                </a>
-                {t('common.modelProvider.encrypted.back')}
-              </div>
-            </div>
           </div>
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>
   )
 }
-export default React.memo(ConfigFirecrawlModal)
+export default React.memo(FeishuConfigModal)
