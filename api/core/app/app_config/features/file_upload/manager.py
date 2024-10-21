@@ -20,7 +20,7 @@ class FileUploadConfigManager:
                 data = {
                     "image_config": {
                         "number_limits": file_upload_dict["number_limits"],
-                        "transfer_methods": file_upload_dict["allowed_file_upload_methods"],
+                        "transfer_methods": file_upload_dict["allowed_upload_methods"],
                     }
                 }
 
