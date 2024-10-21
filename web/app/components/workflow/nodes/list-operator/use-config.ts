@@ -67,7 +67,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
   const itemVarTypeShowName = useMemo(() => {
     if (!inputs.variable)
       return '?'
-    return [itemVarType.substring(0, 1).toUpperCase(), itemVarType.substring(1)].join('')
+    return [(itemVarType || VarType.string).substring(0, 1).toUpperCase(), (itemVarType || VarType.string).substring(1)].join('')
   }, [inputs.variable, itemVarType])
 
   const hasSubVariable = [VarType.arrayFile].includes(varType)
