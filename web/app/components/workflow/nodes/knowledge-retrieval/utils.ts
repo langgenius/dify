@@ -94,6 +94,7 @@ export const getMultipleRetrievalConfig = (
   multipleRetrievalConfig: MultipleRetrievalConfig,
   selectedDatasets: DataSet[],
   originalDatasets: DataSet[],
+  isValidRerankModel?: boolean,
 ) => {
   const shouldSetWeightDefaultValue = xorBy(selectedDatasets, originalDatasets, 'id').length > 0
 
@@ -133,7 +134,7 @@ export const getMultipleRetrievalConfig = (
   if (allHighQuality && !inconsistentEmbeddingModel && reranking_mode === undefined && allInternal)
     result.reranking_mode = RerankingModeEnum.WeightedScore
 
-  if (allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined) && allInternal && !weights) {
+  if (allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined || !isValidRerankModel) && allInternal && !weights) {
     result.weights = {
       vector_setting: {
         vector_weight: allHighQualityVectorSearch
@@ -154,7 +155,10 @@ export const getMultipleRetrievalConfig = (
     }
   }
 
-  if (shouldSetWeightDefaultValue && allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined) && allInternal && weights) {
+  if (shouldSetWeightDefaultValue && allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined || !isValidRerankModel) && allInternal && weights) {
+    if (!isValidRerankModel)
+      result.reranking_mode = RerankingModeEnum.WeightedScore
+
     result.weights = {
       vector_setting: {
         vector_weight: allHighQualityVectorSearch

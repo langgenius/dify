@@ -16,6 +16,8 @@ import type { DataSet } from '@/models/datasets'
 import {
   getMultipleRetrievalConfig,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const Icon = (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -41,10 +43,14 @@ const DatasetConfig: FC = () => {
 
   const hasData = dataSet.length > 0
 
+  const {
+    isValid: isValidRerankModel,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+
   const onRemove = (id: string) => {
     const filteredDataSets = dataSet.filter(item => item.id !== id)
     setDataSet(filteredDataSets)
-    const retrievalConfig = getMultipleRetrievalConfig(datasetConfigs as any, filteredDataSets, dataSet)
+    const retrievalConfig = getMultipleRetrievalConfig(datasetConfigs as any, filteredDataSets, dataSet, isValidRerankModel)
     setDatasetConfigs({
       ...(datasetConfigs as any),
       ...retrievalConfig,

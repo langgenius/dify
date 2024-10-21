@@ -63,6 +63,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
+    isValid: isValidRerankModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const {
@@ -231,7 +232,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
       if (payload.retrieval_mode === RETRIEVE_TYPE.multiWay && newDatasets.length > 0) {
         const multipleRetrievalConfig = draft.multiple_retrieval_config
-        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, newDatasets, selectedDatasets)
+        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, newDatasets, selectedDatasets, isValidRerankModel)
       }
     })
     setInputs(newInputs)
@@ -243,7 +244,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       || (allExternal && newDatasets.length > 1)
     )
       setRerankModelOpen(true)
-  }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets])
+  }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, isValidRerankModel])
 
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string

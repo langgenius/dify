@@ -180,6 +180,7 @@ export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: Mode
     defaultModel,
     currentProvider,
     currentModel,
+    isValid: !!modelList.find(provider => provider.provider === currentProvider?.provider && provider.models.find(model => model.model === currentModel?.model)),
   }
 }
 
