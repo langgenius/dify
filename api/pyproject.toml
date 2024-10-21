@@ -87,14 +87,6 @@ ignore = [
 "tests/*" = [
     "F811", # redefined-while-unused
     "F401", # unused-import
-    "PT001", # missing-function-docstring
-    "PT004", # missing-parameter-docstring
-]
-"core/rag/extractor/word_extractor.py" = [
-    "RUF100", # Unused `noqa` directive
-]
-"core/tools/provider/builtin/gitlab/tools/gitlab_commits.py" = [
-    "PLR1714", # Consider merging multiple comparisons
 ]
 
 [tool.ruff.lint.pyflakes]
