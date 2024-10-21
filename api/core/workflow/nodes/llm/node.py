@@ -320,11 +320,11 @@ class LLMNode(BaseNode[LLMNodeData]):
             variable_selectors = variable_template_parser.extract_variable_selectors()
 
         for variable_selector in variable_selectors:
-            variable_value = self.graph_runtime_state.variable_pool.get_any(variable_selector.value_selector)
+            variable_value = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
             if variable_value is None:
                 raise ValueError(f"Variable {variable_selector.variable} not found")
 
-            inputs[variable_selector.variable] = variable_value
+            inputs[variable_selector.variable] = variable_value.to_object()
 
         memory = node_data.memory
         if memory and memory.query_prompt_template:
@@ -332,11 +332,11 @@ class LLMNode(BaseNode[LLMNodeData]):
                 template=memory.query_prompt_template
             ).extract_variable_selectors()
             for variable_selector in query_variable_selectors:
-                variable_value = self.graph_runtime_state.variable_pool.get_any(variable_selector.value_selector)
+                variable_value = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
                 if variable_value is None:
                     raise ValueError(f"Variable {variable_selector.variable} not found")
 
-                inputs[variable_selector.variable] = variable_value
+                inputs[variable_selector.variable] = variable_value.to_object()
 
         return inputs
 
