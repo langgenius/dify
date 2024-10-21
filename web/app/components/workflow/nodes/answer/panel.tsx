@@ -38,6 +38,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
         onChange={handleAnswerChange}
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
+        isSupportFileVar
       />
     </div>
   )

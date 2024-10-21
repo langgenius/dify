@@ -1,6 +1,6 @@
 from typing import cast
 
-from core.workflow.entities.node_entities import NodeType
+from core.workflow.nodes import NodeType
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
