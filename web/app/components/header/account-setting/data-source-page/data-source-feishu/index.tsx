@@ -39,22 +39,12 @@ const DataSourceFeishu: FC<Props> = ({
   const connected = !!workspaces.length
 
   const handleConnectFeishu = () => {
-    console.log('click feishu config')
     setShowFeishuConfigModal(true)
-
-    // TODO 展示配置弹窗
-
-    // 原始逻辑：
-    // console.log('config feishu')
-    // if (!isCurrentWorkspaceManager)
-    //   return
-
-    // setCanConnectFeishu(true)
   }
 
   const handleAdded = () => {
-    console.log('after feishu config')
-    // setCanConnectFeishu(true)
+    setCanConnectFeishu(true)
+    setShowFeishuConfigModal(false)
   }
 
   const hideConfig = () => {
@@ -95,7 +85,7 @@ const DataSourceFeishu: FC<Props> = ({
             total: workspace.source_info.total || 0,
           },
         }))}
-        onRemove={() => { }} // handled in operation/index.tsx
+        onRemove={() => { }}
         notionActions={{
           onChangeAuthorizedPage: handleAuthAgain,
         }}

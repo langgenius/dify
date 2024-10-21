@@ -62,17 +62,7 @@ const FeishuConfigModal: FC<Props> = ({
       })
       return
     }
-    // const postData = {
-    //   category: 'website',
-    //   provider: 'firecrawl',
-    //   credentials: {
-    //     auth_type: 'bearer',
-    //     config: {
-    //       app_id: config.app_id,
-    //       app_secret: config.app_secret,
-    //     },
-    //   },
-    // }
+
     try {
       setIsSaving(true)
       await updateDataSourceFeishuConfig({
@@ -117,7 +107,6 @@ const FeishuConfigModal: FC<Props> = ({
                   label='App Secret'
                   labelClassName='!text-sm'
                   isRequired
-                  type="password"
                   value={config.app_secret}
                   onChange={handleConfigChange('app_secret')}
                   placeholder={t(`${I18N_PREFIX}.appSecretPlaceholder`)!}
