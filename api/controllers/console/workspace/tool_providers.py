@@ -360,16 +360,15 @@ class ToolWorkflowProviderCreateApi(Resource):
         args = reqparser.parse_args()
 
         return WorkflowToolManageService.create_workflow_tool(
-            user_id,
-            tenant_id,
-            args["workflow_app_id"],
-            args["name"],
-            args["label"],
-            args["icon"],
-            args["description"],
-            args["parameters"],
-            args["privacy_policy"],
-            args.get("labels", []),
+            user_id=user_id,
+            tenant_id=tenant_id,
+            workflow_app_id=args["workflow_app_id"],
+            name=args["name"],
+            label=args["label"],
+            icon=args["icon"],
+            description=args["description"],
+            parameters=args["parameters"],
+            privacy_policy=args["privacy_policy"],
         )
 
 

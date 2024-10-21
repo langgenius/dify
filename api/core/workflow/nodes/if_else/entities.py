@@ -1,8 +1,8 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.nodes.base import BaseNodeData
 from core.workflow.utils.condition.entities import Condition
 
 
@@ -21,6 +21,6 @@ class IfElseNodeData(BaseNodeData):
         conditions: list[Condition]
 
     logical_operator: Optional[Literal["and", "or"]] = "and"
-    conditions: Optional[list[Condition]] = None
+    conditions: Optional[list[Condition]] = Field(default=None, deprecated=True)
 
     cases: Optional[list[Case]] = None

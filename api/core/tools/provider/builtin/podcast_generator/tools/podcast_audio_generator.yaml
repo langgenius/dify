@@ -1,0 +1,95 @@
+identity:
+  name: podcast_audio_generator
+  author: Dify
+  label:
+    en_US: Podcast Audio Generator
+    zh_Hans: 播客音频生成器
+description:
+  human:
+    en_US: Generate a podcast audio file from a script with two alternating voices using OpenAI's TTS service.
+    zh_Hans: 使用 OpenAI 的 TTS 服务，从包含两个交替声音的脚本生成播客音频文件。
+  llm: This tool converts a prepared podcast script into an audio file using OpenAI's Text-to-Speech service, with two specified voices for alternating hosts.
+parameters:
+  - name: script
+    type: string
+    required: true
+    label:
+      en_US: Podcast Script
+      zh_Hans: 播客脚本
+    human_description:
+      en_US: A string containing alternating lines for two hosts, separated by newline characters.
+      zh_Hans: 包含两位主持人交替台词的字符串，每行用换行符分隔。
+    llm_description: A string representing the script, with alternating lines for two hosts separated by newline characters.
+    form: llm
+  - name: host1_voice
+    type: select
+    required: true
+    label:
+      en_US: Host 1 Voice
+      zh_Hans: 主持人1 音色
+    human_description:
+      en_US: The voice for the first host.
+      zh_Hans: 第一位主持人的音色。
+    llm_description: The voice identifier for the first host's voice.
+    options:
+      - label:
+          en_US: Alloy
+          zh_Hans: Alloy
+        value: alloy
+      - label:
+          en_US: Echo
+          zh_Hans: Echo
+        value: echo
+      - label:
+          en_US: Fable
+          zh_Hans: Fable
+        value: fable
+      - label:
+          en_US: Onyx
+          zh_Hans: Onyx
+        value: onyx
+      - label:
+          en_US: Nova
+          zh_Hans: Nova
+        value: nova
+      - label:
+          en_US: Shimmer
+          zh_Hans: Shimmer
+        value: shimmer
+    form: form
+  - name: host2_voice
+    type: select
+    required: true
+    label:
+      en_US: Host 2 Voice
+      zh_Hans: 主持人2 音色
+    human_description:
+      en_US: The voice for the second host.
+      zh_Hans: 第二位主持人的音色。
+    llm_description: The voice identifier for the second host's voice.
+    options:
+      - label:
+          en_US: Alloy
+          zh_Hans: Alloy
+        value: alloy
+      - label:
+          en_US: Echo
+          zh_Hans: Echo
+        value: echo
+      - label:
+          en_US: Fable
+          zh_Hans: Fable
+        value: fable
+      - label:
+          en_US: Onyx
+          zh_Hans: Onyx
+        value: onyx
+      - label:
+          en_US: Nova
+          zh_Hans: Nova
+        value: nova
+      - label:
+          en_US: Shimmer
+          zh_Hans: Shimmer
+        value: shimmer
+    form: form

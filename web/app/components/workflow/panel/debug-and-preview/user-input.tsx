@@ -19,7 +19,11 @@ const UserInput = () => {
   const variables = startNode?.data.variables || []
 
   const handleValueChange = (variable: string, v: string) => {
-    workflowStore.getState().setInputs({
+    const {
+      inputs,
+      setInputs,
+    } = workflowStore.getState()
+    setInputs({
       ...inputs,
       [variable]: v,
     })
@@ -29,7 +33,7 @@ const UserInput = () => {
     return null
 
   return (
-    <div className={cn('relative bg-components-panel-on-panel-item-bg rounded-xl border-[0.5px] border-components-panel-border-subtle shadow-xs z-[1]')}>
+    <div className={cn('sticky top-0 bg-components-panel-on-panel-item-bg rounded-xl border-[0.5px] border-components-panel-border-subtle shadow-xs z-[1]')}>
       <div className='px-4 pt-3 pb-4'>
         {variables.map((variable, index) => (
           <div

@@ -47,7 +47,7 @@ const ParamsConfig = ({
   const isValid = () => {
     let errMsg = ''
     if (tempDataSetConfigs.retrieval_model === RETRIEVE_TYPE.multiWay) {
-      if (!tempDataSetConfigs.reranking_model?.reranking_model_name && (!rerankDefaultModel && isRerankDefaultModelValid))
+      if (!tempDataSetConfigs.reranking_model?.reranking_model_name && (rerankDefaultModel && !isRerankDefaultModelValid))
         errMsg = t('appDebug.datasetConfig.rerankModelRequired')
     }
     if (errMsg) {
@@ -61,7 +61,6 @@ const ParamsConfig = ({
   const handleSave = () => {
     if (!isValid())
       return
-
     const config = { ...tempDataSetConfigs }
     if (config.retrieval_model === RETRIEVE_TYPE.multiWay && !config.reranking_model) {
       config.reranking_model = {
