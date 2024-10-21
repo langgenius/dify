@@ -35,7 +35,7 @@ const Toast = ({
   if (typeof message !== 'string')
     return null
 
-  return <div className={classNames(
+  return <div data-testid="toast" className={classNames(
     className,
     'fixed rounded-md p-4 my-4 mx-8 z-[9999]',
     'top-0',
@@ -53,7 +53,7 @@ const Toast = ({
         {type === 'info' && <InformationCircleIcon className="w-5 h-5 text-blue-400" aria-hidden="true" />}
       </div>
       <div className="ml-3">
-        <h3 className={
+        <h3 data-testid={`${type}-toast-message`} className={
           classNames(
             'text-sm font-medium',
             type === 'success' ? 'text-green-800' : '',

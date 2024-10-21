@@ -42,7 +42,7 @@ const Nav = ({
       ${isActivated && 'bg-components-main-nav-nav-button-bg-active shadow-md font-semibold'}
       ${!curNav && !isActivated && 'hover:bg-components-main-nav-nav-button-bg-hover'}
     `}>
-      <Link href={link}>
+      <Link href={link} data-testid={`nav-item${link}`}>
         <div
           onClick={() => setAppDetail()}
           className={classNames(`

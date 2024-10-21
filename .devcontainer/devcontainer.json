@@ -22,24 +22,34 @@
 			"version": "latest",
 			"dockerDashComposeVersion": "v2"
 		}
+		// "ghcr.io/devcontainers/features/desktop-lite:1": {
+		// 	// Required to runs a GUI for Cypress (yarn cy:open)
+		// }
 	},
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"ms-python.pylint",
 				"GitHub.copilot",
-				"ms-python.python"
+				"ms-python.python",
+				"alexkrechik.cucumberautocomplete"
 			]
 		}
 	},
 	"postStartCommand": "./.devcontainer/post_start_command.sh",
-	"postCreateCommand": "./.devcontainer/post_create_command.sh"
+	"postCreateCommand": "./.devcontainer/post_create_command.sh",
+	
 
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
-	// "forwardPorts": [],
+	"forwardPorts": [ 
+		// 6080 // VNC client for Cypress
+	 ],
+	"portsAttributes": {
+		"6080": { "label": "desktop" } // VNC client for Cypress
+	}
 
 	// Use 'postCreateCommand' to run commands after the container is created.
 	// "postCreateCommand": "python --version",

@@ -37,6 +37,7 @@
     "app/components/develop/Prose.jsx"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "cypress.config.ts"
   ]
 }

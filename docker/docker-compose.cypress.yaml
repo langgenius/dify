@@ -1,0 +1,32 @@
+# This Docker Compose file extends services from docker-compose.yaml 
+# specifically for running end-to-end (e2e) tests. 
+# It simplifies configuration by overriding certain values here.
+#
+# Additionally, the volume mounts defined in docker-compose.yaml 
+# are customizable to ensure that test data is stored in docker/volumes/cypress.
+
+name: dify-cypress
+services:
+  api:
+    extends:
+      file: docker-compose.yaml
+      service: api
+    ports:
+      - 5001:5001
+
+  db:
+    extends:
+      file: docker-compose.yaml
+      service: db
+    ports:
+      - 54321:5432
+
+  redis:
+    extends:
+      file: docker-compose.yaml
+      service: redis
+
+networks:
+  ssrf_proxy_network:
+    driver: bridge
+    internal: true

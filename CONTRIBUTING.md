@@ -146,6 +146,8 @@ The website is bootstrapped on [Next.js](https://nextjs.org/) boilerplate in Typ
 ├── types                 // descriptions of function params and return values
 └── utils                 // Shared utility functions
 ```
+#### Frontend Docs
+- [E2E Testing](web/cypress/README.md)
 
 ## Submitting your PR
 

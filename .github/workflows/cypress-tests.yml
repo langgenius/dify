@@ -1,0 +1,46 @@
+name: Cypress Tests
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - main
+
+jobs:
+  e2e-tests:
+    runs-on: ubuntu-latest
+    env:
+      CYPRESS_COMMAND_TIMEOUT: ${{ vars.CYPRESS_COMMAND_TIMEOUT }}
+    steps:
+      - name: Checkout (GitHub)
+        uses: actions/checkout@v4
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.CYPRESS_CONTAINER_REGISTRY_TOKEN }}
+
+      - name: Build and run dev container task
+        uses: devcontainers/ci@v0.3
+        with:
+          imageName: ghcr.io/${{ vars.DOCKER_NAMESPACE }}/${{ vars.DEVCONTAINER_IMAGE_NAME }}
+          cacheFrom: ghcr.io/${{ vars.DOCKER_NAMESPACE }}/${{ vars.DEVCONTAINER_IMAGE_NAME }}
+          push: always
+          runCmd: cd web && yarn test:e2e:ci
+
+      - name: Upload Cypress videos
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-videos
+          path: web/cypress/videos/**/*.mp4
+        if: failure()
+      
+      - name: Upload Cypress screenshots
+        uses: actions/upload-artifact@v4
+        with:
+          name: cypress-screenshots
+          path: web/cypress/screenshots/**/*.png
+        if: failure()
