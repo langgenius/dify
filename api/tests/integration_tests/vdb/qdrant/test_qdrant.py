@@ -1,6 +1,7 @@
 from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig, QdrantVector
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
+    setup_mock_redis,
 )
 
 

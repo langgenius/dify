@@ -5,6 +5,7 @@ import pytest
 from core.model_runtime.model_providers.fishaudio.tts.tts import (
     FishAudioText2SpeechModel,
 )
+from tests.integration_tests.model_runtime.__mock.fishaudio import setup_fishaudio_mock
 
 
 @pytest.mark.parametrize("setup_fishaudio_mock", [["tts"]], indirect=True)

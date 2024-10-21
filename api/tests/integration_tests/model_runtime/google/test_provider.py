@@ -4,6 +4,7 @@ import pytest
 
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.google.google import GoogleProvider
+from tests.integration_tests.model_runtime.__mock.google import setup_google_mock
 
 
 @pytest.mark.parametrize("setup_google_mock", [["none"]], indirect=True)

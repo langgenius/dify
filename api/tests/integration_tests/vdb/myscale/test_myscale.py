@@ -1,6 +1,7 @@
 from core.rag.datasource.vdb.myscale.myscale_vector import MyScaleConfig, MyScaleVector
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
+    setup_mock_redis,
 )
 
 

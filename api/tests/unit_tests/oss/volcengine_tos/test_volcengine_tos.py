@@ -2,6 +2,7 @@ from collections.abc import Generator
 
 from flask import Flask
 from tos import TosClientV2
+from tos.clientv2 import GetObjectOutput, HeadObjectOutput, PutObjectOutput
 
 from extensions.storage.volcengine_tos_storage import VolcengineTosStorage
 from tests.unit_tests.oss.__mock.volcengine_tos import (
@@ -9,6 +10,7 @@ from tests.unit_tests.oss.__mock.volcengine_tos import (
     get_example_data,
     get_example_filename,
     get_example_filepath,
+    setup_volcengine_tos_mock,
 )
 
 

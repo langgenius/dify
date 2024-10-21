@@ -7,6 +7,7 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, 
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, UserPromptMessage
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.huggingface_hub.llm.llm import HuggingfaceHubLargeLanguageModel
+from tests.integration_tests.model_runtime.__mock.huggingface import setup_huggingface_mock
 
 
 @pytest.mark.parametrize("setup_huggingface_mock", [["none"]], indirect=True)

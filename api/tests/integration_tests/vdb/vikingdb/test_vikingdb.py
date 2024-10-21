@@ -1,5 +1,6 @@
 from core.rag.datasource.vdb.vikingdb.vikingdb_vector import VikingDBConfig, VikingDBVector
-from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text
+from tests.integration_tests.vdb.__mock.vikingdb import setup_vikingdb_mock
+from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text, setup_mock_redis
 
 
 class VikingDBVectorTest(AbstractVectorTest):

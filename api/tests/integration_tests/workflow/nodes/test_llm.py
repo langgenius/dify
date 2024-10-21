@@ -26,6 +26,8 @@ from models.provider import ProviderType
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 
 """FOR MOCK FIXTURES, DO NOT REMOVE"""
+from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
+from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
 
 
 def init_llm_node(config: dict) -> LLMNode:
