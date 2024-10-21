@@ -75,7 +75,7 @@ const translation = {
     verify: '驗證',
     resend: '發送',
     didNotReceiveCode: '沒有收到驗證碼？',
-    emptyCode: '代碼是必需的',
+    emptyCode: '驗證碼是必需的',
     checkYourEmail: '檢查您的電子郵件',
     tips: '我們將驗證碼發送到 <strong>{{email}}</strong>',
     verificationCodePlaceholder: '輸入6位代碼',
