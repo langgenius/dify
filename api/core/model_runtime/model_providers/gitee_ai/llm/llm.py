@@ -31,12 +31,11 @@ class GiteeAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
         return super()._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
-        self._add_custom_parameters(credentials, None, None)
+        self._add_custom_parameters(credentials, model, None)
         super().validate_credentials(model, credentials)
 
     @staticmethod
     def _add_custom_parameters(credentials: dict, model: str, model_parameters: dict) -> None:
-        print(model_parameters)
         if model is None:
             model = "bge-large-zh-v1.5"
 
