@@ -100,6 +100,9 @@ importers:
       fast-deep-equal:
         specifier: ^3.1.3
         version: 3.1.3
+      globals:
+        specifier: ^15.11.0
+        version: 15.11.0
       i18next:
         specifier: ^22.4.13
         version: 22.5.1
@@ -381,7 +384,7 @@ importers:
         specifier: ^7.0.3
         version: 7.0.3
       eslint:
-        specifier: ^9.10.0
+        specifier: ^9.13.0
         version: 9.13.0(jiti@1.21.6)
       eslint-config-next:
         specifier: ^15.0.0-canary.202

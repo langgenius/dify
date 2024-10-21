@@ -1,8 +1,9 @@
-import { stylistic, typescript, combine, javascript } from '@antfu/eslint-config'
+import { stylistic, typescript, combine, javascript, GLOB_TESTS, GLOB_JSX, GLOB_TSX } from '@antfu/eslint-config'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import js from '@eslint/js'
 import { FlatCompat } from '@eslint/eslintrc'
+import globals from 'globals'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -65,7 +66,12 @@ export default combine(
       "ts/no-empty-object-type": "off",
     }
   }),
-  // javascript(),
+  javascript({
+    overrides: {
+      'no-unused-vars': 'off',
+      'no-use-before-define': 'off'
+    }
+  }),
   // TODO: remove this when upgrade to nextjs 15
   compat.extends('next'),
   {
@@ -89,6 +95,9 @@ export default combine(
       "react-hooks/exhaustive-deps": "warn",
       "react/display-name": "off",
       "curly": "off",
+      "unused-imports/no-unused-vars": "warn",
+      "unused-imports/no-unused-imports": "warn",
+      "no-undef": "error"
     }
   },
   storybook,
@@ -96,7 +105,39 @@ export default combine(
   {
     rules: {
       // not exist in old version
-      "antfu/consistent-list-newline": "off"
+      "antfu/consistent-list-newline": "off",
+
+      // useful, but big change
+      "no-useless-constructor": "off",
+      "no-undef": "warn"
+    }
+  },
+  // suppress error for `no-undef` rule
+  {
+    files: GLOB_TESTS,
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.es2021,
+        ...globals.node,
+        ...globals.jest
+      },
+    },
+  },
+  {
+    files: [
+      GLOB_JSX,
+      GLOB_TSX,
+      '**/hooks/*'
+    ],
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.es2025,
+        ...globals.node,
+        'React': 'readable',
+        'JSX': 'readable',
+      }
     }
   }
 )
