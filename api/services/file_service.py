@@ -2,7 +2,7 @@ import datetime
 import hashlib
 import uuid
 from collections.abc import Generator
-from typing import Union
+from typing import Literal, Union
 
 from flask_login import current_user
 from werkzeug.datastructures import FileStorage
@@ -28,7 +28,9 @@ PREVIEW_WORDS_LIMIT = 3000
 
 class FileService:
     @staticmethod
-    def upload_file(file: FileStorage, user: Union[Account, EndUser]) -> UploadFile:
+    def upload_file(
+        file: FileStorage, user: Union[Account, EndUser], source: Literal["datasets"] | None = None
+    ) -> UploadFile:
         # get file name
         filename = file.filename
         if not filename:
@@ -36,11 +38,9 @@ class FileService:
         extension = filename.split(".")[-1]
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
-        # read file content
-        file_content = file.read()
 
-        # get file size
-        file_size = len(file_content)
+        if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
+            raise UnsupportedFileTypeError()
 
         # select file size limit
         if extension in IMAGE_EXTENSIONS:
@@ -51,6 +51,11 @@ class FileService:
             file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
         else:
             file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
+
+        # read file content
+        file_content = file.read()
+        # get file size
+        file_size = len(file_content)
 
         # check if the file size is exceeded
         if file_size > file_size_limit:
