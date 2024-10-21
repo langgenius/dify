@@ -77,7 +77,7 @@ This project uses [Storybook](https://storybook.js.org/) for UI component develo
 To start the storybook server, run:
 
 ```bash
-yarn storybook
+pnpm storybook
 ```
 
 Open [http://localhost:6006](http://localhost:6006) with your browser to see the result.
