@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 class UnstructuredPDFExtractor(BaseExtractor):
-    """Load md files.
+    """Load pdf files.
 
 
     Args:
