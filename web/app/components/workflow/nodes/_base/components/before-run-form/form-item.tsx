@@ -7,13 +7,16 @@ import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import type { InputVar } from '../../../../types'
-import { BlockEnum, InputVarType } from '../../../../types'
+import { BlockEnum, InputVarType, SupportUploadFileTypes } from '../../../../types'
 import CodeEditor from '../editor/code-editor'
 import { CodeLanguage } from '../../../code/types'
 import TextEditor from '../editor/text-editor'
 import Select from '@/app/components/base/select'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
-import { Resolution } from '@/types/app'
+import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import { Resolution, TransferMethod } from '@/types/app'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -27,6 +30,7 @@ type Props = {
   onChange: (value: any) => void
   className?: string
   autoFocus?: boolean
+  inStepRun?: boolean
 }
 
 const FormItem: FC<Props> = ({
@@ -35,6 +39,7 @@ const FormItem: FC<Props> = ({
   onChange,
   className,
   autoFocus,
+  inStepRun = false,
 }) => {
   const { t } = useTranslation()
   const { type } = payload
@@ -89,7 +94,7 @@ const FormItem: FC<Props> = ({
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator
   return (
-    <div className={`${className}`}>
+    <div className={cn(className)}>
       {!isArrayLikeType && (
         <div className='h-6 mb-1 flex items-center gap-1 text-text-secondary system-sm-semibold'>
           <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
@@ -99,9 +104,7 @@ const FormItem: FC<Props> = ({
       <div className='grow'>
         {
           type === InputVarType.textInput && (
-            <input
-              className="w-full px-3 text-sm leading-8 text-gray-900 border-0 rounded-lg grow h-8 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
-              type="text"
+            <Input
               value={value || ''}
               onChange={e => onChange(e.target.value)}
               placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
@@ -112,8 +115,7 @@ const FormItem: FC<Props> = ({
 
         {
           type === InputVarType.number && (
-            <input
-              className="w-full px-3 text-sm leading-8 text-gray-900 border-0 rounded-lg grow h-8 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+            <Input
               type="number"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
@@ -125,8 +127,7 @@ const FormItem: FC<Props> = ({
 
         {
           type === InputVarType.paragraph && (
-            <textarea
-              className="w-full px-3 py-1 text-sm leading-[18px] text-gray-900 border-0 rounded-lg grow h-[120px] bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+            <Textarea
               value={value || ''}
               onChange={e => onChange(e.target.value)}
               placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
@@ -157,13 +158,42 @@ const FormItem: FC<Props> = ({
             />
           )
         }
-
+        {(type === InputVarType.singleFile) && (
+          <FileUploaderInAttachmentWrapper
+            value={value ? [value] : []}
+            onChange={(files) => {
+              if (files.length)
+                onChange(files[0])
+              else
+                onChange(null)
+            }}
+            fileConfig={{
+              allowed_file_types: inStepRun ? [SupportUploadFileTypes.custom] : payload.allowed_file_types,
+              allowed_file_extensions: inStepRun ? [] : payload.allowed_file_extensions,
+              allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
+              number_limits: 1,
+            }}
+          />
+        )}
+        {(type === InputVarType.multiFiles) && (
+          <FileUploaderInAttachmentWrapper
+            value={value}
+            onChange={files => onChange(files)}
+            fileConfig={{
+              allowed_file_types: inStepRun ? [SupportUploadFileTypes.custom] : payload.allowed_file_types,
+              allowed_file_extensions: inStepRun ? [] : payload.allowed_file_extensions,
+              allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
+              number_limits: inStepRun ? 5 : payload.max_length,
+            }}
+          />
+        )}
         {
           type === InputVarType.files && (
             <TextGenerationImageUploader
               settings={{
-                ...fileSettings?.image,
-                detail: Resolution.high,
+                ...fileSettings,
+                detail: fileSettings?.image?.detail || Resolution.high,
+                transfer_methods: fileSettings?.allowed_file_upload_methods || [],
               } as any}
               onFilesChange={files => onChange(files.filter(file => file.progress !== -1).map(fileItem => ({
                 type: 'image',
@@ -187,7 +217,7 @@ const FormItem: FC<Props> = ({
                     (value as any).length > 1
                       ? (<RiDeleteBinLine
                         onClick={handleArrayItemRemove(index)}
-                        className='mr-1 w-3.5 h-3.5 text-gray-500 cursor-pointer'
+                        className='mr-1 w-3.5 h-3.5 text-text-tertiary cursor-pointer'
                       />)
                       : undefined
                   }
@@ -213,7 +243,7 @@ const FormItem: FC<Props> = ({
                     (value as any).length > 1
                       ? (<RiDeleteBinLine
                         onClick={handleArrayItemRemove(index)}
-                        className='mr-1 w-3.5 h-3.5 text-gray-500 cursor-pointer'
+                        className='mr-1 w-3.5 h-3.5 text-text-tertiary cursor-pointer'
                       />)
                       : undefined
                   }
