@@ -21,7 +21,6 @@ export default function DataSourcePage() {
       <DataSourceWebsite provider={DataSourceProvider.jinaReader} />
       <DataSourceWebsite provider={DataSourceProvider.fireCrawl} />
       <DataSourceFeishu workspaces={feishuWorkspaces} />
-      <DataSourceWebsite />
     </div>
   )
 }
