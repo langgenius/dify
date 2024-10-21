@@ -1,7 +1,7 @@
 import urllib.parse
 
 from flask import request
-from flask_restful import marshal_with
+from flask_restful import marshal_with, reqparse
 
 import services
 from controllers.web import api
@@ -18,6 +18,10 @@ class FileApi(WebApiResource):
         # get file from request
         file = request.files["file"]
 
+        parser = reqparse.RequestParser()
+        parser.add_argument("source", type=str, required=False, location="args")
+        source = parser.parse_args().get("source")
+
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -25,7 +29,7 @@ class FileApi(WebApiResource):
         if len(request.files) > 1:
             raise TooManyFilesError()
         try:
-            upload_file = FileService.upload_file(file, end_user)
+            upload_file = FileService.upload_file(file=file, user=end_user, source=source)
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:
