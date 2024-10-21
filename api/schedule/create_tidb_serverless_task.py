@@ -24,7 +24,7 @@ def create_tidb_serverless_task():
             if idle_tidb_serverless_number >= tidb_serverless_number:
                 break
             # create tidb serverless
-            iterations_per_thread = 100
+            iterations_per_thread = 20
             create_clusters(iterations_per_thread)
 
         except Exception as e:
