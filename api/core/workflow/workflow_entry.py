@@ -289,7 +289,7 @@ class WorkflowEntry:
                             new_value.append(file)
 
                 if new_value:
-                    value = new_value
+                    input_value = new_value
 
             # append variable and value to variable pool
             variable_pool.add([variable_node_id] + variable_key_list, input_value)
