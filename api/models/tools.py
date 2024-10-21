@@ -1,5 +1,6 @@
 import json
 from datetime import datetime
+from typing import Optional
 
 from deprecated import deprecated
 from sqlalchemy import ForeignKey
@@ -67,7 +68,7 @@ class ApiToolProvider(Base):
     icon = db.Column(db.String(255), nullable=False)
     # original schema
     schema = db.Column(db.Text, nullable=False)
-    schema_type_str = db.Column(db.String(40), nullable=False)
+    schema_type_str: Mapped[str] = db.Column(db.String(40), nullable=False)
     # who created this tool
     user_id = db.Column(StringUUID, nullable=False)
     # tenant id
@@ -169,6 +170,10 @@ class WorkflowToolProvider(Base):
     )
 
     @property
+    def schema_type(self) -> ApiProviderSchemaType:
+        return ApiProviderSchemaType.value_of(self.schema_type_str)
+
+    @property
     def user(self) -> Account | None:
         return db.session.query(Account).filter(Account.id == self.user_id).first()
 
@@ -262,7 +267,6 @@ class ToolFile(Base):
     __tablename__ = "tool_files"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tool_file_pkey"),
-        # add index for conversation_id
         db.Index("tool_file_conversation_id_idx", "conversation_id"),
     )
 
@@ -322,3 +326,34 @@ class DeprecatedPublishedAppTool(Base):
     @property
     def app(self) -> App:
         return db.session.query(App).filter(App.id == self.app_id).first()
+
+    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    user_id: Mapped[str] = db.Column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
+    conversation_id: Mapped[Optional[str]] = db.Column(StringUUID, nullable=True)
+    file_key: Mapped[str] = db.Column(db.String(255), nullable=False)
+    mimetype: Mapped[str] = db.Column(db.String(255), nullable=False)
+    original_url: Mapped[Optional[str]] = db.Column(db.String(2048), nullable=True)
+    name: Mapped[str] = mapped_column(default="")
+    size: Mapped[int] = mapped_column(default=-1)
+
+    def __init__(
+        self,
+        *,
+        user_id: str,
+        tenant_id: str,
+        conversation_id: Optional[str] = None,
+        file_key: str,
+        mimetype: str,
+        original_url: Optional[str] = None,
+        name: str,
+        size: int,
+    ):
+        self.user_id = user_id
+        self.tenant_id = tenant_id
+        self.conversation_id = conversation_id
+        self.file_key = file_key
+        self.mimetype = mimetype
+        self.original_url = original_url
+        self.name = name
+        self.size = size

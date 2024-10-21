@@ -4,7 +4,7 @@ from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from core.tools.entities.tool_entities import ToolProviderType
-from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.nodes.base.entities import BaseNodeData
 
 
 class ToolEntity(BaseModel):
@@ -52,7 +52,4 @@ class ToolNodeData(BaseNodeData, ToolEntity):
                 raise ValueError("value must be a string, int, float, or bool")
             return typ
 
-    """
-    Tool Node Schema
-    """
     tool_parameters: dict[str, ToolInput]

@@ -14,6 +14,8 @@ from core.tools.entities.tool_entities import (
     ToolIdentity,
     ToolParameter,
     ToolParameterOption,
+    ToolProviderEntity,
+    ToolProviderIdentity,
     ToolProviderType,
 )
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
@@ -28,12 +30,18 @@ VARIABLE_TO_PARAMETER_TYPE_MAPPING = {
     VariableEntityType.PARAGRAPH: ToolParameter.ToolParameterType.STRING,
     VariableEntityType.SELECT: ToolParameter.ToolParameterType.SELECT,
     VariableEntityType.NUMBER: ToolParameter.ToolParameterType.NUMBER,
+    VariableEntityType.FILE: ToolParameter.ToolParameterType.FILE,
+    VariableEntityType.FILE_LIST: ToolParameter.ToolParameterType.FILES,
 }
 
 
 class WorkflowToolProviderController(ToolProviderController):
     provider_id: str
     tools: list[WorkflowTool] = Field(default_factory=list)
+
+    def __init__(self, entity: ToolProviderEntity, provider_id: str):
+        super().__init__(entity=entity)
+        self.provider_id = provider_id
 
     @classmethod
     def from_db(cls, db_provider: WorkflowToolProvider) -> "WorkflowToolProviderController":
@@ -43,17 +51,17 @@ class WorkflowToolProviderController(ToolProviderController):
             raise ValueError("app not found")
 
         controller = WorkflowToolProviderController(
-            **{
-                "identity": {
-                    "author": db_provider.user.name if db_provider.user_id and db_provider.user else "",
-                    "name": db_provider.label,
-                    "label": {"en_US": db_provider.label, "zh_Hans": db_provider.label},
-                    "description": {"en_US": db_provider.description, "zh_Hans": db_provider.description},
-                    "icon": db_provider.icon,
-                },
-                "credentials_schema": {},
-                "provider_id": db_provider.id or "",
-            }
+            entity=ToolProviderEntity(
+                identity=ToolProviderIdentity(
+                    author=db_provider.user.name if db_provider.user_id and db_provider.user else "",
+                    name=db_provider.label,
+                    label=I18nObject(en_US=db_provider.label, zh_Hans=db_provider.label),
+                    description=I18nObject(en_US=db_provider.description, zh_Hans=db_provider.description),
+                    icon=db_provider.icon,
+                ),
+                credentials_schema=[],
+            ),
+            provider_id=db_provider.id,
         )
 
         # init tools
@@ -121,7 +129,6 @@ class WorkflowToolProviderController(ToolProviderController):
                         llm_description=parameter.description,
                         required=variable.required,
                         options=options,
-                        default=variable.default,
                     )
                 )
             elif features.file_upload:
@@ -130,7 +137,7 @@ class WorkflowToolProviderController(ToolProviderController):
                         name=parameter.name,
                         label=I18nObject(en_US=parameter.name, zh_Hans=parameter.name),
                         human_description=I18nObject(en_US=parameter.description, zh_Hans=parameter.description),
-                        type=ToolParameter.ToolParameterType.FILE,
+                        type=ToolParameter.ToolParameterType.SYSTEM_FILES,
                         llm_description=parameter.description,
                         required=False,
                         form=parameter.form,

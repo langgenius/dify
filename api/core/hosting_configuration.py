@@ -3,9 +3,8 @@ from typing import Optional
 from flask import Config, Flask
 from pydantic import BaseModel
 
-from core.entities.provider_entities import QuotaUnit, RestrictModel
+from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, RestrictModel
 from core.model_runtime.entities.model_entities import ModelType
-from models.provider import ProviderQuotaType
 
 
 class HostingQuota(BaseModel):

@@ -111,6 +111,9 @@ class ToolInvokeMessage(BaseModel):
     class BlobMessage(BaseModel):
         blob: bytes
 
+    class FileMessage(BaseModel):
+        pass
+
     class VariableMessage(BaseModel):
         variable_name: str = Field(..., description="The name of the variable")
         variable_value: str = Field(..., description="The value of the variable")
@@ -149,14 +152,14 @@ class ToolInvokeMessage(BaseModel):
         BLOB = "blob"
         JSON = "json"
         IMAGE_LINK = "image_link"
-        FILE_VAR = "file_var"
         VARIABLE = "variable"
+        FILE = "file"
 
     type: MessageType = MessageType.TEXT
     """
         plain text, image url or link url
     """
-    message: JsonMessage | TextMessage | BlobMessage | VariableMessage | None
+    message: JsonMessage | TextMessage | BlobMessage | VariableMessage | FileMessage | None
     meta: dict[str, Any] | None = None
     save_as: str = ""
 
@@ -205,6 +208,67 @@ class ToolParameter(BaseModel):
         SELECT = CommonParameterType.SELECT.value
         SECRET_INPUT = CommonParameterType.SECRET_INPUT.value
         FILE = CommonParameterType.FILE.value
+        FILES = "files"
+
+        # deprecated, should not use.
+        SYSTEM_FILES = "systme-files"
+
+        def as_normal_type(self):
+            if self in {
+                ToolParameter.ToolParameterType.SECRET_INPUT,
+                ToolParameter.ToolParameterType.SELECT,
+            }:
+                return "string"
+            return self.value
+
+        def cast_value(self, value: Any, /):
+            try:
+                match self:
+                    case (
+                        ToolParameter.ToolParameterType.STRING
+                        | ToolParameter.ToolParameterType.SECRET_INPUT
+                        | ToolParameter.ToolParameterType.SELECT
+                    ):
+                        if value is None:
+                            return ""
+                        else:
+                            return value if isinstance(value, str) else str(value)
+
+                    case ToolParameter.ToolParameterType.BOOLEAN:
+                        if value is None:
+                            return False
+                        elif isinstance(value, str):
+                            # Allowed YAML boolean value strings: https://yaml.org/type/bool.html
+                            # and also '0' for False and '1' for True
+                            match value.lower():
+                                case "true" | "yes" | "y" | "1":
+                                    return True
+                                case "false" | "no" | "n" | "0":
+                                    return False
+                                case _:
+                                    return bool(value)
+                        else:
+                            return value if isinstance(value, bool) else bool(value)
+
+                    case ToolParameter.ToolParameterType.NUMBER:
+                        if isinstance(value, int | float):
+                            return value
+                        elif isinstance(value, str) and value:
+                            if "." in value:
+                                return float(value)
+                            else:
+                                return int(value)
+                    case (
+                        ToolParameter.ToolParameterType.SYSTEM_FILES
+                        | ToolParameter.ToolParameterType.FILE
+                        | ToolParameter.ToolParameterType.FILES
+                    ):
+                        return value
+                    case _:
+                        return str(value)
+
+            except Exception:
+                raise ValueError(f"The tool parameter value {value} is not in correct type of {self.as_normal_type()}.")
 
     class ToolParameterForm(Enum):
         SCHEMA = "schema"  # should be set while adding tool

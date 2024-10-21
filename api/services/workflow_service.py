@@ -6,21 +6,23 @@ from typing import Any, Optional
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.app.segments import Variable
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.variables import Variable
+from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import InNodeEvent
-from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.event import RunCompletedEvent, RunEvent
-from core.workflow.nodes.node_mapping import node_classes
+from core.workflow.nodes import NodeType
+from core.workflow.nodes.base.node import BaseNode
+from core.workflow.nodes.event import RunCompletedEvent
+from core.workflow.nodes.event.types import NodeEvent
+from core.workflow.nodes.node_mapping import node_type_classes_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from models.account import Account
+from models.enums import CreatedByRole
 from models.model import App, AppMode
 from models.workflow import (
-    CreatedByRole,
     Workflow,
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
@@ -177,7 +179,7 @@ class WorkflowService:
         """
         # return default block config
         default_block_configs = []
-        for node_type, node_class in node_classes.items():
+        for node_type, node_class in node_type_classes_mapping.items():
             default_config = node_class.get_default_config()
             if default_config:
                 default_block_configs.append(default_config)
@@ -191,10 +193,10 @@ class WorkflowService:
         :param filters: filter by node config parameters.
         :return:
         """
-        node_type_enum: NodeType = NodeType.value_of(node_type)
+        node_type_enum: NodeType = NodeType(node_type)
 
         # return default block config
-        node_class = node_classes.get(node_type_enum)
+        node_class = node_type_classes_mapping.get(node_type_enum)
         if not node_class:
             return None
 
@@ -265,7 +267,7 @@ class WorkflowService:
 
     def _handle_node_run_result(
         self,
-        getter: Callable[[], tuple[BaseNode, Generator[RunEvent | InNodeEvent, None, None]]],
+        getter: Callable[[], tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]],
         start_at: float,
         tenant_id: str,
         node_id: str,
@@ -306,7 +308,7 @@ class WorkflowService:
         workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value
         workflow_node_execution.index = 1
         workflow_node_execution.node_id = node_id
-        workflow_node_execution.node_type = node_instance.node_type.value
+        workflow_node_execution.node_type = node_instance.node_type
         workflow_node_execution.title = node_instance.node_data.title
         workflow_node_execution.elapsed_time = time.perf_counter() - start_at
         workflow_node_execution.created_by_role = CreatedByRole.ACCOUNT.value

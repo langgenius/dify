@@ -17,11 +17,10 @@ import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import { UUID_NIL } from '../../base/chat/constants'
-import s from './style.module.css'
 import VarPanel from './var-panel'
 import cn from '@/utils/classnames'
 import type { FeedbackFunc, FeedbackType, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
-import type { Annotation, ChatConversationFullDetailResponse, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationFullDetailResponse, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
+import type { Annotation, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
 import type { App } from '@/types/app'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
@@ -42,6 +41,7 @@ import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
 import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -83,6 +83,7 @@ const PARAM_MAP = {
 }
 
 function appendQAToChatList(newChatList: IChatItem[], item: any, conversationId: string, timezone: string, format: string) {
+  const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
   newChatList.push({
     id: item.id,
     content: item.answer,
@@ -91,7 +92,7 @@ function appendQAToChatList(newChatList: IChatItem[], item: any, conversationId:
     adminFeedback: item.feedbacks.find((item: any) => item.from_source === 'admin'), // admin feedback
     feedbackDisabled: false,
     isAnswer: true,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+    message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
     log: [
       ...item.message,
       ...(item.message[item.message.length - 1]?.role !== 'assistant'
@@ -138,11 +139,12 @@ function appendQAToChatList(newChatList: IChatItem[], item: any, conversationId:
     })(),
     parentMessageId: `question-${item.id}`,
   })
+  const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
   newChatList.push({
     id: `question-${item.id}`,
     content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
     isAnswer: false,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
+    message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
     parentMessageId: item.parent_message_id || undefined,
   })
 }
@@ -173,13 +175,13 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
 // const displayedParams = CompletionParams.slice(0, -2)
 const validatedParams = ['temperature', 'top_p', 'presence_penalty', 'frequency_penalty']
 
-type IDetailPanel<T> = {
+type IDetailPanel = {
   detail: any
   onFeedback: FeedbackFunc
   onSubmitAnnotation: SubmitAnnotationFunc
 }
 
-function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionConversationFullDetailResponse>({ detail, onFeedback }: IDetailPanel<T>) {
+function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
@@ -597,7 +599,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
   if (!conversationDetail)
     return null
 
-  return <DetailPanel<CompletionConversationFullDetailResponse>
+  return <DetailPanel
     detail={conversationDetail}
     onFeedback={handleFeedback}
     onSubmitAnnotation={handleAnnotation}
@@ -640,7 +642,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
   if (!conversationDetail)
     return null
 
-  return <DetailPanel<ChatConversationFullDetailResponse>
+  return <DetailPanel
     detail={conversationDetail}
     onFeedback={handleFeedback}
     onSubmitAnnotation={handleAnnotation}
@@ -666,13 +668,13 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     return (
       <Tooltip
         popupContent={
-          <span className='text-xs text-gray-500 inline-flex items-center'>
+          <span className='text-xs text-text-tertiary inline-flex items-center'>
             <RiEditFill className='w-3 h-3 mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         }
         popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
       >
-        <div className={cn(isEmptyStyle ? 'text-gray-400' : 'text-gray-700', !isHighlight ? '' : 'bg-orange-100', 'text-sm overflow-hidden text-ellipsis whitespace-nowrap')}>
+        <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'system-sm-regular overflow-hidden text-ellipsis whitespace-nowrap')}>
           {value || '-'}
         </div>
       </Tooltip>
@@ -690,40 +692,46 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
   return (
     <div className='overflow-x-auto'>
-      <table className={`w-full min-w-[440px] border-collapse border-0 text-sm mt-3 ${s.logTable}`}>
-        <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-bold">
+      <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
+        <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>
-            <td className='w-[1.375rem] whitespace-nowrap'></td>
-            <td className='whitespace-nowrap'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.endUser')}</td>
-            <td className='whitespace-nowrap'>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.userRate')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.adminRate')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.updatedTime')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.time')}</td>
+            <td className='pl-2 pr-1 w-5 rounded-l-lg bg-background-section-burn whitespace-nowrap'></td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.endUser')}</td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.userRate')}</td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.adminRate')}</td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.updatedTime')}</td>
+            <td className='pl-3 py-1.5 rounded-r-lg bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.time')}</td>
           </tr>
         </thead>
-        <tbody className="text-gray-500">
+        <tbody className="text-text-secondary system-sm-regular">
           {logs.data.map((log: any) => {
             const endUser = log.from_end_user_session_id || log.from_account_name
             const leftValue = get(log, isChatMode ? 'name' : 'message.inputs.query') || (!isChatMode ? (get(log, 'message.query') || get(log, 'message.inputs.default_input')) : '') || ''
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
             return <tr
               key={log.id}
-              className={`border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer ${currentConversation?.id !== log.id ? '' : 'bg-gray-50'}`}
+              className={cn('border-b border-divider-subtle hover:bg-background-default-hover cursor-pointer', currentConversation?.id !== log.id ? '' : 'bg-background-default-hover')}
               onClick={() => {
                 setShowDrawer(true)
                 setCurrentConversation(log)
               }}>
-              <td className='text-center align-middle'>{!log.read_at && <span className='inline-block bg-[#3F83F8] h-1.5 w-1.5 rounded'></span>}</td>
-              <td style={{ maxWidth: isChatMode ? 300 : 200 }}>
+              <td className='h-4'>
+                {!log.read_at && (
+                  <div className='p-3 pr-0.5 flex items-center'>
+                    <span className='inline-block bg-util-colors-blue-blue-500 h-1.5 w-1.5 rounded'></span>
+                  </div>
+                )}
+              </td>
+              <td className='p-3 pr-2 w-[160px]' style={{ maxWidth: isChatMode ? 300 : 200 }}>
                 {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}
               </td>
-              <td>{renderTdValue(endUser || defaultValue, !endUser)}</td>
-              <td style={{ maxWidth: isChatMode ? 100 : 200 }}>
+              <td className='p-3 pr-2'>{renderTdValue(endUser || defaultValue, !endUser)}</td>
+              <td className='p-3 pr-2' style={{ maxWidth: isChatMode ? 100 : 200 }}>
                 {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('appLog.table.empty.noOutput')), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
               </td>
-              <td>
+              <td className='p-3 pr-2'>
                 {(!log.user_feedback_stats.like && !log.user_feedback_stats.dislike)
                   ? renderTdValue(defaultValue, true)
                   : <>
@@ -732,7 +740,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   </>
                 }
               </td>
-              <td>
+              <td className='p-3 pr-2'>
                 {(!log.admin_feedback_stats.like && !log.admin_feedback_stats.dislike)
                   ? renderTdValue(defaultValue, true)
                   : <>
@@ -741,8 +749,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   </>
                 }
               </td>
-              <td className='w-[160px]'>{formatTime(log.updated_at, t('appLog.dateTimeFormat') as string)}</td>
-              <td className='w-[160px]'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
+              <td className='w-[160px] p-3 pr-2'>{formatTime(log.updated_at, t('appLog.dateTimeFormat') as string)}</td>
+              <td className='w-[160px] p-3 pr-2'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
             </tr>
           })}
         </tbody>

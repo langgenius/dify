@@ -3,6 +3,9 @@ from collections.abc import Generator
 from copy import deepcopy
 from typing import TYPE_CHECKING, Any, Optional
 
+if TYPE_CHECKING:
+    from models.model import File
+
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
     ToolEntity,
@@ -10,10 +13,6 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
-from core.tools.utils.tool_parameter_converter import ToolParameterConverter
-
-if TYPE_CHECKING:
-    from core.file.file_obj import FileVar
 
 
 class Tool(ABC):
@@ -91,11 +90,9 @@ class Tool(ABC):
         """
         # Temp fix for the issue that the tool parameters will be converted to empty while validating the credentials
         result = deepcopy(tool_parameters)
-        for parameter in self.entity.parameters:
+        for parameter in self.entity.parameters or []:
             if parameter.name in tool_parameters:
-                result[parameter.name] = ToolParameterConverter.cast_parameter_by_type(
-                    tool_parameters[parameter.name], parameter.type
-                )
+                result[parameter.name] = parameter.type.cast_value(tool_parameters[parameter.name])
 
         return result
 
@@ -171,9 +168,12 @@ class Tool(ABC):
             type=ToolInvokeMessage.MessageType.IMAGE, message=ToolInvokeMessage.TextMessage(text=image), save_as=save_as
         )
 
-    def create_file_var_message(self, file_var: "FileVar") -> ToolInvokeMessage:
+    def create_file_message(self, file: "File") -> ToolInvokeMessage:
         return ToolInvokeMessage(
-            type=ToolInvokeMessage.MessageType.FILE_VAR, message=None, meta={"file_var": file_var}, save_as=""
+            type=ToolInvokeMessage.MessageType.FILE,
+            message=ToolInvokeMessage.FileMessage(),
+            meta={"file": file},
+            save_as="",
         )
 
     def create_link_message(self, link: str, save_as: str = "") -> ToolInvokeMessage:

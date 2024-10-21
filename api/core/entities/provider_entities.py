@@ -6,7 +6,24 @@ from pydantic import BaseModel, ConfigDict, Field
 from core.entities.parameter_entities import AppSelectorScope, CommonParameterType, ModelConfigScope
 from core.model_runtime.entities.model_entities import ModelType
 from core.tools.entities.common_entities import I18nObject
-from models.provider import ProviderQuotaType
+
+
+class ProviderQuotaType(Enum):
+    PAID = "paid"
+    """hosted paid quota"""
+
+    FREE = "free"
+    """third-party free quota"""
+
+    TRIAL = "trial"
+    """hosted trial quota"""
+
+    @staticmethod
+    def value_of(value):
+        for member in ProviderQuotaType:
+            if member.value == value:
+                return member
+        raise ValueError(f"No matching enum found for value '{value}'")
 
 
 class QuotaUnit(Enum):

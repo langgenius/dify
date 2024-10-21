@@ -14,6 +14,7 @@ from core.entities.provider_entities import (
     CustomProviderConfiguration,
     ModelLoadBalancingConfiguration,
     ModelSettings,
+    ProviderQuotaType,
     QuotaConfiguration,
     SystemConfiguration,
 )
@@ -31,7 +32,6 @@ from models.provider import (
     Provider,
     ProviderModel,
     ProviderModelSetting,
-    ProviderQuotaType,
     ProviderType,
     TenantDefaultModel,
     TenantPreferredModelProvider,

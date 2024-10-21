@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Iterable
 from typing import Optional
 
 from pydantic import ConfigDict
@@ -21,8 +22,14 @@ class TTSModel(AIModel):
     model_config = ConfigDict(protected_namespaces=())
 
     def invoke(
-        self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str, user: Optional[str] = None
-    ):
+        self,
+        model: str,
+        tenant_id: str,
+        credentials: dict,
+        content_text: str,
+        voice: str,
+        user: Optional[str] = None,
+    ) -> Iterable[bytes]:
         """
         Invoke large language model
 
@@ -52,12 +59,12 @@ class TTSModel(AIModel):
 
     def get_tts_model_voices(self, model: str, credentials: dict, language: Optional[str] = None) -> list[dict]:
         """
-        Get voice for given tts model voices
+        Retrieves the list of voices supported by a given text-to-speech (TTS) model.
 
-        :param language: tts language
-        :param model: model name
-        :param credentials: model credentials
-        :return: voices lists
+        :param language: The language for which the voices are requested.
+        :param model: The name of the TTS model.
+        :param credentials: The credentials required to access the TTS model.
+        :return: A list of voices supported by the TTS model.
         """
         plugin_model_manager = PluginModelManager()
         return plugin_model_manager.get_tts_model_voices(

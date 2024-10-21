@@ -3,7 +3,7 @@ from collections.abc import Generator
 from mimetypes import guess_extension
 from typing import Optional
 
-from core.file.file_obj import FileTransferMethod, FileType, FileVar
+from core.file import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
 
@@ -25,7 +25,7 @@ class ToolFileMessageTransformer:
         for message in messages:
             if message.type in {ToolInvokeMessage.MessageType.TEXT, ToolInvokeMessage.MessageType.LINK}:
                 yield message
-            elif message.type == ToolInvokeMessage.MessageType.IMAGE:
+            elif message.type == ToolInvokeMessage.MessageType.IMAGE and isinstance(message.message, str):
                 # try to download image
                 try:
                     if not conversation_id:
@@ -68,6 +68,8 @@ class ToolFileMessageTransformer:
                 if not isinstance(message.message, ToolInvokeMessage.BlobMessage):
                     raise ValueError("unexpected message type")
 
+                # FIXME: should do a type check here.
+                assert isinstance(message.message, bytes)
                 file = ToolFileManager.create_file_by_raw(
                     user_id=user_id,
                     tenant_id=tenant_id,
@@ -76,8 +78,7 @@ class ToolFileMessageTransformer:
                     mimetype=mimetype,
                 )
 
-                extension = guess_extension(file.mimetype) or ".bin"
-                url = cls.get_tool_file_url(file.id, extension)
+                url = cls.get_tool_file_url(tool_file_id=file.id, extension=guess_extension(file.mimetype))
 
                 # check if file is image
                 if "image" in mimetype:
@@ -94,17 +95,14 @@ class ToolFileMessageTransformer:
                         save_as=message.save_as,
                         meta=message.meta.copy() if message.meta is not None else {},
                     )
-            elif message.type == ToolInvokeMessage.MessageType.FILE_VAR:
-                assert message.meta
-
-                file_var: FileVar | None = message.meta.get("file_var")
-                if file_var:
-                    if file_var.transfer_method == FileTransferMethod.TOOL_FILE:
-                        assert file_var.related_id
-                        assert file_var.extension
-
-                        url = cls.get_tool_file_url(file_var.related_id, file_var.extension)
-                        if file_var.type == FileType.IMAGE:
+            elif message.type == ToolInvokeMessage.MessageType.FILE:
+                assert message.meta is not None
+                file = message.meta.get("file")
+                if isinstance(file, File):
+                    if file.transfer_method == FileTransferMethod.TOOL_FILE:
+                        assert file.related_id is not None
+                        url = cls.get_tool_file_url(tool_file_id=file.related_id, extension=file.extension)
+                        if file.type == FileType.IMAGE:
                             yield ToolInvokeMessage(
                                 type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                                 message=ToolInvokeMessage.TextMessage(text=url),
@@ -118,9 +116,11 @@ class ToolFileMessageTransformer:
                                 save_as=message.save_as,
                                 meta=message.meta.copy() if message.meta is not None else {},
                             )
+                    else:
+                        yield message
             else:
                 yield message
 
     @classmethod
-    def get_tool_file_url(cls, tool_file_id: str, extension: str) -> str:
+    def get_tool_file_url(cls, tool_file_id: str, extension: Optional[str]) -> str:
         return f'/files/tools/{tool_file_id}{extension or ".bin"}'

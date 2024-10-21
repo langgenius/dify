@@ -10,6 +10,7 @@ type State = {
   showPromptLogModal: boolean
   showAgentLogModal: boolean
   showMessageLogModal: boolean
+  showAppConfigureFeaturesModal: boolean
 }
 
 type Action = {
@@ -20,6 +21,7 @@ type Action = {
   setShowPromptLogModal: (showPromptLogModal: boolean) => void
   setShowAgentLogModal: (showAgentLogModal: boolean) => void
   setShowMessageLogModal: (showMessageLogModal: boolean) => void
+  setShowAppConfigureFeaturesModal: (showAppConfigureFeaturesModal: boolean) => void
 }
 
 export const useStore = create<State & Action>(set => ({
@@ -47,4 +49,6 @@ export const useStore = create<State & Action>(set => ({
       }
     }
   }),
+  showAppConfigureFeaturesModal: false,
+  setShowAppConfigureFeaturesModal: showAppConfigureFeaturesModal => set(() => ({ showAppConfigureFeaturesModal })),
 }))

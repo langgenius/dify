@@ -21,7 +21,7 @@ from core.plugin.entities.request import (
 )
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
-from core.workflow.nodes.llm.llm_node import LLMNode
+from core.workflow.nodes.llm.node import LLMNode
 from models.account import Tenant
 
 

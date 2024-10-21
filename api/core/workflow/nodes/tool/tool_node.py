@@ -2,24 +2,31 @@ from collections.abc import Generator, Mapping, Sequence
 from os import path
 from typing import Any, cast
 
-from core.app.segments import ArrayAnySegment, ArrayAnyVariable, parser
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.file.file_obj import FileTransferMethod, FileType, FileVar
+from core.file.models import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
+from core.variables.segments import ArrayAnySegment
+from core.variables.variables import ArrayAnyVariable
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
-from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.event import RunCompletedEvent, RunEvent, RunStreamChunkEvent
+from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.event import RunCompletedEvent, RunStreamChunkEvent
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
-from models import WorkflowNodeExecutionStatus
+from extensions.ext_database import db
+from models.tools import ToolFile
+from models.workflow import WorkflowNodeExecutionStatus
 
 
-class ToolNode(BaseNode):
+class ToolNode(BaseNode[ToolNodeData]):
     """
     Tool Node
     """
@@ -27,7 +34,7 @@ class ToolNode(BaseNode):
     _node_data_cls = ToolNodeData
     _node_type = NodeType.TOOL
 
-    def _run(self) -> Generator[RunEvent]:
+    def _run(self) -> Generator:
         """
         Run the tool node
         """
@@ -40,7 +47,7 @@ class ToolNode(BaseNode):
         # get tool runtime
         try:
             tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self.tenant_id, self.app_id, self.node_id, node_data, self.invoke_from
+                self.tenant_id, self.app_id, self.node_id, self.node_data, self.invoke_from
             )
         except Exception as e:
             yield RunCompletedEvent(
@@ -56,12 +63,14 @@ class ToolNode(BaseNode):
         # get parameters
         tool_parameters = tool_runtime.get_merged_runtime_parameters() or []
         parameters = self._generate_parameters(
-            tool_parameters=tool_parameters, variable_pool=self.graph_runtime_state.variable_pool, node_data=node_data
+            tool_parameters=tool_parameters,
+            variable_pool=self.graph_runtime_state.variable_pool,
+            node_data=self.node_data,
         )
         parameters_for_log = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
-            node_data=node_data,
+            node_data=self.node_data,
             for_log=True,
         )
 
@@ -107,7 +116,7 @@ class ToolNode(BaseNode):
             node_data (ToolNodeData): The data associated with the tool node.
 
         Returns:
-            dict[str, Any]: A dictionary containing the generated parameters.
+            Mapping[str, Any]: A dictionary containing the generated parameters.
 
         """
         tool_parameters_dictionary = {parameter.name: parameter for parameter in tool_parameters}
@@ -118,26 +127,22 @@ class ToolNode(BaseNode):
             if not parameter:
                 result[parameter_name] = None
                 continue
-            if parameter.type == ToolParameter.ToolParameterType.FILE:
-                result[parameter_name] = [v.to_dict() for v in self._fetch_files(variable_pool)]
+            tool_input = node_data.tool_parameters[parameter_name]
+            if tool_input.type == "variable":
+                variable = variable_pool.get(tool_input.value)
+                if variable is None:
+                    raise ValueError(f"variable {tool_input.value} not exists")
+                parameter_value = variable.value
+            elif tool_input.type in {"mixed", "constant"}:
+                segment_group = variable_pool.convert_template(str(tool_input.value))
+                parameter_value = segment_group.log if for_log else segment_group.text
             else:
-                tool_input = node_data.tool_parameters[parameter_name]
-                if tool_input.type == "variable":
-                    parameter_value_segment = variable_pool.get(tool_input.value)
-                    if not parameter_value_segment:
-                        raise Exception("input variable dose not exists")
-                    parameter_value = parameter_value_segment.value
-                else:
-                    segment_group = parser.convert_template(
-                        template=str(tool_input.value),
-                        variable_pool=variable_pool,
-                    )
-                    parameter_value = segment_group.log if for_log else segment_group.text
-                result[parameter_name] = parameter_value
+                raise ValueError(f"unknown tool input type '{tool_input.type}'")
+            result[parameter_name] = parameter_value
 
         return result
 
-    def _fetch_files(self, variable_pool: VariablePool) -> list[FileVar]:
+    def _fetch_files(self, variable_pool: VariablePool) -> list[File]:
         variable = variable_pool.get(["sys", SystemVariableKey.FILES.value])
         assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
         return list(variable.value) if variable else []
@@ -147,7 +152,7 @@ class ToolNode(BaseNode):
         messages: Generator[ToolInvokeMessage, None, None],
         tool_info: Mapping[str, Any],
         parameters_for_log: dict[str, Any],
-    ) -> Generator[RunEvent, None, None]:
+    ) -> Generator:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
         """
@@ -159,7 +164,7 @@ class ToolNode(BaseNode):
             conversation_id=None,
         )
 
-        files: list[FileVar] = []
+        files: list[File] = []
         text = ""
         json: list[dict] = []
 
@@ -172,22 +177,28 @@ class ToolNode(BaseNode):
 
                 url = message.message.text
                 ext = path.splitext(url)[1]
+                tool_file_id = str(url).split("/")[-1].split(".")[0]
                 mimetype = message.meta.get("mime_type", "image/jpeg")
                 filename = message.save_as or url.split("/")[-1]
                 transfer_method = message.meta.get("transfer_method", FileTransferMethod.TOOL_FILE)
 
-                # get tool file id
-                tool_file_id = url.split("/")[-1].split(".")[0]
+                with Session(db.engine) as session:
+                    stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
+                    tool_file = session.scalar(stmt)
+                    if tool_file is None:
+                        raise ValueError(f"tool file {tool_file_id} not exists")
+
                 files.append(
-                    FileVar(
+                    File(
                         tenant_id=self.tenant_id,
                         type=FileType.IMAGE,
                         transfer_method=transfer_method,
-                        url=url,
+                        remote_url=url,
                         related_id=tool_file_id,
                         filename=filename,
                         extension=ext,
                         mime_type=mimetype,
+                        size=tool_file.size,
                     )
                 )
             elif message.type == ToolInvokeMessage.MessageType.BLOB:
@@ -196,8 +207,14 @@ class ToolNode(BaseNode):
                 assert message.meta
 
                 tool_file_id = message.message.text.split("/")[-1].split(".")[0]
+                with Session(db.engine) as session:
+                    stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
+                    tool_file = session.scalar(stmt)
+                    if tool_file is None:
+                        raise ValueError(f"tool file {tool_file_id} not exists")
+
                 files.append(
-                    FileVar(
+                    File(
                         tenant_id=self.tenant_id,
                         type=FileType.IMAGE,
                         transfer_method=FileTransferMethod.TOOL_FILE,
@@ -237,6 +254,9 @@ class ToolNode(BaseNode):
                     )
                 else:
                     variables[variable_name] = variable_value
+            elif message.type == ToolInvokeMessage.MessageType.FILE:
+                assert message.meta is not None
+                files.append(message.meta["file"])
 
         yield RunCompletedEvent(
             run_result=NodeRunResult(
@@ -249,7 +269,11 @@ class ToolNode(BaseNode):
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, graph_config: Mapping[str, Any], node_id: str, node_data: ToolNodeData
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: ToolNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping

@@ -1,5 +1,7 @@
 import json
+from collections.abc import Mapping, Sequence
 from datetime import datetime
+from typing import Any
 
 from sqlalchemy import or_
 
@@ -20,9 +22,9 @@ class WorkflowToolManageService:
     Service class for managing workflow tools.
     """
 
-    @classmethod
+    @staticmethod
     def create_workflow_tool(
-        cls,
+        *,
         user_id: str,
         tenant_id: str,
         workflow_app_id: str,
@@ -30,22 +32,10 @@ class WorkflowToolManageService:
         label: str,
         icon: dict,
         description: str,
-        parameters: list[dict],
+        parameters: Mapping[str, Any],
         privacy_policy: str = "",
         labels: list[str] | None = None,
     ) -> dict:
-        """
-        Create a workflow tool.
-        :param user_id: the user id
-        :param tenant_id: the tenant id
-        :param name: the name
-        :param icon: the icon
-        :param description: the description
-        :param parameters: the parameters
-        :param privacy_policy: the privacy policy
-        :param labels: labels
-        :return: the created tool
-        """
         WorkflowToolConfigurationUtils.check_parameter_configurations(parameters)
 
         # check if the name is unique
@@ -192,7 +182,7 @@ class WorkflowToolManageService:
         """
         db_tools = db.session.query(WorkflowToolProvider).filter(WorkflowToolProvider.tenant_id == tenant_id).all()
 
-        tools = []
+        tools: Sequence[WorkflowToolProviderController] = []
         for provider in db_tools:
             try:
                 tools.append(ToolTransformService.workflow_provider_to_controller(provider))
@@ -211,7 +201,7 @@ class WorkflowToolManageService:
             ToolTransformService.repack_provider(user_tool_provider)
             user_tool_provider.tools = [
                 ToolTransformService.convert_tool_entity_to_api_entity(
-                    tool=tool.get_tools(user_id, tenant_id)[0],
+                    tool=tool.get_tools(tenant_id)[0],
                     labels=labels.get(tool.provider_id, []),
                     tenant_id=tenant_id,
                 )
