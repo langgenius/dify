@@ -45,7 +45,7 @@ const DialogWrapper = ({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={cn('grow flex relative w-[420px] h-0 p-0 overflow-hidden text-left align-middle transition-all transform bg-components-panel-bg-alt border-components-panel-border shadow-xl', inWorkflow ? 'border-t-[0.5px] border-l-[0.5px] border-b-[0.5px] rounded-l-2xl' : 'border-[0.5px] rounded-2xl', className)}>
+              <Dialog.Panel className={cn('grow flex flex-col relative w-[420px] h-0 p-0 overflow-hidden text-left align-middle transition-all transform bg-components-panel-bg-alt border-components-panel-border shadow-xl', inWorkflow ? 'border-t-[0.5px] border-l-[0.5px] border-b-[0.5px] rounded-l-2xl' : 'border-[0.5px] rounded-2xl', className)}>
                 {children}
               </Dialog.Panel>
             </Transition.Child>
