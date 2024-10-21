@@ -46,9 +46,7 @@ def only_edition_self_hosted(view):
     return decorated
 
 
-def cloud_edition_billing_resource_check(
-    resource: str, error_msg: str = "You have reached the limit of your subscription."
-):
+def cloud_edition_billing_resource_check(resource: str):
     def interceptor(view):
         @wraps(view)
         def decorated(*args, **kwargs):
@@ -60,22 +58,23 @@ def cloud_edition_billing_resource_check(
                 documents_upload_quota = features.documents_upload_quota
                 annotation_quota_limit = features.annotation_quota_limit
                 if resource == "members" and 0 < members.limit <= members.size:
-                    abort(403, error_msg)
+                    abort(403, "The number of members has reached the limit of your subscription.")
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
-                    abort(403, error_msg)
+                    abort(403, "The number of apps has reached the limit of your subscription.")
                 elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
-                    abort(403, error_msg)
+                    abort(403, "The capacity of the vector space has reached the limit of your subscription.")
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
-                    # The api of file upload is used in the multiple places, so we need to check the source of the request from datasets
+                    # The api of file upload is used in the multiple places,
+                    # so we need to check the source of the request from datasets
                     source = request.args.get("source")
                     if source == "datasets":
-                        abort(403, error_msg)
+                        abort(403, "The number of documents has reached the limit of your subscription.")
                     else:
                         return view(*args, **kwargs)
                 elif resource == "workspace_custom" and not features.can_replace_logo:
-                    abort(403, error_msg)
+                    abort(403, "The workspace custom feature has reached the limit of your subscription.")
                 elif resource == "annotation" and 0 < annotation_quota_limit.limit < annotation_quota_limit.size:
-                    abort(403, error_msg)
+                    abort(403, "The annotation quota has reached the limit of your subscription.")
                 else:
                     return view(*args, **kwargs)
 
@@ -86,10 +85,7 @@ def cloud_edition_billing_resource_check(
     return interceptor
 
 
-def cloud_edition_billing_knowledge_limit_check(
-    resource: str,
-    error_msg: str = "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.",
-):
+def cloud_edition_billing_knowledge_limit_check(resource: str):
     def interceptor(view):
         @wraps(view)
         def decorated(*args, **kwargs):
@@ -97,7 +93,10 @@ def cloud_edition_billing_knowledge_limit_check(
             if features.billing.enabled:
                 if resource == "add_segment":
                     if features.billing.subscription.plan == "sandbox":
-                        abort(403, error_msg)
+                        abort(
+                            403,
+                            "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.",
+                        )
                 else:
                     return view(*args, **kwargs)
 

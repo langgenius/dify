@@ -1,23 +1,21 @@
 import re
 from collections.abc import Generator
-from json import dumps, loads
+from json import dumps
 from time import time
 
 # import monkeypatch
 from typing import Any, Literal, Optional, Union
 
-import openai.types.chat.completion_create_params as completion_create_params
 from openai import AzureOpenAI, OpenAI
 from openai._types import NOT_GIVEN, NotGiven
 from openai.resources.chat.completions import Completions
 from openai.types import Completion as CompletionMessage
 from openai.types.chat import (
-    ChatCompletion,
     ChatCompletionChunk,
     ChatCompletionMessageParam,
     ChatCompletionMessageToolCall,
-    ChatCompletionToolChoiceOptionParam,
     ChatCompletionToolParam,
+    completion_create_params,
 )
 from openai.types.chat.chat_completion import ChatCompletion as _ChatCompletion
 from openai.types.chat.chat_completion import Choice as _ChatCompletionChoice
@@ -254,7 +252,7 @@ class MockChatClass:
             "gpt-3.5-turbo-16k-0613",
         ]
         azure_openai_models = ["gpt35", "gpt-4v", "gpt-35-turbo"]
-        if not re.match(r"^(https?):\/\/[^\s\/$.?#].[^\s]*$", self._client.base_url.__str__()):
+        if not re.match(r"^(https?):\/\/[^\s\/$.?#].[^\s]*$", str(self._client.base_url)):
             raise InvokeAuthorizationError("Invalid base url")
         if model in openai_models + azure_openai_models:
             if not re.match(r"sk-[a-zA-Z0-9]{24,}$", self._client.api_key) and type(self._client) == OpenAI:

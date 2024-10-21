@@ -34,6 +34,9 @@ const translation = {
         ' sul metodo di recupero, puoi cambiare questo in qualsiasi momento nelle impostazioni della Conoscenza.',
     },
     save: 'Salva',
+    retrievalSettings: 'Impostazioni di recupero',
+    externalKnowledgeID: 'ID conoscenza esterna',
+    externalKnowledgeAPI: 'API di conoscenza esterna',
   },
 }
 

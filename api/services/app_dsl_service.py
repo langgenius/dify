@@ -13,8 +13,9 @@ from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
-current_dsl_version = "0.1.1"
+current_dsl_version = "0.1.2"
 dsl_to_dify_version_mapping: dict[str, str] = {
+    "0.1.2": "0.8.0",
     "0.1.1": "0.6.0",  # dsl version -> from dify version
 }
 
@@ -80,17 +81,16 @@ class AppDslService:
             raise ValueError("Missing app in data argument")
 
         # get app basic info
-        name = args.get("name") if args.get("name") else app_data.get("name")
-        description = args.get("description") if args.get("description") else app_data.get("description", "")
-        icon_type = args.get("icon_type") if args.get("icon_type") else app_data.get("icon_type")
-        icon = args.get("icon") if args.get("icon") else app_data.get("icon")
-        icon_background = (
-            args.get("icon_background") if args.get("icon_background") else app_data.get("icon_background")
-        )
+        name = args.get("name") or app_data.get("name")
+        description = args.get("description") or app_data.get("description", "")
+        icon_type = args.get("icon_type") or app_data.get("icon_type")
+        icon = args.get("icon") or app_data.get("icon")
+        icon_background = args.get("icon_background") or app_data.get("icon_background")
+        use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
 
         # import dsl and create app
         app_mode = AppMode.value_of(app_data.get("mode"))
-        if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
+        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             app = cls._import_and_create_new_workflow_based_app(
                 tenant_id=tenant_id,
                 app_mode=app_mode,
@@ -101,8 +101,9 @@ class AppDslService:
                 icon_type=icon_type,
                 icon=icon,
                 icon_background=icon_background,
+                use_icon_as_answer_icon=use_icon_as_answer_icon,
             )
-        elif app_mode in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION]:
+        elif app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION}:
             app = cls._import_and_create_new_model_config_based_app(
                 tenant_id=tenant_id,
                 app_mode=app_mode,
@@ -113,6 +114,7 @@ class AppDslService:
                 icon_type=icon_type,
                 icon=icon,
                 icon_background=icon_background,
+                use_icon_as_answer_icon=use_icon_as_answer_icon,
             )
         else:
             raise ValueError("Invalid app mode")
@@ -141,7 +143,7 @@ class AppDslService:
 
         # import dsl and overwrite app
         app_mode = AppMode.value_of(app_data.get("mode"))
-        if app_mode not in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
+        if app_mode not in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             raise ValueError("Only support import workflow in advanced-chat or workflow app.")
 
         if app_data.get("mode") != app_model.mode:
@@ -171,10 +173,11 @@ class AppDslService:
                 "icon": "🤖" if app_model.icon_type == "image" else app_model.icon,
                 "icon_background": "#FFEAD5" if app_model.icon_type == "image" else app_model.icon_background,
                 "description": app_model.description,
+                "use_icon_as_answer_icon": app_model.use_icon_as_answer_icon,
             },
         }
 
-        if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
+        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             cls._append_workflow_export_data(
                 export_data=export_data, app_model=app_model, include_secret=include_secret
             )
@@ -218,6 +221,7 @@ class AppDslService:
         icon_type: str,
         icon: str,
         icon_background: str,
+        use_icon_as_answer_icon: bool,
     ) -> App:
         """
         Import app dsl and create new workflow based app
@@ -231,9 +235,10 @@ class AppDslService:
         :param icon_type: app icon type, "emoji" or "image"
         :param icon: app icon
         :param icon_background: app icon background
+        :param use_icon_as_answer_icon: use app icon as answer icon
         """
         if not workflow_data:
-            raise ValueError("Missing workflow in data argument " "when app mode is advanced-chat or workflow")
+            raise ValueError("Missing workflow in data argument when app mode is advanced-chat or workflow")
 
         app = cls._create_app(
             tenant_id=tenant_id,
@@ -244,6 +249,7 @@ class AppDslService:
             icon_type=icon_type,
             icon=icon,
             icon_background=icon_background,
+            use_icon_as_answer_icon=use_icon_as_answer_icon,
         )
 
         # init draft workflow
@@ -277,7 +283,7 @@ class AppDslService:
         :param account: Account instance
         """
         if not workflow_data:
-            raise ValueError("Missing workflow in data argument " "when app mode is advanced-chat or workflow")
+            raise ValueError("Missing workflow in data argument when app mode is advanced-chat or workflow")
 
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
@@ -316,6 +322,7 @@ class AppDslService:
         icon_type: str,
         icon: str,
         icon_background: str,
+        use_icon_as_answer_icon: bool,
     ) -> App:
         """
         Import app dsl and create new model config based app
@@ -330,7 +337,7 @@ class AppDslService:
         :param icon_background: app icon background
         """
         if not model_config_data:
-            raise ValueError("Missing model_config in data argument " "when app mode is chat, agent-chat or completion")
+            raise ValueError("Missing model_config in data argument when app mode is chat, agent-chat or completion")
 
         app = cls._create_app(
             tenant_id=tenant_id,
@@ -341,11 +348,14 @@ class AppDslService:
             icon_type=icon_type,
             icon=icon,
             icon_background=icon_background,
+            use_icon_as_answer_icon=use_icon_as_answer_icon,
         )
 
         app_model_config = AppModelConfig()
         app_model_config = app_model_config.from_model_config_dict(model_config_data)
         app_model_config.app_id = app.id
+        app_model_config.created_by = account.id
+        app_model_config.updated_by = account.id
 
         db.session.add(app_model_config)
         db.session.commit()
@@ -367,6 +377,7 @@ class AppDslService:
         icon_type: str,
         icon: str,
         icon_background: str,
+        use_icon_as_answer_icon: bool,
     ) -> App:
         """
         Create new app
@@ -379,6 +390,7 @@ class AppDslService:
         :param icon_type: app icon type, "emoji" or "image"
         :param icon: app icon
         :param icon_background: app icon background
+        :param use_icon_as_answer_icon: use app icon as answer icon
         """
         app = App(
             tenant_id=tenant_id,
@@ -390,6 +402,9 @@ class AppDslService:
             icon_background=icon_background,
             enable_site=True,
             enable_api=True,
+            use_icon_as_answer_icon=use_icon_as_answer_icon,
+            created_by=account.id,
+            updated_by=account.id,
         )
 
         db.session.add(app)

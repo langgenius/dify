@@ -1,4 +1,5 @@
 import base64
+import json
 import logging
 import secrets
 import uuid
@@ -6,18 +7,29 @@ from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from typing import Any, Optional
 
+from pydantic import BaseModel
 from sqlalchemy import func
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
 from events.tenant_event import tenant_was_created
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter, TokenManager
 from libs.passport import PassportService
 from libs.password import compare_password, hash_password, valid_password
 from libs.rsa import generate_key_pair
-from models.account import *
+from models.account import (
+    Account,
+    AccountIntegrate,
+    AccountStatus,
+    Tenant,
+    TenantAccountJoin,
+    TenantAccountJoinRole,
+    TenantAccountRole,
+    TenantStatus,
+)
 from models.model import DifySetup
 from services.errors.account import (
     AccountAlreadyInTenantError,
@@ -32,14 +44,44 @@ from services.errors.account import (
     NoPermissionError,
     RateLimitExceededError,
     RoleAlreadyAssignedError,
-    TenantNotFound,
+    TenantNotFoundError,
 )
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
 
 
+class TokenPair(BaseModel):
+    access_token: str
+    refresh_token: str
+
+
+REFRESH_TOKEN_PREFIX = "refresh_token:"
+ACCOUNT_REFRESH_TOKEN_PREFIX = "account_refresh_token:"
+REFRESH_TOKEN_EXPIRY = timedelta(days=30)
+
+
 class AccountService:
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=5, time_window=60 * 60)
+
+    @staticmethod
+    def _get_refresh_token_key(refresh_token: str) -> str:
+        return f"{REFRESH_TOKEN_PREFIX}{refresh_token}"
+
+    @staticmethod
+    def _get_account_refresh_token_key(account_id: str) -> str:
+        return f"{ACCOUNT_REFRESH_TOKEN_PREFIX}{account_id}"
+
+    @staticmethod
+    def _store_refresh_token(refresh_token: str, account_id: str) -> None:
+        redis_client.setex(AccountService._get_refresh_token_key(refresh_token), REFRESH_TOKEN_EXPIRY, account_id)
+        redis_client.setex(
+            AccountService._get_account_refresh_token_key(account_id), REFRESH_TOKEN_EXPIRY, refresh_token
+        )
+
+    @staticmethod
+    def _delete_refresh_token(refresh_token: str, account_id: str) -> None:
+        redis_client.delete(AccountService._get_refresh_token_key(refresh_token))
+        redis_client.delete(AccountService._get_account_refresh_token_key(account_id))
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
@@ -47,12 +89,10 @@ class AccountService:
         if not account:
             return None
 
-        if account.status in [AccountStatus.BANNED.value, AccountStatus.CLOSED.value]:
+        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
             raise Unauthorized("Account is banned or closed.")
 
-        current_tenant: TenantAccountJoin = TenantAccountJoin.query.filter_by(
-            account_id=account.id, current=True
-        ).first()
+        current_tenant = TenantAccountJoin.query.filter_by(account_id=account.id, current=True).first()
         if current_tenant:
             account.current_tenant_id = current_tenant.tenant_id
         else:
@@ -73,10 +113,12 @@ class AccountService:
         return account
 
     @staticmethod
-    def get_account_jwt_token(account, *, exp: timedelta = timedelta(days=30)):
+    def get_account_jwt_token(account: Account) -> str:
+        exp_dt = datetime.now(timezone.utc) + timedelta(minutes=dify_config.ACCESS_TOKEN_EXPIRE_MINUTES)
+        exp = int(exp_dt.timestamp())
         payload = {
             "user_id": account.id,
-            "exp": datetime.now(timezone.utc).replace(tzinfo=None) + exp,
+            "exp": exp,
             "iss": dify_config.EDITION,
             "sub": "Console API Passport",
         }
@@ -92,7 +134,7 @@ class AccountService:
         if not account:
             raise AccountLoginError("Invalid email or password.")
 
-        if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
+        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
             raise AccountLoginError("Account is banned or closed.")
 
         if account.status == AccountStatus.PENDING.value:
@@ -202,7 +244,7 @@ class AccountService:
         return account
 
     @staticmethod
-    def update_last_login(account: Account, *, ip_address: str) -> None:
+    def update_login_info(account: Account, *, ip_address: str) -> None:
         """Update last login time and ip"""
         account.last_login_at = datetime.now(timezone.utc).replace(tzinfo=None)
         account.last_login_ip = ip_address
@@ -210,22 +252,45 @@ class AccountService:
         db.session.commit()
 
     @staticmethod
-    def login(account: Account, *, ip_address: Optional[str] = None):
+    def login(account: Account, *, ip_address: Optional[str] = None) -> TokenPair:
         if ip_address:
-            AccountService.update_last_login(account, ip_address=ip_address)
-        exp = timedelta(days=30)
-        token = AccountService.get_account_jwt_token(account, exp=exp)
-        redis_client.set(_get_login_cache_key(account_id=account.id, token=token), "1", ex=int(exp.total_seconds()))
-        return token
+            AccountService.update_login_info(account=account, ip_address=ip_address)
+
+        access_token = AccountService.get_account_jwt_token(account=account)
+        refresh_token = _generate_refresh_token()
+
+        AccountService._store_refresh_token(refresh_token, account.id)
+
+        return TokenPair(access_token=access_token, refresh_token=refresh_token)
 
     @staticmethod
-    def logout(*, account: Account, token: str):
-        redis_client.delete(_get_login_cache_key(account_id=account.id, token=token))
+    def logout(*, account: Account) -> None:
+        refresh_token = redis_client.get(AccountService._get_account_refresh_token_key(account.id))
+        if refresh_token:
+            AccountService._delete_refresh_token(refresh_token.decode("utf-8"), account.id)
 
     @staticmethod
-    def load_logged_in_account(*, account_id: str, token: str):
-        if not redis_client.get(_get_login_cache_key(account_id=account_id, token=token)):
-            return None
+    def refresh_token(refresh_token: str) -> TokenPair:
+        # Verify the refresh token
+        account_id = redis_client.get(AccountService._get_refresh_token_key(refresh_token))
+        if not account_id:
+            raise ValueError("Invalid refresh token")
+
+        account = AccountService.load_user(account_id.decode("utf-8"))
+        if not account:
+            raise ValueError("Invalid account")
+
+        # Generate new access token and refresh token
+        new_access_token = AccountService.get_account_jwt_token(account)
+        new_refresh_token = _generate_refresh_token()
+
+        AccountService._delete_refresh_token(refresh_token, account.id)
+        AccountService._store_refresh_token(new_refresh_token, account.id)
+
+        return TokenPair(access_token=new_access_token, refresh_token=new_refresh_token)
+
+    @staticmethod
+    def load_logged_in_account(*, account_id: str):
         return AccountService.load_user(account_id)
 
     @classmethod
@@ -247,10 +312,6 @@ class AccountService:
         return TokenManager.get_token_data(token, "reset_password")
 
 
-def _get_login_cache_key(*, account_id: str, token: str):
-    return f"account_login:{account_id}:{token}"
-
-
 class TenantService:
     @staticmethod
     def create_tenant(name: str) -> Tenant:
@@ -265,7 +326,7 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def create_owner_tenant_if_not_exist(account: Account):
+    def create_owner_tenant_if_not_exist(account: Account, name: Optional[str] = None):
         """Create owner tenant if not exist"""
         available_ta = (
             TenantAccountJoin.query.filter_by(account_id=account.id).order_by(TenantAccountJoin.id.asc()).first()
@@ -274,7 +335,10 @@ class TenantService:
         if available_ta:
             return
 
-        tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+        if name:
+            tenant = TenantService.create_tenant(name)
+        else:
+            tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
         TenantService.create_tenant_member(tenant, account, role="owner")
         account.current_tenant = tenant
         db.session.commit()
@@ -308,17 +372,17 @@ class TenantService:
         """Get tenant by account and add the role"""
         tenant = account.current_tenant
         if not tenant:
-            raise TenantNotFound("Tenant not found.")
+            raise TenantNotFoundError("Tenant not found.")
 
         ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if ta:
             tenant.role = ta.role
         else:
-            raise TenantNotFound("Tenant not found for the account.")
+            raise TenantNotFoundError("Tenant not found for the account.")
         return tenant
 
     @staticmethod
-    def switch_tenant(account: Account, tenant_id: int = None) -> None:
+    def switch_tenant(account: Account, tenant_id: Optional[int] = None) -> None:
         """Switch the current workspace for the account"""
 
         # Ensure tenant_id is provided
@@ -424,7 +488,7 @@ class TenantService:
             "remove": [TenantAccountRole.OWNER],
             "update": [TenantAccountRole.OWNER],
         }
-        if action not in ["add", "remove", "update"]:
+        if action not in {"add", "remove", "update"}:
             raise InvalidActionError("Invalid action.")
 
         if member:
@@ -541,7 +605,7 @@ class RegisterService:
         """Register account"""
         try:
             account = AccountService.create_account(
-                email=email, name=name, interface_language=language if language else languages[0], password=password
+                email=email, name=name, interface_language=language or languages[0], password=password
             )
             account.status = AccountStatus.ACTIVE.value if not status else status.value
             account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -611,8 +675,8 @@ class RegisterService:
             "email": account.email,
             "workspace_id": tenant.id,
         }
-        expiryHours = dify_config.INVITE_EXPIRY_HOURS
-        redis_client.setex(cls._get_invitation_token_key(token), expiryHours * 60 * 60, json.dumps(invitation_data))
+        expiry_hours = dify_config.INVITE_EXPIRY_HOURS
+        redis_client.setex(cls._get_invitation_token_key(token), expiry_hours * 60 * 60, json.dumps(invitation_data))
         return token
 
     @classmethod
@@ -684,3 +748,8 @@ class RegisterService:
 
             invitation = json.loads(data)
             return invitation
+
+
+def _generate_refresh_token(length: int = 64):
+    token = secrets.token_hex(length)
+    return token

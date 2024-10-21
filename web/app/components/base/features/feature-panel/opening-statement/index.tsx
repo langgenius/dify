@@ -24,6 +24,7 @@ import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/conf
 import { getNewVar } from '@/utils/var'
 import { varHighlightHTML } from '@/app/components/app/configuration/base/var-highlight'
 import type { PromptVariable } from '@/models/debug'
+import type { InputVar } from '@/app/components/workflow/types'
 
 const MAX_QUESTION_NUM = 5
 
@@ -32,6 +33,7 @@ export type OpeningStatementProps = {
   readonly?: boolean
   promptVariables?: PromptVariable[]
   onAutoAddPromptVariable: (variable: PromptVariable[]) => void
+  workflowVariables?: InputVar[]
 }
 
 // regex to match the {{}} and replace it with a span
@@ -42,6 +44,7 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
   readonly,
   promptVariables = [],
   onAutoAddPromptVariable,
+  workflowVariables = [],
 }) => {
   const { t } = useTranslation()
   const featureStore = useFeaturesStore()
@@ -96,14 +99,18 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
   const handleConfirm = () => {
     const keys = getInputKeys(tempValue)
     const promptKeys = promptVariables.map(item => item.key)
+    const workflowVariableKeys = workflowVariables.map(item => item.variable)
     let notIncludeKeys: string[] = []
 
-    if (promptKeys.length === 0) {
+    if (promptKeys.length === 0 && workflowVariables.length === 0) {
       if (keys.length > 0)
         notIncludeKeys = keys
     }
     else {
-      notIncludeKeys = keys.filter(key => !promptKeys.includes(key))
+      if (workflowVariables.length > 0)
+        notIncludeKeys = keys.filter(key => !workflowVariableKeys.includes(key))
+
+      else notIncludeKeys = keys.filter(key => !promptKeys.includes(key))
     }
 
     if (notIncludeKeys.length > 0) {
@@ -248,7 +255,7 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
             onClick={() => { setTempSuggestedQuestions([...tempSuggestedQuestions, '']) }}
             className='mt-1 flex items-center h-9 px-3 gap-2 rounded-lg cursor-pointer text-gray-400  bg-gray-100 hover:bg-gray-200'>
             <RiAddLine className='w-4 h-4' />
-            <div className='text-gray-500 text-[13px]'>{t('appDebug.variableConig.addOption')}</div>
+            <div className='text-gray-500 text-[13px]'>{t('appDebug.variableConfig.addOption')}</div>
           </div>
         )}
       </div>
@@ -308,7 +315,7 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
         {isShowConfirmAddVar && (
           <ConfirmAddVar
             varNameArr={notIncludeKeys}
-            onConfrim={autoAddVar}
+            onConfirm={autoAddVar}
             onCancel={cancelAutoAddVar}
             onHide={hideConfirmAddVar}
           />

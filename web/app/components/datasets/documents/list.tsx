@@ -122,6 +122,7 @@ export const OperationAction: FC<{
 }> = ({ embeddingAvailable, datasetId, detail, onUpdate, scene = 'list', className = '' }) => {
   const { id, enabled = false, archived = false, data_source_type } = detail || {}
   const [showModal, setShowModal] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
   const router = useRouter()
@@ -153,6 +154,7 @@ export const OperationAction: FC<{
         break
       default:
         opApi = deleteDocument
+        setDeleting(true)
         break
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
@@ -160,6 +162,8 @@ export const OperationAction: FC<{
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     else
       notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+    if (operationName === 'delete')
+      setDeleting(false)
     onUpdate(operationName)
   }
 
@@ -295,6 +299,8 @@ export const OperationAction: FC<{
     {showModal
       && <Confirm
         isShow={showModal}
+        isLoading={deleting}
+        isDisabled={deleting}
         title={t('datasetDocuments.list.delete.title')}
         content={t('datasetDocuments.list.delete.content')}
         confirmText={t('common.operation.sure')}
@@ -405,7 +411,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
         <tbody className="text-gray-700">
           {localDocs.map((doc) => {
             const isFile = doc.data_source_type === DataSourceType.FILE
-            const fileType = isFile ? doc.data_source_detail_dict?.upload_file.extension : ''
+            const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
             return <tr
               key={doc.id}
               className={'border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'}

@@ -1,0 +1,125 @@
+identity:
+  name: send_bot_message
+  author: Doug Lea
+  label:
+    en_US: Send Bot Message
+    zh_Hans: 发送飞书应用消息
+description:
+  human:
+    en_US: Send bot message
+    zh_Hans: 发送飞书应用消息
+  llm: A tool for sending Feishu application messages.
+parameters:
+  - name: receive_id
+    type: string
+    required: true
+    label:
+      en_US: receive_id
+      zh_Hans: 消息接收者的 ID
+    human_description:
+      en_US: The ID of the message receiver, the ID type is consistent with the value of the query parameter receive_id_type.
+      zh_Hans: 消息接收者的 ID，ID 类型与查询参数 receive_id_type 的取值一致。
+    llm_description: 消息接收者的 ID，ID 类型与查询参数 receive_id_type 的取值一致。
+    form: llm
+
+  - name: receive_id_type
+    type: select
+    required: true
+    options:
+      - value: open_id
+        label:
+          en_US: open_id
+          zh_Hans: open_id
+      - value: union_id
+        label:
+          en_US: union_id
+          zh_Hans: union_id
+      - value: user_id
+        label:
+          en_US: user_id
+          zh_Hans: user_id
+      - value: email
+        label:
+          en_US: email
+          zh_Hans: email
+      - value: chat_id
+        label:
+          en_US: chat_id
+          zh_Hans: chat_id
+    label:
+      en_US: receive_id_type
+      zh_Hans: 消息接收者的 ID 类型
+    human_description:
+      en_US: The ID type of the message receiver, optional values are open_id, union_id, user_id, email, chat_id, with a default value of open_id.
+      zh_Hans: 消息接收者的 ID 类型，可选值有 open_id、union_id、user_id、email、chat_id，默认值为 open_id。
+    llm_description: 消息接收者的 ID 类型，可选值有 open_id、union_id、user_id、email、chat_id，默认值为 open_id。
+    form: form
+
+  - name: msg_type
+    type: select
+    required: true
+    options:
+      - value: text
+        label:
+          en_US: text
+          zh_Hans: 文本
+      - value: interactive
+        label:
+          en_US: interactive
+          zh_Hans: 卡片
+      - value: post
+        label:
+          en_US: post
+          zh_Hans: 富文本
+      - value: image
+        label:
+          en_US: image
+          zh_Hans: 图片
+      - value: file
+        label:
+          en_US: file
+          zh_Hans: 文件
+      - value: audio
+        label:
+          en_US: audio
+          zh_Hans: 语音
+      - value: media
+        label:
+          en_US: media
+          zh_Hans: 视频
+      - value: sticker
+        label:
+          en_US: sticker
+          zh_Hans: 表情包
+      - value: share_chat
+        label:
+          en_US: share_chat
+          zh_Hans: 分享群名片
+      - value: share_user
+        label:
+          en_US: share_user
+          zh_Hans: 分享个人名片
+      - value: system
+        label:
+          en_US: system
+          zh_Hans: 系统消息
+    label:
+      en_US: msg_type
+      zh_Hans: 消息类型
+    human_description:
+      en_US: Message type. Optional values are text, post, image, file, audio, media, sticker, interactive, share_chat, share_user, system. For detailed introduction of different message types, refer to the message content(https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json).
+      zh_Hans: 消息类型。可选值有：text、post、image、file、audio、media、sticker、interactive、share_chat、share_user、system。不同消息类型的详细介绍，参见发送消息内容(https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json)。
+    llm_description: 消息类型。可选值有：text、post、image、file、audio、media、sticker、interactive、share_chat、share_user、system。不同消息类型的详细介绍，参见发送消息内容(https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json)。
+    form: form
+
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: content
+      zh_Hans: 消息内容
+    human_description:
+      en_US: Message content, a JSON structure serialized string. The value of this parameter corresponds to msg_type. For example, if msg_type is text, this parameter needs to pass in text type content. To understand the format and usage limitations of different message types, refer to the message content(https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json).
+      zh_Hans: 消息内容，JSON 结构序列化后的字符串。该参数的取值与 msg_type 对应，例如 msg_type 取值为 text，则该参数需要传入文本类型的内容。了解不同类型的消息内容格式、使用限制，可参见发送消息内容(https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json)。
+    llm_description: 消息内容，JSON 结构序列化后的字符串。该参数的取值与 msg_type 对应，例如 msg_type 取值为 text，则该参数需要传入文本类型的内容。了解不同类型的消息内容格式、使用限制，可参见发送消息内容(https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json)。
+    form: llm

@@ -60,6 +60,8 @@ const translation = {
       bulkUpload: 'Încărcare în bloc a documentelor',
       agentMode: 'Mod agent',
       workflow: 'Flux de lucru',
+      llmLoadingBalancing: 'Echilibrarea sarcinii LLM',
+      llmLoadingBalancingTooltip: 'Adăugați mai multe chei API la modele, ocolind efectiv limitele de rată API.',
     },
     comingSoon: 'Vine în curând',
     member: 'Membru',
@@ -74,6 +76,7 @@ const translation = {
     },
     ragAPIRequestTooltip: 'Se referă la numărul de apeluri API care invocă doar capacitățile de procesare a bazei de cunoștințe a Dify.',
     receiptInfo: 'Doar proprietarul echipei și administratorul echipei pot să se aboneze și să vizualizeze informațiile de facturare',
+    annotationQuota: 'Cota de adnotare',
   },
   plans: {
     sandbox: {

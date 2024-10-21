@@ -166,6 +166,8 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         parser.add_argument("query", type=str, required=True, location="json", default="")
         parser.add_argument("files", type=list, location="json")
         parser.add_argument("conversation_id", type=uuid_value, location="json")
+        parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
+
         args = parser.parse_args()
 
         try:
@@ -465,6 +467,6 @@ api.add_resource(
 api.add_resource(PublishedWorkflowApi, "/apps/<uuid:app_id>/workflows/publish")
 api.add_resource(DefaultBlockConfigsApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 api.add_resource(
-    DefaultBlockConfigApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs" "/<string:block_type>"
+    DefaultBlockConfigApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>"
 )
 api.add_resource(ConvertToWorkflowApi, "/apps/<uuid:app_id>/convert-to-workflow")

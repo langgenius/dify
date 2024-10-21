@@ -413,3 +413,109 @@ Workflow applications offers non-session support and is ideal for translation, a
     </CodeGroup>
   </Col>
 </Row>
+
+---
+
+<Heading
+  url='/workflows/logs'
+  method='GET'
+  title='Get workflow logs'
+  name='#Get-Workflow-Logs'
+/>
+<Row>
+  <Col>
+    Returns workflow logs, with the first page returning the latest `{limit}` messages, i.e., in reverse order.
+
+    ### Query
+
+    <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        Keyword to search
+      </Property>
+      <Property name='status' type='string' key='status'>
+        succeeded/failed/stopped
+      </Property>
+      <Property name='page' type='int' key='page'>
+        current page, default is 1.
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+          How many chat history messages to return in one request, default is 20.
+      </Property>
+    </Properties>
+
+    ### Response
+  - `page` (int) Current page
+  - `limit` (int) Number of returned items, if input exceeds system limit, returns system limit amount
+  - `total` (int) Number of total items
+  - `has_more` (bool) Whether there is a next page
+  - `data` (array[object]) Log list
+    - `id` (string) ID
+    - `workflow_run` (object) Workflow run
+      - `id` (string) ID
+      - `version` (string) Version
+      - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
+      - `error` (string) Optional reason of error
+      - `elapsed_time` (float) total seconds to be used
+      - `total_tokens` (int) tokens to be used
+      - `total_steps` (int) default 0
+      - `created_at` (timestamp) start time
+      - `finished_at` (timestamp) end time
+    - `created_from` (string) Created from
+    - `created_by_role` (string) Created by role
+    - `created_by_account` (string) Optional Created by account
+    - `created_by_end_user` (object) Created by end user
+      - `id` (string) ID
+      - `type` (string) Type
+      - `is_anonymous` (bool) Is anonymous
+      - `session_id` (string) Session ID
+    - `created_at` (timestamp) create time
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/workflows/logs" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/logs'\\\n --header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/workflows/logs?limit=1'
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "page": 1,
+        "limit": 1,
+        "total": 7,
+        "has_more": true,
+        "data": [
+            {
+                "id": "e41b93f1-7ca2-40fd-b3a8-999aeb499cc0",
+                "workflow_run": {
+                    "id": "c0640fc8-03ef-4481-a96c-8a13b732a36e",
+                    "version": "2024-08-01 12:17:09.771832",
+                    "status": "succeeded",
+                    "error": null,
+                    "elapsed_time": 1.3588523610014818,
+                    "total_tokens": 0,
+                    "total_steps": 3,
+                    "created_at": 1726139643,
+                    "finished_at": 1726139644
+                },
+                "created_from": "service-api",
+                "created_by_role": "end_user",
+                "created_by_account": null,
+                "created_by_end_user": {
+                    "id": "7f7d9117-dd9d-441d-8970-87e5e7e687a3",
+                    "type": "service_api",
+                    "is_anonymous": false,
+                    "session_id": "abc-123"
+                },
+                "created_at": 1726139644
+            }
+        ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>

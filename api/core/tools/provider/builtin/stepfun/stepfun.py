@@ -13,13 +13,12 @@ class StepfunProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
+                user_id="",
                 tool_parameters={
                     "prompt": "cute girl, blue eyes, white hair, anime style",
-                    "size": "1024x1024",
-                    "n": 1
+                    "size": "256x256",
+                    "n": 1,
                 },
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
-        

@@ -47,7 +47,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         const { data, has_more } = await fetchDatasets({ url: '/datasets', params: { page } })
         setPage(getPage() + 1)
         setIsNoMore(!has_more)
-        const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique)]
+        const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique || item.provider === 'external')]
         setDataSets(newList)
         setLoaded(true)
         if (!selected.find(item => !item.name))
@@ -135,7 +135,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   </div>
                   <div className={cn('max-w-[200px] text-[13px] font-medium text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap', !item.embedding_available && 'opacity-50 !max-w-[120px]')}>{item.name}</div>
                   {!item.embedding_available && (
-                    <span className='ml-1 shrink-0 px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                    <span className='ml-1 shrink-0 px-1 border border-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
                   )}
                 </div>
                 {
@@ -143,6 +143,11 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                     <Badge
                       text={formatIndexingTechniqueAndMethod(item.indexing_technique, item.retrieval_model_dict?.search_method)}
                     />
+                  )
+                }
+                {
+                  item.provider === 'external' && (
+                    <Badge text={t('dataset.externalTag')} />
                   )
                 }
               </div>

@@ -114,7 +114,7 @@ const ConfigCredential: FC<Props> = ({
                           {t('tools.createTool.authMethod.keyTooltip')}
                         </div>
                       }
-                      triggerClassName='ml-0.5'
+                      triggerClassName='ml-0.5 w-4 h-4'
                     />
                   </div>
                   <input

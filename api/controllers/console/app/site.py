@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
@@ -32,6 +34,7 @@ def parse_app_site_args():
     )
     parser.add_argument("prompt_public", type=bool, required=False, location="json")
     parser.add_argument("show_workflow_steps", type=bool, required=False, location="json")
+    parser.add_argument("use_icon_as_answer_icon", type=bool, required=False, location="json")
     return parser.parse_args()
 
 
@@ -66,11 +69,14 @@ class AppSite(Resource):
             "customize_token_strategy",
             "prompt_public",
             "show_workflow_steps",
+            "use_icon_as_answer_icon",
         ]:
             value = args.get(attr_name)
             if value is not None:
                 setattr(site, attr_name, value)
 
+        site.updated_by = current_user.id
+        site.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
         return site
@@ -93,6 +99,8 @@ class AppSiteAccessTokenReset(Resource):
             raise NotFound
 
         site.code = Site.generate_code(16)
+        site.updated_by = current_user.id
+        site.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
         return site

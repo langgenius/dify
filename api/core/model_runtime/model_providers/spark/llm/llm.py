@@ -25,12 +25,17 @@ from ._client import SparkLLMClient
 
 
 class SparkLargeLanguageModel(LargeLanguageModel):
-
-    def _invoke(self, model: str, credentials: dict,
-                prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-                stream: bool = True, user: Optional[str] = None) \
-            -> Union[LLMResult, Generator]:
+    def _invoke(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        tools: Optional[list[PromptMessageTool]] = None,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+    ) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
 
@@ -47,8 +52,13 @@ class SparkLargeLanguageModel(LargeLanguageModel):
         # invoke model
         return self._generate(model, credentials, prompt_messages, model_parameters, stop, stream, user)
 
-    def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
-                       tools: Optional[list[PromptMessageTool]] = None) -> int:
+    def get_num_tokens(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        tools: Optional[list[PromptMessageTool]] = None,
+    ) -> int:
         """
         Get number of tokens for given prompt messages
 
@@ -80,15 +90,21 @@ class SparkLargeLanguageModel(LargeLanguageModel):
                 model_parameters={
                     "temperature": 0.5,
                 },
-                stream=False
+                stream=False,
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _generate(self, model: str, credentials: dict,
-                  prompt_messages: list[PromptMessage], model_parameters: dict,
-                  stop: Optional[list[str]] = None, stream: bool = True,
-                  user: Optional[str] = None) -> Union[LLMResult, Generator]:
+    def _generate(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+    ) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
 
@@ -103,7 +119,7 @@ class SparkLargeLanguageModel(LargeLanguageModel):
         """
         extra_model_kwargs = {}
         if stop:
-            extra_model_kwargs['stop_sequences'] = stop
+            extra_model_kwargs["stop_sequences"] = stop
 
         # transform credentials to kwargs for model instance
         credentials_kwargs = self._to_credential_kwargs(credentials)
@@ -113,21 +129,33 @@ class SparkLargeLanguageModel(LargeLanguageModel):
             **credentials_kwargs,
         )
 
-        thread = threading.Thread(target=client.run, args=(
-            [{ 'role': prompt_message.role.value, 'content': prompt_message.content } for prompt_message in prompt_messages],
-            user,
-            model_parameters,
-            stream
-        ))
+        thread = threading.Thread(
+            target=client.run,
+            args=(
+                [
+                    {"role": prompt_message.role.value, "content": prompt_message.content}
+                    for prompt_message in prompt_messages
+                ],
+                user,
+                model_parameters,
+                stream,
+            ),
+        )
         thread.start()
 
         if stream:
             return self._handle_generate_stream_response(thread, model, credentials, client, prompt_messages)
 
         return self._handle_generate_response(thread, model, credentials, client, prompt_messages)
-        
-    def _handle_generate_response(self, thread: threading.Thread, model: str, credentials: dict, client: SparkLLMClient,
-                                  prompt_messages: list[PromptMessage]) -> LLMResult:
+
+    def _handle_generate_response(
+        self,
+        thread: threading.Thread,
+        model: str,
+        credentials: dict,
+        client: SparkLLMClient,
+        prompt_messages: list[PromptMessage],
+    ) -> LLMResult:
         """
         Handle llm response
 
@@ -140,7 +168,7 @@ class SparkLargeLanguageModel(LargeLanguageModel):
 
         for content in client.subscribe():
             if isinstance(content, dict):
-                delta = content['data']
+                delta = content["data"]
             else:
                 delta = content
 
@@ -148,9 +176,7 @@ class SparkLargeLanguageModel(LargeLanguageModel):
 
         thread.join()
         # transform assistant message to prompt message
-        assistant_prompt_message = AssistantPromptMessage(
-            content=completion
-        )
+        assistant_prompt_message = AssistantPromptMessage(content=completion)
 
         # calculate num tokens
         prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
@@ -168,9 +194,15 @@ class SparkLargeLanguageModel(LargeLanguageModel):
         )
 
         return result
-    
-    def _handle_generate_stream_response(self, thread: threading.Thread, model: str, credentials: dict, client: SparkLLMClient,
-                                         prompt_messages: list[PromptMessage]) -> Generator:
+
+    def _handle_generate_stream_response(
+        self,
+        thread: threading.Thread,
+        model: str,
+        credentials: dict,
+        client: SparkLLMClient,
+        prompt_messages: list[PromptMessage],
+    ) -> Generator:
         """
         Handle llm stream response
 
@@ -181,29 +213,28 @@ class SparkLargeLanguageModel(LargeLanguageModel):
         :param prompt_messages: prompt messages
         :return: llm response chunk generator result
         """
+        completion = ""
         for index, content in enumerate(client.subscribe()):
             if isinstance(content, dict):
-                delta = content['data']
+                delta = content["data"]
             else:
                 delta = content
-
+            completion += delta
             assistant_prompt_message = AssistantPromptMessage(
-                content=delta if delta else '',
+                content=delta or "",
             )
-
+            temp_assistant_prompt_message = AssistantPromptMessage(
+                content=completion,
+            )
             prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
-            completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
+            completion_tokens = self.get_num_tokens(model, credentials, [temp_assistant_prompt_message])
 
             # transform usage
             usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
             yield LLMResultChunk(
                 model=model,
                 prompt_messages=prompt_messages,
-                delta=LLMResultChunkDelta(
-                    index=index,
-                    message=assistant_prompt_message,
-                    usage=usage
-                )
+                delta=LLMResultChunkDelta(index=index, message=assistant_prompt_message, usage=usage),
             )
 
         thread.join()
@@ -216,9 +247,9 @@ class SparkLargeLanguageModel(LargeLanguageModel):
         :return:
         """
         credentials_kwargs = {
-            "app_id": credentials['app_id'],
-            "api_secret": credentials['api_secret'],
-            "api_key": credentials['api_key'],
+            "app_id": credentials["app_id"],
+            "api_secret": credentials["api_secret"],
+            "api_key": credentials["api_key"],
         }
 
         return credentials_kwargs
@@ -244,7 +275,7 @@ class SparkLargeLanguageModel(LargeLanguageModel):
             raise ValueError(f"Got unknown type {message}")
 
         return message_text
-    
+
     def _convert_messages_to_prompt(self, messages: list[PromptMessage]) -> str:
         """
         Format a list of messages into a full prompt for the Anthropic model
@@ -254,10 +285,7 @@ class SparkLargeLanguageModel(LargeLanguageModel):
         """
         messages = messages.copy()  # don't mutate the original list
 
-        text = "".join(
-            self._convert_one_message_to_text(message)
-            for message in messages
-        )
+        text = "".join(self._convert_one_message_to_text(message) for message in messages)
 
         # trim off the trailing ' ' that might come from the "Assistant: "
         return text.rstrip()
@@ -277,5 +305,5 @@ class SparkLargeLanguageModel(LargeLanguageModel):
             InvokeServerUnavailableError: [],
             InvokeRateLimitError: [],
             InvokeAuthorizationError: [],
-            InvokeBadRequestError: []
+            InvokeBadRequestError: [],
         }

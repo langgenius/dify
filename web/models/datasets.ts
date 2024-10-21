@@ -25,6 +25,7 @@ export type DataSet = {
   app_count: number
   document_count: number
   word_count: number
+  provider: string
   embedding_model: string
   embedding_model_provider: string
   embedding_available: boolean
@@ -32,6 +33,58 @@ export type DataSet = {
   retrieval_model: RetrievalConfig
   tags: Tag[]
   partial_member_list?: any[]
+  external_knowledge_info: {
+    external_knowledge_id: string
+    external_knowledge_api_id: string
+    external_knowledge_api_name: string
+    external_knowledge_api_endpoint: string
+  }
+  external_retrieval_model: {
+    top_k: number
+    score_threshold: number
+    score_threshold_enabled: boolean
+  }
+}
+
+export type ExternalAPIItem = {
+  id: string
+  tenant_id: string
+  name: string
+  description: string
+  settings: {
+    endpoint: string
+    api_key: string
+  }
+  dataset_bindings: { id: string; name: string }[]
+  created_by: string
+  created_at: string
+}
+
+export type ExternalKnowledgeItem = {
+  id: string
+  name: string
+  description: string | null
+  provider: 'external'
+  permission: DatasetPermission
+  data_source_type: null
+  indexing_technique: null
+  app_count: number
+  document_count: number
+  word_count: number
+  created_by: string
+  created_at: string
+  updated_by: string
+  updated_at: string
+  tags: Tag[]
+}
+
+export type ExternalAPIDeleteResponse = {
+  result: 'success' | 'error'
+}
+
+export type ExternalAPIUsage = {
+  is_using: boolean
+  count: number
 }
 
 export type CustomFile = File & {
@@ -49,6 +102,7 @@ export type CrawlOptions = {
   excludes: string
   limit: number | string
   max_depth: number | string
+  use_sitemap: boolean
 }
 
 export type CrawlResultItem = {
@@ -66,6 +120,14 @@ export type FileItem = {
 
 export type DataSetListResponse = {
   data: DataSet[]
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type ExternalAPIListResponse = {
+  data: ExternalAPIItem[]
   has_more: boolean
   limit: number
   page: number
@@ -189,6 +251,7 @@ export type InitialDocumentDetail = {
   completed_segments?: number
   total_segments?: number
   doc_form: 'text_model' | 'qa_model'
+  doc_language: string
 }
 
 export type SimpleDocumentDetail = InitialDocumentDetail & {
@@ -226,6 +289,8 @@ export type DocumentReq = {
 export type CreateDocumentReq = DocumentReq & {
   data_source: DataSource
   retrieval_model: RetrievalConfig
+  embedding_model: string
+  embedding_model_provider: string
 }
 
 export type IndexingEstimateParams = DocumentReq & Partial<DataSource> & {
@@ -381,6 +446,16 @@ export type HitTesting = {
   tsne_position: TsnePosition
 }
 
+export type ExternalKnowledgeBaseHitTesting = {
+  content: string
+  title: string
+  score: number
+  metadata: {
+    'x-amz-bedrock-kb-source-uri': string
+    'x-amz-bedrock-kb-data-source-id': string
+  }
+}
+
 export type Segment = {
   id: string
   document: Document
@@ -421,6 +496,13 @@ export type HitTestingResponse = {
   records: Array<HitTesting>
 }
 
+export type ExternalKnowledgeBaseHitTestingResponse = {
+  query: {
+    content: string
+  }
+  records: Array<ExternalKnowledgeBaseHitTesting>
+}
+
 export type RelatedApp = {
   id: string
   name: string
@@ -436,7 +518,7 @@ export type RelatedAppResponse = {
   total: number
 }
 
-export type SegmentUpdator = {
+export type SegmentUpdater = {
   content: string
   answer?: string
   keywords?: string[]
@@ -458,6 +540,9 @@ export type SelectedDatasetsMode = {
   allHighQualityFullTextSearch: boolean
   allEconomic: boolean
   mixtureHighQualityAndEconomic: boolean
+  allInternal: boolean
+  allExternal: boolean
+  mixtureInternalAndExternal: boolean
   inconsistentEmbeddingModel: boolean
 }
 

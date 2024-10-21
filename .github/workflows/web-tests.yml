@@ -1,0 +1,46 @@
+name: Web Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - web/**
+
+concurrency:
+  group: web-tests-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Web Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./web
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Check changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: web/**
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        if: steps.changed-files.outputs.any_changed == 'true'
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: ./web/package.json
+
+      - name: Install dependencies
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: yarn install --frozen-lockfile
+
+      - name: Run tests
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: yarn test

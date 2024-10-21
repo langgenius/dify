@@ -37,6 +37,7 @@ const translation = {
     params: 'Parametri',
     duplicate: 'Duplica',
     rename: 'Rinomina',
+    audioSourceUnavailable: 'AudioSource non è disponibile',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -137,7 +138,8 @@ const translation = {
     workspace: 'Workspace',
     createWorkspace: 'Crea Workspace',
     helpCenter: 'Aiuto',
-    roadmapAndFeedback: 'Feedback',
+    communityFeedback: 'Feedback',
+    roadmap: 'Tabella di marcia',
     community: 'Comunità',
     about: 'Informazioni',
     logout: 'Esci',
@@ -177,6 +179,9 @@ const translation = {
       'Eliminando il tuo account cancellerai permanentemente tutti i tuoi dati e non sarà possibile recuperarli.',
     deleteConfirmTip:
       'Per confermare, invia il seguente messaggio dalla tua email registrata a ',
+    myAccount: 'Il mio account',
+    account: 'Conto',
+    studio: 'Dify Studio',
   },
   members: {
     team: 'Team',
@@ -208,7 +213,7 @@ const translation = {
     invitationSentTip:
       'Invito inviato, e possono accedere a Dify per accedere ai dati del tuo team.',
     invitationLink: 'Link di Invito',
-    failedinvitationEmails:
+    failedInvitationEmails:
       'Gli utenti seguenti non sono stati invitati con successo',
     ok: 'OK',
     removeFromTeam: 'Rimuovi dal team',
@@ -217,7 +222,7 @@ const translation = {
     setMember: 'Imposta come membro ordinario',
     setBuilder: 'Imposta come builder',
     setEditor: 'Imposta come editor',
-    disinvite: 'Annulla l\'invito',
+    disInvite: 'Annulla l\'invito',
     deleteMember: 'Elimina Membro',
     you: '(Tu)',
   },

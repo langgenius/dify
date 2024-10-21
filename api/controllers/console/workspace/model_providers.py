@@ -126,13 +126,12 @@ class ModelProviderIconApi(Resource):
     Get model provider icon
     """
 
-    @setup_required
-    @login_required
-    @account_initialization_required
     def get(self, provider: str, icon_type: str, lang: str):
         model_provider_service = ModelProviderService()
         icon, mimetype = model_provider_service.get_model_provider_icon(
-            provider=provider, icon_type=icon_type, lang=lang
+            provider=provider,
+            icon_type=icon_type,
+            lang=lang,
         )
 
         return send_file(io.BytesIO(icon), mimetype=mimetype)
@@ -218,7 +217,7 @@ api.add_resource(ModelProviderCredentialApi, "/workspaces/current/model-provider
 api.add_resource(ModelProviderValidateApi, "/workspaces/current/model-providers/<string:provider>/credentials/validate")
 api.add_resource(ModelProviderApi, "/workspaces/current/model-providers/<string:provider>")
 api.add_resource(
-    ModelProviderIconApi, "/workspaces/current/model-providers/<string:provider>/" "<string:icon_type>/<string:lang>"
+    ModelProviderIconApi, "/workspaces/current/model-providers/<string:provider>/<string:icon_type>/<string:lang>"
 )
 
 api.add_resource(

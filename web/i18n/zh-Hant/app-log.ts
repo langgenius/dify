@@ -6,7 +6,7 @@ const translation = {
     header: {
       updatedTime: '更新時間',
       time: '創建時間',
-      endUser: '使用者',
+      endUser: '使用者或賬戶',
       input: '輸入',
       output: '輸出',
       summary: '標題',
@@ -17,7 +17,7 @@ const translation = {
       status: '狀態',
       runtime: '執行時間',
       tokens: 'TOKENS',
-      user: '使用者',
+      user: '使用者或賬戶',
       version: '版本',
     },
     pagination: {

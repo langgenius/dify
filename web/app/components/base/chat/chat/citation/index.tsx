@@ -24,7 +24,7 @@ const Citation: FC<CitationProps> = ({
 }) => {
   const { t } = useTranslation()
   const elesRef = useRef<HTMLDivElement[]>([])
-  const [limitNumberInOneLine, setlimitNumberInOneLine] = useState(0)
+  const [limitNumberInOneLine, setLimitNumberInOneLine] = useState(0)
   const [showMore, setShowMore] = useState(false)
   const resources = useMemo(() => data.reduce((prev: Resources[], next) => {
     const documentId = next.document_id
@@ -57,14 +57,14 @@ const Citation: FC<CitationProps> = ({
         totalWidth -= elesRef.current[i].clientWidth
 
         if (totalWidth + 34 > containerWidth!)
-          setlimitNumberInOneLine(i - 1)
+          setLimitNumberInOneLine(i - 1)
         else
-          setlimitNumberInOneLine(i)
+          setLimitNumberInOneLine(i)
 
         break
       }
       else {
-        setlimitNumberInOneLine(i + 1)
+        setLimitNumberInOneLine(i + 1)
       }
     }
   }

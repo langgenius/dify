@@ -36,7 +36,7 @@ const translation = {
     searchVar: 'Rechercher une variable',
     variableNamePlaceholder: 'Nom de la variable',
     setVarValuePlaceholder: 'Définir la valeur de la variable',
-    needConnecttip: 'Cette étape n\'est connectée à rien',
+    needConnectTip: 'Cette étape n\'est connectée à rien',
     maxTreeDepth: 'Limite maximale de {{depth}} nœuds par branche',
     needEndNode: 'Le bloc de fin doit être ajouté',
     needAnswerNode: 'Le bloc de réponse doit être ajouté',
@@ -77,6 +77,24 @@ const translation = {
     overwriteAndImport: 'Écraser et importer',
     importFailure: 'Echec de l\'importation',
     importSuccess: 'Import avec succès',
+    parallelTip: {
+      click: {
+        title: 'Cliquer',
+        desc: 'à ajouter',
+      },
+      drag: {
+        title: 'Traîner',
+        desc: 'pour se connecter',
+      },
+      limit: 'Le parallélisme est limité aux branches {{num}}.',
+      depthLimit: 'Limite de couches d’imbrication parallèle de {{num}} couches',
+    },
+    parallelRun: 'Exécution parallèle',
+    disconnect: 'Déconnecter',
+    jumpToNode: 'Aller à ce nœud',
+    addParallelNode: 'Ajouter un nœud parallèle',
+    parallel: 'PARALLÈLE',
+    branch: 'BRANCHE',
   },
   env: {
     envPanelTitle: 'Variables d\'Environnement',
@@ -164,6 +182,7 @@ const translation = {
       rerankModel: 'Modèle de rerank',
     },
     invalidVariable: 'Variable invalide',
+    rerankModelRequired: 'Avant d’activer le modèle de reclassement, veuillez confirmer que le modèle a été correctement configuré dans les paramètres.',
   },
   singleRun: {
     testRun: 'Exécution de test',
@@ -186,6 +205,7 @@ const translation = {
     'transform': 'Transformer',
     'utilities': 'Utilitaires',
     'noResult': 'Aucun résultat trouvé',
+    'searchTool': 'Outil de recherche',
   },
   blocks: {
     'start': 'Début',
@@ -411,10 +431,12 @@ const translation = {
         'not empty': 'n\'est pas vide',
         'null': 'est nul',
         'not null': 'n\'est pas nul',
+        'regex match': 'correspondance regex',
       },
       enterValue: 'Entrez la valeur',
       addCondition: 'Ajouter une condition',
       conditionNotSetup: 'Condition NON configurée',
+      selectVariable: 'Sélectionner une variable...',
     },
     variableAssigner: {
       title: 'Attribuer des variables',

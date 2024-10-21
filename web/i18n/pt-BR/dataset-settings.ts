@@ -27,6 +27,11 @@ const translation = {
       longDescription: ' sobre o método de recuperação, você pode alterar isso a qualquer momento nas configurações do conhecimento.',
     },
     save: 'Salvar',
+    permissionsInvitedMembers: 'Membros parciais da equipe',
+    me: '(Você)',
+    retrievalSettings: 'Configurações de recuperação',
+    externalKnowledgeID: 'ID de conhecimento externo',
+    externalKnowledgeAPI: 'API de conhecimento externo',
   },
 }
 

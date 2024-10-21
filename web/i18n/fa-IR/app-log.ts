@@ -6,7 +6,7 @@ const translation = {
     header: {
       updatedTime: 'زمان به‌روزرسانی',
       time: 'زمان ایجاد',
-      endUser: 'کاربر نهایی',
+      endUser: 'کاربر نهایی یا حساب',
       input: 'ورودی',
       output: 'خروجی',
       summary: 'عنوان',
@@ -17,7 +17,7 @@ const translation = {
       status: 'وضعیت',
       runtime: 'زمان اجرا',
       tokens: 'توکن‌ها',
-      user: 'کاربر نهایی',
+      user: 'کاربر نهایی یا حساب',
       version: 'نسخه',
     },
     pagination: {

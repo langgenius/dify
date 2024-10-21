@@ -268,6 +268,9 @@ const translation = {
     notSelectModel: 'Please choose a model',
     waitForImgUpload: 'Please wait for the image to upload',
   },
+  warningMessage: {
+    timeoutExceeded: 'Results are not displayed due to timeout. Please refer to the logs to gather complete results.',
+  },
   chatSubTitle: 'Instructions',
   completionSubTitle: 'Prefix Prompt',
   promptTip:
@@ -301,7 +304,7 @@ const translation = {
     historyNoBeEmpty: 'Conversation history must be set in the prompt',
     queryNoBeEmpty: 'Query must be set in the prompt',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Add Input Field',
     'editModalTitle': 'Edit Input Field',
     'description': 'Setting for variable {{varName}}',

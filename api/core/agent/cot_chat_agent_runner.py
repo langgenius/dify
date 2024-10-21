@@ -19,14 +19,15 @@ class CotChatAgentRunner(CotAgentRunner):
         prompt_entity = self.app_config.agent.prompt
         first_prompt = prompt_entity.first_prompt
 
-        system_prompt = first_prompt \
-            .replace("{{instruction}}", self._instruction) \
-            .replace("{{tools}}", json.dumps(jsonable_encoder(self._prompt_messages_tools))) \
-            .replace("{{tool_names}}", ', '.join([tool.name for tool in self._prompt_messages_tools]))
+        system_prompt = (
+            first_prompt.replace("{{instruction}}", self._instruction)
+            .replace("{{tools}}", json.dumps(jsonable_encoder(self._prompt_messages_tools)))
+            .replace("{{tool_names}}", ", ".join([tool.name for tool in self._prompt_messages_tools]))
+        )
 
         return SystemPromptMessage(content=system_prompt)
 
-    def _organize_user_query(self, query,  prompt_messages: list[PromptMessage] = None) -> list[PromptMessage]:
+    def _organize_user_query(self, query, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
         Organize user query
         """
@@ -43,7 +44,7 @@ class CotChatAgentRunner(CotAgentRunner):
 
     def _organize_prompt_messages(self) -> list[PromptMessage]:
         """
-        Organize 
+        Organize
         """
         # organize system prompt
         system_message = self._organize_system_prompt()
@@ -53,7 +54,7 @@ class CotChatAgentRunner(CotAgentRunner):
         if not agent_scratchpad:
             assistant_messages = []
         else:
-            assistant_message = AssistantPromptMessage(content='')
+            assistant_message = AssistantPromptMessage(content="")
             for unit in agent_scratchpad:
                 if unit.is_final():
                     assistant_message.content += f"Final Answer: {unit.agent_response}"
@@ -71,18 +72,15 @@ class CotChatAgentRunner(CotAgentRunner):
 
         if assistant_messages:
             # organize historic prompt messages
-            historic_messages = self._organize_historic_prompt_messages([
-                system_message,
-                *query_messages,
-                *assistant_messages,
-                UserPromptMessage(content='continue')
-            ])
+            historic_messages = self._organize_historic_prompt_messages(
+                [system_message, *query_messages, *assistant_messages, UserPromptMessage(content="continue")]
+            )
             messages = [
                 system_message,
                 *historic_messages,
                 *query_messages,
                 *assistant_messages,
-                UserPromptMessage(content='continue')
+                UserPromptMessage(content="continue"),
             ]
         else:
             # organize historic prompt messages

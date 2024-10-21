@@ -4,7 +4,7 @@ from .model import App, AppMode, Message
 from .types import StringUUID
 from .workflow import ConversationVariable, Workflow, WorkflowNodeExecutionStatus
 
-__all__ = ['ConversationVariable', 'StringUUID', 'AppMode', 'WorkflowNodeExecutionStatus', 'Workflow', 'App', 'Message']
+__all__ = ["ConversationVariable", "StringUUID", "AppMode", "WorkflowNodeExecutionStatus", "Workflow", "App", "Message"]
 
 
 class CreatedByRole(Enum):
@@ -12,11 +12,11 @@ class CreatedByRole(Enum):
     Enum class for createdByRole
     """
 
-    ACCOUNT = 'account'
-    END_USER = 'end_user'
+    ACCOUNT = "account"
+    END_USER = "end_user"
 
     @classmethod
-    def value_of(cls, value: str) -> 'CreatedByRole':
+    def value_of(cls, value: str) -> "CreatedByRole":
         """
         Get value of given mode.
 
@@ -26,4 +26,4 @@ class CreatedByRole(Enum):
         for role in cls:
             if role.value == value:
                 return role
-        raise ValueError(f'invalid createdByRole value {value}')
+        raise ValueError(f"invalid createdByRole value {value}")

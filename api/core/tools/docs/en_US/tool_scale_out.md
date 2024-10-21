@@ -245,4 +245,4 @@ After the above steps are completed, we can see this tool on the frontend, and i
 
 Of course, because google_search needs a credential, before using it, you also need to input your credentials on the frontend.
 
-![Alt text](../zh_Hans/images/index/image-2.png)
+![Alt text](../images/index/image-2.png)

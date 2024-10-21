@@ -10,6 +10,7 @@ MOCK = os.getenv("MOCK_SWITCH", "false") == "true"
 
 
 class MockedHttp:
+    @staticmethod
     def httpx_request(
         method: Literal["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"], url: str, **kwargs
     ) -> httpx.Response:
@@ -21,8 +22,8 @@ class MockedHttp:
             return response
 
         # get data, files
-        data = kwargs.get("data", None)
-        files = kwargs.get("files", None)
+        data = kwargs.get("data")
+        files = kwargs.get("files")
         if data is not None:
             resp = dumps(data).encode("utf-8")
         elif files is not None:

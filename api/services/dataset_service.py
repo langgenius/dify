@@ -8,6 +8,7 @@ from typing import Optional
 
 from flask_login import current_user
 from sqlalchemy import func
+from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
@@ -15,7 +16,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.models.document import Document as RAGDocument
-from core.rag.retrieval.retrival_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
@@ -32,6 +33,7 @@ from models.dataset import (
     DatasetQuery,
     Document,
     DocumentSegment,
+    ExternalKnowledgeBindings,
 )
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
@@ -39,6 +41,7 @@ from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
+from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureModel, FeatureService
 from services.tag_service import TagService
 from services.vector_service import VectorService
@@ -56,10 +59,8 @@ from tasks.sync_website_document_indexing_task import sync_website_document_inde
 
 class DatasetService:
     @staticmethod
-    def get_datasets(page, per_page, provider="vendor", tenant_id=None, user=None, search=None, tag_ids=None):
-        query = Dataset.query.filter(Dataset.provider == provider, Dataset.tenant_id == tenant_id).order_by(
-            Dataset.created_at.desc()
-        )
+    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None):
+        query = Dataset.query.filter(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc())
 
         if user:
             # get permitted dataset ids
@@ -136,7 +137,16 @@ class DatasetService:
         return datasets.items, datasets.total
 
     @staticmethod
-    def create_empty_dataset(tenant_id: str, name: str, indexing_technique: Optional[str], account: Account):
+    def create_empty_dataset(
+        tenant_id: str,
+        name: str,
+        indexing_technique: Optional[str],
+        account: Account,
+        permission: Optional[str] = None,
+        provider: str = "vendor",
+        external_knowledge_api_id: Optional[str] = None,
+        external_knowledge_id: Optional[str] = None,
+    ):
         # check if dataset name already exists
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(f"Dataset with name {name} already exists.")
@@ -153,12 +163,29 @@ class DatasetService:
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
         dataset.embedding_model = embedding_model.model if embedding_model else None
+        dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
+        dataset.provider = provider
         db.session.add(dataset)
+        db.session.flush()
+
+        if provider == "external" and external_knowledge_api_id:
+            external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
+            if not external_knowledge_api:
+                raise ValueError("External API template not found.")
+            external_knowledge_binding = ExternalKnowledgeBindings(
+                tenant_id=tenant_id,
+                dataset_id=dataset.id,
+                external_knowledge_api_id=external_knowledge_api_id,
+                external_knowledge_id=external_knowledge_id,
+                created_by=account.id,
+            )
+            db.session.add(external_knowledge_binding)
+
         db.session.commit()
         return dataset
 
     @staticmethod
-    def get_dataset(dataset_id):
+    def get_dataset(dataset_id) -> Dataset:
         return Dataset.query.filter_by(id=dataset_id).first()
 
     @staticmethod
@@ -178,7 +205,7 @@ class DatasetService:
                     "in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
-                raise ValueError(f"The dataset in unavailable, due to: " f"{ex.description}")
+                raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
 
     @staticmethod
     def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
@@ -192,88 +219,114 @@ class DatasetService:
             )
         except LLMBadRequestError:
             raise ValueError(
-                "No Embedding Model available. Please configure a valid provider " "in the Settings -> Model Provider."
+                "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
             )
         except ProviderTokenNotInitError as ex:
-            raise ValueError(f"The dataset in unavailable, due to: " f"{ex.description}")
+            raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
 
     @staticmethod
     def update_dataset(dataset_id, data, user):
-        data.pop("partial_member_list", None)
-        filtered_data = {k: v for k, v in data.items() if v is not None or k == "description"}
         dataset = DatasetService.get_dataset(dataset_id)
+
         DatasetService.check_dataset_permission(dataset, user)
-        action = None
-        if dataset.indexing_technique != data["indexing_technique"]:
-            # if update indexing_technique
-            if data["indexing_technique"] == "economy":
-                action = "remove"
-                filtered_data["embedding_model"] = None
-                filtered_data["embedding_model_provider"] = None
-                filtered_data["collection_binding_id"] = None
-            elif data["indexing_technique"] == "high_quality":
-                action = "add"
-                # get embedding model setting
-                try:
-                    model_manager = ModelManager()
-                    embedding_model = model_manager.get_model_instance(
-                        tenant_id=current_user.current_tenant_id,
-                        provider=data["embedding_model_provider"],
-                        model_type=ModelType.TEXT_EMBEDDING,
-                        model=data["embedding_model"],
-                    )
-                    filtered_data["embedding_model"] = embedding_model.model
-                    filtered_data["embedding_model_provider"] = embedding_model.provider
-                    dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                        embedding_model.provider, embedding_model.model
-                    )
-                    filtered_data["collection_binding_id"] = dataset_collection_binding.id
-                except LLMBadRequestError:
-                    raise ValueError(
-                        "No Embedding Model available. Please configure a valid provider "
-                        "in the Settings -> Model Provider."
-                    )
-                except ProviderTokenNotInitError as ex:
-                    raise ValueError(ex.description)
-        else:
+        if dataset.provider == "external":
+            dataset.retrieval_model = data.get("external_retrieval_model", None)
+            dataset.name = data.get("name", dataset.name)
+            dataset.description = data.get("description", "")
+            external_knowledge_id = data.get("external_knowledge_id", None)
+            dataset.permission = data.get("permission")
+            db.session.add(dataset)
+            if not external_knowledge_id:
+                raise ValueError("External knowledge id is required.")
+            external_knowledge_api_id = data.get("external_knowledge_api_id", None)
+            if not external_knowledge_api_id:
+                raise ValueError("External knowledge api id is required.")
+            external_knowledge_binding = ExternalKnowledgeBindings.query.filter_by(dataset_id=dataset_id).first()
             if (
-                data["embedding_model_provider"] != dataset.embedding_model_provider
-                or data["embedding_model"] != dataset.embedding_model
+                external_knowledge_binding.external_knowledge_id != external_knowledge_id
+                or external_knowledge_binding.external_knowledge_api_id != external_knowledge_api_id
             ):
-                action = "update"
-                try:
-                    model_manager = ModelManager()
-                    embedding_model = model_manager.get_model_instance(
-                        tenant_id=current_user.current_tenant_id,
-                        provider=data["embedding_model_provider"],
-                        model_type=ModelType.TEXT_EMBEDDING,
-                        model=data["embedding_model"],
-                    )
-                    filtered_data["embedding_model"] = embedding_model.model
-                    filtered_data["embedding_model_provider"] = embedding_model.provider
-                    dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                        embedding_model.provider, embedding_model.model
-                    )
-                    filtered_data["collection_binding_id"] = dataset_collection_binding.id
-                except LLMBadRequestError:
-                    raise ValueError(
-                        "No Embedding Model available. Please configure a valid provider "
-                        "in the Settings -> Model Provider."
-                    )
-                except ProviderTokenNotInitError as ex:
-                    raise ValueError(ex.description)
+                external_knowledge_binding.external_knowledge_id = external_knowledge_id
+                external_knowledge_binding.external_knowledge_api_id = external_knowledge_api_id
+                db.session.add(external_knowledge_binding)
+            db.session.commit()
+        else:
+            data.pop("partial_member_list", None)
+            data.pop("external_knowledge_api_id", None)
+            data.pop("external_knowledge_id", None)
+            data.pop("external_retrieval_model", None)
+            filtered_data = {k: v for k, v in data.items() if v is not None or k == "description"}
+            action = None
+            if dataset.indexing_technique != data["indexing_technique"]:
+                # if update indexing_technique
+                if data["indexing_technique"] == "economy":
+                    action = "remove"
+                    filtered_data["embedding_model"] = None
+                    filtered_data["embedding_model_provider"] = None
+                    filtered_data["collection_binding_id"] = None
+                elif data["indexing_technique"] == "high_quality":
+                    action = "add"
+                    # get embedding model setting
+                    try:
+                        model_manager = ModelManager()
+                        embedding_model = model_manager.get_model_instance(
+                            tenant_id=current_user.current_tenant_id,
+                            provider=data["embedding_model_provider"],
+                            model_type=ModelType.TEXT_EMBEDDING,
+                            model=data["embedding_model"],
+                        )
+                        filtered_data["embedding_model"] = embedding_model.model
+                        filtered_data["embedding_model_provider"] = embedding_model.provider
+                        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
+                            embedding_model.provider, embedding_model.model
+                        )
+                        filtered_data["collection_binding_id"] = dataset_collection_binding.id
+                    except LLMBadRequestError:
+                        raise ValueError(
+                            "No Embedding Model available. Please configure a valid provider "
+                            "in the Settings -> Model Provider."
+                        )
+                    except ProviderTokenNotInitError as ex:
+                        raise ValueError(ex.description)
+            else:
+                if (
+                    data["embedding_model_provider"] != dataset.embedding_model_provider
+                    or data["embedding_model"] != dataset.embedding_model
+                ):
+                    action = "update"
+                    try:
+                        model_manager = ModelManager()
+                        embedding_model = model_manager.get_model_instance(
+                            tenant_id=current_user.current_tenant_id,
+                            provider=data["embedding_model_provider"],
+                            model_type=ModelType.TEXT_EMBEDDING,
+                            model=data["embedding_model"],
+                        )
+                        filtered_data["embedding_model"] = embedding_model.model
+                        filtered_data["embedding_model_provider"] = embedding_model.provider
+                        dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
+                            embedding_model.provider, embedding_model.model
+                        )
+                        filtered_data["collection_binding_id"] = dataset_collection_binding.id
+                    except LLMBadRequestError:
+                        raise ValueError(
+                            "No Embedding Model available. Please configure a valid provider "
+                            "in the Settings -> Model Provider."
+                        )
+                    except ProviderTokenNotInitError as ex:
+                        raise ValueError(ex.description)
 
-        filtered_data["updated_by"] = user.id
-        filtered_data["updated_at"] = datetime.datetime.now()
+            filtered_data["updated_by"] = user.id
+            filtered_data["updated_at"] = datetime.datetime.now()
 
-        # update Retrieval model
-        filtered_data["retrieval_model"] = data["retrieval_model"]
+            # update Retrieval model
+            filtered_data["retrieval_model"] = data["retrieval_model"]
 
-        dataset.query.filter_by(id=dataset_id).update(filtered_data)
+            dataset.query.filter_by(id=dataset_id).update(filtered_data)
 
-        db.session.commit()
-        if action:
-            deal_dataset_vector_index_task.delay(dataset_id, action)
+            db.session.commit()
+            if action:
+                deal_dataset_vector_index_task.delay(dataset_id, action)
         return dataset
 
     @staticmethod
@@ -541,7 +594,7 @@ class DocumentService:
 
     @staticmethod
     def pause_document(document):
-        if document.indexing_status not in ["waiting", "parsing", "cleaning", "splitting", "indexing"]:
+        if document.indexing_status not in {"waiting", "parsing", "cleaning", "splitting", "indexing"}:
             raise DocumentIndexingError()
         # update document to be paused
         document.is_paused = True
@@ -678,11 +731,7 @@ class DocumentService:
                         "score_threshold_enabled": False,
                     }
 
-                    dataset.retrieval_model = (
-                        document_data.get("retrieval_model")
-                        if document_data.get("retrieval_model")
-                        else default_retrieval_model
-                    )
+                    dataset.retrieval_model = document_data.get("retrieval_model") or default_retrieval_model
 
         documents = []
         batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
@@ -928,6 +977,8 @@ class DocumentService:
     ):
         DatasetService.check_dataset_model_setting(dataset)
         document = DocumentService.get_document(dataset.id, document_data["original_document_id"])
+        if document is None:
+            raise NotFound("Document not found")
         if document.display_status != "available":
             raise ValueError("Document is not available")
         # update document name
@@ -1051,16 +1102,11 @@ class DocumentService:
 
             DocumentService.check_documents_upload_quota(count, features)
 
-        embedding_model = None
         dataset_collection_binding_id = None
         retrieval_model = None
         if document_data["indexing_technique"] == "high_quality":
-            model_manager = ModelManager()
-            embedding_model = model_manager.get_default_model_instance(
-                tenant_id=current_user.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
-            )
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_model.provider, embedding_model.model
+                document_data["embedding_model_provider"], document_data["embedding_model"]
             )
             dataset_collection_binding_id = dataset_collection_binding.id
             if document_data.get("retrieval_model"):
@@ -1079,10 +1125,10 @@ class DocumentService:
             tenant_id=tenant_id,
             name="",
             data_source_type=document_data["data_source"]["type"],
-            indexing_technique=document_data["indexing_technique"],
+            indexing_technique=document_data.get("indexing_technique", "high_quality"),
             created_by=account.id,
-            embedding_model=embedding_model.model if embedding_model else None,
-            embedding_model_provider=embedding_model.provider if embedding_model else None,
+            embedding_model=document_data.get("embedding_model"),
+            embedding_model_provider=document_data.get("embedding_model_provider"),
             collection_binding_id=dataset_collection_binding_id,
             retrieval_model=retrieval_model,
         )
@@ -1106,8 +1152,8 @@ class DocumentService:
             DocumentService.data_source_args_validate(args)
             DocumentService.process_rule_args_validate(args)
         else:
-            if ("data_source" not in args and not args["data_source"]) and (
-                "process_rule" not in args and not args["process_rule"]
+            if ("data_source" not in args or not args["data_source"]) and (
+                "process_rule" not in args or not args["process_rule"]
             ):
                 raise ValueError("Data source or Process rule is required")
             else:

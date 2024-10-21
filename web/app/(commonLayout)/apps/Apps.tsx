@@ -87,15 +87,15 @@ const Apps = () => {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()
     }
-  }, [])
+  }, [mutate, t])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
       return router.replace('/datasets')
-  }, [isCurrentWorkspaceDatasetOperator])
+  }, [router, isCurrentWorkspaceDatasetOperator])
 
-  const hasMore = data?.at(-1)?.has_more ?? true
   useEffect(() => {
+    const hasMore = data?.at(-1)?.has_more ?? true
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
@@ -105,7 +105,7 @@ const Apps = () => {
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, setSize, anchorRef, mutate, hasMore])
+  }, [isLoading, setSize, anchorRef, mutate, data])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)
@@ -139,7 +139,7 @@ const Apps = () => {
       <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>
         {isCurrentWorkspaceEditor
           && <NewAppCard onSuccess={mutate} />}
-        {data?.map(({ data: apps }: any) => apps.map((app: any) => (
+        {data?.map(({ data: apps }) => apps.map(app => (
           <AppCard key={app.id} app={app} onRefresh={mutate} />
         )))}
         <CheckModal />

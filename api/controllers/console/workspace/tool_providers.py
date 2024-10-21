@@ -327,7 +327,7 @@ class ToolApiProviderPreviousTestApi(Resource):
 
         return ApiToolManageService.test_api_tool_preview(
             current_user.current_tenant_id,
-            args["provider_name"] if args["provider_name"] else "",
+            args["provider_name"] or "",
             args["tool_name"],
             args["credentials"],
             args["parameters"],

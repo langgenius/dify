@@ -16,7 +16,7 @@ import type { AppIconType, AppSSO, Language } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { languages } from '@/i18n/language'
 import Tooltip from '@/app/components/base/tooltip'
-import AppContext from '@/context/app-context'
+import AppContext, { useAppContext } from '@/context/app-context'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 
@@ -43,6 +43,7 @@ export type ConfigParams = {
   icon: string
   icon_background?: string
   show_workflow_steps: boolean
+  use_icon_as_answer_icon: boolean
   enable_sso?: boolean
 }
 
@@ -56,6 +57,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   onSave,
 }) => {
   const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const { notify } = useToastContext()
   const [isShowMore, setIsShowMore] = useState(false)
   const {
@@ -72,6 +74,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     custom_disclaimer,
     default_language,
     show_workflow_steps,
+    use_icon_as_answer_icon,
   } = appInfo.site
   const [inputInfo, setInputInfo] = useState({
     title,
@@ -82,6 +85,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     privacyPolicy: privacy_policy,
     customDisclaimer: custom_disclaimer,
     show_workflow_steps,
+    use_icon_as_answer_icon,
     enable_sso: appInfo.enable_sso,
   })
   const [language, setLanguage] = useState(default_language)
@@ -94,6 +98,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       ? { type: 'image', url: icon_url!, fileId: icon }
       : { type: 'emoji', icon, background: icon_background! },
   )
+  const isChatBot = appInfo.mode === 'chat' || appInfo.mode === 'advanced-chat' || appInfo.mode === 'agent-chat'
 
   useEffect(() => {
     setInputInfo({
@@ -105,6 +110,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       privacyPolicy: privacy_policy,
       customDisclaimer: custom_disclaimer,
       show_workflow_steps,
+      use_icon_as_answer_icon,
       enable_sso: appInfo.enable_sso,
     })
     setLanguage(default_language)
@@ -157,6 +163,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       show_workflow_steps: inputInfo.show_workflow_steps,
+      use_icon_as_answer_icon: inputInfo.use_icon_as_answer_icon,
       enable_sso: inputInfo.enable_sso,
     }
     await onSave?.(params)
@@ -209,6 +216,18 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           onChange={onChange('desc')}
           placeholder={t(`${prefixSettings}.webDescPlaceholder`) as string}
         />
+        {isChatBot && (
+          <div className='w-full mt-4'>
+            <div className='flex justify-between items-center'>
+              <div className={`font-medium ${s.settingTitle} text-gray-900 `}>{t('app.answerIcon.title')}</div>
+              <Switch
+                defaultValue={inputInfo.use_icon_as_answer_icon}
+                onChange={v => setInputInfo({ ...inputInfo, use_icon_as_answer_icon: v })}
+              />
+            </div>
+            <p className='body-xs-regular text-gray-500'>{t('app.answerIcon.description')}</p>
+          </div>
+        )}
         <div className={`mt-6 mb-2 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.language`)}</div>
         <SimpleSelect
           items={languages.filter(item => item.supported)}
@@ -247,7 +266,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               }
               asChild={false}
             >
-              <Switch disabled={!systemFeatures.sso_enforced_for_web} defaultValue={systemFeatures.sso_enforced_for_web && inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
+              <Switch disabled={!systemFeatures.sso_enforced_for_web || !isCurrentWorkspaceEditor} defaultValue={systemFeatures.sso_enforced_for_web && inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
             </Tooltip>
           </div>
           <p className='body-xs-regular text-gray-500'>{t(`${prefixSettings}.sso.description`)}</p>

@@ -9,7 +9,7 @@ from flask_restful import Resource
 from configs import dify_config
 from constants.languages import languages
 from extensions.ext_database import db
-from libs.helper import get_remote_ip
+from libs.helper import extract_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models.account import Account, AccountIntegrate, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
@@ -71,7 +71,7 @@ class OAuthCallback(Resource):
 
         account = _generate_account(provider, user_info)
         # Check account status
-        if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
+        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
             return {"error": "Account is banned or closed."}, 403
 
         if account.status == AccountStatus.PENDING.value:
@@ -89,9 +89,14 @@ class OAuthCallback(Resource):
 
         TenantService.create_owner_tenant_if_not_exist(account)
 
-        token = AccountService.login(account, ip_address=get_remote_ip(request))
+        token_pair = AccountService.login(
+            account=account,
+            ip_address=extract_remote_ip(request),
+        )
 
-        return redirect(f"{dify_config.CONSOLE_WEB_URL}?console_token={token}")
+        return redirect(
+            f"{dify_config.CONSOLE_WEB_URL}?access_token={token_pair.access_token}&refresh_token={token_pair.refresh_token}"
+        )
 
 
 def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Optional[Account]:
@@ -109,7 +114,7 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
 
     if not account:
         # Create account
-        account_name = user_info.name if user_info.name else "Dify"
+        account_name = user_info.name or "Dify"
         account = RegisterService.register(
             email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider
         )

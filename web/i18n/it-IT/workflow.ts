@@ -36,7 +36,7 @@ const translation = {
     searchVar: 'Cerca variabile',
     variableNamePlaceholder: 'Nome variabile',
     setVarValuePlaceholder: 'Imposta variabile',
-    needConnecttip: 'Questo passaggio non è collegato a nulla',
+    needConnectTip: 'Questo passaggio non è collegato a nulla',
     maxTreeDepth: 'Limite massimo di {{depth}} nodi per ramo',
     needEndNode: 'Deve essere aggiunto il blocco di Fine',
     needAnswerNode: 'Deve essere aggiunto il blocco di Risposta',
@@ -81,6 +81,24 @@ const translation = {
     overwriteAndImport: 'Sovrascrivi e Importa',
     importFailure: 'Importazione fallita',
     importSuccess: 'Importazione riuscita',
+    parallelTip: {
+      click: {
+        title: 'Clic',
+        desc: 'per aggiungere',
+      },
+      drag: {
+        title: 'Trascinare',
+        desc: 'per collegare',
+      },
+      depthLimit: 'Limite di livelli di annidamento parallelo di {{num}} livelli',
+      limit: 'Il parallelismo è limitato ai rami {{num}}.',
+    },
+    parallelRun: 'Corsa parallela',
+    disconnect: 'Disconnettere',
+    jumpToNode: 'Vai a questo nodo',
+    addParallelNode: 'Aggiungi nodo parallelo',
+    parallel: 'PARALLELO',
+    branch: 'RAMO',
   },
   env: {
     envPanelTitle: 'Variabili d\'Ambiente',
@@ -169,6 +187,7 @@ const translation = {
       rerankModel: 'Modello Rerank',
     },
     invalidVariable: 'Variabile non valida',
+    rerankModelRequired: 'Prima di attivare il modello di reranking, conferma che il modello è stato configurato correttamente nelle impostazioni.',
   },
   singleRun: {
     testRun: 'Esecuzione Test ',
@@ -191,6 +210,7 @@ const translation = {
     'transform': 'Trasforma',
     'utilities': 'Utility',
     'noResult': 'Nessuna corrispondenza trovata',
+    'searchTool': 'Strumento di ricerca',
   },
   blocks: {
     'start': 'Inizio',
@@ -430,6 +450,7 @@ const translation = {
         'not empty': 'non è vuoto',
         'null': 'è nullo',
         'not null': 'non è nullo',
+        'regex match': 'Corrispondenza regex',
       },
       enterValue: 'Inserisci valore',
       addCondition: 'Aggiungi Condizione',

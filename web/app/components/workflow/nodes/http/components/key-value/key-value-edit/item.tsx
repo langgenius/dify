@@ -73,7 +73,7 @@ const KeyValueItem: FC<Props> = ({
             <Input
               className='rounded-none bg-white border-none system-sm-regular focus:ring-0 focus:bg-gray-100! hover:bg-gray-50'
               value={payload.key}
-              onChange={handleChange('key')}
+              onChange={e => handleChange('key')(e.target.value)}
             />
           )}
       </div>

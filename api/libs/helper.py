@@ -84,7 +84,7 @@ def timestamp_value(timestamp):
         raise ValueError(error)
 
 
-class str_len:
+class StrLen:
     """Restrict input to an integer in a range (inclusive)"""
 
     def __init__(self, max_length, argument="argument"):
@@ -102,7 +102,7 @@ class str_len:
         return value
 
 
-class float_range:
+class FloatRange:
     """Restrict input to an float in a range (inclusive)"""
 
     def __init__(self, low, high, argument="argument"):
@@ -121,7 +121,7 @@ class float_range:
         return value
 
 
-class datetime_string:
+class DatetimeString:
     def __init__(self, format, argument="argument"):
         self.format = format
         self.argument = argument
@@ -162,7 +162,7 @@ def generate_string(n):
     return result
 
 
-def get_remote_ip(request) -> str:
+def extract_remote_ip(request) -> str:
     if request.headers.get("CF-Connecting-IP"):
         return request.headers.get("Cf-Connecting-Ip")
     elif request.headers.getlist("X-Forwarded-For"):
@@ -189,7 +189,7 @@ def compact_generate_response(response: Union[dict, RateLimitGenerator]) -> Resp
 
 class TokenManager:
     @classmethod
-    def generate_token(cls, account: Account, token_type: str, additional_data: dict = None) -> str:
+    def generate_token(cls, account: Account, token_type: str, additional_data: Optional[dict] = None) -> str:
         old_token = cls._get_current_token_for_account(account.id, token_type)
         if old_token:
             if isinstance(old_token, bytes):
