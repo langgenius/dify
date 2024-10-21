@@ -60,6 +60,7 @@ const translation = {
     passwordInvalid:
       'Hasło musi zawierać litery i cyfry, a jego długość musi być większa niż 8',
     passwordLengthInValid: 'Hasło musi składać się z co najmniej 8 znaków',
+    registrationNotAllowed: 'Nie znaleziono konta. Skontaktuj się z administratorem systemu, aby się zarejestrować.',
   },
   license: {
     tip: 'Przed rozpoczęciem wersji społecznościowej Dify, przeczytaj GitHub',
@@ -75,6 +76,34 @@ const translation = {
   activated: 'Zaloguj się teraz',
   adminInitPassword: 'Hasło inicjalizacyjne administratora',
   validate: 'Sprawdź',
+  checkCode: {
+    verify: 'Zweryfikować',
+    resend: 'Wysłać',
+    invalidCode: 'Nieprawidłowy kod',
+    verificationCodePlaceholder: 'Wprowadź 6-cyfrowy kod',
+    validTime: 'Pamiętaj, że kod jest ważny przez 5 minut',
+    checkYourEmail: 'Sprawdź swoją pocztę e-mail',
+    useAnotherMethod: 'Użyj innej metody',
+    didNotReceiveCode: 'Nie otrzymałeś kodu?',
+    verificationCode: 'Kod weryfikacyjny',
+    tips: 'Wysyłamy kod weryfikacyjny na <strong>adres {{email}}</strong>',
+    emptyCode: 'Kod jest wymagany',
+  },
+  continueWithCode: 'Kontynuuj z kodem',
+  setYourAccount: 'Ustaw swoje konto',
+  usePassword: 'Użyj hasła',
+  withSSO: 'Kontynuuj logowanie jednokrotne',
+  sendVerificationCode: 'Wyślij kod weryfikacyjny',
+  back: 'Wstecz',
+  resetPassword: 'Zresetuj hasło',
+  changePasswordBtn: 'Ustawianie hasła',
+  backToLogin: 'Powrót do logowania',
+  useVerificationCode: 'Użyj kodu weryfikacyjnego',
+  enterYourName: 'Podaj swoją nazwę użytkownika',
+  resetPasswordDesc: 'Wpisz adres e-mail, którego użyłeś do rejestracji w Dify, a my wyślemy Ci wiadomość e-mail z prośbą o zresetowanie hasła.',
+  or: 'LUB',
+  noLoginMethodTip: 'Skontaktuj się z administratorem systemu, aby dodać metodę uwierzytelniania.',
+  noLoginMethod: 'Nie skonfigurowano metody uwierzytelniania',
 }
 
 export default translation

@@ -60,6 +60,7 @@ const translation = {
     passwordLengthInValid: 'पासवर्ड कम से कम 8 वर्णों का होना चाहिए',
     passwordInvalid:
       'पासवर्ड में अक्षर और अंक होने चाहिए, और लंबाई 8 से अधिक होनी चाहिए',
+    registrationNotAllowed: 'खाता नहीं मिला. रजिस्टर करने के लिए कृपया सिस्टम एडमिन से संपर्क करें।',
   },
   license: {
     tip: 'Dify Community Edition शुरू करने से पहले, GitHub पर',
@@ -75,6 +76,34 @@ const translation = {
   activated: 'अब साइन इन करें',
   adminInitPassword: 'एडमिन प्रारंभिक पासवर्ड',
   validate: 'सत्यापित करें',
+  checkCode: {
+    verify: 'जाँचना',
+    verificationCode: 'सत्यापन कोड',
+    invalidCode: 'अमान्य कोड',
+    useAnotherMethod: 'किसी अन्य विधि का उपयोग करें',
+    emptyCode: 'कोड आवश्यक है',
+    didNotReceiveCode: 'कोड प्राप्त नहीं हुआ?',
+    resend: 'भेजें',
+    checkYourEmail: 'अपना ईमेल जांचें',
+    validTime: 'ध्यान रखें कि कोड 5 मिनट के लिए वैध है',
+    tips: 'हम <strong>{{email}}</strong> को एक सत्यापन कोड भेजते हैं',
+    verificationCodePlaceholder: '6-अंक कोड दर्ज करें',
+  },
+  sendVerificationCode: 'पुष्टि कोड भेजें',
+  or: 'नहीं तो',
+  continueWithCode: 'कोड के साथ जारी रखें',
+  resetPassword: 'पासवर्ड रीसेट करें',
+  changePasswordBtn: 'पासवर्ड सेट करें',
+  setYourAccount: 'अपना खाता सेट करें',
+  useVerificationCode: 'सत्यापन कोड का उपयोग करें',
+  usePassword: 'पासवर्ड का उपयोग करें',
+  backToLogin: 'लॉगिन पर वापस जाएं',
+  noLoginMethod: 'प्रमाणीकरण विधि कॉन्फ़िगर नहीं की गई',
+  enterYourName: 'कृपया अपना उपयोगकर्ता नाम दर्ज करें',
+  noLoginMethodTip: 'प्रमाणीकरण विधि जोड़ने के लिए कृपया सिस्टम व्यवस्थापक से संपर्क करें.',
+  resetPasswordDesc: 'वह ईमेल टाइप करें जिसका उपयोग आपने Dify पर साइन अप करने के लिए किया था और हम आपको एक पासवर्ड रीसेट ईमेल भेजेंगे।',
+  withSSO: 'एसएसओ के साथ जारी रखें',
+  back: 'पीछे',
 }
 
 export default translation
