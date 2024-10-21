@@ -23,9 +23,11 @@ class UnstructuredMsgExtractor(BaseExtractor):
     def extract(self) -> list[Document]:
         if self._api_url:
             from unstructured.partition.api import partition_via_api
+
             elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
         else:
             from unstructured.partition.msg import partition_msg
+
             elements = partition_msg(filename=self._file_path)
         from unstructured.chunking.title import chunk_by_title
 

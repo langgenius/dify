@@ -22,10 +22,12 @@ class UnstructuredPPTXExtractor(BaseExtractor):
 
     def extract(self) -> list[Document]:
         if self._api_url:
-            from unstructured.partition.api import partition_via_api    
+            from unstructured.partition.api import partition_via_api
+
             elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
         else:
             from unstructured.partition.pptx import partition_pptx
+
             elements = partition_pptx(filename=self._file_path)
         text_by_page = {}
         for element in elements:

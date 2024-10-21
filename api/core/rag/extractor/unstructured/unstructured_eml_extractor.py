@@ -15,22 +15,20 @@ class UnstructuredEmailExtractor(BaseExtractor):
         file_path: Path to the file to load.
     """
 
-    def __init__(
-        self,
-        file_path: str,
-        api_url: str,
-        api_key: str
-    ):
+    def __init__(self, file_path: str, api_url: str, api_key: str):
         """Initialize with file path."""
         self._file_path = file_path
         self._api_url = api_url
         self._api_key = api_key
+
     def extract(self) -> list[Document]:
         if self._api_url:
             from unstructured.partition.api import partition_via_api
+
             elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
         else:
             from unstructured.partition.email import partition_email
+
             elements = partition_email(filename=self._file_path)
 
         # noinspection PyBroadException

@@ -29,12 +29,15 @@ class UnstructuredEpubExtractor(BaseExtractor):
     def extract(self) -> list[Document]:
         if self._api_url:
             from unstructured.partition.api import partition_via_api
+
             elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
         else:
             from unstructured.partition.epub import partition_epub
+
             elements = partition_epub(filename=self._file_path, xml_keep_tags=True)
-            
+
         from unstructured.chunking.title import chunk_by_title
+
         chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)
         documents = []
         for chunk in chunks:
