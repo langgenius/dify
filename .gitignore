@@ -190,3 +190,6 @@ api/.vscode
 
 .idea/
 .vscode
+
+# pnpm
+/.pnpm-store
