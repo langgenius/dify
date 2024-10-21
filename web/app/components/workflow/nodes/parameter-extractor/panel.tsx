@@ -5,6 +5,7 @@ import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import Editor from '../_base/components/prompt/editor'
 import ResultPanel from '../../run/result-panel'
+import ConfigVision from '../_base/components/config-vision'
 import useConfig from './use-config'
 import type { ParameterExtractorNodeType } from './types'
 import ExtractParameter from './components/extract-parameter/list'
@@ -51,6 +52,9 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     availableNodesWithParent,
     inputVarValues,
     varInputs,
+    isVisionModel,
+    handleVisionResolutionChange,
+    handleVisionResolutionEnabledChange,
     isShowSingleRun,
     hideSingleRun,
     runningStatus,
@@ -65,20 +69,6 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
   return (
     <div className='mt-2'>
       <div className='px-4 pb-4 space-y-4'>
-        <Field
-          title={t(`${i18nPrefix}.inputVar`)}
-        >
-          <>
-            <VarReferencePicker
-              readonly={readOnly}
-              nodeId={id}
-              isShowNodeName
-              value={inputs.query || []}
-              onChange={handleInputVarChange}
-              filterVar={filterVar}
-            />
-          </>
-        </Field>
         <Field
           title={t(`${i18nCommonPrefix}.model`)}
         >
@@ -97,6 +87,30 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             readonly={readOnly}
           />
         </Field>
+        <Field
+          title={t(`${i18nPrefix}.inputVar`)}
+        >
+          <>
+            <VarReferencePicker
+              readonly={readOnly}
+              nodeId={id}
+              isShowNodeName
+              value={inputs.query || []}
+              onChange={handleInputVarChange}
+              filterVar={filterVar}
+            />
+          </>
+        </Field>
+        <Split />
+        <ConfigVision
+          nodeId={id}
+          readOnly={readOnly}
+          isVisionModel={isVisionModel}
+          enabled={inputs.vision?.enabled}
+          onEnabledChange={handleVisionResolutionEnabledChange}
+          config={inputs.vision?.configs}
+          onConfigChange={handleVisionResolutionChange}
+        />
         <Field
           title={t(`${i18nPrefix}.extractParameters`)}
           operations={
