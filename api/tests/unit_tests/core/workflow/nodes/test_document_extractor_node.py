@@ -72,7 +72,7 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
             b"PK\x03\x04",
             ["Mocked DOCX content"],
             FileTransferMethod.LOCAL_FILE,
-            "doc"
+            "doc",
         ),
         ("text/plain", b"Remote content", ["Remote content"], FileTransferMethod.REMOTE_URL, None),
     ],
