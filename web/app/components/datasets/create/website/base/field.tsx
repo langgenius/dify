@@ -6,6 +6,7 @@ import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
+  type?: string
   className?: string
   label: string
   labelClassName?: string
@@ -18,6 +19,7 @@ type Props = {
 }
 
 const Field: FC<Props> = ({
+  type = 'text',
   className,
   label,
   labelClassName,
@@ -43,6 +45,7 @@ const Field: FC<Props> = ({
         )}
       </div>
       <Input
+        type={type}
         value={value}
         onChange={onChange}
         placeholder={placeholder}

@@ -117,6 +117,7 @@ const FeishuConfigModal: FC<Props> = ({
                   label='App Secret'
                   labelClassName='!text-sm'
                   isRequired
+                  type="password"
                   value={config.app_secret}
                   onChange={handleConfigChange('app_secret')}
                   placeholder={t(`${I18N_PREFIX}.appSecretPlaceholder`)!}

@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 
 type Props = {
+  type?: string
   value: string | number
   onChange: (value: string | number) => void
   placeholder?: string
@@ -12,6 +13,7 @@ type Props = {
 const MIN_VALUE = 0
 
 const Input: FC<Props> = ({
+  type,
   value,
   onChange,
   placeholder = '',
@@ -46,7 +48,7 @@ const Input: FC<Props> = ({
   })()
   return (
     <input
-      type={isNumber ? 'number' : 'text'}
+      type={isNumber ? 'number' : (type || 'text')}
       {...otherOption}
       value={value}
       onChange={handleChange}
