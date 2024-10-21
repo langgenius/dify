@@ -177,7 +177,7 @@ def _build_from_remote_url(
     url = mapping.get("url")
     if not url:
         raise ValueError("Invalid file url")
-    resp = ssrf_proxy.head(url)
+    resp = ssrf_proxy.head(url, follow_redirects=True)
     resp.raise_for_status()
 
     # Try to extract filename from response headers or URL
