@@ -37,7 +37,7 @@ const WorkflowToolAsModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
 
-  const [showEmojiPicker, setShowEmojiPicker] = useState<Boolean>(false)
+  const [showEmojiPicker, setShowEmojiPicker] = useState<boolean>(false)
   const [emoji, setEmoji] = useState<Emoji>(payload.icon)
   const [label, setLabel] = useState<string>(payload.label)
   const [name, setName] = useState(payload.name)

@@ -78,7 +78,6 @@ export const useModalContext = () => useContext(ModalContext)
 
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713
-// eslint-disable-next-line @typescript-eslint/comma-dangle
 export const useModalContextSelector = <T,>(selector: (state: ModalContextState) => T): T =>
   useContextSelector(ModalContext, selector)
 

@@ -78,7 +78,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
     }
   }
   const [showRemoveModal, setShowRemoveModal] = useState(false)
-  const [pending, setPending] = useState<Boolean>(false)
+  const [pending, setPending] = useState<boolean>(false)
   const removeTag = async (tagID: string) => {
     if (pending)
       return

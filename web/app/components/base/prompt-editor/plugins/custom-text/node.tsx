@@ -1,4 +1,4 @@
-import type { EditorConfig, NodeKey, SerializedTextNode } from 'lexical'
+import type { EditorConfig, SerializedTextNode } from 'lexical'
 import { $createTextNode, TextNode } from 'lexical'
 
 export class CustomTextNode extends TextNode {
@@ -10,9 +10,9 @@ export class CustomTextNode extends TextNode {
     return new CustomTextNode(node.__text, node.__key)
   }
 
-  constructor(text: string, key?: NodeKey) {
-    super(text, key)
-  }
+  // constructor(text: string, key?: NodeKey) {
+  //   super(text, key)
+  // }
 
   createDOM(config: EditorConfig) {
     const dom = super.createDOM(config)

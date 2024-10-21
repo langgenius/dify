@@ -55,7 +55,7 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { fetchCollectionList } from '@/service/tools'
-import { type Collection } from '@/app/components/tools/types'
+import type { Collection } from '@/app/components/tools/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   getMultipleRetrievalConfig,
@@ -142,7 +142,7 @@ const Configuration: FC = () => {
   const setCompletionParams = (value: FormValue) => {
     const params = { ...value }
 
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     if ((!params.stop || params.stop.length === 0) && (modeModeTypeRef.current === ModelModeType.completion)) {
       params.stop = getTempStop()
       setTempStop([])
@@ -331,7 +331,7 @@ const Configuration: FC = () => {
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
   const setPromptMode = async (mode: PromptMode) => {
     if (mode === PromptMode.advanced) {
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
+      // eslint-disable-next-line ts/no-use-before-define
       await migrateToDefaultPrompt()
       setCanReturnToSimpleMode(true)
     }
@@ -523,7 +523,6 @@ const Configuration: FC = () => {
             sensitive_word_avoidance: modelConfig.sensitive_word_avoidance,
             external_data_tools: modelConfig.external_data_tools,
             dataSets: datasets || [],
-            // eslint-disable-next-line multiline-ternary
             agentConfig: res.mode === 'agent-chat' ? {
               max_iteration: DEFAULT_AGENT_SETTING.max_iteration,
               ...modelConfig.agent_mode,

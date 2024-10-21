@@ -75,7 +75,6 @@ export function PreCode(props: { children: any }) {
   )
 }
 
-// eslint-disable-next-line unused-imports/no-unused-vars
 const useLazyLoad = (ref: RefObject<Element>): boolean => {
   const [isIntersecting, setIntersecting] = useState<boolean>(false)
 
@@ -297,11 +296,11 @@ export default class ErrorBoundary extends Component {
   }
 
   render() {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     if (this.state.hasError)
       return <div>Oops! An error occurred. This could be due to an ECharts runtime error or invalid SVG content. <br />(see the browser console for more information)</div>
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     return this.props.children
   }

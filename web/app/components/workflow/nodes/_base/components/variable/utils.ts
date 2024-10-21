@@ -582,7 +582,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.LLM: {
-      const payload = (data as LLMNodeType)
+      const payload = data as LLMNodeType
       const isChatModel = payload.model?.mode === 'chat'
       let prompts: string[] = []
       if (isChatModel) {
@@ -620,19 +620,19 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
       break
     }
     case BlockEnum.QuestionClassifier: {
-      const payload = (data as QuestionClassifierNodeType)
+      const payload = data as QuestionClassifierNodeType
       res = [payload.query_variable_selector]
       const varInInstructions = matchNotSystemVars([payload.instruction || ''])
       res.push(...varInInstructions)
       break
     }
     case BlockEnum.HttpRequest: {
-      const payload = (data as HttpNodeType)
+      const payload = data as HttpNodeType
       res = matchNotSystemVars([payload.url, payload.headers, payload.params, payload.body.data])
       break
     }
     case BlockEnum.Tool: {
-      const payload = (data as ToolNodeType)
+      const payload = data as ToolNodeType
       const mixVars = matchNotSystemVars(Object.keys(payload.tool_parameters)?.filter(key => payload.tool_parameters[key].type === ToolVarType.mixed).map(key => payload.tool_parameters[key].value) as string[])
       const vars = Object.keys(payload.tool_parameters).filter(key => payload.tool_parameters[key].type === ToolVarType.variable).map(key => payload.tool_parameters[key].value as string) || []
       res = [...(mixVars as ValueSelector[]), ...(vars as any)]
@@ -650,7 +650,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     }
 
     case BlockEnum.ParameterExtractor: {
-      const payload = (data as ParameterExtractorNodeType)
+      const payload = data as ParameterExtractorNodeType
       res = [payload.query]
       const varInInstructions = matchNotSystemVars([payload.instruction || ''])
       res.push(...varInInstructions)
@@ -672,7 +672,7 @@ export const getNodeUsedVarPassToServerKey = (node: Node, valueSelector: ValueSe
   let res: string | string[] = ''
   switch (type) {
     case BlockEnum.LLM: {
-      const payload = (data as LLMNodeType)
+      const payload = data as LLMNodeType
       res = [`#${valueSelector.join('.')}#`]
       if (payload.context?.variable_selector.join('.') === valueSelector.join('.'))
         res.push('#context#')

@@ -70,7 +70,6 @@ export const useProviderContext = () => useContext(ProviderContext)
 
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713
-// eslint-disable-next-line @typescript-eslint/comma-dangle
 export const useProviderContextSelector = <T,>(selector: (state: ProviderContextState) => T): T =>
   useContextSelector(ProviderContext, selector)
 

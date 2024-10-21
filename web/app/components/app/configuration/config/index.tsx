@@ -19,7 +19,7 @@ import AgentTools from './agent/agent-tools'
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import ConfigVar from '@/app/components/app/configuration/config-var'
-import { type CitationConfig, type ModelConfig, type ModerationConfig, type MoreLikeThisConfig, type PromptVariable, type SpeechToTextConfig, type SuggestedQuestionsAfterAnswerConfig, type TextToSpeechConfig } from '@/models/debug'
+import type { CitationConfig, ModelConfig, ModerationConfig, MoreLikeThisConfig, PromptVariable, SpeechToTextConfig, SuggestedQuestionsAfterAnswerConfig, TextToSpeechConfig } from '@/models/debug'
 import type { AppType } from '@/types/app'
 import { ModelModeType } from '@/types/app'
 import { useModalContext } from '@/context/modal-context'
@@ -134,11 +134,11 @@ const Config: FC = () => {
     annotation: annotationConfig.enabled,
     setAnnotation: async (value) => {
       if (value) {
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        // eslint-disable-next-line ts/no-use-before-define
         setIsShowAnnotationConfigInit(true)
       }
       else {
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        // eslint-disable-next-line ts/no-use-before-define
         await handleDisableAnnotation(annotationConfig.embedding_model)
       }
     },

@@ -8,7 +8,7 @@ import useConfig from './use-config'
 import { WriteMode } from './types'
 import type { AssignerNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { type NodePanelProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.assigner'
