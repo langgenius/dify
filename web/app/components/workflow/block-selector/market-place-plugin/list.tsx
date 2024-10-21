@@ -39,17 +39,25 @@ const List = ({
     handleScroll,
   }))
 
+  const scrollToView = () => {
+    if (scrollPosition !== ScrollPosition.belowTheWrap)
+      return
+
+    nextToStickyELemRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
   return (
     <>
       <div
         className={cn('sticky z-10 flex h-8 px-4 py-1 text-text-primary system-sm-medium', stickyClassName)}
+        onClick={scrollToView}
       >
         <span>{t('plugin.fromMarketplace')}</span>
         {/* {scrollPosition === ScrollPosition.belowTheWrap && (
           <RiArrowRightUpLine className='ml-0.5 w-3 h-3' />
         )} */}
       </div>
-      <div className='p-1 pb-[500px]' ref={nextToStickyELemRef}>
+      <div className='p-1' ref={nextToStickyELemRef}>
         {list.map((item, index) => (
           <Item
             key={index}

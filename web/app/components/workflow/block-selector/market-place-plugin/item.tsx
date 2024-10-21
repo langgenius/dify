@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import Action from './action'
 import type { Plugin } from '@/app/components/plugins/types.ts'
 import I18n from '@/context/i18n'
+import cn from '@/utils/classnames'
 
 import { formatNumber } from '@/utils/format'
 
@@ -23,6 +24,7 @@ const Item: FC<Props> = ({
   payload,
 }) => {
   const { t } = useTranslation()
+  const [open, setOpen] = React.useState(false)
   const { locale } = useContext(I18n)
 
   return (
@@ -42,9 +44,12 @@ const Item: FC<Props> = ({
           </div>
         </div>
         {/* Action */}
-        <div className='hidden group-hover/plugin:flex  items-center space-x-1 h-4 text-components-button-secondary-accent-text system-xs-medium'>
+        <div className={cn(!open ? 'hidden' : 'flex', 'group-hover/plugin:flex  items-center space-x-1 h-4 text-components-button-secondary-accent-text system-xs-medium')}>
           <div className='px-1.5'>{t('plugin.installAction')}</div>
-          <Action />
+          <Action
+            open={open}
+            onOpenChange={setOpen}
+          />
         </div>
       </div>
 

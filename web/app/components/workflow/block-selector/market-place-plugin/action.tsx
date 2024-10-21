@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiMoreFill } from '@remixicon/react'
 import ActionButton from '@/app/components/base/action-button'
@@ -13,16 +13,20 @@ import {
 import cn from '@/utils/classnames'
 
 type Props = {
+  open: boolean
+  onOpenChange: (v: boolean) => void
 }
 
-const OperationDropdown: FC<Props> = () => {
+const OperationDropdown: FC<Props> = ({
+  open,
+  onOpenChange,
+}) => {
   const { t } = useTranslation()
-  const [open, doSetOpen] = useState(false)
   const openRef = useRef(open)
   const setOpen = useCallback((v: boolean) => {
-    doSetOpen(v)
+    onOpenChange(v)
     openRef.current = v
-  }, [doSetOpen])
+  }, [onOpenChange])
 
   const handleTrigger = useCallback(() => {
     setOpen(!openRef.current)
