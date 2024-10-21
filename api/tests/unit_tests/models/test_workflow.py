@@ -3,7 +3,7 @@ from uuid import uuid4
 
 import contexts
 from constants import HIDDEN_VALUE
-from core.app.segments import FloatVariable, IntegerVariable, SecretVariable, StringVariable
+from core.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from models.workflow import Workflow
 
 
