@@ -18,7 +18,9 @@ export const checkNodeValid = () => {
   return true
 }
 
-export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
+export const getSelectedDatasetsMode = (datasets: DataSet[] = []) => {
+  if (datasets === null)
+    datasets = []
   let allHighQuality = true
   let allHighQualityVectorSearch = true
   let allHighQualityFullTextSearch = true
