@@ -56,6 +56,10 @@ class Storage:
                 from extensions.storage.volcengine_tos_storage import VolcengineTosStorage
 
                 return VolcengineTosStorage
+            case StorageType.SUPBASE:
+                from extensions.storage.supabase_storage import SupabaseStorage
+
+                return SupabaseStorage
             case StorageType.LOCAL | _:
                 from extensions.storage.local_fs_storage import LocalFsStorage
 
@@ -68,7 +72,7 @@ class Storage:
             logging.exception("Failed to save file: %s", e)
             raise e
 
-    def load(self, filename: str, stream: bool = False) -> Union[bytes, Generator]:
+    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
         try:
             if stream:
                 return self.load_stream(filename)

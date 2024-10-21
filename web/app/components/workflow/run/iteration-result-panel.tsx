@@ -111,7 +111,7 @@ const IterationResultPanel: FC<Props> = ({
       }}
       onClick={handleNotBubble}
     >
-      <div className='h-full rounded-2xl bg-white flex flex-col'>
+      <div className='h-full rounded-2xl bg-components-panel-bg flex flex-col'>
         {main}
       </div>
     </div >

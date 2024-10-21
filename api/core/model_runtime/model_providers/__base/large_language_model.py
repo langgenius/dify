@@ -1,5 +1,4 @@
 import logging
-import os
 import re
 import time
 from abc import abstractmethod
@@ -8,6 +7,7 @@ from typing import Optional, Union
 
 from pydantic import ConfigDict
 
+from configs import dify_config
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.callbacks.logging_callback import LoggingCallback
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -77,7 +77,7 @@ class LargeLanguageModel(AIModel):
 
         callbacks = callbacks or []
 
-        if bool(os.environ.get("DEBUG", "False").lower() == "true"):
+        if dify_config.DEBUG:
             callbacks.append(LoggingCallback())
 
         # trigger before invoke callbacks
@@ -94,7 +94,7 @@ class LargeLanguageModel(AIModel):
         )
 
         try:
-            if "response_format" in model_parameters:
+            if "response_format" in model_parameters and model_parameters["response_format"] in {"JSON", "XML"}:
                 result = self._code_block_mode_wrapper(
                     model=model,
                     credentials=credentials,
@@ -107,7 +107,16 @@ class LargeLanguageModel(AIModel):
                     callbacks=callbacks,
                 )
             else:
-                result = self._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
+                result = self._invoke(
+                    model=model,
+                    credentials=credentials,
+                    prompt_messages=prompt_messages,
+                    model_parameters=model_parameters,
+                    tools=tools,
+                    stop=stop,
+                    stream=stream,
+                    user=user,
+                )
         except Exception as e:
             self._trigger_invoke_error_callbacks(
                 model=model,

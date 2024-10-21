@@ -1,24 +1,24 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any
 
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.variable_aggregator.entities import VariableAssignerNodeData
 from models.workflow import WorkflowNodeExecutionStatus
 
 
-class VariableAggregatorNode(BaseNode):
+class VariableAggregatorNode(BaseNode[VariableAssignerNodeData]):
     _node_data_cls = VariableAssignerNodeData
     _node_type = NodeType.VARIABLE_AGGREGATOR
 
     def _run(self) -> NodeRunResult:
-        node_data = cast(VariableAssignerNodeData, self.node_data)
         # Get variables
         outputs = {}
         inputs = {}
 
-        if not node_data.advanced_settings or not node_data.advanced_settings.group_enabled:
-            for selector in node_data.variables:
+        if not self.node_data.advanced_settings or not self.node_data.advanced_settings.group_enabled:
+            for selector in self.node_data.variables:
                 variable = self.graph_runtime_state.variable_pool.get_any(selector)
                 if variable is not None:
                     outputs = {"output": variable}
@@ -26,7 +26,7 @@ class VariableAggregatorNode(BaseNode):
                     inputs = {".".join(selector[1:]): variable}
                     break
         else:
-            for group in node_data.advanced_settings.groups:
+            for group in self.node_data.advanced_settings.groups:
                 for selector in group.variables:
                     variable = self.graph_runtime_state.variable_pool.get_any(selector)
 

@@ -14,7 +14,7 @@ class OracleConfig(BaseSettings):
         default=None,
     )
 
-    ORACLE_PORT: Optional[PositiveInt] = Field(
+    ORACLE_PORT: PositiveInt = Field(
         description="Port number on which the Oracle database server is listening (default is 1521)",
         default=1521,
     )

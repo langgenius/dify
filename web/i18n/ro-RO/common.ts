@@ -38,6 +38,10 @@ const translation = {
     duplicate: 'Duplică',
     rename: 'Redenumește',
     audioSourceUnavailable: 'Sursa audio nu este disponibilă',
+    copyImage: 'Copiere imagine',
+    zoomOut: 'Micșorare',
+    openInNewTab: 'Deschide într-o filă nouă',
+    zoomIn: 'Măriți',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',
@@ -167,6 +171,9 @@ const translation = {
     delete: 'Șterge contul',
     deleteTip: 'Ștergerea contului vă va șterge definitiv toate datele și nu pot fi recuperate.',
     deleteConfirmTip: 'Pentru a confirma, trimiteți următoarele din e-mailul înregistrat la ',
+    account: 'Cont',
+    studio: 'Dify Studio',
+    myAccount: 'Contul meu',
   },
   members: {
     team: 'Echipă',
@@ -496,6 +503,7 @@ const translation = {
       vectorHash: 'Hash vector:',
       hitScore: 'Scor de recuperare:',
     },
+    inputPlaceholder: 'Vorbește cu Bot',
   },
   promptEditor: {
     placeholder: 'Scrieți aici prompt-ul, introduceți \'{}\' pentru a insera o variabilă, introduceți \'/\' pentru a insera un bloc de conținut prompt',
@@ -572,6 +580,16 @@ const translation = {
   errorMsg: {
     fieldRequired: '{{câmp}} este obligatoriu',
     urlError: 'URL-ul ar trebui să înceapă cu http:// sau https://',
+  },
+  fileUploader: {
+    uploadFromComputerReadError: 'Citirea fișierului a eșuat, vă rugăm să încercați din nou.',
+    fileExtensionNotSupport: 'Extensia de fișier nu este acceptată',
+    uploadFromComputer: 'Încărcare locală',
+    pasteFileLinkInputPlaceholder: 'Introduceți adresa URL...',
+    uploadFromComputerUploadError: 'Încărcarea fișierului a eșuat, vă rugăm să încărcați din nou.',
+    pasteFileLinkInvalid: 'Link fișier nevalid',
+    uploadFromComputerLimit: 'Încărcarea fișierului nu poate depăși {{size}}',
+    pasteFileLink: 'Lipiți linkul fișierului',
   },
 }
 
