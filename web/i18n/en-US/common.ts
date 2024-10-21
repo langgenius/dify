@@ -407,7 +407,7 @@ const translation = {
       addWorkspace: 'Add workspace',
       connected: 'Connected',
       disconnected: 'Disconnected',
-      changeAuthorizedPages: 'Change authorized pages',
+      changeAuthorizedPages: 'Authorized pages',
       pagesAuthorized: 'Pages authorized',
       sync: 'Sync',
       remove: 'Remove',

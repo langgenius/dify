@@ -1,14 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import useSWR from 'swr'
+import React, { useState } from 'react'
+import { useSWRConfig } from 'swr'
 import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
-import { FeishuProvider } from './constants'
 import FeishuConfigModal from './config-feishu-modal'
 import type { DataSourceFeishu as TDataSourceFeishu } from '@/models/common'
 import { useAppContext } from '@/context/app-context'
-import { fetchFeishuConnection } from '@/service/common'
 import FeishuIcon from '@/app/components/base/feishu-icon'
 
 const Icon: FC<{
@@ -34,35 +32,31 @@ const DataSourceFeishu: FC<Props> = ({
   const { isCurrentWorkspaceManager } = useAppContext()
   const [showFeishuConfigModal, setShowFeishuConfigModal] = useState(false)
   const [canConnectFeishu, setCanConnectFeishu] = useState(false)
-  const { data } = useSWR(canConnectFeishu ? `/oauth/data-source/${FeishuProvider}` : null, fetchFeishuConnection)
-
   const connected = !!workspaces.length
+  const { mutate } = useSWRConfig()
 
   const handleConnectFeishu = () => {
     setShowFeishuConfigModal(true)
   }
 
-  const handleAdded = () => {
-    setCanConnectFeishu(true)
-    setShowFeishuConfigModal(false)
+  const refreshFeishuConfig = () => {
+    mutate({ url: 'data-source/integrates' })
   }
 
-  const hideConfig = () => {
+  const onSaveFeishuConfig = () => {
+    setCanConnectFeishu(true)
+    setShowFeishuConfigModal(false)
+    refreshFeishuConfig()
+  }
+
+  const cancelFeishuConfig = () => {
     setShowFeishuConfigModal(false)
   }
 
   const handleAuthAgain = () => {
-    if (data?.data)
-      // TODO 跳转飞书，这里返回是空
-      window.location.href = data.data
-    else
-      setCanConnectFeishu(true)
+    // 目前暂时没有动作
   }
 
-  useEffect(() => {
-    if (data?.data)
-      window.location.href = data.data
-  }, [data])
   return (
     <>
       <Panel
@@ -91,7 +85,7 @@ const DataSourceFeishu: FC<Props> = ({
         }}
       />
       {showFeishuConfigModal && (
-        <FeishuConfigModal onSaved={handleAdded} onCancel={hideConfig} />
+        <FeishuConfigModal onSaved={onSaveFeishuConfig} onCancel={cancelFeishuConfig} />
       )}
     </>
   )

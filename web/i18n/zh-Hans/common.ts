@@ -407,7 +407,7 @@ const translation = {
       addWorkspace: '添加工作空间',
       connected: '已绑定',
       disconnected: '未绑定',
-      changeAuthorizedPages: '更改授权页面',
+      changeAuthorizedPages: '授权页面',
       pagesAuthorized: '已授权页面',
       sync: '同步',
       remove: '删除',
