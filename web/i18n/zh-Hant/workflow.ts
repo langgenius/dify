@@ -233,7 +233,7 @@ const translation = {
     'document-extractor': '文件提取器',
   },
   blocksAbout: {
-    'start': '定義一個 workflow 流程啟動的初始參數',
+    'start': '定義一個 workflow 流程啟動的參數',
     'end': '定義一個 workflow 流程的結束和結果類型',
     'answer': '定義一個聊天對話的回覆內容',
     'llm': '調用大語言模型回答問題或者對自然語言進行處理',
