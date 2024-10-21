@@ -74,6 +74,14 @@ const translation = {
       firecrawlTitle: 'Wyodrębnij zawartość internetową za pomocą 🔥Firecrawl',
       fireCrawlNotConfigured: 'Firecrawl nie jest skonfigurowany',
       maxDepthTooltip: 'Maksymalna głębokość przeszukiwania względem wprowadzonego adresu URL. Głębokość 0 po prostu zeskrobuje stronę z wprowadzonego adresu URL, głębokość 1 zeskrobuje adres URL i wszystko po wprowadzeniuURL+ jeden / i tak dalej.',
+      useSitemap: 'Użyj mapy witryny',
+      useSitemapTooltip: 'Postępuj zgodnie z mapą witryny, aby zindeksować witrynę. Jeśli nie, Jina Reader będzie indeksować iteracyjnie w oparciu o trafność strony, dając mniej stron, ale o wyższej jakości.',
+      chooseProvider: 'Wybierz dostawcę',
+      jinaReaderDocLink: 'https://jina.ai/reader',
+      jinaReaderNotConfigured: 'Czytnik Jina nie jest skonfigurowany',
+      jinaReaderDoc: 'Dowiedz się więcej o Jina Reader',
+      jinaReaderTitle: 'Konwertowanie całej witryny na język Markdown',
+      jinaReaderNotConfiguredDescription: 'Skonfiguruj Jina Reader, wprowadzając bezpłatny klucz API, aby uzyskać dostęp.',
     },
   },
   stepTwo: {
@@ -146,6 +154,7 @@ const translation = {
     datasetSettingLink: 'ustawień Wiedzy.',
     webpageUnit: 'Stron',
     websiteSource: 'Witryna internetowa przetwarzania wstępnego',
+    separatorTip: 'Ogranicznik to znak używany do oddzielania tekstu. \\n\\n i \\n są powszechnie używanymi ogranicznikami do oddzielania akapitów i wierszy. W połączeniu z przecinkami (\\n\\n,\\n), akapity będą segmentowane wierszami po przekroczeniu maksymalnej długości fragmentu. Możesz również skorzystać ze zdefiniowanych przez siebie specjalnych ograniczników (np. ***).',
   },
   stepThree: {
     creationTitle: '🎉 Utworzono Wiedzę',
@@ -171,6 +180,11 @@ const translation = {
     apiKeyPlaceholder: 'Klucz API od firecrawl.dev',
     configFirecrawl: 'Konfiguracja 🔥Firecrawla',
     getApiKeyLinkText: 'Pobierz klucz API z firecrawl.dev',
+  },
+  jinaReader: {
+    getApiKeyLinkText: 'Odbierz darmowy klucz API na jina.ai',
+    apiKeyPlaceholder: 'Klucz API od jina.ai',
+    configJinaReader: 'Konfiguracja czytnika Jina',
   },
 }
 

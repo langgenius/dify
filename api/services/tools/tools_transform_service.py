@@ -74,12 +74,14 @@ class ToolTransformService:
                 en_US=provider_controller.identity.description.en_US,
                 zh_Hans=provider_controller.identity.description.zh_Hans,
                 pt_BR=provider_controller.identity.description.pt_BR,
+                ja_JP=provider_controller.identity.description.ja_JP,
             ),
             icon=provider_controller.identity.icon,
             label=I18nObject(
                 en_US=provider_controller.identity.label.en_US,
                 zh_Hans=provider_controller.identity.label.zh_Hans,
                 pt_BR=provider_controller.identity.label.pt_BR,
+                ja_JP=provider_controller.identity.label.ja_JP,
             ),
             type=ToolProviderType.BUILT_IN,
             masked_credentials={},
@@ -142,7 +144,7 @@ class ToolTransformService:
 
     @staticmethod
     def workflow_provider_to_user_provider(
-        provider_controller: WorkflowToolProviderController, labels: list[str] = None
+        provider_controller: WorkflowToolProviderController, labels: Optional[list[str]] = None
     ):
         """
         convert provider controller to user provider
@@ -172,7 +174,7 @@ class ToolTransformService:
         provider_controller: ApiToolProviderController,
         db_provider: ApiToolProvider,
         decrypt_credentials: bool = True,
-        labels: list[str] = None,
+        labels: Optional[list[str]] = None,
     ) -> UserToolProvider:
         """
         convert provider controller to user provider
@@ -221,9 +223,9 @@ class ToolTransformService:
     @staticmethod
     def tool_to_user_tool(
         tool: Union[ApiToolBundle, WorkflowTool, Tool],
-        credentials: dict = None,
-        tenant_id: str = None,
-        labels: list[str] = None,
+        credentials: Optional[dict] = None,
+        tenant_id: Optional[str] = None,
+        labels: Optional[list[str]] = None,
     ) -> UserTool:
         """
         convert tool to user tool

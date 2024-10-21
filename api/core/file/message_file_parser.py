@@ -198,16 +198,34 @@ class MessageFileParser:
                     if "amazonaws.com" not in parsed_url.netloc:
                         return False
                     query_params = parse_qs(parsed_url.query)
-                    required_params = ["Signature", "Expires"]
-                    for param in required_params:
-                        if param not in query_params:
+
+                    def check_presign_v2(query_params):
+                        required_params = ["Signature", "Expires"]
+                        for param in required_params:
+                            if param not in query_params:
+                                return False
+                        if not query_params["Expires"][0].isdigit():
                             return False
-                    if not query_params["Expires"][0].isdigit():
-                        return False
-                    signature = query_params["Signature"][0]
-                    if not re.match(r"^[A-Za-z0-9+/]+={0,2}$", signature):
-                        return False
-                    return True
+                        signature = query_params["Signature"][0]
+                        if not re.match(r"^[A-Za-z0-9+/]+={0,2}$", signature):
+                            return False
+
+                        return True
+
+                    def check_presign_v4(query_params):
+                        required_params = ["X-Amz-Signature", "X-Amz-Expires"]
+                        for param in required_params:
+                            if param not in query_params:
+                                return False
+                        if not query_params["X-Amz-Expires"][0].isdigit():
+                            return False
+                        signature = query_params["X-Amz-Signature"][0]
+                        if not re.match(r"^[A-Za-z0-9+/]+={0,2}$", signature):
+                            return False
+
+                        return True
+
+                    return check_presign_v4(query_params) or check_presign_v2(query_params)
                 except Exception:
                     return False
 

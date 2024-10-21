@@ -167,6 +167,9 @@ const translation = {
     delete: '刪除帳戶',
     deleteTip: '刪除您的帳戶將永久刪除您的所有資料並且無法恢復。',
     deleteConfirmTip: '請將以下內容從您的註冊電子郵件發送至 ',
+    account: '帳戶',
+    myAccount: '我的帳戶',
+    studio: 'Dify 工作室',
   },
   members: {
     team: '團隊',
@@ -194,7 +197,7 @@ const translation = {
     invitationLink: '邀請連結',
     failedInvitationEmails: '邀請以下郵箱失敗',
     ok: '好的',
-    removeFromTeam: '移除團隊',
+    removeFromTeam: '移出團隊',
     removeFromTeamTip: '將取消團隊訪問',
     setAdmin: '設為管理員',
     setMember: '設為普通成員',

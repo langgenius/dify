@@ -78,6 +78,7 @@ const translation = {
     pathParams: 'Parametrii căii',
     query: 'Interogare',
   },
+  regenerate: 'Regenera',
 }
 
 export default translation

@@ -5,6 +5,7 @@ import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import SettingsModal from '../settings-modal'
 import type { DataSet } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
@@ -33,6 +34,7 @@ const Item: FC<ItemProps> = ({
   const isMobile = media === MediaType.mobile
   const [showSettingsModal, setShowSettingsModal] = useState(false)
   const { formatIndexingTechniqueAndMethod } = useKnowledge()
+  const { t } = useTranslation()
 
   const handleSave = (newDataset: DataSet) => {
     onSave(newDataset)
@@ -65,9 +67,11 @@ const Item: FC<ItemProps> = ({
       <div className='grow'>
         <div className='flex items-center h-[18px]'>
           <div className='grow text-[13px] font-medium text-gray-800 truncate' title={config.name}>{config.name}</div>
-          <Badge
-            text={formatIndexingTechniqueAndMethod(config.indexing_technique, config.retrieval_model_dict?.search_method)}
-          />
+          {config.provider === 'external'
+            ? <Badge text={t('dataset.externalTag')}></Badge>
+            : <Badge
+              text={formatIndexingTechniqueAndMethod(config.indexing_technique, config.retrieval_model_dict?.search_method)}
+            />}
         </div>
       </div>
       <div className='hidden rounded-lg group-hover:flex items-center justify-end absolute right-0 top-0 bottom-0 pr-2 w-[124px] bg-gradient-to-r from-white/50 to-white to-50%'>

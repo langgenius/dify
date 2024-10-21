@@ -78,6 +78,14 @@ const translation = {
       scrapTimeInfo: '{{time}} 秒以内に合計 {{total}} ページをスクレイピングしました',
       preview: 'プレビュー',
       maxDepthTooltip: '入力されたURLを基にしたクローリング作業での設定可能な最大深度について説明します。深度0は入力されたURL自体のページを対象としたスクレイピングを意味します。深度1では、元のURLの直下にあるページ（URLに続く最初の"/"以降の内容）もスクレイピングの対象になります。この深度は指定した数値まで増加させることができ、それに応じてスクレイピングの範囲も広がっていきます。',
+      jinaReaderDocLink: 'https://jina.ai/reader',
+      useSitemap: 'サイトマップを使用する',
+      jinaReaderNotConfigured: 'Jina Reader が設定されていません',
+      jinaReaderDoc: 'Jina Readerの詳細',
+      jinaReaderTitle: 'サイト全体をMarkdownに変換する',
+      chooseProvider: 'プロバイダーを選択する',
+      jinaReaderNotConfiguredDescription: '無料のAPIキーを入力してJina Readerを設定します。',
+      useSitemapTooltip: 'サイトマップに沿ってサイトをクロールします。そうでない場合、Jina Readerはページの関連性に基づいて繰り返しクロールし、ページ数は少なくなりますが、高品質のページが得られます。',
     },
   },
   stepTwo: {
@@ -138,6 +146,7 @@ const translation = {
     indexSettingTip: 'インデックス方法を変更するには、',
     retrievalSettingTip: '検索方法を変更するには、',
     datasetSettingLink: 'ナレッジ設定',
+    separatorTip: '区切り文字は、テキストを区切るために使用される文字です。\\n\\n と \\n は、段落と行を区切るために一般的に使用される区切り記号です。カンマ (\\n\\n,\\n) と組み合わせると、最大チャンク長を超えると、段落は行で区切られます。自分で定義した特別な区切り文字を使用することもできます(例:***)。',
   },
   stepThree: {
     creationTitle: '🎉 ナレッジが作成されました',
@@ -155,6 +164,11 @@ const translation = {
     modelContent: '後で処理を再開する必要がある場合は、中断した場所から続行します。',
     modelButtonConfirm: '確認',
     modelButtonCancel: 'キャンセル',
+  },
+  jinaReader: {
+    getApiKeyLinkText: '無料のAPIキーを jina.ai で取得',
+    apiKeyPlaceholder: 'jina.ai からの API キー',
+    configJinaReader: 'Jina Readerの設定',
   },
 }
 

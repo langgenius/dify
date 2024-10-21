@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.8.3",
+  "version": "0.9.2",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -55,14 +55,14 @@
     "immer": "^9.0.19",
     "js-audio-recorder": "^1.0.7",
     "js-cookie": "^3.0.1",
+    "jwt-decode": "^4.0.0",
     "katex": "^0.16.10",
     "lamejs": "^1.2.1",
     "lexical": "^0.16.0",
     "lodash-es": "^4.17.21",
     "mermaid": "10.4.0",
     "negotiator": "^0.6.3",
-    "next": "^14.2.4",
-    "next-nprogress-bar": "^2.3.8",
+    "next": "^14.1.1",
     "pinyin-pro": "^3.23.0",
     "qrcode.react": "^3.1.0",
     "qs": "^6.11.1",
@@ -100,7 +100,6 @@
     "tailwind-merge": "^2.4.0",
     "use-context-selector": "^1.4.1",
     "uuid": "^9.0.1",
-    "yarn": "^1.22.22",
     "zod": "^3.23.6",
     "zundo": "^2.1.0",
     "zustand": "^4.5.2"

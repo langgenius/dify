@@ -78,6 +78,14 @@ const translation = {
       scrapTimeInfo: 'در مجموع {{total}} صفحه در {{time}} ثانیه خراشیده شد',
       preview: 'پیشنمایش',
       maxDepthTooltip: 'حداکثر عمق برای خزش نسبت به URL وارد شده. عمق 0 فقط صفحه URL وارد شده را خراش میدهد، عمق 1 URL و همه چیز بعد از URL وارد شده + یک / را خراش میدهد، و غیره.',
+      jinaReaderDocLink: 'https://jina.ai/reader',
+      chooseProvider: 'یک ارائه دهنده را انتخاب کنید',
+      jinaReaderTitle: 'کل سایت را به Markdown تبدیل کنید',
+      jinaReaderNotConfigured: 'Jina Reader پیکربندی نشده است',
+      jinaReaderDoc: 'درباره Jina Reader بیشتر بدانید',
+      useSitemap: 'از نقشه سایت استفاده کنید',
+      jinaReaderNotConfiguredDescription: 'با وارد کردن کلید API رایگان خود برای دسترسی، Jina Reader را راه اندازی کنید.',
+      useSitemapTooltip: 'نقشه سایت را دنبال کنید تا سایت را بخزید. در غیر این صورت، Jina Reader بر اساس ارتباط صفحه به صورت تکراری می خزد و صفحات کمتر اما با کیفیت بالاتر را به دست می آورد.',
     },
   },
   stepTwo: {
@@ -138,6 +146,7 @@ const translation = {
     indexSettingTip: 'برای تغییر روش شاخص، لطفاً به',
     retrievalSettingTip: 'برای تغییر روش شاخص، لطفاً به',
     datasetSettingLink: 'تنظیمات دانش بروید.',
+    separatorTip: 'جداکننده نویسه ای است که برای جداسازی متن استفاده می شود. \\n\\n و \\n معمولا برای جداسازی پاراگراف ها و خطوط استفاده می شوند. همراه با کاما (\\n\\n,\\n)، پاراگراف ها زمانی که از حداکثر طول تکه فراتر می روند، با خطوط تقسیم بندی می شوند. همچنین می توانید از جداکننده های خاصی که توسط خودتان تعریف شده اند استفاده کنید (مثلا ***).',
   },
   stepThree: {
     creationTitle: ' دانش ایجاد شد',
@@ -155,6 +164,11 @@ const translation = {
     modelContent: 'اگر نیاز به ادامه پردازش بعداً دارید، از جایی که متوقف شدهاید ادامه خواهید داد.',
     modelButtonConfirm: 'تأیید',
     modelButtonCancel: 'لغو',
+  },
+  jinaReader: {
+    configJinaReader: 'پیکربندی Jina Reader',
+    apiKeyPlaceholder: 'کلید API از jina.ai',
+    getApiKeyLinkText: 'کلید API رایگان خود را در jina.ai دریافت کنید',
   },
 }
 

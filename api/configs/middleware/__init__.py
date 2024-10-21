@@ -8,9 +8,11 @@ from configs.middleware.cache.redis_config import RedisConfig
 from configs.middleware.storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from configs.middleware.storage.amazon_s3_storage_config import S3StorageConfig
 from configs.middleware.storage.azure_blob_storage_config import AzureBlobStorageConfig
+from configs.middleware.storage.baidu_obs_storage_config import BaiduOBSStorageConfig
 from configs.middleware.storage.google_cloud_storage_config import GoogleCloudStorageConfig
 from configs.middleware.storage.huawei_obs_storage_config import HuaweiCloudOBSStorageConfig
 from configs.middleware.storage.oci_storage_config import OCIStorageConfig
+from configs.middleware.storage.supabase_storage_config import SupabaseStorageConfig
 from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
 from configs.middleware.storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
 from configs.middleware.vdb.analyticdb_config import AnalyticdbConfig
@@ -26,75 +28,77 @@ from configs.middleware.vdb.qdrant_config import QdrantConfig
 from configs.middleware.vdb.relyt_config import RelytConfig
 from configs.middleware.vdb.tencent_vector_config import TencentVectorDBConfig
 from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
+from configs.middleware.vdb.vikingdb_config import VikingDBConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
 
 
 class StorageConfig(BaseSettings):
     STORAGE_TYPE: str = Field(
-        description="storage type,"
-        " default to `local`,"
-        " available values are `local`, `s3`, `azure-blob`, `aliyun-oss`, `google-storage`.",
+        description="Type of storage to use."
+        " Options: 'local', 's3', 'azure-blob', 'aliyun-oss', 'google-storage'. Default is 'local'.",
         default="local",
     )
 
     STORAGE_LOCAL_PATH: str = Field(
-        description="local storage path",
+        description="Path for local storage when STORAGE_TYPE is set to 'local'.",
         default="storage",
     )
 
 
 class VectorStoreConfig(BaseSettings):
     VECTOR_STORE: Optional[str] = Field(
-        description="vector store type",
+        description="Type of vector store to use for efficient similarity search."
+        " Set to None if not using a vector store.",
         default=None,
     )
 
 
 class KeywordStoreConfig(BaseSettings):
     KEYWORD_STORE: str = Field(
-        description="keyword store type",
+        description="Method for keyword extraction and storage."
+        " Default is 'jieba', a Chinese text segmentation library.",
         default="jieba",
     )
 
 
 class DatabaseConfig:
     DB_HOST: str = Field(
-        description="db host",
+        description="Hostname or IP address of the database server.",
         default="localhost",
     )
 
     DB_PORT: PositiveInt = Field(
-        description="db port",
+        description="Port number for database connection.",
         default=5432,
     )
 
     DB_USERNAME: str = Field(
-        description="db username",
+        description="Username for database authentication.",
         default="postgres",
     )
 
     DB_PASSWORD: str = Field(
-        description="db password",
+        description="Password for database authentication.",
         default="",
     )
 
     DB_DATABASE: str = Field(
-        description="db database",
+        description="Name of the database to connect to.",
         default="dify",
     )
 
     DB_CHARSET: str = Field(
-        description="db charset",
+        description="Character set for database connection.",
         default="",
     )
 
     DB_EXTRAS: str = Field(
-        description="db extras options. Example: keepalives_idle=60&keepalives=1",
+        description="Additional database connection parameters. Example: 'keepalives_idle=60&keepalives=1'",
         default="",
     )
 
     SQLALCHEMY_DATABASE_URI_SCHEME: str = Field(
-        description="db uri scheme",
+        description="Database URI scheme for SQLAlchemy connection.",
         default="postgresql",
     )
 
@@ -112,27 +116,27 @@ class DatabaseConfig:
         )
 
     SQLALCHEMY_POOL_SIZE: NonNegativeInt = Field(
-        description="pool size of SqlAlchemy",
+        description="Maximum number of database connections in the pool.",
         default=30,
     )
 
     SQLALCHEMY_MAX_OVERFLOW: NonNegativeInt = Field(
-        description="max overflows for SqlAlchemy",
+        description="Maximum number of connections that can be created beyond the pool_size.",
         default=10,
     )
 
     SQLALCHEMY_POOL_RECYCLE: NonNegativeInt = Field(
-        description="SqlAlchemy pool recycle",
+        description="Number of seconds after which a connection is automatically recycled.",
         default=3600,
     )
 
     SQLALCHEMY_POOL_PRE_PING: bool = Field(
-        description="whether to enable pool pre-ping in SqlAlchemy",
+        description="If True, enables connection pool pre-ping feature to check connections.",
         default=False,
     )
 
     SQLALCHEMY_ECHO: bool | str = Field(
-        description="whether to enable SqlAlchemy echo",
+        description="If True, SQLAlchemy will log all SQL statements.",
         default=False,
     )
 
@@ -150,27 +154,27 @@ class DatabaseConfig:
 
 class CeleryConfig(DatabaseConfig):
     CELERY_BACKEND: str = Field(
-        description="Celery backend, available values are `database`, `redis`",
+        description="Backend for Celery task results. Options: 'database', 'redis'.",
         default="database",
     )
 
     CELERY_BROKER_URL: Optional[str] = Field(
-        description="CELERY_BROKER_URL",
+        description="URL of the message broker for Celery tasks.",
         default=None,
     )
 
     CELERY_USE_SENTINEL: Optional[bool] = Field(
-        description="Whether to use Redis Sentinel mode",
+        description="Whether to use Redis Sentinel for high availability.",
         default=False,
     )
 
     CELERY_SENTINEL_MASTER_NAME: Optional[str] = Field(
-        description="Redis Sentinel master name",
+        description="Name of the Redis Sentinel master.",
         default=None,
     )
 
     CELERY_SENTINEL_SOCKET_TIMEOUT: Optional[PositiveFloat] = Field(
-        description="Redis Sentinel socket timeout",
+        description="Timeout for Redis Sentinel socket operations in seconds.",
         default=0.1,
     )
 
@@ -189,6 +193,22 @@ class CeleryConfig(DatabaseConfig):
         return self.CELERY_BROKER_URL.startswith("rediss://") if self.CELERY_BROKER_URL else False
 
 
+class InternalTestConfig(BaseSettings):
+    """
+    Configuration settings for Internal Test
+    """
+
+    AWS_SECRET_ACCESS_KEY: Optional[str] = Field(
+        description="Internal test AWS secret access key",
+        default=None,
+    )
+
+    AWS_ACCESS_KEY_ID: Optional[str] = Field(
+        description="Internal test AWS access key ID",
+        default=None,
+    )
+
+
 class MiddlewareConfig(
     # place the configs in alphabet order
     CeleryConfig,
@@ -199,12 +219,14 @@ class MiddlewareConfig(
     StorageConfig,
     AliyunOSSStorageConfig,
     AzureBlobStorageConfig,
+    BaiduOBSStorageConfig,
     GoogleCloudStorageConfig,
-    TencentCloudCOSStorageConfig,
     HuaweiCloudOBSStorageConfig,
-    VolcengineTOSStorageConfig,
-    S3StorageConfig,
     OCIStorageConfig,
+    S3StorageConfig,
+    SupabaseStorageConfig,
+    TencentCloudCOSStorageConfig,
+    VolcengineTOSStorageConfig,
     # configs of vdb and vdb providers
     VectorStoreConfig,
     AnalyticdbConfig,
@@ -221,5 +243,7 @@ class MiddlewareConfig(
     TiDBVectorConfig,
     WeaviateConfig,
     ElasticsearchConfig,
+    InternalTestConfig,
+    VikingDBConfig,
 ):
     pass

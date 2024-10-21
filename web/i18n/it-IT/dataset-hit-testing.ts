@@ -24,6 +24,8 @@ const translation = {
   },
   noRecentTip: 'Nessun risultato di query recente qui',
   viewChart: 'Visualizza GRAFICO VETTORIALE',
+  settingTitle: 'Impostazione di recupero',
+  viewDetail: 'vedi dettagli',
 }
 
 export default translation

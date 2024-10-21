@@ -78,6 +78,14 @@ const translation = {
       scrapTimeInfo: 'Toplam {{total}} sayfa {{time}}s içinde kazındı',
       preview: 'Önizleme',
       maxDepthTooltip: 'Girilen URL\'ye göre tarama için maksimum derinlik. Derinlik 0 sadece girilen url sayfasını kazır, derinlik 1 url ve girilen URL + bir / \'dan sonraki her şeyi kazır ve böyle devam eder.',
+      jinaReaderTitle: 'Tüm siteyi Markdown\'a dönüştürün',
+      useSitemap: 'Site haritasını kullan',
+      useSitemapTooltip: 'Siteyi taramak için site haritasını takip edin. Aksi takdirde, Jina Reader sayfa alaka düzeyine göre yinelemeli olarak tarar ve daha az ancak daha yüksek kaliteli sayfalar verir.',
+      jinaReaderNotConfiguredDescription: 'Erişim için ücretsiz API anahtarınızı girerek Jina Reader\'ı kurun.',
+      chooseProvider: 'Bir sağlayıcı seçin',
+      jinaReaderDoc: 'Jina Reader hakkında daha fazla bilgi edinin',
+      jinaReaderNotConfigured: 'Jina Reader yapılandırılmadı',
+      jinaReaderDocLink: 'https://jina.ai/reader',
     },
   },
   stepTwo: {
@@ -138,6 +146,7 @@ const translation = {
     indexSettingTip: 'Dizin yöntemini değiştirmek için, lütfen',
     retrievalSettingTip: 'Dizin yöntemini değiştirmek için, lütfen',
     datasetSettingLink: 'Bilgi ayarlarına gidin.',
+    separatorTip: 'Sınırlayıcı, metni ayırmak için kullanılan karakterdir. \\n\\n ve \\n, paragrafları ve satırları ayırmak için yaygın olarak kullanılan sınırlayıcılardır. Virgüllerle (\\n\\n,\\n) birleştirildiğinde, paragraflar maksimum öbek uzunluğunu aştığında satırlarla bölünür. Kendiniz tarafından tanımlanan özel sınırlayıcıları da kullanabilirsiniz (örn.',
   },
   stepThree: {
     creationTitle: '🎉 Bilgi oluşturuldu',
@@ -155,6 +164,11 @@ const translation = {
     modelContent: 'İşlemeye daha sonra devam etmeniz gerekirse, kaldığınız yerden devam edeceksiniz.',
     modelButtonConfirm: 'Onayla',
     modelButtonCancel: 'İptal',
+  },
+  jinaReader: {
+    apiKeyPlaceholder: 'jina.ai\'dan API anahtarı',
+    configJinaReader: 'Jina Reader\'ı Yapılandırma',
+    getApiKeyLinkText: 'Ücretsiz API anahtarınızı hemen jina.ai alın',
   },
 }
 

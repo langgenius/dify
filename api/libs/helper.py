@@ -162,7 +162,7 @@ def generate_string(n):
     return result
 
 
-def get_remote_ip(request) -> str:
+def extract_remote_ip(request) -> str:
     if request.headers.get("CF-Connecting-IP"):
         return request.headers.get("Cf-Connecting-Ip")
     elif request.headers.getlist("X-Forwarded-For"):
@@ -189,7 +189,7 @@ def compact_generate_response(response: Union[dict, RateLimitGenerator]) -> Resp
 
 class TokenManager:
     @classmethod
-    def generate_token(cls, account: Account, token_type: str, additional_data: dict = None) -> str:
+    def generate_token(cls, account: Account, token_type: str, additional_data: Optional[dict] = None) -> str:
         old_token = cls._get_current_token_for_account(account.id, token_type)
         if old_token:
             if isinstance(old_token, bytes):

@@ -35,6 +35,7 @@ type AnswerProps = {
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   appData?: AppData
+  noChatInput?: boolean
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -48,6 +49,7 @@ const Answer: FC<AnswerProps> = ({
   chatAnswerContainerInner,
   hideProcessDetail,
   appData,
+  noChatInput,
 }) => {
   const { t } = useTranslation()
   const {
@@ -83,6 +85,19 @@ const Answer: FC<AnswerProps> = ({
       getContentWidth()
   }, [responding])
 
+  // Recalculate contentWidth when content changes (e.g., SVG preview/source toggle)
+  useEffect(() => {
+    if (!containerRef.current)
+      return
+    const resizeObserver = new ResizeObserver(() => {
+      getContentWidth()
+    })
+    resizeObserver.observe(containerRef.current)
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
+
   return (
     <div className='flex mb-2 last:mb-0'>
       <div className='shrink-0 relative w-10 h-10'>
@@ -110,6 +125,7 @@ const Answer: FC<AnswerProps> = ({
                   question={question}
                   index={index}
                   showPromptLog={showPromptLog}
+                  noChatInput={noChatInput}
                 />
               )
             }
