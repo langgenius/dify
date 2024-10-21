@@ -23,7 +23,7 @@ const HistoryPanel: FC<Props> = ({
 
   return (
     <Panel
-      className='mt-3'
+      className='mt-2'
       title={
         <div className='flex items-center gap-2'>
           <div>{t('appDebug.feature.conversationHistory.title')}</div>

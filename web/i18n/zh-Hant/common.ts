@@ -38,6 +38,10 @@ const translation = {
     duplicate: '複製',
     rename: '重新命名',
     audioSourceUnavailable: '音訊來源不可用',
+    copyImage: '複製圖像',
+    openInNewTab: '在新選項卡中打開',
+    zoomIn: '放大',
+    zoomOut: '縮小',
   },
   placeholder: {
     input: '請輸入',
@@ -499,6 +503,7 @@ const translation = {
       vectorHash: '向量雜湊：',
       hitScore: '召回得分：',
     },
+    inputPlaceholder: '與 Bot 對話',
   },
   promptEditor: {
     placeholder: '在這裡寫你的提示詞，輸入\'{\' 插入變數、輸入\'/\' 插入提示內容塊',
@@ -575,6 +580,16 @@ const translation = {
   errorMsg: {
     fieldRequired: '{{field}} 為必填項',
     urlError: 'URL應以 http:// 或 https:// 開頭',
+  },
+  fileUploader: {
+    pasteFileLink: '粘貼文件連結',
+    pasteFileLinkInputPlaceholder: '輸入網址...',
+    uploadFromComputerReadError: '檔案讀取失敗，請重試。',
+    uploadFromComputerUploadError: '檔上傳失敗，請重新上傳。',
+    pasteFileLinkInvalid: '無效的文件連結',
+    uploadFromComputer: '本地上傳',
+    fileExtensionNotSupport: '不支援檔擴展名',
+    uploadFromComputerLimit: '上傳文件不能超過 {{size}}',
   },
 }
 

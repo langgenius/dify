@@ -1,9 +1,11 @@
 import json
 
 from core.agent.cot_agent_runner import CotAgentRunner
-from core.model_runtime.entities.message_entities import (
+from core.file import file_manager
+from core.model_runtime.entities import (
     AssistantPromptMessage,
     PromptMessage,
+    PromptMessageContent,
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
@@ -32,9 +34,10 @@ class CotChatAgentRunner(CotAgentRunner):
         Organize user query
         """
         if self.files:
-            prompt_message_contents = [TextPromptMessageContent(data=query)]
+            prompt_message_contents: list[PromptMessageContent] = []
+            prompt_message_contents.append(TextPromptMessageContent(data=query))
             for file_obj in self.files:
-                prompt_message_contents.append(file_obj.prompt_message_content)
+                prompt_message_contents.append(file_manager.to_prompt_message_content(file_obj))
 
             prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         else:

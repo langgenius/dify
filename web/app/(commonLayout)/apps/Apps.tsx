@@ -21,7 +21,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { CheckModal } from '@/hooks/use-pay'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
-import SearchInput from '@/app/components/base/search-input'
+import Input from '@/app/components/base/input'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
@@ -87,15 +87,15 @@ const Apps = () => {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()
     }
-  }, [])
+  }, [mutate, t])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
       return router.replace('/datasets')
-  }, [isCurrentWorkspaceDatasetOperator])
+  }, [router, isCurrentWorkspaceDatasetOperator])
 
-  const hasMore = data?.at(-1)?.has_more ?? true
   useEffect(() => {
+    const hasMore = data?.at(-1)?.has_more ?? true
     let observer: IntersectionObserver | undefined
     if (anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
@@ -105,7 +105,7 @@ const Apps = () => {
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [isLoading, setSize, anchorRef, mutate, hasMore])
+  }, [isLoading, setSize, anchorRef, mutate, data])
 
   const { run: handleSearch } = useDebounceFn(() => {
     setSearchKeywords(keywords)
@@ -133,7 +133,14 @@ const Apps = () => {
         />
         <div className='flex items-center gap-2'>
           <TagFilter type='app' value={tagFilterValue} onChange={handleTagsChange} />
-          <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+          <Input
+            showLeftIcon
+            showClearIcon
+            wrapperClassName='w-[200px]'
+            value={keywords}
+            onChange={e => handleKeywordsChange(e.target.value)}
+            onClear={() => handleKeywordsChange('')}
+          />
         </div>
       </div>
       <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>

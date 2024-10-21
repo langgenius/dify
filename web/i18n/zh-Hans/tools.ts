@@ -119,8 +119,8 @@ const translation = {
   thought: {
     using: '正在使用',
     used: '已使用',
-    requestTitle: '请求来自',
-    responseTitle: '响应来自',
+    requestTitle: '请求',
+    responseTitle: '响应',
   },
   setBuiltInTools: {
     info: '信息',
