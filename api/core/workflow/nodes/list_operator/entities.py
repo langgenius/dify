@@ -8,18 +8,18 @@ from core.workflow.nodes.base import BaseNodeData
 _Condition = Literal[
     # string conditions
     "contains",
-    "startswith",
-    "endswith",
+    "start with",
+    "end with",
     "is",
     "in",
     "empty",
     "not contains",
-    "not is",
+    "is not",
     "not in",
     "not empty",
     # number conditions
     "=",
-    "!=",
+    "≠",
     "<",
     ">",
     "≥",
