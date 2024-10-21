@@ -26,7 +26,7 @@ const Item: FC<Props> = ({
   const { locale } = useContext(I18n)
 
   return (
-    <div className='group/plugin flex rounded-lg py-2 pr-1 pl-3 hover:bg-state-base-hover'>
+    <div className='group/plugin flex rounded-lg py-1 pr-1 pl-3 hover:bg-state-base-hover'>
       <div
         className='shrink-0 relative w-6 h-6 border-[0.5px] border-components-panel-border-subtle rounded-md bg-center bg-no-repeat bg-contain'
         style={{ backgroundImage: `url(${payload.icon})` }}
