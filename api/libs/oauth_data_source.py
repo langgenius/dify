@@ -8,8 +8,8 @@ from typing import Any, Optional
 import httpx
 import requests
 from bs4 import BeautifulSoup
-from flask import request
 from flask_login import current_user
+from flask_restful import reqparse
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -376,8 +376,14 @@ class FeishuWikiOAuth:
             raise ValueError("Data source binding not found")
 
     def validate_certificate(self):
-        app_id = request.args.get("app_id", default=None, type=str)
-        app_secret = request.args.get("app_secret", default=None, type=str)
+        parser = reqparse.RequestParser()
+        parser.add_argument("app_id", type=str, required=True, location="json")
+        parser.add_argument("app_secret", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        app_id = args["app_id"]
+        app_secret = args["app_secret"]
+
         if not app_id or not app_secret:
             raise ValueError("app_id and app_secret is required")
         try:
