@@ -168,7 +168,7 @@ Star Dify on GitHub and be instantly notified of new releases.
 > Before installing Dify, make sure your machine meets the following minimum system requirements:
 > 
 >- CPU >= 2 Core
->- RAM >= 4GB
+>- RAM >= 4 GiB
 
 </br>
 
