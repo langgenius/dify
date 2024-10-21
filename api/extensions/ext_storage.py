@@ -72,7 +72,7 @@ class Storage:
             logging.exception("Failed to save file: %s", e)
             raise e
 
-    def load(self, filename: str, stream: bool = False) -> Union[bytes, Generator]:
+    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
         try:
             if stream:
                 return self.load_stream(filename)

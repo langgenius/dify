@@ -15,8 +15,7 @@ from core.rag.extractor.notion_extractor import NotionExtractor
 from extensions.ext_database import db
 from fields.data_source_fields import integrate_list_fields, integrate_notion_info_list_fields
 from libs.login import login_required
-from models.dataset import Document
-from models.source import DataSourceOauthBinding
+from models import DataSourceOauthBinding, Document
 from services.dataset_service import DatasetService, DocumentService
 from tasks.document_indexing_sync_task import document_indexing_sync_task
 

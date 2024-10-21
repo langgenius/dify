@@ -2,7 +2,7 @@ from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.nodes.base import BaseNodeData
 
 
 class AnswerNodeData(BaseNodeData):

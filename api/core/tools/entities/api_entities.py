@@ -32,8 +32,8 @@ class UserToolProvider(BaseModel):
     original_credentials: Optional[dict] = None
     is_team_authorization: bool = False
     allow_delete: bool = True
-    tools: list[UserTool] = None
-    labels: list[str] = None
+    tools: list[UserTool] | None = None
+    labels: list[str] | None = None
 
     def to_dict(self) -> dict:
         # -------------
@@ -42,7 +42,7 @@ class UserToolProvider(BaseModel):
         for tool in tools:
             if tool.get("parameters"):
                 for parameter in tool.get("parameters"):
-                    if parameter.get("type") == ToolParameter.ToolParameterType.FILE.value:
+                    if parameter.get("type") == ToolParameter.ToolParameterType.SYSTEM_FILES.value:
                         parameter["type"] = "files"
         # -------------
 

@@ -20,7 +20,6 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.workflow.entities.node_entities import NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
@@ -41,9 +40,9 @@ from core.workflow.graph_engine.entities.event import (
     ParallelBranchRunSucceededEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.iteration.entities import IterationNodeData
-from core.workflow.nodes.node_mapping import node_classes
+from core.workflow.nodes import NodeType
+from core.workflow.nodes.iteration import IterationNodeData
+from core.workflow.nodes.node_mapping import node_type_classes_mapping
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.model import App
@@ -137,9 +136,8 @@ class WorkflowBasedAppRunner(AppRunner):
             raise ValueError("iteration node id not found in workflow graph")
 
         # Get node class
-        node_type = NodeType.value_of(iteration_node_config.get("data", {}).get("type"))
-        node_cls = node_classes.get(node_type)
-        node_cls = cast(type[BaseNode], node_cls)
+        node_type = NodeType(iteration_node_config.get("data", {}).get("type"))
+        node_cls = node_type_classes_mapping[node_type]
 
         # init variable pool
         variable_pool = VariablePool(

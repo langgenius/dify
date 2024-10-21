@@ -1,7 +1,8 @@
 from typing import cast
 
-from core.model_runtime.entities.message_entities import (
+from core.model_runtime.entities import (
     AssistantPromptMessage,
+    AudioPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
@@ -21,7 +22,7 @@ class PromptMessageUtil:
         :return:
         """
         prompts = []
-        if model_mode == ModelMode.CHAT.value:
+        if model_mode == ModelMode.CHAT:
             tool_calls = []
             for prompt_message in prompt_messages:
                 if prompt_message.role == PromptMessageRole.USER:
@@ -51,16 +52,22 @@ class PromptMessageUtil:
                 files = []
                 if isinstance(prompt_message.content, list):
                     for content in prompt_message.content:
-                        if content.type == PromptMessageContentType.TEXT:
-                            content = cast(TextPromptMessageContent, content)
+                        if isinstance(content, TextPromptMessageContent):
                             text += content.data
-                        else:
-                            content = cast(ImagePromptMessageContent, content)
+                        elif isinstance(content, ImagePromptMessageContent):
                             files.append(
                                 {
                                     "type": "image",
                                     "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
                                     "detail": content.detail.value,
+                                }
+                            )
+                        elif isinstance(content, AudioPromptMessageContent):
+                            files.append(
+                                {
+                                    "type": "audio",
+                                    "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
+                                    "format": content.format,
                                 }
                             )
                 else:

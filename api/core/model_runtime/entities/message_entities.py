@@ -2,7 +2,7 @@ from abc import ABC
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class PromptMessageRole(Enum):
@@ -55,6 +55,7 @@ class PromptMessageContentType(Enum):
 
     TEXT = "text"
     IMAGE = "image"
+    AUDIO = "audio"
 
 
 class PromptMessageContent(BaseModel):
@@ -74,12 +75,18 @@ class TextPromptMessageContent(PromptMessageContent):
     type: PromptMessageContentType = PromptMessageContentType.TEXT
 
 
+class AudioPromptMessageContent(PromptMessageContent):
+    type: PromptMessageContentType = PromptMessageContentType.AUDIO
+    data: str = Field(..., description="Base64 encoded audio data")
+    format: str = Field(..., description="Audio format")
+
+
 class ImagePromptMessageContent(PromptMessageContent):
     """
     Model class for image prompt message content.
     """
 
-    class DETAIL(Enum):
+    class DETAIL(str, Enum):
         LOW = "low"
         HIGH = "high"
 

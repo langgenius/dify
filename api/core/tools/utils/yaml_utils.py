@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import Any
 
 import yaml
@@ -17,15 +18,18 @@ def load_yaml_file(file_path: str, ignore_error: bool = True, default_value: Any
     :param default_value: the value returned when errors ignored
     :return: an object of the YAML content
     """
-    try:
-        with open(file_path, encoding="utf-8") as yaml_file:
-            try:
-                yaml_content = yaml.safe_load(yaml_file)
-                return yaml_content or default_value
-            except Exception as e:
-                raise YAMLError(f"Failed to load YAML file {file_path}: {e}")
-    except Exception as e:
+    if not file_path or not Path(file_path).exists():
         if ignore_error:
             return default_value
         else:
-            raise e
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+    with open(file_path, encoding="utf-8") as yaml_file:
+        try:
+            yaml_content = yaml.safe_load(yaml_file)
+            return yaml_content or default_value
+        except Exception as e:
+            if ignore_error:
+                return default_value
+            else:
+                raise YAMLError(f"Failed to load YAML file {file_path}: {e}") from e

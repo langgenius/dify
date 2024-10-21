@@ -2,7 +2,7 @@ from typing import Any
 
 from duckduckgo_search import DDGS
 
-from core.file.file_obj import FileTransferMethod
+from core.file.models import FileTransferMethod
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
