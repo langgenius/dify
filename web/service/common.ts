@@ -329,8 +329,8 @@ export const fetchFeishuConnection: Fetcher<{ data: string }, string> = (url) =>
   return get(url) as Promise<{ data: string }>
 }
 
-export const sendForgotPasswordEmail: Fetcher<CommonResponse, { url: string; body: { email: string } }> = ({ url, body }) =>
-  post<CommonResponse>(url, { body })
+export const sendForgotPasswordEmail: Fetcher<CommonResponse & { data: string }, { url: string; body: { email: string } }> = ({ url, body }) =>
+  post<CommonResponse & { data: string }>(url, { body })
 
 export const verifyForgotPasswordToken: Fetcher<CommonResponse & { is_valid: boolean; email: string }, { url: string; body: { token: string } }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse & { is_valid: boolean; email: string }>
@@ -338,3 +338,15 @@ export const verifyForgotPasswordToken: Fetcher<CommonResponse & { is_valid: boo
 
 export const changePasswordWithToken: Fetcher<CommonResponse, { url: string; body: { token: string; new_password: string; password_confirm: string } }> = ({ url, body }) =>
   post<CommonResponse>(url, { body })
+
+export const sendEMailLoginCode = (email: string, language = 'en-US') =>
+  post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } })
+
+export const emailLoginWithCode = (data: { email: string;code: string;token: string }) =>
+  post<LoginResponse>('/email-code-login/validity', { body: data })
+
+export const sendResetPasswordCode = (email: string, language = 'en-US') =>
+  post<CommonResponse & { data: string;message?: string ;code?: string }>('/forgot-password', { body: { email, language } })
+
+export const verifyResetPasswordCode = (body: { email: string;code: string;token: string }) =>
+  post<CommonResponse & { is_valid: boolean }>('/forgot-password/validity', { body })
