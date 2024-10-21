@@ -35,7 +35,6 @@ UNSTRUCTURED_ALLOWED_EXTENSIONS = [
     "eml",
     "msg",
     "pptx",
-    "ppt",
     "xml",
     "epub",
 ]
@@ -56,6 +55,8 @@ class FileService:
             if etl_type == "Unstructured"
             else ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS
         )
+        if etl_type == "Unstructured" and dify_config.UNSTRUCTURED_API_URL:
+            allowed_extensions.append("ppt")
         if extension.lower() not in allowed_extensions or only_image and extension.lower() not in IMAGE_EXTENSIONS:
             raise UnsupportedFileTypeError()
 

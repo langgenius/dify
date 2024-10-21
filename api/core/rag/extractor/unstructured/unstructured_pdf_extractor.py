@@ -6,15 +6,24 @@ from core.rag.models.document import Document
 logger = logging.getLogger(__name__)
 
 
-class UnstructuredXmlExtractor(BaseExtractor):
-    """Load xml files.
+class UnstructuredPDFExtractor(BaseExtractor):
+    """Load md files.
 
 
     Args:
         file_path: Path to the file to load.
+
+        api_url: Unstructured API URL
+
+        api_key: Unstructured API Key
     """
 
-    def __init__(self, file_path: str, api_url: str, api_key: str):
+    def __init__(
+        self,
+        file_path: str,
+        api_url: str,
+        api_key: str
+    ):
         """Initialize with file path."""
         self._file_path = file_path
         self._api_url = api_url
@@ -23,11 +32,12 @@ class UnstructuredXmlExtractor(BaseExtractor):
     def extract(self) -> list[Document]:
         if self._api_url:
             from unstructured.partition.api import partition_via_api
-            elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
+            elements = partition_via_api(filename=self._file_path, api_url=self._api_url,
+                                         api_key=self._api_key, strategy="auto")
         else:
-            from unstructured.partition.xml import partition_xml
-            elements = partition_xml(filename=self._file_path, xml_keep_tags=True)
-            
+            from unstructured.partition.pdf import partition_pdf
+            elements = partition_pdf(filename=self._file_path, strategy="auto")
+        
         from unstructured.chunking.title import chunk_by_title
 
         chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)
