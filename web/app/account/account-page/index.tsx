@@ -23,10 +23,6 @@ const titleClassName = `
 const descriptionClassName = `
   mt-1 text-xs font-normal text-gray-500
 `
-const inputClassName = `
-  mt-2 w-full px-3 py-2 bg-gray-100 rounded
-  text-sm font-normal text-gray-800
-`
 
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
