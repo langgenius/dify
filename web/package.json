@@ -110,6 +110,8 @@
   "devDependencies": {
     "@antfu/eslint-config": "^0.36.0",
     "@chromatic-com/storybook": "^1.9.0",
+    "@eslint/eslintrc": "^3.1.0",
+    "@eslint/js": "^9.13.0",
     "@faker-js/faker": "^7.6.0",
     "@rgrove/parse-xml": "^4.1.0",
     "@storybook/addon-essentials": "^8.3.5",
