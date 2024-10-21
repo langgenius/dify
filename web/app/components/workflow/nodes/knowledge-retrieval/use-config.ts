@@ -163,7 +163,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       draft.retrieval_mode = newMode
       if (newMode === RETRIEVE_TYPE.multiWay) {
         const multipleRetrievalConfig = draft.multiple_retrieval_config
-        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, selectedDatasets)
+        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, selectedDatasets, selectedDatasets)
       }
       else {
         const hasSetModel = draft.single_retrieval_config?.model?.provider
@@ -184,7 +184,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
   const handleMultipleRetrievalConfigChange = useCallback((newConfig: MultipleRetrievalConfig) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.multiple_retrieval_config = getMultipleRetrievalConfig(newConfig!, selectedDatasets)
+      draft.multiple_retrieval_config = getMultipleRetrievalConfig(newConfig!, selectedDatasets, selectedDatasets)
     })
     setInputs(newInputs)
   }, [inputs, setInputs, selectedDatasets])
@@ -231,7 +231,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
       if (payload.retrieval_mode === RETRIEVE_TYPE.multiWay && newDatasets.length > 0) {
         const multipleRetrievalConfig = draft.multiple_retrieval_config
-        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, newDatasets)
+        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, newDatasets, selectedDatasets)
       }
     })
     setInputs(newInputs)
@@ -243,7 +243,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       || (allExternal && newDatasets.length > 1)
     )
       setRerankModelOpen(true)
-  }, [inputs, setInputs, payload.retrieval_mode])
+  }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets])
 
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string

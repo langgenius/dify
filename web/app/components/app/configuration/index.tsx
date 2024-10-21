@@ -253,7 +253,7 @@ const Configuration: FC = () => {
       reranking_mode: restConfigs.reranking_mode,
       weights: restConfigs.weights,
       reranking_enable: restConfigs.reranking_enable,
-    }, newDatasets)
+    }, newDatasets, dataSets)
 
     setDatasetConfigs({
       ...retrievalConfig,
@@ -548,9 +548,11 @@ const Configuration: FC = () => {
 
         syncToPublishedConfig(config)
         setPublishedConfig(config)
+        const retrievalConfig = getMultipleRetrievalConfig(modelConfig.dataset_configs, datasets, datasets)
         setDatasetConfigs({
           retrieval_model: RETRIEVE_TYPE.multiWay,
           ...modelConfig.dataset_configs,
+          ...retrievalConfig,
         })
         setHasFetchedDetail(true)
       })
