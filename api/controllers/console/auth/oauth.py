@@ -104,7 +104,7 @@ class OAuthCallback(Resource):
 
         # Check account status
         if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
-            return {"error": "Account is banned or closed."}, 403
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account is banned.")
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
