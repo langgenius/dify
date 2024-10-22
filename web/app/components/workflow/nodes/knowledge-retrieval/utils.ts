@@ -135,6 +135,11 @@ export const getMultipleRetrievalConfig = (
     result.reranking_mode = RerankingModeEnum.WeightedScore
 
   if (allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined || !isValidRerankModel) && allInternal && !weights) {
+    if (!isValidRerankModel)
+      result.reranking_mode = RerankingModeEnum.WeightedScore
+    else
+      result.reranking_mode = RerankingModeEnum.RerankingModel
+
     result.weights = {
       vector_setting: {
         vector_weight: allHighQualityVectorSearch

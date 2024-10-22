@@ -609,7 +609,7 @@ const Configuration: FC = () => {
 
         syncToPublishedConfig(config)
         setPublishedConfig(config)
-        const retrievalConfig = getMultipleRetrievalConfig(modelConfig.dataset_configs, datasets, datasets)
+        const retrievalConfig = getMultipleRetrievalConfig(modelConfig.dataset_configs, datasets, datasets, !!currentRerankModel)
         setDatasetConfigs({
           retrieval_model: RETRIEVE_TYPE.multiWay,
           ...modelConfig.dataset_configs,

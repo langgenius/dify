@@ -85,7 +85,7 @@ const ParamsConfig = ({
       reranking_mode: restConfigs.reranking_mode,
       weights: restConfigs.weights,
       reranking_enable: restConfigs.reranking_enable,
-    }, selectedDatasets, selectedDatasets)
+    }, selectedDatasets, selectedDatasets, !!isRerankDefaultModelValid)
 
     setTempDataSetConfigs({
       ...retrievalConfig,
