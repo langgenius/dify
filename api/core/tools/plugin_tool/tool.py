@@ -4,7 +4,9 @@ from typing import Any, Optional
 from core.plugin.manager.tool import PluginToolManager
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.entities.file_entities import PluginFileEntity
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
+from models.model import File
 
 
 class PluginTool(Tool):
@@ -29,6 +31,23 @@ class PluginTool(Tool):
         message_id: Optional[str] = None,
     ) -> Generator[ToolInvokeMessage, None, None]:
         manager = PluginToolManager()
+
+        # convert tool parameters with File type to PluginFileEntity
+        for parameter_name, parameter in tool_parameters.items():
+            if isinstance(parameter, File):
+                url = parameter.generate_url()
+                if url is None:
+                    raise ValueError(f"File {parameter.id} does not have a valid URL")
+                tool_parameters[parameter_name] = PluginFileEntity(url=url).model_dump()
+            elif isinstance(parameter, list) and all(isinstance(p, File) for p in parameter):
+                tool_parameters[parameter_name] = []
+                for p in parameter:
+                    assert isinstance(p, File)
+                    url = p.generate_url()
+                    if url is None:
+                        raise ValueError(f"File {p.id} does not have a valid URL")
+                    tool_parameters[parameter_name].append(PluginFileEntity(url=url)).model_dump()
+
         return manager.invoke(
             tenant_id=self.tenant_id,
             user_id=user_id,
@@ -36,6 +55,9 @@ class PluginTool(Tool):
             tool_name=self.entity.identity.name,
             credentials=self.runtime.credentials,
             tool_parameters=tool_parameters,
+            conversation_id=conversation_id,
+            app_id=app_id,
+            message_id=message_id,
         )
 
     def fork_tool_runtime(self, runtime: ToolRuntime) -> "PluginTool":

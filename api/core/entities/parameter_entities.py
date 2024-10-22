@@ -8,6 +8,8 @@ class CommonParameterType(Enum):
     STRING = "string"
     NUMBER = "number"
     FILE = "file"
+    FILES = "files"
+    SYSTEM_FILES = "system-files"
     BOOLEAN = "boolean"
     APP_SELECTOR = "app-selector"
     MODEL_CONFIG = "model-config"

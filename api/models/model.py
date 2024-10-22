@@ -38,7 +38,7 @@ class FileUploadConfig(BaseModel):
     number_limits: int = Field(default=0, gt=0, le=10)
 
 
-class DifySetup(BaseModel):
+class DifySetup(Base):
     __tablename__ = "dify_setups"
     __table_args__ = (db.PrimaryKeyConstraint("version", name="dify_setup_pkey"),)
 

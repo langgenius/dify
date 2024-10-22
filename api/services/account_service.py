@@ -94,7 +94,7 @@ class AccountService:
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
-        account = Account.query.filter_by(id=user_id).first()
+        account = db.session.query(Account).filter_by(id=user_id).first()
         if not account:
             return None
 
@@ -139,7 +139,7 @@ class AccountService:
     def authenticate(email: str, password: str, invite_token: Optional[str] = None) -> Account:
         """authenticate account with email and password"""
 
-        account = Account.query.filter_by(email=email).first()
+        account = db.session.query(Account).filter_by(email=email).first()
         if not account:
             raise AccountNotFoundError()
 

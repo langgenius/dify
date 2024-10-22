@@ -138,7 +138,19 @@ class ToolNode(BaseNode[ToolNodeData]):
                 parameter_value = segment_group.log if for_log else segment_group.text
             else:
                 raise ValueError(f"unknown tool input type '{tool_input.type}'")
+
             result[parameter_name] = parameter_value
+        # HACK:
+        result["file"] = File(
+            tenant_id="9a80db54-1557-46da-81fe-f0c4fd3df066",
+            type=FileType.IMAGE,
+            transfer_method=FileTransferMethod.TOOL_FILE,
+            remote_url="https://example.com/image.png",
+            related_id="67f4eb5d-3419-4faf-b147-f77d8d69c6b6",
+            filename="image.png",
+            extension=".png",
+            mime_type="image/png",
+        )
 
         return result
 

@@ -283,6 +283,10 @@ class ToolFile(Base):
     mimetype: Mapped[str] = mapped_column(db.String(255), nullable=False)
     # original url
     original_url: Mapped[str] = mapped_column(db.String(2048), nullable=True)
+    # name
+    name: Mapped[str] = mapped_column(default="")
+    # size
+    size: Mapped[int] = mapped_column(default=-1)
 
 
 @deprecated

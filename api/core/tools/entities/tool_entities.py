@@ -208,10 +208,10 @@ class ToolParameter(BaseModel):
         SELECT = CommonParameterType.SELECT.value
         SECRET_INPUT = CommonParameterType.SECRET_INPUT.value
         FILE = CommonParameterType.FILE.value
-        FILES = "files"
+        FILES = CommonParameterType.FILES.value
 
         # deprecated, should not use.
-        SYSTEM_FILES = "systme-files"
+        SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
 
         def as_normal_type(self):
             if self in {
