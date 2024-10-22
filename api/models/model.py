@@ -1404,7 +1404,7 @@ class UploadFile(Base):
         size: int,
         extension: str,
         mime_type: str,
-        created_by_role: str,
+        created_by_role: CreatedByRole,
         created_by: str,
         created_at: datetime,
         used: bool,
@@ -1419,7 +1419,7 @@ class UploadFile(Base):
         self.size = size
         self.extension = extension
         self.mime_type = mime_type
-        self.created_by_role = created_by_role
+        self.created_by_role = created_by_role.value
         self.created_by = created_by
         self.created_at = created_at
         self.used = used

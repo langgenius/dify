@@ -46,7 +46,7 @@ class RemoteFileInfoApi(WebApiResource):
             response = ssrf_proxy.head(decoded_url)
             return {
                 "file_type": response.headers.get("Content-Type", "application/octet-stream"),
-                "file_length": int(response.headers.get("Content-Length", 0)),
+                "file_length": int(response.headers.get("Content-Length", -1)),
             }
         except Exception as e:
             return {"error": str(e)}, 400
