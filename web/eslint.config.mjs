@@ -51,7 +51,7 @@ export default combine(
     jsx: false,
     overrides: {
       // original config
-      "style/indent": "off",
+      "style/indent": ["error", 2],
 
       // these options does not exist in old version
       // maybe useless
