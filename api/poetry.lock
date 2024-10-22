@@ -857,13 +857,13 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.35.44"
+version = "1.35.45"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "botocore-1.35.44-py3-none-any.whl", hash = "sha256:55388e80624401d017a9a2b8109afd94814f7e666b53e28fce51375cfa8d9326"},
-    {file = "botocore-1.35.44.tar.gz", hash = "sha256:1fcd97b966ad8a88de4106fe1bd3bbd6d8dadabe99bbd4a6aadcf11cb6c66b39"},
+    {file = "botocore-1.35.45-py3-none-any.whl", hash = "sha256:e07e170975721c94ec1e3bf71a484552ad63e2499f769dd14f9f37375b4993fd"},
+    {file = "botocore-1.35.45.tar.gz", hash = "sha256:9a898bfdd6b0027fee2018711192c15c2716bf6a7096b1168bd8a896df3664a1"},
 ]
 
 [package.dependencies]
@@ -4950,13 +4950,13 @@ urllib3 = ">=1.23"
 
 [[package]]
 name = "mako"
-version = "1.3.5"
+version = "1.3.6"
 description = "A super-fast templating language that borrows the best ideas from the existing templating languages."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "Mako-1.3.5-py3-none-any.whl", hash = "sha256:260f1dbc3a519453a9c856dedfe4beb4e50bd5a26d96386cb6c80856556bb91a"},
-    {file = "Mako-1.3.5.tar.gz", hash = "sha256:48dbc20568c1d276a2698b36d968fa76161bf127194907ea6fc594fa81f943bc"},
+    {file = "Mako-1.3.6-py3-none-any.whl", hash = "sha256:a91198468092a2f1a0de86ca92690fb0cfc43ca90ee17e15d93662b4c04b241a"},
+    {file = "mako-1.3.6.tar.gz", hash = "sha256:9ec3a1583713479fae654f83ed9fa8c9a4c16b7bb0daba0e6bbebff50c0d983d"},
 ]
 
 [package.dependencies]
@@ -5560,13 +5560,13 @@ files = [
 
 [[package]]
 name = "networkx"
-version = "3.4.1"
+version = "3.4.2"
 description = "Python package for creating and manipulating graphs and networks"
 optional = false
 python-versions = ">=3.10"
 files = [
-    {file = "networkx-3.4.1-py3-none-any.whl", hash = "sha256:e30a87b48c9a6a7cc220e732bffefaee585bdb166d13377734446ce1a0620eed"},
-    {file = "networkx-3.4.1.tar.gz", hash = "sha256:f9df45e85b78f5bd010993e897b4f1fdb242c11e015b101bd951e5c0e29982d8"},
+    {file = "networkx-3.4.2-py3-none-any.whl", hash = "sha256:df5d4365b724cf81b8c6a7312509d0c22386097011ad1abe274afd5e9d3bbc5f"},
+    {file = "networkx-3.4.2.tar.gz", hash = "sha256:307c3669428c5362aab27c8a1260aa8f47c4e91d3891f48be0141738d8d053e1"},
 ]
 
 [package.extras]
@@ -9761,13 +9761,13 @@ test = ["pytest", "tornado (>=4.5)", "typeguard"]
 
 [[package]]
 name = "tencentcloud-sdk-python-common"
-version = "3.0.1254"
+version = "3.0.1255"
 description = "Tencent Cloud Common SDK for Python"
 optional = false
 python-versions = "*"
 files = [
-    {file = "tencentcloud-sdk-python-common-3.0.1254.tar.gz", hash = "sha256:b09fc30461f35ea122765e259f34354b3920b716b8a87c0446c72ba8840bd934"},
-    {file = "tencentcloud_sdk_python_common-3.0.1254-py2.py3-none-any.whl", hash = "sha256:ffc91a9ac688d346753674d6931a671f69fec471171b34ea59ba8fcb5619322a"},
+    {file = "tencentcloud-sdk-python-common-3.0.1255.tar.gz", hash = "sha256:91f89a719c69cee4042ed855ecbbe74edbd04eecf0bb59ca0e2831067036bbf3"},
+    {file = "tencentcloud_sdk_python_common-3.0.1255-py2.py3-none-any.whl", hash = "sha256:2ac6d26fc4bc2c2dbeab3fedc6c5f8214570177725d975ac56864775b5ad31bf"},
 ]
 
 [package.dependencies]
@@ -9775,17 +9775,17 @@ requests = ">=2.16.0"
 
 [[package]]
 name = "tencentcloud-sdk-python-hunyuan"
-version = "3.0.1254"
+version = "3.0.1255"
 description = "Tencent Cloud Hunyuan SDK for Python"
 optional = false
 python-versions = "*"
 files = [
-    {file = "tencentcloud-sdk-python-hunyuan-3.0.1254.tar.gz", hash = "sha256:cf8eaa5082eaec20ac1179a1ed7a34b829e32051fe8c9e58db773d36d5a9db02"},
-    {file = "tencentcloud_sdk_python_hunyuan-3.0.1254-py2.py3-none-any.whl", hash = "sha256:897c5924762509e7311b7b5402160341f0819ea067cfa056485b441562b2a939"},
+    {file = "tencentcloud-sdk-python-hunyuan-3.0.1255.tar.gz", hash = "sha256:9649af202baac9667c04c7fe6e0998e3c5ea891a3f191a383a56d8e099afc4b7"},
+    {file = "tencentcloud_sdk_python_hunyuan-3.0.1255-py2.py3-none-any.whl", hash = "sha256:49d87fe053a22e6074b35c41328244111b771a6d96c8e214d0930d58a6280a40"},
 ]
 
 [package.dependencies]
-tencentcloud-sdk-python-common = "3.0.1254"
+tencentcloud-sdk-python-common = "3.0.1255"
 
 [[package]]
 name = "threadpoolctl"
@@ -11417,13 +11417,13 @@ multidict = ">=4.0"
 
 [[package]]
 name = "yfinance"
-version = "0.2.45"
+version = "0.2.46"
 description = "Download market data from Yahoo! Finance API"
 optional = false
 python-versions = "*"
 files = [
-    {file = "yfinance-0.2.45-py2.py3-none-any.whl", hash = "sha256:58c5b7e1eeaa66cf308eb431366183ec59aca513cf2a8333bd0e77ca10e43157"},
-    {file = "yfinance-0.2.45.tar.gz", hash = "sha256:3160c02a2fa889075ef1ef7acf85de3cdd7645c52a2309a1b84551fd2d0508ad"},
+    {file = "yfinance-0.2.46-py2.py3-none-any.whl", hash = "sha256:371860d532cae76605195678a540e29382bfd0607f8aa61695f753e714916ffc"},
+    {file = "yfinance-0.2.46.tar.gz", hash = "sha256:a6e2a128915532a54b8f6614cfdb7a8c242d2386e05f95c89b15865b5d9c0352"},
 ]
 
 [package.dependencies]
