@@ -20,10 +20,9 @@ from core.tools.entities.tool_entities import (
     ToolRuntimeVariablePool,
 )
 from core.tools.tool_file_manager import ToolFileManager
-from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 
 if TYPE_CHECKING:
-    from core.file.file_obj import FileVar
+    from core.file.models import File
 
 
 class Tool(BaseModel, ABC):
@@ -63,8 +62,12 @@ class Tool(BaseModel, ABC):
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-    class VariableKey(Enum):
+    class VariableKey(str, Enum):
         IMAGE = "image"
+        DOCUMENT = "document"
+        VIDEO = "video"
+        AUDIO = "audio"
+        CUSTOM = "custom"
 
     def fork_tool_runtime(self, runtime: dict[str, Any]) -> "Tool":
         """
@@ -221,9 +224,7 @@ class Tool(BaseModel, ABC):
         result = deepcopy(tool_parameters)
         for parameter in self.parameters or []:
             if parameter.name in tool_parameters:
-                result[parameter.name] = ToolParameterConverter.cast_parameter_by_type(
-                    tool_parameters[parameter.name], parameter.type
-                )
+                result[parameter.name] = parameter.type.cast_value(tool_parameters[parameter.name])
 
         return result
 
@@ -295,10 +296,8 @@ class Tool(BaseModel, ABC):
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE, message=image, save_as=save_as)
 
-    def create_file_var_message(self, file_var: "FileVar") -> ToolInvokeMessage:
-        return ToolInvokeMessage(
-            type=ToolInvokeMessage.MessageType.FILE_VAR, message="", meta={"file_var": file_var}, save_as=""
-        )
+    def create_file_message(self, file: "File") -> ToolInvokeMessage:
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.FILE, message="", meta={"file": file}, save_as="")
 
     def create_link_message(self, link: str, save_as: str = "") -> ToolInvokeMessage:
         """
@@ -318,7 +317,7 @@ class Tool(BaseModel, ABC):
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, message=text, save_as=save_as)
 
-    def create_blob_message(self, blob: bytes, meta: dict = None, save_as: str = "") -> ToolInvokeMessage:
+    def create_blob_message(self, blob: bytes, meta: Optional[dict] = None, save_as: str = "") -> ToolInvokeMessage:
         """
         create a blob message
 

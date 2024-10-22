@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
 
 from configs import dify_config
-from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.cached_embedding import CacheEmbedding
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -26,7 +26,7 @@ class AbstractVectorFactory(ABC):
 
 
 class Vector:
-    def __init__(self, dataset: Dataset, attributes: list = None):
+    def __init__(self, dataset: Dataset, attributes: Optional[list] = None):
         if attributes is None:
             attributes = ["doc_id", "dataset_id", "document_id", "doc_hash"]
         self._dataset = dataset
@@ -114,6 +114,14 @@ class Vector:
                 from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVectorFactory
 
                 return AnalyticdbVectorFactory
+            case VectorType.BAIDU:
+                from core.rag.datasource.vdb.baidu.baidu_vector import BaiduVectorFactory
+
+                return BaiduVectorFactory
+            case VectorType.VIKINGDB:
+                from core.rag.datasource.vdb.vikingdb.vikingdb_vector import VikingDBVectorFactory
+
+                return VikingDBVectorFactory
             case VectorType.TIDB_ON_QDRANT:
                 from core.rag.datasource.vdb.tidb_on_qdrant.tidb_on_qdrant_vector import TidbOnQdrantVectorFactory
 
@@ -121,7 +129,7 @@ class Vector:
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
-    def create(self, texts: list = None, **kwargs):
+    def create(self, texts: Optional[list] = None, **kwargs):
         if texts:
             embeddings = self._embeddings.embed_documents([document.page_content for document in texts])
             self._vector_processor.create(texts=texts, embeddings=embeddings, **kwargs)

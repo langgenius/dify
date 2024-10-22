@@ -8,10 +8,10 @@ from tcvectordb.model import index as vdb_index
 from tcvectordb.model.document import Filter
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -56,7 +56,7 @@ class TencentVector(BaseVector):
             return self._client.create_database(database_name=self._client_config.database)
 
     def get_type(self) -> str:
-        return "tencent"
+        return VectorType.TENCENT
 
     def to_index_struct(self) -> dict:
         return {"type": self.get_type(), "vector_store": {"class_prefix": self._collection_name}}

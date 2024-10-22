@@ -17,22 +17,25 @@ import { fetchConversationMessages } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { UUID_NIL } from '@/app/components/base/chat/constants'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 
 function appendQAToChatList(newChatList: ChatItem[], item: any) {
+  const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
   newChatList.push({
     id: item.id,
     content: item.answer,
     feedback: item.feedback,
     isAnswer: true,
     citation: item.metadata?.retriever_resources,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+    message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
     workflow_run_id: item.workflow_run_id,
   })
+  const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
   newChatList.push({
     id: `question-${item.id}`,
     content: item.query,
     isAnswer: false,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
+    message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
   })
 }
 
@@ -90,7 +93,7 @@ const ChatRecord = () => {
   return (
     <div
       className={`
-        flex flex-col w-[400px] rounded-l-2xl h-full border border-black/2 shadow-xl
+        flex flex-col w-[420px] rounded-l-2xl h-full border border-black/2 shadow-xl
       `}
       style={{
         background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',
@@ -121,7 +124,7 @@ const ChatRecord = () => {
                 supportCitationHitInfo: true,
               } as any}
               chatList={chatList}
-              chatContainerClassName='px-4'
+              chatContainerClassName='px-3'
               chatContainerInnerClassName='pt-6 w-full max-w-full mx-auto'
               chatFooterClassName='px-4 rounded-b-2xl'
               chatFooterInnerClassName='pb-4 w-full max-w-full mx-auto'
@@ -129,6 +132,8 @@ const ChatRecord = () => {
               noChatInput
               allToolIcons={{}}
               showPromptLog
+              noSpacing
+              chatAnswerContainerInner='!pr-2'
             />
           </div>
         </>

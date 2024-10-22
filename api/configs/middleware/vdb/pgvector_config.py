@@ -14,7 +14,7 @@ class PGVectorConfig(BaseSettings):
         default=None,
     )
 
-    PGVECTOR_PORT: Optional[PositiveInt] = Field(
+    PGVECTOR_PORT: PositiveInt = Field(
         description="Port number on which the PostgreSQL server is listening (default is 5433)",
         default=5433,
     )
@@ -32,4 +32,14 @@ class PGVectorConfig(BaseSettings):
     PGVECTOR_DATABASE: Optional[str] = Field(
         description="Name of the PostgreSQL database to connect to",
         default=None,
+    )
+
+    PGVECTOR_MIN_CONNECTION: PositiveInt = Field(
+        description="Min connection of the PostgreSQL database",
+        default=1,
+    )
+
+    PGVECTOR_MAX_CONNECTION: PositiveInt = Field(
+        description="Max connection of the PostgreSQL database",
+        default=5,
     )

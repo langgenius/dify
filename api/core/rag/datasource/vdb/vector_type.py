@@ -16,4 +16,6 @@ class VectorType(str, Enum):
     TENCENT = "tencent"
     ORACLE = "oracle"
     ELASTICSEARCH = "elasticsearch"
+    BAIDU = "baidu"
+    VIKINGDB = "vikingdb"
     TIDB_ON_QDRANT = "tidb_on_qdrant"

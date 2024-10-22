@@ -38,6 +38,10 @@ const translation = {
     duplicate: 'डुप्लिकेट',
     rename: 'नाम बदलें',
     audioSourceUnavailable: 'ऑडियो स्रोत अनुपलब्ध है',
+    copyImage: 'छवि कॉपी करें',
+    zoomOut: 'ज़ूम आउट करें',
+    openInNewTab: 'नए टैब में खोलें',
+    zoomIn: 'ज़ूम इन करें',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -177,6 +181,9 @@ const translation = {
     deleteConfirmTip: 'पुष्टि करने के लिए, कृपया अपने पंजीकृत ईमेल से निम्नलिखित भेजें',
     delete: 'खाता हटाएं',
     deleteTip: 'अपना खाता हटाने से आपका सारा डेटा स्थायी रूप से मिट जाएगा और इसे पुनर्प्राप्त नहीं किया जा सकता है।',
+    account: 'खाता',
+    studio: 'डिफाई स्टूडियो',
+    myAccount: 'मेरा खाता',
   },
   members: {
     team: 'टीम',
@@ -518,6 +525,7 @@ const translation = {
       vectorHash: 'वेक्टर हैश:',
       hitScore: 'पुनः प्राप्ति स्कोर:',
     },
+    inputPlaceholder: 'बॉट से बात करें',
   },
   promptEditor: {
     placeholder:
@@ -594,6 +602,16 @@ const translation = {
     deleteTip: 'टैग का उपयोग किया जा रहा है, क्या इसे हटाना है?',
     created: 'टैग सफलतापूर्वक बनाया गया',
     failed: 'टैग बनाना असफल रहा',
+  },
+  fileUploader: {
+    pasteFileLinkInvalid: 'अमान्य फ़ाइल लिंक',
+    uploadFromComputerLimit: 'अपलोड फ़ाइल {{size}} से ज़्यादा नहीं हो सकती',
+    uploadFromComputerUploadError: 'फ़ाइल अपलोड विफल रही, कृपया फिर से अपलोड करें।',
+    pasteFileLinkInputPlaceholder: 'URL दर्ज करें...',
+    uploadFromComputerReadError: 'फ़ाइल पढ़ना विफल रहा, कृपया पुनः प्रयास करें.',
+    pasteFileLink: 'फ़ाइल लिंक पेस्ट करें',
+    fileExtensionNotSupport: 'फ़ाइल एक्सटेंशन समर्थित नहीं है',
+    uploadFromComputer: 'स्थानीय अपलोड',
   },
 }
 

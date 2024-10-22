@@ -38,6 +38,10 @@ const translation = {
     duplicate: 'Duplikuj',
     rename: 'Zmień nazwę',
     audioSourceUnavailable: 'AudioSource jest niedostępny',
+    copyImage: 'Kopiuj obraz',
+    openInNewTab: 'Otwórz w nowej karcie',
+    zoomIn: 'Powiększenie',
+    zoomOut: 'Pomniejszanie',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
@@ -173,6 +177,9 @@ const translation = {
     delete: 'Usuń konto',
     deleteTip: 'Usunięcie konta spowoduje trwałe usunięcie wszystkich danych i nie będzie można ich odzyskać.',
     deleteConfirmTip: 'Aby potwierdzić, wyślij następujące informacje z zarejestrowanego adresu e-mail na adres ',
+    myAccount: 'Moje konto',
+    studio: 'Dify Studio',
+    account: 'Rachunek',
   },
   members: {
     team: 'Zespół',
@@ -511,6 +518,7 @@ const translation = {
       vectorHash: 'Wektor hash:',
       hitScore: 'Wynik trafień:',
     },
+    inputPlaceholder: 'Porozmawiaj z botem',
   },
   promptEditor: {
     placeholder:
@@ -590,6 +598,16 @@ const translation = {
   errorMsg: {
     fieldRequired: '{{field}} jest wymagane',
     urlError: 'Adres URL powinien zaczynać się od http:// lub https://',
+  },
+  fileUploader: {
+    pasteFileLinkInputPlaceholder: 'Wpisz adres URL...',
+    uploadFromComputerLimit: 'Prześlij plik nie może przekraczać {{size}}',
+    pasteFileLink: 'Wklej link do pliku',
+    uploadFromComputerUploadError: 'Przesyłanie pliku nie powiodło się, prześlij ponownie.',
+    pasteFileLinkInvalid: 'Nieprawidłowy link do pliku',
+    uploadFromComputerReadError: 'Odczyt pliku nie powiódł się, spróbuj ponownie.',
+    fileExtensionNotSupport: 'Rozszerzenie pliku nie jest obsługiwane',
+    uploadFromComputer: 'Przesyłanie lokalne',
   },
 }
 

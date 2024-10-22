@@ -3,7 +3,7 @@ from typing import Optional
 
 from xinference_client.client.restful.restful_client import Client, RESTfulEmbeddingModelHandle
 
-from core.embedding.embedding_constant import EmbeddingInputType
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
@@ -17,7 +17,7 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.model_providers.xinference.xinference_helper import XinferenceHelper
+from core.model_runtime.model_providers.xinference.xinference_helper import XinferenceHelper, validate_model_uid
 
 
 class XinferenceTextEmbeddingModel(TextEmbeddingModel):
@@ -110,7 +110,7 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
         :return:
         """
         try:
-            if "/" in credentials["model_uid"] or "?" in credentials["model_uid"] or "#" in credentials["model_uid"]:
+            if not validate_model_uid(credentials):
                 raise CredentialsValidateFailedError("model_uid should not contain /, ?, or #")
 
             server_url = credentials["server_url"]
@@ -184,7 +184,7 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
 
         return usage
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

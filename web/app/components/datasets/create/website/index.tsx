@@ -101,33 +101,37 @@ const Website: FC<Props> = ({
         </div>
       </div>
 
-      {sources.length === 0 && (
-        <NoData onConfig={handleOnConfig} provider={selectedProvider} />
-      )}
-
-      {sources.length > 0 && (
+      {
         selectedProvider === DataSourceProvider.fireCrawl
-          ? (
-            <Firecrawl
-              onPreview={onPreview}
-              checkedCrawlResult={checkedCrawlResult}
-              onCheckedCrawlResultChange={onCheckedCrawlResultChange}
-              onJobIdChange={onJobIdChange}
-              crawlOptions={crawlOptions}
-              onCrawlOptionsChange={onCrawlOptionsChange}
-            />
-          )
-          : (
-            <JinaReader
-              onPreview={onPreview}
-              checkedCrawlResult={checkedCrawlResult}
-              onCheckedCrawlResultChange={onCheckedCrawlResultChange}
-              onJobIdChange={onJobIdChange}
-              crawlOptions={crawlOptions}
-              onCrawlOptionsChange={onCrawlOptionsChange}
-            />
-          )
-      )}
+          ? sources.find(source => source.provider === DataSourceProvider.fireCrawl)
+            ? (
+              <Firecrawl
+                onPreview={onPreview}
+                checkedCrawlResult={checkedCrawlResult}
+                onCheckedCrawlResultChange={onCheckedCrawlResultChange}
+                onJobIdChange={onJobIdChange}
+                crawlOptions={crawlOptions}
+                onCrawlOptionsChange={onCrawlOptionsChange}
+              />
+            )
+            : (
+              <NoData onConfig={handleOnConfig} provider={selectedProvider} />
+            )
+          : sources.find(source => source.provider === DataSourceProvider.jinaReader)
+            ? (
+              <JinaReader
+                onPreview={onPreview}
+                checkedCrawlResult={checkedCrawlResult}
+                onCheckedCrawlResultChange={onCheckedCrawlResultChange}
+                onJobIdChange={onJobIdChange}
+                crawlOptions={crawlOptions}
+                onCrawlOptionsChange={onCrawlOptionsChange}
+              />
+            )
+            : (
+              <NoData onConfig={handleOnConfig} provider={selectedProvider} />
+            )
+      }
     </div>
   )
 }

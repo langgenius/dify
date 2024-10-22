@@ -29,6 +29,9 @@ const translation = {
       longDescription: ' درباره روش بازیابی، می‌توانید در هر زمانی در تنظیمات دانش این را تغییر دهید.',
     },
     save: 'ذخیره',
+    externalKnowledgeAPI: 'API دانش خارجی',
+    retrievalSettings: 'تنظیمات بازیابی',
+    externalKnowledgeID: 'شناسه دانش خارجی',
   },
 }
 

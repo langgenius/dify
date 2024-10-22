@@ -22,7 +22,8 @@ from fields.conversation_fields import (
 )
 from libs.helper import DatetimeString
 from libs.login import login_required
-from models.model import AppMode, Conversation, EndUser, Message, MessageAnnotation
+from models import Conversation, EndUser, Message, MessageAnnotation
+from models.model import AppMode
 
 
 class CompletionConversationApi(Resource):
@@ -188,6 +189,7 @@ class ChatConversationApi(Resource):
                         subquery.c.from_end_user_session_id.ilike(keyword_filter),
                     ),
                 )
+                .group_by(Conversation.id)
             )
 
         account = current_user
