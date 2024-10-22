@@ -475,7 +475,6 @@ class FeishuWiki:
         while queue:
             current_parent_token = queue.popleft()
             page_token = ""
-
             while True:
                 params = {
                     "page_token": page_token,
