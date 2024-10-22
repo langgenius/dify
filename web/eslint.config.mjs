@@ -82,8 +82,10 @@ export default combine(
   }),
   unicorn(),
   node(),
-  // TODO: remove this when upgrade to nextjs 15
-  compat.extends('next'),
+  ...process.env.ESLINT_CONFIG_INSPECTOR
+    ? []
+    // TODO: remove this when upgrade to nextjs 15
+    : [compat.extends('next')],
   {
     ignores: [
       '**/node_modules/*',
@@ -130,8 +132,16 @@ export default combine(
       // antfu migrate to eslint-plugin-unused-imports
       "unused-imports/no-unused-vars": "warn",
       "unused-imports/no-unused-imports": "warn",
+    },
 
-      "no-undef": "error",
+    languageOptions: {
+      globals: {
+        ...globals.browser,
+        ...globals.es2025,
+        ...globals.node,
+        'React': 'readable',
+        'JSX': 'readable',
+      }
     }
   },
   storybook,
@@ -157,24 +167,8 @@ export default combine(
         ...globals.browser,
         ...globals.es2021,
         ...globals.node,
-        ...globals.jest
+        ...globals.jest,
       },
     },
   },
-  {
-    files: [
-      GLOB_JSX,
-      GLOB_TSX,
-      '**/hooks/*'
-    ],
-    languageOptions: {
-      globals: {
-        ...globals.browser,
-        ...globals.es2025,
-        ...globals.node,
-        'React': 'readable',
-        'JSX': 'readable',
-      }
-    }
-  }
 )
