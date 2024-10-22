@@ -566,14 +566,6 @@ export const DEFAULT_WEIGHTED_SCORE = {
     semantic: 0,
     keyword: 1.0,
   },
-  semanticFirst: {
-    semantic: 0.7,
-    keyword: 0.3,
-  },
-  keywordFirst: {
-    semantic: 0.3,
-    keyword: 0.7,
-  },
   other: {
     semantic: 0.7,
     keyword: 0.3,
