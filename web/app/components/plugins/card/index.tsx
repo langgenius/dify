@@ -11,7 +11,7 @@ import Placeholder from './base/placeholder'
 import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
 
-type Props = {
+export type Props = {
   className?: string
   payload: Plugin
   titleLeft?: React.ReactNode

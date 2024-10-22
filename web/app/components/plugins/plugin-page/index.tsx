@@ -149,7 +149,11 @@ const PluginPage = ({
             <span className="system-xs-regular">Drop plugin package here to install</span>
           </div>
           {currentFile && (
-            <InstallFromLocalPackage file={currentFile} onClose={removeFile ?? (() => { })} />
+            <InstallFromLocalPackage
+              file={currentFile}
+              onClose={removeFile ?? (() => { })}
+              onSuccess={() => { }}
+            />
           )}
           <input
             ref={fileUploader}

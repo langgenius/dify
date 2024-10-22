@@ -94,11 +94,13 @@ const InstallPluginDropdown = () => {
         </PortalToFollowElemContent>
       </div>
       {selectedAction === 'marketplace' && <InstallFromMarketplace onClose={() => setSelectedAction(null)} />}
-      {selectedAction === 'github' && <InstallFromGitHub onClose={() => setSelectedAction(null)}/>}
+      {selectedAction === 'github' && <InstallFromGitHub onClose={() => setSelectedAction(null)} />}
       {selectedAction === 'local' && selectedFile
         && (<InstallFromLocalPackage
           file={selectedFile}
-          onClose={() => setSelectedAction(null)}/>
+          onClose={() => setSelectedAction(null)}
+          onSuccess={() => { }}
+        />
         )
       }
     </PortalToFollowElem>

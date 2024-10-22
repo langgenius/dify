@@ -52,6 +52,7 @@ export type EndpointListItem = {
   hook_id: string
 }
 
+// Plugin manifest
 export type PluginDeclaration = {
   version: string
   author: string
@@ -148,6 +149,13 @@ export type UpdateEndpointRequest = {
   endpoint_id: string
   settings: Record<string, any>
   name: string
+}
+
+export enum InstallStep {
+  uploading = 'uploading',
+  readyToInstall = 'readyToInstall',
+  installing = 'installing',
+  installed = 'installed',
 }
 
 export type GitHubAsset = {

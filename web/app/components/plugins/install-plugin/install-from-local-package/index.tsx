@@ -1,56 +1,46 @@
 'use client'
 
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useContext } from 'use-context-selector'
-import { RiLoader2Line } from '@remixicon/react'
-import Card from '../../card'
-import { toolNotion } from '../../card/card-mock'
 import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
 import I18n from '@/context/i18n'
+import type { PluginDeclaration } from '../../types'
+import { InstallStep } from '../../types'
+import Uploading from './steps/uploading'
+import Install from './steps/install'
+import Installed from './steps/installed'
 
 type InstallFromLocalPackageProps = {
   file: File
+  onSuccess: () => void
   onClose: () => void
 }
 
-const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({ onClose }) => {
-  const [status, setStatus] = useState<'uploading' | 'ready' | 'installing' | 'installed'>('uploading')
+const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
+  file,
+  onClose
+}) => {
+  const [step, setStep] = useState<InstallStep>(InstallStep.uploading)
   const { locale } = useContext(I18n)
 
-  useEffect(() => {
-    const timer = setTimeout(() => setStatus('ready'), 1500)
-    return () => clearTimeout(timer)
+  const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
+  const [manifest, setManifest] = useState<PluginDeclaration | null>({
+    name: 'Notion Sync',
+    description: 'Sync your Notion notes with Dify',
+  } as any)
+
+  const handleUploaded = useCallback((result: {
+    uniqueIdentifier: string
+    manifest: PluginDeclaration
+  }) => {
+    setUniqueIdentifier(result.uniqueIdentifier)
+    setManifest(result.manifest)
+    setStep(InstallStep.readyToInstall)
   }, [])
 
-  const handleInstall = useCallback(async () => {
-    setStatus('installing')
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setStatus('installed')
+  const handleInstalled = useCallback(async () => {
+    setStep(InstallStep.installed)
   }, [])
-
-  const renderStatusMessage = () => {
-    switch (status) {
-      case 'uploading':
-        return (
-          <div className='flex items-center gap-1 self-stretch'>
-            <RiLoader2Line className='text-text-accent w-4 h-4' />
-            <div className='text-text-secondary system-md-regular'>
-              Uploading notion-sync.difypkg ...
-            </div>
-          </div>
-        )
-      case 'installed':
-        return <p className='text-text-secondary system-md-regular'>The plugin has been installed successfully.</p>
-      default:
-        return (
-          <div className='text-text-secondary system-md-regular'>
-            <p>About to install the following plugin.</p>
-            <p>Please make sure that you only install plugins from a <span className='system-md-semibold'>trusted source</span>.</p>
-          </div>
-        )
-    }
-  }
 
   return (
     <Modal
@@ -64,39 +54,30 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({ onClo
           Install plugin
         </div>
       </div>
-      <div className='flex flex-col px-6 py-3 justify-center items-start gap-4 self-stretch'>
-        {renderStatusMessage()}
-        <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap rounded-2xl bg-background-section-burn'>
-          <Card
-            className='w-full'
-            payload={status === 'uploading' ? { name: 'notion-sync' } as any : toolNotion as any}
-            isLoading={status === 'uploading'}
-            loadingFileName='notion-sync.difypkg'
-            installed={status === 'installed'}
+      {step === InstallStep.uploading && (
+        <Uploading
+          file={file}
+          onCancel={onClose}
+          onUploaded={handleUploaded}
+        />
+      )}
+      {
+        step === InstallStep.readyToInstall && (
+          <Install
+            payload={manifest!}
+            onCancel={onClose}
+            onInstalled={handleInstalled}
           />
-        </div>
-      </div>
-      <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
-        {status === 'installed'
-          ? (
-            <Button variant='primary' onClick={onClose}>Close</Button>
-          )
-          : (
-            <>
-              <Button variant='secondary' className='min-w-[72px]' onClick={onClose}>
-                Cancel
-              </Button>
-              <Button
-                variant='primary'
-                className='min-w-[72px]'
-                disabled={status !== 'ready'}
-                onClick={handleInstall}
-              >
-                {status === 'installing' ? 'Installing...' : 'Install'}
-              </Button>
-            </>
-          )}
-      </div>
+        )
+      }
+      {
+        step === InstallStep.installed && (
+          <Installed
+            payload={manifest!}
+            onCancel={onClose}
+          />
+        )
+      }
     </Modal>
   )
 }
