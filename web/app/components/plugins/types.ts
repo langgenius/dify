@@ -88,20 +88,20 @@ export type PluginDetail = {
 }
 
 export type Plugin = {
-  'type': PluginType
-  'org': string
-  'name': string
-  'version': string
-  'latest_version': string
-  'icon': string
-  'label': Record<Locale, string>
-  'brief': Record<Locale, string>
+  type: PluginType
+  org: string
+  name: string
+  version: string
+  latest_version: string
+  icon: string
+  label: Record<Locale, string>
+  brief: Record<Locale, string>
   // Repo readme.md content
-  'introduction': string
-  'repository': string
-  'category': string
-  'install_count': number
-  'endpoint': {
+  introduction: string
+  repository: string
+  category: string
+  install_count: number
+  endpoint: {
     settings: CredentialFormSchemaBase[]
   }
 }
@@ -115,13 +115,6 @@ export enum PermissionType {
 export type Permissions = {
   canManagement: PermissionType
   canDebugger: PermissionType
-}
-
-export enum InstallStep {
-  url = 'url',
-  version = 'version',
-  package = 'package',
-  installed = 'installed'
 }
 
 // endpoint
