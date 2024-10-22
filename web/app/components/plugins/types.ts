@@ -124,6 +124,20 @@ export enum InstallStepFromGitHub {
   installed = 'installed',
 }
 
+export type InstallState = {
+  step: InstallStepFromGitHub
+  repoUrl: string
+  selectedVersion: string
+  selectedPackage: string
+  releases: GitHubRepoReleaseResponse[]
+}
+
+export type GitHubUrlInfo = {
+  isValid: boolean
+  owner?: string
+  repo?: string
+}
+
 // endpoint
 export type CreateEndpointRequest = {
   plugin_unique_identifier: string

@@ -3,33 +3,21 @@
 import React, { useState } from 'react'
 import Modal from '@/app/components/base/modal'
 import type { Item } from '@/app/components/base/select'
-import type { GitHubRepoReleaseResponse } from '@/app/components/plugins/types'
+import type { GitHubUrlInfo, InstallState } from '@/app/components/plugins/types'
 import { InstallStepFromGitHub } from '../../types'
 import Toast from '@/app/components/base/toast'
 import SetURL from './steps/setURL'
 import SetVersion from './steps/setVersion'
 import SetPackage from './steps/setPackage'
 import Installed from './steps/installed'
+import { useTranslation } from 'react-i18next'
 
 type InstallFromGitHubProps = {
   onClose: () => void
 }
 
-type GitHubUrlInfo = {
-  isValid: boolean
-  owner?: string
-  repo?: string
-}
-
-type InstallState = {
-  step: InstallStepFromGitHub
-  repoUrl: string
-  selectedVersion: string
-  selectedPackage: string
-  releases: GitHubRepoReleaseResponse[]
-}
-
 const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
+  const { t } = useTranslation()
   const [state, setState] = useState<InstallState>({
     step: InstallStepFromGitHub.setUrl,
     repoUrl: '',
@@ -92,7 +80,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
         if (!isValid || !owner || !repo) {
           Toast.notify({
             type: 'error',
-            message: 'Invalid GitHub URL. Please enter a valid URL in the format: https://github.com/owner/repo',
+            message: t('plugin.error.inValidGitHubUrl'),
           })
           break
         }
@@ -151,10 +139,10 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
       <div className='flex pt-6 pl-6 pb-3 pr-14 items-start gap-2 self-stretch'>
         <div className='flex flex-col items-start gap-1 flex-grow'>
           <div className='self-stretch text-text-primary title-2xl-semi-bold'>
-            Install plugin from GitHub
+            {t('plugin.installFromGitHub.installPlugin')}
           </div>
           <div className='self-stretch text-text-tertiary system-xs-regular'>
-            {state.step !== InstallStepFromGitHub.installed && 'Please make sure that you only install plugins from a trusted source.'}
+            {state.step !== InstallStepFromGitHub.installed && t('plugin.installFromGitHub.installNote')}
           </div>
         </div>
       </div>

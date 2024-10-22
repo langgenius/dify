@@ -67,6 +67,24 @@ const translation = {
     uploadingPackage: 'Uploading {{packageName}}...',
     readyToInstall: 'About to install the following plugin.',
     fromTrustSource: 'Please make sure that you only install plugins from a <trustSource>trusted source</trustSource>.',
+    labels: {
+      repository: 'Repository',
+      version: 'Version',
+      package: 'Package',
+    },
+    close: 'Close',
+    cancel: 'Cancel',
+    back: 'Back',
+    next: 'Next',
+  },
+  installFromGitHub: {
+    installPlugin: 'Install plugin from GitHub',
+    gitHubRepo: 'GitHub repository',
+    selectVersion: 'Select version',
+    selectVersionPlaceholder: 'Please select a version',
+    installNote: 'Please make sure that you only install plugins from a trusted source.',
+    selectPackage: 'Select package',
+    selectPackagePlaceholder: 'Please select a package',
   },
   upgrade: {
     title: 'Upgrade Plugin',
@@ -76,6 +94,9 @@ const translation = {
     upgrade: 'Upgrade',
     upgrading: 'Upgrading...',
     close: 'Close',
+  },
+  error: {
+    inValidGitHubUrl: 'Invalid GitHub URL. Please enter a valid URL in the format: https://github.com/owner/repo',
   },
 }
 

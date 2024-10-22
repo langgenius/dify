@@ -67,6 +67,24 @@ const translation = {
     uploadingPackage: '上传 {{packageName}} 中...',
     readyToInstall: '即将安装以下插件。',
     fromTrustSource: '请保证仅从<trustSource>可信源</trustSource>安装插件。',
+    labels: {
+      repository: '仓库',
+      version: '版本',
+      package: '包',
+    },
+    close: '关闭',
+    cancel: '取消',
+    back: '返回',
+    next: '下一步',
+  },
+  installFromGitHub: {
+    installPlugin: '从 GitHub 安装插件',
+    gitHubRepo: 'GitHub 仓库',
+    selectVersion: '选择版本',
+    selectVersionPlaceholder: '请选择一个版本',
+    installNote: '请确保只从可信源安装插件。',
+    selectPackage: '选择包',
+    selectPackagePlaceholder: '请选择一个包',
   },
   upgrade: {
     title: '升级插件',
@@ -76,6 +94,9 @@ const translation = {
     upgrade: '升级',
     upgrading: '升级中...',
     close: '关闭',
+  },
+  error: {
+    inValidGitHubUrl: '无效的 GitHub URL。请输入格式为 https://github.com/owner/repo 的有效 URL',
   },
 }
 
