@@ -132,9 +132,9 @@ const TextGeneration: FC<IMainProps> = ({
   const handleSend = () => {
     setIsCallBatchAPI(false)
     setControlSend(Date.now())
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     setAllTaskList([]) // clear batch task running status
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     showResSidebar()
   }
 
@@ -314,7 +314,7 @@ const TextGeneration: FC<IMainProps> = ({
     setControlSend(Date.now())
     // clear run once task status
     setControlStopResponding(Date.now())
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     showResSidebar()
   }
   const handleCompleted = (completionRes: string, taskId?: number, isSuccess?: boolean) => {

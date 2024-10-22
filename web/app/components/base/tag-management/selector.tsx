@@ -54,7 +54,7 @@ const Panel = (props: PanelProps) => {
     return tagList.filter(tag => tag.type === type && !value.includes(tag.id) && tag.name.includes(keywords))
   }, [type, tagList, value, keywords])
 
-  const [creating, setCreating] = useState<Boolean>(false)
+  const [creating, setCreating] = useState<boolean>(false)
   const createNewTag = async () => {
     if (!keywords)
       return

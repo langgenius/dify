@@ -89,6 +89,7 @@ const AllTools = ({
           onSelect={onSelect}
           viewType={activeView}
         />
+        {/* Plugins from marketplace */}
         <PluginList wrapElemRef={wrapElemRef} list={[toolNotion, extensionDallE, modelGPT4] as any} ref={pluginRef} />
       </div>
     </div>

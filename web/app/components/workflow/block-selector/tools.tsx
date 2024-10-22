@@ -12,6 +12,7 @@ import ToolItem from './tool-item'
 import { ViewType } from './view-type-select'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { useGetLanguage } from '@/context/i18n'
+import cn from '@/utils/classnames'
 
 type ToolsProps = {
   showWorkflowEmpty: boolean
@@ -30,7 +31,7 @@ const Blocks = ({
   const isListView = viewType === ViewType.list
   const isTreeView = viewType === ViewType.tree
 
-  const { letters, groups: groupedTools } = groupItems(tools, tool => tool.label[language][0])
+  const { letters, groups: groupedTools } = groupItems(tools, tool => (tool as any).label[language][0])
   const toolRefs = useRef({})
 
   const renderGroup = useCallback((toolWithProvider: ToolWithProvider) => {
@@ -50,7 +51,7 @@ const Blocks = ({
           list.map(tool => (
             <ToolItem
               key={tool.name}
-              className={isListView && 'mr-6'}
+              className={cn(isListView && 'mr-6')}
               isToolPlugin={toolWithProvider.type === CollectionType.builtIn}
               provider={toolWithProvider}
               payload={tool}
@@ -62,12 +63,12 @@ const Blocks = ({
     )
   }, [onSelect, language])
 
-  const renderLetterGroup = (letter) => {
+  const renderLetterGroup = (letter: string) => {
     const tools = groupedTools[letter]
     return (
       <div
         key={letter}
-        ref={el => (toolRefs.current[letter] = el)}
+        ref={el => ((toolRefs as any).current[letter] = el) as any}
       >
         {tools.map(renderGroup)}
       </div>

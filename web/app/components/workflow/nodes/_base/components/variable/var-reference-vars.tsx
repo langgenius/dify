@@ -127,7 +127,7 @@ const Item: FC<ItemProps> = ({
         zIndex: 100,
       }}>
         {isObj && (
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          // eslint-disable-next-line ts/no-use-before-define
           <ObjectChildren
             nodeId={nodeId}
             title={title}

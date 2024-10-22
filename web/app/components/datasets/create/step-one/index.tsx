@@ -21,7 +21,7 @@ import VectorSpaceFull from '@/app/components/billing/vector-space-full'
 type IStepOneProps = {
   datasetId?: string
   dataSourceType?: DataSourceType
-  dataSourceTypeDisable: Boolean
+  dataSourceTypeDisable: boolean
   hasConnection: boolean
   onSetting: () => void
   files: FileItem[]

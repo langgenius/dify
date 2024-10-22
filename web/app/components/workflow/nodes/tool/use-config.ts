@@ -162,7 +162,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const [inputVarValues, doSetInputVarValues] = useState<Record<string, any>>({})
   const setInputVarValues = (value: Record<string, any>) => {
     doSetInputVarValues(value)
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     setRunInputData(value)
   }
   // fill single run form variable with constant value first time

@@ -20,7 +20,7 @@ const Progress: FC<IProgressProps> = ({
         className={cn(s.bar, exhausted && s['bar-error'], 'absolute top-0 left-0 right-0 bottom-0')}
         style={{ width: `${value}%` }}
       />
-      {Array(10).fill(0).map((i, k) => (
+      {Array.from({ length: 10 }).fill(0).map((i, k) => (
         <div key={k} className={s['bar-item']} />
       ))}
     </div>

@@ -28,7 +28,7 @@ import Loading from '@/app/components/base/loading'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
-import { type RetrievalConfig } from '@/types/app'
+import type { RetrievalConfig } from '@/types/app'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import Toast from '@/app/components/base/toast'
 import { formatNumber } from '@/utils/format'
@@ -202,7 +202,7 @@ const StepTwo = ({
   }
 
   const fetchFileIndexingEstimate = async (docForm = DocForm.TEXT, language?: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     const res = await didFetchFileIndexingEstimate(getFileIndexingEstimateParams(docForm, language)!)
     if (segmentationType === SegmentType.CUSTOM)
       setCustomFileIndexingEstimate(res)
@@ -344,7 +344,7 @@ const StepTwo = ({
         doc_form: docForm,
         doc_language: docLanguage,
         process_rule: getProcessRule(),
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        // eslint-disable-next-line ts/no-use-before-define
         retrieval_model: retrievalConfig, // Readonly. If want to changed, just go to settings page.
         embedding_model: embeddingModel.model, // Readonly
         embedding_model_provider: embeddingModel.provider, // Readonly
@@ -357,7 +357,7 @@ const StepTwo = ({
           rerankDefaultModel,
           isRerankDefaultModelValid: !!isRerankDefaultModelValid,
           rerankModelList,
-          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          // eslint-disable-next-line ts/no-use-before-define
           retrievalConfig,
           indexMethod: indexMethod as string,
         })
@@ -367,7 +367,7 @@ const StepTwo = ({
       }
       const postRetrievalConfig = ensureRerankModelSelected({
         rerankDefaultModel: rerankDefaultModel!,
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        // eslint-disable-next-line ts/no-use-before-define
         retrievalConfig,
         indexMethod: indexMethod as string,
       })

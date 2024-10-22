@@ -54,7 +54,7 @@ const EditBody: FC<Props> = ({
       type: newType,
       data: '',
     })
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     setBody([])
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onChange])

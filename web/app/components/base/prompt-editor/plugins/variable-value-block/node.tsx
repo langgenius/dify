@@ -1,7 +1,6 @@
 import type {
   EditorConfig,
   LexicalNode,
-  NodeKey,
   SerializedTextNode,
 } from 'lexical'
 import {
@@ -18,9 +17,9 @@ export class VariableValueBlockNode extends TextNode {
     return new VariableValueBlockNode(node.__text, node.__key)
   }
 
-  constructor(text: string, key?: NodeKey) {
-    super(text, key)
-  }
+  // constructor(text: string, key?: NodeKey) {
+  //   super(text, key)
+  // }
 
   createDOM(config: EditorConfig): HTMLElement {
     const element = super.createDOM(config)
