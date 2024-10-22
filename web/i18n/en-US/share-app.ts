@@ -12,12 +12,12 @@ const translation = {
     resetChat: 'Reset conversation',
     poweredBy: 'Powered by',
     prompt: 'Prompt',
-    privatePromptConfigTitle: 'Conversation settings',
+    privatePromptConfigTitle: 'Settings',
     publicPromptConfigTitle: 'Initial Prompt',
-    configStatusDes: 'Before start, you can modify conversation settings',
+    configStatusDes: 'Choose your first language',
     configDisabled:
       'Previous session settings have been used for this session.',
-    startChat: 'Start Chat',
+    startChat: 'Start Lesson',
     privacyPolicyLeft:
       'Please read the ',
     privacyPolicyMiddle:
@@ -26,7 +26,7 @@ const translation = {
       ' provided by the app developer.',
     deleteConversation: {
       title: 'Delete conversation',
-      content: 'Are you sure you want to delete this conversation?',
+      content: 'Are you sure?',
     },
     tryToSolve: 'Try to solve',
     temporarySystemIssue: 'Sorry, temporary system issue.',
