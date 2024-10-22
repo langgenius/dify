@@ -2,25 +2,27 @@ import io
 from collections.abc import Generator
 from pathlib import Path
 
-from flask import Flask
 from supabase import Client
 
+from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
 
 
 class SupabaseStorage(BaseStorage):
     """Implementation for supabase obs storage."""
 
-    def __init__(self, app: Flask):
-        super().__init__(app)
-        app_config = self.app.config
-        self.bucket_name = app_config.get("SUPABASE_BUCKET_NAME")
-        self.client = Client(
-            supabase_url=app_config.get("SUPABASE_URL"), supabase_key=app_config.get("SUPABASE_API_KEY")
-        )
-        self.create_bucket(
-            id=app_config.get("SUPABASE_BUCKET_NAME"), bucket_name=app_config.get("SUPABASE_BUCKET_NAME")
-        )
+    def __init__(self):
+        super().__init__()
+        if dify_config.SUPABASE_URL is None:
+            raise ValueError("SUPABASE_URL is not set")
+        if dify_config.SUPABASE_API_KEY is None:
+            raise ValueError("SUPABASE_API_KEY is not set")
+        if dify_config.SUPABASE_BUCKET_NAME is None:
+            raise ValueError("SUPABASE_BUCKET_NAME is not set")
+
+        self.bucket_name = dify_config.SUPABASE_BUCKET_NAME
+        self.client = Client(supabase_url=dify_config.SUPABASE_URL, supabase_key=dify_config.SUPABASE_API_KEY)
+        self.create_bucket(id=dify_config.SUPABASE_BUCKET_NAME, bucket_name=dify_config.SUPABASE_BUCKET_NAME)
 
     def create_bucket(self, id, bucket_name):
         if not self.bucket_exists():

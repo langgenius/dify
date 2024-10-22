@@ -207,7 +207,7 @@ x-shared-env: &shared-api-worker-env
   RESEND_API_URL: https://api.resend.com
   INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-1000}
   INVITE_EXPIRY_HOURS: ${INVITE_EXPIRY_HOURS:-72}
-  RESET_PASSWORD_TOKEN_EXPIRY_HOURS: ${RESET_PASSWORD_TOKEN_EXPIRY_HOURS:-24}
+  RESET_PASSWORD_TOKEN_EXPIRY_MINUTES: ${RESET_PASSWORD_TOKEN_EXPIRY_MINUTES:-5}
   CODE_EXECUTION_ENDPOINT: ${CODE_EXECUTION_ENDPOINT:-http://sandbox:8194}
   CODE_EXECUTION_API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
   CODE_MAX_NUMBER: ${CODE_MAX_NUMBER:-9223372036854775807}
@@ -231,7 +231,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.9.2
+    image: langgenius/dify-api:0.10.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -251,7 +251,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.9.2
+    image: langgenius/dify-api:0.10.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -270,7 +270,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.9.2
+    image: langgenius/dify-web:0.10.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}

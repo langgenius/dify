@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import type { FC } from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import {
+  RiAlertFill,
   RiArrowRightSLine,
   RiCheckboxCircleFill,
   RiErrorWarningLine,
@@ -13,15 +14,16 @@ import { BlockEnum } from '../types'
 import Split from '../nodes/_base/components/split'
 import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
 import cn from '@/utils/classnames'
+import StatusContainer from '@/app/components/workflow/run/status-container'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import Button from '@/app/components/base/button'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import type { NodeTracing } from '@/types/workflow'
 
 type Props = {
   className?: string
   nodeInfo: NodeTracing
+  inMessage?: boolean
   hideInfo?: boolean
   hideProcessDetail?: boolean
   onShowIterationDetail?: (detail: NodeTracing[][]) => void
@@ -32,6 +34,7 @@ type Props = {
 const NodePanel: FC<Props> = ({
   className,
   nodeInfo,
+  inMessage = false,
   hideInfo = false,
   hideProcessDetail,
   onShowIterationDetail,
@@ -82,7 +85,7 @@ const NodePanel: FC<Props> = ({
   }
   return (
     <div className={cn('px-2 py-1', className)}>
-      <div className='group transition-all bg-background-default border border-components-panel-border rounded-[10px] shadows-shadow-xs hover:shadow-md'>
+      <div className='group transition-all bg-background-default border border-components-panel-border rounded-[10px] shadow-xs hover:shadow-md'>
         <div
           className={cn(
             'flex items-center pl-1 pr-3 cursor-pointer',
@@ -99,8 +102,7 @@ const NodePanel: FC<Props> = ({
               )}
             />
           )}
-
-          <BlockIcon size={hideInfo ? 'xs' : 'sm'} className={cn('shrink-0 mr-2', hideInfo && '!mr-1')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
+          <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('shrink-0 mr-2', inMessage && '!mr-1')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
           <div className={cn(
             'grow text-text-secondary system-xs-semibold-uppercase truncate',
             hideInfo && '!text-xs',
@@ -115,7 +117,7 @@ const NodePanel: FC<Props> = ({
             <RiErrorWarningLine className='shrink-0 ml-2 w-3.5 h-3.5 text-text-warning' />
           )}
           {nodeInfo.status === 'stopped' && (
-            <AlertTriangle className='shrink-0 ml-2 w-3.5 h-3.5 text-[#F79009]' />
+            <RiAlertFill className={cn('shrink-0 ml-2 w-4 h-4 text-text-warning-secondary', inMessage && 'w-3.5 h-3.5')} />
           )}
           {nodeInfo.status === 'running' && (
             <div className='shrink-0 flex items-center text-text-accent text-[13px] leading-[16px] font-medium'>
@@ -125,7 +127,7 @@ const NodePanel: FC<Props> = ({
           )}
         </div>
         {!collapseState && !hideProcessDetail && (
-          <div className='pb-2'>
+          <div className='px-1 pb-1'>
             {/* The nav to the iteration detail */}
             {isIterationNode && !notShowIterationNav && (
               <div className='mt-2 mb-1 !px-2'>
@@ -151,14 +153,18 @@ const NodePanel: FC<Props> = ({
             )}
             <div className={cn('px-[10px]', hideInfo && '!px-2 !py-0.5')}>
               {nodeInfo.status === 'stopped' && (
-                <div className='px-3 py-[10px] bg-[#fffaeb] rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] text-xs leading-[18px] text-[#dc6803] shadow-xs'>{t('workflow.tracing.stopBy', { user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}</div>
+                <StatusContainer status='stopped'>
+                  {t('workflow.tracing.stopBy', { user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
+                </StatusContainer>
               )}
               {nodeInfo.status === 'failed' && (
-                <div className='px-3 py-[10px] bg-[#fef3f2] rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] text-xs leading-[18px] text-[#d92d20] shadow-xs'>{nodeInfo.error}</div>
+                <StatusContainer status='failed'>
+                  {nodeInfo.error}
+                </StatusContainer>
               )}
             </div>
             {nodeInfo.inputs && (
-              <div className={cn('px-[10px] py-1', hideInfo && '!px-2 !py-0.5')}>
+              <div className={cn('mb-1')}>
                 <CodeEditor
                   readOnly
                   title={<div>{t('workflow.common.input').toLocaleUpperCase()}</div>}
@@ -169,7 +175,7 @@ const NodePanel: FC<Props> = ({
               </div>
             )}
             {nodeInfo.process_data && (
-              <div className={cn('px-[10px] py-1', hideInfo && '!px-2 !py-0.5')}>
+              <div className={cn('mb-1')}>
                 <CodeEditor
                   readOnly
                   title={<div>{t('workflow.common.processData').toLocaleUpperCase()}</div>}
@@ -180,7 +186,7 @@ const NodePanel: FC<Props> = ({
               </div>
             )}
             {nodeInfo.outputs && (
-              <div className={cn('px-[10px] py-1', hideInfo && '!px-2 !py-0.5')}>
+              <div>
                 <CodeEditor
                   readOnly
                   title={<div>{t('workflow.common.output').toLocaleUpperCase()}</div>}

@@ -1,6 +1,6 @@
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from core.workflow.entities.node_entities import NodeType
+from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolEntity
 from events.app_event import app_draft_workflow_was_synced
 

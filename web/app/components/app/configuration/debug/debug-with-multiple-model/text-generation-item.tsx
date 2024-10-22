@@ -13,6 +13,7 @@ import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import { TransferMethod } from '@/app/components/base/chat/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
+import { useFeatures } from '@/app/components/base/features/hooks'
 
 type TextGenerationItemProps = {
   modelAndParameter: ModelAndParameter
@@ -30,16 +31,14 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
     introduction,
     suggestedQuestionsAfterAnswerConfig,
     citationConfig,
-    moderationConfig,
     externalDataToolsConfig,
     chatPromptConfig,
     completionPromptConfig,
     dataSets,
     datasetConfigs,
-    visionConfig,
-    moreLikeThisConfig,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
+  const features = useFeatures(s => s.features)
   const postDatasets = dataSets.map(({ id }) => ({
     dataset: {
       enabled: true,
@@ -54,18 +53,16 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
     completion_prompt_config: isAdvancedMode ? completionPromptConfig : {},
     user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
     dataset_query_variable: contextVar || '',
+    // features
+    more_like_this: features.moreLikeThis as any,
+    sensitive_word_avoidance: features.moderation as any,
+    text_to_speech: features.text2speech as any,
+    file_upload: features.file as any,
     opening_statement: introduction,
-    suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
     speech_to_text: speechToTextConfig,
+    suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
     retriever_resource: citationConfig,
-    sensitive_word_avoidance: moderationConfig,
     external_data_tools: externalDataToolsConfig,
-    more_like_this: moreLikeThisConfig,
-    text_to_speech: {
-      enabled: false,
-      voice: '',
-      language: '',
-    },
     agent_mode: {
       enabled: false,
       tools: [],
@@ -75,9 +72,6 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
       datasets: {
         datasets: [...postDatasets],
       } as any,
-    },
-    file_upload: {
-      image: visionConfig,
     },
   }
   const {
@@ -106,7 +100,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
       model_config: configData,
     }
 
-    if (visionConfig.enabled && files && files?.length > 0) {
+    if ((config.file_upload as any).enabled && files && files?.length > 0) {
       data.files = files.map((item) => {
         if (item.transfer_method === TransferMethod.local_file) {
           return {
@@ -146,6 +140,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
       isLoading={!completion && isResponding}
       isResponding={isResponding}
       isInstalledApp={false}
+      siteInfo={null}
       messageId={messageId}
       isError={false}
       onRetry={() => { }}
