@@ -1,5 +1,4 @@
 import os
-from urllib.parse import urljoin
 
 import requests
 
@@ -16,7 +15,6 @@ class EnterpriseRequest:
     @classmethod
     def send_request(cls, method, endpoint, json=None, params=None):
         headers = {"Content-Type": "application/json", "Enterprise-Api-Secret-Key": cls.secret_key}
-        url = urljoin(cls.base_url, endpoint)
+        url = f"{cls.base_url}{endpoint}"
         response = requests.request(method, url, json=json, params=params, headers=headers, proxies=cls.proxies)
-
         return response.json()
