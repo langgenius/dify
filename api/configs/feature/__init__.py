@@ -507,7 +507,7 @@ class DataSetConfig(BaseSettings):
 
     TIDB_SERVERLESS_NUMBER: PositiveInt = Field(
         description="number of tidb serverless cluster",
-        default=10,
+        default=500,
     )
 
 
