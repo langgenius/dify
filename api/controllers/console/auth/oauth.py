@@ -94,9 +94,7 @@ class OAuthCallback(Resource):
             account = _generate_account(provider, user_info)
         except AccountNotFoundError:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account not found.")
-        except WorkSpaceNotFoundError:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found.")
-        except WorkSpaceNotAllowedCreateError:
+        except (WorkSpaceNotFoundError, WorkSpaceNotAllowedCreateError):
             return redirect(
                 f"{dify_config.CONSOLE_WEB_URL}/signin"
                 "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
