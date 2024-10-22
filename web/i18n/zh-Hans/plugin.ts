@@ -59,6 +59,15 @@ const translation = {
     deleteContentRight: ' 插件?',
     usedInApps: '此插件正在 {{num}} 个应用中使用。',
   },
+  installModal: {
+    installPlugin: '安装插件',
+    installedSuccessfully: '安装成功',
+    install: '安装',
+    installing: '安装中...',
+    uploadingPackage: '上传 {{packageName}} 中...',
+    readyToInstall: '即将安装以下插件。',
+    fromTrustSource: '请保证仅从<trustSource>可信源</trustSource>安装插件。',
+  },
   upgrade: {
     title: '升级插件',
     successfulTitle: '升级成功',

@@ -5,6 +5,7 @@ import type { PluginDeclaration } from '../../../types'
 import Card from '../../../card'
 import Button from '@/app/components/base/button'
 import { pluginManifestToCardPluginProps } from '../../utils'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   payload: PluginDeclaration
@@ -14,8 +15,9 @@ type Props = {
 
 const Installed: FC<Props> = ({
   payload,
-  onCancel
+  onCancel,
 }) => {
+  const { t } = useTranslation()
   return (
     <>
       <div className='flex flex-col px-6 py-3 justify-center items-start gap-4 self-stretch'>
@@ -35,7 +37,7 @@ const Installed: FC<Props> = ({
           className='min-w-[72px]'
           onClick={onCancel}
         >
-          close
+          {t('common.operation.close')}
         </Button>
       </div>
     </>

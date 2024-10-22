@@ -6,6 +6,9 @@ import Card from '../../../card'
 import type { PluginDeclaration } from '../../../types'
 import Button from '@/app/components/base/button'
 import { sleep } from '@/utils'
+import { useTranslation } from 'react-i18next'
+
+const i18nPrefix = 'plugin.installModal'
 
 type Props = {
   file: File
@@ -21,9 +24,10 @@ const Uploading: FC<Props> = ({
   onCancel,
   onUploaded,
 }) => {
+  const { t } = useTranslation()
   const fileName = file.name
   const handleUpload = async () => {
-    await sleep(1500)
+    await sleep(3000)
     onUploaded({
       uniqueIdentifier: 'yeuoly/neko:0.0.1@5395654da2c0b919b3d9b946a1a0545b737004380765e5f3b8c49976d3276c87',
       manifest: {
@@ -42,7 +46,9 @@ const Uploading: FC<Props> = ({
         <div className='flex items-center gap-1 self-stretch'>
           <RiLoader2Line className='text-text-accent w-4 h-4' />
           <div className='text-text-secondary system-md-regular'>
-            Uploading {fileName}...
+            {t(`${i18nPrefix}.uploadingPackage`, {
+              packageName: fileName,
+            })}
           </div>
         </div>
         <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap rounded-2xl bg-background-section-burn'>
@@ -59,14 +65,14 @@ const Uploading: FC<Props> = ({
       {/* Action Buttons */}
       <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
         <Button variant='secondary' className='min-w-[72px]' onClick={onCancel}>
-          Cancel
+          {t('common.operation.cancel')}
         </Button>
         <Button
           variant='primary'
           className='min-w-[72px]'
           disabled
         >
-          installing
+          {t(`${i18nPrefix}.install`)}
         </Button>
       </div>
     </>

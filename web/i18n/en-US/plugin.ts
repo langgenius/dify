@@ -59,6 +59,15 @@ const translation = {
     deleteContentRight: ' plugin?',
     usedInApps: 'This plugin is being used in {{num}} apps.',
   },
+  installModal: {
+    installPlugin: 'Install Plugin',
+    installedSuccessfully: 'Install successful',
+    install: 'Install',
+    installing: 'Installing...',
+    uploadingPackage: 'Uploading {{packageName}}...',
+    readyToInstall: 'About to install the following plugin.',
+    fromTrustSource: 'Please make sure that you only install plugins from a <trustSource>trusted source</trustSource>.',
+  },
   upgrade: {
     title: 'Upgrade Plugin',
     successfulTitle: 'Upgrade successful',

@@ -6,6 +6,9 @@ import Card from '../../../card'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
 import { sleep } from '@/utils'
+import { Trans, useTranslation } from 'react-i18next'
+
+const i18nPrefix = 'plugin.installModal'
 
 type Props = {
   payload: PluginDeclaration
@@ -18,6 +21,7 @@ const Installed: FC<Props> = ({
   onCancel,
   onInstalled,
 }) => {
+  const { t } = useTranslation()
   const [isInstalling, setIsInstalling] = React.useState(false)
 
   const handleInstall = async () => {
@@ -31,8 +35,13 @@ const Installed: FC<Props> = ({
     <>
       <div className='flex flex-col px-6 py-3 justify-center items-start gap-4 self-stretch'>
         <div className='text-text-secondary system-md-regular'>
-          <p>About to install the following plugin.</p>
-          <p>Please make sure that you only install plugins from a <span className='system-md-semibold'>trusted source</span>.</p>
+          <p>{t(`${i18nPrefix}.readyToInstall`)}</p>
+          <p>
+            <Trans
+              i18nKey={`${i18nPrefix}.fromTrustSource`}
+              components={{ trustSource: <span className='system-md-semibold' /> }}
+            />
+          </p>
         </div>
         <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap rounded-2xl bg-background-section-burn'>
           <Card
@@ -45,7 +54,7 @@ const Installed: FC<Props> = ({
       <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
         {!isInstalling && (
           <Button variant='secondary' className='min-w-[72px]' onClick={onCancel}>
-            Cancel
+            {t('common.operation.cancel')}
           </Button>
         )}
         <Button
@@ -54,7 +63,7 @@ const Installed: FC<Props> = ({
           disabled={isInstalling}
           onClick={handleInstall}
         >
-          {isInstalling ? 'Installing...' : 'Install'}
+          {t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}
         </Button>
       </div>
     </>
