@@ -62,7 +62,7 @@ class OAICompatSpeech2TextModel(_CommonOaiApiCompat, Speech2TextModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

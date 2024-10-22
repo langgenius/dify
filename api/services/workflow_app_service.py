@@ -4,9 +4,9 @@ from flask_sqlalchemy.pagination import Pagination
 from sqlalchemy import and_, or_
 
 from extensions.ext_database import db
-from models import CreatedByRole
-from models.model import App, EndUser
-from models.workflow import WorkflowAppLog, WorkflowRun, WorkflowRunStatus
+from models import App, EndUser, WorkflowAppLog, WorkflowRun
+from models.enums import CreatedByRole
+from models.workflow import WorkflowRunStatus
 
 
 class WorkflowAppService:
@@ -21,7 +21,7 @@ class WorkflowAppService:
             WorkflowAppLog.tenant_id == app_model.tenant_id, WorkflowAppLog.app_id == app_model.id
         )
 
-        status = WorkflowRunStatus.value_of(args.get("status")) if args.get("status") else None
+        status = WorkflowRunStatus.value_of(args.get("status", "")) if args.get("status") else None
         keyword = args["keyword"]
         if keyword or status:
             query = query.join(WorkflowRun, WorkflowRun.id == WorkflowAppLog.workflow_run_id)
@@ -42,7 +42,7 @@ class WorkflowAppService:
 
             query = query.outerjoin(
                 EndUser,
-                and_(WorkflowRun.created_by == EndUser.id, WorkflowRun.created_by_role == CreatedByRole.END_USER.value),
+                and_(WorkflowRun.created_by == EndUser.id, WorkflowRun.created_by_role == CreatedByRole.END_USER),
             ).filter(or_(*keyword_conditions))
 
         if status:

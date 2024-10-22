@@ -6,6 +6,7 @@ import type {
   EnvironmentVariable,
   Node,
 } from '@/app/components/workflow/types'
+import type { TransferMethod } from '@/types/app'
 
 export type NodeTracing = {
   id: string
@@ -109,6 +110,7 @@ export type WorkflowFinishedResponse = {
       email: string
     }
     finished_at: number
+    files?: FileResponse[]
   }
 }
 
@@ -127,6 +129,17 @@ export type NodeStartedResponse = {
     created_at: number
     extras?: any
   }
+}
+
+export type FileResponse = {
+  related_id: string
+  extension: string
+  filename: string
+  size: number
+  mime_type: string
+  transfer_method: TransferMethod
+  type: string
+  url: string
 }
 
 export type NodeFinishedResponse = {
@@ -156,6 +169,7 @@ export type NodeFinishedResponse = {
       iteration_id?: string
     }
     created_at: number
+    files?: FileResponse[]
   }
 }
 

@@ -13,6 +13,7 @@ type Props = {
   className?: string
   title: JSX.Element | string | DefaultTFuncReturn
   tooltip?: React.ReactNode
+  isSubTitle?: boolean
   supportFold?: boolean
   children?: JSX.Element | string | null
   operations?: JSX.Element
@@ -22,6 +23,7 @@ type Props = {
 const Field: FC<Props> = ({
   className,
   title,
+  isSubTitle,
   tooltip,
   children,
   operations,
@@ -37,7 +39,7 @@ const Field: FC<Props> = ({
         onClick={() => supportFold && toggleFold()}
         className={cn('flex justify-between items-center', supportFold && 'cursor-pointer')}>
         <div className='flex items-center h-6'>
-          <div className='system-sm-semibold-uppercase text-text-secondary'>{title}</div>
+          <div className={cn(isSubTitle ? 'system-xs-medium-uppercase text-text-tertiary' : 'system-sm-semibold-uppercase text-text-secondary')}>{title}</div>
           {tooltip && (
             <Tooltip
               popupContent={tooltip}

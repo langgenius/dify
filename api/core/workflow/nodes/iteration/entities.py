@@ -1,7 +1,9 @@
 from enum import Enum
 from typing import Any, Optional
 
-from core.workflow.entities.base_node_data_entities import BaseIterationNodeData, BaseIterationState, BaseNodeData
+from pydantic import Field
+
+from core.workflow.nodes.base import BaseIterationNodeData, BaseIterationState, BaseNodeData
 
 
 class ErrorHandleMode(Enum):
@@ -43,7 +45,7 @@ class IterationState(BaseIterationState):
     Iteration State.
     """
 
-    outputs: list[Any] = None
+    outputs: list[Any] = Field(default_factory=list)
     current_output: Optional[Any] = None
 
     class MetaData(BaseIterationState.MetaData):

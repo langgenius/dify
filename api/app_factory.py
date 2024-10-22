@@ -10,9 +10,6 @@ if os.environ.get("DEBUG", "false").lower() != "true":
     grpc.experimental.gevent.init_gevent()
 
 import json
-import logging
-import sys
-from logging.handlers import RotatingFileHandler
 
 from flask import Flask, Response, request
 from flask_cors import CORS
@@ -27,6 +24,7 @@ from extensions import (
     ext_compress,
     ext_database,
     ext_hosting_provider,
+    ext_logging,
     ext_login,
     ext_mail,
     ext_migrate,
@@ -70,43 +68,7 @@ def create_flask_app_with_configs() -> Flask:
 
 def create_app() -> Flask:
     app = create_flask_app_with_configs()
-
     app.secret_key = app.config["SECRET_KEY"]
-
-    log_handlers = None
-    log_file = app.config.get("LOG_FILE")
-    if log_file:
-        log_dir = os.path.dirname(log_file)
-        os.makedirs(log_dir, exist_ok=True)
-        log_handlers = [
-            RotatingFileHandler(
-                filename=log_file,
-                maxBytes=1024 * 1024 * 1024,
-                backupCount=5,
-            ),
-            logging.StreamHandler(sys.stdout),
-        ]
-
-    logging.basicConfig(
-        level=app.config.get("LOG_LEVEL"),
-        format=app.config.get("LOG_FORMAT"),
-        datefmt=app.config.get("LOG_DATEFORMAT"),
-        handlers=log_handlers,
-        force=True,
-    )
-    log_tz = app.config.get("LOG_TZ")
-    if log_tz:
-        from datetime import datetime
-
-        import pytz
-
-        timezone = pytz.timezone(log_tz)
-
-        def time_converter(seconds):
-            return datetime.utcfromtimestamp(seconds).astimezone(timezone).timetuple()
-
-        for handler in logging.root.handlers:
-            handler.formatter.converter = time_converter
     initialize_extensions(app)
     register_blueprints(app)
     register_commands(app)
@@ -117,6 +79,7 @@ def create_app() -> Flask:
 def initialize_extensions(app):
     # Since the application instance is now created, pass it to each Flask
     # extension instance to bind it to the Flask application instance (app)
+    ext_logging.init_app(app)
     ext_compress.init_app(app)
     ext_code_based_extension.init()
     ext_database.init_app(app)
