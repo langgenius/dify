@@ -5,6 +5,9 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import type { Item } from '@/app/components/base/select'
 import { PortalSelect } from '@/app/components/base/select'
+import type { GitHubRepoReleaseResponse } from '@/app/components/plugins/types'
+import { installPackageFromGitHub } from '@/service/plugins'
+import Toast from '@/app/components/base/toast'
 
 type InstallFromGitHubProps = {
   onClose: () => void
@@ -12,38 +15,104 @@ type InstallFromGitHubProps = {
 
 type InstallStep = 'url' | 'version' | 'package' | 'installed'
 
+type GitHubUrlInfo = {
+  isValid: boolean
+  owner?: string
+  repo?: string
+}
+
 const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
   const [step, setStep] = useState<InstallStep>('url')
   const [repoUrl, setRepoUrl] = useState('')
   const [selectedVersion, setSelectedVersion] = useState('')
   const [selectedPackage, setSelectedPackage] = useState('')
+  const [releases, setReleases] = useState<GitHubRepoReleaseResponse[]>([])
 
-  // Mock data - replace with actual data fetched from the backend
-  const versions: Item[] = [
-    { value: '1.0.1', name: '1.0.1' },
-    { value: '1.2.0', name: '1.2.0' },
-    { value: '1.2.1', name: '1.2.1' },
-    { value: '1.3.2', name: '1.3.2' },
-  ]
-  const packages: Item[] = [
-    { value: 'package1', name: 'Package 1' },
-    { value: 'package2', name: 'Package 2' },
-    { value: 'package3', name: 'Package 3' },
-  ]
+  const versions: Item[] = releases.map(release => ({
+    value: release.tag_name,
+    name: release.tag_name,
+  }))
 
-  const handleNext = () => {
+  const packages: Item[] = selectedVersion
+    ? (releases
+      .find(release => release.tag_name === selectedVersion)
+      ?.assets.map(asset => ({
+        value: asset.browser_download_url,
+        name: asset.name,
+      })) || [])
+    : []
+
+  const parseGitHubUrl = (url: string): GitHubUrlInfo => {
+    const githubUrlRegex = /^https:\/\/github\.com\/([^/]+)\/([^/]+)\/?$/
+    const match = url.match(githubUrlRegex)
+
+    if (match) {
+      return {
+        isValid: true,
+        owner: match[1],
+        repo: match[2],
+      }
+    }
+
+    return { isValid: false }
+  }
+
+  const handleInstall = async () => {
+    try {
+      const response = await installPackageFromGitHub({ repo: repoUrl, version: selectedVersion, package: selectedPackage })
+      if (response.plugin_unique_identifier) {
+        setStep('installed')
+        console.log('Package installed:')
+      }
+      else {
+        console.error('Failed to install package:')
+      }
+    }
+    catch (error) {
+      console.error('Error installing package:')
+    }
+  }
+
+  const handleNext = async () => {
     switch (step) {
-      case 'url':
-        // TODO: Validate URL and fetch versions
-        setStep('version')
+      case 'url': {
+        const { isValid, owner, repo } = parseGitHubUrl(repoUrl)
+        if (!isValid || !owner || !repo) {
+          Toast.notify({
+            type: 'error',
+            message: 'Invalid GitHub URL. Please enter a valid URL in the format: https://github.com/owner/repo',
+          })
+          break
+        }
+        try {
+          const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`)
+          if (!res.ok)
+            throw new Error('Failed to fetch releases')
+          const data = await res.json()
+          const formattedReleases = data.map((release: any) => ({
+            tag_name: release.tag_name,
+            assets: release.assets.map((asset: any) => ({
+              browser_download_url: asset.browser_download_url,
+              id: asset.id,
+              name: asset.name,
+            })),
+          }))
+          setReleases(formattedReleases)
+          setStep('version')
+        }
+        catch (error) {
+          Toast.notify({
+            type: 'error',
+            message: 'Failed to fetch repository release',
+          })
+        }
         break
+      }
       case 'version':
-        // TODO: Validate version and fetch packages
         setStep('package')
         break
       case 'package':
-        // TODO: Handle installation
-        setStep('installed')
+        handleInstall()
         break
     }
   }
@@ -181,7 +250,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
                 className='min-w-[72px]'
                 onClick={onClose}
               >
-              Cancel
+                {step === 'url' ? 'Cancel' : 'Back'}
               </Button>
               <Button
                 variant='primary'

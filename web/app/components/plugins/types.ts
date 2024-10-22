@@ -142,3 +142,18 @@ export type UpdateEndpointRequest = {
   settings: Record<string, any>
   name: string
 }
+
+export type GitHubAsset = {
+  id: number
+  name: string
+  browser_download_url: string
+}
+
+export type GitHubRepoReleaseResponse = {
+  tag_name: string
+  assets: GitHubAsset[]
+}
+
+export type InstallPackageResponse = {
+  plugin_unique_identifier: string
+}

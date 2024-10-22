@@ -5,6 +5,7 @@ import type {
   EndpointOperationResponse,
   EndpointsRequest,
   EndpointsResponse,
+  InstallPackageResponse,
   UpdateEndpointRequest,
 } from '@/app/components/plugins/types'
 
@@ -37,3 +38,11 @@ export const disableEndpoint: Fetcher<EndpointOperationResponse, { url: string; 
   // url = /workspaces/current/endpoints/disable
   return post<EndpointOperationResponse>(url, { body: { endpoint_id: endpointID } })
 }
+
+export const installPackageFromGitHub: Fetcher<InstallPackageResponse, { repo: string; version: string; package: string }> = ({ repo, version, package: packageName }) => {
+  return post<InstallPackageResponse>('/workspaces/current/plugin/upload/github', {
+    body: { repo, version, package: packageName },
+  })
+}
+
+// export const fetchInstalledPluginsList: Fetcher<
