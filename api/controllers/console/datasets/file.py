@@ -30,13 +30,12 @@ class FileApi(Resource):
     @account_initialization_required
     @marshal_with(upload_config_fields)
     def get(self):
-        file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT
-        batch_count_limit = dify_config.UPLOAD_FILE_BATCH_LIMIT
-        image_file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT
         return {
-            "file_size_limit": file_size_limit,
-            "batch_count_limit": batch_count_limit,
-            "image_file_size_limit": image_file_size_limit,
+            "file_size_limit": dify_config.UPLOAD_FILE_SIZE_LIMIT,
+            "batch_count_limit": dify_config.UPLOAD_FILE_BATCH_LIMIT,
+            "image_file_size_limit": dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
+            "video_file_size_limit": dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
+            "audio_file_size_limit": dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
         }, 200
 
     @setup_required
