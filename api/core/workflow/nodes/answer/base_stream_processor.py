@@ -41,6 +41,7 @@ class StreamProcessor(ABC):
                     continue
                 else:
                     unreachable_first_node_ids.append(edge.target_node_id)
+                    unreachable_first_node_ids.extend(self._fetch_node_ids_in_reachable_branch(edge.target_node_id))
 
             for node_id in unreachable_first_node_ids:
                 self._remove_node_ids_in_unreachable_branch(node_id, reachable_node_ids)
