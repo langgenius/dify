@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEmbeddedChatbotContext } from '../context'
 import Input from './form-input'
@@ -10,17 +11,16 @@ const Form = () => {
   const {
     inputsForms,
     newConversationInputs,
-    newConversationInputsRef,
     handleNewConversationInputsChange,
     isMobile,
   } = useEmbeddedChatbotContext()
 
-  const handleFormChange = (variable: string, value: any) => {
+  const handleFormChange = useCallback((variable: string, value: any) => {
     handleNewConversationInputsChange({
-      ...newConversationInputsRef.current,
+      ...newConversationInputs,
       [variable]: value,
     })
-  }
+  }, [newConversationInputs, handleNewConversationInputsChange])
 
   const renderField = (form: any) => {
     const {
