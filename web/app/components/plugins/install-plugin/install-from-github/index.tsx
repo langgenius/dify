@@ -240,7 +240,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
               className='min-w-[72px]'
               onClick={onClose}
             >
-            Close
+              Close
             </Button>
           )
           : (
