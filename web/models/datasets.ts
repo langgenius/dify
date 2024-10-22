@@ -1,7 +1,5 @@
-import type { DataSourceNotionPage } from './common'
 import type { AppIconType, AppMode, RetrievalConfig } from '@/types/app'
 import type { DataSourceFeishuPage, DataSourceNotionPage } from './common'
-import type { AppMode, RetrievalConfig } from '@/types/app'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 
 export enum DataSourceType {
