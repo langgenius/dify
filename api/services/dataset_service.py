@@ -234,6 +234,7 @@ class DatasetService:
             dataset.name = data.get("name", dataset.name)
             dataset.description = data.get("description", "")
             external_knowledge_id = data.get("external_knowledge_id", None)
+            dataset.permission = data.get("permission")
             db.session.add(dataset)
             if not external_knowledge_id:
                 raise ValueError("External knowledge id is required.")

@@ -20,6 +20,9 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import { sleep } from '@/utils'
 import type { SiteInfo } from '@/models/share'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
+import {
+  getProcessedFilesFromResponse,
+} from '@/app/components/base/file-uploader/utils'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -116,7 +119,7 @@ const Result: FC<IResultProps> = ({
     const prompt_variables = promptConfig?.prompt_variables
     if (!prompt_variables || prompt_variables?.length === 0) {
       if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-        notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
+        notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
         return false
       }
       return true
@@ -141,7 +144,7 @@ const Result: FC<IResultProps> = ({
     }
 
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
       return false
     }
     return !hasEmptyInput
@@ -285,6 +288,7 @@ const Result: FC<IResultProps> = ({
             }
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
               draft.status = WorkflowRunningStatus.Succeeded
+              draft.files = getProcessedFilesFromResponse(data.files || [])
             }))
             if (!data.outputs) {
               setCompletionRes('')

@@ -2,7 +2,12 @@ import os
 import time
 import unittest
 
-from dify_client.client import ChatClient, CompletionClient, DifyClient, KnowledgeBaseClient
+from dify_client.client import (
+    ChatClient,
+    CompletionClient,
+    DifyClient,
+    KnowledgeBaseClient,
+)
 
 API_KEY = os.environ.get("API_KEY")
 APP_ID = os.environ.get("APP_ID")
@@ -13,7 +18,9 @@ FILE_PATH_BASE = os.path.dirname(__file__)
 class TestKnowledgeBaseClient(unittest.TestCase):
     def setUp(self):
         self.knowledge_base_client = KnowledgeBaseClient(API_KEY, base_url=API_BASE_URL)
-        self.README_FILE_PATH = os.path.abspath(os.path.join(FILE_PATH_BASE, "../README.md"))
+        self.README_FILE_PATH = os.path.abspath(
+            os.path.join(FILE_PATH_BASE, "../README.md")
+        )
         self.dataset_id = None
         self.document_id = None
         self.segment_id = None
@@ -21,7 +28,9 @@ class TestKnowledgeBaseClient(unittest.TestCase):
 
     def _get_dataset_kb_client(self):
         self.assertIsNotNone(self.dataset_id)
-        return KnowledgeBaseClient(API_KEY, base_url=API_BASE_URL, dataset_id=self.dataset_id)
+        return KnowledgeBaseClient(
+            API_KEY, base_url=API_BASE_URL, dataset_id=self.dataset_id
+        )
 
     def test_001_create_dataset(self):
         response = self.knowledge_base_client.create_dataset(name="test_dataset")
@@ -67,7 +76,9 @@ class TestKnowledgeBaseClient(unittest.TestCase):
     def _test_004_update_document_by_text(self):
         client = self._get_dataset_kb_client()
         self.assertIsNotNone(self.document_id)
-        response = client.update_document_by_text(self.document_id, "test_document_updated", "test_text_updated")
+        response = client.update_document_by_text(
+            self.document_id, "test_document_updated", "test_text_updated"
+        )
         data = response.json()
         self.assertIn("document", data)
         self.assertIn("batch", data)
@@ -82,7 +93,9 @@ class TestKnowledgeBaseClient(unittest.TestCase):
     def _test_006_update_document_by_file(self):
         client = self._get_dataset_kb_client()
         self.assertIsNotNone(self.document_id)
-        response = client.update_document_by_file(self.document_id, self.README_FILE_PATH)
+        response = client.update_document_by_file(
+            self.document_id, self.README_FILE_PATH
+        )
         data = response.json()
         self.assertIn("document", data)
         self.assertIn("batch", data)
@@ -112,9 +125,9 @@ class TestKnowledgeBaseClient(unittest.TestCase):
 
     def _test_010_add_segments(self):
         client = self._get_dataset_kb_client()
-        response = client.add_segments(self.document_id, [
-            {"content": "test text segment 1"}
-        ])
+        response = client.add_segments(
+            self.document_id, [{"content": "test text segment 1"}]
+        )
         data = response.json()
         self.assertIn("data", data)
         self.assertGreater(len(data["data"]), 0)
@@ -131,9 +144,11 @@ class TestKnowledgeBaseClient(unittest.TestCase):
     def _test_012_update_document_segment(self):
         client = self._get_dataset_kb_client()
         self.assertIsNotNone(self.segment_id)
-        response = client.update_document_segment(self.document_id, self.segment_id,
-                                                  {"content": "test text segment 1 updated"}
-                                                  )
+        response = client.update_document_segment(
+            self.document_id,
+            self.segment_id,
+            {"content": "test text segment 1 updated"},
+        )
         data = response.json()
         self.assertIn("data", data)
         self.assertGreater(len(data["data"]), 0)
@@ -159,29 +174,37 @@ class TestChatClient(unittest.TestCase):
         self.chat_client = ChatClient(API_KEY)
 
     def test_create_chat_message(self):
-        response = self.chat_client.create_chat_message({}, "Hello, World!", "test_user")
+        response = self.chat_client.create_chat_message(
+            {}, "Hello, World!", "test_user"
+        )
         self.assertIn("answer", response.text)
 
     def test_create_chat_message_with_vision_model_by_remote_url(self):
-        files = [{
-            "type": "image",
-            "transfer_method": "remote_url",
-            "url": "your_image_url"
-        }]
-        response = self.chat_client.create_chat_message({}, "Describe the picture.", "test_user", files=files)
+        files = [
+            {"type": "image", "transfer_method": "remote_url", "url": "your_image_url"}
+        ]
+        response = self.chat_client.create_chat_message(
+            {}, "Describe the picture.", "test_user", files=files
+        )
         self.assertIn("answer", response.text)
 
     def test_create_chat_message_with_vision_model_by_local_file(self):
-        files = [{
-            "type": "image",
-            "transfer_method": "local_file",
-            "upload_file_id": "your_file_id"
-        }]
-        response = self.chat_client.create_chat_message({}, "Describe the picture.", "test_user", files=files)
+        files = [
+            {
+                "type": "image",
+                "transfer_method": "local_file",
+                "upload_file_id": "your_file_id",
+            }
+        ]
+        response = self.chat_client.create_chat_message(
+            {}, "Describe the picture.", "test_user", files=files
+        )
         self.assertIn("answer", response.text)
 
     def test_get_conversation_messages(self):
-        response = self.chat_client.get_conversation_messages("test_user", "your_conversation_id")
+        response = self.chat_client.get_conversation_messages(
+            "test_user", "your_conversation_id"
+        )
         self.assertIn("answer", response.text)
 
     def test_get_conversations(self):
@@ -194,28 +217,31 @@ class TestCompletionClient(unittest.TestCase):
         self.completion_client = CompletionClient(API_KEY)
 
     def test_create_completion_message(self):
-        response = self.completion_client.create_completion_message({"query": "What's the weather like today?"},
-                                                                    "blocking", "test_user")
+        response = self.completion_client.create_completion_message(
+            {"query": "What's the weather like today?"}, "blocking", "test_user"
+        )
         self.assertIn("answer", response.text)
 
     def test_create_completion_message_with_vision_model_by_remote_url(self):
-        files = [{
-            "type": "image",
-            "transfer_method": "remote_url",
-            "url": "your_image_url"
-        }]
+        files = [
+            {"type": "image", "transfer_method": "remote_url", "url": "your_image_url"}
+        ]
         response = self.completion_client.create_completion_message(
-            {"query": "Describe the picture."}, "blocking", "test_user", files)
+            {"query": "Describe the picture."}, "blocking", "test_user", files
+        )
         self.assertIn("answer", response.text)
 
     def test_create_completion_message_with_vision_model_by_local_file(self):
-        files = [{
-            "type": "image",
-            "transfer_method": "local_file",
-            "upload_file_id": "your_file_id"
-        }]
+        files = [
+            {
+                "type": "image",
+                "transfer_method": "local_file",
+                "upload_file_id": "your_file_id",
+            }
+        ]
         response = self.completion_client.create_completion_message(
-            {"query": "Describe the picture."}, "blocking", "test_user", files)
+            {"query": "Describe the picture."}, "blocking", "test_user", files
+        )
         self.assertIn("answer", response.text)
 
 
@@ -224,7 +250,9 @@ class TestDifyClient(unittest.TestCase):
         self.dify_client = DifyClient(API_KEY)
 
     def test_message_feedback(self):
-        response = self.dify_client.message_feedback("your_message_id", 'like', "test_user")
+        response = self.dify_client.message_feedback(
+            "your_message_id", "like", "test_user"
+        )
         self.assertIn("success", response.text)
 
     def test_get_application_parameters(self):
@@ -237,9 +265,7 @@ class TestDifyClient(unittest.TestCase):
         mime_type = "image/jpeg"
 
         with open(file_path, "rb") as file:
-            files = {
-                "file": (file_name, file, mime_type)
-            }
+            files = {"file": (file_name, file, mime_type)}
             response = self.dify_client.file_upload("test_user", files)
             self.assertIn("name", response.text)
 

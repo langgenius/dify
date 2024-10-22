@@ -9,11 +9,11 @@ from elasticsearch import Elasticsearch
 from flask import current_app
 from pydantic import BaseModel, model_validator
 
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -77,7 +77,7 @@ class ElasticSearchVector(BaseVector):
             raise ValueError("Elasticsearch vector database version must be greater than 8.0.0")
 
     def get_type(self) -> str:
-        return "elasticsearch"
+        return VectorType.ELASTICSEARCH
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
@@ -112,7 +112,7 @@ class ElasticSearchVector(BaseVector):
         self._client.indices.delete(index=self._collection_name)
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        top_k = kwargs.get("top_k", 10)
+        top_k = kwargs.get("top_k", 4)
         num_candidates = math.ceil(top_k * 1.5)
         knn = {"field": Field.VECTOR.value, "query_vector": query_vector, "k": top_k, "num_candidates": num_candidates}
 

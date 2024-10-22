@@ -16,26 +16,29 @@ import type { ChatItem, ChatItemInTree } from '@/app/components/base/chat/types'
 import { fetchConversationMessages } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 
-const getFormattedChatList = (messages: any[]) => {
+function getFormattedChatList(messages: any[]) {
   const res: ChatItem[] = []
   messages.forEach((item: any) => {
+    const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
     res.push({
       id: `question-${item.id}`,
       content: item.query,
       isAnswer: false,
-      message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
+      message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
       parentMessageId: item.parent_message_id || undefined,
     })
+    const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
     res.push({
       id: item.id,
       content: item.answer,
       feedback: item.feedback,
       isAnswer: true,
       citation: item.metadata?.retriever_resources,
-      message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+      message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
       workflow_run_id: item.workflow_run_id,
       parentMessageId: `question-${item.id}`,
     })

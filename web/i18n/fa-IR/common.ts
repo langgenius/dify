@@ -38,6 +38,10 @@ const translation = {
     duplicate: 'تکرار',
     rename: 'تغییر نام',
     audioSourceUnavailable: 'منبع صوتی در دسترس نیست',
+    zoomIn: 'بزرگنمایی',
+    copyImage: 'کپی تصویر',
+    openInNewTab: 'باز کردن در برگه جدید',
+    zoomOut: 'کوچک نمایی',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
@@ -171,6 +175,9 @@ const translation = {
     delete: 'حذف حساب کاربری',
     deleteTip: 'حذف حساب کاربری شما تمام داده‌های شما را به طور دائمی پاک می‌کند و قابل بازیابی نیست.',
     deleteConfirmTip: 'برای تأیید، لطفاً موارد زیر را از ایمیل ثبت‌نام شده خود به این آدرس ارسال کنید ',
+    account: 'حساب',
+    myAccount: 'حساب من',
+    studio: 'استودیو Dify',
   },
   members: {
     team: 'تیم',
@@ -500,6 +507,7 @@ const translation = {
       vectorHash: 'هش بردار:',
       hitScore: 'امتیاز بازیابی:',
     },
+    inputPlaceholder: 'با ربات صحبت کنید',
   },
   promptEditor: {
     placeholder: 'دستور خود را اینجا بنویسید، «{» را وارد کنید تا یک متغیر درج کنید، «/» را وارد کنید تا یک بلوک محتوای دستور درج کنید',
@@ -572,6 +580,16 @@ const translation = {
     deleteTip: 'برچسب در حال استفاده است، آیا آن را حذف می‌کنید؟',
     created: 'برچسب با موفقیت ایجاد شد',
     failed: 'ایجاد برچسب ناموفق بود',
+  },
+  fileUploader: {
+    uploadFromComputer: 'آپلود محلی',
+    pasteFileLinkInputPlaceholder: 'URL را وارد کنید...',
+    pasteFileLinkInvalid: 'پیوند فایل نامعتبر',
+    fileExtensionNotSupport: 'پسوند فایل پشتیبانی نمی شود',
+    uploadFromComputerReadError: 'خواندن فایل انجام نشد، لطفا دوباره امتحان کنید.',
+    uploadFromComputerUploadError: 'آپلود فایل انجام نشد، لطفا دوباره آپلود کنید.',
+    pasteFileLink: 'پیوند فایل را جایگذاری کنید',
+    uploadFromComputerLimit: 'آپلود فایل نمی تواند از {{size}} تجاوز کند',
   },
 }
 

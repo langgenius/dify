@@ -38,6 +38,10 @@ const translation = {
     duplicate: 'Дублировать',
     rename: 'Переименовать',
     audioSourceUnavailable: 'AudioSource недоступен',
+    zoomIn: 'Увеличить',
+    zoomOut: 'Уменьшение масштаба',
+    openInNewTab: 'Открыть в новой вкладке',
+    copyImage: 'Скопировать изображение',
   },
   errorMsg: {
     fieldRequired: '{{field}} обязательно',
@@ -171,6 +175,9 @@ const translation = {
     delete: 'Удалить учетную запись',
     deleteTip: 'Удаление вашей учетной записи приведет к безвозвратному удалению всех ваших данных, и их невозможно будет восстановить.',
     deleteConfirmTip: 'Для подтверждения, пожалуйста, отправьте следующее с вашего зарегистрированного адреса электронной почты на ',
+    account: 'Счет',
+    studio: 'Студия Dify',
+    myAccount: 'Моя учетная запись',
   },
   members: {
     team: 'Команда',
@@ -500,6 +507,7 @@ const translation = {
       vectorHash: 'Векторный хэш:',
       hitScore: 'Оценка совпадения:',
     },
+    inputPlaceholder: 'Поговорить с ботом',
   },
   promptEditor: {
     placeholder: 'Напишите здесь свое ключевое слово подсказки, введите \'{\', чтобы вставить переменную, введите \'/\', чтобы вставить блок содержимого подсказки',
@@ -572,6 +580,16 @@ const translation = {
     deleteTip: 'Тег используется, удалить его?',
     created: 'Тег успешно создан',
     failed: 'Ошибка создания тега',
+  },
+  fileUploader: {
+    pasteFileLinkInputPlaceholder: 'Введите URL...',
+    pasteFileLink: 'Вставить ссылку на файл',
+    uploadFromComputer: 'Локальная загрузка',
+    fileExtensionNotSupport: 'Расширение файла не поддерживается',
+    uploadFromComputerReadError: 'Чтение файла не удалось, пожалуйста, повторите попытку.',
+    pasteFileLinkInvalid: 'Неверная ссылка на файл',
+    uploadFromComputerLimit: 'Файл загрузки не может превышать {{size}}',
+    uploadFromComputerUploadError: 'Загрузка файла не удалась, пожалуйста, загрузите еще раз.',
   },
 }
 

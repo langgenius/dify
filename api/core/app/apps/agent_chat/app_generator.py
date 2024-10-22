@@ -8,6 +8,7 @@ from typing import Any, Literal, Union, overload
 from flask import Flask, current_app
 from pydantic import ValidationError
 
+from constants import UUID_NIL
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
@@ -17,12 +18,12 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskSt
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
-from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
-from models.account import Account
-from models.model import App, EndUser
+from factories import file_factory
+from models import Account, App, EndUser
+from models.enums import CreatedByRole
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +50,12 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
     ) -> dict: ...
 
     def generate(
-        self, app_model: App, user: Union[Account, EndUser], args: Any, invoke_from: InvokeFrom, stream: bool = True
+        self,
+        app_model: App,
+        user: Union[Account, EndUser],
+        args: Any,
+        invoke_from: InvokeFrom,
+        stream: bool = True,
     ) -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
@@ -97,12 +103,19 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             # always enable retriever resource in debugger mode
             override_model_config_dict["retriever_resource"] = {"enabled": True}
 
+        role = CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER
+
         # parse files
-        files = args["files"] if args.get("files") else []
-        message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
+        files = args.get("files") or []
         file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
         if file_extra_config:
-            file_objs = message_file_parser.validate_and_transform_files_arg(files, file_extra_config, user)
+            file_objs = file_factory.build_from_mappings(
+                mappings=files,
+                tenant_id=app_model.tenant_id,
+                user_id=user.id,
+                role=role,
+                config=file_extra_config,
+            )
         else:
             file_objs = []
 
@@ -115,8 +128,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         )
 
         # get tracing instance
-        user_id = user.id if isinstance(user, Account) else user.session_id
-        trace_manager = TraceQueueManager(app_model.id, user_id)
+        trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
 
         # init application generate entity
         application_generate_entity = AgentChatAppGenerateEntity(
@@ -124,10 +136,12 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             app_config=app_config,
             model_conf=ModelConfigConverter.convert(app_config),
             conversation_id=conversation.id if conversation else None,
-            inputs=conversation.inputs if conversation else self._get_cleaned_inputs(inputs, app_config),
+            inputs=conversation.inputs
+            if conversation
+            else self._prepare_user_inputs(user_inputs=inputs, app_config=app_config, user_id=user.id, role=role),
             query=query,
             files=file_objs,
-            parent_message_id=args.get("parent_message_id"),
+            parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,

@@ -6,7 +6,7 @@ from typing import Any, Optional
 
 import boto3
 
-from core.embedding.embedding_constant import EmbeddingInputType
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
@@ -180,7 +180,7 @@ class SageMakerEmbeddingModel(TextEmbeddingModel):
             InvokeBadRequestError: [KeyError],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """
