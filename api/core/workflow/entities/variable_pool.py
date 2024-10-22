@@ -124,7 +124,8 @@ class VariablePool(BaseModel):
 
         if value is None:
             selector, attr = selector[:-1], selector[-1]
-            if attr not in FileAttribute:
+            # Python support `attr in FileAttribute` after 3.12
+            if attr not in {item.value for item in FileAttribute}:
                 return None
             value = self.get(selector)
             if not isinstance(value, FileSegment):
