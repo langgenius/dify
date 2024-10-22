@@ -23,7 +23,9 @@ def get_oauth_providers():
             redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/data-source/callback/notion",
         )
 
-        OAUTH_PROVIDERS = {"notion": notion_oauth}
+        feishuwiki_oauth = FeishuWikiOAuth()
+
+        OAUTH_PROVIDERS = {"notion": notion_oauth, "feishuwiki": feishuwiki_oauth}
         return OAUTH_PROVIDERS
 
 
@@ -53,19 +55,23 @@ class OAuthDataSource(Resource):
         # The role of the current user in the table must be admin or owner
         if not current_user.is_admin_or_owner:
             raise Forbidden()
-        if provider != "feishuwiki":
+        OAUTH_DATASOURCE_PROVIDERS = get_oauth_providers()
+        with current_app.app_context():
+            oauth_provider = OAUTH_DATASOURCE_PROVIDERS.get(provider)
+            print(vars(oauth_provider))
+        if not oauth_provider or provider != "feishuwiki":
             return {"error": "Invalid provider"}, 400
-        feishuwiki_oauth = FeishuWikiOAuth()
+
         if dify_config.FEISHU_WIKI_INTEGRATION_TYPE == "internal":
             app_id = dify_config.FEISHU_APP_ID
             app_secret = dify_config.FEISHU_APP_SECRET
             if not app_id or not app_secret:
                 return ({"error": "Internal app_id or app_secret is not set"},)
-            feishuwiki_oauth.save_feishu_wiki_data_source(app_id, app_secret)
+            oauth_provider.save_feishu_wiki_data_source(app_id, app_secret)
             return {"data": ""}
         else:
             try:
-                feishuwiki_oauth.validate_certificate()
+                oauth_provider.validate_certificate()
             except Exception as e:
                 return {"error": str(e)}, 400
             return {"data": ""}, 200
