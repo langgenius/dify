@@ -12,7 +12,7 @@ import { DataSourceType } from '@/models/datasets'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource } from '@/service/common'
 import { fetchDatasetDetail } from '@/service/datasets'
-import { DataSourceProvider, type NotionPage, type FeishuPage } from '@/models/common'
+import { DataSourceProvider, type FeishuPage, type NotionPage } from '@/models/common'
 import { useModalContext } from '@/context/modal-context'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
