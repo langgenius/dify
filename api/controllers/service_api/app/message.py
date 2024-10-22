@@ -48,7 +48,7 @@ class MessageListApi(Resource):
         "tool_input": fields.String,
         "created_at": TimestampField,
         "observation": fields.String,
-        "message_files": fields.List(fields.String),
+        "message_files": fields.List(fields.Nested(message_file_fields)),
     }
 
     message_fields = {
