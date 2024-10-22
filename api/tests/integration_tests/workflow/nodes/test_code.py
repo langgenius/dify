@@ -102,6 +102,8 @@ def test_execute_code(setup_code_executor_mock):
     }
 
     node = init_code_node(code_config)
+    node.graph_runtime_state.variable_pool.add(["1", "123", "args1"], 1)
+    node.graph_runtime_state.variable_pool.add(["1", "123", "args2"], 2)
 
     # execute node
     result = node._run()
@@ -146,6 +148,8 @@ def test_execute_code_output_validator(setup_code_executor_mock):
     }
 
     node = init_code_node(code_config)
+    node.graph_runtime_state.variable_pool.add(["1", "123", "args1"], 1)
+    node.graph_runtime_state.variable_pool.add(["1", "123", "args2"], 2)
 
     # execute node
     result = node._run()

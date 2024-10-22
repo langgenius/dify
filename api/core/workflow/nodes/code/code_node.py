@@ -41,10 +41,15 @@ class CodeNode(BaseNode[CodeNodeData]):
         # Get variables
         variables = {}
         for variable_selector in self.node_data.variables:
-            variable = variable_selector.variable
-            value = self.graph_runtime_state.variable_pool.get_any(variable_selector.value_selector)
-
-            variables[variable] = value
+            variable_name = variable_selector.variable
+            variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+            if variable is None:
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs=variables,
+                    error=f"Variable `{variable_selector.value_selector}` not found",
+                )
+            variables[variable_name] = variable.to_object()
         # Run code
         try:
             result = CodeExecutor.execute_workflow_code_template(
