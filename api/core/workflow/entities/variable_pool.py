@@ -4,7 +4,6 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Union
 
 from pydantic import BaseModel, Field
-from typing_extensions import deprecated
 
 from core.file import File, FileAttribute, file_manager
 from core.variables import Segment, SegmentGroup, Variable
@@ -132,26 +131,6 @@ class VariablePool(BaseModel):
                 return variable_factory.build_segment(attr_value)
 
         return value
-
-    @deprecated("This method is deprecated, use `get` instead.")
-    def get_any(self, selector: Sequence[str], /) -> Any | None:
-        """
-        Retrieves the value from the variable pool based on the given selector.
-
-        Args:
-            selector (Sequence[str]): The selector used to identify the variable.
-
-        Returns:
-            Any: The value associated with the given selector.
-
-        Raises:
-            ValueError: If the selector is invalid.
-        """
-        if len(selector) < 2:
-            raise ValueError("Invalid selector")
-        hash_key = hash(tuple(selector[1:]))
-        value = self.variable_dictionary[selector[0]].get(hash_key)
-        return value.to_object() if value else None
 
     def remove(self, selector: Sequence[str], /):
         """
