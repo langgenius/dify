@@ -441,7 +441,7 @@ class IterationNode(BaseNode[IterationNodeData]):
                             return
                     yield metadata_event
 
-            current_iteration_output = variable_pool.get_any(self.node_data.output_selector)
+            current_iteration_output = variable_pool.get(self.node_data.output_selector).value
             outputs.insert(current_index, current_iteration_output)
             # remove all nodes outputs from variable pool
             for node_id in iteration_graph.node_ids:
