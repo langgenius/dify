@@ -221,7 +221,7 @@ const Configuration: FC = () => {
   const selectedIds = dataSets.map(item => item.id)
   const [rerankSettingModalOpen, setRerankSettingModalOpen] = useState(false)
   const {
-    isValid: isValidRerankModel,
+    currentModel: currentRerankModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const handleSelect = (data: DataSet[]) => {
     if (isEqual(data.map(item => item.id), dataSets.map(item => item.id))) {
@@ -269,7 +269,7 @@ const Configuration: FC = () => {
       reranking_mode: restConfigs.reranking_mode,
       weights: restConfigs.weights,
       reranking_enable: restConfigs.reranking_enable,
-    }, newDatasets, dataSets, isValidRerankModel)
+    }, newDatasets, dataSets, !!currentRerankModel)
 
     setDatasetConfigs({
       ...retrievalConfig,

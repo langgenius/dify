@@ -44,13 +44,13 @@ const DatasetConfig: FC = () => {
   const hasData = dataSet.length > 0
 
   const {
-    isValid: isValidRerankModel,
+    currentModel: currentRerankModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const onRemove = (id: string) => {
     const filteredDataSets = dataSet.filter(item => item.id !== id)
     setDataSet(filteredDataSets)
-    const retrievalConfig = getMultipleRetrievalConfig(datasetConfigs as any, filteredDataSets, dataSet, isValidRerankModel)
+    const retrievalConfig = getMultipleRetrievalConfig(datasetConfigs as any, filteredDataSets, dataSet, !!currentRerankModel)
     setDatasetConfigs({
       ...(datasetConfigs as any),
       ...retrievalConfig,
