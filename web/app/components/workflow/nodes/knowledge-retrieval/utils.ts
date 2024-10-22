@@ -134,7 +134,7 @@ export const getMultipleRetrievalConfig = (
   if (allHighQuality && !inconsistentEmbeddingModel && reranking_mode === undefined && allInternal)
     result.reranking_mode = RerankingModeEnum.WeightedScore
 
-  if (allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined || !isValidRerankModel) && allInternal && !weights) {
+  if (allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined) && allInternal && !weights) {
     if (!isValidRerankModel)
       result.reranking_mode = RerankingModeEnum.WeightedScore
     else
@@ -160,7 +160,7 @@ export const getMultipleRetrievalConfig = (
     }
   }
 
-  if (shouldSetWeightDefaultValue && allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined || !isValidRerankModel) && allInternal && weights) {
+  if (shouldSetWeightDefaultValue && allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined) && allInternal && weights) {
     if (!isValidRerankModel)
       result.reranking_mode = RerankingModeEnum.WeightedScore
     else
