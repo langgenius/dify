@@ -169,8 +169,10 @@ class IterationNode(BaseNode):
                             if succeeded_count == len(futures):
                                 q.put(None)
                         yield event
+                        if isinstance(event, RunCompletedEvent):
+                            q.put(None)
+                            yield event
                     except Empty:
-                        logger.warning(msg="Parallel Iteration event queue empty")
                         continue
 
                 # wait all threads
@@ -291,6 +293,26 @@ class IterationNode(BaseNode):
 
         return variable_mapping
 
+    def _handle_event_metadata(self, event: BaseNodeEvent, iter_run_index: str, parallel_mode_run_id: str):
+        """
+        add iteration metadata to event.
+        """
+        if not isinstance(event, BaseNodeEvent):
+            return event
+        if event.route_node_state.node_run_result:
+            metadata = event.route_node_state.node_run_result.metadata
+            if not metadata:
+                metadata = {}
+
+            if NodeRunMetadataKey.ITERATION_ID not in metadata:
+                metadata[NodeRunMetadataKey.ITERATION_ID] = self.node_id
+                if self.node_data.is_parallel:
+                    metadata[NodeRunMetadataKey.PARALLEL_MODE_RUN_ID] = parallel_mode_run_id
+                else:
+                    metadata[NodeRunMetadataKey.ITERATION_INDEX] = iter_run_index
+                event.route_node_state.node_run_result.metadata = metadata
+        return event
+
     def _run_single_iter(
         self,
         iterator_list_value: list[str],
@@ -302,120 +324,143 @@ class IterationNode(BaseNode):
         iteration_graph,
         parallel_mode_run_id: Optional[str] = None,
     ):
-        rst = graph_engine.run()
-        for event in rst:
-            if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_iteration_id:
-                event.in_iteration_id = self.node_id
+        """
+        run single iteration
+        """
+        try:
+            rst = graph_engine.run()
+            # get current iteration index
+            current_index = variable_pool.get([self.node_id, "index"]).value
+            next_index = int(current_index) + 1
 
-            if (
-                isinstance(event, BaseNodeEvent)
-                and event.node_type == NodeType.ITERATION_START
-                and not isinstance(event, NodeRunStreamChunkEvent)
-            ):
-                continue
+            if current_index is None:
+                raise ValueError(f"iteration {self.node_id} current index not found")
+            for event in rst:
+                if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_iteration_id:
+                    event.in_iteration_id = self.node_id
 
-            if isinstance(event, NodeRunSucceededEvent):
-                self._handle_event_metadata(event, variable_pool, parallel_mode_run_id)
-                yield event
-            elif isinstance(event, BaseGraphEvent):
-                if isinstance(event, GraphRunFailedEvent):
-                    # iteration run failed
-                    if self.node_data.is_parallel:
-                        yield IterationRunFailedEvent(
-                            iteration_id=self.id,
-                            iteration_node_id=self.node_id,
-                            iteration_node_type=self.node_type,
-                            iteration_node_data=self.node_data,
-                            parallel_mode_run_id=parallel_mode_run_id,
-                            start_at=start_at,
-                            inputs=inputs,
-                            outputs={"output": jsonable_encoder(outputs)},
-                            steps=len(iterator_list_value),
-                            metadata={"total_tokens": graph_engine.graph_runtime_state.total_tokens},
-                            error=event.error,
-                        )
-                    else:
-                        yield IterationRunFailedEvent(
-                            iteration_id=self.id,
-                            iteration_node_id=self.node_id,
-                            iteration_node_type=self.node_type,
-                            iteration_node_data=self.node_data,
-                            start_at=start_at,
-                            inputs=inputs,
-                            outputs={"output": jsonable_encoder(outputs)},
-                            steps=len(iterator_list_value),
-                            metadata={"total_tokens": graph_engine.graph_runtime_state.total_tokens},
-                            error=event.error,
-                        )
-                    yield RunCompletedEvent(
-                        run_result=NodeRunResult(
-                            status=WorkflowNodeExecutionStatus.FAILED,
-                            error=event.error,
-                        )
-                    )
-                    return
-            else:
-                event = cast(InNodeEvent, event)
-                if isinstance(event, NodeRunFailedEvent):
-                    if self.node_data.error_handle_mode == ErrorHandleMode.CONTINUE_ON_ERROR:
-                        metadata_event = self._handle_event_metadata(event, variable_pool, parallel_mode_run_id)
-                        yield NodeInIterationFailedEvent(
-                            **metadata_event.model_dump(),
-                        )
-                        break
-                    elif self.node_data.error_handle_mode == ErrorHandleMode.REMOVE_ABNORMAL_OUTPUT:
-                        current_index = variable_pool.get([self.node_id, "index"])
-                        if current_index is None:
-                            raise ValueError(f"iteration {self.node_id} current index not found")
-                        next_index = int(current_index.to_object()) + 1
-                        metadata_event = self._handle_event_metadata(event, variable_pool, parallel_mode_run_id)
-                        yield NodeInIterationFailedEvent(
-                            **metadata_event.model_dump(),
-                        )
-                        variable_pool.add([self.node_id, "index"], next_index)
+                if (
+                    isinstance(event, BaseNodeEvent)
+                    and event.node_type == NodeType.ITERATION_START
+                    and not isinstance(event, NodeRunStreamChunkEvent)
+                ):
+                    continue
 
-                        if next_index < len(iterator_list_value):
-                            variable_pool.add([self.node_id, "item"], iterator_list_value[next_index])
-                        yield IterationRunNextEvent(
-                            iteration_id=self.id,
-                            iteration_node_id=self.node_id,
-                            iteration_node_type=self.node_type,
-                            iteration_node_data=self.node_data,
-                            index=next_index,
-                            parallel_mode_run_id=parallel_mode_run_id,
-                            pre_iteration_output=None,
+                if isinstance(event, NodeRunSucceededEvent):
+                    yield self._handle_event_metadata(event, current_index, parallel_mode_run_id)
+                elif isinstance(event, BaseGraphEvent):
+                    if isinstance(event, GraphRunFailedEvent):
+                        # iteration run failed
+                        if self.node_data.is_parallel:
+                            yield IterationRunFailedEvent(
+                                iteration_id=self.id,
+                                iteration_node_id=self.node_id,
+                                iteration_node_type=self.node_type,
+                                iteration_node_data=self.node_data,
+                                parallel_mode_run_id=parallel_mode_run_id,
+                                start_at=start_at,
+                                inputs=inputs,
+                                outputs={"output": jsonable_encoder(outputs)},
+                                steps=len(iterator_list_value),
+                                metadata={"total_tokens": graph_engine.graph_runtime_state.total_tokens},
+                                error=event.error,
+                            )
+                        else:
+                            yield IterationRunFailedEvent(
+                                iteration_id=self.id,
+                                iteration_node_id=self.node_id,
+                                iteration_node_type=self.node_type,
+                                iteration_node_data=self.node_data,
+                                start_at=start_at,
+                                inputs=inputs,
+                                outputs={"output": jsonable_encoder(outputs)},
+                                steps=len(iterator_list_value),
+                                metadata={"total_tokens": graph_engine.graph_runtime_state.total_tokens},
+                                error=event.error,
+                            )
+                        yield RunCompletedEvent(
+                            run_result=NodeRunResult(
+                                status=WorkflowNodeExecutionStatus.FAILED,
+                                error=event.error,
+                            )
                         )
-
                         return
-                yield self._handle_event_metadata(event, variable_pool, parallel_mode_run_id)
+                else:
+                    event = cast(InNodeEvent, event)
+                    metadata_event = self._handle_event_metadata(event, current_index, parallel_mode_run_id)
+                    if (
+                        isinstance(event, NodeRunFailedEvent)
+                        and self.node_data.error_handle_mode != ErrorHandleMode.TERMINATED
+                    ):
+                        if self.node_data.error_handle_mode == ErrorHandleMode.CONTINUE_ON_ERROR:
+                            yield NodeInIterationFailedEvent(
+                                **metadata_event.model_dump(),
+                            )
+                            outputs.insert(current_index, None)
+                            variable_pool.add([self.node_id, "index"], next_index)
+                            if next_index < len(iterator_list_value):
+                                variable_pool.add([self.node_id, "item"], iterator_list_value[next_index])
+                            yield IterationRunNextEvent(
+                                iteration_id=self.id,
+                                iteration_node_id=self.node_id,
+                                iteration_node_type=self.node_type,
+                                iteration_node_data=self.node_data,
+                                index=next_index,
+                                parallel_mode_run_id=parallel_mode_run_id,
+                                pre_iteration_output=None,
+                            )
+                            return
+                        elif self.node_data.error_handle_mode == ErrorHandleMode.REMOVE_ABNORMAL_OUTPUT:
+                            yield NodeInIterationFailedEvent(
+                                **metadata_event.model_dump(),
+                            )
+                            variable_pool.add([self.node_id, "index"], next_index)
 
-        current_index = variable_pool.get([self.node_id, "index"])
-        # append to iteration output variable list
-        current_iteration_output = variable_pool.get_any(self.node_data.output_selector)
-        outputs.insert(current_index.value, current_iteration_output)
-        # remove all nodes outputs from variable pool
-        for node_id in iteration_graph.node_ids:
-            variable_pool.remove_node(node_id)
+                            if next_index < len(iterator_list_value):
+                                variable_pool.add([self.node_id, "item"], iterator_list_value[next_index])
+                            yield IterationRunNextEvent(
+                                iteration_id=self.id,
+                                iteration_node_id=self.node_id,
+                                iteration_node_type=self.node_type,
+                                iteration_node_data=self.node_data,
+                                index=next_index,
+                                parallel_mode_run_id=parallel_mode_run_id,
+                                pre_iteration_output=None,
+                            )
 
-        # move to next iteration
-        if current_index is None:
-            raise ValueError(f"iteration {self.node_id} current index not found")
+                            return
+                    yield metadata_event
 
-        next_index = int(current_index.to_object()) + 1
-        variable_pool.add([self.node_id, "index"], next_index)
+            current_iteration_output = variable_pool.get_any(self.node_data.output_selector)
+            outputs.insert(current_index, current_iteration_output)
+            # remove all nodes outputs from variable pool
+            for node_id in iteration_graph.node_ids:
+                variable_pool.remove_node(node_id)
 
-        if next_index < len(iterator_list_value):
-            variable_pool.add([self.node_id, "item"], iterator_list_value[next_index])
+            # move to next iteration
+            variable_pool.add([self.node_id, "index"], next_index)
 
-        yield IterationRunNextEvent(
-            iteration_id=self.id,
-            iteration_node_id=self.node_id,
-            iteration_node_type=self.node_type,
-            iteration_node_data=self.node_data,
-            index=next_index,
-            parallel_mode_run_id=parallel_mode_run_id,
-            pre_iteration_output=jsonable_encoder(current_iteration_output) if current_iteration_output else None,
-        )
+            if next_index < len(iterator_list_value):
+                variable_pool.add([self.node_id, "item"], iterator_list_value[next_index])
+
+            yield IterationRunNextEvent(
+                iteration_id=self.id,
+                iteration_node_id=self.node_id,
+                iteration_node_type=self.node_type,
+                iteration_node_data=self.node_data,
+                index=next_index,
+                parallel_mode_run_id=parallel_mode_run_id,
+                pre_iteration_output=jsonable_encoder(current_iteration_output) if current_iteration_output else None,
+            )
+
+        except Exception as e:
+            logger.exception("Iteration run failed")
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    error=str(e),
+                )
+            )
 
     def _run_single_iter_parallel(
         self,
@@ -430,6 +475,9 @@ class IterationNode(BaseNode):
         index,
         item,
     ):
+        """
+        run single iteration in parallel mode
+        """
         with flask_app.app_context():
             parallel_mode_run_id = uuid.uuid4().hex
             graph_engine_copy = graph_engine.create_copy()
@@ -447,23 +495,3 @@ class IterationNode(BaseNode):
                 parallel_mode_run_id=parallel_mode_run_id,
             ):
                 q.put(event)
-
-    def _handle_event_metadata(self, event: BaseNodeEvent, variable_pool: VariablePool, parallel_mode_run_id: str):
-        """
-        Handle success event.
-        """
-        if not isinstance(event, BaseNodeEvent):
-            return event
-        if event.route_node_state.node_run_result:
-            metadata = event.route_node_state.node_run_result.metadata
-            if not metadata:
-                metadata = {}
-
-            if NodeRunMetadataKey.ITERATION_ID not in metadata:
-                metadata[NodeRunMetadataKey.ITERATION_ID] = self.node_id
-                if self.node_data.is_parallel:
-                    metadata[NodeRunMetadataKey.PARALLEL_MODE_RUN_ID] = parallel_mode_run_id
-                else:
-                    metadata[NodeRunMetadataKey.ITERATION_INDEX] = variable_pool.get_any([self.node_id, "index"])
-                event.route_node_state.node_run_result.metadata = metadata
-        return event
