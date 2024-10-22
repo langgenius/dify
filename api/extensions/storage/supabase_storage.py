@@ -2,6 +2,7 @@ import io
 from collections.abc import Generator
 from pathlib import Path
 
+from flask import Flask
 from supabase import Client
 
 from extensions.storage.base_storage import BaseStorage
@@ -10,8 +11,8 @@ from extensions.storage.base_storage import BaseStorage
 class SupabaseStorage(BaseStorage):
     """Implementation for supabase obs storage."""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, app: Flask):
+        super().__init__(app)
         app_config = self.app.config
         self.bucket_name = app_config.get("SUPABASE_BUCKET_NAME")
         self.client = Client(
