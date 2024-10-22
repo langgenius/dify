@@ -7,6 +7,7 @@ class ClusterEntity(BaseModel):
     """
     Model Config Entity.
     """
+
     name: str
     cluster_id: str
     displayName: str

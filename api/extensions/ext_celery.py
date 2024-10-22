@@ -1,6 +1,7 @@
 from datetime import timedelta
 
 from celery import Celery, Task
+from celery.schedules import crontab
 from flask import Flask
 
 
@@ -54,6 +55,7 @@ def init_app(app: Flask) -> Celery:
         "schedule.clean_embedding_cache_task",
         "schedule.clean_unused_datasets_task",
         "schedule.create_tidb_serverless_task",
+        "schedule.update_tidb_serverless_status_task",
     ]
     day = app.config.get("CELERY_BEAT_SCHEDULER_TIME")
     beat_schedule = {
@@ -61,14 +63,18 @@ def init_app(app: Flask) -> Celery:
             "task": "schedule.clean_embedding_cache_task.clean_embedding_cache_task",
             "schedule": timedelta(days=day),
         },
-        'clean_unused_datasets_task': {
-            'task': 'schedule.clean_unused_datasets_task.clean_unused_datasets_task',
-            'schedule': timedelta(days=day),
+        "clean_unused_datasets_task": {
+            "task": "schedule.clean_unused_datasets_task.clean_unused_datasets_task",
+            "schedule": timedelta(days=day),
         },
-        'create_tidb_serverless_task': {
-            'task': 'schedule.create_tidb_serverless_task.create_tidb_serverless_task',
-            'schedule': timedelta(hours=1),
-        }
+        "create_tidb_serverless_task": {
+            "task": "schedule.create_tidb_serverless_task.create_tidb_serverless_task",
+            "schedule": crontab(minute="38", hour="*"),
+        },
+        "update_tidb_serverless_status_task": {
+            "task": "schedule.update_tidb_serverless_status_task.update_tidb_serverless_status_task",
+            "schedule": crontab(minute="35", hour="*"),
+        },
     }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 

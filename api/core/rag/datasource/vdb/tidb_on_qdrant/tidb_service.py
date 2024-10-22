@@ -4,17 +4,16 @@ import uuid
 import requests
 from requests.auth import HTTPDigestAuth
 
+from extensions.ext_database import db
+from extensions.ext_redis import redis_client
+from models.dataset import TidbAuthBinding
+
 
 class TidbService:
-
     @staticmethod
-    def create_tidb_serverless_cluster(project_id: str,
-                                       api_url: str,
-                                       iam_url: str,
-                                       public_key: str,
-                                       private_key: str,
-                                       region: str
-                                       ):
+    def create_tidb_serverless_cluster(
+        project_id: str, api_url: str, iam_url: str, public_key: str, private_key: str, region: str
+    ):
         """
         Creates a new TiDB Serverless cluster.
         :param project_id: The project ID of the TiDB Cloud project (required).
@@ -46,11 +45,10 @@ class TidbService:
             "region": region_object,
             "labels": labels,
             "spendingLimit": spending_limit,
-            "rootPassword": password
+            "rootPassword": password,
         }
 
-        response = requests.post(f"{api_url}/clusters", json=cluster_data,
-                                 auth=HTTPDigestAuth(public_key, private_key))
+        response = requests.post(f"{api_url}/clusters", json=cluster_data, auth=HTTPDigestAuth(public_key, private_key))
 
         if response.status_code == 200:
             response_data = response.json()
@@ -64,8 +62,8 @@ class TidbService:
                     return {
                         "cluster_id": cluster_id,
                         "cluster_name": display_name,
-                        "account": f'{user_prefix}.root',
-                        "password": password
+                        "account": f"{user_prefix}.root",
+                        "password": password,
                     }
                 time.sleep(30)  # wait 30 seconds before retrying
                 retry_count += 1
@@ -84,8 +82,7 @@ class TidbService:
         :return: The response from the API.
         """
 
-        response = requests.delete(f"{api_url}/clusters/{cluster_id}",
-                                   auth=HTTPDigestAuth(public_key, private_key))
+        response = requests.delete(f"{api_url}/clusters/{cluster_id}", auth=HTTPDigestAuth(public_key, private_key))
 
         if response.status_code == 200:
             return response.json()
@@ -104,8 +101,7 @@ class TidbService:
         :return: The response from the API.
         """
 
-        response = requests.get(f"{api_url}/clusters/{cluster_id}",
-                                auth=HTTPDigestAuth(public_key, private_key))
+        response = requests.get(f"{api_url}/clusters/{cluster_id}", auth=HTTPDigestAuth(public_key, private_key))
 
         if response.status_code == 200:
             return response.json()
@@ -113,8 +109,9 @@ class TidbService:
             response.raise_for_status()
 
     @staticmethod
-    def change_tidb_serverless_root_password(api_url: str, public_key: str, private_key: str, cluster_id: str,
-                                             account: str, new_password: str):
+    def change_tidb_serverless_root_password(
+        api_url: str, public_key: str, private_key: str, cluster_id: str, account: str, new_password: str
+    ):
         """
         Changes the root password of a specific TiDB Serverless cluster.
 
@@ -127,31 +124,67 @@ class TidbService:
         :return: The response from the API.
         """
 
-        body = {
-            "password": new_password,
-            "builtinRole": "role_admin",
-            "customRoles": []
-        }
+        body = {"password": new_password, "builtinRole": "role_admin", "customRoles": []}
 
-        response = requests.patch(f"{api_url}/clusters/{cluster_id}/sqlUsers/{account}", json=body,
-                                  auth=HTTPDigestAuth(public_key, private_key))
+        response = requests.patch(
+            f"{api_url}/clusters/{cluster_id}/sqlUsers/{account}",
+            json=body,
+            auth=HTTPDigestAuth(public_key, private_key),
+        )
 
         if response.status_code == 200:
             return response.json()
         else:
             response.raise_for_status()
 
-
     @staticmethod
-    def batch_create_tidb_serverless_cluster(
-        batch_size: int,
+    def batch_update_tidb_serverless_cluster_status(
+        tidb_serverless_list: list[TidbAuthBinding],
         project_id: str,
         api_url: str,
         iam_url: str,
         public_key: str,
         private_key: str,
-        region: str
-        )->list[dict]:
+    ) -> list[dict]:
+        """
+        Update the status of a new TiDB Serverless cluster.
+        :param project_id: The project ID of the TiDB Cloud project (required).
+        :param api_url: The URL of the TiDB Cloud API (required).
+        :param iam_url: The URL of the TiDB Cloud IAM API (required).
+        :param public_key: The public key for the API (required).
+        :param private_key: The private key for the API (required).
+        :param display_name: The user-friendly display name of the cluster (required).
+        :param region: The region where the cluster will be created (required).
+
+        :return: The response from the API.
+        """
+        clusters = []
+        tidb_serverless_list_map = {item.cluster_id: item for item in tidb_serverless_list}
+        cluster_ids = [item.cluster_id for item in tidb_serverless_list]
+        params = {"clusterIds": cluster_ids, "view": "FULL"}
+        response = requests.get(
+            f"{api_url}/clusters:batchGet", params=params, auth=HTTPDigestAuth(public_key, private_key)
+        )
+
+        if response.status_code == 200:
+            response_data = response.json()
+            cluster_infos = []
+            for item in response_data["clusters"]:
+                state = item["state"]
+                userPrefix = item["userPrefix"]
+                if state == "ACTIVE" and len(userPrefix) > 0:
+                    cluster_info = tidb_serverless_list_map[item["clusterId"]]
+                    cluster_info.status = "ACTIVE"
+                    cluster_info.account = f"{userPrefix}.root"
+                    db.session.add(cluster_info)
+            db.session.commit()
+        else:
+            response.raise_for_status()
+
+    @staticmethod
+    def batch_create_tidb_serverless_cluster(
+        batch_size: int, project_id: str, api_url: str, iam_url: str, public_key: str, private_key: str, region: str
+    ) -> list[dict]:
         """
         Creates a new TiDB Serverless cluster.
         :param project_id: The project ID of the TiDB Cloud project (required).
@@ -166,7 +199,6 @@ class TidbService:
         """
         clusters = []
         for _ in range(batch_size):
-
             region_object = {
                 "name": region,
             }
@@ -179,34 +211,39 @@ class TidbService:
                 "monthly": 100,
             }
             password = str(uuid.uuid4()).replace("-", "")[:16]
-            display_name = str(uuid.uuid4()).replace("-", "")[:16]
+            display_name = str(uuid.uuid4()).replace("-", "")
             cluster_data = {
                 "cluster": {
                     "displayName": display_name,
                     "region": region_object,
                     "labels": labels,
                     "spendingLimit": spending_limit,
-                    "rootPassword": password
+                    "rootPassword": password,
                 }
             }
+            cache_key = f"tidb_serverless_cluster_password:{display_name}"
+            redis_client.setex(cache_key, 3600, password)
             clusters.append(cluster_data)
 
-        request_body = {
-            "requests": clusters
-        }
-        response = requests.post(f"{api_url}/clusters:batchCreate", json=request_body,
-                                    auth=HTTPDigestAuth(public_key, private_key))
+        request_body = {"requests": clusters}
+        response = requests.post(
+            f"{api_url}/clusters:batchCreate", json=request_body, auth=HTTPDigestAuth(public_key, private_key)
+        )
 
         if response.status_code == 200:
             response_data = response.json()
             cluster_infos = []
             for item in response_data["clusters"]:
+                cache_key = f"tidb_serverless_cluster_password:{item['displayName']}"
+                password = redis_client.get(cache_key)
+                if not password:
+                    continue
                 cluster_info = {
-                            "cluster_id": item["clusterId"],
-                            "cluster_name": item["displayName"],
-                            "account": f"{item['userPrefix']}.root",
-                            "password": item["rootPassword"]
-                        }
+                    "cluster_id": item["clusterId"],
+                    "cluster_name": item["displayName"],
+                    "account": "root",
+                    "password": password.decode("utf-8"),
+                }
                 cluster_infos.append(cluster_info)
             return cluster_infos
         else:

@@ -25,6 +25,7 @@ def upgrade():
     sa.Column('cluster_id', sa.String(length=255), nullable=False),
     sa.Column('cluster_name', sa.String(length=255), nullable=False),
     sa.Column('active', sa.Boolean(), server_default=sa.text('false'), nullable=False),
+    sa.Column('status', sa.String(length=255), server_default=sa.text("'CREATING'::character varying"), nullable=False),
     sa.Column('account', sa.String(length=255), nullable=False),
     sa.Column('password', sa.String(length=255), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP(0)'), nullable=False),
@@ -32,6 +33,7 @@ def upgrade():
     )
     with op.batch_alter_table('tidb_auth_bindings', schema=None) as batch_op:
         batch_op.create_index('tidb_auth_bindings_active_idx', ['active'], unique=False)
+        batch_op.create_index('tidb_auth_bindings_status_idx', ['status'], unique=False)
         batch_op.create_index('tidb_auth_bindings_created_at_idx', ['created_at'], unique=False)
         batch_op.create_index('tidb_auth_bindings_tenant_idx', ['tenant_id'], unique=False)
 
@@ -44,6 +46,6 @@ def downgrade():
         batch_op.drop_index('tidb_auth_bindings_tenant_idx')
         batch_op.drop_index('tidb_auth_bindings_created_at_idx')
         batch_op.drop_index('tidb_auth_bindings_active_idx')
-
+        batch_op.drop_index('tidb_auth_bindings_status_idx')
     op.drop_table('tidb_auth_bindings')
     # ### end Alembic commands ###
