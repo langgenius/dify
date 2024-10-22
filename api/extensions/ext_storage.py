@@ -15,7 +15,8 @@ class Storage:
 
     def init_app(self, app: Flask):
         storage_factory = self.get_storage_factory(dify_config.STORAGE_TYPE)
-        self.storage_runner = storage_factory()
+        with app.app_context():
+            self.storage_runner = storage_factory()
 
     @staticmethod
     def get_storage_factory(storage_type: str) -> type[BaseStorage]:
