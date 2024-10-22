@@ -116,6 +116,13 @@ export type Permissions = {
   canDebugger: PermissionType
 }
 
+export enum InstallStep {
+  url = 'url',
+  version = 'version',
+  package = 'package',
+  installed = 'installed'
+}
+
 // endpoint
 export type CreateEndpointRequest = {
   plugin_unique_identifier: string

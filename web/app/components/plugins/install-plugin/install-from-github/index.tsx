@@ -6,14 +6,12 @@ import Button from '@/app/components/base/button'
 import type { Item } from '@/app/components/base/select'
 import { PortalSelect } from '@/app/components/base/select'
 import type { GitHubRepoReleaseResponse } from '@/app/components/plugins/types'
-import { installPackageFromGitHub } from '@/service/plugins'
+import { InstallStep } from '../../types'
 import Toast from '@/app/components/base/toast'
 
 type InstallFromGitHubProps = {
   onClose: () => void
 }
-
-type InstallStep = 'url' | 'version' | 'package' | 'installed'
 
 type GitHubUrlInfo = {
   isValid: boolean
@@ -21,22 +19,33 @@ type GitHubUrlInfo = {
   repo?: string
 }
 
-const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
-  const [step, setStep] = useState<InstallStep>('url')
-  const [repoUrl, setRepoUrl] = useState('')
-  const [selectedVersion, setSelectedVersion] = useState('')
-  const [selectedPackage, setSelectedPackage] = useState('')
-  const [releases, setReleases] = useState<GitHubRepoReleaseResponse[]>([])
+type InstallState = {
+  step: InstallStep
+  repoUrl: string
+  selectedVersion: string
+  selectedPackage: string
+  releases: GitHubRepoReleaseResponse[]
+}
 
-  const versions: Item[] = releases.map(release => ({
+const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
+  const [state, setState] = useState<InstallState>({
+    step: InstallStep.url,
+    repoUrl: '',
+    selectedVersion: '',
+    selectedPackage: '',
+    releases: [],
+  })
+
+  const versions: Item[] = state.releases.map(release => ({
     value: release.tag_name,
     name: release.tag_name,
   }))
 
-  const packages: Item[] = selectedVersion
-    ? (releases
-      .find(release => release.tag_name === selectedVersion)
-      ?.assets.map(asset => ({
+  const packages: Item[] = state.selectedVersion
+    ? (state.releases
+      .find(release => release.tag_name === state.selectedVersion)
+      ?.assets
+.map(asset => ({
         value: asset.browser_download_url,
         name: asset.name,
       })) || [])
@@ -58,25 +67,26 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
   }
 
   const handleInstall = async () => {
-    try {
-      const response = await installPackageFromGitHub({ repo: repoUrl, version: selectedVersion, package: selectedPackage })
-      if (response.plugin_unique_identifier) {
-        setStep('installed')
-        console.log('Package installed:')
-      }
-      else {
-        console.error('Failed to install package:')
-      }
-    }
-    catch (error) {
-      console.error('Error installing package:')
-    }
+    // try {
+    //   const response = await installPackageFromGitHub({ repo: state.repoUrl, version: state.selectedVersion, package: state.selectedPackage })
+    //   if (response.plugin_unique_identifier) {
+    //     setState(prevState => ({...prevState, step: InstallStep.installed}))
+    //     console.log('Package installed:')
+    //   }
+    //   else {
+    //     console.error('Failed to install package:')
+    //   }
+    // }
+    // catch (error) {
+    //   console.error('Error installing package:')
+    // }
+    setState(prevState => ({ ...prevState, step: InstallStep.installed }))
   }
 
   const handleNext = async () => {
-    switch (step) {
-      case 'url': {
-        const { isValid, owner, repo } = parseGitHubUrl(repoUrl)
+    switch (state.step) {
+      case InstallStep.url: {
+        const { isValid, owner, repo } = parseGitHubUrl(state.repoUrl)
         if (!isValid || !owner || !repo) {
           Toast.notify({
             type: 'error',
@@ -97,8 +107,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
               name: asset.name,
             })),
           }))
-          setReleases(formattedReleases)
-          setStep('version')
+          setState(prevState => ({ ...prevState, releases: formattedReleases, step: InstallStep.version }))
         }
         catch (error) {
           Toast.notify({
@@ -108,23 +117,36 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
         }
         break
       }
-      case 'version':
-        setStep('package')
+      case InstallStep.version:
+        setState(prevState => ({ ...prevState, step: InstallStep.package }))
         break
-      case 'package':
+      case InstallStep.package:
         handleInstall()
         break
     }
   }
 
+  const handleBack = () => {
+    setState((prevState) => {
+      switch (prevState.step) {
+        case InstallStep.version:
+          return { ...prevState, step: InstallStep.url }
+        case InstallStep.package:
+          return { ...prevState, step: InstallStep.version }
+        default:
+          return prevState
+      }
+    })
+  }
+
   const isInputValid = () => {
-    switch (step) {
-      case 'url':
-        return !!repoUrl.trim()
-      case 'version':
-        return !!selectedVersion
-      case 'package':
-        return !!selectedPackage
+    switch (state.step) {
+      case InstallStep.url:
+        return !!state.repoUrl.trim()
+      case InstallStep.version:
+        return !!state.selectedVersion
+      case InstallStep.package:
+        return !!state.selectedPackage
       default:
         return true
     }
@@ -132,13 +154,15 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
 
   const InfoRow = ({ label, value }: { label: string; value: string }) => (
     <div className='flex items-center gap-3'>
-      <div className='flex w-[72px] items-center gap-2'>
-        <div className='text-text-tertiary system-sm-medium'>
+      <div className='flex-shrink-0 w-[72px] items-center gap-2'>
+        <div className='text-text-tertiary system-sm-medium truncate'>
           {label}
         </div>
       </div>
-      <div className='flex-grow overflow-hidden text-text-secondary text-ellipsis system-sm-medium'>
-        {value}
+      <div className='flex-grow overflow-hidden'>
+        <div className='text-text-secondary text-ellipsis system-sm-medium'>
+          {value}
+        </div>
       </div>
     </div>
   )
@@ -157,12 +181,12 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
             Install plugin from GitHub
           </div>
           <div className='self-stretch text-text-tertiary system-xs-regular'>
-            {step !== 'installed' && 'Please make sure that you only install plugins from a trusted source.'}
+            {state.step !== InstallStep.installed && 'Please make sure that you only install plugins from a trusted source.'}
           </div>
         </div>
       </div>
-      <div className={`flex px-6 py-3 flex-col justify-center items-start self-stretch ${step === 'installed' ? 'gap-2' : 'gap-4'}`}>
-        {step === 'url' && (
+      <div className={`flex px-6 py-3 flex-col justify-center items-start self-stretch ${state.step === InstallStep.installed ? 'gap-2' : 'gap-4'}`}>
+        {state.step === InstallStep.url && (
           <>
             <label
               htmlFor='repoUrl'
@@ -174,8 +198,8 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
               type='url'
               id='repoUrl'
               name='repoUrl'
-              value={repoUrl}
-              onChange={e => setRepoUrl(e.target.value)} // TODO: needs to verify the url
+              value={state.repoUrl}
+              onChange={e => setState(prevState => ({ ...prevState, repoUrl: e.target.value }))} // TODO: needs to verify the url
               className='flex items-center self-stretch rounded-lg border border-components-input-border-active
                 bg-components-input-bg-active shadows-shadow-xs p-2 gap-[2px] flex-grow overflow-hidden
                 text-components-input-text-filled text-ellipsis system-sm-regular'
@@ -183,7 +207,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
             />
           </>
         )}
-        {step === 'version' && (
+        {state.step === InstallStep.version && (
           <>
             <label
               htmlFor='version'
@@ -192,15 +216,15 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
               <span className='system-sm-semibold'>Select version</span>
             </label>
             <PortalSelect
-              value={selectedVersion}
-              onSelect={item => setSelectedVersion(item.value as string)}
+              value={state.selectedVersion}
+              onSelect={item => setState(prevState => ({ ...prevState, selectedVersion: item.value as string }))}
               items={versions}
               placeholder="Please select a version"
               popupClassName='w-[432px] z-[1001]'
             />
           </>
         )}
-        {step === 'package' && (
+        {state.step === InstallStep.package && (
           <>
             <label
               htmlFor='package'
@@ -209,22 +233,22 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
               <span className='system-sm-semibold'>Select package</span>
             </label>
             <PortalSelect
-              value={selectedPackage}
-              onSelect={item => setSelectedPackage(item.value as string)}
+              value={state.selectedPackage}
+              onSelect={item => setState(prevState => ({ ...prevState, selectedPackage: item.value as string }))}
               items={packages}
               placeholder="Please select a package"
               popupClassName='w-[432px] z-[1001]'
             />
           </>
         )}
-        {step === 'installed' && (
+        {state.step === InstallStep.installed && (
           <>
             <div className='text-text-secondary system-md-regular'>The plugin has been installed successfully.</div>
             <div className='flex w-full p-4 flex-col justify-center items-start gap-2 rounded-2xl bg-background-section-burn'>
               {[
-                { label: 'Repository', value: repoUrl },
-                { label: 'Version', value: selectedVersion },
-                { label: 'Package', value: selectedPackage },
+                { label: 'Repository', value: state.repoUrl },
+                { label: 'Version', value: state.selectedVersion },
+                { label: 'Package', value: state.selectedPackage },
               ].map(({ label, value }) => (
                 <InfoRow key={label} label={label} value={value} />
               ))}
@@ -233,7 +257,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
         )}
       </div>
       <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
-        {step === 'installed'
+        {state.step === InstallStep.installed
           ? (
             <Button
               variant='primary'
@@ -248,9 +272,9 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
               <Button
                 variant='secondary'
                 className='min-w-[72px]'
-                onClick={onClose}
+                onClick={state.step === InstallStep.url ? onClose : handleBack}
               >
-                {step === 'url' ? 'Cancel' : 'Back'}
+                {state.step === InstallStep.url ? 'Cancel' : 'Back'}
               </Button>
               <Button
                 variant='primary'
@@ -258,7 +282,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
                 onClick={handleNext}
                 disabled={!isInputValid()}
               >
-                {step === 'package' ? 'Install' : 'Next'}
+                {state.step === InstallStep.package ? 'Install' : 'Next'}
               </Button>
             </>
           )}
