@@ -102,7 +102,8 @@ export default combine(
     // orignal config
     rules: {
       // from old version of antfu/eslint-config
-      "no-undef": "warn",
+      // typescript will handle this, see https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
+      "no-undef": "off",
 
       'ts/consistent-type-definitions': ['error', 'type'],
       // orignal ts/no-var-requires
