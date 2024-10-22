@@ -69,6 +69,7 @@ export type ChatProps = {
   showFileUpload?: boolean
   onFeatureBarClick?: (state: boolean) => void
   noSpacing?: boolean
+  hideScrollbar?: boolean
 }
 
 const Chat: FC<ChatProps> = ({
@@ -104,6 +105,7 @@ const Chat: FC<ChatProps> = ({
   showFileUpload,
   onFeatureBarClick,
   noSpacing,
+  hideScrollbar,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -207,7 +209,7 @@ const Chat: FC<ChatProps> = ({
       <div className='relative h-full'>
         <div
           ref={chatContainerRef}
-          className={cn('relative h-full overflow-y-auto overflow-x-hidden', chatContainerClassName)}
+          className={cn('relative h-full overflow-y-auto overflow-x-hidden', hideScrollbar && 'scrollbar-hide', chatContainerClassName)}
         >
           {chatNode}
           <div
