@@ -56,15 +56,15 @@ class NoneSegment(Segment):
 
     @property
     def text(self) -> str:
-        return "null"
+        return ""
 
     @property
     def log(self) -> str:
-        return "null"
+        return ""
 
     @property
     def markdown(self) -> str:
-        return "null"
+        return ""
 
 
 class StringSegment(Segment):
