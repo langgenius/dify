@@ -2,7 +2,6 @@ import io
 from collections.abc import Generator
 from pathlib import Path
 
-from flask import Flask
 from supabase import Client
 
 from extensions.storage.base_storage import BaseStorage
