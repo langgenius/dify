@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 class AwsS3Storage(BaseStorage):
     """Implementation for Amazon Web Services S3 storage."""
 
-    def __init__(self, app: Flask):
-        super().__init__(app)
+    def __init__(self):
+        super().__init__()
         app_config = self.app.config
         self.bucket_name = app_config.get("S3_BUCKET_NAME")
         if app_config.get("S3_USE_AWS_MANAGED_IAM"):
