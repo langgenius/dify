@@ -577,9 +577,19 @@ class ImageFormatConfig(BaseSettings):
 
 
 class CeleryBeatConfig(BaseSettings):
+    CELERY_BEAT_SCHEDULER_TYPE: str = Field(
+        description="The type of the Celery scheduler, options: 'time' or 'cron'. default to 'time'",
+        default="time",
+    )
+
     CELERY_BEAT_SCHEDULER_TIME: int = Field(
         description="Interval in days for Celery Beat scheduler execution, default to 1 day",
         default=1,
+    )
+
+    CELERY_BEAT_SCHEDULER_CRON_EXPRESSION: str = Field(
+        description="The cron expression for the Celery scheduler. default to '0 0 * * *'",
+        default="0 0 * * *",
     )
 
 
