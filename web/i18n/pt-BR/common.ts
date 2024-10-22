@@ -38,6 +38,10 @@ const translation = {
     duplicate: 'Duplicada',
     rename: 'Renomear',
     audioSourceUnavailable: 'AudioSource não está disponível',
+    zoomOut: 'Diminuir o zoom',
+    zoomIn: 'Ampliar',
+    copyImage: 'Copiar imagem',
+    openInNewTab: 'Abrir em nova guia',
   },
   placeholder: {
     input: 'Por favor, insira',
@@ -167,6 +171,9 @@ const translation = {
     delete: 'Excluir conta',
     deleteTip: 'Excluir sua conta apagará permanentemente todos os seus dados e eles não poderão ser recuperados.',
     deleteConfirmTip: 'Para confirmar, envie o seguinte do seu e-mail registrado para ',
+    myAccount: 'Minha Conta',
+    account: 'Conta',
+    studio: 'Estúdio Dify',
   },
   members: {
     team: 'Equipe',
@@ -496,6 +503,7 @@ const translation = {
       vectorHash: 'Hash de vetor:',
       hitScore: 'Pontuação de recuperação:',
     },
+    inputPlaceholder: 'Fale com o bot',
   },
   promptEditor: {
     placeholder: 'Escreva sua palavra de incentivo aqui, digite \'{\' para inserir uma variável, digite \'/\' para inserir um bloco de conteúdo de incentivo',
@@ -572,6 +580,16 @@ const translation = {
   errorMsg: {
     fieldRequired: '{{field}} é obrigatório',
     urlError: 'URL deve começar com http:// ou https://',
+  },
+  fileUploader: {
+    uploadFromComputer: 'Upload local',
+    pasteFileLink: 'Colar link do arquivo',
+    pasteFileLinkInputPlaceholder: 'Digite o URL...',
+    pasteFileLinkInvalid: 'Link de arquivo inválido',
+    fileExtensionNotSupport: 'Extensão de arquivo não suportada',
+    uploadFromComputerReadError: 'Falha na leitura do arquivo, tente novamente.',
+    uploadFromComputerLimit: 'Carregar arquivo não pode exceder {{size}}',
+    uploadFromComputerUploadError: 'Falha no upload do arquivo, faça o upload novamente.',
   },
 }
 

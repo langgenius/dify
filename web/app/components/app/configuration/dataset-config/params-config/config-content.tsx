@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useEffect, useMemo } from 'react'
+import { memo, useCallback, useEffect, useMemo } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScore from './weighted-score'
@@ -11,7 +11,7 @@ import type {
   DatasetConfigs,
 } from '@/models/debug'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import Tooltip from '@/app/components/base/tooltip'
@@ -23,6 +23,7 @@ import { RerankingModeEnum } from '@/models/datasets'
 import cn from '@/utils/classnames'
 import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
 import Switch from '@/app/components/base/switch'
+import Toast from '@/app/components/base/toast'
 
 type Props = {
   datasetConfigs: DatasetConfigs
@@ -54,12 +55,26 @@ const ConfigContent: FC<Props> = ({
         retrieval_model: RETRIEVE_TYPE.multiWay,
       }, isInWorkflow)
     }
-  }, [type])
+  }, [type, datasetConfigs, isInWorkflow, onChange])
 
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
+    currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+
+  const {
+    currentModel: currentRerankModel,
+  } = useCurrentProviderAndModel(
+    rerankModelList,
+    rerankDefaultModel
+      ? {
+        ...rerankDefaultModel,
+        provider: rerankDefaultModel.provider.provider,
+      }
+      : undefined,
+  )
+
   const rerankModel = (() => {
     if (datasetConfigs.reranking_model?.reranking_provider_name) {
       return {
@@ -145,12 +160,33 @@ const ConfigContent: FC<Props> = ({
   const showWeightedScorePanel = showWeightedScore && datasetConfigs.reranking_mode === RerankingModeEnum.WeightedScore && datasetConfigs.weights
   const selectedRerankMode = datasetConfigs.reranking_mode || RerankingModeEnum.RerankingModel
 
+  const canManuallyToggleRerank = useMemo(() => {
+    return (selectedDatasetsMode.allInternal && selectedDatasetsMode.allEconomic)
+      || selectedDatasetsMode.allExternal
+  }, [selectedDatasetsMode.allEconomic, selectedDatasetsMode.allExternal, selectedDatasetsMode.allInternal])
+
   const showRerankModel = useMemo(() => {
-    if (datasetConfigs.reranking_enable === false && selectedDatasetsMode.allEconomic)
+    if (!canManuallyToggleRerank)
+      return true
+    else if (canManuallyToggleRerank && !isRerankDefaultModelValid)
       return false
 
-    return true
-  }, [datasetConfigs.reranking_enable, selectedDatasetsMode.allEconomic])
+    return datasetConfigs.reranking_enable
+  }, [canManuallyToggleRerank, datasetConfigs.reranking_enable])
+
+  const handleDisabledSwitchClick = useCallback(() => {
+    if (!currentRerankModel && !showRerankModel)
+      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
+  }, [currentRerankModel, showRerankModel, t])
+
+  useEffect(() => {
+    if (canManuallyToggleRerank && showRerankModel !== datasetConfigs.reranking_enable) {
+      onChange({
+        ...datasetConfigs,
+        reranking_enable: showRerankModel,
+      })
+    }
+  }, [canManuallyToggleRerank, showRerankModel, datasetConfigs, onChange])
 
   return (
     <div>
@@ -231,19 +267,27 @@ const ConfigContent: FC<Props> = ({
                 <div className='flex items-center'>
                   {
                     selectedDatasetsMode.allEconomic && (
-                      <Switch
-                        size='md'
-                        defaultValue={showRerankModel}
-                        onChange={(v) => {
-                          onChange({
-                            ...datasetConfigs,
-                            reranking_enable: v,
-                          })
-                        }}
-                      />
+                      <div
+                        className='flex items-center'
+                        onClick={handleDisabledSwitchClick}
+                      >
+                        <Switch
+                          size='md'
+                          defaultValue={showRerankModel}
+                          disabled={!currentRerankModel || !canManuallyToggleRerank}
+                          onChange={(v) => {
+                            if (canManuallyToggleRerank) {
+                              onChange({
+                                ...datasetConfigs,
+                                reranking_enable: v,
+                              })
+                            }
+                          }}
+                        />
+                      </div>
                     )
                   }
-                  <div className='leading-[32px] text-text-secondary system-sm-semibold'>{t('common.modelProvider.rerankModel.key')}</div>
+                  <div className='leading-[32px] ml-1 text-text-secondary system-sm-semibold'>{t('common.modelProvider.rerankModel.key')}</div>
                   <Tooltip
                     popupContent={
                       <div className="w-[200px]">

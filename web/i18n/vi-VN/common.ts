@@ -38,6 +38,10 @@ const translation = {
     duplicate: 'Nhân bản',
     rename: 'Đổi tên',
     audioSourceUnavailable: 'AudioSource không khả dụng',
+    copyImage: 'Sao chép hình ảnh',
+    zoomOut: 'Thu nhỏ',
+    zoomIn: 'Phóng to',
+    openInNewTab: 'Mở trong tab mới',
   },
   placeholder: {
     input: 'Vui lòng nhập',
@@ -167,6 +171,9 @@ const translation = {
     delete: 'Xóa tài khoản',
     deleteTip: 'Xóa tài khoản của bạn sẽ xóa vĩnh viễn tất cả dữ liệu của bạn và không thể khôi phục được.',
     deleteConfirmTip: 'Để xác nhận, vui lòng gửi thông tin sau từ email đã đăng ký của bạn tới ',
+    studio: 'Dify Studio',
+    myAccount: 'Tài khoản của tôi',
+    account: 'Tài khoản',
   },
   members: {
     team: 'Nhóm',
@@ -496,6 +503,7 @@ const translation = {
       vectorHash: 'Vector hash:',
       hitScore: 'Điểm truy xuất:',
     },
+    inputPlaceholder: 'Nói chuyện với Bot',
   },
   promptEditor: {
     placeholder: 'Viết từ khóa của bạn ở đây, nhập \'{\' để chèn một biến, nhập \'/\' để chèn một khối nội dung nhắc nhở',
@@ -572,6 +580,16 @@ const translation = {
   errorMsg: {
     fieldRequired: '{{trường}} là bắt buộc',
     urlError: 'URL phải bắt đầu bằng http:// hoặc https://',
+  },
+  fileUploader: {
+    uploadFromComputer: 'Tải lên cục bộ',
+    pasteFileLink: 'Dán liên kết tệp',
+    pasteFileLinkInputPlaceholder: 'Nhập URL...',
+    uploadFromComputerLimit: 'Tải lên tệp không được vượt quá {{size}}',
+    fileExtensionNotSupport: 'Phần mở rộng tệp không được hỗ trợ',
+    pasteFileLinkInvalid: 'Liên kết tệp không hợp lệ',
+    uploadFromComputerUploadError: 'Tải lên tệp không thành công, vui lòng tải lên lại.',
+    uploadFromComputerReadError: 'Đọc tệp không thành công, vui lòng thử lại.',
   },
 }
 

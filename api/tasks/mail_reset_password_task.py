@@ -5,17 +5,16 @@ import click
 from celery import shared_task
 from flask import render_template
 
-from configs import dify_config
 from extensions.ext_mail import mail
 
 
 @shared_task(queue="mail")
-def send_reset_password_mail_task(language: str, to: str, token: str):
+def send_reset_password_mail_task(language: str, to: str, code: str):
     """
     Async Send reset password mail
     :param language: Language in which the email should be sent (e.g., 'en', 'zh')
     :param to: Recipient email address
-    :param token: Reset password token to be included in the email
+    :param code: Reset password code
     """
     if not mail.is_inited():
         return
@@ -25,13 +24,12 @@ def send_reset_password_mail_task(language: str, to: str, token: str):
 
     # send reset password mail using different languages
     try:
-        url = f"{dify_config.CONSOLE_WEB_URL}/forgot-password?token={token}"
         if language == "zh-Hans":
-            html_content = render_template("reset_password_mail_template_zh-CN.html", to=to, url=url)
-            mail.send(to=to, subject="重置您的 Dify 密码", html=html_content)
+            html_content = render_template("reset_password_mail_template_zh-CN.html", to=to, code=code)
+            mail.send(to=to, subject="设置您的 Dify 密码", html=html_content)
         else:
-            html_content = render_template("reset_password_mail_template_en-US.html", to=to, url=url)
-            mail.send(to=to, subject="Reset Your Dify Password", html=html_content)
+            html_content = render_template("reset_password_mail_template_en-US.html", to=to, code=code)
+            mail.send(to=to, subject="Set Your Dify Password", html=html_content)
 
         end_at = time.perf_counter()
         logging.info(

@@ -1,3 +1,5 @@
+import string
+
 import numpy as np
 
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
@@ -31,7 +33,7 @@ def test_max_chunks():
     max_chunks = embedding_model._get_max_chunks(model, credentials)
     embedding_model._create_text_embedding = _create_text_embedding
 
-    texts = ["0123456789" for i in range(0, max_chunks * 2)]
+    texts = [string.digits for i in range(0, max_chunks * 2)]
     result: TextEmbeddingResult = embedding_model.invoke(model, credentials, texts, "test")
     assert len(result.embeddings) == max_chunks * 2
 

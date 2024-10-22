@@ -1,18 +1,21 @@
 from typing import Optional
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.file.message_file_parser import MessageFileParser
+from core.file import file_manager
+from core.file.models import FileType
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.message_entities import (
+from core.model_runtime.entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
     PromptMessage,
+    PromptMessageContent,
     PromptMessageRole,
     TextPromptMessageContent,
     UserPromptMessage,
 )
 from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from extensions.ext_database import db
+from factories import file_factory
 from models.model import AppMode, Conversation, Message, MessageFile
 from models.workflow import WorkflowRun
 
@@ -58,16 +61,19 @@ class TokenBufferMemory:
         # instead of all messages from the conversation, we only need to extract messages
         # that belong to the thread of last message
         thread_messages = extract_thread_messages(messages)
-        thread_messages.pop(0)
+
+        # for newly created message, its answer is temporarily empty, we don't need to add it to memory
+        if thread_messages and not thread_messages[0].answer:
+            thread_messages.pop(0)
+
         messages = list(reversed(thread_messages))
 
-        message_file_parser = MessageFileParser(tenant_id=app_record.tenant_id, app_id=app_record.id)
         prompt_messages = []
         for message in messages:
             files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
             if files:
                 file_extra_config = None
-                if self.conversation.mode not in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
+                if self.conversation.mode not in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
                     file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
                 else:
                     if message.workflow_run_id:
@@ -80,17 +86,22 @@ class TokenBufferMemory:
                                 workflow_run.workflow.features_dict, is_vision=False
                             )
 
-                if file_extra_config:
-                    file_objs = message_file_parser.transform_message_files(files, file_extra_config)
+                if file_extra_config and app_record:
+                    file_objs = file_factory.build_from_message_files(
+                        message_files=files, tenant_id=app_record.tenant_id, config=file_extra_config
+                    )
                 else:
                     file_objs = []
 
                 if not file_objs:
                     prompt_messages.append(UserPromptMessage(content=message.query))
                 else:
-                    prompt_message_contents = [TextPromptMessageContent(data=message.query)]
+                    prompt_message_contents: list[PromptMessageContent] = []
+                    prompt_message_contents.append(TextPromptMessageContent(data=message.query))
                     for file_obj in file_objs:
-                        prompt_message_contents.append(file_obj.prompt_message_content)
+                        if file_obj.type in {FileType.IMAGE, FileType.AUDIO}:
+                            prompt_message = file_manager.to_prompt_message_content(file_obj)
+                            prompt_message_contents.append(prompt_message)
 
                     prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
             else:

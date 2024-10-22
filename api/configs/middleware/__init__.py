@@ -8,9 +8,11 @@ from configs.middleware.cache.redis_config import RedisConfig
 from configs.middleware.storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from configs.middleware.storage.amazon_s3_storage_config import S3StorageConfig
 from configs.middleware.storage.azure_blob_storage_config import AzureBlobStorageConfig
+from configs.middleware.storage.baidu_obs_storage_config import BaiduOBSStorageConfig
 from configs.middleware.storage.google_cloud_storage_config import GoogleCloudStorageConfig
 from configs.middleware.storage.huawei_obs_storage_config import HuaweiCloudOBSStorageConfig
 from configs.middleware.storage.oci_storage_config import OCIStorageConfig
+from configs.middleware.storage.supabase_storage_config import SupabaseStorageConfig
 from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
 from configs.middleware.storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
 from configs.middleware.vdb.analyticdb_config import AnalyticdbConfig
@@ -26,13 +28,15 @@ from configs.middleware.vdb.qdrant_config import QdrantConfig
 from configs.middleware.vdb.relyt_config import RelytConfig
 from configs.middleware.vdb.tencent_vector_config import TencentVectorDBConfig
 from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
+from configs.middleware.vdb.vikingdb_config import VikingDBConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
 
 
 class StorageConfig(BaseSettings):
     STORAGE_TYPE: str = Field(
         description="Type of storage to use."
-        " Options: 'local', 's3', 'azure-blob', 'aliyun-oss', 'google-storage'. Default is 'local'.",
+        " Options: 'local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', 'google-storage', 'huawei-obs', "
+        "'oci-storage', 'tencent-cos', 'volcengine-tos', 'supabase'. Default is 'local'.",
         default="local",
     )
 
@@ -190,6 +194,22 @@ class CeleryConfig(DatabaseConfig):
         return self.CELERY_BROKER_URL.startswith("rediss://") if self.CELERY_BROKER_URL else False
 
 
+class InternalTestConfig(BaseSettings):
+    """
+    Configuration settings for Internal Test
+    """
+
+    AWS_SECRET_ACCESS_KEY: Optional[str] = Field(
+        description="Internal test AWS secret access key",
+        default=None,
+    )
+
+    AWS_ACCESS_KEY_ID: Optional[str] = Field(
+        description="Internal test AWS access key ID",
+        default=None,
+    )
+
+
 class MiddlewareConfig(
     # place the configs in alphabet order
     CeleryConfig,
@@ -200,12 +220,14 @@ class MiddlewareConfig(
     StorageConfig,
     AliyunOSSStorageConfig,
     AzureBlobStorageConfig,
+    BaiduOBSStorageConfig,
     GoogleCloudStorageConfig,
-    TencentCloudCOSStorageConfig,
     HuaweiCloudOBSStorageConfig,
-    VolcengineTOSStorageConfig,
-    S3StorageConfig,
     OCIStorageConfig,
+    S3StorageConfig,
+    SupabaseStorageConfig,
+    TencentCloudCOSStorageConfig,
+    VolcengineTOSStorageConfig,
     # configs of vdb and vdb providers
     VectorStoreConfig,
     AnalyticdbConfig,
@@ -222,5 +244,7 @@ class MiddlewareConfig(
     TiDBVectorConfig,
     WeaviateConfig,
     ElasticsearchConfig,
+    InternalTestConfig,
+    VikingDBConfig,
 ):
     pass

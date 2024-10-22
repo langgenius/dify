@@ -2,79 +2,68 @@ import datetime
 import hashlib
 import uuid
 from collections.abc import Generator
-from typing import Union
+from typing import Literal, Union
 
 from flask_login import current_user
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from core.file.upload_file_parser import UploadFileParser
+from constants import (
+    AUDIO_EXTENSIONS,
+    DOCUMENT_EXTENSIONS,
+    IMAGE_EXTENSIONS,
+    VIDEO_EXTENSIONS,
+)
+from core.file import helpers as file_helpers
 from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Account
+from models.enums import CreatedByRole
 from models.model import EndUser, UploadFile
-from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
-
-IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "svg"]
-IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
-
-ALLOWED_EXTENSIONS = ["txt", "markdown", "md", "pdf", "html", "htm", "xlsx", "xls", "docx", "csv"]
-UNSTRUCTURED_ALLOWED_EXTENSIONS = [
-    "txt",
-    "markdown",
-    "md",
-    "pdf",
-    "html",
-    "htm",
-    "xlsx",
-    "xls",
-    "docx",
-    "csv",
-    "eml",
-    "msg",
-    "pptx",
-    "ppt",
-    "xml",
-    "epub",
-]
+from services.errors.file import FileNotExistsError, FileTooLargeError, UnsupportedFileTypeError
 
 PREVIEW_WORDS_LIMIT = 3000
 
 
 class FileService:
     @staticmethod
-    def upload_file(file: FileStorage, user: Union[Account, EndUser], only_image: bool = False) -> UploadFile:
+    def upload_file(
+        file: FileStorage, user: Union[Account, EndUser], source: Literal["datasets"] | None = None
+    ) -> UploadFile:
+        # get file name
         filename = file.filename
-        extension = file.filename.split(".")[-1]
+        if not filename:
+            raise FileNotExistsError
+        extension = filename.split(".")[-1]
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
-        etl_type = dify_config.ETL_TYPE
-        allowed_extensions = (
-            UNSTRUCTURED_ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS
-            if etl_type == "Unstructured"
-            else ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS
-        )
-        if extension.lower() not in allowed_extensions or only_image and extension.lower() not in IMAGE_EXTENSIONS:
+
+        if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
-        # read file content
-        file_content = file.read()
-
-        # get file size
-        file_size = len(file_content)
-
-        if extension.lower() in IMAGE_EXTENSIONS:
+        # select file size limit
+        if extension in IMAGE_EXTENSIONS:
             file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+        elif extension in VIDEO_EXTENSIONS:
+            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT * 1024 * 1024
+        elif extension in AUDIO_EXTENSIONS:
+            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
         else:
             file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
 
+        # read file content
+        file_content = file.read()
+        # get file size
+        file_size = len(file_content)
+
+        # check if the file size is exceeded
         if file_size > file_size_limit:
             message = f"File size exceeded. {file_size} > {file_size_limit}"
             raise FileTooLargeError(message)
 
-        # user uuid as file name
+        # generate file key
         file_uuid = str(uuid.uuid4())
 
         if isinstance(user, Account):
@@ -97,7 +86,7 @@ class FileService:
             size=file_size,
             extension=extension,
             mime_type=file.mimetype,
-            created_by_role=("account" if isinstance(user, Account) else "end_user"),
+            created_by_role=(CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER),
             created_by=user.id,
             created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
             used=False,
@@ -130,6 +119,7 @@ class FileService:
             extension="txt",
             mime_type="text/plain",
             created_by=current_user.id,
+            created_by_role=CreatedByRole.ACCOUNT,
             created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
             used=True,
             used_by=current_user.id,
@@ -150,9 +140,7 @@ class FileService:
 
         # extract text from file
         extension = upload_file.extension
-        etl_type = dify_config.ETL_TYPE
-        allowed_extensions = UNSTRUCTURED_ALLOWED_EXTENSIONS if etl_type == "Unstructured" else ALLOWED_EXTENSIONS
-        if extension.lower() not in allowed_extensions:
+        if extension.lower() not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
         text = ExtractProcessor.load_from_upload_file(upload_file, return_text=True)
@@ -161,8 +149,10 @@ class FileService:
         return text
 
     @staticmethod
-    def get_image_preview(file_id: str, timestamp: str, nonce: str, sign: str) -> tuple[Generator, str]:
-        result = UploadFileParser.verify_image_file_signature(file_id, timestamp, nonce, sign)
+    def get_image_preview(file_id: str, timestamp: str, nonce: str, sign: str):
+        result = file_helpers.verify_image_signature(
+            upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign
+        )
         if not result:
             raise NotFound("File not found or signature is invalid")
 
@@ -175,6 +165,21 @@ class FileService:
         extension = upload_file.extension
         if extension.lower() not in IMAGE_EXTENSIONS:
             raise UnsupportedFileTypeError()
+
+        generator = storage.load(upload_file.key, stream=True)
+
+        return generator, upload_file.mime_type
+
+    @staticmethod
+    def get_signed_file_preview(file_id: str, timestamp: str, nonce: str, sign: str):
+        result = file_helpers.verify_file_signature(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
+        if not result:
+            raise NotFound("File not found or signature is invalid")
+
+        upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+
+        if not upload_file:
+            raise NotFound("File not found or signature is invalid")
 
         generator = storage.load(upload_file.key, stream=True)
 

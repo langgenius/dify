@@ -96,14 +96,14 @@ const ConversationVariableModal = ({
           </div>
         </div>
         {/* RIGHT */}
-        <div className='grow flex flex-col h-full bg-components-panel-bg'>
+        <div className='grow flex flex-col w-0 h-full bg-components-panel-bg'>
           <div className='shrink-0 p-4 pb-2'>
             <div className='flex items-center gap-1 py-1'>
               <div className='text-text-primary system-xl-semibold'>{currentVar.name}</div>
               <div className='text-text-tertiary system-xs-medium'>{capitalize(currentVar.value_type)}</div>
             </div>
           </div>
-          <div className='grow p-4 pt-2 flex flex-col'>
+          <div className='grow p-4 pt-2 flex flex-col h-0'>
             <div className='shrink-0 mb-2 flex items-center gap-2'>
               <div className='shrink-0 text-text-tertiary system-xs-medium-uppercase'>{t('workflow.chatVariable.storedContent').toLocaleUpperCase()}</div>
               <div className='grow h-[1px]' style={{
@@ -113,7 +113,7 @@ const ConversationVariableModal = ({
                 <div className='shrink-0 text-text-tertiary system-xs-regular'>{t('workflow.chatVariable.updatedAt')}{formatTime(latestValueTimestampMap[currentVar.id], t('appLog.dateTimeFormat') as string)}</div>
               )}
             </div>
-            <div className='grow'>
+            <div className='grow overflow-y-auto'>
               {currentVar.value_type !== ChatVarType.Number && currentVar.value_type !== ChatVarType.String && (
                 <div className='h-full flex flex-col bg-components-input-bg-normal rounded-lg px-2 pb-2'>
                   <div className='shrink-0 flex justify-between items-center h-7 pt-1 pl-3 pr-2'>
@@ -142,7 +142,7 @@ const ConversationVariableModal = ({
                 </div>
               )}
               {(currentVar.value_type === ChatVarType.Number || currentVar.value_type === ChatVarType.String) && (
-                <div className='h-full px-4 py-3 rounded-lg bg-components-input-bg-normal text-components-input-text-filled system-md-regular overflow-y-auto'>{latestValueMap[currentVar.id] || ''}</div>
+                <div className='h-full px-4 py-3 rounded-lg bg-components-input-bg-normal text-components-input-text-filled system-md-regular overflow-y-auto overflow-x-hidden'>{latestValueMap[currentVar.id] || ''}</div>
               )}
             </div>
           </div>

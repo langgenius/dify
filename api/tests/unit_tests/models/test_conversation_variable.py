@@ -1,11 +1,12 @@
 from uuid import uuid4
 
-from core.app.segments import SegmentType, factory
+from core.variables import SegmentType
+from factories import variable_factory
 from models import ConversationVariable
 
 
 def test_from_variable_and_to_variable():
-    variable = factory.build_variable_from_mapping(
+    variable = variable_factory.build_variable_from_mapping(
         {
             "id": str(uuid4()),
             "name": "name",

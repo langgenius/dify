@@ -12,11 +12,12 @@ from hashlib import sha256
 from typing import Any, Optional, Union
 from zoneinfo import available_timezones
 
-from flask import Response, current_app, stream_with_context
+from flask import Response, stream_with_context
 from flask_restful import fields
 
+from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
-from core.file.upload_file_parser import UploadFileParser
+from core.file import helpers as file_helpers
 from extensions.ext_redis import redis_client
 from models.account import Account
 
@@ -33,7 +34,7 @@ class AppIconUrlField(fields.Raw):
         from models.model import IconType
 
         if obj.icon_type == IconType.IMAGE.value:
-            return UploadFileParser.get_signed_temp_image_url(obj.icon)
+            return file_helpers.get_signed_file_url(obj.icon)
         return None
 
 
@@ -162,7 +163,7 @@ def generate_string(n):
     return result
 
 
-def get_remote_ip(request) -> str:
+def extract_remote_ip(request) -> str:
     if request.headers.get("CF-Connecting-IP"):
         return request.headers.get("Cf-Connecting-Ip")
     elif request.headers.getlist("X-Forwarded-For"):
@@ -189,23 +190,39 @@ def compact_generate_response(response: Union[dict, RateLimitGenerator]) -> Resp
 
 class TokenManager:
     @classmethod
-    def generate_token(cls, account: Account, token_type: str, additional_data: dict = None) -> str:
-        old_token = cls._get_current_token_for_account(account.id, token_type)
-        if old_token:
-            if isinstance(old_token, bytes):
-                old_token = old_token.decode("utf-8")
-            cls.revoke_token(old_token, token_type)
+    def generate_token(
+        cls,
+        token_type: str,
+        account: Optional[Account] = None,
+        email: Optional[str] = None,
+        additional_data: Optional[dict] = None,
+    ) -> str:
+        if account is None and email is None:
+            raise ValueError("Account or email must be provided")
+
+        account_id = account.id if account else None
+        account_email = account.email if account else email
+
+        if account_id:
+            old_token = cls._get_current_token_for_account(account_id, token_type)
+            if old_token:
+                if isinstance(old_token, bytes):
+                    old_token = old_token.decode("utf-8")
+                cls.revoke_token(old_token, token_type)
 
         token = str(uuid.uuid4())
-        token_data = {"account_id": account.id, "email": account.email, "token_type": token_type}
+        token_data = {"account_id": account_id, "email": account_email, "token_type": token_type}
         if additional_data:
             token_data.update(additional_data)
 
-        expiry_hours = current_app.config[f"{token_type.upper()}_TOKEN_EXPIRY_HOURS"]
+        expiry_minutes = dify_config.model_dump().get(f"{token_type.upper()}_TOKEN_EXPIRY_MINUTES")
         token_key = cls._get_token_key(token, token_type)
-        redis_client.setex(token_key, expiry_hours * 60 * 60, json.dumps(token_data))
+        expiry_time = int(expiry_minutes * 60)
+        redis_client.setex(token_key, expiry_time, json.dumps(token_data))
 
-        cls._set_current_token_for_account(account.id, token, token_type, expiry_hours)
+        if account_id:
+            cls._set_current_token_for_account(account.id, token, token_type, expiry_minutes)
+
         return token
 
     @classmethod
@@ -234,9 +251,12 @@ class TokenManager:
         return current_token
 
     @classmethod
-    def _set_current_token_for_account(cls, account_id: str, token: str, token_type: str, expiry_hours: int):
+    def _set_current_token_for_account(
+        cls, account_id: str, token: str, token_type: str, expiry_hours: Union[int, float]
+    ):
         key = cls._get_account_token_key(account_id, token_type)
-        redis_client.setex(key, expiry_hours * 60 * 60, token)
+        expiry_time = int(expiry_hours * 60 * 60)
+        redis_client.setex(key, expiry_time, token)
 
     @classmethod
     def _get_account_token_key(cls, account_id: str, token_type: str) -> str:

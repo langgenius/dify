@@ -71,7 +71,7 @@ const Form: FC<Props> = ({
     <div className={cn(className, 'space-y-2')}>
       {label && (
         <div className='mb-1 flex items-center justify-between'>
-          <div className='flex items-center h-6 text-xs font-medium text-gray-500 uppercase'>{label}</div>
+          <div className='flex items-center h-6 system-xs-medium-uppercase text-text-tertiary'>{label}</div>
           {isArrayLikeType && (
             <AddButton onClick={handleAddContext} />
           )}
@@ -80,6 +80,7 @@ const Form: FC<Props> = ({
       {inputs.map((input, index) => {
         return (
           <FormItem
+            inStepRun
             key={index}
             payload={input}
             value={values[input.variable]}

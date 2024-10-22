@@ -18,8 +18,8 @@ const Record = () => {
   }, [handleUpdateWorkflowCanvas])
 
   return (
-    <div className='flex flex-col w-[400px] h-full rounded-l-2xl border-[0.5px] border-gray-200 shadow-xl bg-white'>
-      <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-gray-900'>
+    <div className='flex flex-col w-[400px] h-full rounded-l-2xl border-[0.5px] border-components-panel-border shadow-xl bg-components-panel-bg'>
+      <div className='flex items-center justify-between p-4 pb-0 text-text-primary system-xl-semibold'>
         {`Test Run#${historyWorkflowData?.sequence_number}`}
       </div>
       <Run
