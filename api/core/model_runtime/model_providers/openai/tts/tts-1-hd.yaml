@@ -5,22 +5,64 @@ model_properties:
   voices:
     - mode: 'alloy'
       name: 'Alloy'
-      language: [ 'zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID' ]
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID',
+                 'af-ZA', 'ar-SA', 'hy-AM', 'az-AZ', 'be-BY', 'bs-BA', 'bg-BG', 'ca-ES',
+                 'hr-HR', 'cs-CZ', 'da-DK', 'nl-NL', 'en-GB', 'et-EE', 'fi-FI', 'cy-GB',
+                 'gl-ES', 'el-GR', 'he-IL', 'hi-IN', 'hu-HU', 'is-IS', 'sw-KE', 'vi-VN',
+                 'ja-JP', 'kn-IN', 'kk-KZ', 'ko-KR', 'lv-LV', 'lt-LT', 'uk-UA', 'ur-PK', 
+                 'mk-MK', 'ms-MY', 'mr-IN', 'mi-NZ', 'ne-NP', 'nb-NO', 'fa-IR', 'pl-PL',
+                 'pt-PT', 'ro-RO', 'ru-RU', 'sr-RS', 'sk-SK', 'sl-SI', 'ta-IN', 'tr-TR', 
+                 'sv-SE', 'tl-PH']
     - mode: 'echo'
       name: 'Echo'
-      language: [ 'zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID' ]
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID',
+                 'af-ZA', 'ar-SA', 'hy-AM', 'az-AZ', 'be-BY', 'bs-BA', 'bg-BG', 'ca-ES',
+                 'hr-HR', 'cs-CZ', 'da-DK', 'nl-NL', 'en-GB', 'et-EE', 'fi-FI', 'cy-GB',
+                 'gl-ES', 'el-GR', 'he-IL', 'hi-IN', 'hu-HU', 'is-IS', 'sw-KE', 'vi-VN',
+                 'ja-JP', 'kn-IN', 'kk-KZ', 'ko-KR', 'lv-LV', 'lt-LT', 'uk-UA', 'ur-PK', 
+                 'mk-MK', 'ms-MY', 'mr-IN', 'mi-NZ', 'ne-NP', 'nb-NO', 'fa-IR', 'pl-PL',
+                 'pt-PT', 'ro-RO', 'ru-RU', 'sr-RS', 'sk-SK', 'sl-SI', 'ta-IN', 'tr-TR', 
+                 'sv-SE', 'tl-PH']
     - mode: 'fable'
       name: 'Fable'
-      language: [ 'zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID' ]
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID',
+                 'af-ZA', 'ar-SA', 'hy-AM', 'az-AZ', 'be-BY', 'bs-BA', 'bg-BG', 'ca-ES',
+                 'hr-HR', 'cs-CZ', 'da-DK', 'nl-NL', 'en-GB', 'et-EE', 'fi-FI', 'cy-GB',
+                 'gl-ES', 'el-GR', 'he-IL', 'hi-IN', 'hu-HU', 'is-IS', 'sw-KE', 'vi-VN',
+                 'ja-JP', 'kn-IN', 'kk-KZ', 'ko-KR', 'lv-LV', 'lt-LT', 'uk-UA', 'ur-PK', 
+                 'mk-MK', 'ms-MY', 'mr-IN', 'mi-NZ', 'ne-NP', 'nb-NO', 'fa-IR', 'pl-PL',
+                 'pt-PT', 'ro-RO', 'ru-RU', 'sr-RS', 'sk-SK', 'sl-SI', 'ta-IN', 'tr-TR', 
+                 'sv-SE', 'tl-PH']
     - mode: 'onyx'
       name: 'Onyx'
-      language: [ 'zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID' ]
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID',
+                 'af-ZA', 'ar-SA', 'hy-AM', 'az-AZ', 'be-BY', 'bs-BA', 'bg-BG', 'ca-ES',
+                 'hr-HR', 'cs-CZ', 'da-DK', 'nl-NL', 'en-GB', 'et-EE', 'fi-FI', 'cy-GB',
+                 'gl-ES', 'el-GR', 'he-IL', 'hi-IN', 'hu-HU', 'is-IS', 'sw-KE', 'vi-VN',
+                 'ja-JP', 'kn-IN', 'kk-KZ', 'ko-KR', 'lv-LV', 'lt-LT', 'uk-UA', 'ur-PK', 
+                 'mk-MK', 'ms-MY', 'mr-IN', 'mi-NZ', 'ne-NP', 'nb-NO', 'fa-IR', 'pl-PL',
+                 'pt-PT', 'ro-RO', 'ru-RU', 'sr-RS', 'sk-SK', 'sl-SI', 'ta-IN', 'tr-TR', 
+                 'sv-SE', 'tl-PH']
     - mode: 'nova'
       name: 'Nova'
-      language: [ 'zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID' ]
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID',
+                 'af-ZA', 'ar-SA', 'hy-AM', 'az-AZ', 'be-BY', 'bs-BA', 'bg-BG', 'ca-ES',
+                 'hr-HR', 'cs-CZ', 'da-DK', 'nl-NL', 'en-GB', 'et-EE', 'fi-FI', 'cy-GB',
+                 'gl-ES', 'el-GR', 'he-IL', 'hi-IN', 'hu-HU', 'is-IS', 'sw-KE', 'vi-VN',
+                 'ja-JP', 'kn-IN', 'kk-KZ', 'ko-KR', 'lv-LV', 'lt-LT', 'uk-UA', 'ur-PK', 
+                 'mk-MK', 'ms-MY', 'mr-IN', 'mi-NZ', 'ne-NP', 'nb-NO', 'fa-IR', 'pl-PL',
+                 'pt-PT', 'ro-RO', 'ru-RU', 'sr-RS', 'sk-SK', 'sl-SI', 'ta-IN', 'tr-TR', 
+                 'sv-SE', 'tl-PH']
     - mode: 'shimmer'
       name: 'Shimmer'
-      language: [ 'zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID' ]
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID',
+                 'af-ZA', 'ar-SA', 'hy-AM', 'az-AZ', 'be-BY', 'bs-BA', 'bg-BG', 'ca-ES',
+                 'hr-HR', 'cs-CZ', 'da-DK', 'nl-NL', 'en-GB', 'et-EE', 'fi-FI', 'cy-GB',
+                 'gl-ES', 'el-GR', 'he-IL', 'hi-IN', 'hu-HU', 'is-IS', 'sw-KE', 'vi-VN',
+                 'ja-JP', 'kn-IN', 'kk-KZ', 'ko-KR', 'lv-LV', 'lt-LT', 'uk-UA', 'ur-PK', 
+                 'mk-MK', 'ms-MY', 'mr-IN', 'mi-NZ', 'ne-NP', 'nb-NO', 'fa-IR', 'pl-PL',
+                 'pt-PT', 'ro-RO', 'ru-RU', 'sr-RS', 'sk-SK', 'sl-SI', 'ta-IN', 'tr-TR', 
+                 'sv-SE', 'tl-PH']
   word_limit: 3500
   audio_type: 'mp3'
   max_workers: 5
