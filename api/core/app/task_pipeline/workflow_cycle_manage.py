@@ -1,8 +1,11 @@
 import json
 import time
+from collections.abc import Mapping, Sequence
 import uuid
 from datetime import datetime, timezone
 from typing import Any, Optional, Union, cast
+
+from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -29,27 +32,26 @@ from core.app.entities.task_entities import (
     WorkflowTaskState,
 )
 from core.app.task_pipeline.workflow_persist_manage import WorkflowPersistManage
-from core.file.file_obj import FileVar
+from core.file import FILE_MODEL_IDENTITY, File
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.tools.tool_manager import ToolManager
-from core.workflow.entities.node_entities import NodeType
 from core.workflow.enums import SystemVariableKey
+from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.account import Account
+from models.enums import CreatedByRole, WorkflowRunTriggeredFrom
 from models.model import EndUser
 from models.workflow import (
-    CreatedByRole,
     Workflow,
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
     WorkflowRunStatus,
-    WorkflowRunTriggeredFrom,
 )
 
 
@@ -117,7 +119,7 @@ class WorkflowCycleManage:
         start_at: float,
         total_tokens: int,
         total_steps: int,
-        outputs: Optional[str] = None,
+        outputs: Mapping[str, Any] | None = None,
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None,
     ) -> WorkflowRun:
@@ -133,6 +135,8 @@ class WorkflowCycleManage:
         """
         finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
         elapsed_time = time.perf_counter() - start_at
+        outputs = WorkflowEntry.handle_special_values(outputs)
+        outputs = json.dumps(outputs or {})
         self._workflow_persist_manage.workflow_run_success(
             workflow_run.id, elapsed_time, total_tokens, total_steps, outputs, finished_at
         )
@@ -237,6 +241,7 @@ class WorkflowCycleManage:
         """
         workflow_node_execution = self._refetch_workflow_node_execution(event.node_execution_id)
         inputs = WorkflowEntry.handle_special_values(event.inputs)
+        process_data = WorkflowEntry.handle_special_values(event.process_data)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
         execution_metadata = (
             json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
@@ -249,7 +254,7 @@ class WorkflowCycleManage:
             inputs,
             outputs,
             execution_metadata,
-            event.process_data,
+            process_data,
             finished_at,
             elapsed_time,
         )
@@ -257,7 +262,7 @@ class WorkflowCycleManage:
         # Caller need use some fields, so need update the fields
         workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
-        workflow_node_execution.process_data = json.dumps(event.process_data) if event.process_data else None
+        workflow_node_execution.process_data = json.dumps(process_data) if process_data else None
         workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
         workflow_node_execution.execution_metadata = execution_metadata
         workflow_node_execution.finished_at = finished_at
@@ -273,12 +278,13 @@ class WorkflowCycleManage:
         workflow_node_execution = self._refetch_workflow_node_execution(event.node_execution_id)
 
         inputs = WorkflowEntry.handle_special_values(event.inputs)
+        process_data = WorkflowEntry.handle_special_values(event.process_data)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
         finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
         self._workflow_persist_manage.node_execution_failed(
-            workflow_node_execution.id, inputs, outputs, finished_at, elapsed_time, event.process_data, event.error
+            workflow_node_execution.id, inputs, outputs, finished_at, elapsed_time, process_data, event.error
         )
         self._wip_workflow_node_executions.pop(workflow_node_execution.node_execution_id)
 
@@ -286,7 +292,7 @@ class WorkflowCycleManage:
         workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
         workflow_node_execution.error = event.error
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
-        workflow_node_execution.process_data = json.dumps(event.process_data) if event.process_data else None
+        workflow_node_execution.process_data = json.dumps(process_data) if process_data else None
         workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
         workflow_node_execution.finished_at = finished_at
         workflow_node_execution.elapsed_time = elapsed_time
@@ -590,7 +596,7 @@ class WorkflowCycleManage:
             ),
         )
 
-    def _fetch_files_from_node_outputs(self, outputs_dict: dict) -> list[dict]:
+    def _fetch_files_from_node_outputs(self, outputs_dict: dict) -> Sequence[Mapping[str, Any]]:
         """
         Fetch files from node outputs
         :param outputs_dict: node outputs dict
@@ -599,15 +605,15 @@ class WorkflowCycleManage:
         if not outputs_dict:
             return []
 
-        files = []
-        for output_var, output_value in outputs_dict.items():
-            file_vars = self._fetch_files_from_variable_value(output_value)
-            if file_vars:
-                files.extend(file_vars)
+        files = [self._fetch_files_from_variable_value(output_value) for output_value in outputs_dict.values()]
+        # Remove None
+        files = [file for file in files if file]
+        # Flatten list
+        files = [file for sublist in files for file in sublist]
 
         return files
 
-    def _fetch_files_from_variable_value(self, value: Union[dict, list]) -> list[dict]:
+    def _fetch_files_from_variable_value(self, value: Union[dict, list]) -> Sequence[Mapping[str, Any]]:
         """
         Fetch files from variable value
         :param value: variable value
@@ -619,17 +625,17 @@ class WorkflowCycleManage:
         files = []
         if isinstance(value, list):
             for item in value:
-                file_var = self._get_file_var_from_value(item)
-                if file_var:
-                    files.append(file_var)
+                file = self._get_file_var_from_value(item)
+                if file:
+                    files.append(file)
         elif isinstance(value, dict):
-            file_var = self._get_file_var_from_value(value)
-            if file_var:
-                files.append(file_var)
+            file = self._get_file_var_from_value(value)
+            if file:
+                files.append(file)
 
         return files
 
-    def _get_file_var_from_value(self, value: Union[dict, list]) -> Optional[dict]:
+    def _get_file_var_from_value(self, value: Union[dict, list]) -> Mapping[str, Any] | None:
         """
         Get file var from value
         :param value: variable value
@@ -638,13 +644,10 @@ class WorkflowCycleManage:
         if not value:
             return None
 
-        if isinstance(value, dict):
-            if "__variant" in value and value["__variant"] == FileVar.__name__:
-                return value
-        elif isinstance(value, FileVar):
+        if isinstance(value, dict) and value.get("dify_model_identity") == FILE_MODEL_IDENTITY:
+            return value
+        elif isinstance(value, File):
             return value.to_dict()
-
-        return None
 
     def _refetch_workflow_run(self, workflow_run_id: str) -> WorkflowRun:
         """

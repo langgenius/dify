@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import type { Timeout as TimeoutPayloadType } from '../../types'
 import cn from '@/utils/classnames'
+import Input from '@/app/components/base/input'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 type Props = {
@@ -32,10 +33,18 @@ const InputField: FC<{
         <span className="text-[13px] font-medium text-gray-900">{title}</span>
         <span className="text-xs font-normal text-gray-500">{description}</span>
       </div>
-      <input className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-100 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200" value={value} onChange={(e) => {
-        const value = Math.max(min, Math.min(max, parseInt(e.target.value, 10)))
-        onChange(value)
-      }} placeholder={placeholder} type='number' readOnly={readOnly} min={min} max={max} />
+      <Input
+        type='number'
+        value={value}
+        onChange={(e) => {
+          const value = Math.max(min, Math.min(max, parseInt(e.target.value, 10)))
+          onChange(value)
+        }}
+        placeholder={placeholder}
+        readOnly={readOnly}
+        min={min}
+        max={max}
+      />
     </div>
   )
 }

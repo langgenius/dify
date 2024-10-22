@@ -6,6 +6,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { capitalize } from 'lodash-es'
+import { useBoolean } from 'ahooks'
 import { VarType as NumberVarType } from '../../tool/types'
 import VariableTag from '../../_base/components/variable-tag'
 import {
@@ -35,6 +36,8 @@ type ConditionNumberInputProps = {
   value: string
   onValueChange: (v: string) => void
   variables: NodeOutPutVar[]
+  isShort?: boolean
+  unit?: string
 }
 const ConditionNumberInput = ({
   numberVarType = NumberVarType.constant,
@@ -42,10 +45,16 @@ const ConditionNumberInput = ({
   value,
   onValueChange,
   variables,
+  isShort,
+  unit,
 }: ConditionNumberInputProps) => {
   const { t } = useTranslation()
   const [numberVarTypeVisible, setNumberVarTypeVisible] = useState(false)
   const [variableSelectorVisible, setVariableSelectorVisible] = useState(false)
+  const [isFocus, {
+    setTrue: setFocus,
+    setFalse: setBlur,
+  }] = useBoolean()
 
   const handleSelectVariable = useCallback((valueSelector: ValueSelector) => {
     onValueChange(variableTransformer(valueSelector) as string)
@@ -111,20 +120,21 @@ const ConditionNumberInput = ({
                     <VariableTag
                       valueSelector={variableTransformer(value) as string[]}
                       varType={VarType.number}
+                      isShort={isShort}
                     />
                   )
                 }
                 {
                   !value && (
                     <div className='flex items-center p-1 h-6 text-components-input-text-placeholder text-[13px]'>
-                      <Variable02 className='mr-1 w-4 h-4' />
-                      {t('workflow.nodes.ifElse.selectVariable')}
+                      <Variable02 className='shrink-0 mr-1 w-4 h-4' />
+                      <div className='w-0 grow truncate'>{t('workflow.nodes.ifElse.selectVariable')}</div>
                     </div>
                   )
                 }
               </PortalToFollowElemTrigger>
               <PortalToFollowElemContent className='z-[1000]'>
-                <div className='w-[296px] bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg'>
+                <div className={cn('w-[296px] pt-1 bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg', isShort && 'w-[200px]')}>
                   <VarReferenceVars
                     vars={variables}
                     onChange={handleSelectVariable}
@@ -136,13 +146,18 @@ const ConditionNumberInput = ({
         }
         {
           numberVarType === NumberVarType.constant && (
-            <input
-              className='block w-full px-2 text-[13px] text-components-input-text-filled placeholder:text-components-input-text-placeholder outline-none appearance-none bg-transparent'
-              type='number'
-              value={value}
-              onChange={e => onValueChange(e.target.value)}
-              placeholder={t('workflow.nodes.ifElse.enterValue') || ''}
-            />
+            <div className=' relative'>
+              <input
+                className={cn('block w-full px-2 text-[13px] text-components-input-text-filled placeholder:text-components-input-text-placeholder outline-none appearance-none bg-transparent', unit && 'pr-6')}
+                type='number'
+                value={value}
+                onChange={e => onValueChange(e.target.value)}
+                placeholder={t('workflow.nodes.ifElse.enterValue') || ''}
+                onFocus={setFocus}
+                onBlur={setBlur}
+              />
+              {!isFocus && unit && <div className='absolute right-2 top-[50%] translate-y-[-50%] text-text-tertiary system-sm-regular'>{unit}</div>}
+            </div>
           )
         }
       </div>

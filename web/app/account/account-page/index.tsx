@@ -15,6 +15,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import Avatar from '@/app/components/base/avatar'
 import { IS_CE_EDITION } from '@/config'
+import Input from '@/app/components/base/input'
 
 const titleClassName = `
   text-sm font-medium text-gray-900
@@ -22,15 +23,12 @@ const titleClassName = `
 const descriptionClassName = `
   mt-1 text-xs font-normal text-gray-500
 `
-const inputClassName = `
-  mt-2 w-full px-3 py-2 bg-gray-100 rounded
-  text-sm font-normal text-gray-800
-`
 
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 export default function AccountPage() {
   const { t } = useTranslation()
+  const { systemFeatures } = useAppContext()
   const { mutateUserProfile, userProfile, apps } = useAppContext()
   const { notify } = useContext(ToastContext)
   const [editNameModalVisible, setEditNameModalVisible] = useState(false)
@@ -41,6 +39,9 @@ export default function AccountPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false)
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
 
   const handleEditName = () => {
     setEditNameModalVisible(true)
@@ -158,8 +159,8 @@ export default function AccountPage() {
         </div>
       </div>
       {
-        IS_CE_EDITION && (
-          <div className='mb-8 flex justify-between'>
+        systemFeatures.enable_email_password_login && (
+          <div className='mb-8 flex justify-between gap-2'>
             <div>
               <div className='mb-1 text-sm font-medium text-gray-900'>{t('common.account.password')}</div>
               <div className='mb-2 text-xs text-gray-500'>{t('common.account.passwordTip')}</div>
@@ -191,8 +192,7 @@ export default function AccountPage() {
           >
             <div className='mb-6 text-lg font-medium text-gray-900'>{t('common.account.editName')}</div>
             <div className={titleClassName}>{t('common.account.name')}</div>
-            <input
-              className={inputClassName}
+            <Input className='mt-2'
               value={editName}
               onChange={e => setEditName(e.target.value)}
             />
@@ -223,30 +223,61 @@ export default function AccountPage() {
             {userProfile.is_password_set && (
               <>
                 <div className={titleClassName}>{t('common.account.currentPassword')}</div>
-                <input
-                  type="password"
-                  className={inputClassName}
-                  value={currentPassword}
-                  onChange={e => setCurrentPassword(e.target.value)}
-                />
+                <div className='relative mt-2'>
+                  <Input
+                    type={showCurrentPassword ? 'text' : 'password'}
+                    value={currentPassword}
+                    onChange={e => setCurrentPassword(e.target.value)}
+                  />
+
+                  <div className="absolute inset-y-0 right-0 flex items-center">
+                    <Button
+                      type="button"
+                      variant='ghost'
+                      onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                    >
+                      {showCurrentPassword ? '👀' : '😝'}
+                    </Button>
+                  </div>
+                </div>
               </>
             )}
             <div className='mt-8 text-sm font-medium text-gray-900'>
               {userProfile.is_password_set ? t('common.account.newPassword') : t('common.account.password')}
             </div>
-            <input
-              type="password"
-              className={inputClassName}
-              value={password}
-              onChange={e => setPassword(e.target.value)}
-            />
+            <div className='relative mt-2'>
+              <Input
+                type={showPassword ? 'text' : 'password'}
+                value={password}
+                onChange={e => setPassword(e.target.value)}
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center">
+                <Button
+                  type="button"
+                  variant='ghost'
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? '👀' : '😝'}
+                </Button>
+              </div>
+            </div>
             <div className='mt-8 text-sm font-medium text-gray-900'>{t('common.account.confirmPassword')}</div>
-            <input
-              type="password"
-              className={inputClassName}
-              value={confirmPassword}
-              onChange={e => setConfirmPassword(e.target.value)}
-            />
+            <div className='relative mt-2'>
+              <Input
+                type={showConfirmPassword ? 'text' : 'password'}
+                value={confirmPassword}
+                onChange={e => setConfirmPassword(e.target.value)}
+              />
+              <div className="absolute inset-y-0 right-0 flex items-center">
+                <Button
+                  type="button"
+                  variant='ghost'
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? '👀' : '😝'}
+                </Button>
+              </div>
+            </div>
             <div className='flex justify-end mt-10'>
               <Button className='mr-2' onClick={() => {
                 setEditPasswordModalVisible(false)
