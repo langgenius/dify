@@ -27,9 +27,24 @@ class SecurityConfig(BaseSettings):
         default="",
     )
 
-    RESET_PASSWORD_TOKEN_EXPIRY_HOURS: PositiveInt = Field(
-        description="Duration in hours for which a password reset token remains valid",
-        default=24,
+    RESET_PASSWORD_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="Duration in minutes for which a password reset token remains valid",
+        default=5,
+    )
+
+    LOGIN_DISABLED: bool = Field(
+        description="Whether to disable login checks",
+        default=False,
+    )
+
+    ADMIN_API_KEY_ENABLE: bool = Field(
+        description="Whether to enable admin api key for authentication",
+        default=False,
+    )
+
+    ADMIN_API_KEY: Optional[str] = Field(
+        description="admin api key for authentication",
+        default=None,
     )
 
 
@@ -652,9 +667,9 @@ class LoginConfig(BaseSettings):
         description="whether to enable github/google oauth login",
         default=False,
     )
-    EMAIL_CODE_LOGIN_TOKEN_EXPIRY_HOURS: PositiveFloat = Field(
-        description="expiry time in hours for email code login token",
-        default=1 / 12,
+    EMAIL_CODE_LOGIN_TOKEN_EXPIRY_MINUTES: PositiveInt = Field(
+        description="expiry time in minutes for email code login token",
+        default=5,
     )
     ALLOW_REGISTER: bool = Field(
         description="whether to enable register",

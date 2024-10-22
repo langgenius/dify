@@ -2,7 +2,7 @@ import datetime
 import hashlib
 import uuid
 from collections.abc import Generator
-from typing import Union
+from typing import Literal, Union
 
 from flask_login import current_user
 from werkzeug.datastructures import FileStorage
@@ -20,6 +20,7 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Account
+from models.enums import CreatedByRole
 from models.model import EndUser, UploadFile
 from services.errors.file import FileNotExistsError, FileTooLargeError, UnsupportedFileTypeError
 
@@ -28,7 +29,9 @@ PREVIEW_WORDS_LIMIT = 3000
 
 class FileService:
     @staticmethod
-    def upload_file(file: FileStorage, user: Union[Account, EndUser]) -> UploadFile:
+    def upload_file(
+        file: FileStorage, user: Union[Account, EndUser], source: Literal["datasets"] | None = None
+    ) -> UploadFile:
         # get file name
         filename = file.filename
         if not filename:
@@ -36,11 +39,9 @@ class FileService:
         extension = filename.split(".")[-1]
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
-        # read file content
-        file_content = file.read()
 
-        # get file size
-        file_size = len(file_content)
+        if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
+            raise UnsupportedFileTypeError()
 
         # select file size limit
         if extension in IMAGE_EXTENSIONS:
@@ -51,6 +52,11 @@ class FileService:
             file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
         else:
             file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
+
+        # read file content
+        file_content = file.read()
+        # get file size
+        file_size = len(file_content)
 
         # check if the file size is exceeded
         if file_size > file_size_limit:
@@ -80,7 +86,7 @@ class FileService:
             size=file_size,
             extension=extension,
             mime_type=file.mimetype,
-            created_by_role=("account" if isinstance(user, Account) else "end_user"),
+            created_by_role=(CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER),
             created_by=user.id,
             created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
             used=False,
@@ -113,6 +119,7 @@ class FileService:
             extension="txt",
             mime_type="text/plain",
             created_by=current_user.id,
+            created_by_role=CreatedByRole.ACCOUNT,
             created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
             used=True,
             used_by=current_user.id,

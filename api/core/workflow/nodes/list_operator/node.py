@@ -122,7 +122,7 @@ def _get_file_extract_string_func(*, key: str) -> Callable[[File], str]:
             return lambda x: x.mime_type or ""
         case "transfer_method":
             return lambda x: x.transfer_method
-        case "urL":
+        case "url":
             return lambda x: x.remote_url or ""
         case _:
             raise ValueError(f"Invalid key: {key}")
@@ -132,9 +132,9 @@ def _get_string_filter_func(*, condition: str, value: str) -> Callable[[str], bo
     match condition:
         case "contains":
             return _contains(value)
-        case "startswith":
+        case "start with":
             return _startswith(value)
-        case "endswith":
+        case "end with":
             return _endswith(value)
         case "is":
             return _is(value)
@@ -144,7 +144,7 @@ def _get_string_filter_func(*, condition: str, value: str) -> Callable[[str], bo
             return lambda x: x == ""
         case "not contains":
             return lambda x: not _contains(value)(x)
-        case "not is":
+        case "is not":
             return lambda x: not _is(value)(x)
         case "not in":
             return lambda x: not _in(value)(x)
@@ -168,7 +168,7 @@ def _get_number_filter_func(*, condition: str, value: int | float) -> Callable[[
     match condition:
         case "=":
             return _eq(value)
-        case "!=":
+        case "≠":
             return _ne(value)
         case "<":
             return _lt(value)
@@ -249,7 +249,7 @@ def _order_string(*, order: Literal["asc", "desc"], array: Sequence[str]):
 
 
 def _order_file(*, order: Literal["asc", "desc"], order_by: str = "", array: Sequence[File]):
-    if order_by in {"name", "type", "extension", "mime_type", "transfer_method", "urL"}:
+    if order_by in {"name", "type", "extension", "mime_type", "transfer_method", "url"}:
         extract_func = _get_file_extract_string_func(key=order_by)
         return sorted(array, key=lambda x: extract_func(x), reverse=order == "desc")
     elif order_by == "size":
