@@ -8,30 +8,30 @@ import '../app/styles/markdown.scss'
 import './storybook.css'
 
 export const decorators = [
-    withThemeByDataAttribute({
-      themes: {
-        light: 'light',
-        dark: 'dark',
-      },
-      defaultTheme: 'light',
-      attributeName: 'data-theme',
-    }),
-    (Story) => {
-      return <I18nServer>
-        <Story />
-      </I18nServer>
-    }
-  ]
+  withThemeByDataAttribute({
+    themes: {
+      light: 'light',
+      dark: 'dark',
+    },
+    defaultTheme: 'light',
+    attributeName: 'data-theme',
+  }),
+  (Story) => {
+    return <I18nServer>
+      <Story />
+    </I18nServer>
+  },
+]
 
 const preview: Preview = {
   parameters: {
-        controls: {
-            matchers: {
-                color: /(background|color)$/i,
-                date: /Date$/i,
-            },
-        },
+    controls: {
+      matchers: {
+        color: /(background|color)$/i,
+        date: /Date$/i,
+      },
     },
+  },
 }
 
 export default preview

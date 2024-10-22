@@ -35,12 +35,12 @@ const OPTION_MAP = {
       `<script>
  window.difyChatbotConfig = {
   token: '${token}'${isTestEnv
-  ? `,
+    ? `,
   isDev: true`
-  : ''}${IS_CE_EDITION
-  ? `,
+    : ''}${IS_CE_EDITION
+    ? `,
   baseUrl: '${url}'`
-  : ''}
+    : ''}
  }
 </script>
 <script
