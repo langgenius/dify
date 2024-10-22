@@ -33,7 +33,7 @@ export type Props = {
   showFileList?: boolean
 }
 
-const languageMap = {
+export const languageMap = {
   [CodeLanguage.javascript]: 'javascript',
   [CodeLanguage.python3]: 'python',
   [CodeLanguage.json]: 'json',
@@ -149,6 +149,9 @@ const CodeEditor: FC<Props> = ({
 
     return isFocus ? 'focus-theme' : 'blur-theme'
   })()
+  const handleGenerated = (code: string) => {
+    handleEditorChange(code)
+  }
 
   const main = (
     <>
@@ -200,6 +203,8 @@ const CodeEditor: FC<Props> = ({
             isFocus={isFocus && !readOnly}
             minHeight={minHeight}
             isInNode={isInNode}
+            onGenerated={handleGenerated}
+            codeLanguages={language}
             fileList={fileList}
             showFileList={showFileList}
           >
