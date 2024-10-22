@@ -3,19 +3,20 @@ import shutil
 from collections.abc import Generator
 from pathlib import Path
 
-from flask import Flask
+from flask import current_app
 
+from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
 
 
 class LocalFsStorage(BaseStorage):
     """Implementation for local filesystem storage."""
 
-    def __init__(self, app: Flask):
-        super().__init__(app)
-        folder = self.app.config.get("STORAGE_LOCAL_PATH")
+    def __init__(self):
+        super().__init__()
+        folder = dify_config.STORAGE_LOCAL_PATH
         if not os.path.isabs(folder):
-            folder = os.path.join(app.root_path, folder)
+            folder = os.path.join(current_app.root_path, folder)
         self.folder = folder
 
     def save(self, filename, data):

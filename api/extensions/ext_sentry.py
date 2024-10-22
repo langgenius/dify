@@ -5,6 +5,7 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.flask import FlaskIntegration
 from werkzeug.exceptions import HTTPException
 
+from configs import dify_config
 from core.model_runtime.errors.invoke import InvokeRateLimitError
 
 
@@ -18,9 +19,9 @@ def before_send(event, hint):
 
 
 def init_app(app):
-    if app.config.get("SENTRY_DSN"):
+    if dify_config.SENTRY_DSN:
         sentry_sdk.init(
-            dsn=app.config.get("SENTRY_DSN"),
+            dsn=dify_config.SENTRY_DSN,
             integrations=[FlaskIntegration(), CeleryIntegration()],
             ignore_errors=[
                 HTTPException,
@@ -29,9 +30,9 @@ def init_app(app):
                 InvokeRateLimitError,
                 parse_error.defaultErrorResponse,
             ],
-            traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 1.0),
-            profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 1.0),
-            environment=app.config.get("DEPLOY_ENV"),
-            release=f"dify-{app.config.get('CURRENT_VERSION')}-{app.config.get('COMMIT_SHA')}",
+            traces_sample_rate=dify_config.SENTRY_TRACES_SAMPLE_RATE,
+            profiles_sample_rate=dify_config.SENTRY_PROFILES_SAMPLE_RATE,
+            environment=dify_config.DEPLOY_ENV,
+            release=f"dify-{dify_config.CURRENT_VERSION}-{dify_config.COMMIT_SHA}",
             before_send=before_send,
         )

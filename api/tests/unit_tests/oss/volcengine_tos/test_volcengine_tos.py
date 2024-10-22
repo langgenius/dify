@@ -25,7 +25,7 @@ class VolcengineTosTest:
             return cls._instance
 
     def __init__(self):
-        self.storage = VolcengineTosStorage(app=Flask(__name__))
+        self.storage = VolcengineTosStorage()
         self.storage.bucket_name = get_example_bucket()
         self.storage.client = TosClientV2(
             ak="dify",

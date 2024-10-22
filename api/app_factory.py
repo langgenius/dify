@@ -68,7 +68,7 @@ def create_flask_app_with_configs() -> Flask:
 
 def create_app() -> Flask:
     app = create_flask_app_with_configs()
-    app.secret_key = app.config["SECRET_KEY"]
+    app.secret_key = dify_config.SECRET_KEY
     initialize_extensions(app)
     register_blueprints(app)
     register_commands(app)
@@ -150,7 +150,7 @@ def register_blueprints(app):
 
     CORS(
         web_bp,
-        resources={r"/*": {"origins": app.config["WEB_API_CORS_ALLOW_ORIGINS"]}},
+        resources={r"/*": {"origins": dify_config.WEB_API_CORS_ALLOW_ORIGINS}},
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization", "X-App-Code"],
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
@@ -161,7 +161,7 @@ def register_blueprints(app):
 
     CORS(
         console_app_bp,
-        resources={r"/*": {"origins": app.config["CONSOLE_CORS_ALLOW_ORIGINS"]}},
+        resources={r"/*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
         supports_credentials=True,
         allow_headers=["Content-Type", "Authorization"],
         methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
