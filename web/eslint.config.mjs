@@ -1,4 +1,7 @@
-import { stylistic, typescript, combine, javascript, GLOB_TESTS, GLOB_JSX, GLOB_TSX } from '@antfu/eslint-config'
+import {
+  GLOB_JSX, GLOB_TESTS, GLOB_TSX, combine, javascript, node,
+  stylistic, typescript, unicorn
+ } from '@antfu/eslint-config'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import js from '@eslint/js'
@@ -47,13 +50,15 @@ export default combine(
     // original @antfu/eslint-config does not support jsx
     jsx: false,
     overrides: {
+      // original config
       "style/indent": "off",
 
       // these options does not exist in old version
+      // maybe useless
       "style/indent-binary-ops": "off",
       "style/multiline-ternary": "off",
 
-      // big change
+      // not exist in old version, and big change
       "style/quote-props": "off",
       "style/member-delimiter-style": "off",
       "style/quotes": "off",
@@ -68,10 +73,15 @@ export default combine(
   }),
   javascript({
     overrides: {
+      // handled by unused-imports/no-unused-vars
       'no-unused-vars': 'off',
-      'no-use-before-define': 'off'
+
+      // useless
+      'no-use-before-define': 'warn'
     }
   }),
+  unicorn(),
+  node(),
   // TODO: remove this when upgrade to nextjs 15
   compat.extends('next'),
   {
@@ -89,15 +99,39 @@ export default combine(
   {
     // orignal config
     rules: {
+      // from old version of antfu/eslint-config
+      "no-undef": "warn",
+
       'ts/consistent-type-definitions': ['error', 'type'],
+      // orignal ts/no-var-requires
       'ts/no-require-imports': 'off',
       "no-console": 'off',
       "react-hooks/exhaustive-deps": "warn",
       "react/display-name": "off",
+
+      // orignal config, but removed in new version antfu/eslint-config
+      // big change
       "curly": "off",
+
+      // antfu use eslint-plugin-perfectionist to replace this
+      // will cause big change, so keep the original
+      // sort-imports
+      "sort-imports": [
+        'error',
+        {
+          ignoreCase: false,
+          ignoreDeclarationSort: true,
+          ignoreMemberSort: false,
+          memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
+          allowSeparatedGroups: false,
+        },
+      ],
+
+      // antfu migrate to eslint-plugin-unused-imports
       "unused-imports/no-unused-vars": "warn",
       "unused-imports/no-unused-imports": "warn",
-      "no-undef": "error"
+
+      "no-undef": "error",
     }
   },
   storybook,
@@ -106,10 +140,13 @@ export default combine(
     rules: {
       // not exist in old version
       "antfu/consistent-list-newline": "off",
+      'node/prefer-global/process': 'off',
+      'node/prefer-global/buffer': 'off',
+      'node/no-callback-literal': 'off',
 
       // useful, but big change
-      "no-useless-constructor": "off",
-      "no-undef": "warn"
+      "unicorn/prefer-number-properties": "warn",
+      "unicorn/no-new-array": "warn"
     }
   },
   // suppress error for `no-undef` rule
