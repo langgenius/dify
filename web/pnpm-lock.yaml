@@ -53,7 +53,7 @@ importers:
         specifier: ^14.0.4
         version: 14.2.15(@mdx-js/loader@2.3.0(webpack@5.95.0(esbuild@0.23.1)(uglify-js@3.19.3)))(@mdx-js/react@2.3.0(react@18.2.0))
       '@remixicon/react':
-        specifier: ^4.2.0
+        specifier: ^4.3.0
         version: 4.3.0(react@18.2.0)
       '@sentry/react':
         specifier: ^7.54.0
@@ -12873,7 +12873,7 @@ snapshots:
       debug: 4.3.7
       enhanced-resolve: 5.17.1
       eslint: 9.13.0(jiti@1.21.6)
-      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.10.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@8.10.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import-x@4.3.1(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-plugin-import@2.31.0)(eslint@9.13.0(jiti@1.21.6)))(eslint@9.13.0(jiti@1.21.6))
+      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.10.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.13.0(jiti@1.21.6))
       fast-glob: 3.3.2
       get-tsconfig: 4.8.1
       is-bun-module: 1.2.1
@@ -12891,7 +12891,7 @@ snapshots:
     dependencies:
       eslint: 9.13.0(jiti@1.21.6)
 
-  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.10.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@8.10.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import-x@4.3.1(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-plugin-import@2.31.0)(eslint@9.13.0(jiti@1.21.6)))(eslint@9.13.0(jiti@1.21.6)):
+  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.10.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.13.0(jiti@1.21.6)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -12947,7 +12947,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.13.0(jiti@1.21.6)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.10.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@8.10.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import-x@4.3.1(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-plugin-import@2.31.0)(eslint@9.13.0(jiti@1.21.6)))(eslint@9.13.0(jiti@1.21.6))
+      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.10.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.13.0(jiti@1.21.6))
       hasown: 2.0.2
       is-core-module: 2.15.1
       is-glob: 4.0.3
