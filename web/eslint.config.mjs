@@ -178,6 +178,9 @@ export default combine(
       GLOB_TSX,
       GLOB_JSX,
     ],
+    ignores: [
+      "**/{page,layout}.tsx",
+    ],
     plugins: {
       "react-refresh": reactRefresh,
     },
