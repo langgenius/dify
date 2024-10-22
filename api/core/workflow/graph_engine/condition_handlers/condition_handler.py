@@ -18,11 +18,10 @@ class ConditionRunConditionHandlerHandler(RunConditionHandler):
 
         # process condition
         condition_processor = ConditionProcessor()
-        input_conditions, group_result = condition_processor.process_conditions(
-            variable_pool=graph_runtime_state.variable_pool, conditions=self.condition.conditions
+        _, _, final_result = condition_processor.process_conditions(
+            variable_pool=graph_runtime_state.variable_pool,
+            conditions=self.condition.conditions,
+            operator="and",
         )
 
-        # Apply the logical operator for the current case
-        compare_result = all(group_result)
-
-        return compare_result
+        return final_result

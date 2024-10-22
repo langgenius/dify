@@ -12,7 +12,7 @@ from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
 from fields.app_fields import app_site_fields
 from libs.login import login_required
-from models.model import Site
+from models import Site
 
 
 def parse_app_site_args():

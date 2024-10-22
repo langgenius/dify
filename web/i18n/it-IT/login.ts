@@ -65,6 +65,7 @@ const translation = {
     passwordLengthInValid: 'La password deve essere di almeno 8 caratteri',
     passwordInvalid:
       'La password deve contenere lettere e numeri, e la lunghezza deve essere maggiore di 8',
+    registrationNotAllowed: 'Account non trovato. Si prega di contattare l\'amministratore di sistema per registrarsi.',
   },
   license: {
     tip: 'Prima di avviare Dify Community Edition, leggi su GitHub',
@@ -80,6 +81,34 @@ const translation = {
   activated: 'Accedi ora',
   adminInitPassword: 'Password di inizializzazione amministratore',
   validate: 'Convalida',
+  checkCode: {
+    invalidCode: 'Codice non valido',
+    verificationCodePlaceholder: 'Inserisci il codice a 6 cifre',
+    verify: 'Verificare',
+    emptyCode: 'Il codice è obbligatorio',
+    resend: 'Inviare',
+    verificationCode: 'Codice di verifica',
+    validTime: 'Tieni presente che il codice è valido per 5 minuti',
+    didNotReceiveCode: 'Non hai ricevuto il codice?',
+    checkYourEmail: 'Controlla la tua email',
+    tips: 'Inviamo un codice di verifica a <strong>{{email}}</strong>',
+    useAnotherMethod: 'Usa un altro metodo',
+  },
+  or: 'O',
+  back: 'Indietro',
+  noLoginMethod: 'Metodo di autenticazione non configurato',
+  backToLogin: 'Torna al login',
+  changePasswordBtn: 'Imposta una password',
+  setYourAccount: 'Imposta il tuo account',
+  withSSO: 'Continua con SSO',
+  usePassword: 'Usa password',
+  resetPassword: 'Reimposta password',
+  continueWithCode: 'Continua con il codice',
+  sendVerificationCode: 'Invia codice di verifica',
+  useVerificationCode: 'Usa il codice di verifica',
+  resetPasswordDesc: 'Digita l\'e-mail che hai utilizzato per registrarti su Dify e ti invieremo un\'e-mail per reimpostare la password.',
+  noLoginMethodTip: 'Contatta l\'amministratore di sistema per aggiungere un metodo di autenticazione.',
+  enterYourName: 'Inserisci il tuo nome utente',
 }
 
 export default translation
