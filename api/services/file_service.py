@@ -20,6 +20,7 @@ from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Account
+from models.enums import CreatedByRole
 from models.model import EndUser, UploadFile
 from services.errors.file import FileNotExistsError, FileTooLargeError, UnsupportedFileTypeError
 
@@ -85,7 +86,7 @@ class FileService:
             size=file_size,
             extension=extension,
             mime_type=file.mimetype,
-            created_by_role=("account" if isinstance(user, Account) else "end_user"),
+            created_by_role=(CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER),
             created_by=user.id,
             created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
             used=False,
@@ -118,6 +119,7 @@ class FileService:
             extension="txt",
             mime_type="text/plain",
             created_by=current_user.id,
+            created_by_role=CreatedByRole.ACCOUNT,
             created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
             used=True,
             used_by=current_user.id,
