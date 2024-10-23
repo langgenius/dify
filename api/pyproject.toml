@@ -184,6 +184,7 @@ werkzeug = "~3.0.1"
 xinference-client = "0.15.2"
 yarl = "~1.9.4"
 zhipuai = "~2.1.5"
+starlette = "0.41.0"
 # Before adding new dependency, consider place it in alphabet order (a-z) and suitable group.
 
 ############################################################
@@ -191,7 +192,6 @@ zhipuai = "~2.1.5"
 # Related transparent dependencies with pinned version
 # required by main implementations
 ############################################################
-starlette = "0.41.0"
 [tool.poetry.group.indirect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"
