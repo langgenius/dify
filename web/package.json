@@ -62,7 +62,7 @@
     "lamejs": "^1.2.1",
     "lexical": "^0.16.0",
     "lodash-es": "^4.17.21",
-    "mermaid": "10.4.0",
+    "mermaid": "10.9.3",
     "mime": "^4.0.4",
     "negotiator": "^0.6.3",
     "next": "^14.1.1",
