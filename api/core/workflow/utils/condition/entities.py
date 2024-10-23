@@ -25,6 +25,9 @@ SupportedComparisonOperator = Literal[
     "≤",
     "null",
     "not null",
+    # for file
+    "exists",
+    "not exists",
 ]
 
 

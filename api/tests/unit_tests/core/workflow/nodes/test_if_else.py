@@ -55,6 +55,7 @@ def test_execute_if_else_result_true():
     pool.add(["start", "less_than"], 21)
     pool.add(["start", "greater_than_or_equal"], 22)
     pool.add(["start", "less_than_or_equal"], 21)
+    pool.add(["start", "null"], None)
     pool.add(["start", "not_null"], "1212")
 
     node = IfElseNode(

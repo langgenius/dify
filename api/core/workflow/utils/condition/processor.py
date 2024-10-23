@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from typing import Any, Literal
 
 from core.file import FileAttribute, file_manager
-from core.variables.segments import ArrayFileSegment
+from core.variables import ArrayFileSegment
 from core.workflow.entities.variable_pool import VariablePool
 
 from .entities import Condition, SubCondition, SupportedComparisonOperator
@@ -21,6 +21,8 @@ class ConditionProcessor:
 
         for condition in conditions:
             variable = variable_pool.get(condition.variable_selector)
+            if variable is None:
+                raise ValueError(f"Variable {condition.variable_selector} not found")
 
             if isinstance(variable, ArrayFileSegment) and condition.comparison_operator in {
                 "contains",
@@ -34,6 +36,15 @@ class ConditionProcessor:
                     variable=variable,
                     sub_conditions=condition.sub_variable_condition.conditions,
                     operator=condition.sub_variable_condition.logical_operator,
+                )
+            elif condition.comparison_operator in {
+                "exists",
+                "not exists",
+            }:
+                result = _evaluate_condition(
+                    value=variable.value,
+                    operator=condition.comparison_operator,
+                    expected=None,
                 )
             else:
                 actual_value = variable.value if variable else None
@@ -103,6 +114,10 @@ def _evaluate_condition(
             return _assert_not_in(value=value, expected=expected)
         case "all of" if isinstance(expected, list):
             return _assert_all_of(value=value, expected=expected)
+        case "exists":
+            return _assert_exists(value=value)
+        case "not exists":
+            return _assert_not_exists(value=value)
         case _:
             raise ValueError(f"Unsupported operator: {operator}")
 
@@ -336,6 +351,14 @@ def _assert_all_of(*, value: Any, expected: Sequence[str]) -> bool:
     if not all(item in value for item in expected):
         return False
     return True
+
+
+def _assert_exists(*, value: Any) -> bool:
+    return value is not None
+
+
+def _assert_not_exists(*, value: Any) -> bool:
+    return value is None
 
 
 def _process_sub_conditions(
