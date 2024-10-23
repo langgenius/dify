@@ -98,7 +98,7 @@ class AccountService:
         if not account:
             return None
 
-        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
+        if account.status == AccountStatus.BANNED.value:
             raise Unauthorized("Account is banned.")
 
         current_tenant = TenantAccountJoin.query.filter_by(account_id=account.id, current=True).first()
@@ -143,7 +143,7 @@ class AccountService:
         if not account:
             raise AccountNotFoundError()
 
-        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
+        if account.status == AccountStatus.BANNED.value:
             raise AccountLoginError("Account is banned.")
 
         if password and invite_token and account.password is None:
@@ -408,7 +408,7 @@ class AccountService:
         if not account:
             return None
 
-        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
+        if account.status == AccountStatus.BANNED.value:
             raise Unauthorized("Account is banned.")
 
         return account
