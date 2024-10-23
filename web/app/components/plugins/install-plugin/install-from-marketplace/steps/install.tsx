@@ -1,13 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
+import { RiInformation2Line } from '@remixicon/react'
 import type { PluginDeclaration } from '../../../types'
 import Card from '../../../card'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
 import { sleep } from '@/utils'
-import { Trans, useTranslation } from 'react-i18next'
+import { useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
+import Badge, { BadgeState } from '@/app/components/base/badge/index'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -32,22 +34,40 @@ const Installed: FC<Props> = ({
     onInstalled()
   }
 
+  const toInstallVersion = '1.3.0'
+  const supportCheckInstalled = false // TODO: check installed in beta version.
+
+  const versionInfo = useMemo(() => {
+    return (<>{
+      payload.version === toInstallVersion || !supportCheckInstalled
+        ? (
+          <Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version}</Badge>
+        )
+        : (
+          <>
+            <Badge className='mx-1' size="s" state={BadgeState.Warning}>
+              {`${payload.version} -> ${toInstallVersion}`}
+            </Badge>
+            <div className='flex px-0.5 justify-center items-center gap-0.5'>
+              <div className='text-text-warning system-xs-medium'>Used in 3 apps</div>
+              <RiInformation2Line className='w-4 h-4 text-text-tertiary' />
+            </div>
+          </>
+        )
+    }</>)
+  }, [payload])
+
   return (
     <>
       <div className='flex flex-col px-6 py-3 justify-center items-start gap-4 self-stretch'>
         <div className='text-text-secondary system-md-regular'>
           <p>{t(`${i18nPrefix}.readyToInstall`)}</p>
-          <p>
-            <Trans
-              i18nKey={`${i18nPrefix}.fromTrustSource`}
-              components={{ trustSource: <span className='system-md-semibold' /> }}
-            />
-          </p>
         </div>
         <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap rounded-2xl bg-background-section-burn'>
           <Card
             className='w-full'
             payload={pluginManifestToCardPluginProps(payload)}
+            titleLeft={versionInfo}
           />
         </div>
       </div>

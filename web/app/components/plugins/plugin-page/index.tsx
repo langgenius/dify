@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiDragDropLine,
@@ -29,6 +29,9 @@ import {
   useRouter,
   useSearchParams,
 } from 'next/navigation'
+import type { PluginDeclaration } from '../types'
+import { toolNotionManifest } from '../card/card-mock'
+import { sleep } from '@/utils'
 
 const PACKAGE_IDS_KEY = 'package-ids'
 
@@ -54,7 +57,28 @@ const PluginPage = ({
       return ''
     }
   }, [searchParams])
-  const isInstallPackage = !!packageId
+  const [isShowInstallFromMarketplace, {
+    setTrue: showInstallFromMarketplace,
+    setFalse: doHideInstallFromMarketplace,
+  }] = useBoolean(false)
+
+  const hideInstallFromMarketplace = () => {
+    doHideInstallFromMarketplace()
+    const url = new URL(window.location.href)
+    url.searchParams.delete(PACKAGE_IDS_KEY)
+    replace(url.toString())
+  }
+  const [manifest, setManifest] = useState<PluginDeclaration | null>(null)
+
+  useEffect(() => {
+    (async () => {
+      await sleep(100)
+      if (packageId) {
+        setManifest(toolNotionManifest)
+        showInstallFromMarketplace()
+      }
+    })()
+  }, [packageId])
 
   const {
     canManagement,
@@ -93,18 +117,6 @@ const PluginPage = ({
   })
 
   const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
-
-  const [isShowInstallFromMarketplace, {
-    setTrue: showInstallFromMarketplace,
-    setFalse: doHideInstallFromMarketplace,
-  }] = useBoolean(isInstallPackage)
-
-  const hideInstallFromMarketplace = () => {
-    doHideInstallFromMarketplace()
-    const url = new URL(window.location.href)
-    url.searchParams.delete(PACKAGE_IDS_KEY)
-    replace(url.toString())
-  }
 
   return (
     <div
@@ -216,7 +228,10 @@ const PluginPage = ({
       {
         isShowInstallFromMarketplace && (
           <InstallFromMarketplace
+            manifest={manifest!}
+            packageId={packageId}
             onClose={hideInstallFromMarketplace}
+            onSuccess={hideInstallFromMarketplace}
           />
         )
       }
