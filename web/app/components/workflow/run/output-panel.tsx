@@ -4,6 +4,7 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { Markdown } from '@/app/components/base/markdown'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
+import StatusContainer from '@/app/components/workflow/run/status-container'
 
 type OutputPanelProps = {
   isRunning?: boolean
@@ -19,7 +20,7 @@ const OutputPanel: FC<OutputPanelProps> = ({
   height,
 }) => {
   return (
-    <div className='bg-gray-50 py-2'>
+    <div className='py-2'>
       {isRunning && (
         <div className='pt-4 pl-[26px]'>
           <LoadingAnim type='text' />
@@ -27,9 +28,7 @@ const OutputPanel: FC<OutputPanelProps> = ({
       )}
       {!isRunning && error && (
         <div className='px-4'>
-          <div className='px-3 py-[10px] rounded-lg !bg-[#fef3f2] border-[0.5px] border-[rbga(0,0,0,0.05)] shadow-xs'>
-            <div className='text-xs leading-[18px] text-[#d92d20]'>{error}</div>
-          </div>
+          <StatusContainer status='failed'>{error}</StatusContainer>
         </div>
       )}
       {!isRunning && !outputs && (

@@ -15,7 +15,8 @@ class Storage:
 
     def init_app(self, app: Flask):
         storage_factory = self.get_storage_factory(dify_config.STORAGE_TYPE)
-        self.storage_runner = storage_factory(app=app)
+        with app.app_context():
+            self.storage_runner = storage_factory()
 
     @staticmethod
     def get_storage_factory(storage_type: str) -> type[BaseStorage]:
@@ -72,7 +73,7 @@ class Storage:
             logging.exception("Failed to save file: %s", e)
             raise e
 
-    def load(self, filename: str, stream: bool = False) -> Union[bytes, Generator]:
+    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
         try:
             if stream:
                 return self.load_stream(filename)

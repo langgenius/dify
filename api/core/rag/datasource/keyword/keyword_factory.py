@@ -1,8 +1,8 @@
 from typing import Any
 
 from configs import dify_config
-from core.rag.datasource.keyword.jieba.jieba import Jieba
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
+from core.rag.datasource.keyword.keyword_type import KeyWordType
 from core.rag.models.document import Document
 from models.dataset import Dataset
 
@@ -13,16 +13,19 @@ class Keyword:
         self._keyword_processor = self._init_keyword()
 
     def _init_keyword(self) -> BaseKeyword:
-        config = dify_config
-        keyword_type = config.KEYWORD_STORE
+        keyword_type = dify_config.KEYWORD_STORE
+        keyword_factory = self.get_keyword_factory(keyword_type)
+        return keyword_factory(self._dataset)
 
-        if not keyword_type:
-            raise ValueError("Keyword store must be specified.")
+    @staticmethod
+    def get_keyword_factory(keyword_type: str) -> type[BaseKeyword]:
+        match keyword_type:
+            case KeyWordType.JIEBA:
+                from core.rag.datasource.keyword.jieba.jieba import Jieba
 
-        if keyword_type == "jieba":
-            return Jieba(dataset=self._dataset)
-        else:
-            raise ValueError(f"Keyword store {keyword_type} is not supported.")
+                return Jieba
+            case _:
+                raise ValueError(f"Keyword store {keyword_type} is not supported.")
 
     def create(self, texts: list[Document], **kwargs):
         self._keyword_processor.create(texts, **kwargs)

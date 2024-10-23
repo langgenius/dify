@@ -38,6 +38,10 @@ const translation = {
     duplicate: 'Duplicar',
     rename: 'Renombrar',
     audioSourceUnavailable: 'AudioSource no está disponible',
+    zoomOut: 'Alejar',
+    zoomIn: 'Acercar',
+    openInNewTab: 'Abrir en una nueva pestaña',
+    copyImage: 'Copiar imagen',
   },
   errorMsg: {
     fieldRequired: '{{field}} es requerido',
@@ -171,6 +175,9 @@ const translation = {
     delete: 'Eliminar cuenta',
     deleteTip: 'Eliminar tu cuenta borrará permanentemente todos tus datos y no se podrán recuperar.',
     deleteConfirmTip: 'Para confirmar, por favor envía lo siguiente desde tu correo electrónico registrado a ',
+    account: 'Cuenta',
+    myAccount: 'Mi Cuenta',
+    studio: 'Estudio Dify',
   },
   members: {
     team: 'Equipo',
@@ -500,6 +507,7 @@ const translation = {
       vectorHash: 'Hash de vector:',
       hitScore: 'Puntuación de recuperación:',
     },
+    inputPlaceholder: 'Hablar con el bot',
   },
   promptEditor: {
     placeholder: 'Escribe tu palabra de indicación aquí, ingresa \'{\' para insertar una variable, ingresa \'/\' para insertar un bloque de contenido de indicación',
@@ -572,6 +580,16 @@ const translation = {
     deleteTip: 'La etiqueta se está utilizando, ¿eliminarla?',
     created: 'Etiqueta creada exitosamente',
     failed: 'Creación de etiqueta fallida',
+  },
+  fileUploader: {
+    uploadFromComputer: 'Carga local',
+    pasteFileLink: 'Pegar enlace de archivo',
+    uploadFromComputerReadError: 'Error en la lectura del archivo, inténtelo de nuevo.',
+    uploadFromComputerUploadError: 'Error en la carga del archivo, vuelva a cargarlo.',
+    pasteFileLinkInvalid: 'Enlace de archivo no válido',
+    fileExtensionNotSupport: 'Extensión de archivo no compatible',
+    pasteFileLinkInputPlaceholder: 'Introduzca la URL...',
+    uploadFromComputerLimit: 'El archivo de carga no puede exceder {{size}}',
   },
 }
 

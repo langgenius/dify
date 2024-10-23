@@ -28,13 +28,16 @@ from configs.middleware.vdb.qdrant_config import QdrantConfig
 from configs.middleware.vdb.relyt_config import RelytConfig
 from configs.middleware.vdb.tencent_vector_config import TencentVectorDBConfig
 from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
+from configs.middleware.vdb.upstash_config import UpstashConfig
+from configs.middleware.vdb.vikingdb_config import VikingDBConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
 
 
 class StorageConfig(BaseSettings):
     STORAGE_TYPE: str = Field(
         description="Type of storage to use."
-        " Options: 'local', 's3', 'azure-blob', 'aliyun-oss', 'google-storage'. Default is 'local'.",
+        " Options: 'local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', 'google-storage', 'huawei-obs', "
+        "'oci-storage', 'tencent-cos', 'volcengine-tos', 'supabase'. Default is 'local'.",
         default="local",
     )
 
@@ -243,5 +246,7 @@ class MiddlewareConfig(
     WeaviateConfig,
     ElasticsearchConfig,
     InternalTestConfig,
+    VikingDBConfig,
+    UpstashConfig,
 ):
     pass

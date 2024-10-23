@@ -1,5 +1,5 @@
 from collections.abc import Generator, Iterator
-from typing import cast
+from typing import Optional, cast
 
 from openai import (
     APIConnectionError,
@@ -321,7 +321,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
         return message_dict
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """
