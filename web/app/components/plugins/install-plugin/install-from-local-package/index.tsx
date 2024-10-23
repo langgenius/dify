@@ -34,7 +34,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
     if (step === InstallStep.installFailed)
       return t(`${i18nPrefix}.installFailed`)
     return t(`${i18nPrefix}.installPlugin`)
-  }, [])
+  }, [step])
   const [manifest, setManifest] = useState<PluginDeclaration | null>(toolNotionManifest)
 
   const handleUploaded = useCallback((result: {

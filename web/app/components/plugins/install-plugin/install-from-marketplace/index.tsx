@@ -35,7 +35,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     if (step === InstallStep.installFailed)
       return t(`${i18nPrefix}.installFailed`)
     return t(`${i18nPrefix}.installPlugin`)
-  }, [])
+  }, [step])
 
   const handleInstalled = useCallback(() => {
     setStep(InstallStep.installed)
