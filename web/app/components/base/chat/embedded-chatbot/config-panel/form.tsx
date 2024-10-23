@@ -11,16 +11,17 @@ const Form = () => {
   const {
     inputsForms,
     newConversationInputs,
+    newConversationInputsRef,
     handleNewConversationInputsChange,
     isMobile,
   } = useEmbeddedChatbotContext()
 
   const handleFormChange = useCallback((variable: string, value: any) => {
     handleNewConversationInputsChange({
-      ...newConversationInputs,
+      ...newConversationInputsRef.current,
       [variable]: value,
     })
-  }, [newConversationInputs, handleNewConversationInputsChange])
+  }, [newConversationInputsRef, handleNewConversationInputsChange])
 
   const renderField = (form: any) => {
     const {
