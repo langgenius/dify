@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   RiArrowRightUpLine,
   RiBugLine,
@@ -9,14 +9,23 @@ import { useTranslation } from 'react-i18next'
 import KeyValueItem from '../base/key-value-item'
 import Tooltip from '@/app/components/base/tooltip'
 import Button from '@/app/components/base/button'
+import type { DebugInfo as DebugInfoTypes } from '../types'
+import { fetchDebugKey } from '@/service/plugins'
 
 const i18nPrefix = 'plugin.debugInfo'
 
 const DebugInfo: FC = () => {
   const { t } = useTranslation()
+  const [info, setInfo] = React.useState<DebugInfoTypes | null>(null)
+  useEffect(() => {
+    fetchDebugKey().then((res) => {
+      setInfo(res)
+    })
+  }, [])
   return (
     <Tooltip
       triggerMethod='click'
+      disabled={!info}
       popupContent={
         <>
           <div className='flex items-center gap-1 self-stretch'>
@@ -29,11 +38,11 @@ const DebugInfo: FC = () => {
           <div className='space-y-0.5'>
             <KeyValueItem
               label={'Port'}
-              value={'cloud.dify,ai:2048'}
+              value={`${info?.host}:${info?.port}`}
             />
             <KeyValueItem
               label={'Key'}
-              value={'A1B2C3D4E5F6G7H8'}
+              value={info?.key || ''}
             />
           </div>
         </>

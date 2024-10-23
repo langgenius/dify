@@ -187,3 +187,9 @@ export type GitHubRepoReleaseResponse = {
 export type InstallPackageResponse = {
   plugin_unique_identifier: string
 }
+
+export type DebugInfo = {
+  key: string
+  host: string
+  port: number
+}
