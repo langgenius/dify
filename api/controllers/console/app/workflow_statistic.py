@@ -13,8 +13,8 @@ from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
 from libs.helper import DatetimeString
 from libs.login import login_required
+from models.enums import WorkflowRunTriggeredFrom
 from models.model import AppMode
-from models.workflow import WorkflowRunTriggeredFrom
 
 
 class WorkflowDailyRunsStatistic(Resource):

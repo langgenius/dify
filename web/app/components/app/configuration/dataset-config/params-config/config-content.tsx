@@ -55,15 +55,16 @@ const ConfigContent: FC<Props> = ({
         retrieval_model: RETRIEVE_TYPE.multiWay,
       }, isInWorkflow)
     }
-  }, [type])
+  }, [type, datasetConfigs, isInWorkflow, onChange])
 
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
+    currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const {
-    currentModel,
+    currentModel: currentRerankModel,
   } = useCurrentProviderAndModel(
     rerankModelList,
     rerankDefaultModel
@@ -73,11 +74,6 @@ const ConfigContent: FC<Props> = ({
       }
       : undefined,
   )
-
-  const handleDisabledSwitchClick = useCallback(() => {
-    if (!currentModel)
-      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
-  }, [currentModel, rerankDefaultModel, t])
 
   const rerankModel = (() => {
     if (datasetConfigs.reranking_model?.reranking_provider_name) {
@@ -164,12 +160,33 @@ const ConfigContent: FC<Props> = ({
   const showWeightedScorePanel = showWeightedScore && datasetConfigs.reranking_mode === RerankingModeEnum.WeightedScore && datasetConfigs.weights
   const selectedRerankMode = datasetConfigs.reranking_mode || RerankingModeEnum.RerankingModel
 
+  const canManuallyToggleRerank = useMemo(() => {
+    return (selectedDatasetsMode.allInternal && selectedDatasetsMode.allEconomic)
+      || selectedDatasetsMode.allExternal
+  }, [selectedDatasetsMode.allEconomic, selectedDatasetsMode.allExternal, selectedDatasetsMode.allInternal])
+
   const showRerankModel = useMemo(() => {
-    if (datasetConfigs.reranking_enable === false && selectedDatasetsMode.allEconomic)
+    if (!canManuallyToggleRerank)
+      return true
+    else if (canManuallyToggleRerank && !isRerankDefaultModelValid)
       return false
 
-    return true
-  }, [datasetConfigs.reranking_enable, selectedDatasetsMode.allEconomic])
+    return datasetConfigs.reranking_enable
+  }, [canManuallyToggleRerank, datasetConfigs.reranking_enable])
+
+  const handleDisabledSwitchClick = useCallback(() => {
+    if (!currentRerankModel && !showRerankModel)
+      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
+  }, [currentRerankModel, showRerankModel, t])
+
+  useEffect(() => {
+    if (canManuallyToggleRerank && showRerankModel !== datasetConfigs.reranking_enable) {
+      onChange({
+        ...datasetConfigs,
+        reranking_enable: showRerankModel,
+      })
+    }
+  }, [canManuallyToggleRerank, showRerankModel, datasetConfigs, onChange])
 
   return (
     <div>
@@ -256,13 +273,15 @@ const ConfigContent: FC<Props> = ({
                       >
                         <Switch
                           size='md'
-                          defaultValue={currentModel ? showRerankModel : false}
-                          disabled={!currentModel}
+                          defaultValue={showRerankModel}
+                          disabled={!currentRerankModel || !canManuallyToggleRerank}
                           onChange={(v) => {
-                            onChange({
-                              ...datasetConfigs,
-                              reranking_enable: v,
-                            })
+                            if (canManuallyToggleRerank) {
+                              onChange({
+                                ...datasetConfigs,
+                                reranking_enable: v,
+                              })
+                            }
                           }}
                         />
                       </div>

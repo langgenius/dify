@@ -1,10 +1,10 @@
 identity:
-  name: txt2img workflow
+  name: txt2img
   author: Qun
   label:
-    en_US: Txt2Img Workflow
-    zh_Hans: Txt2Img Workflow
-    pt_BR: Txt2Img Workflow
+    en_US: Txt2Img
+    zh_Hans: Txt2Img
+    pt_BR: Txt2Img
 description:
   human:
     en_US: a pre-defined comfyui workflow that can use one model and up to 3 loras to generate images. Support SD1.5, SDXL, SD3 and FLUX which contain text encoders/clip, but does not support models that requires a triple clip loader.

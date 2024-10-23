@@ -1,0 +1,6 @@
+html,
+body {
+  max-width: unset;
+  overflow: auto;
+  user-select: text;
+}
