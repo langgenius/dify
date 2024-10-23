@@ -7,8 +7,7 @@ import ConfigPrompt from '../../config-prompt'
 import { languageMap } from '../../../../workflow/nodes/_base/components/editor/code-editor/index'
 import { generateRuleCode } from '@/service/debug'
 import type { CodeGenRes } from '@/service/debug'
-import { ModelModeType } from '@/types/app'
-import type { AppType, Model } from '@/types/app'
+import { type AppType, type Model, ModelModeType } from '@/types/app'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
@@ -16,6 +15,8 @@ import Toast from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
 import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 export type IGetCodeGeneratorResProps = {
   mode: AppType
   isShow: boolean
@@ -31,9 +32,12 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     codeLanguages,
     onClose,
     onFinished,
-
   },
 ) => {
+  const {
+    currentProvider,
+    currentModel,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
   const { t } = useTranslation()
   const [instruction, setInstruction] = React.useState<string>('')
   const [isLoading, { setTrue: setLoadingTrue, setFalse: setLoadingFalse }] = useBoolean(false)
@@ -51,9 +55,10 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     return true
   }
   const model: Model = {
-    provider: 'openai',
-    name: 'gpt-4o-mini',
+    provider: currentProvider?.provider || '',
+    name: currentModel?.model || '',
     mode: ModelModeType.chat,
+    // This is a fixed parameter
     completion_params: {
       temperature: 0.7,
       max_tokens: 0,
