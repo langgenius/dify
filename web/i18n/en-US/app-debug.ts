@@ -386,7 +386,7 @@ const translation = {
     'localUpload': 'Local Upload',
     'both': 'Both',
     'maxNumberOfUploads': 'Max number of uploads',
-    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
+    'maxNumberTip': 'Max {{size}} each',
     'errorMsg': {
       labelNameRequired: 'Label name is required',
       varNameCanBeRepeat: 'Variable name can not be repeated',
