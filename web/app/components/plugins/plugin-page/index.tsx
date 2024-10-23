@@ -24,6 +24,13 @@ import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import PermissionSetModal from '@/app/components/plugins/permission-setting-modal/modal'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
+import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
+import {
+  useRouter,
+  useSearchParams,
+} from 'next/navigation'
+
+const PACKAGE_IDS_KEY = 'package-ids'
 
 export type PluginPageProps = {
   plugins: React.ReactNode
@@ -34,6 +41,21 @@ const PluginPage = ({
   marketplace,
 }: PluginPageProps) => {
   const { t } = useTranslation()
+  const searchParams = useSearchParams()
+  const { replace } = useRouter()
+
+  // just support install one package now
+  const packageId = useMemo(() => {
+    const idStrings = searchParams.get(PACKAGE_IDS_KEY)
+    try {
+      return idStrings ? JSON.parse(idStrings)[0] : ''
+    }
+    catch (e) {
+      return ''
+    }
+  }, [searchParams])
+  const isInstallPackage = !!packageId
+
   const {
     canManagement,
     canDebugger,
@@ -71,6 +93,18 @@ const PluginPage = ({
   })
 
   const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
+
+  const [isShowInstallFromMarketplace, {
+    setTrue: showInstallFromMarketplace,
+    setFalse: doHideInstallFromMarketplace,
+  }] = useBoolean(isInstallPackage)
+
+  const hideInstallFromMarketplace = () => {
+    doHideInstallFromMarketplace()
+    const url = new URL(window.location.href)
+    url.searchParams.delete(PACKAGE_IDS_KEY)
+    replace(url.toString())
+  }
 
   return (
     <div
@@ -178,6 +212,14 @@ const PluginPage = ({
           onSave={setPermissions}
         />
       )}
+
+      {
+        isShowInstallFromMarketplace && (
+          <InstallFromMarketplace
+            onClose={hideInstallFromMarketplace}
+          />
+        )
+      }
     </div>
   )
 }
