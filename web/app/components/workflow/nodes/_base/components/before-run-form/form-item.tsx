@@ -172,6 +172,7 @@ const FormItem: FC<Props> = ({
               allowed_file_extensions: inStepRun ? [] : payload.allowed_file_extensions,
               allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
               number_limits: 1,
+              fileUploadConfig: fileSettings?.fileUploadConfig,
             }}
           />
         )}
@@ -184,6 +185,7 @@ const FormItem: FC<Props> = ({
               allowed_file_extensions: inStepRun ? [] : payload.allowed_file_extensions,
               allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
               number_limits: inStepRun ? 5 : payload.max_length,
+              fileUploadConfig: fileSettings?.fileUploadConfig,
             }}
           />
         )}
