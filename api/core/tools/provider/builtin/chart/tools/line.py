@@ -4,7 +4,6 @@ from typing import Any, Union
 import matplotlib.pyplot as plt
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
-# from core.tools.provider.builtin.chart.mpl_setting import font_properties
 from core.tools.tool.builtin_tool import BuiltinTool
 
 
