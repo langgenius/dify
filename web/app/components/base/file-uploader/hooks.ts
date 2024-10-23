@@ -3,7 +3,6 @@ import {
   useCallback,
   useState,
 } from 'react'
-import useSWR from 'swr'
 import { useParams } from 'next/navigation'
 import produce from 'immer'
 import { v4 as uuid4 } from 'uuid'
@@ -15,113 +14,19 @@ import {
   getSupportFileType,
   isAllowedFileExtension,
 } from './utils'
-import {
-  AUDIO_SIZE_LIMIT,
-  FILE_SIZE_LIMIT,
-  IMG_SIZE_LIMIT,
-  VIDEO_SIZE_LIMIT,
-} from '@/app/components/base/file-uploader/constants'
+import { FILE_SIZE_LIMIT } from './constants'
 import { useToastContext } from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { formatFileSize } from '@/utils/format'
-import { fetchFileUploadConfig, fetchRemoteFileInfo } from '@/service/common'
-
-export const useFileSizeLimit = () => {
-  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
-  const imgSizeLimit = Number(fileUploadConfigResponse?.image_file_size_limit) * 1024 * 1024 || IMG_SIZE_LIMIT
-  const docSizeLimit = Number(fileUploadConfigResponse?.file_size_limit) * 1024 * 1024 || FILE_SIZE_LIMIT
-  const audioSizeLimit = Number(fileUploadConfigResponse?.audio_file_size_limit) * 1024 * 1024 || AUDIO_SIZE_LIMIT
-  const videoSizeLimit = Number(fileUploadConfigResponse?.video_file_size_limit) * 1024 * 1024 || VIDEO_SIZE_LIMIT
-
-  return {
-    imgSizeLimit,
-    docSizeLimit,
-    audioSizeLimit,
-    videoSizeLimit,
-  }
-}
+import { fetchRemoteFileInfo } from '@/service/common'
 
 export const useFile = (fileConfig: FileUpload) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const fileStore = useFileStore()
   const params = useParams()
-  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit()
-
-  const checkSizeLimit = (fileType: string, fileSize: number) => {
-    switch (fileType) {
-      case SupportUploadFileTypes.image: {
-        if (fileSize > imgSizeLimit) {
-          notify({
-            type: 'error',
-            message: t('common.fileUploader.uploadFromComputerLimit', {
-              type: SupportUploadFileTypes.image,
-              size: formatFileSize(imgSizeLimit),
-            }),
-          })
-          return false
-        }
-        return true
-      }
-      case SupportUploadFileTypes.document: {
-        if (fileSize > docSizeLimit) {
-          notify({
-            type: 'error',
-            message: t('common.fileUploader.uploadFromComputerLimit', {
-              type: SupportUploadFileTypes.document,
-              size: formatFileSize(docSizeLimit),
-            }),
-          })
-          return false
-        }
-        return true
-      }
-      case SupportUploadFileTypes.audio: {
-        if (fileSize > audioSizeLimit) {
-          notify({
-            type: 'error',
-            message: t('common.fileUploader.uploadFromComputerLimit', {
-              type: SupportUploadFileTypes.audio,
-              size: formatFileSize(audioSizeLimit),
-            }),
-          })
-          return false
-        }
-        return true
-      }
-      case SupportUploadFileTypes.video: {
-        if (fileSize > videoSizeLimit) {
-          notify({
-            type: 'error',
-            message: t('common.fileUploader.uploadFromComputerLimit', {
-              type: SupportUploadFileTypes.video,
-              size: formatFileSize(videoSizeLimit),
-            }),
-          })
-          return false
-        }
-        return true
-      }
-      case SupportUploadFileTypes.custom: {
-        if (fileSize > docSizeLimit) {
-          notify({
-            type: 'error',
-            message: t('common.fileUploader.uploadFromComputerLimit', {
-              type: SupportUploadFileTypes.document,
-              size: formatFileSize(docSizeLimit),
-            }),
-          })
-          return false
-        }
-        return true
-      }
-      default: {
-        return true
-      }
-    }
-  }
 
   const handleAddFile = useCallback((newFile: FileEntity) => {
     const {
@@ -212,15 +117,12 @@ export const useFile = (fileConfig: FileUpload) => {
         progress: 100,
         supportFileType: getSupportFileType(url, res.file_type, allowedFileTypes?.includes(SupportUploadFileTypes.custom)),
       }
-      if (!checkSizeLimit(newFile.supportFileType, newFile.size))
-        handleRemoveFile(uploadingFile.id)
-      else
-        handleUpdateFile(newFile)
+      handleUpdateFile(newFile)
     }).catch(() => {
       notify({ type: 'error', message: t('common.fileUploader.pasteFileLinkInvalid') })
       handleRemoveFile(uploadingFile.id)
     })
-  }, [checkSizeLimit, handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types])
+  }, [handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types])
 
   const handleLoadFileFromLinkSuccess = useCallback(() => { }, [])
 
@@ -238,13 +140,13 @@ export const useFile = (fileConfig: FileUpload) => {
       notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
       return
     }
-    const allowedFileTypes = fileConfig.allowed_file_types
-    const fileType = getSupportFileType(file.name, file.type, allowedFileTypes?.includes(SupportUploadFileTypes.custom))
-    if (!checkSizeLimit(fileType, file.size))
+    if (file.size > FILE_SIZE_LIMIT) {
+      notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerLimit', { size: formatFileSize(FILE_SIZE_LIMIT) }) })
       return
-
+    }
     const reader = new FileReader()
     const isImage = file.type.startsWith('image')
+    const allowedFileTypes = fileConfig.allowed_file_types
 
     reader.addEventListener(
       'load',
@@ -285,7 +187,7 @@ export const useFile = (fileConfig: FileUpload) => {
       false,
     )
     reader.readAsDataURL(file)
-  }, [checkSizeLimit, notify, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions])
+  }, [notify, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions])
 
   const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = e.clipboardData?.files[0]
