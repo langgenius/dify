@@ -111,6 +111,10 @@ class Vector:
                 from core.rag.datasource.vdb.vikingdb.vikingdb_vector import VikingDBVectorFactory
 
                 return VikingDBVectorFactory
+            case VectorType.UPSTASH:
+                from core.rag.datasource.vdb.upstash.upstash_vector import UpstashVectorFactory
+
+                return UpstashVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 

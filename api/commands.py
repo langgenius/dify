@@ -277,6 +277,7 @@ def migrate_knowledge_vector_database():
         VectorType.TENCENT,
         VectorType.BAIDU,
         VectorType.VIKINGDB,
+        VectorType.UPSTASH,
     }
     page = 1
     while True:
