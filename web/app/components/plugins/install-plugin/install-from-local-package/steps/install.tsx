@@ -7,6 +7,7 @@ import { pluginManifestToCardPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
 import { sleep } from '@/utils'
 import { Trans, useTranslation } from 'react-i18next'
+import { RiLoader2Line } from '@remixicon/react'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -59,11 +60,12 @@ const Installed: FC<Props> = ({
         )}
         <Button
           variant='primary'
-          className='min-w-[72px]'
+          className='min-w-[72px] flex space-x-0.5'
           disabled={isInstalling}
           onClick={handleInstall}
         >
-          {t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}
+          {isInstalling && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}
+          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
         </Button>
       </div>
     </>

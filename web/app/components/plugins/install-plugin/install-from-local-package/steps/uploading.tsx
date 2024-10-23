@@ -7,6 +7,7 @@ import type { PluginDeclaration } from '../../../types'
 import Button from '@/app/components/base/button'
 import { sleep } from '@/utils'
 import { useTranslation } from 'react-i18next'
+import { toolNotionManifest } from '../../../card/card-mock'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -30,10 +31,7 @@ const Uploading: FC<Props> = ({
     await sleep(3000)
     onUploaded({
       uniqueIdentifier: 'yeuoly/neko:0.0.1@5395654da2c0b919b3d9b946a1a0545b737004380765e5f3b8c49976d3276c87',
-      manifest: {
-        name: 'Notion Sync',
-        description: 'Sync your Notion notes with Dify',
-      } as any,
+      manifest: toolNotionManifest,
     })
   }
 
@@ -44,7 +42,7 @@ const Uploading: FC<Props> = ({
     <>
       <div className='flex flex-col px-6 py-3 justify-center items-start gap-4 self-stretch'>
         <div className='flex items-center gap-1 self-stretch'>
-          <RiLoader2Line className='text-text-accent w-4 h-4' />
+          <RiLoader2Line className='text-text-accent w-4 h-4 animate-spin-slow' />
           <div className='text-text-secondary system-md-regular'>
             {t(`${i18nPrefix}.uploadingPackage`, {
               packageName: fileName,

@@ -1,3 +1,4 @@
+import type { PluginDeclaration } from '../types'
 import { PluginType } from '../types'
 
 export const toolNotion = {
@@ -15,6 +16,33 @@ export const toolNotion = {
     'en-US': 'Description: Search Notion pages and open visited ones faster. No admin access required.More and more info...More and more info...More and more info...',
     'zh-Hans': '搜索 Notion 页面并更快地打开已访问的页面。无需管理员访问权限。More and more info...More and more info...More and more info...',
   },
+}
+
+export const toolNotionManifest: PluginDeclaration = {
+  version: '1.2.0',
+  author: 'Notion',
+  icon: 'https://via.placeholder.com/150',
+  name: 'notion page search',
+  category: PluginType.tool,
+  label: {
+    'en-US': 'Notion Page Search',
+    'zh-Hans': 'Notion 页面搜索',
+  },
+  description: {
+    'en-US': 'Description: Search Notion pages and open visited ones faster. No admin access required.More and more info...More and more info...More and more info...',
+    'zh-Hans': '搜索 Notion 页面并更快地打开已访问的页面。无需管理员访问权限。More and more info...More and more info...More and more info...',
+  },
+  created_at: '2022-01-01',
+  resource: {},
+  plugins: {},
+  verified: true,
+  endpoint: {
+    settings: [],
+    endpoints: [],
+  },
+  tool: {
+  } as any,
+  model: {},
 }
 
 export const extensionDallE = {

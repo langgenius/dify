@@ -8,6 +8,7 @@ import Uploading from './steps/uploading'
 import Install from './steps/install'
 import Installed from './steps/installed'
 import { useTranslation } from 'react-i18next'
+import { toolNotionManifest } from '../../card/card-mock'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -22,6 +23,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation()
+  // uploading -> readyToInstall -> installed
   const [step, setStep] = useState<InstallStep>(InstallStep.uploading)
 
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
@@ -31,10 +33,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       return t(`${i18nPrefix}.installedSuccessfully`)
     return t(`${i18nPrefix}.installPlugin`)
   }, [])
-  const [manifest, setManifest] = useState<PluginDeclaration | null>({
-    name: 'Notion Sync',
-    description: 'Sync your Notion notes with Dify',
-  } as any)
+  const [manifest, setManifest] = useState<PluginDeclaration | null>(toolNotionManifest)
 
   const handleUploaded = useCallback((result: {
     uniqueIdentifier: string

@@ -83,6 +83,9 @@ const config = {
       fontSize: {
         '2xs': '0.625rem',
       },
+      animation: {
+        'spin-slow': 'spin 2s linear infinite',
+      },
     },
   },
   plugins: [
