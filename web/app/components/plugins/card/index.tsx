@@ -36,7 +36,7 @@ const Card = ({
 }: Props) => {
   const locale = useGetLanguage()
 
-  const { type, name, org, label, brief, icon } = payload
+  const { type, name, org, label, brief, icon, verified } = payload
 
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj?.[locale] || obj?.['en-US'] || ''
@@ -60,7 +60,7 @@ const Card = ({
         <div className="ml-3 grow">
           <div className="flex items-center h-5">
             <Title title={getLocalizedText(label)} />
-            <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />
+            {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
             {titleLeft} {/* This can be version badge */}
           </div>
           <OrgInfo

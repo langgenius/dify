@@ -1,4 +1,4 @@
-import type { Plugin, PluginDeclaration } from "../types"
+import type { Plugin, PluginDeclaration } from '../types'
 
 export const pluginManifestToCardPluginProps = (pluginManifest: PluginDeclaration): Plugin => {
   return {
@@ -11,11 +11,12 @@ export const pluginManifestToCardPluginProps = (pluginManifest: PluginDeclaratio
     label: pluginManifest.label,
     brief: pluginManifest.description,
     icon: pluginManifest.icon,
+    verified: pluginManifest.verified,
     introduction: '',
     repository: '',
     install_count: 0,
     endpoint: {
-      settings: []
-    }
+      settings: [],
+    },
   }
 }

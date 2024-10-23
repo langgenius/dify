@@ -94,6 +94,7 @@ export type Plugin = {
   version: string
   latest_version: string
   icon: string
+  verified: boolean
   label: Record<Locale, string>
   brief: Record<Locale, string>
   // Repo readme.md content
