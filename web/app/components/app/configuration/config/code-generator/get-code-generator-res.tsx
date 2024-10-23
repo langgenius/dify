@@ -17,6 +17,8 @@ import Confirm from '@/app/components/base/confirm'
 import type { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
 export type IGetCodeGeneratorResProps = {
   mode: AppType
   isShow: boolean
@@ -116,6 +118,19 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           <div className='mb-8'>
             <div className={'leading-[28px] text-lg font-bold'}>{t('appDebug.codegen.title')}</div>
             <div className='mt-1 text-[13px] font-normal text-gray-500'>{t('appDebug.codegen.description')}</div>
+          </div>
+          <div className='flex items-center'>
+            <ModelIcon
+              className='shrink-0 mr-1.5'
+              provider={currentProvider}
+              modelName={currentModel?.model}
+            />
+            <ModelName
+              className='grow'
+              modelItem={currentModel!}
+              showMode
+              showFeatures
+            />
           </div>
           <div className='mt-6'>
             <div className='text-[0px]'>
