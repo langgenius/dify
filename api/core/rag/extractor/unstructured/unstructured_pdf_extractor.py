@@ -6,12 +6,16 @@ from core.rag.models.document import Document
 logger = logging.getLogger(__name__)
 
 
-class UnstructuredPPTExtractor(BaseExtractor):
-    """Load ppt files.
+class UnstructuredPDFExtractor(BaseExtractor):
+    """Load pdf files.
 
 
     Args:
         file_path: Path to the file to load.
+
+        api_url: Unstructured API URL
+
+        api_key: Unstructured API Key
     """
 
     def __init__(self, file_path: str, api_url: str, api_key: str):
@@ -24,21 +28,20 @@ class UnstructuredPPTExtractor(BaseExtractor):
         if self._api_url:
             from unstructured.partition.api import partition_via_api
 
-            elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
+            elements = partition_via_api(
+                filename=self._file_path, api_url=self._api_url, api_key=self._api_key, strategy="auto"
+            )
         else:
-            raise NotImplementedError("Unstructured API Url is not configured")
-        text_by_page = {}
-        for element in elements:
-            page = element.metadata.page_number
-            text = element.text
-            if page in text_by_page:
-                text_by_page[page] += "\n" + text
-            else:
-                text_by_page[page] = text
+            from unstructured.partition.pdf import partition_pdf
 
-        combined_texts = list(text_by_page.values())
+            elements = partition_pdf(filename=self._file_path, strategy="auto")
+
+        from unstructured.chunking.title import chunk_by_title
+
+        chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)
         documents = []
-        for combined_text in combined_texts:
-            text = combined_text.strip()
+        for chunk in chunks:
+            text = chunk.text.strip()
             documents.append(Document(page_content=text))
+
         return documents
