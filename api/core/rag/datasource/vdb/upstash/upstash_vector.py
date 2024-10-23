@@ -117,7 +117,7 @@ class UpstashVectorFactory(AbstractVectorFactory):
             collection_name = class_prefix.lower()
         else:
             dataset_id = dataset.id
-            collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
             dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.UPSTASH, collection_name))
 
         return UpstashVector(
