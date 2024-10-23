@@ -17,8 +17,8 @@ def init_app(app: Flask):
         log_handlers = [
             RotatingFileHandler(
                 filename=log_file,
-                maxBytes=1024 * 1024 * 1024,
-                backupCount=5,
+                maxBytes=dify_config.LOG_FILE_MAX_SIZE * 1024 * 1024,
+                backupCount=dify_config.LOG_FILE_BACKUP_COUNT,
             ),
             logging.StreamHandler(sys.stdout),
         ]
