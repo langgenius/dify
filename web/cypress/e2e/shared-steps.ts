@@ -92,7 +92,7 @@ Then('I should stay on page {string}', (path: string) => {
 })
 
 Then('I should see a toast {string} message', (type: 'success' | 'error' | 'warning' | 'info') => {
-  cy.get(`[data-testid=${type}-toast-message]`).should('be.visible')
+  cy.get(`[data-testid=toast-message-${type}]`).should('be.visible')
 })
 
 Then('I should see the {string}', (elementName: string) => {

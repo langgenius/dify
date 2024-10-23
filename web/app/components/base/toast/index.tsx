@@ -53,7 +53,7 @@ const Toast = ({
         {type === 'info' && <InformationCircleIcon className="w-5 h-5 text-blue-400" aria-hidden="true" />}
       </div>
       <div className="ml-3">
-        <h3 data-testid={`${type}-toast-message`} className={
+        <h3 data-testid={`toast-message-${type}`} className={
           classNames(
             'text-sm font-medium',
             type === 'success' ? 'text-green-800' : '',
