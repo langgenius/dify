@@ -1,11 +1,10 @@
 from typing import cast
 
 import flask_login
-from flask import redirect, request
+from flask import request
 from flask_restful import Resource, reqparse
 
 import services
-from configs import dify_config
 from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
@@ -196,10 +195,7 @@ class EmailCodeLoginApi(Resource):
                     email=user_email, name=user_email, interface_language=languages[0]
                 )
             except WorkSpaceNotAllowedCreateError:
-                return redirect(
-                    f"{dify_config.CONSOLE_WEB_URL}/signin"
-                    "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
-                )
+                return NotAllowedCreateWorkspace()
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
         return {"result": "success", "data": token_pair.model_dump()}
