@@ -111,7 +111,9 @@ const PluginPage = ({
               </Button>
             </div>
             {canManagement && (
-              <InstallPluginDropdown />
+              <InstallPluginDropdown
+                onSwitchToMarketplaceTab={() => setActiveTab('discover')}
+              />
             )}
             {
               canDebugger && (
