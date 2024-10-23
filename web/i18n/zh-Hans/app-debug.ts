@@ -379,7 +379,7 @@ const translation = {
     'localUpload': '本地上传',
     'both': '两者',
     'maxNumberOfUploads': '最大上传数',
-    'maxNumberTip': '最大上传文件大小为 {{size}}',
+    'maxNumberTip': '文档 < {{docLimit}}, 图片 < {{imgLimit}}, 音频 < {{audioLimit}}, 视频 < {{videoLimit}}',
     'content': '内容',
     'errorMsg': {
       labelNameRequired: '显示名称必填',

@@ -10,7 +10,7 @@ import FileTypeItem from './file-type-item'
 import InputNumberWithSlider from './input-number-with-slider'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import { TransferMethod } from '@/types/app'
-import { FILE_SIZE_LIMIT } from '@/app/components/base/file-uploader/constants'
+import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
 import { formatFileSize } from '@/utils/format'
 
 type Props = {
@@ -36,6 +36,7 @@ const FileUploadSetting: FC<Props> = ({
     allowed_file_types,
     allowed_file_extensions,
   } = payload
+  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit()
 
   const handleSupportFileTypeChange = useCallback((type: SupportUploadFileTypes) => {
     const newPayload = produce(payload, (draft) => {
@@ -142,7 +143,12 @@ const FileUploadSetting: FC<Props> = ({
           title={t('appDebug.variableConfig.maxNumberOfUploads')!}
         >
           <div>
-            <div className='mb-1.5 text-text-tertiary body-xs-regular'>{t('appDebug.variableConfig.maxNumberTip', { size: formatFileSize(FILE_SIZE_LIMIT) })}</div>
+            <div className='mb-1.5 text-text-tertiary body-xs-regular'>{t('appDebug.variableConfig.maxNumberTip', {
+              imgLimit: formatFileSize(imgSizeLimit),
+              docLimit: formatFileSize(docSizeLimit),
+              audioLimit: formatFileSize(audioSizeLimit),
+              videoLimit: formatFileSize(videoSizeLimit),
+            })}</div>
             <InputNumberWithSlider
               value={max_length}
               min={1}

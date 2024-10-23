@@ -572,7 +572,7 @@ const translation = {
     pasteFileLinkInputPlaceholder: '输入文件链接',
     uploadFromComputerReadError: '文件读取失败，请重新选择。',
     uploadFromComputerUploadError: '文件上传失败，请重新上传。',
-    uploadFromComputerLimit: '上传文件不能超过 {{size}}',
+    uploadFromComputerLimit: '上传 {{type}} 不能超过 {{size}}',
     pasteFileLinkInvalid: '文件链接无效',
     fileExtensionNotSupport: '文件类型不支持',
   },
