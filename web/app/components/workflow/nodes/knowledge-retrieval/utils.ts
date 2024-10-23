@@ -1,4 +1,7 @@
-import { uniq } from 'lodash-es'
+import {
+  uniq,
+  xorBy,
+} from 'lodash-es'
 import type { MultipleRetrievalConfig } from './types'
 import type {
   DataSet,
@@ -15,7 +18,9 @@ export const checkNodeValid = () => {
   return true
 }
 
-export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
+export const getSelectedDatasetsMode = (datasets: DataSet[] = []) => {
+  if (datasets === null)
+    datasets = []
   let allHighQuality = true
   let allHighQualityVectorSearch = true
   let allHighQualityFullTextSearch = true
@@ -85,7 +90,14 @@ export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
   } as SelectedDatasetsMode
 }
 
-export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetrievalConfig, selectedDatasets: DataSet[]) => {
+export const getMultipleRetrievalConfig = (
+  multipleRetrievalConfig: MultipleRetrievalConfig,
+  selectedDatasets: DataSet[],
+  originalDatasets: DataSet[],
+  isValidRerankModel?: boolean,
+) => {
+  const shouldSetWeightDefaultValue = xorBy(selectedDatasets, originalDatasets, 'id').length > 0
+
   const {
     allHighQuality,
     allHighQualityVectorSearch,
@@ -113,7 +125,7 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
     reranking_mode,
     reranking_model,
     weights,
-    reranking_enable: allEconomic ? reranking_enable : true,
+    reranking_enable: ((allInternal && allEconomic) || allExternal) ? reranking_enable : true,
   }
 
   if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || allExternal || mixtureInternalAndExternal)
@@ -123,6 +135,37 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
     result.reranking_mode = RerankingModeEnum.WeightedScore
 
   if (allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined) && allInternal && !weights) {
+    if (!isValidRerankModel)
+      result.reranking_mode = RerankingModeEnum.WeightedScore
+    else
+      result.reranking_mode = RerankingModeEnum.RerankingModel
+
+    result.weights = {
+      vector_setting: {
+        vector_weight: allHighQualityVectorSearch
+          ? DEFAULT_WEIGHTED_SCORE.allHighQualityVectorSearch.semantic
+          : allHighQualityFullTextSearch
+            ? DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.semantic
+            : DEFAULT_WEIGHTED_SCORE.other.semantic,
+        embedding_provider_name: selectedDatasets[0].embedding_model_provider,
+        embedding_model_name: selectedDatasets[0].embedding_model,
+      },
+      keyword_setting: {
+        keyword_weight: allHighQualityVectorSearch
+          ? DEFAULT_WEIGHTED_SCORE.allHighQualityVectorSearch.keyword
+          : allHighQualityFullTextSearch
+            ? DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.keyword
+            : DEFAULT_WEIGHTED_SCORE.other.keyword,
+      },
+    }
+  }
+
+  if (shouldSetWeightDefaultValue && allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined || !isValidRerankModel) && allInternal && weights) {
+    if (!isValidRerankModel)
+      result.reranking_mode = RerankingModeEnum.WeightedScore
+    else
+      result.reranking_mode = RerankingModeEnum.RerankingModel
+
     result.weights = {
       vector_setting: {
         vector_weight: allHighQualityVectorSearch

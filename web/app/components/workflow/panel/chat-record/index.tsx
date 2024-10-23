@@ -17,22 +17,25 @@ import { fetchConversationMessages } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
 import { UUID_NIL } from '@/app/components/base/chat/constants'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 
 function appendQAToChatList(newChatList: ChatItem[], item: any) {
+  const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
   newChatList.push({
     id: item.id,
     content: item.answer,
     feedback: item.feedback,
     isAnswer: true,
     citation: item.metadata?.retriever_resources,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+    message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
     workflow_run_id: item.workflow_run_id,
   })
+  const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
   newChatList.push({
     id: `question-${item.id}`,
     content: item.query,
     isAnswer: false,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
+    message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
   })
 }
 

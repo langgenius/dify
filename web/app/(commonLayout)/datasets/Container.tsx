@@ -14,11 +14,11 @@ import DatasetFooter from './DatasetFooter'
 import ApiServer from './ApiServer'
 import Doc from './Doc'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
-import SearchInput from '@/app/components/base/search-input'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import Button from '@/app/components/base/button'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
+import SearchInput from '@/app/components/base/search-input'
 
 // Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'

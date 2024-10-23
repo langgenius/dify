@@ -10,11 +10,7 @@ from flask import Flask, current_app
 
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import (
-    NodeRunMetadataKey,
-    NodeType,
-    UserFrom,
-)
+from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
 from core.workflow.graph_engine.entities.event import (
@@ -36,12 +32,14 @@ from core.workflow.graph_engine.entities.graph import Graph, GraphEdge
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
+from core.workflow.nodes import NodeType
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
-from core.workflow.nodes.node_mapping import node_classes
+from core.workflow.nodes.node_mapping import node_type_classes_mapping
 from extensions.ext_database import db
+from models.enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 
 logger = logging.getLogger(__name__)
@@ -229,10 +227,8 @@ class GraphEngine:
                 raise GraphRunFailedError(f"Node {node_id} config not found.")
 
             # convert to specific node
-            node_type = NodeType.value_of(node_config.get("data", {}).get("type"))
-            node_cls = node_classes.get(node_type)
-            if not node_cls:
-                raise GraphRunFailedError(f"Node {node_id} type {node_type} not found.")
+            node_type = NodeType(node_config.get("data", {}).get("type"))
+            node_cls = node_type_classes_mapping[node_type]
 
             previous_node_id = previous_route_node_state.node_id if previous_route_node_state else None
 
