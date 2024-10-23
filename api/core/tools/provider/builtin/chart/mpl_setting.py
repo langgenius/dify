@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties
 
 
@@ -21,4 +22,7 @@ def set_chinese_font():
     return FontProperties()
 
 
+# use a business theme
+plt.style.use("seaborn-v0_8-darkgrid")
+plt.rcParams["axes.unicode_minus"] = False
 font_properties = set_chinese_font()
