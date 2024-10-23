@@ -51,9 +51,12 @@ class GiteeAIRerankModel(RerankModel):
         base_url = base_url.removesuffix("/")
 
         try:
+            body = {"model": model, "query": query, "documents": docs}
+            if top_n is not None:
+                body["top_n"] = top_n
             response = httpx.post(
                 f"{base_url}/{model}/rerank",
-                json={"model": model, "query": query, "documents": docs, "top_n": top_n},
+                json=body,
                 headers={"Authorization": f"Bearer {credentials.get('api_key')}"},
             )
 
@@ -92,7 +95,7 @@ class GiteeAIRerankModel(RerankModel):
                     "The Commonwealth of the Northern Mariana Islands is a group of islands in the Pacific Ocean that "
                     "are a political division controlled by the United States. Its capital is Saipan.",
                 ],
-                score_threshold=0.8,
+                score_threshold=0.01,
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
