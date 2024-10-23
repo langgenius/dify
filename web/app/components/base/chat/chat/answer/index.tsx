@@ -14,7 +14,6 @@ import BasicContent from './basic-content'
 import SuggestedQuestions from './suggested-questions'
 import More from './more'
 import WorkflowProcess from './workflow-process'
-import { AnswerTriangle } from '@/app/components/base/icons/src/vender/solid/general'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import Citation from '@/app/components/base/chat/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
@@ -110,10 +109,9 @@ const Answer: FC<AnswerProps> = ({
       </div>
       <div className='chat-answer-container group grow w-0 ml-4' ref={containerRef}>
         <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
-          <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
           <div
             ref={contentRef}
-            className={cn('relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900', workflowProcess && 'w-full')}
+            className={cn('relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-2xl text-sm text-gray-900', workflowProcess && 'w-full')}
           >
             {
               !responding && (
