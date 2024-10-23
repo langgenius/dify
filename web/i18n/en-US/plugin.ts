@@ -61,7 +61,10 @@ const translation = {
   },
   installModal: {
     installPlugin: 'Install Plugin',
-    installedSuccessfully: 'Install successful',
+    installedSuccessfully: 'Installation successful',
+    installedSuccessfullyDesc: 'The plugin has been installed successfully.',
+    installFailed: 'Installation failed',
+    installFailedDesc: 'The plugin has been installed failed.',
     install: 'Install',
     installing: 'Installing...',
     uploadingPackage: 'Uploading {{packageName}}...',

@@ -23,7 +23,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation()
-  // uploading -> readyToInstall -> installed
+  // uploading -> readyToInstall -> installed/failed
   const [step, setStep] = useState<InstallStep>(InstallStep.uploading)
 
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
@@ -31,6 +31,8 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   const getTitle = useCallback(() => {
     if (step === InstallStep.installed)
       return t(`${i18nPrefix}.installedSuccessfully`)
+    if (step === InstallStep.installFailed)
+      return t(`${i18nPrefix}.installFailed`)
     return t(`${i18nPrefix}.installPlugin`)
   }, [])
   const [manifest, setManifest] = useState<PluginDeclaration | null>(toolNotionManifest)
@@ -46,6 +48,10 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
 
   const handleInstalled = useCallback(async () => {
     setStep(InstallStep.installed)
+  }, [])
+
+  const handleFailed = useCallback(() => {
+    setStep(InstallStep.installFailed)
   }, [])
 
   return (
@@ -73,13 +79,15 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
             payload={manifest!}
             onCancel={onClose}
             onInstalled={handleInstalled}
+            onFailed={handleFailed}
           />
         )
       }
       {
-        step === InstallStep.installed && (
+        ([InstallStep.installed, InstallStep.installFailed].includes(step)) && (
           <Installed
             payload={manifest!}
+            isFailed={step === InstallStep.installFailed}
             onCancel={onClose}
           />
         )

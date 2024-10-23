@@ -16,6 +16,7 @@ export type Props = {
   payload: Plugin
   titleLeft?: React.ReactNode
   installed?: boolean
+  installFailed?: boolean
   hideCornerMark?: boolean
   descriptionLineRows?: number
   footer?: React.ReactNode
@@ -28,6 +29,7 @@ const Card = ({
   payload,
   titleLeft,
   installed,
+  installFailed,
   hideCornerMark,
   descriptionLineRows = 2,
   footer,
@@ -56,7 +58,7 @@ const Card = ({
       {!hideCornerMark && <CornerMark text={type} />}
       {/* Header */}
       <div className="flex">
-        <Icon src={icon} installed={installed} />
+        <Icon src={icon} installed={installed} installFailed={installFailed} />
         <div className="ml-3 grow">
           <div className="flex items-center h-5">
             <Title title={getLocalizedText(label)} />

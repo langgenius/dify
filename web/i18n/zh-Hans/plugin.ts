@@ -62,6 +62,9 @@ const translation = {
   installModal: {
     installPlugin: '安装插件',
     installedSuccessfully: '安装成功',
+    installedSuccessfullyDesc: '插件已成功安装。',
+    installFailed: '安装失败',
+    installFailedDesc: '插件安装失败。',
     install: '安装',
     installing: '安装中...',
     uploadingPackage: '上传 {{packageName}} 中...',

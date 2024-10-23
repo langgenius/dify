@@ -24,7 +24,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation()
-  // readyToInstall -> check installed -> installed
+  // readyToInstall -> check installed -> installed/failed
   const [step, setStep] = useState<InstallStep>(InstallStep.readyToInstall)
 
   // TODO: check installed in beta version.
@@ -32,11 +32,17 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   const getTitle = useCallback(() => {
     if (step === InstallStep.installed)
       return t(`${i18nPrefix}.installedSuccessfully`)
+    if (step === InstallStep.installFailed)
+      return t(`${i18nPrefix}.installFailed`)
     return t(`${i18nPrefix}.installPlugin`)
   }, [])
 
-  const handleInstalled = useCallback(async () => {
+  const handleInstalled = useCallback(() => {
     setStep(InstallStep.installed)
+  }, [])
+
+  const handleFailed = useCallback(() => {
+    setStep(InstallStep.installFailed)
   }, [])
 
   return (
@@ -57,13 +63,15 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
             payload={manifest!}
             onCancel={onClose}
             onInstalled={handleInstalled}
+            onFailed={handleFailed}
           />
         )
       }
       {
-        step === InstallStep.installed && (
+        ([InstallStep.installed, InstallStep.installFailed].includes(step)) && (
           <Installed
             payload={manifest!}
+            isFailed={step === InstallStep.installFailed}
             onCancel={onSuccess}
           />
         )

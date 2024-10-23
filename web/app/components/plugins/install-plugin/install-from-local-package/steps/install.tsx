@@ -15,12 +15,14 @@ type Props = {
   payload: PluginDeclaration
   onCancel: () => void
   onInstalled: () => void
+  onFailed: () => void
 }
 
 const Installed: FC<Props> = ({
   payload,
   onCancel,
   onInstalled,
+  onFailed,
 }) => {
   const { t } = useTranslation()
   const [isInstalling, setIsInstalling] = React.useState(false)
@@ -29,7 +31,8 @@ const Installed: FC<Props> = ({
     if (isInstalling) return
     setIsInstalling(true)
     await sleep(1500)
-    onInstalled()
+    // onInstalled()
+    onFailed()
   }
 
   return (
