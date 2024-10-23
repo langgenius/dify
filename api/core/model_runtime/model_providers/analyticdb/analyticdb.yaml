@@ -1,0 +1,55 @@
+provider: analyticdb
+label:
+  en_US: Analyticdb
+description:
+  en_US: Models provided by Analyticdb, such as bge-reranker-v2-m3, bge-reranker-v2-minicpm-layerwise
+  zh_Hans: Analyticdb提供的模型，例如 bge-reranker-v2-m3，bge-reranker-v2-minicpm-layerwise
+icon_small:
+  en_US: adbpg.png
+icon_large:
+  en_US: adbpg.png
+background: "#EFF1FE"
+help:
+  title:
+    en_US: Create your instance on AnalyticDB
+    zh_Hans: 在 AnalyticDB 创建实例
+  url:
+    en_US: https://help.aliyun.com/zh/analyticdb/analyticdb-for-postgresql/user-guide/create-an-instance-instance-management
+supported_model_types:
+  - rerank
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: access_key_id
+      label:
+        en_US: access key id
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 Access Key ID
+        en_US: Enter your Access Key ID
+    - variable: access_key_secret
+      label:
+        en_US: access key secret
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 Access Key Secret
+        en_US: Enter your Access Key Secret
+    - variable: instance_id
+      label:
+        en_US: instance id
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 实例ID
+        en_US: Enter your instance ID
+    - variable: region_id
+      label:
+        en_US: region id
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 实例地域ID
+        en_US: Enter your instance region ID
