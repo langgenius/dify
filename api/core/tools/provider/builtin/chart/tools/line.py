@@ -4,7 +4,7 @@ from typing import Any, Union
 import matplotlib.pyplot as plt
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.provider.builtin.chart.mpl_setting import font_properties
+# from core.tools.provider.builtin.chart.mpl_setting import font_properties
 from core.tools.tool.builtin_tool import BuiltinTool
 
 
@@ -31,13 +31,11 @@ class LinearChartTool(BuiltinTool):
         else:
             data = [float(i) for i in data]
 
-        plt.rcParams["font.family"] = font_properties.get_name()
-
         flg, ax = plt.subplots(figsize=(10, 8))
 
         if axis:
             axis = [label[:10] + "..." if len(label) > 10 else label for label in axis]
-            ax.set_xticklabels(axis, rotation=45, ha="right", fontproperties=font_properties)
+            ax.set_xticklabels(axis, rotation=45, ha="right")
             ax.plot(axis, data)
         else:
             ax.plot(data)
