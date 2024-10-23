@@ -1,7 +1,6 @@
 import datetime
 import hashlib
 import uuid
-from collections.abc import Generator
 from typing import Literal, Union
 
 from flask_login import current_user
@@ -132,7 +131,7 @@ class FileService:
         return upload_file
 
     @staticmethod
-    def get_file_preview(file_id: str) -> str:
+    def get_file_preview(file_id: str):
         upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
 
         if not upload_file:
@@ -171,7 +170,7 @@ class FileService:
         return generator, upload_file.mime_type
 
     @staticmethod
-    def get_signed_file_preview(file_id: str, timestamp: str, nonce: str, sign: str):
+    def get_file_generator_by_file_id(file_id: str, timestamp: str, nonce: str, sign: str):
         result = file_helpers.verify_file_signature(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
         if not result:
             raise NotFound("File not found or signature is invalid")
@@ -183,10 +182,10 @@ class FileService:
 
         generator = storage.load(upload_file.key, stream=True)
 
-        return generator, upload_file.mime_type
+        return generator, upload_file
 
     @staticmethod
-    def get_public_image_preview(file_id: str) -> tuple[Generator, str]:
+    def get_public_image_preview(file_id: str):
         upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
 
         if not upload_file:
