@@ -41,7 +41,7 @@ class AlreadyActivateError(BaseHTTPException):
 
 
 class NotAllowedCreateWorkspace(BaseHTTPException):
-    error_code = "unauthorized"
+    error_code = "not_allowed_create_workspace"
     description = "Workspace not found, please contact system admin to invite you to join in a workspace."
     code = 400
 

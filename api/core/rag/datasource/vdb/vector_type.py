@@ -18,3 +18,4 @@ class VectorType(str, Enum):
     ELASTICSEARCH = "elasticsearch"
     BAIDU = "baidu"
     VIKINGDB = "vikingdb"
+    UPSTASH = "upstash"

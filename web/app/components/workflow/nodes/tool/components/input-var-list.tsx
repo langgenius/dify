@@ -99,6 +99,18 @@ const InputVarList: FC<Props> = ({
     }
   }, [value, onChange])
 
+  const handleFileChange = useCallback((variable: string) => {
+    return (varValue: ValueSelector | string) => {
+      const newValue = produce(value, (draft: ToolVarInputs) => {
+        draft[variable] = {
+          type: VarKindType.variable,
+          value: varValue,
+        }
+      })
+      onChange(newValue)
+    }
+  }, [value, onChange])
+
   const [inputsIsFocus, setInputsIsFocus] = useState<Record<string, boolean>>({})
   const handleInputFocus = useCallback((variable: string) => {
     return (value: boolean) => {
@@ -129,7 +141,8 @@ const InputVarList: FC<Props> = ({
           const isSelect = type === FormTypeEnum.select
           const isFile = type === FormTypeEnum.file
           const isFileArray = type === FormTypeEnum.files
-          const isString = type !== FormTypeEnum.textNumber && type !== FormTypeEnum.files && type !== FormTypeEnum.select
+          const isString = !isNumber && !isSelect && !isFile && !isFileArray
+
           return (
             <div key={variable} className='space-y-1'>
               <div className='flex items-center h-[18px] space-x-2'>
@@ -158,7 +171,6 @@ const InputVarList: FC<Props> = ({
                   value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
                   onChange={handleNotMixedTypeChange(variable)}
                   onOpen={handleOpen(index)}
-                  isSupportConstantValue={isSupportConstantValue}
                   defaultVarKindType={varInput?.type}
                   filterVar={isNumber ? filterVar : undefined}
                   availableVars={isSelect ? availableVars : undefined}
@@ -170,8 +182,8 @@ const InputVarList: FC<Props> = ({
                   readonly={readOnly}
                   isShowNodeName
                   nodeId={nodeId}
-                  value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
-                  onChange={handleNotMixedTypeChange(variable)}
+                  value={varInput?.value || []}
+                  onChange={handleFileChange(variable)}
                   onOpen={handleOpen(index)}
                   defaultVarKindType={VarKindType.variable}
                   filterVar={(varPayload: Var) => varPayload.type === VarType.file}
@@ -182,8 +194,8 @@ const InputVarList: FC<Props> = ({
                   readonly={readOnly}
                   isShowNodeName
                   nodeId={nodeId}
-                  value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
-                  onChange={handleNotMixedTypeChange(variable)}
+                  value={varInput?.value || []}
+                  onChange={handleFileChange(variable)}
                   onOpen={handleOpen(index)}
                   defaultVarKindType={VarKindType.variable}
                   filterVar={(varPayload: Var) => varPayload.type === VarType.arrayFile}
