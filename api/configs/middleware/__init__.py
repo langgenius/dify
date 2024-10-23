@@ -26,6 +26,7 @@ from configs.middleware.vdb.pgvector_config import PGVectorConfig
 from configs.middleware.vdb.pgvectors_config import PGVectoRSConfig
 from configs.middleware.vdb.qdrant_config import QdrantConfig
 from configs.middleware.vdb.relyt_config import RelytConfig
+from configs.middleware.vdb.supabase_vector_config import SupabaseVectorConfig
 from configs.middleware.vdb.tencent_vector_config import TencentVectorDBConfig
 from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
 from configs.middleware.vdb.vikingdb_config import VikingDBConfig
@@ -246,5 +247,6 @@ class MiddlewareConfig(
     ElasticsearchConfig,
     InternalTestConfig,
     VikingDBConfig,
+    SupabaseVectorConfig,
 ):
     pass
