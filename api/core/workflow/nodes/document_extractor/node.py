@@ -75,7 +75,7 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
             )
 
 
-def _extract_text(*, file_content: bytes, mime_type: str, file_extension: str = "") -> str:
+def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
     """Extract text from a file based on its MIME type."""
     if mime_type.startswith("text/plain") or mime_type in {"text/html", "text/htm", "text/markdown", "text/xml"}:
         return _extract_text_from_plain_text(file_content)
@@ -104,9 +104,6 @@ def _extract_text(*, file_content: bytes, mime_type: str, file_extension: str = 
     elif mime_type == "application/vnd.ms-outlook":
         return _extract_text_from_msg(file_content)
     else:
-        extract_result = _extract_text_by_file_extension(file_content, file_extension)
-        if extract_result:
-            return extract_result
         raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
 
@@ -134,7 +131,7 @@ def _extract_text_by_file_extension(file_content: bytes, file_extension: str) ->
         case "msg":
             return _extract_text_from_msg(file_content)
         case _:
-            return ""
+            raise UnsupportedFileTypeError(f"Unsupported Extension Type: {file_extension}")
 
 
 def _extract_text_from_plain_text(file_content: bytes) -> str:
@@ -189,7 +186,10 @@ def _extract_text_from_file(file: File):
     if file.mime_type is None:
         raise UnsupportedFileTypeError("Unable to determine file type: MIME type is missing")
     file_content = _download_file_content(file)
-    extracted_text = _extract_text(file_content=file_content, mime_type=file.mime_type, file_extension=file.extension)
+    if file.transfer_method == FileTransferMethod.REMOTE_URL:
+        extracted_text = _extract_text_by_mime_type(file_content=file_content, mime_type=file.mime_type)
+    else:
+        extracted_text = _extract_text_by_file_extension(file_content=file_content, file_extension=file.extension)
     return extracted_text
 
 
