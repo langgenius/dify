@@ -65,13 +65,13 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
 @pytest.mark.parametrize(
     ("mime_type", "file_content", "expected_text", "transfer_method", "extension"),
     [
-        ("text/plain", b"Hello, world!", ["Hello, world!"], FileTransferMethod.LOCAL_FILE, "txt"),
+        ("text/plain", b"Hello, world!", ["Hello, world!"], FileTransferMethod.LOCAL_FILE, ".txt"),
         (
             "application/pdf",
             b"%PDF-1.5\n%Test PDF content",
             ["Mocked PDF content"],
             FileTransferMethod.LOCAL_FILE,
-            "pdf",
+            ".pdf",
         ),
         (
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",

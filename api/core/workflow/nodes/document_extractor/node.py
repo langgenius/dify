@@ -110,25 +110,25 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
 def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str) -> str:
     """Extract text from a file based on its file extension."""
     match file_extension:
-        case "txt" | "markdown" | "md" | "html" | "htm" | "xml":
+        case ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml":
             return _extract_text_from_plain_text(file_content)
-        case "pdf":
+        case ".pdf":
             return _extract_text_from_pdf(file_content)
-        case "doc" | "docx":
+        case ".doc" | ".docx":
             return _extract_text_from_doc(file_content)
-        case "csv":
+        case ".csv":
             return _extract_text_from_csv(file_content)
-        case "xls" | "xlsx":
+        case ".xls" | ".xlsx":
             return _extract_text_from_excel(file_content)
-        case "ppt":
+        case ".ppt":
             return _extract_text_from_ppt(file_content)
-        case "pptx":
+        case ".pptx":
             return _extract_text_from_pptx(file_content)
-        case "epub":
+        case ".epub":
             return _extract_text_from_epub(file_content)
-        case "eml":
+        case ".eml":
             return _extract_text_from_eml(file_content)
-        case "msg":
+        case ".msg":
             return _extract_text_from_msg(file_content)
         case _:
             raise UnsupportedFileTypeError(f"Unsupported Extension Type: {file_extension}")
