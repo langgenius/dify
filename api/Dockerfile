@@ -56,6 +56,8 @@ RUN apt-get update \
     && apt-get update \
     # For Security
     && apt-get install -y --no-install-recommends zlib1g=1:1.3.dfsg+really1.3.1-1 expat=2.6.3-1 libldap-2.5-0=2.5.18+dfsg-3 perl=5.38.2-5 libsqlite3-0=3.46.1-1 \
+    # install a chinese font to support the use of tools like matplotlib
+    && apt-get install -y fonts-noto-cjk \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
