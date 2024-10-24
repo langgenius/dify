@@ -16,7 +16,6 @@ import timezone from 'dayjs/plugin/timezone'
 import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
-import { UUID_NIL } from '../../base/chat/constants'
 import type { ChatItemInTree } from '../../base/chat/types'
 import VarPanel from './var-panel'
 import cn from '@/utils/classnames'
@@ -84,95 +83,76 @@ const PARAM_MAP = {
   frequency_penalty: 'Frequency Penalty',
 }
 
-function appendQAToChatList(newChatList: IChatItem[], item: any, conversationId: string, timezone: string, format: string) {
-  const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
-  newChatList.push({
-    id: item.id,
-    content: item.answer,
-    agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
-    feedback: item.feedbacks.find((item: any) => item.from_source === 'user'), // user feedback
-    adminFeedback: item.feedbacks.find((item: any) => item.from_source === 'admin'), // admin feedback
-    feedbackDisabled: false,
-    isAnswer: true,
-    message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
-    log: [
-      ...item.message,
-      ...(item.message[item.message.length - 1]?.role !== 'assistant'
-        ? [
-          {
-            role: 'assistant',
-            text: item.answer,
-            files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-          },
-        ]
-        : []),
-    ],
-    workflow_run_id: item.workflow_run_id,
-    conversationId,
-    input: {
-      inputs: item.inputs,
-      query: item.query,
-    },
-    more: {
-      time: dayjs.unix(item.created_at).tz(timezone).format(format),
-      tokens: item.answer_tokens + item.message_tokens,
-      latency: item.provider_response_latency.toFixed(2),
-    },
-    citation: item.metadata?.retriever_resources,
-    annotation: (() => {
-      if (item.annotation_hit_history) {
-        return {
-          id: item.annotation_hit_history.annotation_id,
-          authorName: item.annotation_hit_history.annotation_create_account?.name || 'N/A',
-          created_at: item.annotation_hit_history.created_at,
-        }
-      }
-
-      if (item.annotation) {
-        return {
-          id: item.annotation.id,
-          authorName: item.annotation.account.name,
-          logAnnotation: item.annotation,
-          created_at: 0,
-        }
-      }
-
-      return undefined
-    })(),
-    parentMessageId: `question-${item.id}`,
-  })
-
-  const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
-  newChatList.push({
-    id: `question-${item.id}`,
-    content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
-    isAnswer: false,
-    message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
-    parentMessageId: item.parent_message_id || undefined,
-  })
-}
-
 const getFormattedChatList = (messages: ChatMessage[], conversationId: string, timezone: string, format: string) => {
   const newChatList: IChatItem[] = []
-  let nextMessageId = null
-  for (const item of messages) {
-    if (!item.parent_message_id) {
-      appendQAToChatList(newChatList, item, conversationId, timezone, format)
-      break
-    }
+  messages.forEach((item: ChatMessage) => {
+    const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
+    newChatList.push({
+      id: `question-${item.id}`,
+      content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
+      isAnswer: false,
+      message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
+      parentMessageId: item.parent_message_id || undefined,
+    })
 
-    if (!nextMessageId) {
-      appendQAToChatList(newChatList, item, conversationId, timezone, format)
-      nextMessageId = item.parent_message_id
-    }
-    else {
-      if (item.id === nextMessageId || nextMessageId === UUID_NIL) {
-        appendQAToChatList(newChatList, item, conversationId, timezone, format)
-        nextMessageId = item.parent_message_id
-      }
-    }
-  }
-  return newChatList.reverse()
+    const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
+    newChatList.push({
+      id: item.id,
+      content: item.answer,
+      agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
+      feedback: item.feedbacks.find(item => item.from_source === 'user'), // user feedback
+      adminFeedback: item.feedbacks.find(item => item.from_source === 'admin'), // admin feedback
+      feedbackDisabled: false,
+      isAnswer: true,
+      message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
+      log: [
+        ...item.message,
+        ...(item.message[item.message.length - 1]?.role !== 'assistant'
+          ? [
+            {
+              role: 'assistant',
+              text: item.answer,
+              files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+            },
+          ]
+          : []),
+      ] as IChatItem['log'],
+      workflow_run_id: item.workflow_run_id,
+      conversationId,
+      input: {
+        inputs: item.inputs,
+        query: item.query,
+      },
+      more: {
+        time: dayjs.unix(item.created_at).tz(timezone).format(format),
+        tokens: item.answer_tokens + item.message_tokens,
+        latency: item.provider_response_latency.toFixed(2),
+      },
+      citation: item.metadata?.retriever_resources,
+      annotation: (() => {
+        if (item.annotation_hit_history) {
+          return {
+            id: item.annotation_hit_history.annotation_id,
+            authorName: item.annotation_hit_history.annotation_create_account?.name || 'N/A',
+            created_at: item.annotation_hit_history.created_at,
+          }
+        }
+
+        if (item.annotation) {
+          return {
+            id: item.annotation.id,
+            authorName: item.annotation.account.name,
+            logAnnotation: item.annotation,
+            created_at: 0,
+          }
+        }
+
+        return undefined
+      })(),
+      parentMessageId: `question-${item.id}`,
+    })
+  })
+  return newChatList
 }
 
 // const displayedParams = CompletionParams.slice(0, -2)
