@@ -63,7 +63,7 @@ class VesslAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
                     default=512,
                     min=1,
                     max=int(credentials.get("max_tokens_to_sample", 4096)),
-                )
+                ),
             ],
             pricing=PriceConfig(
                 input=Decimal(credentials.get("input_price", 0)),

@@ -19,27 +19,30 @@ def test_validate_credentials():
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
             model=os.environ.get("VESSL_AI_MODEL_NAME"),
-            credentials={"api_key": "invalid_key",
-                         "endpoint_url": os.environ.get("VESSL_AI_ENDPOINT_URL"),
-                         "mode": "chat"
-                         }
+            credentials={
+                "api_key": "invalid_key",
+                "endpoint_url": os.environ.get("VESSL_AI_ENDPOINT_URL"),
+                "mode": "chat",
+            },
         )
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
             model=os.environ.get("VESSL_AI_MODEL_NAME"),
-            credentials={"api_key": os.environ.get("VESSL_AI_API_KEY"),
-                         "endpoint_url": "http://invalid_url",
-                         "mode": "chat"
-                         }
+            credentials={
+                "api_key": os.environ.get("VESSL_AI_API_KEY"),
+                "endpoint_url": "http://invalid_url",
+                "mode": "chat",
+            },
         )
 
     model.validate_credentials(
         model=os.environ.get("VESSL_AI_MODEL_NAME"),
-        credentials={"api_key": os.environ.get("VESSL_AI_API_KEY"),
-                     "endpoint_url": os.environ.get("VESSL_AI_ENDPOINT_URL"),
-                     "mode": "chat"
-                     }
+        credentials={
+            "api_key": os.environ.get("VESSL_AI_API_KEY"),
+            "endpoint_url": os.environ.get("VESSL_AI_ENDPOINT_URL"),
+            "mode": "chat",
+        },
     )
 
 
@@ -48,10 +51,11 @@ def test_invoke_model():
 
     response = model.invoke(
         model=os.environ.get("VESSL_AI_MODEL_NAME"),
-        credentials={"api_key": os.environ.get("VESSL_AI_API_KEY"),
-                     "endpoint_url": os.environ.get("VESSL_AI_ENDPOINT_URL"),
-                     "mode": "chat"
-                     },
+        credentials={
+            "api_key": os.environ.get("VESSL_AI_API_KEY"),
+            "endpoint_url": os.environ.get("VESSL_AI_ENDPOINT_URL"),
+            "mode": "chat",
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content="You are a helpful AI assistant.",
@@ -77,10 +81,11 @@ def test_invoke_stream_model():
 
     response = model.invoke(
         model=os.environ.get("VESSL_AI_MODEL_NAME"),
-        credentials={"api_key": os.environ.get("VESSL_AI_API_KEY"),
-                     "endpoint_url": os.environ.get("VESSL_AI_ENDPOINT_URL"),
-                     "mode": "chat"
-                     },
+        credentials={
+            "api_key": os.environ.get("VESSL_AI_API_KEY"),
+            "endpoint_url": os.environ.get("VESSL_AI_ENDPOINT_URL"),
+            "mode": "chat",
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content="You are a helpful AI assistant.",
@@ -110,9 +115,10 @@ def test_get_num_tokens():
 
     num_tokens = model.get_num_tokens(
         model=os.environ.get("VESSL_AI_MODEL_NAME"),
-        credentials={"api_key": os.environ.get("VESSL_AI_API_KEY"),
-                     "endpoint_url": os.environ.get("VESSL_AI_ENDPOINT_URL")
-                     },
+        credentials={
+            "api_key": os.environ.get("VESSL_AI_API_KEY"),
+            "endpoint_url": os.environ.get("VESSL_AI_ENDPOINT_URL"),
+        },
         prompt_messages=[
             SystemPromptMessage(
                 content="You are a helpful AI assistant.",
