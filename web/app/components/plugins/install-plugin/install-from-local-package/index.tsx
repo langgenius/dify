@@ -83,6 +83,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       {
         step === InstallStep.readyToInstall && (
           <Install
+            uniqueIdentifier={uniqueIdentifier!}
             payload={manifest!}
             onCancel={onClose}
             onInstalled={handleInstalled}

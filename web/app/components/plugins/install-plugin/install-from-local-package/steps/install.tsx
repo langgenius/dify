@@ -9,10 +9,12 @@ import { sleep } from '@/utils'
 import { Trans, useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
+import { installPackageFromLocal } from '@/service/plugins'
 
 const i18nPrefix = 'plugin.installModal'
 
 type Props = {
+  uniqueIdentifier: string
   payload: PluginDeclaration
   onCancel: () => void
   onInstalled: () => void
@@ -20,6 +22,7 @@ type Props = {
 }
 
 const Installed: FC<Props> = ({
+  uniqueIdentifier,
   payload,
   onCancel,
   onInstalled,
@@ -31,9 +34,14 @@ const Installed: FC<Props> = ({
   const handleInstall = async () => {
     if (isInstalling) return
     setIsInstalling(true)
+    try {
+      await installPackageFromLocal(uniqueIdentifier)
+      onInstalled()
+    }
+    catch (e) {
+      onFailed()
+    }
     await sleep(1500)
-    // onInstalled()
-    onFailed()
   }
 
   return (

@@ -58,3 +58,9 @@ export const uploadPackageFile = async (file: File) => {
     data: formData,
   }, false, '/workspaces/current/plugin/upload/pkg')
 }
+
+export const installPackageFromLocal = async (uniqueIdentifier: string) => {
+  return post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
+    body: { plugin_unique_identifiers: [uniqueIdentifier] },
+  })
+}

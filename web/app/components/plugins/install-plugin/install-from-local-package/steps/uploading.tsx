@@ -30,14 +30,18 @@ const Uploading: FC<Props> = ({
   const handleUpload = async () => {
     try {
       const res = await uploadPackageFile(file)
-      onUploaded(res)
+      // onUploaded(res)
     }
     catch (e: any) {
       if (e.response?.message) {
         onFailed(e.response?.message)
       }
       else { // Why it would into this branch?
-        onUploaded(e.response)
+        const res = e.response
+        onUploaded({
+          uniqueIdentifier: res.unique_identifier,
+          manifest: res.manifest,
+        })
       }
     }
   }
