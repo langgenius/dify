@@ -72,7 +72,7 @@ export type I18nText = {
 }
 ```
 
-4. Add the new language to the `language.ts` file.
+4. Add the new language to the `language.json` file.
 
 ```typescript
 

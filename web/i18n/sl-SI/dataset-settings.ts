@@ -1,0 +1,38 @@
+const translation = {
+  title: 'Nastavitve znanja',
+  desc: 'Tukaj lahko spremenite lastnosti in nastavitve pridobivanja tega znanja.',
+  form: {
+    name: 'Ime znanja',
+    namePlaceholder: 'Prosimo, vnesite ime znanja',
+    nameError: 'Ime ne sme biti prazno',
+    desc: 'Opis znanja',
+    descInfo: 'Prosimo, napišite jasen besedilni opis, ki bo povzel vsebino znanja. Ta opis bo uporabljen kot osnova za ujemanje pri izbiri med več znanji za sklepanje.',
+    descPlaceholder: 'Opišite, kaj je v tem znanju (neobvezno)',
+    descWrite: 'Naučite se, kako napisati dober opis znanja.',
+    permissions: 'Dovoljenja',
+    permissionsOnlyMe: 'Samo jaz',
+    permissionsAllMember: 'Vsi člani ekipe',
+    permissionsInvitedMembers: 'Določeni člani ekipe',
+    me: '(Vi)',
+    indexMethod: 'Metoda indeksiranja',
+    indexMethodHighQuality: 'Visoka kakovost',
+    indexMethodHighQualityTip: 'Za obdelavo pokličite vdelani model za zagotovitev večje natančnosti pri poizvedbah uporabnikov.',
+    indexMethodEconomy: 'Varčna',
+    indexMethodEconomyTip: 'Uporabite offline vektorske motorje, indeksiranje ključnih besed itd., da zmanjšate natančnost brez porabe žetonov',
+    embeddingModel: 'Vdelani model',
+    embeddingModelTip: 'Če želite spremeniti vdelani model, pojdite na ',
+    embeddingModelTipLink: 'Nastavitve',
+    retrievalSetting: {
+      title: 'Nastavitve pridobivanja',
+      learnMore: 'Izvedite več',
+      description: ' o metodi pridobivanja.',
+      longDescription: ' o metodi pridobivanja, to lahko kadar koli spremenite v nastavitvah znanja.',
+    },
+    externalKnowledgeAPI: 'Zunanji API za znanje',
+    externalKnowledgeID: 'ID zunanjega znanja',
+    retrievalSettings: 'Nastavitve pridobivanja',
+    save: 'Shrani',
+  },
+}
+
+export default translation
