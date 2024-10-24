@@ -1,4 +1,5 @@
 import type { Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
+import type { FileUploadConfigResponse } from '@/models/common'
 
 export type EnabledOrDisabled = {
   enabled?: boolean
@@ -38,6 +39,7 @@ export type FileUpload = {
   allowed_file_extensions?: string[]
   allowed_file_upload_methods?: TransferMethod[]
   number_limits?: number
+  fileUploadConfig?: FileUploadConfigResponse
 } & EnabledOrDisabled
 
 export type AnnotationReplyConfig = {

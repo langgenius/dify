@@ -390,6 +390,7 @@ const TextGeneration: FC<IMainProps> = ({
       setVisionConfig({
         ...file_upload.image,
         image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
+        fileUploadConfig: appParams?.system_parameters,
       })
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({
