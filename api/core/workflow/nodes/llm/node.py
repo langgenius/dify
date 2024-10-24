@@ -22,7 +22,15 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.variables import ArrayAnySegment, ArrayFileSegment, FileSegment
+from core.variables import (
+    ArrayAnySegment,
+    ArrayFileSegment,
+    ArraySegment,
+    FileSegment,
+    NoneSegment,
+    ObjectSegment,
+    StringSegment,
+)
 from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.enums import SystemVariableKey
@@ -119,9 +127,10 @@ class LLMNode(BaseNode[LLMNodeData]):
                 context=context,
                 memory=memory,
                 model_config=model_config,
-                vision_detail=self.node_data.vision.configs.detail,
                 prompt_template=self.node_data.prompt_template,
                 memory_config=self.node_data.memory,
+                vision_enabled=self.node_data.vision.enabled,
+                vision_detail=self.node_data.vision.configs.detail,
             )
 
             process_data = {
@@ -263,50 +272,44 @@ class LLMNode(BaseNode[LLMNodeData]):
             return variables
 
         for variable_selector in node_data.prompt_config.jinja2_variables or []:
-            variable = variable_selector.variable
-            value = self.graph_runtime_state.variable_pool.get_any(variable_selector.value_selector)
+            variable_name = variable_selector.variable
+            variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+            if variable is None:
+                raise ValueError(f"Variable {variable_selector.variable} not found")
 
-            def parse_dict(d: dict) -> str:
+            def parse_dict(input_dict: Mapping[str, Any]) -> str:
                 """
                 Parse dict into string
                 """
                 # check if it's a context structure
-                if "metadata" in d and "_source" in d["metadata"] and "content" in d:
-                    return d["content"]
+                if "metadata" in input_dict and "_source" in input_dict["metadata"] and "content" in input_dict:
+                    return input_dict["content"]
 
                 # else, parse the dict
                 try:
-                    return json.dumps(d, ensure_ascii=False)
+                    return json.dumps(input_dict, ensure_ascii=False)
                 except Exception:
-                    return str(d)
+                    return str(input_dict)
 
-            if isinstance(value, str):
-                value = value
-            elif isinstance(value, list):
+            if isinstance(variable, ArraySegment):
                 result = ""
-                for item in value:
+                for item in variable.value:
                     if isinstance(item, dict):
                         result += parse_dict(item)
-                    elif isinstance(item, str):
-                        result += item
-                    elif isinstance(item, int | float):
-                        result += str(item)
                     else:
                         result += str(item)
                     result += "\n"
                 value = result.strip()
-            elif isinstance(value, dict):
-                value = parse_dict(value)
-            elif isinstance(value, int | float):
-                value = str(value)
+            elif isinstance(variable, ObjectSegment):
+                value = parse_dict(variable.value)
             else:
-                value = str(value)
+                value = variable.text
 
-            variables[variable] = value
+            variables[variable_name] = value
 
         return variables
 
-    def _fetch_inputs(self, node_data: LLMNodeData) -> dict[str, str]:
+    def _fetch_inputs(self, node_data: LLMNodeData) -> dict[str, Any]:
         inputs = {}
         prompt_template = node_data.prompt_template
 
@@ -320,11 +323,12 @@ class LLMNode(BaseNode[LLMNodeData]):
             variable_selectors = variable_template_parser.extract_variable_selectors()
 
         for variable_selector in variable_selectors:
-            variable_value = self.graph_runtime_state.variable_pool.get_any(variable_selector.value_selector)
-            if variable_value is None:
+            variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+            if variable is None:
                 raise ValueError(f"Variable {variable_selector.variable} not found")
-
-            inputs[variable_selector.variable] = variable_value
+            if isinstance(variable, NoneSegment):
+                continue
+            inputs[variable_selector.variable] = variable.to_object()
 
         memory = node_data.memory
         if memory and memory.query_prompt_template:
@@ -332,11 +336,12 @@ class LLMNode(BaseNode[LLMNodeData]):
                 template=memory.query_prompt_template
             ).extract_variable_selectors()
             for variable_selector in query_variable_selectors:
-                variable_value = self.graph_runtime_state.variable_pool.get_any(variable_selector.value_selector)
-                if variable_value is None:
+                variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+                if variable is None:
                     raise ValueError(f"Variable {variable_selector.variable} not found")
-
-                inputs[variable_selector.variable] = variable_value
+                if isinstance(variable, NoneSegment):
+                    continue
+                inputs[variable_selector.variable] = variable.to_object()
 
         return inputs
 
@@ -361,14 +366,14 @@ class LLMNode(BaseNode[LLMNodeData]):
         if not node_data.context.variable_selector:
             return
 
-        context_value = self.graph_runtime_state.variable_pool.get_any(node_data.context.variable_selector)
-        if context_value:
-            if isinstance(context_value, str):
-                yield RunRetrieverResourceEvent(retriever_resources=[], context=context_value)
-            elif isinstance(context_value, list):
+        context_value_variable = self.graph_runtime_state.variable_pool.get(node_data.context.variable_selector)
+        if context_value_variable:
+            if isinstance(context_value_variable, StringSegment):
+                yield RunRetrieverResourceEvent(retriever_resources=[], context=context_value_variable.value)
+            elif isinstance(context_value_variable, ArraySegment):
                 context_str = ""
                 original_retriever_resource = []
-                for item in context_value:
+                for item in context_value_variable.value:
                     if isinstance(item, str):
                         context_str += item + "\n"
                     else:
@@ -482,11 +487,12 @@ class LLMNode(BaseNode[LLMNodeData]):
             return None
 
         # get conversation id
-        conversation_id = self.graph_runtime_state.variable_pool.get_any(
+        conversation_id_variable = self.graph_runtime_state.variable_pool.get(
             ["sys", SystemVariableKey.CONVERSATION_ID.value]
         )
-        if conversation_id is None:
+        if not isinstance(conversation_id_variable, StringSegment):
             return None
+        conversation_id = conversation_id_variable.value
 
         # get conversation
         conversation = (
@@ -513,6 +519,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         model_config: ModelConfigWithCredentialsEntity,
         prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
         memory_config: MemoryConfig | None = None,
+        vision_enabled: bool = False,
         vision_detail: ImagePromptMessageContent.DETAIL,
     ) -> tuple[list[PromptMessage], Optional[list[str]]]:
         inputs = inputs or {}
@@ -537,6 +544,10 @@ class LLMNode(BaseNode[LLMNodeData]):
             if not isinstance(prompt_message.content, str):
                 prompt_message_content = []
                 for content_item in prompt_message.content or []:
+                    # Skip image if vision is disabled
+                    if not vision_enabled and content_item.type == PromptMessageContentType.IMAGE:
+                        continue
+
                     if isinstance(content_item, ImagePromptMessageContent):
                         # Override vision config if LLM node has vision config,
                         # cuz vision detail is related to the configuration from FileUpload feature.

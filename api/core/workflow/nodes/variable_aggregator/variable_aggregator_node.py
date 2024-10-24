@@ -19,27 +19,27 @@ class VariableAggregatorNode(BaseNode[VariableAssignerNodeData]):
 
         if not self.node_data.advanced_settings or not self.node_data.advanced_settings.group_enabled:
             for selector in self.node_data.variables:
-                variable = self.graph_runtime_state.variable_pool.get_any(selector)
+                variable = self.graph_runtime_state.variable_pool.get(selector)
                 if variable is not None:
-                    outputs = {"output": variable}
+                    outputs = {"output": variable.to_object()}
 
-                    inputs = {".".join(selector[1:]): variable}
+                    inputs = {".".join(selector[1:]): variable.to_object()}
                     break
         else:
             for group in self.node_data.advanced_settings.groups:
                 for selector in group.variables:
-                    variable = self.graph_runtime_state.variable_pool.get_any(selector)
+                    variable = self.graph_runtime_state.variable_pool.get(selector)
 
                     if variable is not None:
-                        outputs[group.group_name] = {"output": variable}
-                        inputs[".".join(selector[1:])] = variable
+                        outputs[group.group_name] = {"output": variable.to_object()}
+                        inputs[".".join(selector[1:])] = variable.to_object()
                         break
 
         return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs=outputs, inputs=inputs)
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, graph_config: Mapping[str, Any], node_id: str, node_data: VariableAssignerNodeData
+        cls, *, graph_config: Mapping[str, Any], node_id: str, node_data: VariableAssignerNodeData
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping

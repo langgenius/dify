@@ -2,7 +2,7 @@ import urllib.parse
 
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, marshal_with
+from flask_restful import Resource, marshal_with, reqparse
 
 import services
 from configs import dify_config
@@ -30,13 +30,12 @@ class FileApi(Resource):
     @account_initialization_required
     @marshal_with(upload_config_fields)
     def get(self):
-        file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT
-        batch_count_limit = dify_config.UPLOAD_FILE_BATCH_LIMIT
-        image_file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT
         return {
-            "file_size_limit": file_size_limit,
-            "batch_count_limit": batch_count_limit,
-            "image_file_size_limit": image_file_size_limit,
+            "file_size_limit": dify_config.UPLOAD_FILE_SIZE_LIMIT,
+            "batch_count_limit": dify_config.UPLOAD_FILE_BATCH_LIMIT,
+            "image_file_size_limit": dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
+            "video_file_size_limit": dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
+            "audio_file_size_limit": dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
         }, 200
 
     @setup_required
@@ -48,6 +47,10 @@ class FileApi(Resource):
         # get file from request
         file = request.files["file"]
 
+        parser = reqparse.RequestParser()
+        parser.add_argument("source", type=str, required=False, location="args")
+        source = parser.parse_args().get("source")
+
         # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
@@ -55,7 +58,7 @@ class FileApi(Resource):
         if len(request.files) > 1:
             raise TooManyFilesError()
         try:
-            upload_file = FileService.upload_file(file=file, user=current_user)
+            upload_file = FileService.upload_file(file=file, user=current_user, source=source)
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:

@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from core.model_runtime.entities import ImagePromptMessageContent
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
@@ -29,6 +29,13 @@ class VisionConfigOptions(BaseModel):
 class VisionConfig(BaseModel):
     enabled: bool = False
     configs: VisionConfigOptions = Field(default_factory=VisionConfigOptions)
+
+    @field_validator("configs", mode="before")
+    @classmethod
+    def convert_none_configs(cls, v: Any):
+        if v is None:
+            return VisionConfigOptions()
+        return v
 
 
 class PromptConfig(BaseModel):

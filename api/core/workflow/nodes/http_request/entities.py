@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 import httpx
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
@@ -51,6 +51,16 @@ class BodyData(BaseModel):
 class HttpRequestNodeBody(BaseModel):
     type: Literal["none", "form-data", "x-www-form-urlencoded", "raw-text", "json", "binary"]
     data: Sequence[BodyData] = Field(default_factory=list)
+
+    @field_validator("data", mode="before")
+    @classmethod
+    def check_data(cls, v: Any):
+        """For compatibility, if body is not set, return empty list."""
+        if not v:
+            return []
+        if isinstance(v, str):
+            return [BodyData(key="", type="text", value=v)]
+        return v
 
 
 class HttpRequestNodeTimeout(BaseModel):
