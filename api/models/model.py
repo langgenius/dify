@@ -977,6 +977,9 @@ class Message(db.Model):
                     config=FileExtraConfig(),
                 )
             elif message_file.transfer_method == "tool_file":
+                if message_file.upload_file_id is None:
+                    assert message_file.url is not None
+                    message_file.upload_file_id = message_file.url.split("/")[-1].split(".")[0]
                 mapping = {
                     "id": message_file.id,
                     "type": message_file.type,
@@ -1001,6 +1004,7 @@ class Message(db.Model):
             for (file, message_file) in zip(files, message_files)
         ]
 
+        db.session.commit()
         return result
 
     @property
