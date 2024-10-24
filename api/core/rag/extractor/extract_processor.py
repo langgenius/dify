@@ -21,7 +21,6 @@ from core.rag.extractor.unstructured.unstructured_eml_extractor import Unstructu
 from core.rag.extractor.unstructured.unstructured_epub_extractor import UnstructuredEpubExtractor
 from core.rag.extractor.unstructured.unstructured_markdown_extractor import UnstructuredMarkdownExtractor
 from core.rag.extractor.unstructured.unstructured_msg_extractor import UnstructuredMsgExtractor
-from core.rag.extractor.unstructured.unstructured_pdf_extractor import UnstructuredPDFExtractor
 from core.rag.extractor.unstructured.unstructured_ppt_extractor import UnstructuredPPTExtractor
 from core.rag.extractor.unstructured.unstructured_pptx_extractor import UnstructuredPPTXExtractor
 from core.rag.extractor.unstructured.unstructured_text_extractor import UnstructuredTextExtractor
