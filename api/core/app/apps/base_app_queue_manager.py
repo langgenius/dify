@@ -15,7 +15,6 @@ from core.app.entities.queue_entities import (
     QueuePingEvent,
     QueueStopEvent,
 )
-from extensions.ext_redis import redis_client
 
 
 class PublishFrom(Enum):
@@ -32,10 +31,10 @@ class AppQueueManager:
         self._user_id = user_id
         self._invoke_from = invoke_from
 
-        user_prefix = "account" if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
-        redis_client.setex(
-            AppQueueManager._generate_task_belong_cache_key(self._task_id), 1800, f"{user_prefix}-{self._user_id}"
-        )
+        # user_prefix = "account" if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
+        # redis_client.setex(
+        #     AppQueueManager._generate_task_belong_cache_key(self._task_id), 1800, f"{user_prefix}-{self._user_id}"
+        # )
 
         q = queue.Queue()
 
@@ -114,26 +113,27 @@ class AppQueueManager:
         Set task stop flag
         :return:
         """
-        result = redis_client.get(cls._generate_task_belong_cache_key(task_id))
-        if result is None:
-            return
+        return
+        # result = redis_client.get(cls._generate_task_belong_cache_key(task_id))
+        # if result is None:
+        #     return
 
-        user_prefix = "account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
-        if result.decode("utf-8") != f"{user_prefix}-{user_id}":
-            return
+        # user_prefix = "account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
+        # if result.decode("utf-8") != f"{user_prefix}-{user_id}":
+        #     return
 
-        stopped_cache_key = cls._generate_stopped_cache_key(task_id)
-        redis_client.setex(stopped_cache_key, 600, 1)
+        # stopped_cache_key = cls._generate_stopped_cache_key(task_id)
+        # redis_client.setex(stopped_cache_key, 600, 1)
 
     def _is_stopped(self) -> bool:
         """
         Check if task is stopped
         :return:
         """
-        stopped_cache_key = AppQueueManager._generate_stopped_cache_key(self._task_id)
-        result = redis_client.get(stopped_cache_key)
-        if result is not None:
-            return True
+        # stopped_cache_key = AppQueueManager._generate_stopped_cache_key(self._task_id)
+        # result = redis_client.get(stopped_cache_key)
+        # if result is not None:
+        #     return True
 
         return False
 

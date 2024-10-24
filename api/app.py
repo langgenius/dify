@@ -3,14 +3,9 @@ import os
 from configs import dify_config
 
 if os.environ.get("DEBUG", "false").lower() != "true":
-    if os.environ.get("REDIS_GEVENT_SUPPORT", "false").lower() == "true":
-        from gevent import monkey
+    from gevent import monkey
 
-        monkey.patch_all(socket=False)
-    else:
-        from gevent import monkey
-
-        monkey.patch_all()
+    monkey.patch_all()
 
     import grpc.experimental.gevent
 
