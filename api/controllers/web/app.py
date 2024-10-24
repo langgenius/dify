@@ -25,6 +25,7 @@ class AppParameterApi(WebApiResource):
         "image_file_size_limit": fields.Integer,
         "video_file_size_limit": fields.Integer,
         "audio_file_size_limit": fields.Integer,
+        "file_size_limit": fields.Integer,
     }
 
     parameters_fields = {
@@ -88,6 +89,7 @@ class AppParameterApi(WebApiResource):
                 "image_file_size_limit": dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
                 "video_file_size_limit": dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
                 "audio_file_size_limit": dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
+                "file_size_limit": dify_config.UPLOAD_FILE_SIZE_LIMIT,
             },
         }
 
