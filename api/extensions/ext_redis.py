@@ -74,10 +74,11 @@ def init_app(app):
         redis_client.initialize(master)
     elif dify_config.REDIS_USE_CLUSTERS:
         startup_nodes = [
-            {"host": node.split(":")[0], "port": int(node.split(":")[1])} for node in dify_config.REDIS_CLUSTERS.split(",")
+            {"host": node.split(":")[0], "port": int(node.split(":")[1])} 
+            for node in dify_config.REDIS_CLUSTERS.split(",")
         ]
         nodes = [ClusterNode(host=node["host"], port=node["port"]) for node in startup_nodes]
-        redis_client.initialize(RedisCluster(startup_nodes=nodes,password=dify_config.REDIS_CLUSTERS_PASSWORD))
+        redis_client.initialize(RedisCluster(startup_nodes=nodes, password=dify_config.REDIS_CLUSTERS_PASSWORD))
     else:
         redis_params.update(
             {

@@ -1,6 +1,8 @@
 from unittest.mock import MagicMock
 
 import pytest
+import redis
+from api.extensions.ext_redis import RedisClientWrapper
 
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.model_manager import LBModelManager
@@ -55,6 +57,10 @@ def test_lb_model_manager_fetch_next(mocker, lb_model_manager):
         start_index += 1
         return start_index
 
+    fake_redis_client = redis.Redis(host="localhost", port=6379, db=0)
+    redis_client = RedisClientWrapper()
+    redis_client.initialize(fake_redis_client)
+    
     mocker.patch("redis.Redis.incr", side_effect=incr)
     mocker.patch("redis.Redis.set", return_value=None)
     mocker.patch("redis.Redis.expire", return_value=None)
