@@ -168,7 +168,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           />
           <div
             title={data.title}
-            className='grow mr-1 system-sm-semibold-uppercase text-text-primary truncate'
+            className='grow mr-1 system-sm-semibold-uppercase font-medium truncate'
           >
             {data.title}
             {
@@ -181,7 +181,7 @@ const BaseNode: FC<BaseNodeProps> = ({
                     {t('workflow.nodes.iteration.parallelModeEnableDesc')}
                   </div>}
                 >
-                  <div className='text-[#da7b2f] border-2 border-[#da7b2f] rounded-lg pl-1 pr-1 inline text-sm ml-1'>
+                  <div className='text-[#DC6803] border-2 border-[#DC6803] rounded-lg pl-1 pr-1 inline text-sm ml-1'>
                     {t('workflow.nodes.iteration.parallelModeUpper')}
                   </div>
                 </Tooltip>

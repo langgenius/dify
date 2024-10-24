@@ -646,15 +646,18 @@ def test_iteration_run_in_parallel_mode():
         assert parallel_iteration_node.node_data.parallel_nums == 10
         assert parallel_iteration_node.node_data.error_handle_mode == ErrorHandleMode.TERMINATED
         count = 0
-
+        parallel_arr = []
+        sequential_arr = []
         for item in parallel_result:
             count += 1
+            parallel_arr.append(item)
             if isinstance(item, RunCompletedEvent):
                 assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
                 assert item.run_result.outputs == {"output": ["dify 123", "dify 123"]}
         assert count == 32
 
         for item in sequential_result:
+            sequential_arr.append(item)
             count += 1
             if isinstance(item, RunCompletedEvent):
                 assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED

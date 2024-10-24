@@ -332,8 +332,8 @@ class WorkflowCycleManage:
             WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
             WorkflowNodeExecution.finished_at: finished_at,
             WorkflowNodeExecution.elapsed_time: elapsed_time,
+            WorkflowNodeExecution.execution_metadata: execution_metadata,
         }
-        update_data[WorkflowNodeExecution.execution_metadata] = execution_metadata
         db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
             update_data
         )
@@ -640,7 +640,9 @@ class WorkflowCycleManage:
                 created_at=int(time.time()),
                 extras={},
                 inputs=event.inputs or {},
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                status=WorkflowNodeExecutionStatus.SUCCEEDED
+                if event.error is None
+                else WorkflowNodeExecutionStatus.FAILED,
                 error=None,
                 elapsed_time=(datetime.now(timezone.utc).replace(tzinfo=None) - event.start_at).total_seconds(),
                 total_tokens=event.metadata.get("total_tokens", 0) if event.metadata else 0,

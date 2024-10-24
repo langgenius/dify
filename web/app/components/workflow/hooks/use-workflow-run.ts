@@ -431,8 +431,8 @@ export const useWorkflowRun = () => {
           const {
             workflowRunningData,
             setWorkflowRunningData,
-            runTimes,
-            setRunTimes,
+            iterTimes,
+            setIterTimes,
           } = workflowStore.getState()
 
           const { data } = params
@@ -452,8 +452,8 @@ export const useWorkflowRun = () => {
           const nodes = getNodes()
           const newNodes = produce(nodes, (draft) => {
             const currentNode = draft.find(node => node.id === data.node_id)!
-            currentNode.data._iterationIndex = runTimes
-            setRunTimes(runTimes + 1)
+            currentNode.data._iterationIndex = iterTimes
+            setIterTimes(iterTimes + 1)
           })
           setNodes(newNodes)
 
@@ -466,7 +466,7 @@ export const useWorkflowRun = () => {
           const {
             workflowRunningData,
             setWorkflowRunningData,
-            setRunTimes,
+            setIterTimes,
           } = workflowStore.getState()
           const {
             getNodes,
@@ -483,7 +483,7 @@ export const useWorkflowRun = () => {
               })
             }
           }))
-          setRunTimes(1)
+          setIterTimes(1)
           const newNodes = produce(nodes, (draft) => {
             const currentNode = draft.find(node => node.id === data.node_id)!
 

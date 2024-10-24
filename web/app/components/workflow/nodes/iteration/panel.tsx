@@ -131,7 +131,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
       <Divider className='ml-4 mr-4' />
       <div className='px-4 pb-4 space-y-4'>
         <Field title={t(`${i18nPrefix}.errorResponseMethod`)} >
-          <Select items={responseMethod} defaultValue={inputs.error_handle_mode} onSelect={changeErrorResponseMode}>
+          <Select items={responseMethod} defaultValue={inputs.error_handle_mode} onSelect={changeErrorResponseMode} allowSearch={false}>
           </Select>
         </Field>
       </div>

@@ -1,7 +1,7 @@
 import logging
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from concurrent.futures import wait
+from concurrent.futures import Future, wait
 from datetime import datetime, timezone
 from queue import Empty, Queue
 from typing import Any, Optional, cast
@@ -147,11 +147,11 @@ class IterationNode(BaseNode[IterationNodeData]):
         outputs: list[Any] = []
         try:
             if self.node_data.is_parallel:
-                futures = []
+                futures: list[Future] = []
                 q = Queue()
                 thread_pool = GraphEngineThreadPool(max_workers=self.node_data.parallel_nums, max_submit_count=100)
                 for index, item in enumerate(iterator_list_value):
-                    future = thread_pool.submit(
+                    future: Future = thread_pool.submit(
                         self._run_single_iter_parallel,
                         current_app._get_current_object(),
                         q,
@@ -179,8 +179,16 @@ class IterationNode(BaseNode[IterationNodeData]):
                         yield event
                         if isinstance(event, RunCompletedEvent):
                             q.put(None)
+                            for f in futures:
+                                if not f.done():
+                                    f.cancel()
+                            yield event
+                        if isinstance(event, IterationRunFailedEvent):
+                            q.put(None)
+
                             yield event
                     except Empty:
+                        logger.warning("iteration parallel queue is empty.")
                         continue
 
                 # wait all threads
@@ -196,7 +204,6 @@ class IterationNode(BaseNode[IterationNodeData]):
                         graph_engine,
                         iteration_graph,
                     )
-
             yield IterationRunSucceededEvent(
                 iteration_id=self.id,
                 iteration_node_id=self.node_id,
@@ -398,10 +405,7 @@ class IterationNode(BaseNode[IterationNodeData]):
                 else:
                     event = cast(InNodeEvent, event)
                     metadata_event = self._handle_event_metadata(event, current_index, parallel_mode_run_id)
-                    if (
-                        isinstance(event, NodeRunFailedEvent)
-                        and self.node_data.error_handle_mode != ErrorHandleMode.TERMINATED
-                    ):
+                    if isinstance(event, NodeRunFailedEvent):
                         if self.node_data.error_handle_mode == ErrorHandleMode.CONTINUE_ON_ERROR:
                             yield NodeInIterationFailedEvent(
                                 **metadata_event.model_dump(),
@@ -437,8 +441,20 @@ class IterationNode(BaseNode[IterationNodeData]):
                                 parallel_mode_run_id=parallel_mode_run_id,
                                 pre_iteration_output=None,
                             )
-
                             return
+                        elif self.node_data.error_handle_mode == ErrorHandleMode.TERMINATED:
+                            yield IterationRunFailedEvent(
+                                iteration_id=self.id,
+                                iteration_node_id=self.node_id,
+                                iteration_node_type=self.node_type,
+                                iteration_node_data=self.node_data,
+                                start_at=start_at,
+                                inputs=inputs,
+                                outputs={"output": None},
+                                steps=len(iterator_list_value),
+                                metadata={"total_tokens": graph_engine.graph_runtime_state.total_tokens},
+                                error=event.error,
+                            )
                     yield metadata_event
 
             current_iteration_output = variable_pool.get(self.node_data.output_selector).value
@@ -464,7 +480,19 @@ class IterationNode(BaseNode[IterationNodeData]):
             )
 
         except Exception as e:
-            logger.exception("Iteration run failed")
+            logger.exception(f"Iteration run failed:{str(e)}")
+            yield IterationRunFailedEvent(
+                iteration_id=self.id,
+                iteration_node_id=self.node_id,
+                iteration_node_type=self.node_type,
+                iteration_node_data=self.node_data,
+                start_at=start_at,
+                inputs=inputs,
+                outputs={"output": None},
+                steps=len(iterator_list_value),
+                metadata={"total_tokens": graph_engine.graph_runtime_state.total_tokens},
+                error=str(e),
+            )
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
