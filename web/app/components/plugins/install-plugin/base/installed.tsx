@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import type { PluginDeclaration } from '../../../types'
-import Card from '../../../card'
+import type { PluginDeclaration } from '../../types'
+import Card from '../../card'
 import Button from '@/app/components/base/button'
-import { pluginManifestToCardPluginProps } from '../../utils'
+import { pluginManifestToCardPluginProps } from '../utils'
 import { useTranslation } from 'react-i18next'
 
 type Props = {

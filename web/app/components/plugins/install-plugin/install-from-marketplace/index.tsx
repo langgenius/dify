@@ -5,7 +5,7 @@ import Modal from '@/app/components/base/modal'
 import type { PluginDeclaration } from '../../types'
 import { InstallStep } from '../../types'
 import Install from './steps/install'
-import Installed from './steps/installed'
+import Installed from '../base/installed'
 import { useTranslation } from 'react-i18next'
 
 const i18nPrefix = 'plugin.installModal'
