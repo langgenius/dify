@@ -254,6 +254,8 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:5001/health']
     networks:
       - ssrf_proxy_network
       - default
