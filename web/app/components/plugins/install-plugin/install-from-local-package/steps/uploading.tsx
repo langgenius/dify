@@ -5,10 +5,8 @@ import { RiLoader2Line } from '@remixicon/react'
 import Card from '../../../card'
 import type { PluginDeclaration } from '../../../types'
 import Button from '@/app/components/base/button'
-import { sleep } from '@/utils'
 import { useTranslation } from 'react-i18next'
-import { toolNotionManifest } from '../../../card/card-mock'
-
+import { uploadPackageFile } from '@/service/plugins'
 const i18nPrefix = 'plugin.installModal'
 
 type Props = {
@@ -18,21 +16,30 @@ type Props = {
     uniqueIdentifier: string
     manifest: PluginDeclaration
   }) => void
+  onFailed: (errorMsg: string) => void
 }
 
 const Uploading: FC<Props> = ({
   file,
   onCancel,
   onUploaded,
+  onFailed,
 }) => {
   const { t } = useTranslation()
   const fileName = file.name
   const handleUpload = async () => {
-    await sleep(3000)
-    onUploaded({
-      uniqueIdentifier: 'yeuoly/neko:0.0.1@5395654da2c0b919b3d9b946a1a0545b737004380765e5f3b8c49976d3276c87',
-      manifest: toolNotionManifest,
-    })
+    try {
+      const res = await uploadPackageFile(file)
+      onUploaded(res)
+    }
+    catch (e: any) {
+      if (e.response?.message) {
+        onFailed(e.response?.message)
+      }
+      else { // Why it would into this branch?
+        onUploaded(e.response)
+      }
+    }
   }
 
   React.useEffect(() => {

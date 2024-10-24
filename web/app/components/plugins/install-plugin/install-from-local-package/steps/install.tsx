@@ -8,6 +8,7 @@ import Button from '@/app/components/base/button'
 import { sleep } from '@/utils'
 import { Trans, useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
+import Badge, { BadgeState } from '@/app/components/base/badge/index'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -51,6 +52,7 @@ const Installed: FC<Props> = ({
           <Card
             className='w-full'
             payload={pluginManifestToCardPluginProps(payload)}
+            titleLeft={<Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version}</Badge>}
           />
         </div>
       </div>

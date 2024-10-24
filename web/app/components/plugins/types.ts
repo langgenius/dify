@@ -168,6 +168,7 @@ export type UpdateEndpointRequest = {
 
 export enum InstallStep {
   uploading = 'uploading',
+  uploadFailed = 'uploadFailed',
   readyToInstall = 'readyToInstall',
   installing = 'installing',
   installed = 'installed',

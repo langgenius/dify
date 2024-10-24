@@ -63,6 +63,7 @@ const translation = {
     installPlugin: 'Install Plugin',
     installedSuccessfully: 'Installation successful',
     installedSuccessfullyDesc: 'The plugin has been installed successfully.',
+    uploadFailed: 'Upload failed',
     installFailed: 'Installation failed',
     installFailedDesc: 'The plugin has been installed failed.',
     install: 'Install',

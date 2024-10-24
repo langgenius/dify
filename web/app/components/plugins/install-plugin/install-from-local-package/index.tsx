@@ -8,7 +8,6 @@ import Uploading from './steps/uploading'
 import Install from './steps/install'
 import Installed from '../base/installed'
 import { useTranslation } from 'react-i18next'
-import { toolNotionManifest } from '../../card/card-mock'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -23,19 +22,21 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   onClose,
 }) => {
   const { t } = useTranslation()
-  // uploading -> readyToInstall -> installed/failed
+  // uploading -> !uploadFailed -> readyToInstall -> installed/failed
   const [step, setStep] = useState<InstallStep>(InstallStep.uploading)
-
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
-
+  const [manifest, setManifest] = useState<PluginDeclaration | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const getTitle = useCallback(() => {
+    if (step === InstallStep.uploadFailed)
+      return t(`${i18nPrefix}.uploadFailed`)
     if (step === InstallStep.installed)
       return t(`${i18nPrefix}.installedSuccessfully`)
     if (step === InstallStep.installFailed)
       return t(`${i18nPrefix}.installFailed`)
+
     return t(`${i18nPrefix}.installPlugin`)
   }, [step])
-  const [manifest, setManifest] = useState<PluginDeclaration | null>(toolNotionManifest)
 
   const handleUploaded = useCallback((result: {
     uniqueIdentifier: string
@@ -44,6 +45,11 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
     setUniqueIdentifier(result.uniqueIdentifier)
     setManifest(result.manifest)
     setStep(InstallStep.readyToInstall)
+  }, [])
+
+  const handleUploadFail = useCallback((errorMsg: string) => {
+    setErrorMsg(errorMsg)
+    setStep(InstallStep.uploadFailed)
   }, [])
 
   const handleInstalled = useCallback(async () => {
@@ -71,6 +77,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
           file={file}
           onCancel={onClose}
           onUploaded={handleUploaded}
+          onFailed={handleUploadFail}
         />
       )}
       {
@@ -84,10 +91,11 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
         )
       }
       {
-        ([InstallStep.installed, InstallStep.installFailed].includes(step)) && (
+        ([InstallStep.uploadFailed, InstallStep.installed, InstallStep.installFailed].includes(step)) && (
           <Installed
-            payload={manifest!}
-            isFailed={step === InstallStep.installFailed}
+            payload={manifest}
+            isFailed={[InstallStep.uploadFailed, InstallStep.installFailed].includes(step)}
+            errMsg={errorMsg}
             onCancel={onClose}
           />
         )

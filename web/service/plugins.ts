@@ -1,5 +1,5 @@
 import type { Fetcher } from 'swr'
-import { del, get, post } from './base'
+import { del, get, post, upload } from './base'
 import type {
   CreateEndpointRequest,
   EndpointOperationResponse,
@@ -48,4 +48,13 @@ export const installPackageFromGitHub: Fetcher<InstallPackageResponse, { repo: s
 
 export const fetchDebugKey = async () => {
   return get<DebugInfoTypes>('/workspaces/current/plugin/debugging-key')
+}
+
+export const uploadPackageFile = async (file: File) => {
+  const formData = new FormData()
+  formData.append('pkg', file)
+  return upload({
+    xhr: new XMLHttpRequest(),
+    data: formData,
+  }, false, '/workspaces/current/plugin/upload/pkg')
 }
