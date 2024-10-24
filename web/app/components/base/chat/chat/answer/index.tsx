@@ -19,6 +19,7 @@ import Citation from '@/app/components/base/chat/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import type { AppData } from '@/models/share'
 import AnswerIcon from '@/app/components/base/answer-icon'
+import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import cn from '@/utils/classnames'
 import { FileList } from '@/app/components/base/file-uploader'
 
@@ -34,6 +35,7 @@ type AnswerProps = {
   hideProcessDetail?: boolean
   appData?: AppData
   noChatInput?: boolean
+  switchSibling?: (siblingMessageId: string) => void
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -47,6 +49,7 @@ const Answer: FC<AnswerProps> = ({
   hideProcessDetail,
   appData,
   noChatInput,
+  switchSibling,
 }) => {
   const { t } = useTranslation()
   const {
@@ -203,6 +206,23 @@ const Answer: FC<AnswerProps> = ({
                 <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
               )
             }
+            {item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && <div className="pt-3.5 flex justify-center items-center text-sm">
+              <button
+                className={`${item.prevSibling ? 'opacity-100' : 'opacity-65'}`}
+                disabled={!item.prevSibling}
+                onClick={() => item.prevSibling && switchSibling?.(item.prevSibling)}
+              >
+                <ChevronRight className="w-[14px] h-[14px] rotate-180 text-gray-500" />
+              </button>
+              <span className="px-2 text-xs text-gray-700">{item.siblingIndex + 1} / {item.siblingCount}</span>
+              <button
+                className={`${item.nextSibling ? 'opacity-100' : 'opacity-65'}`}
+                disabled={!item.nextSibling}
+                onClick={() => item.nextSibling && switchSibling?.(item.nextSibling)}
+              >
+                <ChevronRight className="w-[14px] h-[14px] text-gray-500" />
+              </button>
+            </div>}
           </div>
         </div>
         <More more={more} />
