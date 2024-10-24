@@ -1,46 +1,56 @@
 'use client'
 
 import { useState } from 'react'
+import { PluginType } from '../types'
 import {
+  RiArchive2Line,
+  RiBrain2Line,
   RiHammerLine,
   RiPuzzle2Line,
 } from '@remixicon/react'
 import cn from '@/utils/classnames'
 
+const PLUGIN_TYPE_SEARCH_MAP = {
+  all: 'all',
+  model: PluginType.model,
+  tool: PluginType.tool,
+  extension: PluginType.extension,
+  bundle: 'bundle',
+}
 type PluginTypeSwitchProps = {
   onChange?: (type: string) => void
 }
 const options = [
   {
-    value: 'all',
+    value: PLUGIN_TYPE_SEARCH_MAP.all,
     text: 'All',
     icon: null,
   },
   {
-    value: 'models',
+    value: PLUGIN_TYPE_SEARCH_MAP.model,
     text: 'Models',
-    icon: null,
+    icon: <RiBrain2Line className='mr-1.5 w-4 h-4' />,
   },
   {
-    value: 'tools',
+    value: PLUGIN_TYPE_SEARCH_MAP.tool,
     text: 'Tools',
     icon: <RiHammerLine className='mr-1.5 w-4 h-4' />,
   },
   {
-    value: 'extensions',
+    value: PLUGIN_TYPE_SEARCH_MAP.extension,
     text: 'Extensions',
     icon: <RiPuzzle2Line className='mr-1.5 w-4 h-4' />,
   },
   {
-    value: 'bundles',
+    value: PLUGIN_TYPE_SEARCH_MAP.bundle,
     text: 'Bundles',
-    icon: null,
+    icon: <RiArchive2Line className='mr-1.5 w-4 h-4' />,
   },
 ]
 const PluginTypeSwitch = ({
   onChange,
 }: PluginTypeSwitchProps) => {
-  const [activeType, setActiveType] = useState('all')
+  const [activeType, setActiveType] = useState(PLUGIN_TYPE_SEARCH_MAP.all)
 
   return (
     <div className={cn(
