@@ -1,0 +1,8 @@
+version: '3.4'
+
+services:
+  dify:
+    image: dify
+    build:
+      context: .
+      dockerfile: ./Dockerfile
