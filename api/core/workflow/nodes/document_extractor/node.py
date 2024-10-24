@@ -107,7 +107,7 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
         raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
 
-def _extract_text_by_file_extension(file_content: bytes, file_extension: str) -> str:
+def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str) -> str:
     """Extract text from a file based on its file extension."""
     match file_extension:
         case "txt" | "markdown" | "md" | "html" | "htm" | "xml":
