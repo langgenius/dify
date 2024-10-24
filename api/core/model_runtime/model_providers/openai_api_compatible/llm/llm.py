@@ -475,7 +475,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                         index=chunk_index + 1,
                         message=AssistantPromptMessage(content=""),
                         finish_reason="Non-JSON encountered.",
-                        usage=usage
+                        usage=usage,
                     )
                     break
                 if chunk_json:
@@ -562,7 +562,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
             index=chunk_index,
             message=AssistantPromptMessage(content=""),
             finish_reason=finish_reason,
-            usage=usage
+            usage=usage,
         )
 
     def _handle_generate_response(
@@ -573,7 +573,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
         completion_type = LLMMode.value_of(credentials["mode"])
 
         output = response_json["choices"][0]
-        message_id=response_json.get("id")
+        message_id = response_json.get("id")
 
         response_content = ""
         tool_calls = None
