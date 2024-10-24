@@ -12,6 +12,7 @@ const translation = {
         uploadTime: 'CZAS WGRANIA',
         status: 'STATUS',
         action: 'AKCJA',
+        total: 'Suma',
       },
       name: 'Nazwa',
       rename: 'Przemianować',

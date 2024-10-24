@@ -236,7 +236,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         {isLoading
           ? <Loading type='app' />
           : total > 0
-            ? <List embeddingAvailable={embeddingAvailable} documents={documentsList || []} datasetId={datasetId} onUpdate={mutate} />
+            ? <List embeddingAvailable={embeddingAvailable} documents={documentsList || []} datasetId={datasetId} total={total} onUpdate={mutate} />
             : <EmptyElement canAdd={embeddingAvailable} onClick={routeToDocCreate} type={isDataSourceNotion ? 'sync' : 'upload'} />
         }
         {/* Show Pagination only if the total is more than the limit */}

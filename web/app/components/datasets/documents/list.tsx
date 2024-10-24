@@ -344,13 +344,14 @@ type IDocumentListProps = {
   embeddingAvailable: boolean
   documents: LocalDoc[]
   datasetId: string
+  total: string
   onUpdate: () => void
 }
 
 /**
  * Document list component including basic information
  */
-const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = [], datasetId, onUpdate }) => {
+const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = [], datasetId, total, onUpdate }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const router = useRouter()
@@ -473,7 +474,9 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
           })}
         </tbody>
       </table>
-
+      <div className='p-2 flex justify-end text-[13px] text-gray-500'>
+        {t('datasetDocuments.list.table.total')}: {total}
+      </div>
       {isShowRenameModal && currDocument && (
         <RenameModal
           datasetId={datasetId}

@@ -20,6 +20,7 @@ const translation = {
       user: '用户或账户',
       version: '版本',
     },
+    total: '总计',
     pagination: {
       previous: '上一页',
       next: '下一页',
