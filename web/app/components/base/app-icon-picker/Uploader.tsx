@@ -1,5 +1,7 @@
 'use client'
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
 import type { ChangeEvent, FC } from 'react'
 import { createRef, useEffect, useState } from 'react'
 import type { Area } from 'react-easy-crop'
@@ -38,8 +40,9 @@ const Uploader: FC<UploaderProps> = ({
 
   const handleLocalFileInput = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file)
+    if (file && ALLOW_FILE_EXTENSIONS.includes(file.type.split('/').pop()?.toLowerCase() || '') && file.size <= MAX_FILE_SIZE) {
       setInputImage({ file, url: URL.createObjectURL(file) })
+    }
   }
 
   const {
