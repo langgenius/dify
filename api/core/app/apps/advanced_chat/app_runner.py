@@ -1,4 +1,5 @@
 import logging
+import time
 from collections.abc import Mapping
 from typing import Any, cast
 
@@ -101,6 +102,9 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             ):
                 return
 
+            # trace start time
+            start_time = time.perf_counter()
+
             # Init conversation variables
             stmt = select(ConversationVariable).where(
                 ConversationVariable.app_id == self.conversation.app_id,
@@ -128,6 +132,13 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             conversation_dialogue_count = self.conversation.dialogue_count
             db.session.commit()
 
+            # trace end time
+            end_time = time.perf_counter()
+            print(f"conversation_dialogue_count time: {end_time - start_time}")
+
+            # trace start time
+            start_time = time.perf_counter()
+
             # Create a variable pool.
             system_inputs = {
                 SystemVariableKey.QUERY: query,
@@ -150,6 +161,10 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
             # init graph
             graph = self._init_graph(graph_config=workflow.graph_dict)
+
+            # trace end time
+            end_time = time.perf_counter()
+            print(f"init graph time: {end_time - start_time}")
 
         db.session.close()
 
