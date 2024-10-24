@@ -121,6 +121,8 @@ class ExtractProcessor:
                         extractor = UnstructuredEmailExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".ppt":
                         extractor = UnstructuredPPTExtractor(file_path, unstructured_api_url, unstructured_api_key)
+                        # You must first specify the API key
+                        # because unstructured_api_key is necessary to parse .ppt documents
                     elif file_extension == ".pptx":
                         extractor = UnstructuredPPTXExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".xml":
