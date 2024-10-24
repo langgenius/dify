@@ -36,17 +36,14 @@ class SupabaseStorage(BaseStorage):
         return content
 
     def load_stream(self, filename: str) -> Generator:
-        def generate(filename: str = filename) -> Generator:
-            result = self.client.storage.from_(self.bucket_name).download(filename)
-            byte_stream = io.BytesIO(result)
-            while chunk := byte_stream.read(4096):  # Read in chunks of 4KB
-                yield chunk
-
-        return generate()
+        result = self.client.storage.from_(self.bucket_name).download(filename)
+        byte_stream = io.BytesIO(result)
+        while chunk := byte_stream.read(4096):  # Read in chunks of 4KB
+            yield chunk
 
     def download(self, filename, target_filepath):
         result = self.client.storage.from_(self.bucket_name).download(filename)
-        Path(result).write_bytes(result)
+        Path(target_filepath).write_bytes(result)
 
     def exists(self, filename):
         result = self.client.storage.from_(self.bucket_name).list(filename)
