@@ -10,6 +10,8 @@ import { ImagePlus } from '../icons/src/vender/line/images'
 import { useDraggableUploader } from './hooks'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
+const MAX_FILE_SIZE = 5 * 1024 * 1024
+
 type UploaderProps = {
   className?: string
   onImageCropped?: (tempUrl: string, croppedAreaPixels: Area, fileName: string) => void
@@ -38,7 +40,7 @@ const Uploader: FC<UploaderProps> = ({
 
   const handleLocalFileInput = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file)
+    if (file && ALLOW_FILE_EXTENSIONS.includes(file.type.split('/').pop()?.toLowerCase() || '') && file.size <= MAX_FILE_SIZE)
       setInputImage({ file, url: URL.createObjectURL(file) })
   }
 
