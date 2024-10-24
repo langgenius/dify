@@ -58,7 +58,7 @@ export default function AppSelector() {
             >
               <Menu.Items
                 className="
-                    absolute -right-3 -top-3 w-60 max-w-80
+                    absolute -right-2 -top-1 w-60 max-w-80
                     divide-y divide-gray-100 origin-top-right rounded-lg bg-white
                     shadow-lg
                   "

@@ -8,6 +8,7 @@ import ObjectValueList from '@/app/components/workflow/panel/chat-variable-panel
 import { DEFAULT_OBJECT_VALUE } from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
 import ArrayValueList from '@/app/components/workflow/panel/chat-variable-panel/components/array-value-list'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { ToastContext } from '@/app/components/base/toast'
 import { useStore } from '@/app/components/workflow/store'
@@ -270,9 +271,7 @@ const ChatVariableModal = ({
         <div className='mb-4'>
           <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.chatVariable.modal.name')}</div>
           <div className='flex'>
-            <input
-              tabIndex={0}
-              className='block px-3 w-full h-8 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
+            <Input
               placeholder={t('workflow.chatVariable.modal.namePlaceholder') || ''}
               value={name}
               onChange={e => setName(e.target.value || '')}
@@ -322,16 +321,14 @@ const ChatVariableModal = ({
           </div>
           <div className='flex'>
             {type === ChatVarType.String && (
-              <input
-                className='block px-3 w-full h-8 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
+              <Input
                 placeholder={t('workflow.chatVariable.modal.valuePlaceholder') || ''}
                 value={value}
                 onChange={e => setValue(e.target.value)}
               />
             )}
             {type === ChatVarType.Number && (
-              <input
-                className='block px-3 w-full h-8 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
+              <Input
                 placeholder={t('workflow.chatVariable.modal.valuePlaceholder') || ''}
                 value={value}
                 onChange={e => setValue(Number(e.target.value))}

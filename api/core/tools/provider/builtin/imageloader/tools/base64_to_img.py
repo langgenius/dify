@@ -15,7 +15,7 @@ from core.tools.errors import ToolInvokeError
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
-from core.file.file_obj import FileTransferMethod
+from core.file import FileTransferMethod
 
 
 class ImageLoaderConvertBase64Tool(BuiltinTool):
@@ -40,8 +40,8 @@ class ImageLoaderConvertBase64Tool(BuiltinTool):
 
         file_key = f"tools/{tenant_id}/{filename}{image_ext}"
         mime_type, _ = guess_type(file_key)
+        img_bytes = self.image_to_b64(base64String)
         if not storage.exists(file_key):
-            img_bytes = self.image_to_b64(base64String)
             storage.save(file_key, img_bytes)
 
             # sign_url = ToolFileManager.sign_file(file.file_key, image_ext)
@@ -52,7 +52,9 @@ class ImageLoaderConvertBase64Tool(BuiltinTool):
             tenant_id=tenant_id,
             conversation_id=None,
             file_key=file_key,
-            mimetype=mime_type
+            mimetype=mime_type,
+            name=filename,
+            size=len(img_bytes)
         )
 
         sign_url = ToolFileManager.sign_file(tool_file_id=filename, extension=image_ext)

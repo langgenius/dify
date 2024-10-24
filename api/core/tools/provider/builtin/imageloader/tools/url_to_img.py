@@ -15,7 +15,7 @@ from core.tools.errors import ToolInvokeError
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
-from core.file.file_obj import FileTransferMethod
+from core.file import FileTransferMethod
 
 
 class ImageLoaderConvertUrlTool(BuiltinTool):
@@ -57,7 +57,9 @@ class ImageLoaderConvertUrlTool(BuiltinTool):
             tenant_id=tenant_id,
             conversation_id=None,
             file_key=file_key,
-            mimetype=mime_type
+            mimetype=mime_type,
+            name=filename,
+            size=len(response.content)
         )
 
         meta = { 

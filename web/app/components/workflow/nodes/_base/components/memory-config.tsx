@@ -9,6 +9,7 @@ import cn from '@/utils/classnames'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Switch from '@/app/components/base/switch'
 import Slider from '@/app/components/base/slider'
+import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'workflow.nodes.common.memory'
 const WINDOW_SIZE_MIN = 1
@@ -144,14 +145,14 @@ const MemoryConfig: FC<Props> = ({
           <>
             {/* window size */}
             <div className='flex justify-between'>
-              <div className='flex items-center h-8 space-x-1'>
+              <div className='flex items-center h-8 space-x-2'>
                 <Switch
                   defaultValue={payload?.window?.enabled}
                   onChange={handleWindowEnabledChange}
                   size='md'
                   disabled={readonly}
                 />
-                <div className='leading-[18px] text-xs font-medium text-gray-500 uppercase'>{t(`${i18nPrefix}.windowSize`)}</div>
+                <div className='text-text-tertiary system-xs-medium-uppercase'>{t(`${i18nPrefix}.windowSize`)}</div>
               </div>
               <div className='flex items-center h-8 space-x-2'>
                 <Slider
@@ -163,16 +164,17 @@ const MemoryConfig: FC<Props> = ({
                   onChange={handleWindowSizeChange}
                   disabled={readonly || !payload.window?.enabled}
                 />
-                <input
+                <Input
                   value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
-                  className='shrink-0 block ml-4 pl-3 w-12 h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
+                  wrapperClassName='w-12'
+                  className='pr-0 appearance-none'
                   type='number'
                   min={WINDOW_SIZE_MIN}
                   max={WINDOW_SIZE_MAX}
                   step={1}
                   onChange={e => handleWindowSizeChange(e.target.value)}
                   onBlur={handleBlur}
-                  disabled={readonly}
+                  disabled={readonly || !payload.window?.enabled}
                 />
               </div>
             </div>
