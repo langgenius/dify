@@ -38,6 +38,8 @@ class RedisClientWrapper(redis.Redis):
     def __getattr__(self, item):
         if self._client is None:
             raise RuntimeError("Redis client is not initialized. Call init_app first.")
+
+        print(self._client.connection_pool.get_connection("ping").socket_socket_class)
         return getattr(self._client, item)
 
 
