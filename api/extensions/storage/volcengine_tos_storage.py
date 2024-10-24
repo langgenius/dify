@@ -27,12 +27,9 @@ class VolcengineTosStorage(BaseStorage):
         return data
 
     def load_stream(self, filename: str) -> Generator:
-        def generate(filename: str = filename) -> Generator:
-            response = self.client.get_object(bucket=self.bucket_name, key=filename)
-            while chunk := response.read(4096):
-                yield chunk
-
-        return generate()
+        response = self.client.get_object(bucket=self.bucket_name, key=filename)
+        while chunk := response.read(4096):
+            yield chunk
 
     def download(self, filename, target_filepath):
         self.client.get_object_to_file(bucket=self.bucket_name, key=filename, file_path=target_filepath)

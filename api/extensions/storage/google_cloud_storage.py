@@ -39,14 +39,11 @@ class GoogleCloudStorage(BaseStorage):
         return data
 
     def load_stream(self, filename: str) -> Generator:
-        def generate(filename: str = filename) -> Generator:
-            bucket = self.client.get_bucket(self.bucket_name)
-            blob = bucket.get_blob(filename)
-            with blob.open(mode="rb") as blob_stream:
-                while chunk := blob_stream.read(4096):
-                    yield chunk
-
-        return generate()
+        bucket = self.client.get_bucket(self.bucket_name)
+        blob = bucket.get_blob(filename)
+        with blob.open(mode="rb") as blob_stream:
+            while chunk := blob_stream.read(4096):
+                yield chunk
 
     def download(self, filename, target_filepath):
         bucket = self.client.get_bucket(self.bucket_name)
