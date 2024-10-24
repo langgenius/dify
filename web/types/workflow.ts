@@ -31,6 +31,7 @@ export type NodeTracing = {
     parallel_start_node_id?: string
     parent_parallel_id?: string
     parent_parallel_start_node_id?: string
+    parallel_mode_run_id?: string
   }
   metadata: {
     iterator_length: number
@@ -166,6 +167,7 @@ export type NodeFinishedResponse = {
       parallel_start_node_id?: string
       iteration_index?: number
       iteration_id?: string
+      parallel_mode_run_id: string
     }
     created_at: number
     files?: FileResponse[]

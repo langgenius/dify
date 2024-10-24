@@ -25,6 +25,7 @@ import {
   useToolIcon,
 } from '../../hooks'
 import { useNodeIterationInteractions } from '../iteration/use-interactions'
+import type { IterationNodeType } from '../iteration/types'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -34,6 +35,7 @@ import NodeControl from './components/node-control'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import Tooltip from '@/app/components/base/tooltip'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -166,9 +168,25 @@ const BaseNode: FC<BaseNodeProps> = ({
           />
           <div
             title={data.title}
-            className='grow mr-1 system-sm-semibold-uppercase text-text-primary truncate'
+            className='grow mr-1 system-sm-semibold-uppercase font-medium truncate'
           >
             {data.title}
+            {
+              data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
+                <Tooltip popupContent={
+                  <div className='w-[180px]'>
+                    <div className='font-extrabold'>
+                      {t('workflow.nodes.iteration.parallelModeEnableTitle')}
+                    </div>
+                    {t('workflow.nodes.iteration.parallelModeEnableDesc')}
+                  </div>}
+                >
+                  <div className='text-[#DC6803] border-2 border-[#DC6803] rounded-lg pl-1 pr-1 inline text-sm ml-1'>
+                    {t('workflow.nodes.iteration.parallelModeUpper')}
+                  </div>
+                </Tooltip>
+              )
+            }
           </div>
           {
             data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running && (

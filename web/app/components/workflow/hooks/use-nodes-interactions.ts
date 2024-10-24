@@ -644,6 +644,11 @@ export const useNodesInteractions = () => {
         newNode.data.isInIteration = true
         newNode.data.iteration_id = prevNode.parentId
         newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
+        if (newNode.data.type === BlockEnum.Answer) {
+          const parentIterNodeIndex = nodes.findIndex(node => node.id === prevNode.parentId)
+          if (nodes[parentIterNodeIndex].data._isFirstTime)
+            nodes[parentIterNodeIndex].data._isShowTips = true
+        }
       }
 
       const newEdge: Edge = {

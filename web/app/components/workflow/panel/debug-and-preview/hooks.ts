@@ -9,6 +9,7 @@ import { produce, setAutoFreeze } from 'immer'
 import { uniqBy } from 'lodash-es'
 import { useWorkflowRun } from '../../hooks'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
+import { useWorkflowStore } from '../../store'
 import type {
   ChatItem,
   Inputs,
@@ -43,6 +44,7 @@ export const useChat = (
   const { notify } = useToastContext()
   const { handleRun } = useWorkflowRun()
   const hasStopResponded = useRef(false)
+  const workflowStore = useWorkflowStore()
   const conversationId = useRef('')
   const taskIdRef = useRef('')
   const [chatList, setChatList] = useState<ChatItem[]>(prevChatList || [])
@@ -52,6 +54,9 @@ export const useChat = (
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
 
+  const {
+    setIterTimes,
+  } = workflowStore.getState()
   useEffect(() => {
     setAutoFreeze(false)
     return () => {
@@ -102,15 +107,16 @@ export const useChat = (
     handleResponding(false)
     if (stopChat && taskIdRef.current)
       stopChat(taskIdRef.current)
-
+    setIterTimes(1)
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
-  }, [handleResponding, stopChat])
+  }, [handleResponding, setIterTimes, stopChat])
 
   const handleRestart = useCallback(() => {
     conversationId.current = ''
     taskIdRef.current = ''
     handleStop()
+    setIterTimes(1)
     const newChatList = config?.opening_statement
       ? [{
         id: `${Date.now()}`,
@@ -126,6 +132,7 @@ export const useChat = (
     config,
     handleStop,
     handleUpdateChatList,
+    setIterTimes,
   ])
 
   const updateCurrentQA = useCallback(({
