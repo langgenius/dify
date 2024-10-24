@@ -95,7 +95,6 @@ const ConfigFirecrawlModal: FC<Props> = ({
               <div className='flex justify-between items-center mb-4'>
                 <div className='text-xl font-semibold text-gray-900'>{t(`${I18N_PREFIX}.configFirecrawl`)}</div>
               </div>
-
               <div className='space-y-4'>
                 <Field
                   label='API Key'

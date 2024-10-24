@@ -7,13 +7,15 @@ import NotionPagePreview from '../notion-page-preview'
 import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import Website from '../website'
 import WebsitePreview from '../website/preview'
+import FeishuPagePreview from '../feishu-page-preview'
 import s from './index.module.css'
 import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
-import type { DataSourceProvider, NotionPage } from '@/models/common'
+import type { DataSourceProvider, FeishuPage, NotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
+import { FeishuPageSelector } from '@/app/components/base/feishu-page-selector'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import { useProviderContext } from '@/context/provider-context'
 import VectorSpaceFull from '@/app/components/billing/vector-space-full'
@@ -29,6 +31,8 @@ type IStepOneProps = {
   updateFile: (fileItem: FileItem, progress: number, list: FileItem[]) => void
   notionPages?: NotionPage[]
   updateNotionPages: (value: NotionPage[]) => void
+  feishuPages?: NotionPage[]
+  updateFeishuPages: (value: FeishuPage[]) => void
   onStepChange: () => void
   changeType: (type: DataSourceType) => void
   websitePages?: CrawlResultItem[]
@@ -55,6 +59,22 @@ export const NotionConnector = ({ onSetting }: NotionConnectorProps) => {
   )
 }
 
+type FeishuConnectorProps = {
+  onSetting: () => void
+}
+export const FeishuConnector = ({ onSetting }: FeishuConnectorProps) => {
+  const { t } = useTranslation()
+
+  return (
+    <div className={s.notionConnectionTip}>
+      <span className={s.feishuIcon} />
+      <div className={s.title}>{t('datasetCreation.stepOne.feishuSyncTitle')}</div>
+      <div className={s.tip}>{t('datasetCreation.stepOne.feishuSyncTip')}</div>
+      <Button className='h-8' variant='primary' onClick={onSetting}>{t('datasetCreation.stepOne.connect')}</Button>
+    </div>
+  )
+}
+
 const StepOne = ({
   datasetId,
   dataSourceType: inCreatePageDataSourceType,
@@ -68,6 +88,8 @@ const StepOne = ({
   updateFile,
   notionPages = [],
   updateNotionPages,
+  feishuPages = [],
+  updateFeishuPages,
   websitePages = [],
   updateWebsitePages,
   onWebsiteCrawlProviderChange,
@@ -79,6 +101,7 @@ const StepOne = ({
   const [showModal, setShowModal] = useState(false)
   const [currentFile, setCurrentFile] = useState<File | undefined>()
   const [currentNotionPage, setCurrentNotionPage] = useState<NotionPage | undefined>()
+  const [currentFeishuPage, setCurrentFeishuPage] = useState<FeishuPage | undefined>()
   const [currentWebsite, setCurrentWebsite] = useState<CrawlResultItem | undefined>()
   const { t } = useTranslation()
 
@@ -98,6 +121,14 @@ const StepOne = ({
 
   const hideNotionPagePreview = () => {
     setCurrentNotionPage(undefined)
+  }
+
+  const updateCurrentFeishuPage = (page: FeishuPage) => {
+    setCurrentFeishuPage(page)
+  }
+
+  const hideFeishuPagePreview = () => {
+    setCurrentFeishuPage(undefined)
   }
 
   const hideWebsitePreview = () => {
@@ -172,6 +203,23 @@ const StepOne = ({
                 <div
                   className={cn(
                     s.dataSourceItem,
+                    dataSourceType === DataSourceType.FEISHU && s.active,
+                    dataSourceTypeDisable && dataSourceType !== DataSourceType.FEISHU && s.disabled,
+                  )}
+                  onClick={() => {
+                    if (dataSourceTypeDisable)
+                      return
+                    changeType(DataSourceType.FEISHU)
+                    hideFilePreview()
+                    hideFeishuPagePreview()
+                  }}
+                >
+                  <span className={cn(s.datasetIcon, s.feishu)} />
+                  {t('datasetCreation.stepOne.dataSourceType.feishu')}
+                </div>
+                <div
+                  className={cn(
+                    s.dataSourceItem,
                     dataSourceType === DataSourceType.WEB && s.active,
                     dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
                   )}
@@ -224,6 +272,28 @@ const StepOne = ({
               )}
             </>
           )}
+          {dataSourceType === DataSourceType.FEISHU && (
+            <>
+              {!hasConnection && <FeishuConnector onSetting={onSetting} />}
+              {hasConnection && (
+                <>
+                  <div className='mb-8 w-[640px]'>
+                    <FeishuPageSelector
+                      value={feishuPages.map(page => page.page_id)}
+                      onSelect={updateFeishuPages}
+                      onPreview={updateCurrentFeishuPage}
+                    />
+                  </div>
+                  {isShowVectorSpaceFull && (
+                    <div className='max-w-[640px] mb-4'>
+                      <VectorSpaceFull />
+                    </div>
+                  )}
+                  <Button disabled={isShowVectorSpaceFull || !feishuPages.length} className={s.submitButton} variant='primary' onClick={onStepChange}>{t('datasetCreation.stepOne.button')}</Button>
+                </>
+              )}
+            </>
+          )}
           {dataSourceType === DataSourceType.WEB && (
             <>
               <div className={cn('mb-8 w-[640px]', !shouldShowDataSourceTypeList && 'mt-12')}>
@@ -256,6 +326,7 @@ const StepOne = ({
       </div>
       {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
       {currentNotionPage && <NotionPagePreview currentPage={currentNotionPage} hidePreview={hideNotionPagePreview} />}
+      {currentFeishuPage && <FeishuPagePreview currentPage={currentFeishuPage} hidePreview={hideFeishuPagePreview} />}
       {currentWebsite && <WebsitePreview payload={currentWebsite} hidePreview={hideWebsitePreview} />}
     </div>
   )

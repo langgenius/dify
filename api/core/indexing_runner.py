@@ -292,7 +292,12 @@ class IndexingRunner:
         self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
     ) -> list[Document]:
         # load file
-        if dataset_document.data_source_type not in {"upload_file", "notion_import", "website_crawl"}:
+        if dataset_document.data_source_type not in {
+            "upload_file",
+            "notion_import",
+            "website_crawl",
+            "feishuwiki_import",
+        }:
             return []
 
         data_source_info = dataset_document.data_source_info_dict
@@ -346,6 +351,25 @@ class IndexingRunner:
                     "url": data_source_info["url"],
                     "mode": data_source_info["mode"],
                     "only_main_content": data_source_info["only_main_content"],
+                },
+                document_model=dataset_document.doc_form,
+            )
+            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule["mode"])
+        elif dataset_document.data_source_type == "feishuwiki_import":
+            if (
+                not data_source_info
+                or "feishu_workspace_id" not in data_source_info
+                or "obj_token" not in data_source_info
+            ):
+                raise ValueError("no feishuwiki import info found")
+            extract_setting = ExtractSetting(
+                datasource_type="feishuwiki_import",
+                feishuwiki_info={
+                    "feishu_workspace_id": data_source_info["feishu_workspace_id"],
+                    "obj_token": data_source_info["obj_token"],
+                    "obj_type": data_source_info["obj_type"],
+                    "document": dataset_document,
+                    "tenant_id": dataset_document.tenant_id,
                 },
                 document_model=dataset_document.doc_form,
             )

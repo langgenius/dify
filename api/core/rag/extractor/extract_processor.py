@@ -10,6 +10,7 @@ from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.excel_extractor import ExcelExtractor
+from core.rag.extractor.feishuwiki_extractor import FeishuWikiExtractor
 from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
 from core.rag.extractor.html_extractor import HtmlExtractor
 from core.rag.extractor.jina_reader_extractor import JinaReaderWebExtractor
@@ -164,6 +165,15 @@ class ExtractProcessor:
                 tenant_id=extract_setting.notion_info.tenant_id,
             )
             return extractor.extract()
+        elif extract_setting.datasource_type == DatasourceType.FEISHUWIKI.value:
+            extractor = FeishuWikiExtractor(
+                feishu_workspace_id=extract_setting.feishuwiki_info.feishu_workspace_id,
+                obj_token=extract_setting.feishuwiki_info.obj_token,
+                obj_type=extract_setting.feishuwiki_info.obj_type,
+                document_model=extract_setting.feishuwiki_info.document,
+                tenant_id=extract_setting.feishuwiki_info.tenant_id,
+            )
+            return extractor.extract()
         elif extract_setting.datasource_type == DatasourceType.WEBSITE.value:
             if extract_setting.website_info.provider == "firecrawl":
                 extractor = FirecrawlWebExtractor(
@@ -185,5 +195,14 @@ class ExtractProcessor:
                 return extractor.extract()
             else:
                 raise ValueError(f"Unsupported website provider: {extract_setting.website_info.provider}")
+        elif extract_setting.datasource_type == DatasourceType.FEISHUWIKI.value:
+            extractor = FeishuWikiExtractor(
+                feishu_workspace_id=extract_setting.feishuwiki_info.feishu_workspace_id,
+                obj_token=extract_setting.feishuwiki_info.obj_token,
+                obj_type=extract_setting.feishuwiki_info.obj_type,
+                document_model=extract_setting.feishuwiki_info.document,
+                tenant_id=extract_setting.feishuwiki_info.tenant_id,
+            )
+            return extractor.extract()
         else:
             raise ValueError(f"Unsupported datasource type: {extract_setting.datasource_type}")

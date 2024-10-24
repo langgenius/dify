@@ -1,11 +1,20 @@
 import datetime
+import json
+import logging
 import urllib.parse
+from collections import deque
+from typing import Any, Optional
 
+import httpx
 import requests
 from flask_login import current_user
+from flask_restful import reqparse
 
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from models.source import DataSourceOauthBinding
+
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 
 
 class OAuthDataSource:
@@ -270,3 +279,242 @@ class NotionOAuth(OAuthDataSource):
         response_json = response.json()
         results = response_json.get("results", [])
         return results
+
+
+class FeishuWikiOAuth:
+    def save_feishu_wiki_data_source(self, app_id: str, app_secret: str):
+        workspace_name = app_id
+        workspace_icon = None
+        workspace_id = current_user.current_tenant_id
+
+        feishu_wiki = FeishuWiki(app_id, app_secret)
+
+        spaces = feishu_wiki.get_all_feishu_wiki_spaces()
+        pages = []
+        for space in spaces:
+            space_id = space["space_id"]
+            all_nodes = feishu_wiki.get_all_feishu_wiki_space_nodes(space_id)
+            nodes = transform_nodes(all_nodes)
+            pages.extend(nodes)
+
+        source_info = {
+            "workspace_name": workspace_name,
+            "workspace_icon": workspace_icon,
+            "workspace_id": workspace_id,
+            "pages": pages,
+            "total": len(pages),
+        }
+
+        app_info = {"app_id": app_id, "app_secret": app_secret}
+        access_token = json.dumps(app_info)
+
+        data_source_binding = DataSourceOauthBinding.query.filter(
+            db.and_(
+                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.provider == "feishuwiki",
+                DataSourceOauthBinding.access_token == access_token,
+            )
+        ).first()
+        if data_source_binding:
+            data_source_binding.source_info = source_info
+            data_source_binding.disabled = False
+            data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            db.session.commit()
+        else:
+            new_data_source_binding = DataSourceOauthBinding(
+                tenant_id=current_user.current_tenant_id,
+                access_token=access_token,
+                source_info=source_info,
+                provider="feishuwiki",
+            )
+            db.session.add(new_data_source_binding)
+            db.session.commit()
+
+    def sync_data_source(self, binding_id: str):
+        data_source_binding = DataSourceOauthBinding.query.filter(
+            db.and_(
+                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.provider == "feishuwiki",
+                DataSourceOauthBinding.id == binding_id,
+                DataSourceOauthBinding.disabled == False,
+            )
+        ).first()
+        if data_source_binding:
+            access_token = data_source_binding.access_token
+            app_info = json.loads(access_token)
+            app_id = app_info["app_id"]
+            app_secret = app_info["app_secret"]
+            feishu_wiki = FeishuWiki(app_id, app_secret)
+
+            workspace_name = app_id
+            workspace_icon = None
+            workspace_id = current_user.current_tenant_id
+
+            spaces = feishu_wiki.get_all_feishu_wiki_spaces()
+            pages = []
+
+            for space in spaces:
+                space_id = space["space_id"]
+                all_nodes = feishu_wiki.get_all_feishu_wiki_space_nodes(space_id)
+                nodes = transform_nodes(all_nodes)
+                pages.extend(nodes)
+
+            source_info = {
+                "workspace_name": workspace_name,
+                "workspace_icon": workspace_icon,
+                "workspace_id": workspace_id,
+                "pages": pages,
+                "total": len(pages),
+            }
+
+            data_source_binding.source_info = source_info
+            data_source_binding.disabled = False
+            data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            db.session.commit()
+        else:
+            raise ValueError("Data source binding not found")
+
+    def validate_certificate(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("app_id", type=str, required=True, location="json")
+        parser.add_argument("app_secret", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        app_id = args["app_id"]
+        app_secret = args["app_secret"]
+
+        if not app_id or not app_secret:
+            raise ValueError("app_id and app_secret is required")
+        try:
+            assert FeishuWiki(app_id, app_secret).tenant_access_token is not None
+            FeishuWikiOAuth().save_feishu_wiki_data_source(app_id, app_secret)
+        except Exception as e:
+            raise Exception(str(e))
+
+
+def transform_nodes(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    level = []
+    for node in nodes:
+        obj_type = node.get("obj_type")
+        node_type = node.get("node_type")
+        if obj_type == "docx" and node_type == "origin":
+            level.append(
+                {
+                    "page_id": node.get("node_token"),
+                    "page_name": node.get("title") or "未命名文档",
+                    "parent_id": node.get("parent_node_token") or "root",
+                    "obj_token": node.get("obj_token"),
+                    "obj_type": node.get("obj_type"),
+                    "space_id": node.get("space_id"),
+                }
+            )
+    return level
+
+
+class FeishuWiki:
+    API_BASE_URL = "https://open.feishu.cn/open-apis"
+
+    def __init__(self, app_id: str, app_secret: str):
+        self.app_id = app_id
+        self.app_secret = app_secret
+
+    def _send_request(
+        self,
+        url: str,
+        method: str = "post",
+        require_token: bool = True,
+        payload: Optional[dict] = None,
+        params: Optional[dict] = None,
+    ):
+        headers = {
+            "Content-Type": "application/json",
+            "user-agent": "Dify",
+        }
+        if require_token:
+            headers["Authorization"] = f"Bearer {self.tenant_access_token}"
+        res = httpx.request(method=method, url=url, headers=headers, json=payload, params=params, timeout=60).json()
+        if res.get("code") != 0:
+            raise Exception(res)
+        return res
+
+    @property
+    def tenant_access_token(self):
+        redis_key = f"datasource:{self.app_id}:tenant_access_token"
+        token = redis_client.get(redis_key)
+        if token:
+            return token.decode()
+        resp = self.fetch_tenant_access_token(self.app_id, self.app_secret)
+        redis_client.setex(redis_key, resp["expire"], resp["tenant_access_token"])
+        return resp["tenant_access_token"]
+
+    def fetch_tenant_access_token(self, app_id: str, app_secret: str) -> dict:
+        url = f"{self.API_BASE_URL}/auth/v3/tenant_access_token/internal"
+        payload = {"app_id": app_id, "app_secret": app_secret}
+        return self._send_request(url, require_token=False, payload=payload)
+
+    def get_all_feishu_wiki_spaces(self, page_size: int = 50):
+        url = f"{self.API_BASE_URL}/wiki/v2/spaces"
+        all_spaces = []
+        page_token = ""
+        while True:
+            params = {"page_size": page_size, "page_token": page_token, "lang": "en"}
+            res = self._send_request(url, method="GET", params=params)
+            all_spaces.extend(res.get("data", {}).get("items", []))
+            page_token = res.get("page_token", "")
+            if not page_token:
+                break
+        logging.info(f"all_spaces: {all_spaces}")
+        return all_spaces
+
+    def get_all_feishu_wiki_space_nodes(
+        self, space_id: str, parent_node_token: str = "", page_size: int = 50
+    ) -> list[dict[str, Any]]:
+        url = f"{self.API_BASE_URL}/wiki/v2/spaces/{space_id}/nodes"
+        all_nodes = []
+        queue = deque([parent_node_token])
+        while queue:
+            current_parent_token = queue.popleft()
+            page_token = ""
+            while True:
+                params = {
+                    "page_token": page_token,
+                    "page_size": page_size,
+                    "parent_node_token": current_parent_token,
+                }
+                res = self._send_request(url, method="GET", params=params)
+                data = res.get("data", {})
+                items = data.get("items", [])
+                all_nodes.extend(items)
+
+                has_more = data.get("has_more", False)
+                page_token = data.get("page_token", "")
+                if not has_more or not page_token:
+                    break
+
+            for item in items:
+                if item.get("has_child"):
+                    queue.append(item.get("node_token"))
+
+        return all_nodes
+
+    def get_feishu_wiki_node_last_edited_time(self, token: str, obj_type: str) -> str:
+        url = f"{self.API_BASE_URL}/wiki/v2/spaces/get_node"
+        params = {
+            "token": token,
+            "obj_type": obj_type,
+        }
+        res = self._send_request(url, method="GET", params=params)
+        data = res.get("data", [])
+        node = data.get("node", {})
+        if node:
+            return node.get("last_edited_time", "")
+        return ""
+
+    def get_document_markdown_content(self, document_id: str):
+        params = {
+            "document_id": document_id,
+        }
+        url = "https://lark-plugin-api.solutionsuite.cn/lark-plugin/document/get_document_content"
+        res = self._send_request(url, method="GET", params=params)
+        content = res.get("data", {}).get("content")
+        return content

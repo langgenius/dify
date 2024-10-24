@@ -5,7 +5,9 @@ import type {
   ApiBasedExtension,
   CodeBasedExtension,
   CommonResponse,
+  DataSourceFeishu,
   DataSourceNotion,
+  FeishuConfigBody,
   FileUploadConfigResponse,
   ICurrentWorkspace,
   IWorkspace,
@@ -45,8 +47,6 @@ type LoginSuccess = {
 type LoginFail = {
   result: 'fail'
   data: string
-  code: string
-  message: string
 }
 type LoginResponse = LoginSuccess | LoginFail
 export const login: Fetcher<LoginResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
@@ -148,8 +148,8 @@ export const switchWorkspace: Fetcher<CommonResponse & { new_tenant: IWorkspace 
   return post<CommonResponse & { new_tenant: IWorkspace }>(url, { body })
 }
 
-export const fetchDataSource: Fetcher<{ data: DataSourceNotion[] }, { url: string }> = ({ url }) => {
-  return get<{ data: DataSourceNotion[] }>(url)
+export const fetchDataSource: Fetcher<{ data: DataSourceNotion[] | DataSourceFeishu[] }, { url: string }> = ({ url }) => {
+  return get<{ data: DataSourceNotion[] | DataSourceFeishu[] }>(url)
 }
 
 export const syncDataSourceNotion: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
@@ -171,12 +171,12 @@ export const updatePluginProviderAIKey: Fetcher<UpdateOpenAIKeyResponse, { url: 
   return post<UpdateOpenAIKeyResponse>(url, { body })
 }
 
-export const invitationCheck: Fetcher<CommonResponse & { is_valid: boolean; data: { workspace_name: string; email: string; workspace_id: string } }, { url: string; params: { workspace_id?: string; email?: string; token: string } }> = ({ url, params }) => {
-  return get<CommonResponse & { is_valid: boolean; data: { workspace_name: string; email: string; workspace_id: string } }>(url, { params })
+export const invitationCheck: Fetcher<CommonResponse & { is_valid: boolean; workspace_name: string }, { url: string; params: { workspace_id: string; email: string; token: string } }> = ({ url, params }) => {
+  return get<CommonResponse & { is_valid: boolean; workspace_name: string }>(url, { params })
 }
 
-export const activateMember: Fetcher<LoginResponse, { url: string; body: any }> = ({ url, body }) => {
-  return post<LoginResponse>(url, { body })
+export const activateMember: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post<CommonResponse>(url, { body })
 }
 
 export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (url) => {
@@ -313,6 +313,26 @@ export const enableModel = (url: string, body: { model: string; model_type: Mode
 
 export const disableModel = (url: string, body: { model: string; model_type: ModelTypeEnum }) =>
   patch<CommonResponse>(url, { body })
+
+export const fetchFeishuDataSource: Fetcher<{ data: DataSourceFeishu[] }, { url: string }> = ({ url }) => {
+  return get<{ data: DataSourceFeishu[] }>(url)
+}
+
+export const syncDataSourceFeishu: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
+  return get<CommonResponse>(url)
+}
+
+export const updateDataSourceFeishuConfig: Fetcher<FeishuConfigBody, { url: string; body: FeishuConfigBody }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<FeishuConfigBody>
+}
+
+export const updateDataSourceFeishuAction: Fetcher<CommonResponse, { url: string }> = ({ url }) => {
+  return patch<CommonResponse>(url)
+}
+
+export const fetchFeishuConnection: Fetcher<{ data: string }, string> = (url) => {
+  return get(url) as Promise<{ data: string }>
+}
 
 export const sendForgotPasswordEmail: Fetcher<CommonResponse & { data: string }, { url: string; body: { email: string } }> = ({ url, body }) =>
   post<CommonResponse & { data: string }>(url, { body })

@@ -185,6 +185,11 @@ export type FirecrawlConfig = {
   base_url: string
 }
 
+export type FeishuConfig = {
+  app_id: string
+  app_secret: string
+}
+
 export type DataSourceItem = {
   id: string
   category: DataSourceCategory
@@ -285,3 +290,47 @@ export type ModerationService = (
     text: string
   }
 ) => Promise<ModerateResponse>
+
+export type DataSourceFeishuPage = {
+  page_icon: null | {
+    type: string | null
+    url: string | null
+    emoji: string | null
+  }
+  page_id: string
+  page_name: string
+  parent_id: string
+  type: string
+  is_bound: boolean
+  obj_token: string
+  obj_type: string
+  space_id: string
+}
+
+export type FeishuPage = DataSourceFeishuPage & {
+  workspace_id: string
+}
+
+export type FeishuConfigBody = {
+  app_id: string
+  app_secret: string
+}
+
+export type DataSourceFeishuPageMap = Record<string, DataSourceFeishuPage & { workspace_id: string }>
+
+export type DataSourceFeishuWorkspace = {
+  workspace_name: string
+  workspace_id: string
+  workspace_icon: string | null
+  total?: number
+  pages: DataSourceFeishuPage[]
+}
+
+export type DataSourceFeishuWorkspaceMap = Record<string, DataSourceFeishuWorkspace>
+
+export type DataSourceFeishu = {
+  id: string
+  provider: string
+  is_bound: boolean
+  source_info: DataSourceFeishuWorkspace
+}

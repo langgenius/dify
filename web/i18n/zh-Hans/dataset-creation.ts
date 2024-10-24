@@ -21,12 +21,19 @@ const translation = {
     apiKeyPlaceholder: '从 jina.ai 获取 API Key',
     getApiKeyLinkText: '从 jina.ai 获取您的免费 API Key',
   },
+  feishu: {
+    configFeishu: '配置 飞书 Wiki',
+    appIdPlaceholder: '从 飞书开放平台 获取 App Id',
+    appSecretPlaceholder: '从 飞书开放平台 获取 App Secret',
+    getApiKeyLinkText: '从 飞书开放平台 获取您的 App ID 和 App Secret',
+  },
   stepOne: {
     filePreview: '文件预览',
     pagePreview: '页面预览',
     dataSourceType: {
       file: '导入已有文本',
       notion: '同步自 Notion 内容',
+      feishu: '同步自 飞书 内容',
       web: '同步自 Web 站点',
     },
     uploader: {
@@ -46,6 +53,8 @@ const translation = {
     },
     notionSyncTitle: 'Notion 未绑定',
     notionSyncTip: '同步 Notion 内容前，须先绑定 Notion 空间',
+    feishuSyncTitle: '飞书 未绑定',
+    feishuSyncTip: '同步 飞书 内容前，须先绑定 飞书 空间',
     connect: '去绑定',
     button: '下一步',
     emptyDatasetCreation: '创建一个空知识库',
