@@ -1,5 +1,5 @@
 from flask import Response, request
-from flask_restful import Resource
+from flask_restful import Resource, reqparse
 from werkzeug.exceptions import NotFound
 
 import services
@@ -41,24 +41,39 @@ class FilePreviewApi(Resource):
     def get(self, file_id):
         file_id = str(file_id)
 
-        timestamp = request.args.get("timestamp")
-        nonce = request.args.get("nonce")
-        sign = request.args.get("sign")
+        parser = reqparse.RequestParser()
+        parser.add_argument("timestamp", type=str, required=True, location="args")
+        parser.add_argument("nonce", type=str, required=True, location="args")
+        parser.add_argument("sign", type=str, required=True, location="args")
+        parser.add_argument("as_attachment", type=bool, required=False, default=False, location="args")
 
-        if not timestamp or not nonce or not sign:
+        args = parser.parse_args()
+
+        if not args["timestamp"] or not args["nonce"] or not args["sign"]:
             return {"content": "Invalid request."}, 400
 
         try:
-            generator, mimetype = FileService.get_signed_file_preview(
+            generator, upload_file = FileService.get_file_generator_by_file_id(
                 file_id=file_id,
-                timestamp=timestamp,
-                nonce=nonce,
-                sign=sign,
+                timestamp=args["timestamp"],
+                nonce=args["nonce"],
+                sign=args["sign"],
             )
         except services.errors.file.UnsupportedFileTypeError:
             raise UnsupportedFileTypeError()
 
-        return Response(generator, mimetype=mimetype)
+        response = Response(
+            generator,
+            mimetype=upload_file.mime_type,
+            direct_passthrough=True,
+            headers={},
+        )
+        if upload_file.size > 0:
+            response.headers["Content-Length"] = str(upload_file.size)
+        if args["as_attachment"]:
+            response.headers["Content-Disposition"] = f"attachment; filename={upload_file.name}"
+
+        return response
 
 
 class WorkspaceWebappLogoApi(Resource):

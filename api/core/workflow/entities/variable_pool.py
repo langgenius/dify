@@ -124,11 +124,15 @@ class VariablePool(BaseModel):
 
         if value is None:
             selector, attr = selector[:-1], selector[-1]
+            # Python support `attr in FileAttribute` after 3.12
+            if attr not in {item.value for item in FileAttribute}:
+                return None
             value = self.get(selector)
-            if isinstance(value, FileSegment):
-                attr = FileAttribute(attr)
-                attr_value = file_manager.get_attr(file=value.value, attr=attr)
-                return variable_factory.build_segment(attr_value)
+            if not isinstance(value, FileSegment):
+                return None
+            attr = FileAttribute(attr)
+            attr_value = file_manager.get_attr(file=value.value, attr=attr)
+            return variable_factory.build_segment(attr_value)
 
         return value
 
