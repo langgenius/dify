@@ -72,7 +72,10 @@ def to_prompt_message_content(f: File, /):
                 raise ValueError("Missing file extension")
             return AudioPromptMessageContent(data=encoded_string, format=f.extension.lstrip("."))
         case FileType.VIDEO:
-            data = _to_url(f)
+            if dify_config.MULTIMODAL_SEND_VIDEO_FORMAT == "url":
+                data = _to_url(f)
+            else:
+                data = _to_base64_data_string(f)
             return VideoPromptMessageContent(data=data, format=f.extension.lstrip("."))
         case _:
             raise ValueError(f"file type {f.type} is not supported")

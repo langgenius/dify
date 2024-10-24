@@ -436,8 +436,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                             message_content = cast(VideoPromptMessageContent, message_content)
                             video_url = message_content.data
                             if message_content.data.startswith("data:"):
-                                # convert image base64 data to file in /tmp
-                                video_url = self._save_base64_image_to_file(message_content.data)
+                                raise InvokeError("not support base64, please set MULTIMODAL_SEND_VIDEO_FORMAT to url")
 
                             sub_message_dict = {"video": video_url}
                             sub_messages.append(sub_message_dict)
