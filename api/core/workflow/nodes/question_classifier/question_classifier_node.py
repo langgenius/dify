@@ -88,6 +88,7 @@ class QuestionClassifierNode(LLMNode):
             memory=memory,
             model_config=model_config,
             files=files,
+            vision_enabled=node_data.vision.enabled,
             vision_detail=node_data.vision.configs.detail,
         )
 
