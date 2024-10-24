@@ -405,7 +405,9 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
         )
         if not tidb_auth_binding:
             idle_tidb_auth_binding = (
-                db.session.query(TidbAuthBinding).filter(TidbAuthBinding.active == False).limit(1).one_or_none()
+                db.session.query(TidbAuthBinding).filter(TidbAuthBinding.active == False,
+                                                         TidbAuthBinding.status == "ACTIVE")
+                .limit(1).one_or_none()
             )
             if idle_tidb_auth_binding:
                 idle_tidb_auth_binding.active = True
@@ -438,6 +440,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                             password=new_cluster["password"],
                             tenant_id=dataset.tenant_id,
                             active=True,
+                            status="ACTIVE"
                         )
                         db.session.add(new_tidb_auth_binding)
                         db.session.commit()

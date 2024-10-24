@@ -43,7 +43,7 @@ class Vector:
             if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
                 whitelist = (
                     db.session.query(Whitelist)
-                    .filter(Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.type == "vector_db")
+                    .filter(Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db")
                     .one_or_none()
                 )
                 if whitelist:
