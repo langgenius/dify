@@ -273,6 +273,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     in_iteration_id: Optional[str] = None
     """iteration id if node is in iteration"""
     start_at: datetime
+    parallel_mode_run_id: Optional[str] = None
 
 
 class QueueNodeSucceededEvent(AppQueueEvent):

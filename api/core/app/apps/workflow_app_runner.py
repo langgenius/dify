@@ -195,6 +195,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     node_run_index=event.route_node_state.index,
                     predecessor_node_id=event.predecessor_node_id,
                     in_iteration_id=event.in_iteration_id,
+                    parallel_mode_run_id=event.parallel_mode_run_id,
                 )
             )
         elif isinstance(event, NodeRunSucceededEvent):

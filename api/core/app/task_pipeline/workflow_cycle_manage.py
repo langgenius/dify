@@ -36,6 +36,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.tools.tool_manager import ToolManager
+from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData
@@ -252,6 +253,12 @@ class WorkflowCycleManage:
             workflow_node_execution.status = WorkflowNodeExecutionStatus.RUNNING.value
             workflow_node_execution.created_by_role = workflow_run.created_by_role
             workflow_node_execution.created_by = workflow_run.created_by
+            workflow_node_execution.execution_metadata = json.dumps(
+                {
+                    NodeRunMetadataKey.PARALLEL_MODE_RUN_ID: event.parallel_mode_run_id,
+                    NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
+                }
+            )
             workflow_node_execution.created_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
             session.add(workflow_node_execution)

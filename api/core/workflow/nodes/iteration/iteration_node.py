@@ -27,6 +27,7 @@ from core.workflow.graph_engine.entities.event import (
     IterationRunSucceededEvent,
     NodeInIterationFailedEvent,
     NodeRunFailedEvent,
+    NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
@@ -185,7 +186,6 @@ class IterationNode(BaseNode[IterationNodeData]):
                             yield event
                         if isinstance(event, IterationRunFailedEvent):
                             q.put(None)
-
                             yield event
                     except Empty:
                         logger.warning("iteration parallel queue is empty.")
@@ -315,6 +315,9 @@ class IterationNode(BaseNode[IterationNodeData]):
         add iteration metadata to event.
         """
         if not isinstance(event, BaseNodeEvent):
+            return event
+        if self.node_data.is_parallel and isinstance(event, NodeRunStartedEvent):
+            event.parallel_mode_run_id = parallel_mode_run_id
             return event
         if event.route_node_state.node_run_result:
             metadata = event.route_node_state.node_run_result.metadata

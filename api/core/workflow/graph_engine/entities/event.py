@@ -59,6 +59,7 @@ class BaseNodeEvent(GraphEngineEvent):
 
 class NodeRunStartedEvent(BaseNodeEvent):
     predecessor_node_id: Optional[str] = None
+    parallel_mode_run_id: Optional[str] = None
     """predecessor node id"""
 
 
