@@ -103,7 +103,7 @@ class ExtractProcessor:
                     if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
-                        extractor = UnstructuredPDFExtractor(file_path, unstructured_api_url, unstructured_api_key)
+                        extractor = PdfExtractor(file_path)
                     elif file_extension in {".md", ".markdown"}:
                         extractor = (
                             UnstructuredMarkdownExtractor(file_path, unstructured_api_url, unstructured_api_key)
