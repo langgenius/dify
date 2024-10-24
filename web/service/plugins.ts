@@ -8,6 +8,7 @@ import type {
   InstallPackageResponse,
   UpdateEndpointRequest,
 } from '@/app/components/plugins/types'
+import type { DebugInfo as DebugInfoTypes } from '@/app/components/plugins/types'
 
 export const createEndpoint: Fetcher<EndpointOperationResponse, { url: string; body: CreateEndpointRequest }> = ({ url, body }) => {
   // url = /workspaces/current/endpoints/create
@@ -45,11 +46,6 @@ export const installPackageFromGitHub: Fetcher<InstallPackageResponse, { repo: s
   })
 }
 
-// export const fetchInstalledPluginsList: Fetcher<
 export const fetchDebugKey = async () => {
-  return Promise.resolve({
-    key: 'f15b079b-bba2-4a62-abad-69119bcd3fa4',
-    host: 'localhost',
-    port: 5003,
-  })
+  return get<DebugInfoTypes>('/workspaces/current/plugin/debugging-key')
 }
