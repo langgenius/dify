@@ -50,7 +50,7 @@ def init_app(app):
 
     redis_params = {
         "username": dify_config.REDIS_USERNAME,
-        "password": dify_config.REDIS_PASSWORD,
+        "password": dify_config.REDIS_PASSWORD or None,  # Temporary fix for empty password
         "db": dify_config.REDIS_DB,
         "encoding": "utf-8",
         "encoding_errors": "strict",
