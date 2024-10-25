@@ -151,14 +151,6 @@ class Workflow(db.Model):
 
     @property
     def features(self) -> str:
-        """
-        Convert old features structure to new features structure.
-        """
-        if not self._features:
-            return self._features
-
-        features = json.loads(self._features)
-        self._features = json.dumps(features)
         return self._features
 
     @features.setter
