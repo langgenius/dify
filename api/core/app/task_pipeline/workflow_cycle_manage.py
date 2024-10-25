@@ -1,10 +1,9 @@
 import json
 import time
+import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Any, Optional, Union, cast
-
-from sqlalchemy.orm import Session
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
@@ -30,6 +29,7 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
     WorkflowTaskState,
 )
+from core.app.task_pipeline.workflow_persist_manage import WorkflowPersistManage
 from core.file import FILE_MODEL_IDENTITY, File
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.entities.trace_entity import TraceTaskName
@@ -60,6 +60,7 @@ class WorkflowCycleManage:
     _task_state: WorkflowTaskState
     _workflow_system_variables: dict[SystemVariableKey, Any]
     _wip_workflow_node_executions: dict[str, WorkflowNodeExecution]
+    _workflow_persist_manage: WorkflowPersistManage
 
     def _handle_workflow_run_start(self) -> WorkflowRun:
         max_sequence = (
@@ -104,13 +105,10 @@ class WorkflowCycleManage:
         workflow_run.created_by_role = (
             CreatedByRole.ACCOUNT.value if isinstance(self._user, Account) else CreatedByRole.END_USER.value
         )
+        workflow_run.created_at = datetime.now(timezone.utc).replace(tzinfo=None)
         workflow_run.created_by = self._user.id
 
-        db.session.add(workflow_run)
-        db.session.commit()
-        db.session.refresh(workflow_run)
-        db.session.close()
-
+        self._workflow_persist_manage.workflow_run_start(workflow_run.to_dict())
         return workflow_run
 
     def _handle_workflow_run_success(
@@ -133,19 +131,21 @@ class WorkflowCycleManage:
         :param conversation_id: conversation id
         :return:
         """
-        workflow_run = self._refetch_workflow_run(workflow_run.id)
-
+        finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        elapsed_time = time.perf_counter() - start_at
         outputs = WorkflowEntry.handle_special_values(outputs)
+        outputs = json.dumps(outputs or {})
+        self._workflow_persist_manage.workflow_run_success(
+            workflow_run.id, elapsed_time, total_tokens, total_steps, outputs, finished_at
+        )
 
+        # Caller need use some fields, so need update the fields
         workflow_run.status = WorkflowRunStatus.SUCCEEDED.value
-        workflow_run.outputs = json.dumps(outputs or {})
-        workflow_run.elapsed_time = time.perf_counter() - start_at
+        workflow_run.outputs = outputs
+        workflow_run.elapsed_time = elapsed_time
         workflow_run.total_tokens = total_tokens
         workflow_run.total_steps = total_steps
-        workflow_run.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
-
-        db.session.commit()
-        db.session.refresh(workflow_run)
+        workflow_run.finished_at = finished_at
 
         if trace_manager:
             trace_manager.add_trace_task(
@@ -156,9 +156,6 @@ class WorkflowCycleManage:
                     user_id=trace_manager.user_id,
                 )
             )
-
-        db.session.close()
-
         return workflow_run
 
     def _handle_workflow_run_failed(
@@ -182,41 +179,18 @@ class WorkflowCycleManage:
         :param error: error message
         :return:
         """
-        workflow_run = self._refetch_workflow_run(workflow_run.id)
-
+        elapsed_time = time.perf_counter() - start_at
+        finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        self._workflow_persist_manage.workflow_run_failed(
+            workflow_run.id, elapsed_time, total_tokens, total_steps, status, error, finished_at
+        )
+        # Caller need use some fields, so need update the fields
         workflow_run.status = status.value
         workflow_run.error = error
-        workflow_run.elapsed_time = time.perf_counter() - start_at
+        workflow_run.elapsed_time = elapsed_time
         workflow_run.total_tokens = total_tokens
         workflow_run.total_steps = total_steps
-        workflow_run.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
-
-        db.session.commit()
-
-        running_workflow_node_executions = (
-            db.session.query(WorkflowNodeExecution)
-            .filter(
-                WorkflowNodeExecution.tenant_id == workflow_run.tenant_id,
-                WorkflowNodeExecution.app_id == workflow_run.app_id,
-                WorkflowNodeExecution.workflow_id == workflow_run.workflow_id,
-                WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
-                WorkflowNodeExecution.workflow_run_id == workflow_run.id,
-                WorkflowNodeExecution.status == WorkflowNodeExecutionStatus.RUNNING.value,
-            )
-            .all()
-        )
-
-        for workflow_node_execution in running_workflow_node_executions:
-            workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
-            workflow_node_execution.error = error
-            workflow_node_execution.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
-            workflow_node_execution.elapsed_time = (
-                workflow_node_execution.finished_at - workflow_node_execution.created_at
-            ).total_seconds()
-            db.session.commit()
-
-        db.session.refresh(workflow_run)
-        db.session.close()
+        workflow_run.finished_at = finished_at
 
         if trace_manager:
             trace_manager.add_trace_task(
@@ -234,30 +208,27 @@ class WorkflowCycleManage:
         self, workflow_run: WorkflowRun, event: QueueNodeStartedEvent
     ) -> WorkflowNodeExecution:
         # init workflow node execution
+        workflow_node_execution = WorkflowNodeExecution()
+        workflow_node_execution.id = str(uuid.uuid4())
+        workflow_node_execution.tenant_id = workflow_run.tenant_id
+        workflow_node_execution.app_id = workflow_run.app_id
+        workflow_node_execution.workflow_id = workflow_run.workflow_id
+        workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
+        workflow_node_execution.workflow_run_id = workflow_run.id
+        workflow_node_execution.predecessor_node_id = event.predecessor_node_id
+        workflow_node_execution.index = event.node_run_index
+        workflow_node_execution.node_execution_id = event.node_execution_id
+        workflow_node_execution.node_id = event.node_id
+        workflow_node_execution.node_type = event.node_type.value
+        workflow_node_execution.title = event.node_data.title
+        workflow_node_execution.status = WorkflowNodeExecutionStatus.RUNNING.value
+        workflow_node_execution.created_by_role = workflow_run.created_by_role
+        workflow_node_execution.created_by = workflow_run.created_by
+        workflow_node_execution.created_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
-        with Session(db.engine, expire_on_commit=False) as session:
-            workflow_node_execution = WorkflowNodeExecution()
-            workflow_node_execution.tenant_id = workflow_run.tenant_id
-            workflow_node_execution.app_id = workflow_run.app_id
-            workflow_node_execution.workflow_id = workflow_run.workflow_id
-            workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value
-            workflow_node_execution.workflow_run_id = workflow_run.id
-            workflow_node_execution.predecessor_node_id = event.predecessor_node_id
-            workflow_node_execution.index = event.node_run_index
-            workflow_node_execution.node_execution_id = event.node_execution_id
-            workflow_node_execution.node_id = event.node_id
-            workflow_node_execution.node_type = event.node_type.value
-            workflow_node_execution.title = event.node_data.title
-            workflow_node_execution.status = WorkflowNodeExecutionStatus.RUNNING.value
-            workflow_node_execution.created_by_role = workflow_run.created_by_role
-            workflow_node_execution.created_by = workflow_run.created_by
-            workflow_node_execution.created_at = datetime.now(timezone.utc).replace(tzinfo=None)
-
-            session.add(workflow_node_execution)
-            session.commit()
-            session.refresh(workflow_node_execution)
-
+        self._workflow_persist_manage.node_execution_start(workflow_node_execution.to_dict())
         self._wip_workflow_node_executions[workflow_node_execution.node_execution_id] = workflow_node_execution
+
         return workflow_node_execution
 
     def _handle_workflow_node_execution_success(self, event: QueueNodeSucceededEvent) -> WorkflowNodeExecution:
@@ -267,7 +238,6 @@ class WorkflowCycleManage:
         :return:
         """
         workflow_node_execution = self._refetch_workflow_node_execution(event.node_execution_id)
-
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         process_data = WorkflowEntry.handle_special_values(event.process_data)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
@@ -277,22 +247,17 @@ class WorkflowCycleManage:
         finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
-        db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
-            {
-                WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.SUCCEEDED.value,
-                WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
-                WorkflowNodeExecution.process_data: json.dumps(process_data) if event.process_data else None,
-                WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
-                WorkflowNodeExecution.execution_metadata: execution_metadata,
-                WorkflowNodeExecution.finished_at: finished_at,
-                WorkflowNodeExecution.elapsed_time: elapsed_time,
-            }
+        self._workflow_persist_manage.node_execution_success(
+            workflow_node_execution.id,
+            inputs,
+            outputs,
+            execution_metadata,
+            process_data,
+            finished_at,
+            elapsed_time,
         )
-
-        db.session.commit()
-        db.session.close()
-        process_data = WorkflowEntry.handle_special_values(event.process_data)
-
+        self._wip_workflow_node_executions.pop(workflow_node_execution.node_execution_id)
+        # Caller need use some fields, so need update the fields
         workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
         workflow_node_execution.process_data = json.dumps(process_data) if process_data else None
@@ -300,9 +265,6 @@ class WorkflowCycleManage:
         workflow_node_execution.execution_metadata = execution_metadata
         workflow_node_execution.finished_at = finished_at
         workflow_node_execution.elapsed_time = elapsed_time
-
-        self._wip_workflow_node_executions.pop(workflow_node_execution.node_execution_id)
-
         return workflow_node_execution
 
     def _handle_workflow_node_execution_failed(self, event: QueueNodeFailedEvent) -> WorkflowNodeExecution:
@@ -319,22 +281,12 @@ class WorkflowCycleManage:
         finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
-        db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
-            {
-                WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.FAILED.value,
-                WorkflowNodeExecution.error: event.error,
-                WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
-                WorkflowNodeExecution.process_data: json.dumps(process_data) if event.process_data else None,
-                WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
-                WorkflowNodeExecution.finished_at: finished_at,
-                WorkflowNodeExecution.elapsed_time: elapsed_time,
-            }
+        self._workflow_persist_manage.node_execution_failed(
+            workflow_node_execution.id, inputs, outputs, finished_at, elapsed_time, process_data, event.error
         )
+        self._wip_workflow_node_executions.pop(workflow_node_execution.node_execution_id)
 
-        db.session.commit()
-        db.session.close()
-        process_data = WorkflowEntry.handle_special_values(event.process_data)
-
+        # Caller need use some fields, so need update the fields
         workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
         workflow_node_execution.error = event.error
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
@@ -342,9 +294,6 @@ class WorkflowCycleManage:
         workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
         workflow_node_execution.finished_at = finished_at
         workflow_node_execution.elapsed_time = elapsed_time
-
-        self._wip_workflow_node_executions.pop(workflow_node_execution.node_execution_id)
-
         return workflow_node_execution
 
     #################################################
