@@ -13,7 +13,7 @@ description:
 
 parameters:
   - name: book_id
-    type: number
+    type: string
     required: true
     form: llm
     label:
