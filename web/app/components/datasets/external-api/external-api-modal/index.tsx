@@ -91,7 +91,7 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
         await onEdit(
           {
             ...formData,
-            settings: { ...formData.settings, api_key: formData.settings.api_key ? '[__HIDDEN__]' : formData.settings.api_key },
+            settings: { ...formData.settings, api_key: formData.settings.api_key ? formData.settings.api_key : '[__HIDDEN__]' },
           },
         )
         notify({ type: 'success', message: 'External API updated successfully' })
