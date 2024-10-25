@@ -24,7 +24,7 @@ function getProcessedInputsFromUrlParams(): Record<string, any> {
 function getLastAnswer(chatList: ChatItem[]) {
   for (let i = chatList.length - 1; i >= 0; i--) {
     const item = chatList[i]
-    if (item.isAnswer && !item.isOpeningStatement)
+    if (item.isAnswer && !item.id.startsWith('answer-placeholder-') && !item.isOpeningStatement)
       return item
   }
   return null
