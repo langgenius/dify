@@ -234,7 +234,7 @@ class WordExtractor(BaseExtractor):
         def parse_paragraph(paragraph):
             paragraph_content = []
             for run in paragraph.runs:
-                if hasattr(run.element, "tag") and isinstance(element.tag, str) and run.element.tag.endswith("r"):
+                if hasattr(run.element, "tag") and isinstance(run.element.tag, str) and run.element.tag.endswith("r"):
                     drawing_elements = run.element.findall(
                         ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing"
                     )
