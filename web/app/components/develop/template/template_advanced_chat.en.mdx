@@ -63,8 +63,12 @@ Chat applications support session persistence, allowing previous chat history to
       Conversation ID, to continue the conversation based on previous chat records, it is necessary to pass the previous message's conversation_id.
       </Property>
       <Property name='files' type='array[object]' key='files'>
-          File list, suitable for inputting files (images) combined with text understanding and answering questions, available only when the model supports Vision capability.
-          - `type` (string) Supported type: `image` (currently only supports image type)
+          File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports Vision capability.
+          - `type` (string) Supported type: 
+            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
+            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
+            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
+            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
           - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
           - `url` (string) Image URL (when the transfer method is `remote_url`)
           - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
@@ -972,7 +976,10 @@ Chat applications support session persistence, allowing previous chat history to
         - `number_limits` (int) Image number limit, default is 3
         - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
     - `system_parameters` (object) System parameters
-      - `image_file_size_limit` (string) Image file upload size limit (MB)
+      - `file_size_limit` (int) Document upload size limit (MB)
+      - `image_file_size_limit` (int) Image file upload size limit (MB)
+      - `audio_file_size_limit` (int) Audio file upload size limit (MB)
+      - `video_file_size_limit` (int) Video file upload size limit (MB)
 
   </Col>
   <Col sticky>
@@ -1024,7 +1031,10 @@ Chat applications support session persistence, allowing previous chat history to
           }
       },
       "system_parameters": {
-          "image_file_size_limit": "10"
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
       }
     }
     ```
