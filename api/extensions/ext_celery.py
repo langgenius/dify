@@ -71,13 +71,11 @@ def init_app(app: Flask) -> Celery:
         },
         "create_tidb_serverless_task": {
             "task": "schedule.create_tidb_serverless_task.create_tidb_serverless_task",
-            #"schedule": crontab(minute="0", hour="*"),
-            "schedule": timedelta(minutes=1),
+            "schedule": crontab(minute="0", hour="*"),
         },
         "update_tidb_serverless_status_task": {
             "task": "schedule.update_tidb_serverless_status_task.update_tidb_serverless_status_task",
-            #"schedule": crontab(minute="30", hour="*"),
-            "schedule": timedelta(minutes=1),
+            "schedule": crontab(minute="30", hour="*"),
         },
     }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
