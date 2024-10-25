@@ -47,15 +47,16 @@ class ComfyUiClient:
         ws.connect(ws_address)
         return ws, client_id
 
-    def set_prompt(self, origin_prompt: dict, positive_prompt: str, negative_prompt: str = "",
-                   image_name: str = "") -> dict:
+    def set_prompt(
+        self, origin_prompt: dict, positive_prompt: str, negative_prompt: str = "", image_name: str = ""
+    ) -> dict:
         """
         find the first KSampler, then can find the prompt node through it.
         """
         prompt = origin_prompt.copy()
         id_to_class_type = {id: details["class_type"] for id, details in prompt.items()}
         k_sampler = [key for key, value in id_to_class_type.items() if value == "KSampler"][0]
-        prompt.get(k_sampler)["inputs"]["seed"] = random.randint(10 ** 14, 10 ** 15 - 1)
+        prompt.get(k_sampler)["inputs"]["seed"] = random.randint(10**14, 10**15 - 1)
         positive_input_id = prompt.get(k_sampler)["inputs"]["positive"][0]
         prompt.get(positive_input_id)["inputs"]["text"] = positive_prompt
 
