@@ -267,8 +267,8 @@ importers:
         specifier: ^3.8.0
         version: 3.8.0(@eslint-react/eslint-plugin@1.15.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(@typescript-eslint/utils@8.11.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(@vue/compiler-sfc@3.5.12)(eslint-plugin-react-hooks@5.0.0(eslint@9.13.0(jiti@1.21.6)))(eslint-plugin-react-refresh@0.4.13(eslint@9.13.0(jiti@1.21.6)))(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5)
       '@chromatic-com/storybook':
-        specifier: ^1.9.0
-        version: 1.9.0(react@18.2.0)
+        specifier: ^3.1.0
+        version: 3.1.0(react@18.2.0)(storybook@8.3.6)
       '@eslint-react/eslint-plugin':
         specifier: ^1.15.0
         version: 1.15.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5)
@@ -285,31 +285,31 @@ importers:
         specifier: ^4.1.0
         version: 4.1.0
       '@storybook/addon-essentials':
-        specifier: ^8.3.5
+        specifier: ^8.3.6
         version: 8.3.6(storybook@8.3.6)(webpack-sources@3.2.3)
       '@storybook/addon-interactions':
-        specifier: ^8.3.5
+        specifier: ^8.3.6
         version: 8.3.6(storybook@8.3.6)
       '@storybook/addon-links':
-        specifier: ^8.3.5
+        specifier: ^8.3.6
         version: 8.3.6(react@18.2.0)(storybook@8.3.6)
       '@storybook/addon-onboarding':
-        specifier: ^8.3.5
+        specifier: ^8.3.6
         version: 8.3.6(react@18.2.0)(storybook@8.3.6)
       '@storybook/addon-themes':
-        specifier: ^8.3.5
+        specifier: ^8.3.6
         version: 8.3.6(storybook@8.3.6)
       '@storybook/blocks':
-        specifier: ^8.3.5
+        specifier: ^8.3.6
         version: 8.3.6(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(storybook@8.3.6)
       '@storybook/nextjs':
-        specifier: ^8.3.5
+        specifier: ^8.3.6
         version: 8.3.6(esbuild@0.23.1)(next@14.2.15(@babel/core@7.25.8)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(sass@1.80.3))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(sass@1.80.3)(storybook@8.3.6)(type-fest@2.19.0)(typescript@4.9.5)(uglify-js@3.19.3)(webpack-hot-middleware@2.26.1)(webpack@5.95.0(esbuild@0.23.1)(uglify-js@3.19.3))
       '@storybook/react':
-        specifier: ^8.3.5
+        specifier: ^8.3.6
         version: 8.3.6(@storybook/test@8.3.6(storybook@8.3.6))(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(storybook@8.3.6)(typescript@4.9.5)
       '@storybook/test':
-        specifier: ^8.3.5
+        specifier: ^8.3.6
         version: 8.3.6(storybook@8.3.6)
       '@testing-library/dom':
         specifier: ^10.3.2
@@ -420,7 +420,7 @@ importers:
         specifier: ^1.61.0
         version: 1.80.3
       storybook:
-        specifier: ^8.3.5
+        specifier: ^8.3.6
         version: 8.3.6
       tailwindcss:
         specifier: ^3.4.4
@@ -1138,9 +1138,11 @@ packages:
   '@braintree/sanitize-url@6.0.4':
     resolution: {integrity: sha512-s3jaWicZd0pkP0jf5ysyHUI/RE7MHos6qlToFcGWXVp+ykHOy77OUMrfbgJ9it2C5bow7OIQwYYaHjk9XlBQ2A==}
 
-  '@chromatic-com/storybook@1.9.0':
-    resolution: {integrity: sha512-vYQ+TcfktEE3GHnLZXHCzXF/sN9dw+KivH8a5cmPyd9YtQs7fZtHrEgsIjWpYycXiweKMo1Lm1RZsjxk8DH3rA==}
+  '@chromatic-com/storybook@3.1.0':
+    resolution: {integrity: sha512-AM8jDwoBNNwJKgmoWkHIOhu4ObsxvDtOzZC9tPCVEW6P+pFwg5xjSZAQglIE2c8/SsEPSduNdxBt31ES3iDwoA==}
     engines: {node: '>=16.0.0', yarn: '>=1.22.18'}
+    peerDependencies:
+      storybook: ^8.3.0
 
   '@clack/core@0.3.4':
     resolution: {integrity: sha512-H4hxZDXgHtWTwV3RAVenqcC4VbJZNegbBjlPvzOzCouXtS2y3sDvlO3IsbrPNWuLWPPlYVYPghQdSF64683Ldw==}
@@ -2177,6 +2179,11 @@ packages:
       typescript:
         optional: true
 
+  '@storybook/channels@8.3.6':
+    resolution: {integrity: sha512-6ahY0n1A19diR5cI63lhDEpMaDsq7LFtMOgWab2NwCsdXoEAl6anvDptyPWW60umN3HrDzSKFdpRx4imOEjlWw==}
+    peerDependencies:
+      storybook: ^8.3.6
+
   '@storybook/components@8.3.6':
     resolution: {integrity: sha512-TXuoGZY7X3iixF45lXkYOFk8k2q9OHcqHyHyem1gATLLQXgyOvDgzm+VB7uKBNzssRQPEE+La70nfG8bq/viRw==}
     peerDependencies:
@@ -2279,6 +2286,11 @@ packages:
       typescript:
         optional: true
 
+  '@storybook/telemetry@8.3.6':
+    resolution: {integrity: sha512-fhpbZok7mPeujjFxAKo2vuqhfjhv5BO/mHH7Z8QtgsYqeR7px56arDRgV6CngBZWgFvrQ2wBS0HPV4nB6YWvJQ==}
+    peerDependencies:
+      storybook: ^8.3.6
+
   '@storybook/test@8.3.6':
     resolution: {integrity: sha512-WIc8LzK9jaEw+e3OiweEM2j3cppPzsWod59swuf6gDBf176EQLIyjtVc+Kh3qO4NNkcL+lwmqaLPjOxlBLaDbg==}
     peerDependencies:
@@ -2286,6 +2298,11 @@ packages:
 
   '@storybook/theming@8.3.6':
     resolution: {integrity: sha512-LQjUk6GXRW9ELkoBKuqzQKFUW+ajfGPfVELcfs3/VQX61VhthJ4olov4bGPc04wsmmFMgN/qODxT485IwOHfPQ==}
+    peerDependencies:
+      storybook: ^8.3.6
+
+  '@storybook/types@8.3.6':
+    resolution: {integrity: sha512-EY+bjIxxmKkFrL7CyDQb3EXbmy0+Y9OieaPrNNM7QXTfGgp81lXhfqMX3HLMMjplk+rcxVJLyzXSBx0nIn91fQ==}
     peerDependencies:
       storybook: ^8.3.6
 
@@ -3335,8 +3352,8 @@ packages:
     resolution: {integrity: sha512-n8enUVCED/KVRQlab1hr3MVpcVMvxtZjmEa956u+4YijlmQED223XMSYj2tLuKvr4jcCTzNNMpQDUer72MMmzA==}
     engines: {node: '>= 14.16.0'}
 
-  chromatic@11.14.0:
-    resolution: {integrity: sha512-qt7xXpdrwssBtXWv30aW46HAK10bF4Ep7SMjtMQhD61Fg4IS9aImT0WFeig7utpXYHOx0eSysjwhz0cgYz9SDg==}
+  chromatic@11.15.0:
+    resolution: {integrity: sha512-5WBm+akQnxsdJv7A//XBafYxk88RJYmRjOh61lVitbPCIN2J9jcsQR+hYApnInmQsWRZvO8GKkMy7SdTlnm1dg==}
     hasBin: true
     peerDependencies:
       '@chromatic-com/cypress': ^0.*.* || ^1.0.0
@@ -9003,12 +9020,16 @@ snapshots:
 
   '@braintree/sanitize-url@6.0.4': {}
 
-  '@chromatic-com/storybook@1.9.0(react@18.2.0)':
+  '@chromatic-com/storybook@3.1.0(react@18.2.0)(storybook@8.3.6)':
     dependencies:
-      chromatic: 11.14.0
+      '@storybook/channels': 8.3.6(storybook@8.3.6)
+      '@storybook/telemetry': 8.3.6(storybook@8.3.6)
+      '@storybook/types': 8.3.6(storybook@8.3.6)
+      chromatic: 11.15.0
       filesize: 10.1.6
       jsonfile: 6.1.0
       react-confetti: 6.1.0(react@18.2.0)
+      storybook: 8.3.6
       strip-ansi: 7.1.0
     transitivePeerDependencies:
       - '@chromatic-com/cypress'
@@ -10306,6 +10327,10 @@ snapshots:
       - uglify-js
       - webpack-cli
 
+  '@storybook/channels@8.3.6(storybook@8.3.6)':
+    dependencies:
+      storybook: 8.3.6
+
   '@storybook/components@8.3.6(storybook@8.3.6)':
     dependencies:
       storybook: 8.3.6
@@ -10514,6 +10539,10 @@ snapshots:
       '@storybook/test': 8.3.6(storybook@8.3.6)
       typescript: 4.9.5
 
+  '@storybook/telemetry@8.3.6(storybook@8.3.6)':
+    dependencies:
+      storybook: 8.3.6
+
   '@storybook/test@8.3.6(storybook@8.3.6)':
     dependencies:
       '@storybook/csf': 0.1.11
@@ -10528,6 +10557,10 @@ snapshots:
       util: 0.12.5
 
   '@storybook/theming@8.3.6(storybook@8.3.6)':
+    dependencies:
+      storybook: 8.3.6
+
+  '@storybook/types@8.3.6(storybook@8.3.6)':
     dependencies:
       storybook: 8.3.6
 
@@ -11803,7 +11836,7 @@ snapshots:
     dependencies:
       readdirp: 4.0.2
 
-  chromatic@11.14.0: {}
+  chromatic@11.15.0: {}
 
   chrome-trace-event@1.0.4: {}
 
