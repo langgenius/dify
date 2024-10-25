@@ -130,15 +130,14 @@ class GraphEngine:
         yield GraphRunStartedEvent()
 
         try:
-            stream_processor_cls: type[AnswerStreamProcessor | EndStreamProcessor]
             if self.init_params.workflow_type == WorkflowType.CHAT:
-                stream_processor_cls = AnswerStreamProcessor
+                stream_processor = AnswerStreamProcessor(
+                    graph=self.graph, variable_pool=self.graph_runtime_state.variable_pool
+                )
             else:
-                stream_processor_cls = EndStreamProcessor
-
-            stream_processor = stream_processor_cls(
-                graph=self.graph, variable_pool=self.graph_runtime_state.variable_pool
-            )
+                stream_processor = EndStreamProcessor(
+                    graph=self.graph, variable_pool=self.graph_runtime_state.variable_pool
+                )
 
             # run graph
             generator = stream_processor.process(self._run(start_node_id=self.graph.root_node_id))
