@@ -1,10 +1,3 @@
-"""
-获取知识库首页
-"""
-
-__author__ = "佐井"
-__created__ = "2024-06-01 22:57:14"
-
 from typing import Any, Union
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
