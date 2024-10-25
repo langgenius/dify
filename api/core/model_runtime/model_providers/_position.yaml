@@ -15,6 +15,7 @@
 - groq
 - replicate
 - huggingface_hub
+- modelscope
 - xinference
 - triton_inference_server
 - zhipuai
