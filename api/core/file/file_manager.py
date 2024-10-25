@@ -138,6 +138,8 @@ def _file_to_encoded_string(f: File, /):
     match f.type:
         case FileType.IMAGE:
             return _to_base64_data_string(f)
+        case FileType.VIDEO:
+            return _to_base64_data_string(f)
         case FileType.AUDIO:
             return _get_encoded_string(f)
         case _:
