@@ -234,13 +234,32 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Request Body
     <Properties>
       <Property name='name' type='string' key='name'>
-        知识库名称
+        知识库名称（必填）
+      </Property>
+      <Property name='description' type='string' key='description'>
+        知识库描述（选填）
+      </Property>
+      <Property name='indexing_technique' type='string' key='indexing_technique'>
+        索引模式（选填，建议填写）
+          - <code>high_quality</code> 高质量
+          - <code>economy</code> 经济
       </Property>
       <Property name='permission' type='string' key='permission'>
-        权限
+        权限（选填，默认only_me）
           - <code>only_me</code> 仅自己
           - <code>all_team_members</code> 所有团队成员
           - <code>partial_members</code> 部分团队成员
+      </Property>
+      <Property name='provider' type='string' key='provider'>
+        provider，（选填，默认 vendor）
+          - <code>vendor</code> 上传文件
+          - <code>external</code> 外部知识库
+      </Property>
+      <Property name='external_knowledge_api_id' type='str' key='external_knowledge_api_id'>
+        外部知识库 API_ID（选填）
+      </Property>
+      <Property name='external_knowledge_id' type='str' key='external_knowledge_id'>
+        外部知识库 ID（选填）
       </Property>
     </Properties>
   </Col>
