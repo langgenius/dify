@@ -119,7 +119,15 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         try:
             client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
-            if ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
+            if model.startswith("o1"):
+                client.chat.completions.create(
+                    messages=[{"role": "user", "content": "ping"}],
+                    model=model,
+                    temperature=1,
+                    max_completion_tokens=20,
+                    stream=False,
+                )
+            elif ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
                 # chat model
                 client.chat.completions.create(
                     messages=[{"role": "user", "content": "ping"}],
@@ -312,39 +320,39 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         if user:
             extra_model_kwargs["user"] = user
 
-            # clear illegal prompt messages
-            prompt_messages = self._clear_illegal_prompt_messages(model, prompt_messages)
+        # clear illegal prompt messages
+        prompt_messages = self._clear_illegal_prompt_messages(model, prompt_messages)
 
-            block_as_stream = False
-            if model.startswith("o1"):
-                if stream:
-                    block_as_stream = True
-                    stream = False
-
-                    if "stream_options" in extra_model_kwargs:
-                        del extra_model_kwargs["stream_options"]
-
-                if "stop" in extra_model_kwargs:
-                    del extra_model_kwargs["stop"]
-
-            # chat model
-            response = client.chat.completions.create(
-                messages=[self._convert_prompt_message_to_dict(m) for m in prompt_messages],
-                model=model,
-                stream=stream,
-                **model_parameters,
-                **extra_model_kwargs,
-            )
-
+        block_as_stream = False
+        if model.startswith("o1"):
             if stream:
-                return self._handle_chat_generate_stream_response(model, credentials, response, prompt_messages, tools)
+                block_as_stream = True
+                stream = False
 
-            block_result = self._handle_chat_generate_response(model, credentials, response, prompt_messages, tools)
+                if "stream_options" in extra_model_kwargs:
+                    del extra_model_kwargs["stream_options"]
 
-            if block_as_stream:
-                return self._handle_chat_block_as_stream_response(block_result, prompt_messages, stop)
+            if "stop" in extra_model_kwargs:
+                del extra_model_kwargs["stop"]
 
-            return block_result
+        # chat model
+        response = client.chat.completions.create(
+            messages=[self._convert_prompt_message_to_dict(m) for m in prompt_messages],
+            model=model,
+            stream=stream,
+            **model_parameters,
+            **extra_model_kwargs,
+        )
+
+        if stream:
+            return self._handle_chat_generate_stream_response(model, credentials, response, prompt_messages, tools)
+
+        block_result = self._handle_chat_generate_response(model, credentials, response, prompt_messages, tools)
+
+        if block_as_stream:
+            return self._handle_chat_block_as_stream_response(block_result, prompt_messages, stop)
+
+        return block_result
 
     def _handle_chat_block_as_stream_response(
         self,

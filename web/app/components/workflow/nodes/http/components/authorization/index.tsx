@@ -12,6 +12,7 @@ import type { Var } from '@/app/components/workflow/types'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import BaseInput from '@/app/components/base/input'
 import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.http.authorization'
@@ -146,9 +147,7 @@ const Authorization: FC<Props> = ({
               </Field>
               {tempPayload.config?.type === APIType.custom && (
                 <Field title={t(`${i18nPrefix}.header`)} isRequired>
-                  <input
-                    type='text'
-                    className='w-full h-8 leading-8 px-2.5  rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
+                  <BaseInput
                     value={tempPayload.config?.header || ''}
                     onChange={handleAPIKeyOrHeaderChange('header')}
                   />

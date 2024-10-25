@@ -38,6 +38,10 @@ const translation = {
     duplicate: 'Çoğalt',
     rename: 'Yeniden Adlandır',
     audioSourceUnavailable: 'AudioSource kullanılamıyor',
+    copyImage: 'Resmi Kopyala',
+    zoomOut: 'Uzaklaştırma',
+    openInNewTab: 'Yeni sekmede aç',
+    zoomIn: 'Yakınlaştırma',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',
@@ -171,6 +175,9 @@ const translation = {
     delete: 'Hesabı Sil',
     deleteTip: 'Hesabınızı silmek tüm verilerinizi kalıcı olarak siler ve geri alınamaz.',
     deleteConfirmTip: 'Onaylamak için, kayıtlı e-postanızdan şu adrese e-posta gönderin: ',
+    account: 'Hesap',
+    myAccount: 'Hesabım',
+    studio: 'Dify Stüdyo',
   },
   members: {
     team: 'Takım',
@@ -500,6 +507,7 @@ const translation = {
       vectorHash: 'Vektör Hash:',
       hitScore: 'Geri Alım Skoru:',
     },
+    inputPlaceholder: 'Bot ile konuş',
   },
   promptEditor: {
     placeholder: 'Prompt kelimenizi buraya yazın, değişken eklemek için \'{\' tuşuna, prompt içerik bloğu eklemek için \'/\' tuşuna basın',
@@ -572,6 +580,16 @@ const translation = {
     deleteTip: 'Etiket kullanılıyor, silinsin mi?',
     created: 'Etiket başarıyla oluşturuldu',
     failed: 'Etiket oluşturma başarısız oldu',
+  },
+  fileUploader: {
+    pasteFileLink: 'Dosya bağlantısını yapıştır',
+    uploadFromComputer: 'Yerel yükleme',
+    uploadFromComputerReadError: 'Dosya okuma başarısız oldu, lütfen tekrar deneyin.',
+    uploadFromComputerLimit: 'Dosya Yükleme {{size}}\'ı aşamaz',
+    uploadFromComputerUploadError: 'Dosya yükleme başarısız oldu, lütfen tekrar yükleyin.',
+    pasteFileLinkInputPlaceholder: 'URL\'yi giriniz...',
+    pasteFileLinkInvalid: 'Geçersiz dosya bağlantısı',
+    fileExtensionNotSupport: 'Dosya uzantısı desteklenmiyor',
   },
 }
 

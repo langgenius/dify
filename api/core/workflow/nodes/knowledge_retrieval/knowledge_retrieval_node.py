@@ -14,8 +14,10 @@ from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.nodes.base_node import BaseNode
+from core.variables import StringSegment
+from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
@@ -32,16 +34,20 @@ default_retrieval_model = {
 }
 
 
-class KnowledgeRetrievalNode(BaseNode):
+class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
     _node_data_cls = KnowledgeRetrievalNodeData
-    node_type = NodeType.KNOWLEDGE_RETRIEVAL
+    _node_type = NodeType.KNOWLEDGE_RETRIEVAL
 
     def _run(self) -> NodeRunResult:
-        node_data = cast(KnowledgeRetrievalNodeData, self.node_data)
-
         # extract variables
-        variable = self.graph_runtime_state.variable_pool.get_any(node_data.query_variable_selector)
-        query = variable
+        variable = self.graph_runtime_state.variable_pool.get(self.node_data.query_variable_selector)
+        if not isinstance(variable, StringSegment):
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs={},
+                error="Query variable is not string type.",
+            )
+        query = variable.value
         variables = {"query": query}
         if not query:
             return NodeRunResult(
@@ -49,7 +55,7 @@ class KnowledgeRetrievalNode(BaseNode):
             )
         # retrieve knowledge
         try:
-            results = self._fetch_dataset_retriever(node_data=node_data, query=query)
+            results = self._fetch_dataset_retriever(node_data=self.node_data, query=query)
             outputs = {"result": results}
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, process_data=None, outputs=outputs
@@ -79,8 +85,9 @@ class KnowledgeRetrievalNode(BaseNode):
 
         results = (
             db.session.query(Dataset)
-            .join(subquery, Dataset.id == subquery.c.dataset_id)
+            .outerjoin(subquery, Dataset.id == subquery.c.dataset_id)
             .filter(Dataset.tenant_id == self.tenant_id, Dataset.id.in_(dataset_ids))
+            .filter((subquery.c.available_document_count > 0) | (Dataset.provider == "external"))
             .all()
         )
 
@@ -121,10 +128,13 @@ class KnowledgeRetrievalNode(BaseNode):
                 )
         elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value:
             if node_data.multiple_retrieval_config.reranking_mode == "reranking_model":
-                reranking_model = {
-                    "reranking_provider_name": node_data.multiple_retrieval_config.reranking_model.provider,
-                    "reranking_model_name": node_data.multiple_retrieval_config.reranking_model.model,
-                }
+                if node_data.multiple_retrieval_config.reranking_model:
+                    reranking_model = {
+                        "reranking_provider_name": node_data.multiple_retrieval_config.reranking_model.provider,
+                        "reranking_model_name": node_data.multiple_retrieval_config.reranking_model.model,
+                    }
+                else:
+                    reranking_model = None
                 weights = None
             elif node_data.multiple_retrieval_config.reranking_mode == "weighted_score":
                 reranking_model = None
@@ -230,7 +240,7 @@ class KnowledgeRetrievalNode(BaseNode):
                         retrieval_resource_list.append(source)
         if retrieval_resource_list:
             retrieval_resource_list = sorted(
-                retrieval_resource_list, key=lambda x: x.get("metadata").get("score"), reverse=True
+                retrieval_resource_list, key=lambda x: x.get("metadata").get("score") or 0.0, reverse=True
             )
             position = 1
             for item in retrieval_resource_list:
@@ -240,7 +250,11 @@ class KnowledgeRetrievalNode(BaseNode):
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, graph_config: Mapping[str, Any], node_id: str, node_data: KnowledgeRetrievalNodeData
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: KnowledgeRetrievalNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping

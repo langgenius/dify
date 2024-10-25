@@ -1,20 +1,10 @@
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, Field, field_validator
 
 from core.prompt.entities.advanced_prompt_entities import MemoryConfig
-from core.workflow.entities.base_node_data_entities import BaseNodeData
-
-
-class ModelConfig(BaseModel):
-    """
-    Model Config.
-    """
-
-    provider: str
-    name: str
-    mode: str
-    completion_params: dict[str, Any] = {}
+from core.workflow.nodes.base import BaseNodeData
+from core.workflow.nodes.llm import ModelConfig, VisionConfig
 
 
 class ParameterConfig(BaseModel):
@@ -49,6 +39,7 @@ class ParameterExtractorNodeData(BaseNodeData):
     instruction: Optional[str] = None
     memory: Optional[MemoryConfig] = None
     reasoning_mode: Literal["function_call", "prompt"]
+    vision: VisionConfig = Field(default_factory=VisionConfig)
 
     @field_validator("reasoning_mode", mode="before")
     @classmethod
@@ -64,7 +55,7 @@ class ParameterExtractorNodeData(BaseNodeData):
         parameters = {"type": "object", "properties": {}, "required": []}
 
         for parameter in self.parameters:
-            parameter_schema = {"description": parameter.description}
+            parameter_schema: dict[str, Any] = {"description": parameter.description}
 
             if parameter.type in {"string", "select"}:
                 parameter_schema["type"] = "string"

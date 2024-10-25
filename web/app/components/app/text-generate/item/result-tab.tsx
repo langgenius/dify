@@ -4,12 +4,11 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
-// import Loading from '@/app/components/base/loading'
 import { Markdown } from '@/app/components/base/markdown'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
-// import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { FileList } from '@/app/components/base/file-uploader'
 
 const ResultTab = ({
   data,
@@ -56,16 +55,28 @@ const ResultTab = ({
       )}
       <div className={cn('grow bg-white')}>
         {currentTab === 'RESULT' && (
-          <Markdown content={data?.resultText || ''} />
+          <>
+            <Markdown content={data?.resultText || ''} />
+            {!!data?.files?.length && (
+              <FileList
+                files={data?.files}
+                showDeleteAction={false}
+                showDownloadAction
+                canPreview
+              />
+            )}
+          </>
         )}
         {currentTab === 'DETAIL' && content && (
-          <CodeEditor
-            readOnly
-            title={<div>JSON OUTPUT</div>}
-            language={CodeLanguage.json}
-            value={content}
-            isJSONStringifyBeauty
-          />
+          <div className='mt-1'>
+            <CodeEditor
+              readOnly
+              title={<div>JSON OUTPUT</div>}
+              language={CodeLanguage.json}
+              value={content}
+              isJSONStringifyBeauty
+            />
+          </div>
         )}
       </div>
     </div>

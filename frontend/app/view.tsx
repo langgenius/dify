@@ -38,7 +38,7 @@ export default function View({email}: {email: string}) {
         setLoading(true);
         let firstRun = true;
         const fetchStream = async () => {
-            const response = await fetch('/api/chat-messages', {
+            const response = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/chat-messages`, {
                 method: 'POST',
                 body: JSON.stringify({
                     query: query,
@@ -132,7 +132,7 @@ export default function View({email}: {email: string}) {
     async function changeAI(new_ai_name: string) {
         if(selectedConversation) {
             try {
-                await axios.post('/api/change-ai', {
+                await axios.post(`${process.env.NEXT_PUBLIC_API_BASE_URL}/api/change-ai`, {
                     ai_name: new_ai_name ?? null,
                     conversation_id: selectedConversation?.id ?? null
                 });
@@ -156,6 +156,12 @@ export default function View({email}: {email: string}) {
                              onChange={(e) => changeAI(e.value)}
                              checked={ai_name === 'Claude'}/>
                 <label htmlFor="Claude" className="ml-2">Claude</label>
+            </div>
+            <div className="flex align-items-center">
+                <RadioButton inputId="Claude" name="ai_name" value="Gemini"
+                             onChange={(e) => changeAI(e.value)}
+                             checked={ai_name === 'Gemini'}/>
+                <label htmlFor="Claude" className="ml-2">Gemini</label>
             </div>
         </div>
     }
@@ -198,6 +204,7 @@ export default function View({email}: {email: string}) {
                         onChange={(e) => onChangeSelectConversation(e.value)}
                         options={conversations?.data}
                         optionLabel="name"
+                        emptyMessage={'表示履歴はありません'}
                         className={'flex-grow-1 my-2 overflow-y-auto'}
                     />
                 </div>
@@ -206,6 +213,7 @@ export default function View({email}: {email: string}) {
                         <DataScroller
                             value={messages.data}
                             rows={100}
+                            emptyMessage={'　'}
                             itemTemplate={messageTemplate}
                         />
                         <div className={'flex justify-content-center'}>

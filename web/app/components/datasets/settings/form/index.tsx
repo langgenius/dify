@@ -2,18 +2,18 @@
 import { useState } from 'react'
 import { useMount } from 'ahooks'
 import { useContext } from 'use-context-selector'
-import { BookOpenIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
 import PermissionSelector from '../permission-selector'
 import IndexMethodRadio from '../index-method-radio'
 import RetrievalSettings from '../../external-knowledge-base/create/RetrievalSettings'
-import cn from '@/utils/classnames'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
 import Divider from '@/app/components/base/divider'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { updateDatasetSetting } from '@/service/datasets'
@@ -37,9 +37,6 @@ const rowClass = `
 `
 const labelClass = `
   flex items-center w-[168px] h-9
-`
-const inputClass = `
-  w-full max-w-[480px] px-3 bg-gray-100 text-sm text-gray-800 rounded-lg outline-none appearance-none
 `
 
 const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
@@ -188,9 +185,9 @@ const Form = () => {
           <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.name')}</div>
         </div>
         <div className='w-full max-w-[480px]'>
-          <input
+          <Input
             disabled={!currentDataset?.embedding_available}
-            className={cn(inputClass, !currentDataset?.embedding_available && 'opacity-60', 'h-9')}
+            className='h-9'
             value={name}
             onChange={e => setName(e.target.value)}
           />
@@ -201,17 +198,13 @@ const Form = () => {
           <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.desc')}</div>
         </div>
         <div className='w-full max-w-[480px]'>
-          <textarea
+          <Textarea
             disabled={!currentDataset?.embedding_available}
-            className={cn(`${inputClass} block mb-2 h-[120px] py-2 resize-none`, !currentDataset?.embedding_available && 'opacity-60')}
+            className='mb-2 h-[120px] resize-none'
             placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             value={description}
             onChange={e => setDescription(e.target.value)}
           />
-          <a className='flex items-center h-[18px] px-3 text-xs text-gray-500' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank' rel='noopener noreferrer'>
-            <BookOpenIcon className='w-3 h-[18px] mr-1' />
-            {t('datasetSettings.form.descWrite')}
-          </a>
         </div>
       </div>
       <div className={rowClass}>
@@ -266,7 +259,7 @@ const Form = () => {
       {/* Retrieval Method Config */}
       {currentDataset?.provider === 'external'
         ? <>
-          <div className={rowClass}><Divider/></div>
+          <div className={rowClass}><Divider /></div>
           <div className={rowClass}>
             <div className={labelClass}>
               <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.retrievalSetting.title')}</div>
@@ -279,7 +272,7 @@ const Form = () => {
               isInRetrievalSetting={true}
             />
           </div>
-          <div className={rowClass}><Divider/></div>
+          <div className={rowClass}><Divider /></div>
           <div className={rowClass}>
             <div className={labelClass}>
               <div className='text-text-secondary system-sm-semibold'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
@@ -305,7 +298,7 @@ const Form = () => {
               </div>
             </div>
           </div>
-          <div className={rowClass}><Divider/></div>
+          <div className={rowClass}><Divider /></div>
         </>
         : <div className={rowClass}>
           <div className={labelClass}>
@@ -340,6 +333,8 @@ const Form = () => {
           <Button
             className='min-w-24'
             variant='primary'
+            loading={loading}
+            disabled={loading}
             onClick={handleSave}
           >
             {t('datasetSettings.form.save')}

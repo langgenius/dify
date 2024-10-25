@@ -14,6 +14,7 @@ from core.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
+from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
 from core.model_runtime.model_providers.sagemaker.sagemaker import generate_presigned_url
 
@@ -77,7 +78,8 @@ class SageMakerSpeech2TextModel(Speech2TextModel):
             json_obj = json.loads(json_str)
             asr_text = json_obj["text"]
         except Exception as e:
-            logger.exception(f"Exception {e}, line : {line}")
+            logger.exception(f"failed to invoke speech2text model, {e}")
+            raise CredentialsValidateFailedError(str(e))
 
         return asr_text
 
@@ -109,7 +111,7 @@ class SageMakerSpeech2TextModel(Speech2TextModel):
             InvokeBadRequestError: [InvokeBadRequestError, KeyError, ValueError],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """
