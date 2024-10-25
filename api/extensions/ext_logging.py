@@ -8,9 +8,13 @@ from flask import Flask
 from configs import dify_config
 
 
+
 def init_app(app: Flask):
     log_handlers = None
-    log_file = dify_config.LOG_FILE
+    # 获取环境变量 PYTHONPATH
+    python_path = os.getenv('PYTHONPATH', '')
+    # 将 PYTHONPATH 加入 log_file 路径
+    log_file = os.path.join(python_path, dify_config.LOG_FILE) if python_path else dify_config.LOG_FILE
     if log_file:
         log_dir = os.path.dirname(log_file)
         os.makedirs(log_dir, exist_ok=True)
@@ -21,8 +25,7 @@ def init_app(app: Flask):
                 backupCount=dify_config.LOG_FILE_BACKUP_COUNT,
             ),
             logging.StreamHandler(sys.stdout),
-        ]
-
+        ] 
     logging.basicConfig(
         level=dify_config.LOG_LEVEL,
         format=dify_config.LOG_FORMAT,
@@ -43,3 +46,8 @@ def init_app(app: Flask):
 
         for handler in logging.root.handlers:
             handler.formatter.converter = time_converter
+
+
+
+
+
