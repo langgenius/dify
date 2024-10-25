@@ -1,0 +1,29 @@
+identity:
+  author: 佐井
+  name: aliyuque
+  label:
+    en_US: yuque
+    zh_Hans: 语雀
+    pt_BR: yuque
+  description:
+    en_US: Yuque, https://www.yuque.com.
+    zh_Hans: 语雀，https://www.yuque.com。
+    pt_BR: Yuque, https://www.yuque.com.
+  icon: icon.svg
+  tags:
+    - productivity
+    - search
+credentials_for_provider:
+  token:
+    type: secret-input
+    required: true
+    label:
+      en_US: Yuque Team Token
+      zh_Hans: 语雀团队Token
+    placeholder:
+      en_US: Please input your Yuque team token
+      zh_Hans: 请输入你的语雀团队Token
+    help:
+      en_US: Get Alibaba Yuque team token
+      zh_Hans: 先获取语雀团队Token
+    url: https://www.yuque.com/settings/tokens

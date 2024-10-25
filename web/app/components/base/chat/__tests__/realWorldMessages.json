@@ -1,0 +1,441 @@
+[
+  {
+    "id": "question-ff4c2b43-48a5-47ad-9dc5-08b34ddba61b",
+    "content": "Let's play a game, I say a number , and you response me with another bigger, yet random-looking number. I'll start first, 38",
+    "isAnswer": false,
+    "message_files": []
+  },
+  {
+    "id": "ff4c2b43-48a5-47ad-9dc5-08b34ddba61b",
+    "content": "Sure, I'll play! My number is 57. Your turn!",
+    "agent_thoughts": [
+      {
+        "id": "f9d7ff7c-3a3b-4d9a-a289-657817f4caff",
+        "chain_id": null,
+        "message_id": "ff4c2b43-48a5-47ad-9dc5-08b34ddba61b",
+        "position": 1,
+        "thought": "Sure, I'll play! My number is 57. Your turn!",
+        "tool": "",
+        "tool_labels": {},
+        "tool_input": "",
+        "created_at": 1726105791,
+        "observation": "",
+        "files": []
+      }
+    ],
+    "feedbackDisabled": false,
+    "isAnswer": true,
+    "message_files": [],
+    "log": [
+      {
+        "role": "user",
+        "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "Sure, I'll play! My number is 57. Your turn!",
+        "files": []
+      }
+    ],
+    "workflow_run_id": null,
+    "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+    "input": {
+      "inputs": {},
+      "query": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38"
+    },
+    "more": {
+      "time": "09/11/2024 09:49 PM",
+      "tokens": 49,
+      "latency": "1.56"
+    },
+    "parentMessageId": "question-ff4c2b43-48a5-47ad-9dc5-08b34ddba61b"
+  },
+  {
+    "id": "question-73bbad14-d915-499d-87bf-0df14d40779d",
+    "content": "58",
+    "isAnswer": false,
+    "message_files": [],
+    "parentMessageId": "ff4c2b43-48a5-47ad-9dc5-08b34ddba61b"
+  },
+  {
+    "id": "73bbad14-d915-499d-87bf-0df14d40779d",
+    "content": "I choose 83. What's your next number?",
+    "agent_thoughts": [
+      {
+        "id": "f61a3fce-37ac-4f9d-9935-95f97e598dfe",
+        "chain_id": null,
+        "message_id": "73bbad14-d915-499d-87bf-0df14d40779d",
+        "position": 1,
+        "thought": "I choose 83. What's your next number?",
+        "tool": "",
+        "tool_labels": {},
+        "tool_input": "",
+        "created_at": 1726105795,
+        "observation": "",
+        "files": []
+      }
+    ],
+    "feedbackDisabled": false,
+    "isAnswer": true,
+    "message_files": [],
+    "log": [
+      {
+        "role": "user",
+        "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "Sure, I'll play! My number is 57. Your turn!",
+        "files": []
+      },
+      {
+        "role": "user",
+        "text": "58",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "I choose 83. What's your next number?",
+        "files": []
+      }
+    ],
+    "workflow_run_id": null,
+    "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+    "input": {
+      "inputs": {},
+      "query": "58"
+    },
+    "more": {
+      "time": "09/11/2024 09:49 PM",
+      "tokens": 68,
+      "latency": "1.33"
+    },
+    "parentMessageId": "question-73bbad14-d915-499d-87bf-0df14d40779d"
+  },
+  {
+    "id": "question-4c5d0841-1206-463e-95d8-71f812877658",
+    "content": "99",
+    "isAnswer": false,
+    "message_files": [],
+    "parentMessageId": "73bbad14-d915-499d-87bf-0df14d40779d"
+  },
+  {
+    "id": "4c5d0841-1206-463e-95d8-71f812877658",
+    "content": "I'll go with 112. Your turn!",
+    "agent_thoughts": [
+      {
+        "id": "9730d587-9268-4683-9dd9-91a1cab9510b",
+        "chain_id": null,
+        "message_id": "4c5d0841-1206-463e-95d8-71f812877658",
+        "position": 1,
+        "thought": "I'll go with 112. Your turn!",
+        "tool": "",
+        "tool_labels": {},
+        "tool_input": "",
+        "created_at": 1726105799,
+        "observation": "",
+        "files": []
+      }
+    ],
+    "feedbackDisabled": false,
+    "isAnswer": true,
+    "message_files": [],
+    "log": [
+      {
+        "role": "user",
+        "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "Sure, I'll play! My number is 57. Your turn!",
+        "files": []
+      },
+      {
+        "role": "user",
+        "text": "58",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "I choose 83. What's your next number?",
+        "files": []
+      },
+      {
+        "role": "user",
+        "text": "99",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "I'll go with 112. Your turn!",
+        "files": []
+      }
+    ],
+    "workflow_run_id": null,
+    "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+    "input": {
+      "inputs": {},
+      "query": "99"
+    },
+    "more": {
+      "time": "09/11/2024 09:50 PM",
+      "tokens": 86,
+      "latency": "1.49"
+    },
+    "parentMessageId": "question-4c5d0841-1206-463e-95d8-71f812877658"
+  },
+  {
+    "id": "question-cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
+    "content": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+    "isAnswer": false,
+    "message_files": []
+  },
+  {
+    "id": "cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
+    "content": "Sure! My number is 54. Your turn!",
+    "agent_thoughts": [
+      {
+        "id": "1019cd79-d141-4f9f-880a-fc1441cfd802",
+        "chain_id": null,
+        "message_id": "cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
+        "position": 1,
+        "thought": "Sure! My number is 54. Your turn!",
+        "tool": "",
+        "tool_labels": {},
+        "tool_input": "",
+        "created_at": 1726105809,
+        "observation": "",
+        "files": []
+      }
+    ],
+    "feedbackDisabled": false,
+    "isAnswer": true,
+    "message_files": [],
+    "log": [
+      {
+        "role": "user",
+        "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "Sure! My number is 54. Your turn!",
+        "files": []
+      }
+    ],
+    "workflow_run_id": null,
+    "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+    "input": {
+      "inputs": {},
+      "query": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38"
+    },
+    "more": {
+      "time": "09/11/2024 09:50 PM",
+      "tokens": 46,
+      "latency": "1.52"
+    },
+    "parentMessageId": "question-cd5affb0-7bc2-4a6f-be7e-25e74595c9dd"
+  },
+  {
+    "id": "question-324bce32-c98c-435d-a66b-bac974ebb5ed",
+    "content": "3306",
+    "isAnswer": false,
+    "message_files": [],
+    "parentMessageId": "cd5affb0-7bc2-4a6f-be7e-25e74595c9dd"
+  },
+  {
+    "id": "324bce32-c98c-435d-a66b-bac974ebb5ed",
+    "content": "My number is 4729. Your turn!",
+    "agent_thoughts": [
+      {
+        "id": "0773bec7-b992-4a53-92b2-20ebaeae8798",
+        "chain_id": null,
+        "message_id": "324bce32-c98c-435d-a66b-bac974ebb5ed",
+        "position": 1,
+        "thought": "My number is 4729. Your turn!",
+        "tool": "",
+        "tool_labels": {},
+        "tool_input": "",
+        "created_at": 1726105822,
+        "observation": "",
+        "files": []
+      }
+    ],
+    "feedbackDisabled": false,
+    "isAnswer": true,
+    "message_files": [],
+    "log": [
+      {
+        "role": "user",
+        "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "Sure! My number is 54. Your turn!",
+        "files": []
+      },
+      {
+        "role": "user",
+        "text": "3306",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "My number is 4729. Your turn!",
+        "files": []
+      }
+    ],
+    "workflow_run_id": null,
+    "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+    "input": {
+      "inputs": {},
+      "query": "3306"
+    },
+    "more": {
+      "time": "09/11/2024 09:50 PM",
+      "tokens": 66,
+      "latency": "1.30"
+    },
+    "parentMessageId": "question-324bce32-c98c-435d-a66b-bac974ebb5ed"
+  },
+  {
+    "id": "question-684b5396-4e91-4043-88e9-aabe48b21acc",
+    "content": "3306",
+    "isAnswer": false,
+    "message_files": [],
+    "parentMessageId": "cd5affb0-7bc2-4a6f-be7e-25e74595c9dd"
+  },
+  {
+    "id": "684b5396-4e91-4043-88e9-aabe48b21acc",
+    "content": "My number is 4821. Your turn!",
+    "agent_thoughts": [
+      {
+        "id": "5ca650f3-982c-4399-8b95-9ea241c76707",
+        "chain_id": null,
+        "message_id": "684b5396-4e91-4043-88e9-aabe48b21acc",
+        "position": 1,
+        "thought": "My number is 4821. Your turn!",
+        "tool": "",
+        "tool_labels": {},
+        "tool_input": "",
+        "created_at": 1726107812,
+        "observation": "",
+        "files": []
+      }
+    ],
+    "feedbackDisabled": false,
+    "isAnswer": true,
+    "message_files": [],
+    "log": [
+      {
+        "role": "user",
+        "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "Sure! My number is 54. Your turn!",
+        "files": []
+      },
+      {
+        "role": "user",
+        "text": "3306",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "My number is 4821. Your turn!",
+        "files": []
+      }
+    ],
+    "workflow_run_id": null,
+    "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+    "input": {
+      "inputs": {},
+      "query": "3306"
+    },
+    "more": {
+      "time": "09/11/2024 10:23 PM",
+      "tokens": 66,
+      "latency": "1.48"
+    },
+    "parentMessageId": "question-684b5396-4e91-4043-88e9-aabe48b21acc"
+  },
+  {
+    "id": "question-19904a7b-7494-4ed8-b72c-1d18668cea8c",
+    "content": "1003",
+    "isAnswer": false,
+    "message_files": [],
+    "parentMessageId": "684b5396-4e91-4043-88e9-aabe48b21acc"
+  },
+  {
+    "id": "19904a7b-7494-4ed8-b72c-1d18668cea8c",
+    "content": "My number is 1456. Your turn!",
+    "agent_thoughts": [
+      {
+        "id": "095cacab-afad-4387-a41d-1662578b8b13",
+        "chain_id": null,
+        "message_id": "19904a7b-7494-4ed8-b72c-1d18668cea8c",
+        "position": 1,
+        "thought": "My number is 1456. Your turn!",
+        "tool": "",
+        "tool_labels": {},
+        "tool_input": "",
+        "created_at": 1726111024,
+        "observation": "",
+        "files": []
+      }
+    ],
+    "feedbackDisabled": false,
+    "isAnswer": true,
+    "message_files": [],
+    "log": [
+      {
+        "role": "user",
+        "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "Sure! My number is 54. Your turn!",
+        "files": []
+      },
+      {
+        "role": "user",
+        "text": "3306",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "My number is 4821. Your turn!",
+        "files": []
+      },
+      {
+        "role": "user",
+        "text": "1003",
+        "files": []
+      },
+      {
+        "role": "assistant",
+        "text": "My number is 1456. Your turn!",
+        "files": []
+      }
+    ],
+    "workflow_run_id": null,
+    "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+    "input": {
+      "inputs": {},
+      "query": "1003"
+    },
+    "more": {
+      "time": "09/11/2024 11:17 PM",
+      "tokens": 86,
+      "latency": "1.38"
+    },
+    "parentMessageId": "question-19904a7b-7494-4ed8-b72c-1d18668cea8c"
+  }
+]

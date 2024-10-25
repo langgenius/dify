@@ -1,0 +1,52 @@
+[
+  {
+    "id": "question-1",
+    "isAnswer": false,
+    "parentMessageId": "00000000-0000-0000-0000-000000000000"
+  },
+  {
+    "id": "1",
+    "isAnswer": true,
+    "parentMessageId": "question-1"
+  },
+  {
+    "id": "question-2",
+    "isAnswer": false,
+    "parentMessageId": "00000000-0000-0000-0000-000000000000"
+  },
+  {
+    "id": "2",
+    "isAnswer": true,
+    "parentMessageId": "question-2"
+  },
+  {
+    "id": "question-3",
+    "isAnswer": false,
+    "parentMessageId": "00000000-0000-0000-0000-000000000000"
+  },
+  {
+    "id": "3",
+    "isAnswer": true,
+    "parentMessageId": "question-3"
+  },
+  {
+    "id": "question-4",
+    "isAnswer": false,
+    "parentMessageId": "1"
+  },
+  {
+    "id": "4",
+    "isAnswer": true,
+    "parentMessageId": "question-4"
+  },
+  {
+    "id": "question-5",
+    "isAnswer": false,
+    "parentMessageId": null
+  },
+  {
+    "id": "5",
+    "isAnswer": true,
+    "parentMessageId": "question-5"
+  }
+]

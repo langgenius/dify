@@ -83,6 +83,11 @@ const config = {
       fontSize: {
         '2xs': '0.625rem',
       },
+      backgroundImage: {
+        'chatbot-bg': 'var(--color-chatbot-bg)',
+        'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
+        'workflow-process-bg': 'var(--color-workflow-process-bg)',
+      },
       animation: {
         'spin-slow': 'spin 2s linear infinite',
       },
