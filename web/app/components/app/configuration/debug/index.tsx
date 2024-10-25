@@ -1,6 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import produce, { setAutoFreeze } from 'immer'
@@ -39,7 +38,6 @@ import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
 import type { Inputs } from '@/models/debug'
-import { fetchFileUploadConfig } from '@/service/common'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -94,7 +92,6 @@ const Debug: FC<IDebug> = ({
   } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
-  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
   useEffect(() => {
     setAutoFreeze(false)
     return () => {
@@ -452,7 +449,7 @@ const Debug: FC<IDebug> = ({
             visionConfig={{
               ...features.file! as VisionSettings,
               transfer_methods: features.file!.allowed_file_upload_methods || [],
-              image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
+              image_file_size_limit: features.file?.fileUploadConfig?.image_file_size_limit,
             }}
             onVisionFilesChange={setCompletionFiles}
           />
