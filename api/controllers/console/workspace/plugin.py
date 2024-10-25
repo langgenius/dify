@@ -280,6 +280,60 @@ class PluginDeleteInstallTaskItemApi(Resource):
         return {"success": PluginService.delete_install_task_item(tenant_id, task_id, identifier)}
 
 
+class PluginUpgradeFromMarketplaceApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        user = current_user
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        tenant_id = user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("original_plugin_unique_identifier", type=str, required=True, location="json")
+        parser.add_argument("new_plugin_unique_identifier", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        return jsonable_encoder(
+            PluginService.upgrade_plugin_with_marketplace(
+                tenant_id, args["original_plugin_unique_identifier"], args["new_plugin_unique_identifier"]
+            )
+        )
+
+
+class PluginUpgradeFromGithubApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        user = current_user
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        tenant_id = user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("original_plugin_unique_identifier", type=str, required=True, location="json")
+        parser.add_argument("new_plugin_unique_identifier", type=str, required=True, location="json")
+        parser.add_argument("repo", type=str, required=True, location="json")
+        parser.add_argument("version", type=str, required=True, location="json")
+        parser.add_argument("package", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        return jsonable_encoder(
+            PluginService.upgrade_plugin_with_github(
+                tenant_id,
+                args["original_plugin_unique_identifier"],
+                args["new_plugin_unique_identifier"],
+                args["repo"],
+                args["version"],
+                args["package"],
+            )
+        )
+
+
 class PluginUninstallApi(Resource):
     @setup_required
     @login_required
@@ -305,6 +359,8 @@ api.add_resource(PluginUploadFromPkgApi, "/workspaces/current/plugin/upload/pkg"
 api.add_resource(PluginUploadFromGithubApi, "/workspaces/current/plugin/upload/github")
 api.add_resource(PluginInstallFromPkgApi, "/workspaces/current/plugin/install/pkg")
 api.add_resource(PluginInstallFromGithubApi, "/workspaces/current/plugin/install/github")
+api.add_resource(PluginUpgradeFromMarketplaceApi, "/workspaces/current/plugin/upgrade/marketplace")
+api.add_resource(PluginUpgradeFromGithubApi, "/workspaces/current/plugin/upgrade/github")
 api.add_resource(PluginInstallFromMarketplaceApi, "/workspaces/current/plugin/install/marketplace")
 api.add_resource(PluginFetchManifestApi, "/workspaces/current/plugin/fetch-manifest")
 api.add_resource(PluginFetchInstallTasksApi, "/workspaces/current/plugin/tasks")

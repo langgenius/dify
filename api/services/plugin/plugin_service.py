@@ -58,11 +58,17 @@ class PluginService:
 
     @staticmethod
     def fetch_plugin_manifest(tenant_id: str, plugin_unique_identifier: str) -> PluginDeclaration:
+        """
+        Fetch plugin manifest
+        """
         manager = PluginInstallationManager()
         return manager.fetch_plugin_manifest(tenant_id, plugin_unique_identifier)
 
     @staticmethod
     def fetch_install_tasks(tenant_id: str, page: int, page_size: int) -> Sequence[PluginInstallTask]:
+        """
+        Fetch plugin installation tasks
+        """
         manager = PluginInstallationManager()
         return manager.fetch_plugin_installation_tasks(tenant_id, page, page_size)
 
@@ -73,13 +79,75 @@ class PluginService:
 
     @staticmethod
     def delete_install_task(tenant_id: str, task_id: str) -> bool:
+        """
+        Delete a plugin installation task
+        """
         manager = PluginInstallationManager()
         return manager.delete_plugin_installation_task(tenant_id, task_id)
 
     @staticmethod
     def delete_install_task_item(tenant_id: str, task_id: str, identifier: str) -> bool:
+        """
+        Delete a plugin installation task item
+        """
         manager = PluginInstallationManager()
         return manager.delete_plugin_installation_task_item(tenant_id, task_id, identifier)
+
+    @staticmethod
+    def upgrade_plugin_with_marketplace(
+        tenant_id: str, original_plugin_unique_identifier: str, new_plugin_unique_identifier: str
+    ):
+        """
+        Upgrade plugin with marketplace
+        """
+        if original_plugin_unique_identifier == new_plugin_unique_identifier:
+            raise ValueError("you should not upgrade plugin with the same plugin")
+
+        # check if plugin pkg is already downloaded
+        manager = PluginInstallationManager()
+
+        try:
+            manager.fetch_plugin_manifest(tenant_id, new_plugin_unique_identifier)
+            # already downloaded, skip
+        except Exception:
+            # plugin not installed, download and upload pkg
+            pkg = download_plugin_pkg(new_plugin_unique_identifier)
+            manager.upload_pkg(tenant_id, pkg, verify_signature=True)
+
+        return manager.upgrade_plugin(
+            tenant_id,
+            original_plugin_unique_identifier,
+            new_plugin_unique_identifier,
+            PluginInstallationSource.Marketplace,
+            {
+                "plugin_unique_identifier": new_plugin_unique_identifier,
+            },
+        )
+
+    @staticmethod
+    def upgrade_plugin_with_github(
+        tenant_id: str,
+        original_plugin_unique_identifier: str,
+        new_plugin_unique_identifier: str,
+        repo: str,
+        version: str,
+        package: str,
+    ):
+        """
+        Upgrade plugin with github
+        """
+        manager = PluginInstallationManager()
+        return manager.upgrade_plugin(
+            tenant_id,
+            original_plugin_unique_identifier,
+            new_plugin_unique_identifier,
+            PluginInstallationSource.Github,
+            {
+                "repo": repo,
+                "version": version,
+                "package": package,
+            },
+        )
 
     @staticmethod
     def upload_pkg(tenant_id: str, pkg: bytes, verify_signature: bool = False) -> PluginUploadResponse:
