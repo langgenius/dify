@@ -24,6 +24,13 @@ parameters:
       zh_Hans: 负面提示词
     llm_description: Negative prompt, you should describe the image you don't want to generate as a list of words as possible as detailed, the prompt must be written in English.
     form: llm
+  - name: image
+    type: file
+    label:
+      en_US: Input Image
+      zh_Hans: 输入的图片
+    llm_description: The input image, used to transfer to the comfyui workflow to generate another image.
+    form: llm
   - name: workflow_json
     type: string
     required: true
