@@ -18,6 +18,7 @@ from .model_entities import ModelPropertyKey
 
 __all__ = [
     "ImagePromptMessageContent",
+    "VideoPromptMessageContent",
     "PromptMessage",
     "PromptMessageRole",
     "LLMUsage",
