@@ -34,6 +34,11 @@ class RedisConfig(BaseSettings):
         default=0,
     )
 
+    REDIS_MAX_CONNECTIONS: PositiveInt = Field(
+        description="Maximum number of connections to Redis",
+        default=200,
+    )
+
     REDIS_USE_SSL: bool = Field(
         description="Enable SSL/TLS for the Redis connection",
         default=False,
