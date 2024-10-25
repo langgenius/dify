@@ -9,6 +9,10 @@ import type {
   UpdateEndpointRequest,
 } from '@/app/components/plugins/types'
 import type { DebugInfo as DebugInfoTypes } from '@/app/components/plugins/types'
+import type {
+  MarketplaceCollectionPluginsResponse,
+  MarketplaceCollectionsResponse,
+} from '@/app/components/plugins/marketplace/types'
 
 export const createEndpoint: Fetcher<EndpointOperationResponse, { url: string; body: CreateEndpointRequest }> = ({ url, body }) => {
   // url = /workspaces/current/endpoints/create
@@ -63,4 +67,12 @@ export const installPackageFromLocal = async (uniqueIdentifier: string) => {
   return post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
     body: { plugin_unique_identifiers: [uniqueIdentifier] },
   })
+}
+
+export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse, { url: string; }> = ({ url }) => {
+  return get<MarketplaceCollectionsResponse>(url)
+}
+
+export const fetchMarketplaceCollectionPlugins: Fetcher<MarketplaceCollectionPluginsResponse, { url: string }> = ({ url }) => {
+  return get<MarketplaceCollectionPluginsResponse>(url)
 }

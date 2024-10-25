@@ -1,11 +1,9 @@
+'use client'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { toolNotion } from '@/app/components/plugins/card/card-mock'
-import { getLocaleOnServer } from '@/i18n/server'
 
 const List = () => {
-  const locale = getLocaleOnServer()
-
   return (
     <div className='px-12 py-2 bg-background-default-subtle'>
       <div className='py-3'>
