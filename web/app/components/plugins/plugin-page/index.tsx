@@ -100,7 +100,7 @@ const PluginPage = ({
     return [
       { value: 'plugins', text: t('common.menus.plugins') },
       ...(
-        !enable_marketplace
+        enable_marketplace
           ? [{ value: 'discover', text: 'Explore Marketplace' }]
           : []
       ),
@@ -214,7 +214,7 @@ const PluginPage = ({
         </>
       )}
       {
-        activeTab === 'discover' && !enable_marketplace && marketplace
+        activeTab === 'discover' && enable_marketplace && marketplace
       }
 
       {showPluginSettingModal && (
