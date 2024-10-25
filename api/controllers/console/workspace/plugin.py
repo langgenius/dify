@@ -266,6 +266,20 @@ class PluginDeleteInstallTaskApi(Resource):
         return {"success": PluginService.delete_install_task(tenant_id, task_id)}
 
 
+class PluginDeleteInstallTaskItemApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, task_id: str, identifier: str):
+        user = current_user
+        if not user.is_admin_or_owner:
+            raise Forbidden()
+
+        tenant_id = user.current_tenant_id
+
+        return {"success": PluginService.delete_install_task_item(tenant_id, task_id, identifier)}
+
+
 class PluginUninstallApi(Resource):
     @setup_required
     @login_required
@@ -296,4 +310,5 @@ api.add_resource(PluginFetchManifestApi, "/workspaces/current/plugin/fetch-manif
 api.add_resource(PluginFetchInstallTasksApi, "/workspaces/current/plugin/tasks")
 api.add_resource(PluginFetchInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>")
 api.add_resource(PluginDeleteInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>/delete")
+api.add_resource(PluginDeleteInstallTaskItemApi, "/workspaces/current/plugin/tasks/<task_id>/delete/<identifier>")
 api.add_resource(PluginUninstallApi, "/workspaces/current/plugin/uninstall")
