@@ -319,6 +319,16 @@ class LoggingConfig(BaseSettings):
         default=None,
     )
 
+    LOG_FILE_MAX_SIZE: PositiveInt = Field(
+        description="Maximum file size for file rotation retention, the unit is megabytes (MB)",
+        default=20,
+    )
+
+    LOG_FILE_BACKUP_COUNT: PositiveInt = Field(
+        description="Maximum file backup count file rotation retention",
+        default=5,
+    )
+
     LOG_FORMAT: str = Field(
         description="Format string for log messages",
         default="%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s",
@@ -559,6 +569,11 @@ class DataSetConfig(BaseSettings):
     DATASET_OPERATOR_ENABLED: bool = Field(
         description="Enable or disable dataset operator functionality",
         default=False,
+    )
+
+    TIDB_SERVERLESS_NUMBER: PositiveInt = Field(
+        description="number of tidb serverless cluster",
+        default=500,
     )
 
 

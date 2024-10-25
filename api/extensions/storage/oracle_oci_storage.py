@@ -36,17 +36,14 @@ class OracleOCIStorage(BaseStorage):
         return data
 
     def load_stream(self, filename: str) -> Generator:
-        def generate(filename: str = filename) -> Generator:
-            try:
-                response = self.client.get_object(Bucket=self.bucket_name, Key=filename)
-                yield from response["Body"].iter_chunks()
-            except ClientError as ex:
-                if ex.response["Error"]["Code"] == "NoSuchKey":
-                    raise FileNotFoundError("File not found")
-                else:
-                    raise
-
-        return generate()
+        try:
+            response = self.client.get_object(Bucket=self.bucket_name, Key=filename)
+            yield from response["Body"].iter_chunks()
+        except ClientError as ex:
+            if ex.response["Error"]["Code"] == "NoSuchKey":
+                raise FileNotFoundError("File not found")
+            else:
+                raise
 
     def download(self, filename, target_filepath):
         self.client.download_file(self.bucket_name, filename, target_filepath)

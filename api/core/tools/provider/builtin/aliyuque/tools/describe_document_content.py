@@ -1,10 +1,3 @@
-"""
-获取文档
-"""
-
-__author__ = "佐井"
-__created__ = "2024-06-02 07:11:45"
-
 import json
 from typing import Any, Union
 from urllib.parse import urlparse
@@ -37,7 +30,6 @@ class AliYuqueDescribeDocumentContentTool(AliYuqueTool, BuiltinTool):
         book_slug = path_parts[-2]
         group_id = path_parts[-3]
 
-        # 1. 请求首页信息，获取book_id
         new_params["group_login"] = group_id
         new_params["book_slug"] = book_slug
         index_page = json.loads(
@@ -46,7 +38,7 @@ class AliYuqueDescribeDocumentContentTool(AliYuqueTool, BuiltinTool):
         book_id = index_page.get("data", {}).get("book", {}).get("id")
         if not book_id:
             raise Exception(f"can not parse book_id from {index_page}")
-        # 2. 获取文档内容
+
         new_params["book_id"] = book_id
         new_params["id"] = doc_id
         data = self.request("GET", token, new_params, "/api/v2/repos/{book_id}/docs/{id}")

@@ -7,22 +7,28 @@ logger = logging.getLogger(__name__)
 
 
 class UnstructuredPPTXExtractor(BaseExtractor):
-    """Load msg files.
+    """Load pptx files.
 
 
     Args:
         file_path: Path to the file to load.
     """
 
-    def __init__(self, file_path: str, api_url: str):
+    def __init__(self, file_path: str, api_url: str, api_key: str):
         """Initialize with file path."""
         self._file_path = file_path
         self._api_url = api_url
+        self._api_key = api_key
 
     def extract(self) -> list[Document]:
-        from unstructured.partition.pptx import partition_pptx
+        if self._api_url:
+            from unstructured.partition.api import partition_via_api
 
-        elements = partition_pptx(filename=self._file_path)
+            elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
+        else:
+            from unstructured.partition.pptx import partition_pptx
+
+            elements = partition_pptx(filename=self._file_path)
         text_by_page = {}
         for element in elements:
             page = element.metadata.page_number

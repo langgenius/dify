@@ -1,6 +1,8 @@
 x-shared-env: &shared-api-worker-env
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   LOG_FILE: ${LOG_FILE:-}
+  LOG_FILE_MAX_SIZE: ${LOG_FILE_MAX_SIZE:-20}
+  LOG_FILE_BACKUP_COUNT: ${LOG_FILE_BACKUP_COUNT:-5}
   DEBUG: ${DEBUG:-false}
   FLASK_DEBUG: ${FLASK_DEBUG:-false}
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
@@ -235,11 +237,12 @@ x-shared-env: &shared-api-worker-env
   POSITION_PROVIDER_PINS: ${POSITION_PROVIDER_PINS:-}
   POSITION_PROVIDER_INCLUDES: ${POSITION_PROVIDER_INCLUDES:-}
   POSITION_PROVIDER_EXCLUDES: ${POSITION_PROVIDER_EXCLUDES:-}
+  MAX_VARIABLE_SIZE: ${MAX_VARIABLE_SIZE:-204800}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.10.0
+    image: langgenius/dify-api:0.10.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -259,7 +262,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.10.0
+    image: langgenius/dify-api:0.10.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -278,7 +281,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.10.0
+    image: langgenius/dify-web:0.10.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}

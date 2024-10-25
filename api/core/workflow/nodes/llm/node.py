@@ -127,9 +127,10 @@ class LLMNode(BaseNode[LLMNodeData]):
                 context=context,
                 memory=memory,
                 model_config=model_config,
-                vision_detail=self.node_data.vision.configs.detail,
                 prompt_template=self.node_data.prompt_template,
                 memory_config=self.node_data.memory,
+                vision_enabled=self.node_data.vision.enabled,
+                vision_detail=self.node_data.vision.configs.detail,
             )
 
             process_data = {
@@ -518,6 +519,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         model_config: ModelConfigWithCredentialsEntity,
         prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate,
         memory_config: MemoryConfig | None = None,
+        vision_enabled: bool = False,
         vision_detail: ImagePromptMessageContent.DETAIL,
     ) -> tuple[list[PromptMessage], Optional[list[str]]]:
         inputs = inputs or {}
@@ -542,6 +544,10 @@ class LLMNode(BaseNode[LLMNodeData]):
             if not isinstance(prompt_message.content, str):
                 prompt_message_content = []
                 for content_item in prompt_message.content or []:
+                    # Skip image if vision is disabled
+                    if not vision_enabled and content_item.type == PromptMessageContentType.IMAGE:
+                        continue
+
                     if isinstance(content_item, ImagePromptMessageContent):
                         # Override vision config if LLM node has vision config,
                         # cuz vision detail is related to the configuration from FileUpload feature.
