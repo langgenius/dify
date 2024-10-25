@@ -2,6 +2,7 @@ from collections.abc import Sequence
 from mimetypes import guess_type
 
 from configs import dify_config
+from core.helper import marketplace
 from core.helper.download import download_with_size_limit
 from core.helper.marketplace import download_plugin_pkg
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
@@ -26,7 +27,16 @@ class PluginService:
         list all plugins of the tenant
         """
         manager = PluginInstallationManager()
-        return manager.list_plugins(tenant_id)
+        plugins = manager.list_plugins(tenant_id)
+        plugin_ids = [plugin.plugin_id for plugin in plugins if plugin.source == PluginInstallationSource.Marketplace]
+        manifests = {manifest.plugin_id: manifest for manifest in marketplace.batch_fetch_plugin_manifests(plugin_ids)}
+        for plugin in plugins:
+            if plugin.source == PluginInstallationSource.Marketplace:
+                if plugin.plugin_id in manifests:
+                    # set latest_version
+                    plugin.latest_version = manifests[plugin.plugin_id].latest_version
+
+        return plugins
 
     @staticmethod
     def get_asset(tenant_id: str, asset_file: str) -> tuple[bytes, str]:
