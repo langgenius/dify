@@ -310,5 +310,5 @@ api.add_resource(PluginFetchManifestApi, "/workspaces/current/plugin/fetch-manif
 api.add_resource(PluginFetchInstallTasksApi, "/workspaces/current/plugin/tasks")
 api.add_resource(PluginFetchInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>")
 api.add_resource(PluginDeleteInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>/delete")
-api.add_resource(PluginDeleteInstallTaskItemApi, "/workspaces/current/plugin/tasks/<task_id>/delete/<identifier>")
+api.add_resource(PluginDeleteInstallTaskItemApi, "/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
 api.add_resource(PluginUninstallApi, "/workspaces/current/plugin/uninstall")
