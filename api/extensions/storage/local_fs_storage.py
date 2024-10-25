@@ -40,15 +40,11 @@ class LocalFsStorage(BaseStorage):
 
     def load_stream(self, filename: str) -> Generator:
         filepath = self._build_filepath(filename)
-
-        def generate() -> Generator:
-            if not os.path.exists(filepath):
-                raise FileNotFoundError("File not found")
-            with open(filepath, "rb") as f:
-                while chunk := f.read(4096):  # Read in chunks of 4KB
-                    yield chunk
-
-        return generate()
+        if not os.path.exists(filepath):
+            raise FileNotFoundError("File not found")
+        with open(filepath, "rb") as f:
+            while chunk := f.read(4096):  # Read in chunks of 4KB
+                yield chunk
 
     def download(self, filename, target_filepath):
         filepath = self._build_filepath(filename)
