@@ -37,7 +37,7 @@ parameters:
       - value: mixtral-8x7b
         label:
           en_US: Mixtral
-    default: gpt-3.5
+    default: gpt-4o-mini
     label:
       en_US: Choose Model
       zh_Hans: 选择模型

@@ -1109,7 +1109,7 @@ class MessageFile(db.Model):
         self.url = url
         self.belongs_to = belongs_to
         self.upload_file_id = upload_file_id
-        self.created_by_role = created_by_role
+        self.created_by_role = created_by_role.value
         self.created_by = created_by
 
     id: Mapped[str] = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
@@ -1391,7 +1391,7 @@ class UploadFile(db.Model):
         size: int,
         extension: str,
         mime_type: str,
-        created_by_role: str,
+        created_by_role: CreatedByRole,
         created_by: str,
         created_at: datetime,
         used: bool,
@@ -1406,7 +1406,7 @@ class UploadFile(db.Model):
         self.size = size
         self.extension = extension
         self.mime_type = mime_type
-        self.created_by_role = created_by_role
+        self.created_by_role = created_by_role.value
         self.created_by = created_by
         self.created_at = created_at
         self.used = used

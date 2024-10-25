@@ -32,6 +32,21 @@ class SecurityConfig(BaseSettings):
         default=5,
     )
 
+    LOGIN_DISABLED: bool = Field(
+        description="Whether to disable login checks",
+        default=False,
+    )
+
+    ADMIN_API_KEY_ENABLE: bool = Field(
+        description="Whether to enable admin api key for authentication",
+        default=False,
+    )
+
+    ADMIN_API_KEY: Optional[str] = Field(
+        description="admin api key for authentication",
+        default=None,
+    )
+
 
 class AppExecutionConfig(BaseSettings):
     """
@@ -302,6 +317,16 @@ class LoggingConfig(BaseSettings):
     LOG_FILE: Optional[str] = Field(
         description="File path for log output.",
         default=None,
+    )
+
+    LOG_FILE_MAX_SIZE: PositiveInt = Field(
+        description="Maximum file size for file rotation retention, the unit is megabytes (MB)",
+        default=20,
+    )
+
+    LOG_FILE_BACKUP_COUNT: PositiveInt = Field(
+        description="Maximum file backup count file rotation retention",
+        default=5,
     )
 
     LOG_FORMAT: str = Field(

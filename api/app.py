@@ -1,5 +1,7 @@
 import os
 
+from configs import dify_config
+
 if os.environ.get("DEBUG", "false").lower() != "true":
     from gevent import monkey
 
@@ -36,17 +38,11 @@ if hasattr(time, "tzset"):
     time.tzset()
 
 
-# -------------
-# Configuration
-# -------------
-config_type = os.getenv("EDITION", default="SELF_HOSTED")  # ce edition first
-
-
 # create app
 app = create_app()
 celery = app.extensions["celery"]
 
-if app.config.get("TESTING"):
+if dify_config.TESTING:
     print("App is running in TESTING mode")
 
 
@@ -54,15 +50,15 @@ if app.config.get("TESTING"):
 def after_request(response):
     """Add Version headers to the response."""
     response.set_cookie("remember_token", "", expires=0)
-    response.headers.add("X-Version", app.config["CURRENT_VERSION"])
-    response.headers.add("X-Env", app.config["DEPLOY_ENV"])
+    response.headers.add("X-Version", dify_config.CURRENT_VERSION)
+    response.headers.add("X-Env", dify_config.DEPLOY_ENV)
     return response
 
 
 @app.route("/health")
 def health():
     return Response(
-        json.dumps({"pid": os.getpid(), "status": "ok", "version": app.config["CURRENT_VERSION"]}),
+        json.dumps({"pid": os.getpid(), "status": "ok", "version": dify_config.CURRENT_VERSION}),
         status=200,
         content_type="application/json",
     )

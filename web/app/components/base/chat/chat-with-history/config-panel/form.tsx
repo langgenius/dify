@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChatWithHistoryContext } from '../context'
 import Input from './form-input'
@@ -15,12 +16,12 @@ const Form = () => {
     isMobile,
   } = useChatWithHistoryContext()
 
-  const handleFormChange = (variable: string, value: any) => {
+  const handleFormChange = useCallback((variable: string, value: any) => {
     handleNewConversationInputsChange({
       ...newConversationInputsRef.current,
       [variable]: value,
     })
-  }
+  }, [newConversationInputsRef, handleNewConversationInputsChange])
 
   const renderField = (form: any) => {
     const {

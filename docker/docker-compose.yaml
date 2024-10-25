@@ -1,6 +1,8 @@
 x-shared-env: &shared-api-worker-env
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   LOG_FILE: ${LOG_FILE:-}
+  LOG_FILE_MAX_SIZE: ${LOG_FILE_MAX_SIZE:-20}
+  LOG_FILE_BACKUP_COUNT: ${LOG_FILE_BACKUP_COUNT:-5}
   DEBUG: ${DEBUG:-false}
   FLASK_DEBUG: ${FLASK_DEBUG:-false}
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
@@ -182,6 +184,8 @@ x-shared-env: &shared-api-worker-env
   VIKINGDB_REGION: ${VIKINGDB_REGION:-cn-shanghai}
   VIKINGDB_HOST: ${VIKINGDB_HOST:-api-vikingdb.xxx.volces.com}
   VIKINGDB_SCHEMA: ${VIKINGDB_SCHEMA:-http}
+  UPSTASH_VECTOR_URL: ${UPSTASH_VECTOR_URL:-https://xxx-vector.upstash.io}
+  UPSTASH_VECTOR_TOKEN: ${UPSTASH_VECTOR_TOKEN:-dify}
   UPLOAD_FILE_SIZE_LIMIT: ${UPLOAD_FILE_SIZE_LIMIT:-15}
   UPLOAD_FILE_BATCH_LIMIT: ${UPLOAD_FILE_BATCH_LIMIT:-5}
   ETL_TYPE: ${ETL_TYPE:-dify}
@@ -227,11 +231,17 @@ x-shared-env: &shared-api-worker-env
   HTTP_REQUEST_NODE_MAX_BINARY_SIZE: ${HTTP_REQUEST_NODE_MAX_BINARY_SIZE:-10485760}
   HTTP_REQUEST_NODE_MAX_TEXT_SIZE: ${HTTP_REQUEST_NODE_MAX_TEXT_SIZE:-1048576}
   APP_MAX_EXECUTION_TIME: ${APP_MAX_EXECUTION_TIME:-12000}
+  POSITION_TOOL_PINS: ${POSITION_TOOL_PINS:-}
+  POSITION_TOOL_INCLUDES: ${POSITION_TOOL_INCLUDES:-}
+  POSITION_TOOL_EXCLUDES: ${POSITION_TOOL_EXCLUDES:-}
+  POSITION_PROVIDER_PINS: ${POSITION_PROVIDER_PINS:-}
+  POSITION_PROVIDER_INCLUDES: ${POSITION_PROVIDER_INCLUDES:-}
+  POSITION_PROVIDER_EXCLUDES: ${POSITION_PROVIDER_EXCLUDES:-}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.10.0
+    image: langgenius/dify-api:0.10.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -251,7 +261,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.10.0
+    image: langgenius/dify-api:0.10.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -270,7 +280,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.10.0
+    image: langgenius/dify-web:0.10.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
