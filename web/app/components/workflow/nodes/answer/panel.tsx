@@ -23,8 +23,8 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
-    hideChatVar: true,
-    hideEnv: true,
+    hideChatVar: false,
+    hideEnv: false,
     filterVar,
   })
 
