@@ -61,8 +61,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       （选填）会话 ID，需要基于之前的聊天记录继续对话，必须传之前消息的 conversation_id。
       </Property>
       <Property name='files' type='array[object]' key='files'>
-          上传的文件。
-          - `type` (string) 支持类型：图片 `image`（目前仅支持图片格式） 。
+          文件列表，适用于传入文件结合文本理解并回答问题，仅当模型支持 Vision 能力时可用。
+          - `type` (string) 支持类型：
+            - `document` 具体类型包含：'TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
+            - `image` 具体类型包含：'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
+            - `audio` 具体类型包含：'MP3', 'M4A', 'WAV', 'WEBM', 'AMR'
+            - `video` 具体类型包含：'MP4', 'MOV', 'MPEG', 'MPGA'
           - `transfer_method` (string)  传递方式:
             - `remote_url`: 图片地址。
             - `local_file`: 上传文件。
@@ -1003,7 +1007,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - `number_limits` (int) 图片数量限制，默认 3
         - `transfer_methods` (array[string]) 传递方式列表，remote_url , local_file，必选一个
     - `system_parameters` (object) 系统参数
-      - `image_file_size_limit` (string) 图片文件上传大小限制（MB）
+      - `file_size_limit` (int) Document upload size limit (MB)
+      - `image_file_size_limit` (int) Image file upload size limit (MB)
+      - `audio_file_size_limit` (int) Audio file upload size limit (MB)
+      - `video_file_size_limit` (int) Video file upload size limit (MB)
   </Col>
   <Col sticky>
 
@@ -1043,6 +1050,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
             "local_file"
           ]
         }
+      },
+      "system_parameters": {
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
       }
     }
     ```

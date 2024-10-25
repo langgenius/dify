@@ -1007,7 +1007,10 @@ Chat applications support session persistence, allowing previous chat history to
         - `number_limits` (int) Image number limit, default is 3
         - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
     - `system_parameters` (object) System parameters
-      - `image_file_size_limit` (string) Image file upload size limit (MB)
+      - `file_size_limit` (int) Document upload size limit (MB)
+      - `image_file_size_limit` (int) Image file upload size limit (MB)
+      - `audio_file_size_limit` (int) Audio file upload size limit (MB)
+      - `video_file_size_limit` (int) Video file upload size limit (MB)
 
   </Col>
   <Col sticky>
@@ -1059,7 +1062,10 @@ Chat applications support session persistence, allowing previous chat history to
           }
       },
       "system_parameters": {
-          "image_file_size_limit": "10"
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
       }
     }
     ```
