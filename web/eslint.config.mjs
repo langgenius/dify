@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url'
 import js from '@eslint/js'
 import { FlatCompat } from '@eslint/eslintrc'
 import globals from 'globals'
+import storybook from 'eslint-plugin-storybook'
+import { fixupConfigRules } from '@eslint/compat'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -15,34 +17,6 @@ const compat = new FlatCompat({
   recommendedConfig: js.configs.recommended,
   allConfig: js.configs.all,
 })
-
-// storybook plugin not support v9, so add its recommended rules here
-const storybook = [
-  {
-    plugins: ['storybook'],
-    files: ['*.stories.@(ts|tsx|js|jsx|mjs|cjs)', '*.story.@(ts|tsx|js|jsx|mjs|cjs)'],
-    rules: {
-      'react-hooks/rules-of-hooks': 'off',
-      'import/no-anonymous-default-export': 'off',
-      'storybook/await-interactions': 'error',
-      'storybook/context-in-play-function': 'error',
-      'storybook/default-exports': 'error',
-      'storybook/hierarchy-separator': 'warn',
-      'storybook/no-redundant-story-name': 'warn',
-      'storybook/prefer-pascal-case': 'warn',
-      'storybook/story-exports': 'error',
-      'storybook/use-storybook-expect': 'error',
-      'storybook/use-storybook-testing-library': 'error',
-    },
-  },
-  {
-    plugins: ['storybook'],
-    files: ['*.stories.@(ts|tsx|js|jsx|mjs|cjs)', '*.story.@(ts|tsx|js|jsx|mjs|cjs)'],
-    rules: {
-      'storybook/no-uninstalled-addons': 'error',
-    },
-  },
-]
 
 export default combine(
   stylistic({
@@ -55,7 +29,7 @@ export default combine(
       // original config
       'style/indent': ['error', 2],
       'style/quotes': ['error', 'single'],
-      'curly': ['error', 'multi-line'],
+      'curly': ['error', 'multi-or-nest', 'consistent'],
       'style/comma-spacing': ['error', { before: false, after: true }],
       'style/quote-props': ['warn', 'consistent-as-needed'],
 
@@ -79,27 +53,26 @@ export default combine(
       'style/member-delimiter-style': 'off',
     },
   }),
+  javascript({
+    overrides: {
+      // handled by unused-imports/no-unused-vars
+      'no-unused-vars': 'off',
+    },
+  }),
   typescript({
     overrides: {
       // useful, but big change
       'ts/no-empty-object-type': 'off',
     },
   }),
-  javascript({
-    overrides: {
-      // handled by unused-imports/no-unused-vars
-      'no-unused-vars': 'off',
-
-      // useless
-      'no-use-before-define': 'warn',
-    },
-  }),
   unicorn(),
   node(),
+  // use nextjs config will break @eslint/config-inspector
+  // use `ESLINT_CONFIG_INSPECTOR=true pnpx @eslint/config-inspector` to check the config
   ...process.env.ESLINT_CONFIG_INSPECTOR
     ? []
     // TODO: remove this when upgrade to nextjs 15
-    : [compat.extends('next')],
+    : fixupConfigRules(compat.extends('next')),
   {
     ignores: [
       '**/node_modules/*',
@@ -115,11 +88,6 @@ export default combine(
   {
     // orignal config
     rules: {
-      // from old version of antfu/eslint-config
-      // typescript will handle this, see https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
-      'no-undef': 'off',
-
-      'ts/consistent-type-definitions': ['error', 'type'],
       // orignal ts/no-var-requires
       'ts/no-require-imports': 'off',
       'no-console': 'off',
@@ -132,10 +100,7 @@ export default combine(
 
       // copy from eslint-config-antfu 0.36.0
       'camelcase': 'off',
-      'curly': ['error', 'multi-or-nest', 'consistent'],
       'default-case-last': 'error',
-      'dot-notation': ['error', { allowKeywords: true }],
-      'new-cap': ['error', { newIsCap: true, capIsNew: false, properties: true }],
 
       // antfu use eslint-plugin-perfectionist to replace this
       // will cause big change, so keep the original sort-imports
@@ -165,7 +130,7 @@ export default combine(
       },
     },
   },
-  storybook,
+  storybook.configs['flat/recommended'],
   // need futher research
   {
     rules: {
