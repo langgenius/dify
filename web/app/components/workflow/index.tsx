@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import useSWR from 'swr'
 import { setAutoFreeze } from 'immer'
 import {
   useEventListener,
@@ -93,6 +94,7 @@ import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Confirm from '@/app/components/base/confirm'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import { fetchFileUploadConfig } from '@/service/common'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -382,6 +384,7 @@ const WorkflowWrap = memo(() => {
     data,
     isLoading,
   } = useWorkflowInit()
+  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
 
   const nodesData = useMemo(() => {
     if (data)
@@ -417,6 +420,7 @@ const WorkflowWrap = memo(() => {
       allowed_file_extensions: features.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
       allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
       number_limits: features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
+      fileUploadConfig: fileUploadConfigResponse,
     },
     opening: {
       enabled: !!features.opening_statement,
