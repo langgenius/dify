@@ -6,6 +6,8 @@ import type {
   EndpointsRequest,
   EndpointsResponse,
   InstallPackageResponse,
+  PluginDeclaration,
+  TaskStatusResponse,
   UpdateEndpointRequest,
 } from '@/app/components/plugins/types'
 import type { DebugInfo as DebugInfoTypes } from '@/app/components/plugins/types'
@@ -69,10 +71,24 @@ export const installPackageFromLocal = async (uniqueIdentifier: string) => {
   })
 }
 
+export const fetchManifest = async (uniqueIdentifier: string) => {
+  return get<PluginDeclaration>(`/workspaces/current/plugin/fetch-manifest?plugin_unique_identifier=${uniqueIdentifier}`)
+}
+
+export const installPackageFromMarketPlace = async (uniqueIdentifier: string) => {
+  return post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
+    body: { plugin_unique_identifiers: [uniqueIdentifier] },
+  })
+}
+
 export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse, { url: string; }> = ({ url }) => {
   return get<MarketplaceCollectionsResponse>(url)
 }
 
 export const fetchMarketplaceCollectionPlugins: Fetcher<MarketplaceCollectionPluginsResponse, { url: string }> = ({ url }) => {
   return get<MarketplaceCollectionPluginsResponse>(url)
+}
+
+export const checkTaskStatus = async (taskId: string) => {
+  return get<TaskStatusResponse>(`/workspaces/current/plugin/tasks/${taskId}`)
 }

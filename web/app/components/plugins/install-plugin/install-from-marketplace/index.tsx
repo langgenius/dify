@@ -10,15 +10,15 @@ import { useTranslation } from 'react-i18next'
 
 const i18nPrefix = 'plugin.installModal'
 
-type InstallFromMarketplaceProps = {
-  packageId: string
+interface InstallFromMarketplaceProps {
+  uniqueIdentifier: string
   manifest: PluginDeclaration
   onSuccess: () => void
   onClose: () => void
 }
 
 const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
-  packageId,
+  uniqueIdentifier,
   manifest,
   onSuccess,
   onClose,
@@ -26,6 +26,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   const { t } = useTranslation()
   // readyToInstall -> check installed -> installed/failed
   const [step, setStep] = useState<InstallStep>(InstallStep.readyToInstall)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   // TODO: check installed in beta version.
 
@@ -41,8 +42,10 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     setStep(InstallStep.installed)
   }, [])
 
-  const handleFailed = useCallback(() => {
+  const handleFailed = useCallback((errorMsg?: string) => {
     setStep(InstallStep.installFailed)
+    if (errorMsg)
+      setErrorMsg(errorMsg)
   }, [])
 
   return (
@@ -60,6 +63,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
       {
         step === InstallStep.readyToInstall && (
           <Install
+            uniqueIdentifier={uniqueIdentifier}
             payload={manifest!}
             onCancel={onClose}
             onInstalled={handleInstalled}
@@ -72,6 +76,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
           <Installed
             payload={manifest!}
             isFailed={step === InstallStep.installFailed}
+            errMsg={errorMsg}
             onCancel={onSuccess}
           />
         )

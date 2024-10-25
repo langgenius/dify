@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next'
 
 const i18nPrefix = 'plugin.installModal'
 
-type InstallFromLocalPackageProps = {
+interface InstallFromLocalPackageProps {
   file: File
   onSuccess: () => void
   onClose: () => void
@@ -56,8 +56,10 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
     setStep(InstallStep.installed)
   }, [])
 
-  const handleFailed = useCallback(() => {
+  const handleFailed = useCallback((errorMsg?: string) => {
     setStep(InstallStep.installFailed)
+    if (errorMsg)
+      setErrorMsg(errorMsg)
   }, [])
 
   return (

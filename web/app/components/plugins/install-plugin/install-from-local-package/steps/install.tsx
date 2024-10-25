@@ -5,20 +5,20 @@ import type { PluginDeclaration } from '../../../types'
 import Card from '../../../card'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
-import { sleep } from '@/utils'
 import { Trans, useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { installPackageFromLocal } from '@/service/plugins'
+import checkTaskStatus from '../../base/check-task-status'
 
 const i18nPrefix = 'plugin.installModal'
 
-type Props = {
+interface Props {
   uniqueIdentifier: string
   payload: PluginDeclaration
   onCancel: () => void
   onInstalled: () => void
-  onFailed: () => void
+  onFailed: (message?: string) => void
 }
 
 const Installed: FC<Props> = ({
@@ -30,18 +30,41 @@ const Installed: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [isInstalling, setIsInstalling] = React.useState(false)
+  const {
+    check,
+    stop,
+  } = checkTaskStatus()
+
+  const handleCancel = () => {
+    stop()
+    onCancel()
+  }
 
   const handleInstall = async () => {
     if (isInstalling) return
     setIsInstalling(true)
     try {
-      await installPackageFromLocal(uniqueIdentifier)
+      const {
+        all_installed: isInstalled,
+        task_id: taskId,
+      } = await installPackageFromLocal(uniqueIdentifier)
+      if (isInstalled) {
+        onInstalled()
+        return
+      }
+      await check({
+        taskId,
+        pluginUniqueIdentifier: uniqueIdentifier,
+      })
       onInstalled()
     }
     catch (e) {
+      if (typeof e === 'string') {
+        onFailed(e)
+        return
+      }
       onFailed()
     }
-    await sleep(1500)
   }
 
   return (
@@ -67,7 +90,7 @@ const Installed: FC<Props> = ({
       {/* Action Buttons */}
       <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
         {!isInstalling && (
-          <Button variant='secondary' className='min-w-[72px]' onClick={onCancel}>
+          <Button variant='secondary' className='min-w-[72px]' onClick={handleCancel}>
             {t('common.operation.cancel')}
           </Button>
         )}

@@ -35,7 +35,7 @@ import { sleep } from '@/utils'
 
 const PACKAGE_IDS_KEY = 'package-ids'
 
-export type PluginPageProps = {
+export interface PluginPageProps {
   plugins: React.ReactNode
   marketplace: React.ReactNode
 }
@@ -74,6 +74,9 @@ const PluginPage = ({
     (async () => {
       await sleep(100)
       if (packageId) {
+        // setManifest(toolNotionManifest)
+        // TODO
+        // const data = await fetchManifest(encodeURIComponent(packageId))
         setManifest(toolNotionManifest)
         showInstallFromMarketplace()
       }
@@ -229,7 +232,7 @@ const PluginPage = ({
         isShowInstallFromMarketplace && (
           <InstallFromMarketplace
             manifest={manifest!}
-            packageId={packageId}
+            uniqueIdentifier={packageId}
             onClose={hideInstallFromMarketplace}
             onSuccess={hideInstallFromMarketplace}
           />
