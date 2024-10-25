@@ -122,6 +122,10 @@ class Vector:
                 from core.rag.datasource.vdb.vikingdb.vikingdb_vector import VikingDBVectorFactory
 
                 return VikingDBVectorFactory
+            case VectorType.UPSTASH:
+                from core.rag.datasource.vdb.upstash.upstash_vector import UpstashVectorFactory
+
+                return UpstashVectorFactory
             case VectorType.TIDB_ON_QDRANT:
                 from core.rag.datasource.vdb.tidb_on_qdrant.tidb_on_qdrant_vector import TidbOnQdrantVectorFactory
 

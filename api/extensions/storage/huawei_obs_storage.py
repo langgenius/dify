@@ -27,12 +27,9 @@ class HuaweiObsStorage(BaseStorage):
         return data
 
     def load_stream(self, filename: str) -> Generator:
-        def generate(filename: str = filename) -> Generator:
-            response = self.client.getObject(bucketName=self.bucket_name, objectKey=filename)["body"].response
-            while chunk := response.read(4096):
-                yield chunk
-
-        return generate()
+        response = self.client.getObject(bucketName=self.bucket_name, objectKey=filename)["body"].response
+        while chunk := response.read(4096):
+            yield chunk
 
     def download(self, filename, target_filepath):
         self.client.getObject(bucketName=self.bucket_name, objectKey=filename, downloadPath=target_filepath)

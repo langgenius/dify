@@ -15,6 +15,7 @@ import {
   getUrl,
   stopChatMessageResponding,
 } from '@/service/share'
+import AnswerIcon from '@/app/components/base/answer-icon'
 
 const ChatWrapper = () => {
   const {
@@ -39,6 +40,10 @@ const ChatWrapper = () => {
 
     return {
       ...config,
+      file_upload: {
+        ...(config as any).file_upload,
+        fileUploadConfig: (config as any).system_parameters,
+      },
       supportFeedback: true,
       opening_statement: currentConversationId ? currentConversationItem?.introduction : (config as any).opening_statement,
     } as ChatConfig
@@ -87,7 +92,6 @@ const ChatWrapper = () => {
     )
   }, [
     chatListRef,
-    appConfig,
     currentConversationId,
     currentConversationItem,
     handleSend,
@@ -150,6 +154,15 @@ const ChatWrapper = () => {
     isMobile,
   ])
 
+  const answerIcon = (appData?.site && appData.site.use_icon_as_answer_icon)
+    ? <AnswerIcon
+      iconType={appData.site.icon_type}
+      icon={appData.site.icon}
+      background={appData.site.icon_background}
+      imageUrl={appData.site.icon_url}
+    />
+    : null
+
   return (
     <div
       className='h-full bg-chatbot-bg overflow-hidden'
@@ -171,6 +184,7 @@ const ChatWrapper = () => {
         allToolIcons={appMeta?.tool_icons || {}}
         onFeedback={handleFeedback}
         suggestedQuestions={suggestedQuestions}
+        answerIcon={answerIcon}
         hideProcessDetail
         themeBuilder={themeBuilder}
       />

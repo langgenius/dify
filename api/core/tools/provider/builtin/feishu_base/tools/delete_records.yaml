@@ -1,0 +1,86 @@
+identity:
+  name: delete_records
+  author: Doug Lea
+  label:
+    en_US: Delete Records
+    zh_Hans: 删除多条记录
+description:
+  human:
+    en_US: Delete Multiple Records from Multidimensional Table
+    zh_Hans: 删除多维表格数据表中的多条记录
+  llm: A tool for deleting multiple records from a multidimensional table. (删除多维表格数据表中的多条记录)
+parameters:
+  - name: app_token
+    type: string
+    required: true
+    label:
+      en_US: app_token
+      zh_Hans: app_token
+    human_description:
+      en_US: Unique identifier for the multidimensional table, supports inputting document URL.
+      zh_Hans: 多维表格的唯一标识符，支持输入文档 URL。
+    llm_description: 多维表格的唯一标识符，支持输入文档 URL。
+    form: llm
+
+  - name: table_id
+    type: string
+    required: false
+    label:
+      en_US: table_id
+      zh_Hans: table_id
+    human_description:
+      en_US: Unique identifier for the multidimensional table data, either table_id or table_name must be provided, cannot be empty simultaneously.
+      zh_Hans: 多维表格数据表的唯一标识符，table_id 和 table_name 至少需要提供一个，不能同时为空。
+    llm_description: 多维表格数据表的唯一标识符，table_id 和 table_name 至少需要提供一个，不能同时为空。
+    form: llm
+
+  - name: table_name
+    type: string
+    required: false
+    label:
+      en_US: table_name
+      zh_Hans: table_name
+    human_description:
+      en_US: Name of the multidimensional table data, either table_name or table_id must be provided, cannot be empty simultaneously.
+      zh_Hans: 多维表格数据表的名称，table_name 和 table_id 至少需要提供一个，不能同时为空。
+    llm_description: 多维表格数据表的名称，table_name 和 table_id 至少需要提供一个，不能同时为空。
+    form: llm
+
+  - name: record_ids
+    type: string
+    required: true
+    label:
+      en_US: Record IDs
+      zh_Hans: 记录 ID 列表
+    human_description:
+      en_US: |
+        List of IDs for the records to be deleted, example value: ["recwNXzPQv"].
+      zh_Hans: 删除的多条记录 ID 列表，示例值：["recwNXzPQv"]。
+    llm_description: 删除的多条记录 ID 列表，示例值：["recwNXzPQv"]。
+    form: llm
+
+  - name: user_id_type
+    type: select
+    required: false
+    options:
+      - value: open_id
+        label:
+          en_US: open_id
+          zh_Hans: open_id
+      - value: union_id
+        label:
+          en_US: union_id
+          zh_Hans: union_id
+      - value: user_id
+        label:
+          en_US: user_id
+          zh_Hans: user_id
+    default: "open_id"
+    label:
+      en_US: user_id_type
+      zh_Hans: 用户 ID 类型
+    human_description:
+      en_US: User ID type, optional values are open_id, union_id, user_id, with a default value of open_id.
+      zh_Hans: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    llm_description: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    form: form

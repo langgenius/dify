@@ -96,13 +96,19 @@ const RunOnce: FC<IRunOnceProps> = ({
                 {item.type === 'file' && (
                   <FileUploaderInAttachmentWrapper
                     onChange={(files) => { onInputsChange({ ...inputs, [item.key]: getProcessedFiles(files)[0] }) }}
-                    fileConfig={item.config as any}
+                    fileConfig={{
+                      ...item.config,
+                      fileUploadConfig: (visionConfig as any).fileUploadConfig,
+                    }}
                   />
                 )}
                 {item.type === 'file-list' && (
                   <FileUploaderInAttachmentWrapper
                     onChange={(files) => { onInputsChange({ ...inputs, [item.key]: getProcessedFiles(files) }) }}
-                    fileConfig={item.config as any}
+                    fileConfig={{
+                      ...item.config,
+                      fileUploadConfig: (visionConfig as any).fileUploadConfig,
+                    }}
                   />
                 )}
               </div>

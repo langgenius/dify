@@ -65,6 +65,7 @@ export type ChatProps = {
   hideProcessDetail?: boolean
   hideLogModal?: boolean
   themeBuilder?: ThemeBuilder
+  switchSibling?: (siblingMessageId: string) => void
   showFeatureBar?: boolean
   showFileUpload?: boolean
   onFeatureBarClick?: (state: boolean) => void
@@ -100,6 +101,7 @@ const Chat: FC<ChatProps> = ({
   hideProcessDetail,
   hideLogModal,
   themeBuilder,
+  switchSibling,
   showFeatureBar,
   showFileUpload,
   onFeatureBarClick,
@@ -232,6 +234,7 @@ const Chat: FC<ChatProps> = ({
                       chatAnswerContainerInner={chatAnswerContainerInner}
                       hideProcessDetail={hideProcessDetail}
                       noChatInput={noChatInput}
+                      switchSibling={switchSibling}
                     />
                   )
                 }
