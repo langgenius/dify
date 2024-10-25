@@ -360,6 +360,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     index=event.index,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     output=event.pre_iteration_output,
+                    parallel_mode_run_id=event.parallel_mode_run_id,
                 )
             )
         elif isinstance(event, (IterationRunSucceededEvent | IterationRunFailedEvent)):

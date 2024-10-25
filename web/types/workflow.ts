@@ -19,6 +19,7 @@ export type NodeTracing = {
   process_data: any
   outputs?: any
   status: string
+  parallel_run_id?: string
   error?: string
   elapsed_time: number
   execution_metadata: {
@@ -122,6 +123,7 @@ export type NodeStartedResponse = {
     id: string
     node_id: string
     iteration_id?: string
+    parallel_run_id?: string
     node_type: string
     index: number
     predecessor_node_id?: string
@@ -202,6 +204,7 @@ export type IterationNextResponse = {
     output: any
     extras?: any
     created_at: number
+    parallel_mode_run_id: string
     execution_metadata: {
       parallel_id?: string
     }

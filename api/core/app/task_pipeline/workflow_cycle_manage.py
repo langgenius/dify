@@ -331,18 +331,17 @@ class WorkflowCycleManage:
         execution_metadata = (
             json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
         )
-        update_data = {
-            WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.FAILED.value,
-            WorkflowNodeExecution.error: event.error,
-            WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
-            WorkflowNodeExecution.process_data: json.dumps(event.process_data) if event.process_data else None,
-            WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
-            WorkflowNodeExecution.finished_at: finished_at,
-            WorkflowNodeExecution.elapsed_time: elapsed_time,
-            WorkflowNodeExecution.execution_metadata: execution_metadata,
-        }
         db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
-            update_data
+            {
+                WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.FAILED.value,
+                WorkflowNodeExecution.error: event.error,
+                WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
+                WorkflowNodeExecution.process_data: json.dumps(event.process_data) if event.process_data else None,
+                WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
+                WorkflowNodeExecution.finished_at: finished_at,
+                WorkflowNodeExecution.elapsed_time: elapsed_time,
+                WorkflowNodeExecution.execution_metadata: execution_metadata,
+            }
         )
 
         db.session.commit()
@@ -356,6 +355,7 @@ class WorkflowCycleManage:
         workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
         workflow_node_execution.finished_at = finished_at
         workflow_node_execution.elapsed_time = elapsed_time
+        workflow_node_execution.execution_metadata = execution_metadata
 
         self._wip_workflow_node_executions.pop(workflow_node_execution.node_execution_id)
 
@@ -462,6 +462,7 @@ class WorkflowCycleManage:
                 parent_parallel_id=event.parent_parallel_id,
                 parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                 iteration_id=event.in_iteration_id,
+                parallel_run_id=event.parallel_mode_run_id,
             ),
         )
 
@@ -622,6 +623,7 @@ class WorkflowCycleManage:
                 extras={},
                 parallel_id=event.parallel_id,
                 parallel_start_node_id=event.parallel_start_node_id,
+                parallel_mode_run_id=event.parallel_mode_run_id,
             ),
         )
 
