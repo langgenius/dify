@@ -1,0 +1,108 @@
+identity:
+  name: list_base_records
+  author: Doug Lea
+  label:
+    en_US: List Base Records
+    zh_Hans: 查询多维表格数据表中的现有记录
+description:
+  human:
+    en_US: List base records
+    zh_Hans: |
+      查询多维表格数据表中的现有记录，单次最多查询 500 行记录，支持分页获取。
+  llm: Query existing records in a multidimensional table data table. A maximum of 500 rows of records can be queried at a time, and paging retrieval is supported.
+parameters:
+  - name: Authorization
+    type: string
+    required: true
+    label:
+      en_US: token
+      zh_Hans: 凭证
+    human_description:
+      en_US: API access token parameter, tenant_access_token or user_access_token
+      zh_Hans: API 的访问凭证参数，tenant_access_token 或 user_access_token
+    llm_description: API access token parameter, tenant_access_token or user_access_token
+    form: llm
+
+  - name: app_token
+    type: string
+    required: true
+    label:
+      en_US: app_token
+      zh_Hans: 多维表格
+    human_description:
+      en_US: bitable app token
+      zh_Hans: 多维表格的唯一标识符 app_token
+    llm_description: bitable app token
+    form: llm
+
+  - name: table_id
+    type: string
+    required: true
+    label:
+      en_US: table_id
+      zh_Hans: 多维表格的数据表
+    human_description:
+      en_US: bitable table id
+      zh_Hans: 多维表格数据表的唯一标识符 table_id
+    llm_description: bitable table id
+    form: llm
+
+  - name: page_token
+    type: string
+    required: false
+    label:
+      en_US: page_token
+      zh_Hans: 分页标记
+    human_description:
+      en_US: Pagination mark. If it is not filled in the first request, it means to traverse from the beginning.
+      zh_Hans: 分页标记，第一次请求不填，表示从头开始遍历。
+    llm_description: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。
+    form: llm
+
+  - name: page_size
+    type: number
+    required: false
+    default: 20
+    label:
+      en_US: page_size
+      zh_Hans: 分页大小
+    human_description:
+      en_US: paging size
+      zh_Hans: 分页大小，默认值为 20，最大值为 100。
+    llm_description: The default value of paging size is 20 and the maximum value is 100.
+    form: llm
+
+  - name: sort_condition
+    type: string
+    required: false
+    label:
+      en_US: sort_condition
+      zh_Hans: 排序条件
+    human_description:
+      en_US: sort condition
+      zh_Hans: |
+        排序条件，格式为：[{"field_name":"多行文本","desc":true}]。
+        field_name: 字段名称；
+        desc: 是否倒序排序;
+    llm_description: |
+      Sorting conditions, the format is: [{"field_name":"multi-line text","desc":true}].
+    form: llm
+
+  - name: filter_condition
+    type: string
+    required: false
+    label:
+      en_US: filter_condition
+      zh_Hans: 筛选条件
+    human_description:
+      en_US: filter condition
+      zh_Hans: |
+        筛选条件，格式为：{"conjunction":"and","conditions":[{"field_name":"字段1","operator":"is","value":["文本内容"]}]}。
+        conjunction：条件逻辑连接词；
+        conditions：筛选条件集合；
+        field_name：筛选条件的左值，值为字段的名称；
+        operator：条件运算符；
+        value：目标值；
+    llm_description: |
+      The format of the filter condition is: {"conjunction":"and","conditions":[{"field_name":"Field 1","operator":"is","value":["text content"]}]}.
+    form: llm
