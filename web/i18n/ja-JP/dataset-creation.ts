@@ -147,6 +147,7 @@ const translation = {
     retrievalSettingTip: '検索方法を変更するには、',
     datasetSettingLink: 'ナレッジ設定',
     separatorTip: '区切り文字は、テキストを区切るために使用される文字です。\\n\\n と \\n は、段落と行を区切るために一般的に使用される区切り記号です。カンマ (\\n\\n,\\n) と組み合わせると、最大チャンク長を超えると、段落は行で区切られます。自分で定義した特別な区切り文字を使用することもできます(例:***)。',
+    maxLengthCheck: 'チャンクの最大長は 4000 未満にする必要があります',
   },
   stepThree: {
     creationTitle: '🎉 ナレッジが作成されました',
