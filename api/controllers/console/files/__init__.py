@@ -58,7 +58,7 @@ class FileApi(Resource):
             raise FilenameNotExistsError
 
         if source not in ("datasets", None):
-            raise ValueError("Invalid source. Must be 'datasets' or None")
+            source = None
 
         try:
             upload_file = FileService.upload_file(
