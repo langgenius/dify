@@ -172,6 +172,7 @@ const ChatWrapper = () => {
       answerIcon={answerIcon}
       hideProcessDetail
       themeBuilder={themeBuilder}
+      hideScrollbar={true}
     />
   )
 }
