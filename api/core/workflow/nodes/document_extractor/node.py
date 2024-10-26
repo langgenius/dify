@@ -103,6 +103,8 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
         return _extract_text_from_eml(file_content)
     elif mime_type == "application/vnd.ms-outlook":
         return _extract_text_from_msg(file_content)
+    elif mime_type == "application/json":
+        return _extract_text_from_json(file_content)
     else:
         raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
@@ -112,6 +114,8 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
     match file_extension:
         case ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml":
             return _extract_text_from_plain_text(file_content)
+        case ".json":
+            return _extract_text_from_json(file_content)
         case ".pdf":
             return _extract_text_from_pdf(file_content)
         case ".doc" | ".docx":
@@ -140,6 +144,12 @@ def _extract_text_from_plain_text(file_content: bytes) -> str:
     except UnicodeDecodeError as e:
         raise TextExtractionError("Failed to decode plain text file") from e
 
+def _extract_text_from_json(file_content: bytes) -> str:
+    try:
+        json_data = json.loads(file_content.decode("utf-8"))
+        return json.dumps(json_data, indent=2, ensure_ascii=False)
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        raise TextExtractionError(f"Failed to decode or parse JSON file: {e}") from e
 
 def _extract_text_from_pdf(file_content: bytes) -> str:
     try:
