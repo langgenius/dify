@@ -560,10 +560,28 @@ class DocumentSegment(db.Model):
         )
 
     def get_sign_content(self):
-        pattern = r"/files/([a-f0-9\-]+)/file-preview"
-        text = self.content
-        matches = re.finditer(pattern, text)
         signed_urls = []
+        text = self.content
+
+        # For data before v0.10.0
+        pattern = r"/files/([a-f0-9\-]+)/image-preview"
+        matches = re.finditer(pattern, text)
+        for match in matches:
+            upload_file_id = match.group(1)
+            nonce = os.urandom(16).hex()
+            timestamp = str(int(time.time()))
+            data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
+            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
+            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+            encoded_sign = base64.urlsafe_b64encode(sign).decode()
+
+            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+            signed_url = f"{match.group(0)}?{params}"
+            signed_urls.append((match.start(), match.end(), signed_url))
+
+        # For data after v0.10.0
+        pattern = r"/files/([a-f0-9\-]+)/file-preview"
+        matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
             nonce = os.urandom(16).hex()
