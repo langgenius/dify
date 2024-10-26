@@ -507,7 +507,7 @@ const translation = {
       vectorHash: 'Vektör Hash:',
       hitScore: 'Geri Alım Skoru:',
     },
-    inputPlaceholder: 'Bot ile konuş',
+    inputPlaceholder: '',
   },
   promptEditor: {
     placeholder: 'Prompt kelimenizi buraya yazın, değişken eklemek için \'{\' tuşuna, prompt içerik bloğu eklemek için \'/\' tuşuna basın',

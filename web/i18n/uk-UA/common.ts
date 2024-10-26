@@ -504,7 +504,7 @@ const translation = {
       vectorHash: 'Хеш вектора:',
       hitScore: 'Оцінка звернення:',
     },
-    inputPlaceholder: 'Поговоріть з ботом',
+    inputPlaceholder: '',
   },
   promptEditor: {
     placeholder: 'Пишіть свої підказки тут, вводьте \'{\', щоб вставити змінну чи \'/\', щоб вставити блок-підказку',

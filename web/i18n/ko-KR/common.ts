@@ -499,7 +499,7 @@ const translation = {
       vectorHash: '벡터 해시:',
       hitScore: '검색 점수:',
     },
-    inputPlaceholder: '봇과 대화',
+    inputPlaceholder: '',
   },
   promptEditor: {
     placeholder: '여기에 프롬프트 단어를 입력하세요. 변수를 삽입하려면 "{{"를 입력하고, 프롬프트 컨텐츠 블록을 삽입하려면 "/"를 입력하세요.',

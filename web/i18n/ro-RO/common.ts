@@ -503,7 +503,7 @@ const translation = {
       vectorHash: 'Hash vector:',
       hitScore: 'Scor de recuperare:',
     },
-    inputPlaceholder: 'Vorbește cu Bot',
+    inputPlaceholder: '',
   },
   promptEditor: {
     placeholder: 'Scrieți aici prompt-ul, introduceți \'{}\' pentru a insera o variabilă, introduceți \'/\' pentru a insera un bloc de conținut prompt',

@@ -503,7 +503,7 @@ const translation = {
       vectorHash: 'Vector hash:',
       hitScore: 'Điểm truy xuất:',
     },
-    inputPlaceholder: 'Nói chuyện với Bot',
+    inputPlaceholder: '',
   },
   promptEditor: {
     placeholder: 'Viết từ khóa của bạn ở đây, nhập \'{\' để chèn một biến, nhập \'/\' để chèn một khối nội dung nhắc nhở',

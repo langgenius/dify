@@ -518,7 +518,7 @@ const translation = {
       vectorHash: 'Wektor hash:',
       hitScore: 'Wynik trafień:',
     },
-    inputPlaceholder: 'Porozmawiaj z botem',
+    inputPlaceholder: '',
   },
   promptEditor: {
     placeholder:
