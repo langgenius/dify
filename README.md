@@ -1,5 +1,7 @@
 ![cover-v5-optimized](https://github.com/langgenius/dify/assets/13230914/f9e19af5-61ba-4119-b926-d10c4c06ebab)
 
+📌 [Introducing Dify Workflow File Upload: Google NotebookLM Podcast Demo](https://dify.ai/blog/introducing-dify-workflow-file-upload-a-demo-on-ai-podcast)
+
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Self-hosting</a> ·
