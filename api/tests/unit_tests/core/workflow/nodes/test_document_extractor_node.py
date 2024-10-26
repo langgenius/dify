@@ -125,7 +125,7 @@ def test_run_extract_text(
     result = document_extractor_node._run()
 
     assert isinstance(result, NodeRunResult)
-    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
     assert result.outputs is not None
     assert result.outputs["text"] == expected_text
 

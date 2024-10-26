@@ -192,9 +192,9 @@ def _download_file_content(file: File) -> bytes:
 
 def _extract_text_from_file(file: File):
     file_content = _download_file_content(file)
-    if file.extension is not None:
+    if file.extension:
         extracted_text = _extract_text_by_file_extension(file_content=file_content, file_extension=file.extension)
-    elif file.mime_type is not None:
+    elif file.mime_type:
         extracted_text = _extract_text_by_mime_type(file_content=file_content, mime_type=file.mime_type)
     else:
         raise UnsupportedFileTypeError("Unable to determine file type: MIME type or file extension is missing")
