@@ -13,7 +13,7 @@ from controllers.console.auth.error import (
     PasswordMismatchError,
 )
 from controllers.console.error import EmailSendIpLimitError, NotAllowedRegister
-from controllers.console.setup import setup_required
+from controllers.console.wraps import setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import email, extract_remote_ip

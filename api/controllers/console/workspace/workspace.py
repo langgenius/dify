@@ -15,8 +15,11 @@ from controllers.console.datasets.error import (
     UnsupportedFileTypeError,
 )
 from controllers.console.error import AccountNotLinkTenantError
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from controllers.console.wraps import (
+    account_initialization_required,
+    cloud_edition_billing_resource_check,
+    setup_required,
+)
 from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import login_required
