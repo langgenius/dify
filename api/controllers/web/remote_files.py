@@ -9,7 +9,7 @@ from flask_restful import marshal_with, reqparse
 
 from controllers.web.wraps import WebApiResource
 from core.helper import ssrf_proxy
-from fields.file_fields import remote_file_info_fields
+from fields.file_fields import file_fields, remote_file_info_fields
 from services.file_service import FileService
 
 
@@ -28,6 +28,7 @@ class RemoteFileInfoApi(WebApiResource):
 
 
 class RemoteFileUploadApi(WebApiResource):
+    @marshal_with(file_fields)
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("url", type=str, required=True, help="URL is required")

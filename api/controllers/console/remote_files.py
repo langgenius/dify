@@ -9,7 +9,7 @@ from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse
 
 from core.helper import ssrf_proxy
-from fields.file_fields import remote_file_info_fields
+from fields.file_fields import file_fields, remote_file_info_fields
 from models.account import Account
 from services.file_service import FileService
 
@@ -29,6 +29,7 @@ class RemoteFileInfoApi(Resource):
 
 
 class RemoteFileUploadApi(Resource):
+    @marshal_with(file_fields)
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("url", type=str, required=True, help="URL is required")
