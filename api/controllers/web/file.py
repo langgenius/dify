@@ -1,9 +1,10 @@
 import urllib.parse
 
 from flask import request
-from flask_restful import marshal_with, reqparse
+from flask_restful import marshal_with
 
 import services
+from controllers.common.errors import FilenameNotExistsError
 from controllers.web import api
 from controllers.web.error import FileTooLargeError, NoFileUploadedError, TooManyFilesError, UnsupportedFileTypeError
 from controllers.web.wraps import WebApiResource
@@ -15,21 +16,29 @@ from services.file_service import FileService
 class FileApi(WebApiResource):
     @marshal_with(file_fields)
     def post(self, app_model, end_user):
-        # get file from request
         file = request.files["file"]
+        source = request.form.get("source")
 
-        parser = reqparse.RequestParser()
-        parser.add_argument("source", type=str, required=False, location="args")
-        source = parser.parse_args().get("source")
-
-        # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
 
         if len(request.files) > 1:
             raise TooManyFilesError()
+
+        if not file.filename:
+            raise FilenameNotExistsError
+
+        if source not in ("datasets", None):
+            raise ValueError("Invalid source. Must be 'datasets' or None")
+
         try:
-            upload_file = FileService.upload_file(file=file, user=end_user, source=source)
+            upload_file = FileService.upload_file(
+                filename=file.filename,
+                content=file.read(),
+                mimetype=file.mimetype,
+                user=end_user,
+                source=source,
+            )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:

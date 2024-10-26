@@ -6,6 +6,7 @@ from sqlalchemy import desc
 from werkzeug.exceptions import NotFound
 
 import services.dataset_service
+from controllers.common.errors import FilenameNotExistsError
 from controllers.service_api import api
 from controllers.service_api.app.error import ProviderNotInitializeError
 from controllers.service_api.dataset.error import (
@@ -163,7 +164,16 @@ class DocumentAddByFileApi(DatasetApiResource):
         if len(request.files) > 1:
             raise TooManyFilesError()
 
-        upload_file = FileService.upload_file(file, current_user)
+        if not file.filename:
+            raise FilenameNotExistsError
+
+        upload_file = FileService.upload_file(
+            filename=file.filename,
+            content=file.read(),
+            mimetype=file.mimetype,
+            user=current_user,
+            source="datasets",
+        )
         data_source = {"type": "upload_file", "info_list": {"file_info_list": {"file_ids": [upload_file.id]}}}
         args["data_source"] = data_source
         # validate args
@@ -212,7 +222,16 @@ class DocumentUpdateByFileApi(DatasetApiResource):
             if len(request.files) > 1:
                 raise TooManyFilesError()
 
-            upload_file = FileService.upload_file(file, current_user)
+            if not file.filename:
+                raise FilenameNotExistsError
+
+            upload_file = FileService.upload_file(
+                filename=file.filename,
+                content=file.read(),
+                mimetype=file.mimetype,
+                user=current_user,
+                source="datasets",
+            )
             data_source = {"type": "upload_file", "info_list": {"file_info_list": {"file_ids": [upload_file.id]}}}
             args["data_source"] = data_source
         # validate args
