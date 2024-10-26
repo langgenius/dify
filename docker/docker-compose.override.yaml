@@ -1,0 +1,20 @@
+name: dify
+
+services:
+  api:
+    image: maxwang1993/dify-api:latest
+    networks:
+      - ssrf_proxy_network
+      - default
+      - milvus
+
+  worker:
+    image: maxwang1993/dify-api:latest
+    networks:
+      - ssrf_proxy_network
+      - default
+      - milvus
+
+  web:
+    image: maxwang1993/dify-web:latest
+  
