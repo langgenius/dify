@@ -525,7 +525,7 @@ const translation = {
       vectorHash: 'वेक्टर हैश:',
       hitScore: 'पुनः प्राप्ति स्कोर:',
     },
-    inputPlaceholder: 'बॉट से बात करें',
+    inputPlaceholder: '',
   },
   promptEditor: {
     placeholder:

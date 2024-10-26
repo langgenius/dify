@@ -507,7 +507,7 @@ const translation = {
       vectorHash: 'ベクトルハッシュ:',
       hitScore: '検索スコア:',
     },
-    inputPlaceholder: 'ボットと話す',
+    inputPlaceholder: '',
   },
   promptEditor: {
     placeholder: 'ここにプロンプトワードを入力してください。変数を挿入するには「{」を、プロンプトコンテンツブロックを挿入するには「/」を入力します。',

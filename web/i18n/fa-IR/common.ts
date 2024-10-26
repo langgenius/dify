@@ -507,7 +507,7 @@ const translation = {
       vectorHash: 'هش بردار:',
       hitScore: 'امتیاز بازیابی:',
     },
-    inputPlaceholder: 'با ربات صحبت کنید',
+    inputPlaceholder: '',
   },
   promptEditor: {
     placeholder: 'دستور خود را اینجا بنویسید، «{» را وارد کنید تا یک متغیر درج کنید، «/» را وارد کنید تا یک بلوک محتوای دستور درج کنید',
