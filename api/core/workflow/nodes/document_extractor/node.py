@@ -144,12 +144,14 @@ def _extract_text_from_plain_text(file_content: bytes) -> str:
     except UnicodeDecodeError as e:
         raise TextExtractionError("Failed to decode plain text file") from e
 
+
 def _extract_text_from_json(file_content: bytes) -> str:
     try:
         json_data = json.loads(file_content.decode("utf-8"))
         return json.dumps(json_data, indent=2, ensure_ascii=False)
     except (UnicodeDecodeError, json.JSONDecodeError) as e:
         raise TextExtractionError(f"Failed to decode or parse JSON file: {e}") from e
+
 
 def _extract_text_from_pdf(file_content: bytes) -> str:
     try:
