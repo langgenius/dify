@@ -94,7 +94,10 @@ class Response:
     @property
     def is_file(self):
         content_type = self.content_type
-        content_disposition = next((value for key, value in self.headers.items() if key.lower() == "content-disposition"), "")
+        content_disposition = next(
+            (value for key, value in self.headers.items() if key.lower() == "content-disposition"), 
+            ""
+        )
 
         return "attachment" in content_disposition or (
             not any(non_file in content_type for non_file in NON_FILE_CONTENT_TYPES)
