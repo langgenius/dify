@@ -27,6 +27,8 @@ class RemoteFileInfoApi(Resource):
         except Exception as e:
             return {"error": str(e)}, 400
 
+
+class RemoteFileUploadApi(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("url", type=str, required=True, help="URL is required")

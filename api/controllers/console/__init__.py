@@ -3,7 +3,7 @@ from flask import Blueprint
 from libs.external_api import ExternalApi
 
 from .file import FileApi, FilePreviewApi, FileSupportTypeApi
-from .remote_files import RemoteFileInfoApi
+from .remote_files import RemoteFileInfoApi, RemoteFileUploadApi
 
 bp = Blueprint("console", __name__, url_prefix="/console/api")
 api = ExternalApi(bp)
@@ -15,6 +15,7 @@ api.add_resource(FileSupportTypeApi, "/file/support-type")
 
 # Remote files
 api.add_resource(RemoteFileInfoApi, "/remote-files/<path:url>")
+api.add_resource(RemoteFileUploadApi, "/remote-files/upload")
 
 # Import other controllers
 from . import admin, apikey, extension, feature, ping, setup, version
