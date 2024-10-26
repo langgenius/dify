@@ -98,8 +98,8 @@ class AccountService:
         if not account:
             return None
 
-        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
-            raise Unauthorized("Account is banned or closed.")
+        if account.status == AccountStatus.BANNED.value:
+            raise Unauthorized("Account is banned.")
 
         current_tenant = TenantAccountJoin.query.filter_by(account_id=account.id, current=True).first()
         if current_tenant:
@@ -143,8 +143,8 @@ class AccountService:
         if not account:
             raise AccountNotFoundError()
 
-        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
-            raise AccountLoginError("Account is banned or closed.")
+        if account.status == AccountStatus.BANNED.value:
+            raise AccountLoginError("Account is banned.")
 
         if password and invite_token and account.password is None:
             # if invite_token is valid, set password and password_salt
@@ -408,8 +408,8 @@ class AccountService:
         if not account:
             return None
 
-        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
-            raise Unauthorized("Account is banned or closed.")
+        if account.status == AccountStatus.BANNED.value:
+            raise Unauthorized("Account is banned.")
 
         return account
 
@@ -505,15 +505,17 @@ class TenantService:
     def create_owner_tenant_if_not_exist(
         account: Account, name: Optional[str] = None, is_setup: Optional[bool] = False
     ):
-        """Create owner tenant if not exist"""
-        if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
-            raise WorkSpaceNotAllowedCreateError()
+        """Check if user have a workspace or not"""
         available_ta = (
             TenantAccountJoin.query.filter_by(account_id=account.id).order_by(TenantAccountJoin.id.asc()).first()
         )
 
         if available_ta:
             return
+
+        """Create owner tenant if not exist"""
+        if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
+            raise WorkSpaceNotAllowedCreateError()
 
         if name:
             tenant = TenantService.create_tenant(name=name, is_setup=is_setup)

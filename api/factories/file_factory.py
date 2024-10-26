@@ -2,6 +2,7 @@ import mimetypes
 from collections.abc import Mapping, Sequence
 from typing import Any
 
+import httpx
 from sqlalchemy import select
 
 from constants import AUDIO_EXTENSIONS, DOCUMENT_EXTENSIONS, IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
@@ -154,7 +155,7 @@ def _build_from_local_file(
     file = File(
         id=mapping.get("id"),
         filename=row.name,
-        extension=row.extension,
+        extension="." + row.extension,
         mime_type=row.mime_type,
         tenant_id=tenant_id,
         type=file_type,
@@ -177,25 +178,21 @@ def _build_from_remote_url(
     url = mapping.get("url")
     if not url:
         raise ValueError("Invalid file url")
-    resp = ssrf_proxy.head(url, follow_redirects=True)
-    resp.raise_for_status()
 
-    # Try to extract filename from response headers or URL
-    content_disposition = resp.headers.get("Content-Disposition")
-    if content_disposition:
-        filename = content_disposition.split("filename=")[-1].strip('"')
-    else:
-        filename = url.split("/")[-1].split("?")[0]
-    # If filename is empty, set a default one
-    if not filename:
-        filename = "unknown_file"
+    mime_type = mimetypes.guess_type(url)[0] or ""
+    file_size = -1
+    filename = url.split("/")[-1].split("?")[0] or "unknown_file"
+
+    resp = ssrf_proxy.head(url, follow_redirects=True)
+    if resp.status_code == httpx.codes.OK:
+        if content_disposition := resp.headers.get("Content-Disposition"):
+            filename = content_disposition.split("filename=")[-1].strip('"')
+        file_size = int(resp.headers.get("Content-Length", file_size))
+        mime_type = mime_type or str(resp.headers.get("Content-Type", ""))
 
     # Determine file extension
-    extension = "." + filename.split(".")[-1] if "." in filename else ".bin"
+    extension = mimetypes.guess_extension(mime_type) or "." + filename.split(".")[-1] if "." in filename else ".bin"
 
-    # Create the File object
-    file_size = int(resp.headers.get("Content-Length", -1))
-    mime_type = str(resp.headers.get("Content-Type", ""))
     if not mime_type:
         mime_type, _ = mimetypes.guess_type(url)
     file = File(

@@ -5,30 +5,32 @@ from logging.handlers import RotatingFileHandler
 
 from flask import Flask
 
+from configs import dify_config
+
 
 def init_app(app: Flask):
     log_handlers = None
-    log_file = app.config.get("LOG_FILE")
+    log_file = dify_config.LOG_FILE
     if log_file:
         log_dir = os.path.dirname(log_file)
         os.makedirs(log_dir, exist_ok=True)
         log_handlers = [
             RotatingFileHandler(
                 filename=log_file,
-                maxBytes=1024 * 1024 * 1024,
-                backupCount=5,
+                maxBytes=dify_config.LOG_FILE_MAX_SIZE * 1024 * 1024,
+                backupCount=dify_config.LOG_FILE_BACKUP_COUNT,
             ),
             logging.StreamHandler(sys.stdout),
         ]
 
     logging.basicConfig(
-        level=app.config.get("LOG_LEVEL"),
-        format=app.config.get("LOG_FORMAT"),
-        datefmt=app.config.get("LOG_DATEFORMAT"),
+        level=dify_config.LOG_LEVEL,
+        format=dify_config.LOG_FORMAT,
+        datefmt=dify_config.LOG_DATEFORMAT,
         handlers=log_handlers,
         force=True,
     )
-    log_tz = app.config.get("LOG_TZ")
+    log_tz = dify_config.LOG_TZ
     if log_tz:
         from datetime import datetime
 

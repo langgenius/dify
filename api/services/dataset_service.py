@@ -140,6 +140,7 @@ class DatasetService:
     def create_empty_dataset(
         tenant_id: str,
         name: str,
+        description: Optional[str],
         indexing_technique: Optional[str],
         account: Account,
         permission: Optional[str] = None,
@@ -158,6 +159,7 @@ class DatasetService:
             )
         dataset = Dataset(name=name, indexing_technique=indexing_technique)
         # dataset = Dataset(name=name, provider=provider, config=config)
+        dataset.description = description
         dataset.created_by = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
