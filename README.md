@@ -1,8 +1,8 @@
 ![cover-v5-optimized](https://github.com/langgenius/dify/assets/13230914/f9e19af5-61ba-4119-b926-d10c4c06ebab)
 
-<p align="center">
-  📌 [Dify Workflow File Upload: Recreating Google NotebookLM Podcast](https://dify.ai/blog/introducing-dify-workflow-file-upload-a-demo-on-ai-podcast)
-</p>
+<div align="center">
+  📌 [Introducing Dify Workflow File Upload: Recreate Google NotebookLM Podcast](https://dify.ai/blog/introducing-dify-workflow-file-upload-a-demo-on-ai-podcast)
+</div>
 
 <p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
