@@ -75,7 +75,7 @@ const ConfigPanel = () => {
                   {t('share.chat.configStatusDes')}
                 </div>
                 <Button
-                  styleCss={CssTransform(themeBuilder.theme?.backgroundButtonDefaultColorStyle ?? '')}
+                  //styleCss={CssTransform(themeBuilder.theme?.backgroundButtonDefaultColorStyle ?? '')}
                   variant='secondary-accent'
                   size='small'
                   className='shrink-0'
