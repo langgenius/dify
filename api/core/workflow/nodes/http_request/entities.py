@@ -95,8 +95,7 @@ class Response:
     def is_file(self):
         content_type = self.content_type
         content_disposition = next(
-            (value for key, value in self.headers.items() if key.lower() == "content-disposition"), 
-            ""
+            (value for key, value in self.headers.items() if key.lower() == "content-disposition"), ""
         )
 
         return "attachment" in content_disposition or (
