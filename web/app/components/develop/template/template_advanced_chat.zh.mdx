@@ -46,6 +46,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='inputs' type='object' key='inputs'>
         允许传入 App 定义的各变量值。
         inputs 参数包含了多组键值对（Key/Value pairs），每组的键对应一个特定变量，每组的值则是该变量的具体值。
+        如果变量是文件类型，请指定一个包含以下 `files` 中所述键的对象。
         默认 `{}`
       </Property>
       <Property name='response_mode' type='string' key='response_mode'>
@@ -317,8 +318,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 />
 <Row>
   <Col>
-    上传文件（目前仅支持图片）并在发送消息时使用，可实现图文多模态理解。
-    支持 png, jpg, jpeg, webp, gif 格式。
+    上传文件并在发送消息时使用，可实现图文多模态理解。
+    支持您的应用程序所支持的所有格式。
     <i>上传的文件仅供当前终端用户使用。</i>
 
     ### Request Body
