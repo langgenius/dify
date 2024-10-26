@@ -1,8 +1,6 @@
-from typing import cast
-
 from flask import request
 from flask_login import current_user
-from flask_restful import Resource, marshal_with, reqparse
+from flask_restful import Resource, marshal_with
 
 import services
 from configs import dify_config
@@ -15,7 +13,6 @@ from controllers.console.wraps import (
 )
 from fields.file_fields import file_fields, upload_config_fields
 from libs.login import login_required
-from models.account import Account
 from services.file_service import FileService
 
 from .errors import (
@@ -64,12 +61,11 @@ class FileApi(Resource):
             raise ValueError("Invalid source. Must be 'datasets' or None")
 
         try:
-            user = cast(Account, current_user)
             upload_file = FileService.upload_file(
                 filename=file.filename,
                 content=file.read(),
                 mimetype=file.mimetype,
-                user=user,
+                user=current_user,
                 source=source,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
