@@ -11,9 +11,9 @@ if ! [ -f "$FILE" ]; then
   # used to automatically create the cluster based on environment variables
   # https://docs.couchbase.com/server/current/cli/cbcli/couchbase-cli-cluster-init.html
 
-  echo $COUCHBASE_ADMINISTRATOR_USERNAME ":"  $COUCHBASE_ADMINISTRATOR_PASSWORD  
+  echo $COUCHBASE_ADMINISTRATOR_USERNAME ":"  $COUCHBASE_ADMINISTRATOR_PASSWORD
 
-  sleep 10s 
+  sleep 20s
   /opt/couchbase/bin/couchbase-cli cluster-init -c 127.0.0.1 \
   --cluster-username $COUCHBASE_ADMINISTRATOR_USERNAME \
   --cluster-password $COUCHBASE_ADMINISTRATOR_PASSWORD \
@@ -24,7 +24,7 @@ if ! [ -f "$FILE" ]; then
   --cluster-fts-ramsize $COUCHBASE_FTS_RAM_SIZE \
   --index-storage-setting default
 
-  sleep 2s 
+  sleep 2s
 
   # used to auto create the bucket based on environment variables
   # https://docs.couchbase.com/server/current/cli/cbcli/couchbase-cli-bucket-create.html

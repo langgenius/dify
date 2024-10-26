@@ -480,7 +480,7 @@ services:
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
 
-    # The Couchbase vector store.
+  # The Couchbase vector store.
   couchbase-server:
     build: ./couchbase-server
     profiles:
@@ -505,6 +505,13 @@ services:
     command: sh -c "/opt/couchbase/init/init-cbserver.sh"
     volumes:
       - ./volumes/couchbase/data:/opt/couchbase/var/lib/couchbase/data
+    healthcheck:
+      # ensure bucket was created before proceeding
+      test: [ "CMD-SHELL", "curl -s -f -u Administrator:password http://localhost:8091/pools/default/buckets | grep -q '\\[{' || exit 1" ]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+      timeout: 10s
 
   # The pgvector vector database.
   pgvector:
