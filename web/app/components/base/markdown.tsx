@@ -20,6 +20,7 @@ import { useChatContext } from '@/app/components/base/chat/chat/context'
 import VideoGallery from '@/app/components/base/video-gallery'
 import AudioGallery from '@/app/components/base/audio-gallery'
 import SVGRenderer from '@/app/components/base/svg-gallery'
+import Button from '@/app/components/base/button'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -240,12 +241,28 @@ const Link = ({ node, ...props }: any) => {
   }
 }
 
+const MarkdownButton = ({ node }: any) => {
+  const { onSend } = useChatContext()
+  const variant = node.properties.dataVariant
+  const message = node.properties.dataMessage
+  const size = node.properties.dataSize
+
+  return <Button variant={variant}
+    size={size}
+    className={cn('!h-8 !px-3 select-none')}
+    onClick={() => onSend?.(message)}
+  >
+    <span className='text-[13px]'>{node.children[0].value}</span>
+  </Button>
+}
+MarkdownButton.displayName = 'MarkdownButton'
+
 export function Markdown(props: { content: string; className?: string }) {
   const latexContent = preprocessLaTeX(props.content)
   return (
     <div className={cn(props.className, 'markdown-body')}>
       <ReactMarkdown
-        remarkPlugins={[[RemarkGfm, RemarkMath, { singleDollarTextMath: false }], RemarkBreaks]}
+        remarkPlugins={[RemarkGfm, RemarkMath, RemarkBreaks]}
         rehypePlugins={[
           RehypeKatex,
           RehypeRaw as any,
@@ -271,6 +288,7 @@ export function Markdown(props: { content: string; className?: string }) {
           audio: AudioBlock,
           a: Link,
           p: Paragraph,
+          button: MarkdownButton,
         }}
         linkTarget='_blank'
       >

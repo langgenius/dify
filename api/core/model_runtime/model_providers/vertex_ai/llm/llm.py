@@ -7,6 +7,7 @@ from collections.abc import Generator
 from typing import Optional, Union, cast
 
 import google.auth.transport.requests
+import requests
 import vertexai.generative_models as glm
 from anthropic import AnthropicVertex, Stream
 from anthropic.types import (
@@ -653,9 +654,15 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
                     if c.type == PromptMessageContentType.TEXT:
                         parts.append(glm.Part.from_text(c.data))
                     else:
-                        metadata, data = c.data.split(",", 1)
-                        mime_type = metadata.split(";", 1)[0].split(":")[1]
-                        parts.append(glm.Part.from_data(mime_type=mime_type, data=data))
+                        message_content = cast(ImagePromptMessageContent, c)
+                        if not message_content.data.startswith("data:"):
+                            url_arr = message_content.data.split(".")
+                            mime_type = f"image/{url_arr[-1]}"
+                            parts.append(glm.Part.from_uri(mime_type=mime_type, uri=message_content.data))
+                        else:
+                            metadata, data = c.data.split(",", 1)
+                            mime_type = metadata.split(";", 1)[0].split(":")[1]
+                            parts.append(glm.Part.from_data(mime_type=mime_type, data=data))
                 glm_content = glm.Content(role="user", parts=parts)
             return glm_content
         elif isinstance(message, AssistantPromptMessage):

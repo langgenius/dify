@@ -1,8 +1,9 @@
+from collections.abc import Sequence
 from enum import Enum
 
 from pydantic import BaseModel, Field
 
-from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.nodes.base import BaseNodeData
 
 
 class AnswerNodeData(BaseNodeData):
@@ -32,7 +33,7 @@ class VarGenerateRouteChunk(GenerateRouteChunk):
 
     type: GenerateRouteChunk.ChunkType = GenerateRouteChunk.ChunkType.VAR
     """generate route chunk type"""
-    value_selector: list[str] = Field(..., description="value selector")
+    value_selector: Sequence[str] = Field(..., description="value selector")
 
 
 class TextGenerateRouteChunk(GenerateRouteChunk):

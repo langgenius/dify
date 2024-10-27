@@ -1,5 +1,5 @@
 import concurrent.futures
-from typing import Optional
+from typing import Any, Optional
 
 from xinference_client.client.restful.restful_client import RESTfulAudioModelHandle
 
@@ -116,7 +116,7 @@ class XinferenceText2SpeechModel(TTSModel):
         """
         return self._tts_invoke_streaming(model, credentials, content_text, voice)
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """
@@ -166,7 +166,7 @@ class XinferenceText2SpeechModel(TTSModel):
 
         return self.model_voices["__default"]["all"]
 
-    def _get_model_default_voice(self, model: str, credentials: dict) -> any:
+    def _get_model_default_voice(self, model: str, credentials: dict) -> Any:
         return ""
 
     def _get_model_word_limit(self, model: str, credentials: dict) -> int:
@@ -178,7 +178,7 @@ class XinferenceText2SpeechModel(TTSModel):
     def _get_model_workers_limit(self, model: str, credentials: dict) -> int:
         return 5
 
-    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, voice: str) -> any:
+    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, voice: str) -> Any:
         """
         _tts_invoke_streaming text2speech model
 

@@ -359,9 +359,6 @@ const baseFetch = <T>(
               case 401: {
                 if (isPublicAPI) {
                   return bodyJson.then((data: ResponseError) => {
-                    if (!silent)
-                      Toast.notify({ type: 'error', message: data.message })
-
                     if (data.code === 'web_sso_auth_required')
                       requiredWebSSOLogin()
 
@@ -536,8 +533,6 @@ export const ssePost = (
     .then((res) => {
       if (!/^(2|3)\d{2}$/.test(String(res.status))) {
         res.json().then((data: any) => {
-          Toast.notify({ type: 'error', message: data.message || 'Server Error' })
-
           if (isPublicAPI) {
             if (data.code === 'web_sso_auth_required')
               requiredWebSSOLogin()
@@ -546,7 +541,10 @@ export const ssePost = (
               removeAccessToken()
               globalThis.location.reload()
             }
+            if (res.status === 401)
+              return
           }
+          Toast.notify({ type: 'error', message: data.message || 'Server Error' })
         })
         onError?.('Server Error')
         return

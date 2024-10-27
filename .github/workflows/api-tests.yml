@@ -27,25 +27,27 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v3
-
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'poetry'
           cache-dependency-path: |
             api/pyproject.toml
             api/poetry.lock
 
-      - name: Poetry check
+      - name: Install Poetry
+        uses: abatilo/actions-poetry@v3
+
+      - name: Check Poetry lockfile
         run: |
           poetry check -C api --lock
           poetry show -C api
 
       - name: Install dependencies
         run: poetry install -C api --with dev
+
+      - name: Check dependencies in pyproject.toml
+        run: poetry run -C api bash dev/pytest/pytest_artifacts.sh
 
       - name: Run Unit tests
         run: poetry run -C api bash dev/pytest/pytest_unit_tests.sh

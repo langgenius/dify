@@ -38,6 +38,10 @@ const translation = {
     duplicate: '复制',
     rename: '重命名',
     audioSourceUnavailable: '音源不可用',
+    copyImage: '复制图片',
+    zoomOut: '缩小',
+    zoomIn: '放大',
+    openInNewTab: '在新标签页打开',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',
@@ -140,7 +144,7 @@ const translation = {
     logout: '登出',
   },
   settings: {
-    accountGroup: '账户',
+    accountGroup: '通用',
     workplaceGroup: '工作空间',
     account: '我的账户',
     members: '成员',
@@ -153,6 +157,9 @@ const translation = {
     apiBasedExtension: 'API 扩展',
   },
   account: {
+    account: '账户',
+    myAccount: '我的账户',
+    studio: 'Dify 工作室',
     avatar: '头像',
     name: '用户名',
     email: '邮箱',
@@ -370,7 +377,7 @@ const translation = {
     addConfig: '增加配置',
     editConfig: '修改配置',
     loadBalancingLeastKeyWarning: '至少启用 2 个 Key 以使用负载均衡',
-    loadBalancingInfo: '默认情况下，负载平衡使用 Round-robin 策略。如果触发速率限制，将应用 1 分钟的冷却时间',
+    loadBalancingInfo: '默认情况下，负载均衡使用 Round-robin 策略。如果触发速率限制，将应用 1 分钟的冷却时间',
     upgradeForLoadBalancing: '升级以解锁负载均衡功能',
     apiKey: 'API 密钥',
   },
@@ -500,6 +507,7 @@ const translation = {
       vectorHash: '向量哈希：',
       hitScore: '召回得分：',
     },
+    inputPlaceholder: '和机器人聊天',
   },
   promptEditor: {
     placeholder: '在这里写你的提示词，输入\'{\' 插入变量、输入\'/\' 插入提示内容块',
@@ -557,6 +565,16 @@ const translation = {
     pasteImageLinkInputPlaceholder: '将图像链接粘贴到此处',
     pasteImageLinkInvalid: '图片链接无效',
     imageUpload: '图片上传',
+  },
+  fileUploader: {
+    uploadFromComputer: '从本地上传',
+    pasteFileLink: '粘贴文件链接',
+    pasteFileLinkInputPlaceholder: '输入文件链接',
+    uploadFromComputerReadError: '文件读取失败，请重新选择。',
+    uploadFromComputerUploadError: '文件上传失败，请重新上传。',
+    uploadFromComputerLimit: '上传 {{type}} 不能超过 {{size}}',
+    pasteFileLinkInvalid: '文件链接无效',
+    fileExtensionNotSupport: '文件类型不支持',
   },
   tag: {
     placeholder: '全部标签',

@@ -234,13 +234,32 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### Request Body
     <Properties>
       <Property name='name' type='string' key='name'>
-        知识库名称
+        知识库名称（必填）
+      </Property>
+      <Property name='description' type='string' key='description'>
+        知识库描述（选填）
+      </Property>
+      <Property name='indexing_technique' type='string' key='indexing_technique'>
+        索引模式（选填，建议填写）
+          - <code>high_quality</code> 高质量
+          - <code>economy</code> 经济
       </Property>
       <Property name='permission' type='string' key='permission'>
-        权限
+        权限（选填，默认only_me）
           - <code>only_me</code> 仅自己
           - <code>all_team_members</code> 所有团队成员
           - <code>partial_members</code> 部分团队成员
+      </Property>
+      <Property name='provider' type='string' key='provider'>
+        provider，（选填，默认 vendor）
+          - <code>vendor</code> 上传文件
+          - <code>external</code> 外部知识库
+      </Property>
+      <Property name='external_knowledge_api_id' type='str' key='external_knowledge_api_id'>
+        外部知识库 API_ID（选填）
+      </Property>
+      <Property name='external_knowledge_id' type='str' key='external_knowledge_id'>
+        外部知识库 ID（选填）
       </Property>
     </Properties>
   </Col>
@@ -1048,6 +1067,152 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </CodeGroup>
   </Col>
 </Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/hit_testing'
+  method='POST'
+  title='知识库召回测试'
+  name='#dataset_hit_testing'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='query' type='string' key='query'>
+        召回关键词
+      </Property>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        召回参数(选填，如不填，按照默认方式召回)
+        - <code>search_method</code> (text) 检索方法：以下三个关键字之一，必填
+          - <code>keyword_search</code> 关键字检索
+          - <code>semantic_search</code> 语义检索
+          - <code>full_text_search</code> 全文检索
+          - <code>hybrid_search</code> 混合检索
+        - <code>reranking_enable</code> (bool) 是否启用 Reranking，非必填，如果检索模式为semantic_search模式或者hybrid_search则传值
+        - <code>reranking_mode</code> (object) Rerank模型配置，非必填，如果启用了 reranking 则传值
+            - <code>reranking_provider_name</code> (string) Rerank 模型提供商
+            - <code>reranking_model_name</code> (string) Rerank 模型名称
+        - <code>weights</code> (double) 混合检索模式下语意检索的权重设置
+        - <code>top_k</code> (integer) 返回结果数量，非必填
+        - <code>score_threshold_enabled</code> (bool) 是否开启Score阈值
+        - <code>score_threshold</code> (double) Score阈值
+      </Property>
+      <Property name='external_retrieval_model' type='object' key='external_retrieval_model'>
+          未启用字段
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/hit_testing"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/hit_testing' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
+        "query": "test",
+        "retrieval_model": {
+            "search_method": "keyword_search",
+            "reranking_enable": false,
+            "reranking_mode": null,
+            "reranking_model": {
+                "reranking_provider_name": "",
+                "reranking_model_name": ""
+            },
+            "weights": null,
+            "top_k": 1,
+            "score_threshold_enabled": false,
+            "score_threshold": null
+        }
+    }'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/hit_testing' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "query": "test",
+        "retrieval_model": {
+            "search_method": "keyword_search",
+            "reranking_enable": false,
+            "reranking_mode": null,
+            "reranking_model": {
+                "reranking_provider_name": "",
+                "reranking_model_name": ""
+            },
+            "weights": null,
+            "top_k": 2,
+            "score_threshold_enabled": false,
+            "score_threshold": null
+        }
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "query": {
+        "content": "test"
+      },
+      "records": [
+        {
+          "segment": {
+            "id": "7fa6f24f-8679-48b3-bc9d-bdf28d73f218",
+            "position": 1,
+            "document_id": "a8c6c36f-9f5d-4d7a-8472-f5d7b75d71d2",
+            "content": "Operation guide",
+            "answer": null,
+            "word_count": 847,
+            "tokens": 280,
+            "keywords": [
+              "install",
+              "java",
+              "base",
+              "scripts",
+              "jdk",
+              "manual",
+              "internal",
+              "opens",
+              "add",
+              "vmoptions"
+            ],
+            "index_node_id": "39dd8443-d960-45a8-bb46-7275ad7fbc8e",
+            "index_node_hash": "0189157697b3c6a418ccf8264a09699f25858975578f3467c76d6bfc94df1d73",
+            "hit_count": 0,
+            "enabled": true,
+            "disabled_at": null,
+            "disabled_by": null,
+            "status": "completed",
+            "created_by": "dbcb1ab5-90c8-41a7-8b78-73b235eb6f6f",
+            "created_at": 1728734540,
+            "indexing_at": 1728734552,
+            "completed_at": 1728734584,
+            "error": null,
+            "stopped_at": null,
+            "document": {
+              "id": "a8c6c36f-9f5d-4d7a-8472-f5d7b75d71d2",
+              "data_source_type": "upload_file",
+              "name": "readme.txt",
+              "doc_type": null
+            }
+          },
+          "score": 3.730463140527718e-05,
+          "tsne_position": null
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
 
 ---
 

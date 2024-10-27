@@ -19,7 +19,7 @@ from extensions.ext_redis import redis_client
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
-from models.account import Tenant
+from models import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
@@ -259,6 +259,26 @@ def migrate_knowledge_vector_database():
     skipped_count = 0
     total_count = 0
     vector_type = dify_config.VECTOR_STORE
+    upper_colletion_vector_types = {
+        VectorType.MILVUS,
+        VectorType.PGVECTOR,
+        VectorType.RELYT,
+        VectorType.WEAVIATE,
+        VectorType.ORACLE,
+        VectorType.ELASTICSEARCH,
+    }
+    lower_colletion_vector_types = {
+        VectorType.ANALYTICDB,
+        VectorType.CHROMA,
+        VectorType.MYSCALE,
+        VectorType.PGVECTO_RS,
+        VectorType.TIDB_VECTOR,
+        VectorType.OPENSEARCH,
+        VectorType.TENCENT,
+        VectorType.BAIDU,
+        VectorType.VIKINGDB,
+        VectorType.UPSTASH,
+    }
     page = 1
     while True:
         try:
@@ -284,11 +304,9 @@ def migrate_knowledge_vector_database():
                         skipped_count = skipped_count + 1
                         continue
                 collection_name = ""
-                if vector_type == VectorType.WEAVIATE:
-                    dataset_id = dataset.id
+                dataset_id = dataset.id
+                if vector_type in upper_colletion_vector_types:
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": VectorType.WEAVIATE, "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
                 elif vector_type == VectorType.QDRANT:
                     if dataset.collection_binding_id:
                         dataset_collection_binding = (
@@ -301,55 +319,15 @@ def migrate_knowledge_vector_database():
                         else:
                             raise ValueError("Dataset Collection Binding not found")
                     else:
-                        dataset_id = dataset.id
                         collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": VectorType.QDRANT, "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
 
-                elif vector_type == VectorType.MILVUS:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": VectorType.MILVUS, "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.RELYT:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": "relyt", "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.TENCENT:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": VectorType.TENCENT, "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.PGVECTOR:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": VectorType.PGVECTOR, "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.OPENSEARCH:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {
-                        "type": VectorType.OPENSEARCH,
-                        "vector_store": {"class_prefix": collection_name},
-                    }
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.ANALYTICDB:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {
-                        "type": VectorType.ANALYTICDB,
-                        "vector_store": {"class_prefix": collection_name},
-                    }
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.ELASTICSEARCH:
-                    dataset_id = dataset.id
-                    index_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": "elasticsearch", "vector_store": {"class_prefix": index_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
+                elif vector_type in lower_colletion_vector_types:
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
                 else:
                     raise ValueError(f"Vector store {vector_type} is not supported.")
 
+                index_struct_dict = {"type": vector_type, "vector_store": {"class_prefix": collection_name}}
+                dataset.index_struct = json.dumps(index_struct_dict)
                 vector = Vector(dataset)
                 click.echo(f"Migrating dataset {dataset.id}.")
 
@@ -449,14 +427,14 @@ def convert_to_agent_apps():
         # fetch first 1000 apps
         sql_query = """SELECT a.id AS id FROM apps a
             INNER JOIN app_model_configs am ON a.app_model_config_id=am.id
-            WHERE a.mode = 'chat' 
-            AND am.agent_mode is not null 
+            WHERE a.mode = 'chat'
+            AND am.agent_mode is not null
             AND (
-				am.agent_mode like '%"strategy": "function_call"%' 
+				am.agent_mode like '%"strategy": "function_call"%'
                 OR am.agent_mode  like '%"strategy": "react"%'
-			) 
+			)
             AND (
-				am.agent_mode like '{"enabled": true%' 
+				am.agent_mode like '{"enabled": true%'
                 OR am.agent_mode like '{"max_iteration": %'
 			) ORDER BY a.created_at DESC LIMIT 1000
         """

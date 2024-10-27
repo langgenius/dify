@@ -24,6 +24,7 @@ import {
   fetchDefaultProcessRule,
 } from '@/service/datasets'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
@@ -132,6 +133,7 @@ const StepTwo = ({
       ? IndexingType.QUALIFIED
       : IndexingType.ECONOMICAL,
   )
+  const [isLanguageSelectDisabled, setIsLanguageSelectDisabled] = useState(false)
   const [docForm, setDocForm] = useState<DocForm | string>(
     (datasetId && documentDetail) ? documentDetail.doc_form : DocForm.TEXT,
   )
@@ -200,9 +202,9 @@ const StepTwo = ({
     }
   }
 
-  const fetchFileIndexingEstimate = async (docForm = DocForm.TEXT) => {
+  const fetchFileIndexingEstimate = async (docForm = DocForm.TEXT, language?: string) => {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    const res = await didFetchFileIndexingEstimate(getFileIndexingEstimateParams(docForm)!)
+    const res = await didFetchFileIndexingEstimate(getFileIndexingEstimateParams(docForm, language)!)
     if (segmentationType === SegmentType.CUSTOM)
       setCustomFileIndexingEstimate(res)
     else
@@ -210,6 +212,10 @@ const StepTwo = ({
   }
 
   const confirmChangeCustomConfig = () => {
+    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
+      return
+    }
     setCustomFileIndexingEstimate(null)
     setShowPreview()
     fetchFileIndexingEstimate()
@@ -270,7 +276,7 @@ const StepTwo = ({
     }
   }
 
-  const getFileIndexingEstimateParams = (docForm: DocForm): IndexingEstimateParams | undefined => {
+  const getFileIndexingEstimateParams = (docForm: DocForm, language?: string): IndexingEstimateParams | undefined => {
     if (dataSourceType === DataSourceType.FILE) {
       return {
         info_list: {
@@ -282,7 +288,7 @@ const StepTwo = ({
         indexing_technique: getIndexing_technique() as string,
         process_rule: getProcessRule(),
         doc_form: docForm,
-        doc_language: docLanguage,
+        doc_language: language || docLanguage,
         dataset_id: datasetId as string,
       }
     }
@@ -295,7 +301,7 @@ const StepTwo = ({
         indexing_technique: getIndexing_technique() as string,
         process_rule: getProcessRule(),
         doc_form: docForm,
-        doc_language: docLanguage,
+        doc_language: language || docLanguage,
         dataset_id: datasetId as string,
       }
     }
@@ -308,7 +314,7 @@ const StepTwo = ({
         indexing_technique: getIndexing_technique() as string,
         process_rule: getProcessRule(),
         doc_form: docForm,
-        doc_language: docLanguage,
+        doc_language: language || docLanguage,
         dataset_id: datasetId as string,
       }
     }
@@ -335,6 +341,10 @@ const StepTwo = ({
     let params
     if (segmentationType === SegmentType.CUSTOM && overlap > max) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.overlapCheck') })
+      return
+    }
+    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
       return
     }
     if (isSetting) {
@@ -483,8 +493,26 @@ const StepTwo = ({
       setDocForm(DocForm.TEXT)
   }
 
+  const previewSwitch = async (language?: string) => {
+    setPreviewSwitched(true)
+    setIsLanguageSelectDisabled(true)
+    if (segmentationType === SegmentType.AUTO)
+      setAutomaticFileIndexingEstimate(null)
+    else
+      setCustomFileIndexingEstimate(null)
+    try {
+      await fetchFileIndexingEstimate(DocForm.QA, language)
+    }
+    finally {
+      setIsLanguageSelectDisabled(false)
+    }
+  }
+
   const handleSelect = (language: string) => {
     setDocLanguage(language)
+    // Switch language, re-cutter
+    if (docForm === DocForm.QA && previewSwitched)
+      previewSwitch(language)
   }
 
   const changeToEconomicalType = () => {
@@ -492,15 +520,6 @@ const StepTwo = ({
       setIndexType(IndexingType.ECONOMICAL)
       setDocForm(DocForm.TEXT)
     }
-  }
-
-  const previewSwitch = async () => {
-    setPreviewSwitched(true)
-    if (segmentationType === SegmentType.AUTO)
-      setAutomaticFileIndexingEstimate(null)
-    else
-      setCustomFileIndexingEstimate(null)
-    await fetchFileIndexingEstimate(DocForm.QA)
   }
 
   useEffect(() => {
@@ -575,7 +594,7 @@ const StepTwo = ({
       <div ref={scrollRef} className='relative h-full w-full overflow-y-scroll'>
         <div className={cn(s.pageHeader, scrolled && s.fixed, isMobile && '!px-6')}>
           <span>{t('datasetCreation.steps.two')}</span>
-          {isMobile && (
+          {(isMobile || !showPreview) && (
             <Button
               className='border-[0.5px] !h-8 hover:outline hover:outline-[0.5px] hover:outline-gray-300 text-gray-700 font-medium bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]'
               onClick={setShowPreview}
@@ -636,29 +655,26 @@ const StepTwo = ({
                           }
                         />
                       </div>
-                      <input
+                      <Input
                         type="text"
-                        className={s.input}
-                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''}
-                        value={segmentIdentifier}
-                        onChange={e => doSetSegmentIdentifier(e.target.value)}
+                        className='h-9'
+                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''} value={segmentIdentifier}
+                        onChange={e => setSegmentIdentifier(e.target.value)}
                       />
                     </div>
                   </div>
                   <div className={s.formRow}>
                     <div className='w-full'>
                       <div className={s.label}>{t('datasetCreation.stepTwo.maxLength')}</div>
-                      <div className='relative w-full'>
-                        <input
-                          type="number"
-                          className={s.input}
-                          placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
-                          value={max}
-                          min={1}
-                          onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
-                        />
-                        <div className='absolute top-2.5 right-2.5 text-text-tertiary system-sm-regular'>Tokens</div>
-                      </div>
+                      <Input
+                        type="number"
+                        className='h-9'
+                        placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
+                        value={max}
+                        max={4000}
+                        min={1}
+                        onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                      />
                     </div>
                   </div>
                   <div className={s.formRow}>
@@ -673,17 +689,14 @@ const StepTwo = ({
                           }
                         />
                       </div>
-                      <div className='relative w-full'>
-                        <input
-                          type="number"
-                          className={s.input}
-                          placeholder={t('datasetCreation.stepTwo.overlap') || ''}
-                          value={overlap}
-                          min={1}
-                          onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))}
-                        />
-                        <div className='absolute top-2.5 right-2.5 text-text-tertiary system-sm-regular'>Tokens</div>
-                      </div>
+                      <Input
+                        type="number"
+                        className='h-9'
+                        placeholder={t('datasetCreation.stepTwo.overlap') || ''}
+                        value={overlap}
+                        min={1}
+                        onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                      />
                     </div>
                   </div>
                   <div className={s.formRow}>
@@ -777,7 +790,7 @@ const StepTwo = ({
                     <div className='mb-[2px] text-md font-medium text-gray-900'>{t('datasetCreation.stepTwo.QATitle')}</div>
                     <div className='inline-flex items-center text-[13px] leading-[18px] text-gray-500'>
                       <span className='pr-1'>{t('datasetCreation.stepTwo.QALanguage')}</span>
-                      <LanguageSelect currentLanguage={docLanguage} onSelect={handleSelect} />
+                      <LanguageSelect currentLanguage={docLanguage} onSelect={handleSelect} disabled={isLanguageSelectDisabled} />
                     </div>
                   </div>
                   <div className='shrink-0'>
@@ -948,7 +961,7 @@ const StepTwo = ({
               <div className='grow flex items-center'>
                 <div>{t('datasetCreation.stepTwo.previewTitle')}</div>
                 {docForm === DocForm.QA && !previewSwitched && (
-                  <Button className='ml-2' variant='secondary-accent' onClick={previewSwitch}>{t('datasetCreation.stepTwo.previewButton')}</Button>
+                  <Button className='ml-2' variant='secondary-accent' onClick={() => previewSwitch()}>{t('datasetCreation.stepTwo.previewButton')}</Button>
                 )}
               </div>
               <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>

@@ -1,8 +1,8 @@
 import logging
 from collections.abc import Generator
-from typing import Optional, cast
+from typing import cast
 
-from core.file.file_obj import FileVar
+from core.file import FILE_MODEL_IDENTITY, File
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
@@ -22,7 +22,7 @@ class AnswerStreamProcessor(StreamProcessor):
         super().__init__(graph, variable_pool)
         self.generate_routes = graph.answer_stream_generate_routes
         self.route_position = {}
-        for answer_node_id, route_chunks in self.generate_routes.answer_generate_route.items():
+        for answer_node_id in self.generate_routes.answer_generate_route:
             self.route_position[answer_node_id] = 0
         self.current_stream_chunk_generating_node_ids: dict[str, list[str]] = {}
 
@@ -203,7 +203,7 @@ class AnswerStreamProcessor(StreamProcessor):
         return files
 
     @classmethod
-    def _get_file_var_from_value(cls, value: dict | list) -> Optional[dict]:
+    def _get_file_var_from_value(cls, value: dict | list):
         """
         Get file var from value
         :param value: variable value
@@ -213,9 +213,9 @@ class AnswerStreamProcessor(StreamProcessor):
             return None
 
         if isinstance(value, dict):
-            if "__variant" in value and value["__variant"] == FileVar.__name__:
+            if "dify_model_identity" in value and value["dify_model_identity"] == FILE_MODEL_IDENTITY:
                 return value
-        elif isinstance(value, FileVar):
+        elif isinstance(value, File):
             return value.to_dict()
 
         return None

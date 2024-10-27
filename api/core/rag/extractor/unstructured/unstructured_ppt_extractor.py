@@ -7,7 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 class UnstructuredPPTExtractor(BaseExtractor):
-    """Load msg files.
+    """Load ppt files.
 
 
     Args:
@@ -21,9 +21,12 @@ class UnstructuredPPTExtractor(BaseExtractor):
         self._api_key = api_key
 
     def extract(self) -> list[Document]:
-        from unstructured.partition.api import partition_via_api
+        if self._api_url:
+            from unstructured.partition.api import partition_via_api
 
-        elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
+            elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
+        else:
+            raise NotImplementedError("Unstructured API Url is not configured")
         text_by_page = {}
         for element in elements:
             page = element.metadata.page_number

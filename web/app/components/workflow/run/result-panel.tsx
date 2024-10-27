@@ -36,7 +36,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className='bg-white py-2'>
+    <div className='bg-components-panel-bg py-2'>
       <div className='px-4 py-2'>
         <StatusPanel
           status={status}
@@ -73,7 +73,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
         )}
       </div>
       <div className='px-4 py-2'>
-        <div className='h-[0.5px] bg-black opacity-5' />
+        <div className='h-[0.5px] divider-subtle' />
       </div>
       <div className='px-4 py-2'>
         <MetaData

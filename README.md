@@ -1,6 +1,10 @@
 ![cover-v5-optimized](https://github.com/langgenius/dify/assets/13230914/f9e19af5-61ba-4119-b926-d10c4c06ebab)
 
 <p align="center">
+  📌 <a href="https://dify.ai/blog/introducing-dify-workflow-file-upload-a-demo-on-ai-podcast">Introducing Dify Workflow File Upload: Recreate Google NotebookLM Podcast</a>
+</p>
+
+<p align="center">
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Self-hosting</a> ·
   <a href="https://docs.dify.ai">Documentation</a> ·
@@ -17,7 +21,7 @@
             alt="chat on Discord"></a>
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
         <img src="https://img.shields.io/twitter/follow/dify_ai?logo=X&color=%20%23f5f5f5"
-            alt="follow on Twitter"></a>
+            alt="follow on X(Twitter)"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
         <img alt="Docker Pulls" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
     <a href="https://github.com/langgenius/dify/graphs/commit-activity" target="_blank">
@@ -168,7 +172,7 @@ Star Dify on GitHub and be instantly notified of new releases.
 > Before installing Dify, make sure your machine meets the following minimum system requirements:
 > 
 >- CPU >= 2 Core
->- RAM >= 4GB
+>- RAM >= 4 GiB
 
 </br>
 
@@ -196,9 +200,13 @@ If you'd like to configure a highly-available setup, there are community-contrib
 
 #### Using Terraform for Deployment
 
+Deploy Dify to Cloud Platform with a single click using [terraform](https://www.terraform.io/)
+
 ##### Azure Global
-Deploy Dify to Azure with a single click using [terraform](https://www.terraform.io/).
 - [Azure Terraform by @nikawang](https://github.com/nikawang/dify-azure-terraform)
+
+##### Google Cloud
+- [Google Cloud Terraform by @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 ## Contributing
 
@@ -219,7 +227,7 @@ At the same time, please consider supporting Dify by sharing it on social media 
 * [Github Discussion](https://github.com/langgenius/dify/discussions). Best for: sharing feedback and asking questions.
 * [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs you encounter using Dify.AI, and feature proposals. See our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
 * [Discord](https://discord.gg/FngNHpbcY7). Best for: sharing your applications and hanging out with the community.
-* [Twitter](https://twitter.com/dify_ai). Best for: sharing your applications and hanging out with the community.
+* [X(Twitter)](https://twitter.com/dify_ai). Best for: sharing your applications and hanging out with the community.
 
 ## Star history
 
