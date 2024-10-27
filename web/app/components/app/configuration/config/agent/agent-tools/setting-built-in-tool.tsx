@@ -175,7 +175,7 @@ const SettingBuiltInTool: FC<Props> = ({
                 </div>
               )}
               <div className='flex items-center gap-1'>
-                <Icon size='xs' className='w-5 h-5' src={collection.icon} />
+                <Icon size='tiny' className='w-6 h-6' src={collection.icon} />
                 <OrgInfo
                   packageNameClassName='w-auto'
                   orgName={collection.author}
