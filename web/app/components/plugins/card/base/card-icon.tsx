@@ -7,6 +7,7 @@ const Icon = ({
   src,
   installed = false,
   installFailed = false,
+  size,
 }: {
   className?: string
   src: string | {
@@ -15,13 +16,14 @@ const Icon = ({
   }
   installed?: boolean
   installFailed?: boolean
+  size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large'
 }) => {
   const iconClassName = 'flex justify-center items-center gap-2 absolute bottom-[-4px] right-[-4px] w-[18px] h-[18px] rounded-full border-2 border-components-panel-bg'
   if (typeof src === 'object') {
     return (
       <div className={cn('relative', className)}>
         <AppIcon
-          size='large'
+          size={size || 'large'}
           iconType={'emoji'}
           icon={src.content}
           background={src.background}
