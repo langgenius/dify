@@ -45,7 +45,7 @@ import { ConfigurationMethodEnum } from '@/app/components/header/account-setting
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
 
-type Props = {
+interface Props {
   collection: Collection
   onHide: () => void
   onRefreshData: () => void
@@ -234,7 +234,7 @@ const ProviderDetail = ({
       panelClassname={cn('justify-start mt-[64px] mr-2 mb-2 !w-[420px] !max-w-[420px] !p-0 !bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl')}
     >
       <div className='p-4'>
-        <div className='flex'>
+        <div className='mb-3 flex'>
           <Icon src={collection.icon} />
           <div className="ml-3 w-0 grow">
             <div className="flex items-center h-5">
@@ -255,24 +255,10 @@ const ProviderDetail = ({
             </ActionButton>
           </div>
         </div>
-        <Description className='mt-3' text={collection.description[language]} descriptionLineRows={2}></Description>
+        {!!collection.description[language] && (
+          <Description text={collection.description[language]} descriptionLineRows={2}></Description>
+        )}
         <div className='flex gap-1 border-b-[0.5px] border-black/5'>
-          {(collection.type === CollectionType.builtIn) && needAuth && (
-            <Button
-              variant={isAuthed ? 'secondary' : 'primary'}
-              className={cn('shrink-0 my-3 w-full', isAuthed && 'bg-white')}
-              onClick={() => {
-                if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
-                  showSettingAuthModal()
-              }}
-              disabled={!isCurrentWorkspaceManager}
-            >
-              {isAuthed && <Indicator className='mr-2' color={'green'} />}
-              <div className={cn('text-white leading-[18px] text-[13px] font-medium', isAuthed && '!text-gray-700')}>
-                {isAuthed ? t('tools.auth.authorized') : t('tools.auth.unauthorized')}
-              </div>
-            </Button>
-          )}
           {collection.type === CollectionType.custom && !isDetailLoading && (
             <Button
               className={cn('shrink-0 my-3 w-full')}
@@ -306,16 +292,54 @@ const ProviderDetail = ({
         {/* Tools */}
         <div className='pt-3'>
           {isDetailLoading && <div className='flex h-[200px]'><Loading type='app' /></div>}
-          {!isDetailLoading && (
+          {/* Builtin type */}
+          {!isDetailLoading && (collection.type === CollectionType.builtIn) && needAuth && isAuthed && (
+            <div className='mb-1 h-6 flex items-center justify-between text-text-secondary system-sm-semibold-uppercase'>
+              {t('plugin.detailPanel.actionNum', { num: 3 })}
+              <Button
+                variant='secondary'
+                size='small'
+                onClick={() => {
+                  if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
+                    showSettingAuthModal()
+                }}
+                disabled={!isCurrentWorkspaceManager}
+              >
+                <Indicator className='mr-2' color={'green'} />
+                {t('tools.auth.authorized')}
+              </Button>
+            </div>
+          )}
+          {!isDetailLoading && (collection.type === CollectionType.builtIn) && needAuth && !isAuthed && (
+            <>
+              <div className='text-text-secondary system-sm-semibold-uppercase'>
+                <span className=''>{t('tools.includeToolNum', { num: toolList.length }).toLocaleUpperCase()}</span>
+                <span className='px-1'>·</span>
+                <span className='text-[#DC6803]'>{t('tools.auth.setup').toLocaleUpperCase()}</span>
+              </div>
+              <Button
+                variant='primary'
+                className={cn('shrink-0 my-3 w-full')}
+                onClick={() => {
+                  if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
+                    showSettingAuthModal()
+                }}
+                disabled={!isCurrentWorkspaceManager}
+              >
+                {t('tools.auth.unauthorized')}
+              </Button>
+            </>
+          )}
+          {/* Custom type */}
+          {!isDetailLoading && (collection.type === CollectionType.custom) && (
             <div className='text-text-secondary system-sm-semibold-uppercase'>
-              {collection.type === CollectionType.workflow && <span className=''>{t('tools.createTool.toolInput.title').toLocaleUpperCase()}</span>}
-              {collection.type !== CollectionType.workflow && <span className=''>{t('tools.includeToolNum', { num: toolList.length }).toLocaleUpperCase()}</span>}
-              {needAuth && (isBuiltIn || isModel) && !isAuthed && (
-                <>
-                  <span className='px-1'>·</span>
-                  <span className='text-[#DC6803]'>{t('tools.auth.setup').toLocaleUpperCase()}</span>
-                </>
-              )}
+              <span className=''>{t('tools.includeToolNum', { num: toolList.length }).toLocaleUpperCase()}</span>
+            </div>
+          )}
+          {/* Workflow type */}
+          {!isDetailLoading && (collection.type === CollectionType.workflow) && (
+            <div className='text-text-secondary system-sm-semibold-uppercase'>
+              <span className=''>{t('tools.createTool.toolInput.title').toLocaleUpperCase()}</span>
             </div>
           )}
           {!isDetailLoading && (
@@ -323,7 +347,8 @@ const ProviderDetail = ({
               {collection.type !== CollectionType.workflow && toolList.map(tool => (
                 <ToolItem
                   key={tool.name}
-                  disabled={needAuth && (isBuiltIn || isModel) && !isAuthed}
+                  disabled={false}
+                  // disabled={needAuth && (isBuiltIn || isModel) && !isAuthed}
                   collection={collection}
                   tool={tool}
                   isBuiltIn={isBuiltIn}
