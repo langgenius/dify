@@ -1,0 +1,51 @@
+identity:
+  author: Shuyi
+  name: shuyi
+  label:
+    en_US: 数翼
+    zh_Hans: 数翼
+    pt_BR: 数翼
+  description:
+    en_US: 数翼自定义工具集
+    zh_Hans: 数翼自定义工具集
+    pt_BR: 数翼自定义工具集
+  icon: icon.svg
+  tags:
+    - search
+    - productivity
+# credentials_for_provider:
+#   shuyi_api_key:
+#     type: secret-input
+#     required: true
+#     default: "123456"
+#     label:
+#       en_US: Shuyi API key
+#       zh_Hans: Shuyi API key
+#       pt_BR: Shuyi API key
+#     placeholder:
+#       en_US: Please input your Shuyi API key
+#       zh_Hans: 请输入你的 Shuyi API key
+#       pt_BR: Please input your Shuyi API key
+#     help:
+#       en_US: Get your Shuyi API key from Shuyi
+#       zh_Hans: 从 Shuyi 获取您的 Shuyi API key
+#       pt_BR: Get your Shuyi API key from Shuyi
+#     url: https://blog.tupu.work/
+
+  shuyi_api_url:
+    type: text-input
+    required: true
+    default: http://localhost:8595
+    label:
+      en_US: Shuyi API url
+      zh_Hans: Shuyi API 地址
+      pt_BR: Shuyi API url
+    placeholder:
+      en_US: Please input your Shuyi API url
+      zh_Hans: 请输入你的 Shuyi API 服务地址
+      pt_BR: Please input your Shuyi API url
+    help:
+      en_US: Get your Shuyi API url from Shuyi
+      zh_Hans: 从 Shuyi 获取您的 Shuyi API url
+      pt_BR: Get your Shuyi API url from Shuyi
+    url: https://blog.tupu.work/

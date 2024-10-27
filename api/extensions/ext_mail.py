@@ -67,16 +67,20 @@ class Mail:
             raise ValueError("mail subject is not set")
 
         if not html:
-            raise ValueError("mail html is not set")
+            raise ValueError('mail html is not set')
 
-        self._client.send(
-            {
-                "from": from_,
-                "to": to,
-                "subject": subject,
-                "html": html,
-            }
-        )
+        print({
+            "from": from_,
+            "to": to,
+            "subject": subject,
+            "html": html
+        })
+        self._client.send({
+            "from": from_,
+            "to": to,
+            "subject": subject,
+            "html": html
+        })
 
 
 def init_app(app: Flask):

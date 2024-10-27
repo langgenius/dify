@@ -1,0 +1,222 @@
+{
+  "name": "sharp",
+  "description": "High performance Node.js image processing, the fastest module to resize JPEG, PNG, WebP, GIF, AVIF and TIFF images",
+  "version": "0.33.5",
+  "author": "Lovell Fuller <npm@lovell.info>",
+  "homepage": "https://sharp.pixelplumbing.com",
+  "contributors": [
+    "Pierre Inglebert <pierre.inglebert@gmail.com>",
+    "Jonathan Ong <jonathanrichardong@gmail.com>",
+    "Chanon Sajjamanochai <chanon.s@gmail.com>",
+    "Juliano Julio <julianojulio@gmail.com>",
+    "Daniel Gasienica <daniel@gasienica.ch>",
+    "Julian Walker <julian@fiftythree.com>",
+    "Amit Pitaru <pitaru.amit@gmail.com>",
+    "Brandon Aaron <hello.brandon@aaron.sh>",
+    "Andreas Lind <andreas@one.com>",
+    "Maurus Cuelenaere <mcuelenaere@gmail.com>",
+    "Linus Unnebäck <linus@folkdatorn.se>",
+    "Victor Mateevitsi <mvictoras@gmail.com>",
+    "Alaric Holloway <alaric.holloway@gmail.com>",
+    "Bernhard K. Weisshuhn <bkw@codingforce.com>",
+    "Chris Riley <criley@primedia.com>",
+    "David Carley <dacarley@gmail.com>",
+    "John Tobin <john@limelightmobileinc.com>",
+    "Kenton Gray <kentongray@gmail.com>",
+    "Felix Bünemann <Felix.Buenemann@gmail.com>",
+    "Samy Al Zahrani <samyalzahrany@gmail.com>",
+    "Chintan Thakkar <lemnisk8@gmail.com>",
+    "F. Orlando Galashan <frulo@gmx.de>",
+    "Kleis Auke Wolthuizen <info@kleisauke.nl>",
+    "Matt Hirsch <mhirsch@media.mit.edu>",
+    "Matthias Thoemmes <thoemmes@gmail.com>",
+    "Patrick Paskaris <patrick@paskaris.gr>",
+    "Jérémy Lal <kapouer@melix.org>",
+    "Rahul Nanwani <r.nanwani@gmail.com>",
+    "Alice Monday <alice0meta@gmail.com>",
+    "Kristo Jorgenson <kristo.jorgenson@gmail.com>",
+    "YvesBos <yves_bos@outlook.com>",
+    "Guy Maliar <guy@tailorbrands.com>",
+    "Nicolas Coden <nicolas@ncoden.fr>",
+    "Matt Parrish <matt.r.parrish@gmail.com>",
+    "Marcel Bretschneider <marcel.bretschneider@gmail.com>",
+    "Matthew McEachen <matthew+github@mceachen.org>",
+    "Jarda Kotěšovec <jarda.kotesovec@gmail.com>",
+    "Kenric D'Souza <kenric.dsouza@gmail.com>",
+    "Oleh Aleinyk <oleg.aleynik@gmail.com>",
+    "Marcel Bretschneider <marcel.bretschneider@gmail.com>",
+    "Andrea Bianco <andrea.bianco@unibas.ch>",
+    "Rik Heywood <rik@rik.org>",
+    "Thomas Parisot <hi@oncletom.io>",
+    "Nathan Graves <nathanrgraves+github@gmail.com>",
+    "Tom Lokhorst <tom@lokhorst.eu>",
+    "Espen Hovlandsdal <espen@hovlandsdal.com>",
+    "Sylvain Dumont <sylvain.dumont35@gmail.com>",
+    "Alun Davies <alun.owain.davies@googlemail.com>",
+    "Aidan Hoolachan <ajhoolachan21@gmail.com>",
+    "Axel Eirola <axel.eirola@iki.fi>",
+    "Freezy <freezy@xbmc.org>",
+    "Daiz <taneli.vatanen@gmail.com>",
+    "Julian Aubourg <j@ubourg.net>",
+    "Keith Belovay <keith@picthrive.com>",
+    "Michael B. Klein <mbklein@gmail.com>",
+    "Jordan Prudhomme <jordan@raboland.fr>",
+    "Ilya Ovdin <iovdin@gmail.com>",
+    "Andargor <andargor@yahoo.com>",
+    "Paul Neave <paul.neave@gmail.com>",
+    "Brendan Kennedy <brenwken@gmail.com>",
+    "Brychan Bennett-Odlum <git@brychan.io>",
+    "Edward Silverton <e.silverton@gmail.com>",
+    "Roman Malieiev <aromaleev@gmail.com>",
+    "Tomas Szabo <tomas.szabo@deftomat.com>",
+    "Robert O'Rourke <robert@o-rourke.org>",
+    "Guillermo Alfonso Varela Chouciño <guillevch@gmail.com>",
+    "Christian Flintrup <chr@gigahost.dk>",
+    "Manan Jadhav <manan@motionden.com>",
+    "Leon Radley <leon@radley.se>",
+    "alza54 <alza54@thiocod.in>",
+    "Jacob Smith <jacob@frende.me>",
+    "Michael Nutt <michael@nutt.im>",
+    "Brad Parham <baparham@gmail.com>",
+    "Taneli Vatanen <taneli.vatanen@gmail.com>",
+    "Joris Dugué <zaruike10@gmail.com>",
+    "Chris Banks <christopher.bradley.banks@gmail.com>",
+    "Ompal Singh <ompal.hitm09@gmail.com>",
+    "Brodan <christopher.hranj@gmail.com>",
+    "Ankur Parihar <ankur.github@gmail.com>",
+    "Brahim Ait elhaj <brahima@gmail.com>",
+    "Mart Jansink <m.jansink@gmail.com>",
+    "Lachlan Newman <lachnewman007@gmail.com>",
+    "Dennis Beatty <dennis@dcbeatty.com>",
+    "Ingvar Stepanyan <me@rreverser.com>",
+    "Don Denton <don@happycollision.com>"
+  ],
+  "scripts": {
+    "install": "node install/check",
+    "clean": "rm -rf src/build/ .nyc_output/ coverage/ test/fixtures/output.*",
+    "test": "npm run test-lint && npm run test-unit && npm run test-licensing && npm run test-types",
+    "test-lint": "semistandard && cpplint",
+    "test-unit": "nyc --reporter=lcov --reporter=text --check-coverage --branches=100 mocha",
+    "test-licensing": "license-checker --production --summary --onlyAllow=\"Apache-2.0;BSD;ISC;LGPL-3.0-or-later;MIT\"",
+    "test-leak": "./test/leak/leak.sh",
+    "test-types": "tsd",
+    "package-from-local-build": "node npm/from-local-build",
+    "package-from-github-release": "node npm/from-github-release",
+    "docs-build": "node docs/build && node docs/search-index/build",
+    "docs-serve": "cd docs && npx serve",
+    "docs-publish": "cd docs && npx firebase-tools deploy --project pixelplumbing --only hosting:pixelplumbing-sharp"
+  },
+  "type": "commonjs",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "files": [
+    "install",
+    "lib",
+    "src/*.{cc,h,gyp}"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/lovell/sharp.git"
+  },
+  "keywords": [
+    "jpeg",
+    "png",
+    "webp",
+    "avif",
+    "tiff",
+    "gif",
+    "svg",
+    "jp2",
+    "dzi",
+    "image",
+    "resize",
+    "thumbnail",
+    "crop",
+    "embed",
+    "libvips",
+    "vips"
+  ],
+  "dependencies": {
+    "color": "^4.2.3",
+    "detect-libc": "^2.0.3",
+    "semver": "^7.6.3"
+  },
+  "optionalDependencies": {
+    "@img/sharp-darwin-arm64": "0.33.5",
+    "@img/sharp-darwin-x64": "0.33.5",
+    "@img/sharp-libvips-darwin-arm64": "1.0.4",
+    "@img/sharp-libvips-darwin-x64": "1.0.4",
+    "@img/sharp-libvips-linux-arm": "1.0.5",
+    "@img/sharp-libvips-linux-arm64": "1.0.4",
+    "@img/sharp-libvips-linux-s390x": "1.0.4",
+    "@img/sharp-libvips-linux-x64": "1.0.4",
+    "@img/sharp-libvips-linuxmusl-arm64": "1.0.4",
+    "@img/sharp-libvips-linuxmusl-x64": "1.0.4",
+    "@img/sharp-linux-arm": "0.33.5",
+    "@img/sharp-linux-arm64": "0.33.5",
+    "@img/sharp-linux-s390x": "0.33.5",
+    "@img/sharp-linux-x64": "0.33.5",
+    "@img/sharp-linuxmusl-arm64": "0.33.5",
+    "@img/sharp-linuxmusl-x64": "0.33.5",
+    "@img/sharp-wasm32": "0.33.5",
+    "@img/sharp-win32-ia32": "0.33.5",
+    "@img/sharp-win32-x64": "0.33.5"
+  },
+  "devDependencies": {
+    "@emnapi/runtime": "^1.2.0",
+    "@img/sharp-libvips-dev": "1.0.4",
+    "@img/sharp-libvips-dev-wasm32": "1.0.5",
+    "@img/sharp-libvips-win32-ia32": "1.0.4",
+    "@img/sharp-libvips-win32-x64": "1.0.4",
+    "@types/node": "*",
+    "async": "^3.2.5",
+    "cc": "^3.0.1",
+    "emnapi": "^1.2.0",
+    "exif-reader": "^2.0.1",
+    "extract-zip": "^2.0.1",
+    "icc": "^3.0.0",
+    "jsdoc-to-markdown": "^8.0.3",
+    "license-checker": "^25.0.1",
+    "mocha": "^10.7.3",
+    "node-addon-api": "^8.1.0",
+    "nyc": "^17.0.0",
+    "prebuild": "^13.0.1",
+    "semistandard": "^17.0.0",
+    "tar-fs": "^3.0.6",
+    "tsd": "^0.31.1"
+  },
+  "license": "Apache-2.0",
+  "engines": {
+    "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
+  },
+  "config": {
+    "libvips": ">=8.15.3"
+  },
+  "funding": {
+    "url": "https://opencollective.com/libvips"
+  },
+  "binary": {
+    "napi_versions": [
+      9
+    ]
+  },
+  "semistandard": {
+    "env": [
+      "mocha"
+    ]
+  },
+  "cc": {
+    "linelength": "120",
+    "filter": [
+      "build/include"
+    ]
+  },
+  "nyc": {
+    "include": [
+      "lib"
+    ]
+  },
+  "tsd": {
+    "directory": "test/types/"
+  }
+}

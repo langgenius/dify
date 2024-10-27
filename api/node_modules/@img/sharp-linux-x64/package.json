@@ -1,0 +1,46 @@
+{
+  "name": "@img/sharp-linux-x64",
+  "version": "0.33.5",
+  "description": "Prebuilt sharp for use with Linux (glibc) x64",
+  "author": "Lovell Fuller <npm@lovell.info>",
+  "homepage": "https://sharp.pixelplumbing.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lovell/sharp.git",
+    "directory": "npm/linux-x64"
+  },
+  "license": "Apache-2.0",
+  "funding": {
+    "url": "https://opencollective.com/libvips"
+  },
+  "preferUnplugged": true,
+  "optionalDependencies": {
+    "@img/sharp-libvips-linux-x64": "1.0.4"
+  },
+  "files": [
+    "lib"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "commonjs",
+  "exports": {
+    "./sharp.node": "./lib/sharp-linux-x64.node",
+    "./package": "./package.json"
+  },
+  "engines": {
+    "node": "^18.17.0 || ^20.3.0 || >=21.0.0"
+  },
+  "config": {
+    "glibc": ">=2.26"
+  },
+  "os": [
+    "linux"
+  ],
+  "libc": [
+    "glibc"
+  ],
+  "cpu": [
+    "x64"
+  ]
+}

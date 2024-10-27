@@ -83,25 +83,25 @@ const AudioBtn = ({
   }[audioState]
 
   return (
-    <div className={`${(audioState === 'loading' || audioState === 'playing') ? 'mr-1' : className}`}>
+    <div className={`inline-flex items-center justify-center ${(audioState === 'loading' || audioState === 'playing') ? 'mr-1' : className}`}>
       <Tooltip
-        selector={selector.current}
-        content={tooltipContent}
-        className='z-10'
+        popupContent={tooltipContent}
       >
         <button
           disabled={audioState === 'loading'}
-          className={`box-border p-0.5 flex items-center justify-center cursor-pointer ${isAudition || '!p-0 rounded-md bg-white'}`}
+          className={`box-border w-6 h-6 flex items-center justify-center cursor-pointer ${isAudition ? 'p-0.5' : 'p-0 rounded-md bg-white'}`}
           onClick={handleToggle}
         >
           {audioState === 'loading'
             ? (
-              <div className='w-6 h-6 rounded-md flex items-center justify-center p-2'>
+              <div className='w-full h-full rounded-md flex items-center justify-center'>
                 <Loading />
               </div>
             )
             : (
-              <div className={`w-6 h-6 rounded-md ${!isAudition ? 'w-4 h-4 hover:bg-gray-50' : 'hover:bg-gray-50'} ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>
+              <div className={`w-full h-full rounded-md flex items-center justify-center ${!isAudition ? 'hover:bg-gray-50' : 'hover:bg-gray-50'}`}>
+                <div className={`w-4 h-4 ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>
+              </div>
             )}
         </button>
       </Tooltip>

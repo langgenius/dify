@@ -30,7 +30,8 @@ class LocalStorage(BaseStorage):
             f.write(data)
 
     def load_once(self, filename: str) -> bytes:
-        if not self.folder or self.folder.endswith("/"):
+        print(filename, '9999999999')
+        if not self.folder or self.folder.endswith('/'):
             filename = self.folder + filename
         else:
             filename = self.folder + "/" + filename

@@ -3,7 +3,7 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { debounce } from 'lodash-es'
 import copy from 'copy-to-clipboard'
-import TooltipPlus from '../tooltip-plus'
+import Tooltip from '../tooltip'
 import {
   Clipboard,
   ClipboardCheck,
@@ -29,7 +29,7 @@ export const CopyIcon = ({ content }: Props) => {
   }, 100)
 
   return (
-    <TooltipPlus
+    <Tooltip
       popupContent={
         (isCopied
           ? t(`${prefixEmbedded}.copied`)
@@ -46,7 +46,7 @@ export const CopyIcon = ({ content }: Props) => {
           )
         }
       </div>
-    </TooltipPlus>
+    </Tooltip>
   )
 }
 

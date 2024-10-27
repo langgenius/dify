@@ -3,9 +3,6 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import produce from 'immer'
 import { useContext } from 'use-context-selector'
 import ConfirmAddVar from './confirm-add-var'
@@ -156,12 +153,12 @@ const Prompt: FC<ISimplePromptInput> = ({
               <div className='h2'>{mode !== AppType.completion ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
               {!readonly && (
                 <Tooltip
-                  htmlContent={<div className='w-[180px]'>
-                    {t('appDebug.promptTip')}
-                  </div>}
-                  selector='config-prompt-tooltip'>
-                  <RiQuestionLine className='w-[14px] h-[14px] text-indigo-400' />
-                </Tooltip>
+                  popupContent={
+                    <div className='w-[180px]'>
+                      {t('appDebug.promptTip')}
+                    </div>
+                  }
+                />
               )}
             </div>
             <div className='flex items-center'>

@@ -1,0 +1,28 @@
+from typing import Any, Union
+
+import requests
+
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
+
+class ShuyiTestTool(BuiltinTool):
+
+    def _parse_response(self, response: dict) -> dict:
+        result = {}
+        # logics
+        return result
+
+    def _invoke(self,
+                user_id: str,
+                tool_parameters: dict[str, Any],
+                ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+        api_url = self.runtime.credentials['shuyi_api_url'],
+        params = {
+            "api_key": self.runtime.credentials['shuyi_api_key'],
+            "type": tool_parameters['type'],
+            "query": tool_parameters['query'],
+        }
+        response = requests.get(url=api_url, params=params)
+        response.raise_for_status()
+        valuable_res = self._parse_response(response.json())
+        return self.create_json_message(valuable_res)

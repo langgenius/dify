@@ -1,4 +1,4 @@
-identity:
+  identity:
   name: searxng_search
   author: Junytang
   label:

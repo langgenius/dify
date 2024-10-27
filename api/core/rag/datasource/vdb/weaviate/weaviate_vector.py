@@ -39,7 +39,7 @@ class WeaviateVector(BaseVector):
     def _init_client(self, config: WeaviateConfig) -> weaviate.Client:
         auth_config = weaviate.auth.AuthApiKey(api_key=config.api_key)
 
-        weaviate.connect.connection.has_grpc = False
+        # weaviate.connect.connection.has_grpc = False
 
         try:
             client = weaviate.Client(

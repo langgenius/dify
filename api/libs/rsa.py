@@ -48,7 +48,9 @@ def encrypt(text, public_key):
 def get_decrypt_decoding(tenant_id):
     filepath = "privkeys/{tenant_id}".format(tenant_id=tenant_id) + "/private.pem"
 
-    cache_key = "tenant_privkey:{hash}".format(hash=hashlib.sha3_256(filepath.encode()).hexdigest())
+    print(filepath,'888888888888888888888')
+    cache_key = 'tenant_privkey:{hash}'.format(hash=hashlib.sha3_256(filepath.encode()).hexdigest())
+
     private_key = redis_client.get(cache_key)
     if not private_key:
         try:

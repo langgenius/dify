@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "next": "^15.0.0-canary.130"
+  }
+}

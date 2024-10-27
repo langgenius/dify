@@ -1,0 +1,71 @@
+identity:
+  name: shuyi_test
+  author: Shuyi
+  label:
+    en_US: ShuyiTest
+    zh_Hans: 数翼工具测试
+    pt_BR: ShuyiTest
+description:
+  human:
+    en_US: A tool for testing Dify message type and input parameters.Input should be a search query.
+    zh_Hans: 用于测试Dify消息类型和输入参数的工具。
+    pt_BR: A tool for testing Dify message type and input parameters.Input should be a search query.
+  llm: A tool for testing Dify message type and input parameters.Input should be a search query.
+parameters:
+  - name: type
+    type: select
+    required: true
+    label:
+      en_US: Type
+      zh_Hans: 类型
+      pt_BR: Type
+    options:
+      - value: text
+        label:
+          en_US: Text
+          zh_Hans: 文本
+          pt_BR: Text
+      - value: image
+        label:
+          en_US: Image
+          zh_Hans: 图片
+          pt_BR: Image
+      - value: json
+        label:
+          en_US: Json
+          zh_Hans: Json
+          pt_BR: Json
+      - value: blob
+        label:
+          en_US: Blob
+          zh_Hans: Blob
+          pt_BR: Blob
+      - value: link
+        label:
+          en_US: Link
+          zh_Hans: 链接
+          pt_BR: Link
+      - value: mix
+        label:
+          en_US: Mix
+          zh_Hans: 混合
+          pt_BR: Mix
+    human_description:
+      en_US: Message Type
+      zh_Hans: 消息类型
+      pt_BR: Message Type
+    llm_description:
+    form: form
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+      pt_BR: Query string
+    human_description:
+      en_US: used for searching
+      zh_Hans: 用于搜索内容
+      pt_BR: used for searching
+    llm_description: key words for searching
+    form: llm
