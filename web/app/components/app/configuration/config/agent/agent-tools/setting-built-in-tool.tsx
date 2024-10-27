@@ -13,6 +13,8 @@ import ActionButton from '@/app/components/base/action-button'
 import Icon from '@/app/components/plugins/card/base/card-icon'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import Description from '@/app/components/plugins/card/base/description'
+import TabSlider from '@/app/components/base/tab-slider-plain'
+
 import Button from '@/app/components/base/button'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { addDefaultValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
@@ -20,7 +22,6 @@ import type { Collection, Tool } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
 import I18n from '@/context/i18n'
-import { DiagonalDividingLine } from '@/app/components/base/icons/src/public/common'
 import { getLanguage } from '@/i18n/language'
 import cn from '@/utils/classnames'
 
@@ -106,30 +107,25 @@ const SettingBuiltInTool: FC<Props> = ({
   })()
 
   const infoUI = (
-    <div className='pt-2'>
+    <div className=''>
       {infoSchemas.length > 0 && (
-        <div className='my-2'>
-          <div className='pt-3 text-text-secondary system-sm-semibold-uppercase'>
-            {t('tools.setBuiltInTools.parameters')}
-          </div>
-          <div className='py-2 space-y-3'>
-            {infoSchemas.map((item: any, index) => (
-              <div key={index} className='py-1'>
-                <div className='flex items-center gap-2'>
-                  <div className='text-text-secondary code-sm-semibold'>{item.label[language]}</div>
-                  <div className='text-text-tertiary system-xs-regular'>{item.type === 'number-input' ? t('tools.setBuiltInTools.number') : t('tools.setBuiltInTools.string')}</div>
-                  {item.required && (
-                    <div className='text-text-warning-secondary system-xs-medium'>{t('tools.setBuiltInTools.required')}</div>
-                  )}
-                </div>
-                {item.human_description && (
-                  <div className='mt-0.5 text-text-tertiary system-xs-regular'>
-                    {item.human_description?.[language]}
-                  </div>
+        <div className='py-2 space-y-1'>
+          {infoSchemas.map((item: any, index) => (
+            <div key={index} className='py-1'>
+              <div className='flex items-center gap-2'>
+                <div className='text-text-secondary code-sm-semibold'>{item.label[language]}</div>
+                <div className='text-text-tertiary system-xs-regular'>{item.type === 'number-input' ? t('tools.setBuiltInTools.number') : t('tools.setBuiltInTools.string')}</div>
+                {item.required && (
+                  <div className='text-text-warning-secondary system-xs-medium'>{t('tools.setBuiltInTools.required')}</div>
                 )}
               </div>
-            ))}
-          </div>
+              {item.human_description && (
+                <div className='mt-0.5 text-text-tertiary system-xs-regular'>
+                  {item.human_description?.[language]}
+                </div>
+              )}
+            </div>
+          ))}
         </div>
       )}
     </div>
@@ -194,25 +190,24 @@ const SettingBuiltInTool: FC<Props> = ({
             {/* form */}
             <div className='h-full'>
               <div className='flex flex-col h-full'>
+                {(hasSetting && !readonly) ? (
+                  <TabSlider
+                    className='shrink-0 mt-1 px-4'
+                    itemClassName='py-3'
+                    noBorderBottom
+                    value={currType}
+                    onChange={(value) => {
+                      setCurrType(value)
+                    }}
+                    options={[
+                      { value: 'info', text: t('tools.setBuiltInTools.parameters')! },
+                      { value: 'setting', text: t('tools.setBuiltInTools.setting')! },
+                    ]}
+                  />
+                ) : (
+                  <div className='p-4 pb-1 text-text-primary system-sm-semibold-uppercase'>{t('tools.setBuiltInTools.parameters')}</div>
+                )}
                 <div className='grow h-0 overflow-y-auto px-4'>
-                  {(hasSetting && !readonly) && (<>
-                    <DiagonalDividingLine className='mx-4' />
-                    <div className='flex space-x-6'>
-                      <div
-                        className={cn(isInfoActive ? 'text-gray-900 font-semibold' : 'font-normal text-gray-600 cursor-pointer', 'relative text-base')}
-                        onClick={() => setCurrType('info')}
-                      >
-                        {t('tools.setBuiltInTools.parameters')}
-                        {isInfoActive && <div className='absolute left-0 bottom-[-16px] w-full h-0.5 bg-primary-600'></div>}
-                      </div>
-                      <div className={cn(!isInfoActive ? 'text-gray-900 font-semibold' : 'font-normal text-gray-600 cursor-pointer', 'relative text-base ')}
-                        onClick={() => setCurrType('setting')}
-                      >
-                        {t('tools.setBuiltInTools.setting')}
-                        {!isInfoActive && <div className='absolute left-0 bottom-[-16px] w-full h-0.5 bg-primary-600'></div>}
-                      </div>
-                    </div>
-                  </>)}
                   {isInfoActive ? infoUI : settingUI}
                 </div>
                 {!readonly && !isInfoActive && (
