@@ -105,6 +105,8 @@ class PluginEntity(BasePluginEntity):
     endpoints_active: int
     runtime_type: str
     version: str
+    latest_version: Optional[str] = None
+    latest_unique_identifier: Optional[str] = None
     source: PluginInstallationSource
     meta: Mapping[str, Any]
 

@@ -103,6 +103,16 @@ class PluginInstallationManager(BasePluginManager):
             bool,
         )
 
+    def delete_plugin_installation_task_item(self, tenant_id: str, task_id: str, identifier: str) -> bool:
+        """
+        Delete a plugin installation task item.
+        """
+        return self._request_with_plugin_daemon_response(
+            "POST",
+            f"plugin/{tenant_id}/management/install/tasks/{task_id}/delete/{identifier}",
+            bool,
+        )
+
     def fetch_plugin_manifest(self, tenant_id: str, plugin_unique_identifier: str) -> PluginDeclaration:
         """
         Fetch a plugin manifest.
@@ -128,6 +138,30 @@ class PluginInstallationManager(BasePluginManager):
             bool,
             data={
                 "plugin_installation_id": plugin_installation_id,
+            },
+            headers={"Content-Type": "application/json"},
+        )
+
+    def upgrade_plugin(
+        self,
+        tenant_id: str,
+        original_plugin_unique_identifier: str,
+        new_plugin_unique_identifier: str,
+        source: PluginInstallationSource,
+        meta: dict,
+    ) -> PluginInstallTaskStartResponse:
+        """
+        Upgrade a plugin.
+        """
+        return self._request_with_plugin_daemon_response(
+            "POST",
+            f"plugin/{tenant_id}/management/upgrade",
+            PluginInstallTaskStartResponse,
+            data={
+                "original_plugin_unique_identifier": original_plugin_unique_identifier,
+                "new_plugin_unique_identifier": new_plugin_unique_identifier,
+                "source": source,
+                "meta": meta,
             },
             headers={"Content-Type": "application/json"},
         )

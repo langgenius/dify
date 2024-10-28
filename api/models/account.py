@@ -2,6 +2,7 @@ import enum
 import json
 
 from flask_login import UserMixin
+from sqlalchemy.orm import Mapped, mapped_column
 
 from extensions.ext_database import db
 from models.base import Base
@@ -260,3 +261,28 @@ class InvitationCode(db.Model):
     used_by_account_id = db.Column(StringUUID)
     deprecated_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+
+class TenantPluginPermission(Base):
+    class InstallPermission(str, enum.Enum):
+        EVERYONE = "everyone"
+        ADMINS = "admins"
+        NOBODY = "noone"
+
+    class DebugPermission(str, enum.Enum):
+        EVERYONE = "everyone"
+        ADMINS = "admins"
+        NOBODY = "noone"
+
+    __tablename__ = "account_plugin_permissions"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="account_plugin_permission_pkey"),
+        db.UniqueConstraint("tenant_id", name="unique_tenant_plugin"),
+    )
+
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    install_permission: Mapped[InstallPermission] = mapped_column(
+        db.String(16), nullable=False, server_default="everyone"
+    )
+    debug_permission: Mapped[DebugPermission] = mapped_column(db.String(16), nullable=False, server_default="noone")
