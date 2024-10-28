@@ -1,4 +1,3 @@
-
 import random
 from hashlib import md5
 from typing import Any, Union

@@ -12,8 +12,6 @@ class BaiduTranslateProvider(BuiltinToolProviderController):
                 runtime={
                     "credentials": credentials,
                 }
-            ).invoke(
-                user_id="", tool_parameters={"q": "这是一段测试文本", "from": "auto", "to": "en"}
-            )
+            ).invoke(user_id="", tool_parameters={"q": "这是一段测试文本", "from": "auto", "to": "en"})
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

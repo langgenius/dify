@@ -85,7 +85,7 @@ class BaiduLanguageTool(BuiltinTool, BaiduTranslateToolBase):
                 "th": "泰语",
                 "vie": "越南语",
                 "ru": "俄语",
-            }
+            },
         }
 
         language_mapping = mapping.get(description_language)
