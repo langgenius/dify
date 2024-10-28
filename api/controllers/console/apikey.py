@@ -12,6 +12,7 @@ from models.model import ApiToken, App
 from . import api
 from .setup import setup_required
 from .wraps import account_initialization_required
+from ..service_api.wraps import get_api_token_from_db
 
 api_key_fields = {
     "id": fields.String,
@@ -137,6 +138,25 @@ class AppApiKeyResource(BaseApiKeyResource):
         resp.headers["Access-Control-Allow-Credentials"] = "true"
         return resp
 
+    def delete(self, resource_id, api_key_id):
+        key = (
+            db.session.query(ApiToken)
+            .filter(
+                getattr(ApiToken, self.resource_id_field) == str(resource_id),
+                ApiToken.type == self.resource_type,
+                ApiToken.id == str(api_key_id),
+            )
+            .first()
+        )
+
+        response = super().delete(resource_id, api_key_id)
+
+        if response[1] == 204 and key:
+            from extensions.ext_redis import cache
+            cache.delete_memoized(get_api_token_from_db, key.token, "app")
+
+        return response
+
     resource_type = "app"
     resource_model = App
     resource_id_field = "app_id"
@@ -159,6 +179,25 @@ class DatasetApiKeyResource(BaseApiKeyResource):
         resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Credentials"] = "true"
         return resp
+
+    def delete(self, resource_id, api_key_id):
+        key = (
+            db.session.query(ApiToken)
+            .filter(
+                getattr(ApiToken, self.resource_id_field) == str(resource_id),
+                ApiToken.type == self.resource_type,
+                ApiToken.id == str(api_key_id),
+            )
+            .first()
+        )
+
+        response = super().delete(resource_id, api_key_id)
+
+        if response[1] == 204 and key:
+            from extensions.ext_redis import cache
+            cache.delete_memoized(get_api_token_from_db, key.token, "dataset")
+
+        return response
 
     resource_type = "dataset"
     resource_model = Dataset

@@ -4,6 +4,7 @@ from enum import Enum
 from functools import wraps
 from typing import Optional
 
+from celery import shared_task
 from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restful import Resource
@@ -11,6 +12,7 @@ from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from extensions.ext_database import db
+from extensions.ext_redis import cache
 from libs.login import _get_user
 from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.model import ApiToken, App, EndUser
@@ -172,6 +174,26 @@ def validate_dataset_token(view=None):
     return decorator
 
 
+@cache.memoize(timeout=3600)
+def get_api_token_from_db(auth_token, scope):
+    return db.session.query(ApiToken).filter(
+        ApiToken.token == auth_token,
+        ApiToken.type == scope
+    ).first()
+
+
+@shared_task(queue="ops_trace", bind=True, max_retries=3)
+def update_token_last_used_at(self, token_id, last_used_time):
+    try:
+        with db.session.begin():
+            token = db.session.query(ApiToken).get(token_id)
+            if token:
+                token.last_used_at = last_used_time
+    except Exception as e:
+        # 如果失败，最多重试3次
+        self.retry(exc=e, countdown=60)  # 1分钟后重试
+
+
 def validate_and_get_api_token(scope=None):
     """
     Validate and get API token.
@@ -186,20 +208,12 @@ def validate_and_get_api_token(scope=None):
     if auth_scheme != "bearer":
         raise Unauthorized("Authorization scheme must be 'Bearer'")
 
-    api_token = (
-        db.session.query(ApiToken)
-        .filter(
-            ApiToken.token == auth_token,
-            ApiToken.type == scope,
-        )
-        .first()
-    )
+    api_token = get_api_token_from_db(auth_token, scope)
 
     if not api_token:
         raise Unauthorized("Access token is invalid")
 
-    api_token.last_used_at = datetime.now(timezone.utc).replace(tzinfo=None)
-    db.session.commit()
+    update_token_last_used_at.delay(api_token.id, datetime.now(timezone.utc).replace(tzinfo=None))
 
     return api_token
 
