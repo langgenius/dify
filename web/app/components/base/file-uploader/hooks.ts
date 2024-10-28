@@ -25,7 +25,7 @@ import { TransferMethod } from '@/types/app'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { formatFileSize } from '@/utils/format'
-import { fetchRemoteFileInfo } from '@/service/common'
+import { uploadRemoteFileInfo } from '@/service/common'
 import type { FileUploadConfigResponse } from '@/models/common'
 
 export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) => {
@@ -49,7 +49,7 @@ export const useFile = (fileConfig: FileUpload) => {
   const params = useParams()
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(fileConfig.fileUploadConfig)
 
-  const checkSizeLimit = (fileType: string, fileSize: number) => {
+  const checkSizeLimit = useCallback((fileType: string, fileSize: number) => {
     switch (fileType) {
       case SupportUploadFileTypes.image: {
         if (fileSize > imgSizeLimit) {
@@ -120,7 +120,7 @@ export const useFile = (fileConfig: FileUpload) => {
         return true
       }
     }
-  }
+  }, [audioSizeLimit, docSizeLimit, imgSizeLimit, notify, t, videoSizeLimit])
 
   const handleAddFile = useCallback((newFile: FileEntity) => {
     const {
@@ -203,13 +203,15 @@ export const useFile = (fileConfig: FileUpload) => {
     }
     handleAddFile(uploadingFile)
 
-    fetchRemoteFileInfo(url).then((res) => {
+    uploadRemoteFileInfo(url).then((res) => {
       const newFile = {
         ...uploadingFile,
-        type: res.file_type,
-        size: res.file_length,
+        type: res.mime_type,
+        size: res.size,
         progress: 100,
-        supportFileType: getSupportFileType(url, res.file_type, allowedFileTypes?.includes(SupportUploadFileTypes.custom)),
+        supportFileType: getSupportFileType(res.name, res.mime_type, allowedFileTypes?.includes(SupportUploadFileTypes.custom)),
+        uploadedId: res.id,
+        url: res.url,
       }
       if (!checkSizeLimit(newFile.supportFileType, newFile.size))
         handleRemoveFile(uploadingFile.id)
