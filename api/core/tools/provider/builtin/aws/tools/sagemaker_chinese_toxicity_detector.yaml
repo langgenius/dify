@@ -2,8 +2,8 @@ identity:
   name: content_moderation
   author: AWS
   label:
-    en_US: Content Moderation
-    zh_Hans: 内容审核
+    en_US: Chinese Toxicity Detector
+    zh_Hans: 中文有害内容检测
   icon: icon.svg
 description:
   human:

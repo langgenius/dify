@@ -19,6 +19,11 @@ class ContentModerationTool(BuiltinTool):
         )
         json_str = response_model['Body'].read().decode('utf8')
         json_obj = json.loads(json_str)
+
+        # Parse the nested JSON structure
+        if isinstance(json_obj, dict) and 'body' in json_obj:
+            body_content = json.loads(json_obj['body'])
+            return body_content
         return json_obj
 
     def _invoke(self,
@@ -47,7 +52,7 @@ class ContentModerationTool(BuiltinTool):
 
             result = self._invoke_sagemaker(payload, self.sagemaker_endpoint)
 
-            return self.create_text_message(text=result['result'])
+            return self.create_text_message(text=result.get('result', 'Unknown'))
 
         except Exception as e:
             return self.create_text_message(f'Exception {str(e)}')
