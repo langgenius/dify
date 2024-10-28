@@ -20,7 +20,7 @@ importers:
         specifier: ^1.1.2
         version: 1.1.4
       '@emoji-mart/data':
-        specifier: ^1.1.2
+        specifier: ^1.2.1
         version: 1.2.1
       '@floating-ui/react':
         specifier: ^0.25.2
@@ -71,13 +71,13 @@ importers:
         specifier: ^0.5.9
         version: 0.5.15(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@18.15.0)(typescript@4.9.5)))
       ahooks:
-        specifier: ^3.7.5
+        specifier: ^3.8.1
         version: 3.8.1(react@18.2.0)
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.0
       classnames:
-        specifier: ^2.3.2
+        specifier: ^2.5.1
         version: 2.5.1
       copy-to-clipboard:
         specifier: ^3.3.3
@@ -86,7 +86,7 @@ importers:
         specifier: ^4.2.0
         version: 4.2.0
       dayjs:
-        specifier: ^1.11.7
+        specifier: ^1.11.13
         version: 1.11.13
       echarts:
         specifier: ^5.4.1
@@ -95,7 +95,7 @@ importers:
         specifier: ^3.0.2
         version: 3.0.2(echarts@5.5.1)(react@18.2.0)
       emoji-mart:
-        specifier: ^5.5.2
+        specifier: ^5.6.0
         version: 5.6.0
       fast-deep-equal:
         specifier: ^3.1.3
@@ -146,7 +146,7 @@ importers:
         specifier: ^14.2.10
         version: 14.2.15(@babel/core@7.25.8)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(sass@1.80.3)
       pinyin-pro:
-        specifier: ^3.23.0
+        specifier: ^3.25.0
         version: 3.25.0
       qrcode.react:
         specifier: ^4.1.0
@@ -155,7 +155,7 @@ importers:
         specifier: ^6.13.0
         version: 6.13.0
       rc-textarea:
-        specifier: ^1.5.2
+        specifier: ^1.8.2
         version: 1.8.2(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react:
         specifier: ~18.2.0
@@ -170,7 +170,7 @@ importers:
         specifier: ^5.0.8
         version: 5.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react-error-boundary:
-        specifier: ^4.0.2
+        specifier: ^4.1.2
         version: 4.1.2(react@18.2.0)
       react-headless-pagination:
         specifier: ^1.1.4
@@ -194,19 +194,19 @@ importers:
         specifier: ^4.1.0
         version: 4.4.0
       react-slider:
-        specifier: ^2.0.4
+        specifier: ^2.0.6
         version: 2.0.6(react@18.2.0)
       react-sortablejs:
         specifier: ^6.1.4
         version: 6.1.4(@types/sortablejs@1.15.8)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(sortablejs@1.15.3)
       react-syntax-highlighter:
-        specifier: ^15.5.0
+        specifier: ^15.6.1
         version: 15.6.1(react@18.2.0)
       react-tooltip:
         specifier: 5.8.3
         version: 5.8.3(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react-window:
-        specifier: ^1.8.9
+        specifier: ^1.8.10
         version: 1.8.10(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react-window-infinite-loader:
         specifier: ^1.0.9
@@ -242,7 +242,7 @@ importers:
         specifier: ^0.33.5
         version: 0.33.5
       sortablejs:
-        specifier: ^1.15.0
+        specifier: ^1.15.3
         version: 1.15.3
       swr:
         specifier: ^2.1.0
@@ -251,11 +251,11 @@ importers:
         specifier: ^2.4.0
         version: 2.5.4
       use-context-selector:
-        specifier: ^1.4.1
-        version: 1.4.4(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(scheduler@0.23.2)
+        specifier: ^2.0.0
+        version: 2.0.0(react@18.2.0)(scheduler@0.23.2)
       uuid:
-        specifier: ^9.0.1
-        version: 9.0.1
+        specifier: ^10.0.0
+        version: 10.0.0
       zod:
         specifier: ^3.23.6
         version: 3.23.8
@@ -324,13 +324,13 @@ importers:
         specifier: ^16.0.1
         version: 16.0.1(@testing-library/dom@10.4.0)(@types/react-dom@18.2.25)(@types/react@18.2.79)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       '@types/crypto-js':
-        specifier: ^4.1.1
+        specifier: ^4.2.2
         version: 4.2.2
       '@types/dagre':
         specifier: ^0.7.52
         version: 0.7.52
       '@types/jest':
-        specifier: ^29.5.12
+        specifier: ^29.5.13
         version: 29.5.13
       '@types/js-cookie':
         specifier: ^3.0.6
@@ -354,26 +354,26 @@ importers:
         specifier: ~18.2.0
         version: 18.2.25
       '@types/react-slider':
-        specifier: ^1.3.1
+        specifier: ^1.3.6
         version: 1.3.6
       '@types/react-syntax-highlighter':
-        specifier: ^15.5.6
+        specifier: ^15.5.13
         version: 15.5.13
       '@types/react-window':
-        specifier: ^1.8.5
+        specifier: ^1.8.8
         version: 1.8.8
       '@types/react-window-infinite-loader':
-        specifier: ^1.0.6
+        specifier: ^1.0.9
         version: 1.0.9
       '@types/recordrtc':
-        specifier: ^5.6.11
+        specifier: ^5.6.14
         version: 5.6.14
       '@types/sortablejs':
         specifier: ^1.15.1
         version: 1.15.8
       '@types/uuid':
-        specifier: ^9.0.8
-        version: 9.0.8
+        specifier: ^10.0.0
+        version: 10.0.0
       autoprefixer:
         specifier: ^10.4.14
         version: 10.4.20(postcss@8.4.47)
@@ -381,8 +381,8 @@ importers:
         specifier: ^4.0.2
         version: 4.0.2
       code-inspector-plugin:
-        specifier: ^0.13.0
-        version: 0.13.0
+        specifier: ^0.17.4
+        version: 0.17.4
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
@@ -435,7 +435,7 @@ importers:
         specifier: 4.9.5
         version: 4.9.5
       uglify-js:
-        specifier: ^3.17.4
+        specifier: ^3.19.3
         version: 3.19.3
 
 packages:
@@ -2699,6 +2699,9 @@ packages:
   '@types/unist@3.0.3':
     resolution: {integrity: sha512-ko/gIFJRv177XgZsZcBwnqJN5x/Gien8qNOn0D5bQU/zAzVf9Zt3BlcUiLqhV9y4ARk0GbT3tnUiPNgnTXzc/Q==}
 
+  '@types/uuid@10.0.0':
+    resolution: {integrity: sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==}
+
   '@types/uuid@9.0.8':
     resolution: {integrity: sha512-jg+97EGIcY9AGHJJRaaPVgetKDsrTgbRjQ5Msgjh/DQKEFl0DtyRr/VCOyD1T2R1MNeWPK/u7JoGhlDZnKBAfA==}
 
@@ -3435,11 +3438,11 @@ packages:
     resolution: {integrity: sha512-QVb0dM5HvG+uaxitm8wONl7jltx8dqhfU33DcqtOZcLSVIKSDDLDi7+0LbAKiyI8hD9u42m2YxXSkMGWThaecQ==}
     engines: {iojs: '>= 1.0.0', node: '>= 0.12.0'}
 
-  code-inspector-core@0.13.0:
-    resolution: {integrity: sha512-oYPNLdJjn3SY50YtF3IuxZOKLBNwzXSRPOqiXVnZFceMz9Ar6ugP3+zj7HszouxrsLFb2dVtlv//5wr4+cq62A==}
+  code-inspector-core@0.17.4:
+    resolution: {integrity: sha512-Pp8Ct/nxNddCiLJYd8XhHMRMkDk1lgbKMcRDolxmpunv8JZYE0K2HGPaei2w/TM9GhUHeKfT6j3dEG3W5y+Mlg==}
 
-  code-inspector-plugin@0.13.0:
-    resolution: {integrity: sha512-v4mq5hhHkyMmutembTzREVsFeZ/+KsCwfx20+0gTqm1Il/M1T4d2BCv9mZ4ivie3GvvDMt/pVz1iBBVP3SuzJA==}
+  code-inspector-plugin@0.17.4:
+    resolution: {integrity: sha512-aIM8wcO0eNoY+tlXXU+xwcTnUN96jmfglWFi1A1Vmqs5gew8k54709a95dJ6wa+gOHD5I3cw+Qh3xtoikHi9KA==}
 
   collect-v8-coverage@1.0.2:
     resolution: {integrity: sha512-lHl4d5/ONEbLlJvaJNtsF/Lz+WvB07u2ycqTYbdrq7UypDXailES4valYb2eWiJFxZlVmpGekfqoxQhzyFdT4Q==}
@@ -4099,6 +4102,9 @@ packages:
   es-to-primitive@1.2.1:
     resolution: {integrity: sha512-QCOllgZJtaUo9miYBcLChTUaHNjJF3PYs1VidD7AwiEj1kYxKeQTctLAezAOH5ZKRH0g2IgPn6KwB4IT8iRpvA==}
     engines: {node: '>= 0.4'}
+
+  esbuild-code-inspector-plugin@0.17.4:
+    resolution: {integrity: sha512-gqgcEPgtcJyjBVId9av8QaTGlMnX75/aV8iLn4bjRPpOWX9hqSS5jUhHlIJHisptSuWPYeCyvduHEblAcKsHzA==}
 
   esbuild-register@3.6.0:
     resolution: {integrity: sha512-H2/S7Pm8a9CL1uhp9OvjwrBh5Pvx0H8qVOxNu8Wed9Y7qv56MPtq+GGM8RJpq6glYJn9Wspr8uw7l55uyinNeg==}
@@ -7837,18 +7843,11 @@ packages:
     resolution: {integrity: sha512-oCwdVC7mTuWiPyjLUz/COz5TLk6wgp0RCsN+wHZ2Ekneac9w8uuV0njcbbie2ME+Vs+d6duwmYuR3HgQXs1fOg==}
     engines: {node: '>= 0.4'}
 
-  use-context-selector@1.4.4:
-    resolution: {integrity: sha512-pS790zwGxxe59GoBha3QYOwk8AFGp4DN6DOtH+eoqVmgBBRXVx4IlPDhJmmMiNQAgUaLlP+58aqRC3A4rdaSjg==}
+  use-context-selector@2.0.0:
+    resolution: {integrity: sha512-owfuSmUNd3eNp3J9CdDl0kMgfidV+MkDvHPpvthN5ThqM+ibMccNE0k+Iq7TWC6JPFvGZqanqiGCuQx6DyV24g==}
     peerDependencies:
-      react: '>=16.8.0'
-      react-dom: '*'
-      react-native: '*'
+      react: '>=18.0.0'
       scheduler: '>=0.19.0'
-    peerDependenciesMeta:
-      react-dom:
-        optional: true
-      react-native:
-        optional: true
 
   use-strict@1.0.1:
     resolution: {integrity: sha512-IeiWvvEXfW5ltKVMkxq6FvNf2LojMKvB2OCeja6+ct24S1XOmQw2dGr2JyndwACWAGJva9B7yPHwAmeA9QCqAQ==}
@@ -7870,6 +7869,10 @@ packages:
   utils-merge@1.0.1:
     resolution: {integrity: sha512-pMZTvIkT1d+TFGvDOqodOclx0QWkkgi6Tdoa8gC8ffGAAqz9pzPTZWAybbsHHoED/ztMtkv/VoYTYyShUn81hA==}
     engines: {node: '>= 0.4.0'}
+
+  uuid@10.0.0:
+    resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
+    hasBin: true
 
   uuid@9.0.1:
     resolution: {integrity: sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==}
@@ -7912,8 +7915,8 @@ packages:
   vfile@6.0.3:
     resolution: {integrity: sha512-KzIbH/9tXat2u30jf+smMwFCsno4wHVdNmzFyL+T/L3UGqqk6JKfVqOFOZEpZSHADH1k40ab6NUIXZq422ov3Q==}
 
-  vite-code-inspector-plugin@0.13.0:
-    resolution: {integrity: sha512-hvIn9G+IFzQHVVynWh2wGTBHo51CBJRqQBzYryeuuaL0BK0w8my2/tlpSAae5ofQxOBXBMhyXC2gWgYUJnNWrA==}
+  vite-code-inspector-plugin@0.17.4:
+    resolution: {integrity: sha512-Zvpy/0hc55k8OV7+I63vAI0oERLUvGS/kXb3mwEkan3VsVgifDLqtvhjTuo7Teem/KqQec+4civ9Xg2DEyCmew==}
 
   vm-browserify@1.1.2:
     resolution: {integrity: sha512-2ham8XPWTONajOR0ohOKOHXkm3+gaBmGut3SRuu75xLd/RRaY6vqgh8NBYYk7+RW3u5AtzPQZG8F10LHkl0lAQ==}
@@ -7949,8 +7952,8 @@ packages:
     resolution: {integrity: sha512-VwddBukDzu71offAQR975unBIGqfKZpM+8ZX6ySk8nYhVoo5CYaZyzt3YBvYtRtO+aoGlqxPg/B87NGVZ/fu6g==}
     engines: {node: '>=12'}
 
-  webpack-code-inspector-plugin@0.13.0:
-    resolution: {integrity: sha512-T3ZZ84NX0cVmwff5zyYhB9OuroZYsyaQpSgFicgiuYAWCsQePYApM/R3bHdvcECkBXO50hAVtr9SjWRTu1+Ntg==}
+  webpack-code-inspector-plugin@0.17.4:
+    resolution: {integrity: sha512-bhoRXBEjC2VS2oQ/CV1QToOYiGKUYKYWXxyBfdBamZSbknQlIZC5q53aehzu/AVphVxrfWmvW+vth/PBSY0BAw==}
 
   webpack-dev-middleware@6.1.3:
     resolution: {integrity: sha512-A4ChP0Qj8oGociTs6UdlRUGANIGrCDL3y+pmQMc+dSsraXHCatFpmMey4mYELA+juqwUqwQsUgJJISXl1KWmiw==}
@@ -11020,6 +11023,8 @@ snapshots:
 
   '@types/unist@3.0.3': {}
 
+  '@types/uuid@10.0.0': {}
+
   '@types/uuid@9.0.8': {}
 
   '@types/yargs-parser@21.0.3': {}
@@ -11904,20 +11909,21 @@ snapshots:
 
   co@4.6.0: {}
 
-  code-inspector-core@0.13.0:
+  code-inspector-core@0.17.4:
     dependencies:
       '@vue/compiler-dom': 3.5.12
-      chalk: 4.1.1
+      chalk: 4.1.2
       portfinder: 1.0.32
     transitivePeerDependencies:
       - supports-color
 
-  code-inspector-plugin@0.13.0:
+  code-inspector-plugin@0.17.4:
     dependencies:
       chalk: 4.1.1
-      code-inspector-core: 0.13.0
-      vite-code-inspector-plugin: 0.13.0
-      webpack-code-inspector-plugin: 0.13.0
+      code-inspector-core: 0.17.4
+      esbuild-code-inspector-plugin: 0.17.4
+      vite-code-inspector-plugin: 0.17.4
+      webpack-code-inspector-plugin: 0.17.4
     transitivePeerDependencies:
       - supports-color
 
@@ -12640,6 +12646,12 @@ snapshots:
       is-date-object: 1.0.5
       is-symbol: 1.0.4
 
+  esbuild-code-inspector-plugin@0.17.4:
+    dependencies:
+      code-inspector-core: 0.17.4
+    transitivePeerDependencies:
+      - supports-color
+
   esbuild-register@3.6.0(esbuild@0.23.1):
     dependencies:
       debug: 4.3.7
@@ -12743,7 +12755,7 @@ snapshots:
       debug: 4.3.7
       enhanced-resolve: 5.17.1
       eslint: 9.13.0(jiti@1.21.6)
-      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.11.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.13.0(jiti@1.21.6))
+      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.11.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@8.11.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import-x@4.3.1(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-plugin-import@2.31.0)(eslint@9.13.0(jiti@1.21.6)))(eslint@9.13.0(jiti@1.21.6))
       fast-glob: 3.3.2
       get-tsconfig: 4.8.1
       is-bun-module: 1.2.1
@@ -12761,7 +12773,7 @@ snapshots:
     dependencies:
       eslint: 9.13.0(jiti@1.21.6)
 
-  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.11.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.13.0(jiti@1.21.6)):
+  eslint-module-utils@2.12.0(@typescript-eslint/parser@8.11.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@8.11.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import-x@4.3.1(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-plugin-import@2.31.0)(eslint@9.13.0(jiti@1.21.6)))(eslint@9.13.0(jiti@1.21.6)):
     dependencies:
       debug: 3.2.7
     optionalDependencies:
@@ -12817,7 +12829,7 @@ snapshots:
       doctrine: 2.1.0
       eslint: 9.13.0(jiti@1.21.6)
       eslint-import-resolver-node: 0.3.9
-      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.11.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3)(eslint@9.13.0(jiti@1.21.6))
+      eslint-module-utils: 2.12.0(@typescript-eslint/parser@8.11.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-import-resolver-typescript@3.6.3(@typescript-eslint/parser@8.11.0(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-import-resolver-node@0.3.9)(eslint-plugin-import-x@4.3.1(eslint@9.13.0(jiti@1.21.6))(typescript@4.9.5))(eslint-plugin-import@2.31.0)(eslint@9.13.0(jiti@1.21.6)))(eslint@9.13.0(jiti@1.21.6))
       hasown: 2.0.2
       is-core-module: 2.15.1
       is-glob: 4.0.3
@@ -17596,12 +17608,10 @@ snapshots:
       punycode: 1.4.1
       qs: 6.13.0
 
-  use-context-selector@1.4.4(react-dom@18.2.0(react@18.2.0))(react@18.2.0)(scheduler@0.23.2):
+  use-context-selector@2.0.0(react@18.2.0)(scheduler@0.23.2):
     dependencies:
       react: 18.2.0
       scheduler: 0.23.2
-    optionalDependencies:
-      react-dom: 18.2.0(react@18.2.0)
 
   use-strict@1.0.1: {}
 
@@ -17622,6 +17632,8 @@ snapshots:
   utila@0.4.0: {}
 
   utils-merge@1.0.1: {}
+
+  uuid@10.0.0: {}
 
   uuid@9.0.1: {}
 
@@ -17679,9 +17691,9 @@ snapshots:
       '@types/unist': 3.0.3
       vfile-message: 4.0.2
 
-  vite-code-inspector-plugin@0.13.0:
+  vite-code-inspector-plugin@0.17.4:
     dependencies:
-      code-inspector-core: 0.13.0
+      code-inspector-core: 0.17.4
     transitivePeerDependencies:
       - supports-color
 
@@ -17721,9 +17733,9 @@ snapshots:
 
   webidl-conversions@7.0.0: {}
 
-  webpack-code-inspector-plugin@0.13.0:
+  webpack-code-inspector-plugin@0.17.4:
     dependencies:
-      code-inspector-core: 0.13.0
+      code-inspector-core: 0.17.4
     transitivePeerDependencies:
       - supports-color
 
