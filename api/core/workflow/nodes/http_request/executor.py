@@ -33,7 +33,7 @@ class Executor:
     params: Mapping[str, str] | None
     content: str | bytes | None
     data: Mapping[str, Any] | None
-    files: Mapping[str, bytes] | None
+    files: Mapping[str, tuple[str | None, bytes, str]] | None
     json: Any
     headers: dict[str, str]
     auth: HttpRequestNodeAuthorization
@@ -141,7 +141,11 @@ class Executor:
                     files = {k: self.variable_pool.get_file(selector) for k, selector in file_selectors.items()}
                     files = {k: v for k, v in files.items() if v is not None}
                     files = {k: variable.value for k, variable in files.items()}
-                    files = {k: file_manager.download(v) for k, v in files.items() if v.related_id is not None}
+                    files = {
+                        k: (v.filename, file_manager.download(v), v.mime_type or "application/octet-stream")
+                        for k, v in files.items()
+                        if v.related_id is not None
+                    }
 
                     self.data = form_data
                     self.files = files
