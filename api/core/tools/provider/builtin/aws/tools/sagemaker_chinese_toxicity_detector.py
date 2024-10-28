@@ -6,7 +6,11 @@ import boto3
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
-
+# 定义标签映射
+LABEL_MAPPING = {
+    'LABEL_0': 'SAFE',
+    'LABEL_1': 'NO_SAFE'
+}
 class ContentModerationTool(BuiltinTool):
     sagemaker_client: Any = None
     sagemaker_endpoint: str = None
