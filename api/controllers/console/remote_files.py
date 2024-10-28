@@ -5,8 +5,9 @@ from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse
 
 from controllers.common import helpers
+from core.file import helpers as file_helpers
 from core.helper import ssrf_proxy
-from fields.file_fields import file_fields, remote_file_info_fields
+from fields.file_fields import file_fields_with_signed_url, remote_file_info_fields
 from models.account import Account
 from services.file_service import FileService
 
@@ -26,7 +27,7 @@ class RemoteFileInfoApi(Resource):
 
 
 class RemoteFileUploadApi(Resource):
-    @marshal_with(file_fields)
+    @marshal_with(file_fields_with_signed_url)
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("url", type=str, required=True, help="URL is required")
@@ -57,4 +58,13 @@ class RemoteFileUploadApi(Resource):
         except Exception as e:
             return {"error": str(e)}, 400
 
-        return upload_file, 201
+        return {
+            "id": upload_file.id,
+            "name": upload_file.name,
+            "size": upload_file.size,
+            "extension": upload_file.extension,
+            "url": file_helpers.get_signed_file_url(upload_file_id=upload_file.id),
+            "mime_type": upload_file.mime_type,
+            "created_by": upload_file.created_by,
+            "created_at": upload_file.created_at,
+        }, 201
