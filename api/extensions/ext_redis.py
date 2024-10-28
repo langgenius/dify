@@ -1,8 +1,8 @@
 import redis
-from flask_caching import Cache
 from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
 from redis.sentinel import Sentinel
+from flask_caching import Cache
 
 from configs import dify_config
 
@@ -60,6 +60,11 @@ def init_app(app):
         "decode_responses": False,
     }
 
+    cache_config = {
+        'CACHE_TYPE': 'redis',
+        'CACHE_DEFAULT_TIMEOUT': 3600,
+    }
+
     if dify_config.REDIS_USE_SENTINEL:
         sentinel_hosts = [
             (node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")
@@ -74,12 +79,24 @@ def init_app(app):
         )
         master = sentinel.master_for(dify_config.REDIS_SENTINEL_SERVICE_NAME, **redis_params)
         redis_client.initialize(master)
+
+        # Configure cache for Sentinel
+        cache_config.update({
+            'CACHE_REDIS_URL': f"redis://{dify_config.REDIS_SENTINEL_USERNAME}:{dify_config.REDIS_SENTINEL_PASSWORD}@{sentinel_hosts[0][0]}:{sentinel_hosts[0][1]}/{dify_config.REDIS_DB}?sentinel={dify_config.REDIS_SENTINEL_SERVICE_NAME}"
+        })
     elif dify_config.REDIS_USE_CLUSTERS:
         nodes = [
-            ClusterNode(host=node.split(":")[0], port=int(node.split.split(":")[1]))
+            ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))
             for node in dify_config.REDIS_CLUSTERS.split(",")
         ]
         redis_client.initialize(RedisCluster(startup_nodes=nodes, password=dify_config.REDIS_CLUSTERS_PASSWORD))
+
+        # Flask-Caching doesn't directly support RedisCluster
+        # Consider alternative caching libraries or a fallback
+        app.logger.warning("Flask-Caching does not directly support Redis clusters. Ensure compatibility.")
+        cache_config.update({
+            'CACHE_REDIS_URL': f"redis://{dify_config.REDIS_CLUSTERS.split(',')[0]}/{dify_config.REDIS_DB}"
+        })
     else:
         redis_params.update(
             {
@@ -91,14 +108,13 @@ def init_app(app):
         pool = redis.ConnectionPool(**redis_params)
         redis_client.initialize(redis.Redis(connection_pool=pool))
 
-        cache_config = {
-            "CACHE_TYPE": "redis",
-            "CACHE_REDIS_HOST": app.config.get("REDIS_HOST"),
-            "CACHE_REDIS_PORT": app.config.get("REDIS_PORT"),
-            "CACHE_REDIS_PASSWORD": app.config.get("REDIS_PASSWORD"),
-            "CACHE_REDIS_DB": app.config.get("REDIS_DB"),
-            "CACHE_DEFAULT_TIMEOUT": 3600,
-        }
+        # Configure cache for standalone Redis
+        cache_config.update({
+            'CACHE_REDIS_HOST': dify_config.REDIS_HOST,
+            'CACHE_REDIS_PORT': dify_config.REDIS_PORT,
+            'CACHE_REDIS_PASSWORD': dify_config.REDIS_PASSWORD,
+            'CACHE_REDIS_DB': dify_config.REDIS_DB,
+        })
 
     cache.init_app(app, config=cache_config)
 
