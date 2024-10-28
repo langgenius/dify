@@ -148,6 +148,7 @@ const translation = {
   howToGet: '如何获取',
   openInStudio: '在工作室中打开',
   toolNameUsageTip: '工具调用名称，用于 Agent 推理和提示词',
+  copyToolName: '复制名称',
 }
 
 export default translation

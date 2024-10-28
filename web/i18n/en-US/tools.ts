@@ -144,10 +144,11 @@ const translation = {
   },
   builtInPromptTitle: 'Prompt',
   toolRemoved: 'Tool removed',
-  notAuthorized: 'Tool not authorized',
+  notAuthorized: 'Not authorized',
   howToGet: 'How to get',
   openInStudio: 'Open in Studio',
   toolNameUsageTip: 'Tool call name for agent reasoning and prompting',
+  copyToolName: 'Copy Name',
 }
 
 export default translation
