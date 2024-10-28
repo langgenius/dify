@@ -1,12 +1,9 @@
-import mimetypes
-import os
-import re
 import urllib.parse
-from uuid import uuid4
 
 from flask_login import current_user
 from flask_restful import marshal_with, reqparse
 
+from controllers.common import helpers
 from controllers.web.wraps import WebApiResource
 from core.helper import ssrf_proxy
 from fields.file_fields import file_fields, remote_file_info_fields
@@ -36,49 +33,23 @@ class RemoteFileUploadApi(WebApiResource):
 
         url = args["url"]
 
-        try:
-            response = ssrf_proxy.get(url)
-            response.raise_for_status()
-            content = response.content
-        except Exception as e:
-            return {"error": str(e)}, 400
+        response = ssrf_proxy.head(url)
+        response.raise_for_status()
 
-        # Try to extract filename from URL
-        parsed_url = urllib.parse.urlparse(url)
-        url_path = parsed_url.path
-        filename = os.path.basename(url_path)
+        file_info = helpers.guess_file_info_from_response(response)
 
-        # If filename couldn't be extracted, use Content-Disposition header
-        if not filename:
-            content_disposition = response.headers.get("Content-Disposition")
-            if content_disposition:
-                filename_match = re.search(r'filename="?(.+)"?', content_disposition)
-                if filename_match:
-                    filename = filename_match.group(1)
+        if not FileService.is_file_size_within_limit(extension=file_info.extension, file_size=file_info.size):
+            return {"error": "File size exceeded"}, 400
 
-        # If still no filename, generate a unique one
-        if not filename:
-            unique_name = str(uuid4())
-            filename = f"{unique_name}"
-
-        # Guess MIME type from filename first, then URL
-        mimetype, _ = mimetypes.guess_type(filename)
-        if mimetype is None:
-            mimetype, _ = mimetypes.guess_type(url)
-        if mimetype is None:
-            # If guessing fails, use Content-Type from response headers
-            mimetype = response.headers.get("Content-Type", "application/octet-stream")
-
-        # Ensure filename has an extension
-        if not os.path.splitext(filename)[1]:
-            extension = mimetypes.guess_extension(mimetype) or ".bin"
-            filename = f"{filename}{extension}"
+        response = ssrf_proxy.get(url)
+        response.raise_for_status()
+        content = response.content
 
         try:
             upload_file = FileService.upload_file(
-                filename=filename,
+                filename=file_info.filename,
                 content=content,
-                mimetype=mimetype,
+                mimetype=file_info.mimetype,
                 user=current_user,
             )
         except Exception as e:

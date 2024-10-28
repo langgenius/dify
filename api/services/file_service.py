@@ -44,23 +44,12 @@ class FileService:
         if source == "datasets" and extension not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
-        # select file size limit
-        if extension in IMAGE_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
-        elif extension in VIDEO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT * 1024 * 1024
-        elif extension in AUDIO_EXTENSIONS:
-            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
-        else:
-            file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
-
         # get file size
         file_size = len(content)
 
         # check if the file size is exceeded
-        if file_size > file_size_limit:
-            message = f"File size exceeded. {file_size} > {file_size_limit}"
-            raise FileTooLargeError(message)
+        if not FileService.is_file_size_within_limit(extension=extension, file_size=file_size):
+            raise FileTooLargeError
 
         # generate file key
         file_uuid = str(uuid.uuid4())
@@ -96,6 +85,19 @@ class FileService:
         db.session.commit()
 
         return upload_file
+
+    @staticmethod
+    def is_file_size_within_limit(*, extension: str, file_size: int) -> bool:
+        if extension in IMAGE_EXTENSIONS:
+            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+        elif extension in VIDEO_EXTENSIONS:
+            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT * 1024 * 1024
+        elif extension in AUDIO_EXTENSIONS:
+            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
+        else:
+            file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
+
+        return file_size <= file_size_limit
 
     @staticmethod
     def upload_text(text: str, text_name: str) -> UploadFile:
