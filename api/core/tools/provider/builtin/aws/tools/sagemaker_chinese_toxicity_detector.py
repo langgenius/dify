@@ -12,19 +12,26 @@ class ContentModerationTool(BuiltinTool):
     sagemaker_endpoint: str = None
 
     def _invoke_sagemaker(self, payload: dict, endpoint: str):
-        response_model = self.sagemaker_client.invoke_endpoint(
+        response = self.sagemaker_client.invoke_endpoint(
             EndpointName=endpoint,
             Body=json.dumps(payload),
             ContentType="application/json",
         )
-        json_str = response_model['Body'].read().decode('utf8')
-        json_obj = json.loads(json_str)
+        # Parse response
+        response_body = response['Body'].read().decode('utf8')
 
-        # Parse the nested JSON structure
+        json_obj = json.loads(response_body)
+
+        # Handle nested JSON if present
         if isinstance(json_obj, dict) and 'body' in json_obj:
             body_content = json.loads(json_obj['body'])
-            return body_content
-        return json_obj
+            raw_label = body_content.get('label')
+        else:
+            raw_label = json_obj.get('label')
+
+        # 映射标签并返回
+        result = LABEL_MAPPING.get(raw_label, 'NO_SAFE')  # 如果映射中没有找到，默认返回NO_SAFE
+        return result
 
     def _invoke(self,
                 user_id: str,
@@ -52,7 +59,7 @@ class ContentModerationTool(BuiltinTool):
 
             result = self._invoke_sagemaker(payload, self.sagemaker_endpoint)
 
-            return self.create_text_message(text=result.get('result', 'Unknown'))
+            return self.create_text_message(text=result)
 
         except Exception as e:
             return self.create_text_message(f'Exception {str(e)}')
