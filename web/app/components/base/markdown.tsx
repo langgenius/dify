@@ -252,7 +252,7 @@ const MarkdownButton = ({ node }: any) => {
     className={cn('!h-8 !px-3 select-none')}
     onClick={() => onSend?.(message)}
   >
-    <span className='text-[13px]'>{node.children[0].value}</span>
+    <span className='text-[13px]'>{node.children[0]?.value || ''}</span>
   </Button>
 }
 MarkdownButton.displayName = 'MarkdownButton'
