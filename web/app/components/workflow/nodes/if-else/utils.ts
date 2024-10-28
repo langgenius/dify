@@ -3,7 +3,7 @@ import { VarType } from '@/app/components/workflow/types'
 import type { Branch } from '@/app/components/workflow/types'
 
 export const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
-  return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull].includes(operator)
+  return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
 }
 
 const notTranslateKey = [

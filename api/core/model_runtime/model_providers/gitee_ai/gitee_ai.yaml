@@ -1,0 +1,35 @@
+provider: gitee_ai
+label:
+  en_US: Gitee AI
+  zh_Hans: Gitee AI
+description:
+  en_US: 快速体验大模型，领先探索 AI 开源世界
+  zh_Hans: 快速体验大模型，领先探索 AI 开源世界
+icon_small:
+  en_US: Gitee-AI-Logo.svg
+icon_large:
+  en_US: Gitee-AI-Logo-full.svg
+help:
+  title:
+    en_US: Get your token from Gitee AI
+    zh_Hans: 从 Gitee AI 获取 token
+  url:
+    en_US: https://ai.gitee.com/dashboard/settings/tokens
+supported_model_types:
+  - llm
+  - text-embedding
+  - rerank
+  - speech2text
+  - tts
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key

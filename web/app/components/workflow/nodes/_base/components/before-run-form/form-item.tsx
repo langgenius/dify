@@ -22,6 +22,7 @@ import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
+import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -168,10 +169,25 @@ const FormItem: FC<Props> = ({
                 onChange(null)
             }}
             fileConfig={{
-              allowed_file_types: inStepRun ? [SupportUploadFileTypes.custom] : payload.allowed_file_types,
-              allowed_file_extensions: inStepRun ? [] : payload.allowed_file_extensions,
+              allowed_file_types: inStepRun
+                ? [
+                  SupportUploadFileTypes.image,
+                  SupportUploadFileTypes.document,
+                  SupportUploadFileTypes.audio,
+                  SupportUploadFileTypes.video,
+                ]
+                : payload.allowed_file_types,
+              allowed_file_extensions: inStepRun
+                ? [
+                  ...FILE_EXTS[SupportUploadFileTypes.image],
+                  ...FILE_EXTS[SupportUploadFileTypes.document],
+                  ...FILE_EXTS[SupportUploadFileTypes.audio],
+                  ...FILE_EXTS[SupportUploadFileTypes.video],
+                ]
+                : payload.allowed_file_extensions,
               allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
               number_limits: 1,
+              fileUploadConfig: fileSettings?.fileUploadConfig,
             }}
           />
         )}
@@ -180,10 +196,25 @@ const FormItem: FC<Props> = ({
             value={value}
             onChange={files => onChange(files)}
             fileConfig={{
-              allowed_file_types: inStepRun ? [SupportUploadFileTypes.custom] : payload.allowed_file_types,
-              allowed_file_extensions: inStepRun ? [] : payload.allowed_file_extensions,
+              allowed_file_types: inStepRun
+                ? [
+                  SupportUploadFileTypes.image,
+                  SupportUploadFileTypes.document,
+                  SupportUploadFileTypes.audio,
+                  SupportUploadFileTypes.video,
+                ]
+                : payload.allowed_file_types,
+              allowed_file_extensions: inStepRun
+                ? [
+                  ...FILE_EXTS[SupportUploadFileTypes.image],
+                  ...FILE_EXTS[SupportUploadFileTypes.document],
+                  ...FILE_EXTS[SupportUploadFileTypes.audio],
+                  ...FILE_EXTS[SupportUploadFileTypes.video],
+                ]
+                : payload.allowed_file_extensions,
               allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
               number_limits: inStepRun ? 5 : payload.max_length,
+              fileUploadConfig: fileSettings?.fileUploadConfig,
             }}
           />
         )}

@@ -1,5 +1,5 @@
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from copy import deepcopy
 from random import randint
 from typing import Any, Literal
@@ -33,7 +33,7 @@ class Executor:
     params: Mapping[str, str] | None
     content: str | bytes | None
     data: Mapping[str, Any] | None
-    files: Mapping[str, bytes] | None
+    files: Mapping[str, tuple[str | None, bytes, str]] | None
     json: Any
     headers: dict[str, str]
     auth: HttpRequestNodeAuthorization
@@ -60,7 +60,7 @@ class Executor:
         self.method = node_data.method
         self.auth = node_data.authorization
         self.timeout = timeout
-        self.params = None
+        self.params = {}
         self.headers = {}
         self.content = None
         self.files = None
@@ -108,8 +108,10 @@ class Executor:
                 case "raw-text":
                     self.content = self.variable_pool.convert_template(data[0].value).text
                 case "json":
-                    json_object = json.loads(data[0].value)
-                    self.json = self._parse_object_contains_variables(json_object)
+                    json_string = self.variable_pool.convert_template(data[0].value).text
+                    json_object = json.loads(json_string)
+                    self.json = json_object
+                    # self.json = self._parse_object_contains_variables(json_object)
                 case "binary":
                     file_selector = data[0].file
                     file_variable = self.variable_pool.get_file(file_selector)
@@ -139,7 +141,11 @@ class Executor:
                     files = {k: self.variable_pool.get_file(selector) for k, selector in file_selectors.items()}
                     files = {k: v for k, v in files.items() if v is not None}
                     files = {k: variable.value for k, variable in files.items()}
-                    files = {k: file_manager.download(v) for k, v in files.items() if v.related_id is not None}
+                    files = {
+                        k: (v.filename, file_manager.download(v), v.mime_type or "application/octet-stream")
+                        for k, v in files.items()
+                        if v.related_id is not None
+                    }
 
                     self.data = form_data
                     self.files = files
@@ -273,14 +279,6 @@ class Executor:
         raw += body
 
         return raw
-
-    def _parse_object_contains_variables(self, obj: str | dict | list, /) -> Mapping[str, Any] | Sequence[Any] | str:
-        if isinstance(obj, dict):
-            return {k: self._parse_object_contains_variables(v) for k, v in obj.items()}
-        elif isinstance(obj, list):
-            return [self._parse_object_contains_variables(v) for v in obj]
-        elif isinstance(obj, str):
-            return self.variable_pool.convert_template(obj).text
 
 
 def _plain_text_to_dict(text: str, /) -> dict[str, str]:

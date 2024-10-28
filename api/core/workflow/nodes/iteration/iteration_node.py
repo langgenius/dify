@@ -5,6 +5,7 @@ from typing import Any, cast
 
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.variables import IntegerSegment
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.graph_engine.entities.event import (
     BaseGraphEvent,
@@ -147,9 +148,16 @@ class IterationNode(BaseNode[IterationNodeData]):
 
                             if NodeRunMetadataKey.ITERATION_ID not in metadata:
                                 metadata[NodeRunMetadataKey.ITERATION_ID] = self.node_id
-                                metadata[NodeRunMetadataKey.ITERATION_INDEX] = variable_pool.get_any(
-                                    [self.node_id, "index"]
-                                )
+                                index_variable = variable_pool.get([self.node_id, "index"])
+                                if not isinstance(index_variable, IntegerSegment):
+                                    yield RunCompletedEvent(
+                                        run_result=NodeRunResult(
+                                            status=WorkflowNodeExecutionStatus.FAILED,
+                                            error=f"Invalid index variable type: {type(index_variable)}",
+                                        )
+                                    )
+                                    return
+                                metadata[NodeRunMetadataKey.ITERATION_INDEX] = index_variable.value
                                 event.route_node_state.node_run_result.metadata = metadata
 
                         yield event
@@ -181,7 +189,16 @@ class IterationNode(BaseNode[IterationNodeData]):
                         yield event
 
                 # append to iteration output variable list
-                current_iteration_output = variable_pool.get_any(self.node_data.output_selector)
+                current_iteration_output_variable = variable_pool.get(self.node_data.output_selector)
+                if current_iteration_output_variable is None:
+                    yield RunCompletedEvent(
+                        run_result=NodeRunResult(
+                            status=WorkflowNodeExecutionStatus.FAILED,
+                            error=f"Iteration output variable {self.node_data.output_selector} not found",
+                        )
+                    )
+                    return
+                current_iteration_output = current_iteration_output_variable.to_object()
                 outputs.append(current_iteration_output)
 
                 # remove all nodes outputs from variable pool
@@ -189,11 +206,11 @@ class IterationNode(BaseNode[IterationNodeData]):
                     variable_pool.remove([node_id])
 
                 # move to next iteration
-                current_index = variable_pool.get([self.node_id, "index"])
-                if current_index is None:
+                current_index_variable = variable_pool.get([self.node_id, "index"])
+                if not isinstance(current_index_variable, IntegerSegment):
                     raise ValueError(f"iteration {self.node_id} current index not found")
 
-                next_index = int(current_index.to_object()) + 1
+                next_index = current_index_variable.value + 1
                 variable_pool.add([self.node_id, "index"], next_index)
 
                 if next_index < len(iterator_list_value):
@@ -205,9 +222,7 @@ class IterationNode(BaseNode[IterationNodeData]):
                     iteration_node_type=self.node_type,
                     iteration_node_data=self.node_data,
                     index=next_index,
-                    pre_iteration_output=jsonable_encoder(current_iteration_output)
-                    if current_iteration_output
-                    else None,
+                    pre_iteration_output=jsonable_encoder(current_iteration_output),
                 )
 
             yield IterationRunSucceededEvent(

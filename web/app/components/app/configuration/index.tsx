@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
@@ -38,7 +39,7 @@ import ConfigContext from '@/context/debug-configuration'
 import Config from '@/app/components/app/configuration/config'
 import Debug from '@/app/components/app/configuration/debug'
 import Confirm from '@/app/components/base/confirm'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchAppDetail, updateAppModelConfig } from '@/service/apps'
 import { promptVariablesToUserInputsForm, userInputsFormToPromptVariables } from '@/utils/model-config'
@@ -53,7 +54,10 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Drawer from '@/app/components/base/drawer'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import {
+  useModelListAndDefaultModelAndCurrentProviderAndModel,
+  useTextGenerationCurrentProviderAndModelAndModelList,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { fetchCollectionList } from '@/service/tools'
 import { type Collection } from '@/app/components/tools/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -66,6 +70,7 @@ import type { Features as FeaturesData, FileUpload } from '@/app/components/base
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
+import { fetchFileUploadConfig } from '@/service/common'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -81,6 +86,8 @@ const Configuration: FC = () => {
     showAppConfigureFeaturesModal: state.showAppConfigureFeaturesModal,
     setShowAppConfigureFeaturesModal: state.setShowAppConfigureFeaturesModal,
   })))
+  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+
   const latestPublishedAt = useMemo(() => appDetail?.model_config.updated_at, [appDetail])
   const [formattingChanged, setFormattingChanged] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
@@ -217,6 +224,9 @@ const Configuration: FC = () => {
   const [isShowSelectDataSet, { setTrue: showSelectDataSet, setFalse: hideSelectDataSet }] = useBoolean(false)
   const selectedIds = dataSets.map(item => item.id)
   const [rerankSettingModalOpen, setRerankSettingModalOpen] = useState(false)
+  const {
+    currentModel: currentRerankModel,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const handleSelect = (data: DataSet[]) => {
     if (isEqual(data.map(item => item.id), dataSets.map(item => item.id))) {
       hideSelectDataSet()
@@ -263,7 +273,7 @@ const Configuration: FC = () => {
       reranking_mode: restConfigs.reranking_mode,
       weights: restConfigs.weights,
       reranking_enable: restConfigs.reranking_enable,
-    }, newDatasets)
+    }, newDatasets, dataSets, !!currentRerankModel)
 
     setDatasetConfigs({
       ...retrievalConfig,
@@ -456,12 +466,13 @@ const Configuration: FC = () => {
         allowed_file_extensions: modelConfig.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
         allowed_file_upload_methods: modelConfig.file_upload?.allowed_file_upload_methods || modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
         number_limits: modelConfig.file_upload?.number_limits || modelConfig.file_upload?.image?.number_limits || 3,
+        fileUploadConfig: fileUploadConfigResponse,
       } as FileUpload,
       suggested: modelConfig.suggested_questions_after_answer || { enabled: false },
       citation: modelConfig.retriever_resource || { enabled: false },
       annotationReply: modelConfig.annotation_reply || { enabled: false },
     }
-  }, [modelConfig])
+  }, [fileUploadConfigResponse, modelConfig])
   const handleFeaturesChange = useCallback((flag: any) => {
     setShowAppConfigureFeaturesModal(true)
     if (flag)
@@ -603,9 +614,11 @@ const Configuration: FC = () => {
 
         syncToPublishedConfig(config)
         setPublishedConfig(config)
+        const retrievalConfig = getMultipleRetrievalConfig(modelConfig.dataset_configs, datasets, datasets, !!currentRerankModel)
         setDatasetConfigs({
           retrieval_model: RETRIEVE_TYPE.multiWay,
           ...modelConfig.dataset_configs,
+          ...retrievalConfig,
         })
         setHasFetchedDetail(true)
       })
@@ -676,6 +689,9 @@ const Configuration: FC = () => {
       },
     }))
 
+    const fileUpload = { ...features?.file }
+    delete fileUpload?.fileUploadConfig
+
     // new model config data struct
     const data: BackendModelConfig = {
       // Simple Mode prompt
@@ -692,7 +708,7 @@ const Configuration: FC = () => {
       sensitive_word_avoidance: features?.moderation as any,
       speech_to_text: features?.speech2text as any,
       text_to_speech: features?.text2speech as any,
-      file_upload: features?.file as any,
+      file_upload: fileUpload as any,
       suggested_questions_after_answer: features?.suggested as any,
       retriever_resource: features?.citation as any,
       agent_mode: {

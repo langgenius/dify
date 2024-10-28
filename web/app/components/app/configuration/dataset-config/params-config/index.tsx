@@ -16,7 +16,6 @@ import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import {
   getMultipleRetrievalConfig,
-  getSelectedDatasetsMode,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 
 type ParamsConfigProps = {
@@ -37,57 +36,8 @@ const ParamsConfig = ({
   const [tempDataSetConfigs, setTempDataSetConfigs] = useState(datasetConfigs)
 
   useEffect(() => {
-    const {
-      allEconomic,
-      allHighQuality,
-      allHighQualityFullTextSearch,
-      allHighQualityVectorSearch,
-      allExternal,
-      mixtureHighQualityAndEconomic,
-      inconsistentEmbeddingModel,
-      mixtureInternalAndExternal,
-    } = getSelectedDatasetsMode(selectedDatasets)
-
-    if (allEconomic || allHighQuality || allHighQualityFullTextSearch || allHighQualityVectorSearch || (allExternal && selectedDatasets.length === 1))
-      setRerankSettingModalOpen(false)
-
-    if (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || mixtureInternalAndExternal || (allExternal && selectedDatasets.length > 1))
-      setRerankSettingModalOpen(true)
-  }, [selectedDatasets])
-
-  useEffect(() => {
-    const {
-      allEconomic,
-      allInternal,
-      allExternal,
-    } = getSelectedDatasetsMode(selectedDatasets)
-    const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
-    let rerankEnable = restConfigs.reranking_enable
-
-    if (((allInternal && allEconomic) || allExternal) && !restConfigs.reranking_model?.reranking_provider_name && rerankEnable === undefined)
-      rerankEnable = false
-
-    setTempDataSetConfigs({
-      ...getMultipleRetrievalConfig({
-        top_k: restConfigs.top_k,
-        score_threshold: restConfigs.score_threshold,
-        reranking_model: restConfigs.reranking_model && {
-          provider: restConfigs.reranking_model.reranking_provider_name,
-          model: restConfigs.reranking_model.reranking_model_name,
-        },
-        reranking_mode: restConfigs.reranking_mode,
-        weights: restConfigs.weights,
-        reranking_enable: rerankEnable,
-      }, selectedDatasets),
-      reranking_model: restConfigs.reranking_model && {
-        reranking_provider_name: restConfigs.reranking_model.reranking_provider_name,
-        reranking_model_name: restConfigs.reranking_model.reranking_model_name,
-      },
-      retrieval_model,
-      score_threshold_enabled,
-      datasets,
-    })
-  }, [selectedDatasets, datasetConfigs])
+    setTempDataSetConfigs(datasetConfigs)
+  }, [datasetConfigs])
 
   const {
     defaultModel: rerankDefaultModel,
@@ -135,7 +85,7 @@ const ParamsConfig = ({
       reranking_mode: restConfigs.reranking_mode,
       weights: restConfigs.weights,
       reranking_enable: restConfigs.reranking_enable,
-    }, selectedDatasets)
+    }, selectedDatasets, selectedDatasets, !!isRerankDefaultModelValid)
 
     setTempDataSetConfigs({
       ...retrievalConfig,
@@ -180,6 +130,7 @@ const ParamsConfig = ({
 
             <div className='mt-6 flex justify-end'>
               <Button className='mr-2 flex-shrink-0' onClick={() => {
+                setTempDataSetConfigs(datasetConfigs)
                 setRerankSettingModalOpen(false)
               }}>{t('common.operation.cancel')}</Button>
               <Button variant='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
