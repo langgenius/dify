@@ -9,7 +9,7 @@ import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n/language'
 
-type Props = {
+interface Props {
   showWarning: boolean
   onShowEditModal: () => void
 }
@@ -23,7 +23,7 @@ const HistoryPanel: FC<Props> = ({
 
   return (
     <Panel
-      className='mt-3'
+      className='mt-2'
       title={
         <div className='flex items-center gap-2'>
           <div>{t('appDebug.feature.conversationHistory.title')}</div>

@@ -3,7 +3,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import FormGeneration from '../toolbox/moderation/form-generation'
+import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
@@ -21,13 +21,13 @@ import { useToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 
 const systemTypes = ['api']
-type ExternalDataToolModalProps = {
+interface ExternalDataToolModalProps {
   data: ExternalDataTool
   onCancel: () => void
   onSave: (externalDataTool: ExternalDataTool) => void
   onValidateBeforeSave?: (externalDataTool: ExternalDataTool) => boolean
 }
-type Provider = {
+interface Provider {
   key: string
   name: string
   form_schema?: CodeBasedExtensionItem['form_schema']

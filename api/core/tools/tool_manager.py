@@ -24,7 +24,6 @@ from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ToolConfigurationManager, ToolParameterConfigurationManager
-from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
@@ -203,7 +202,7 @@ class ToolManager:
             raise ToolProviderNotFoundError(f"provider type {provider_type} not found")
 
     @classmethod
-    def _init_runtime_parameter(cls, parameter_rule: ToolParameter, parameters: dict) -> Union[str, int, float, bool]:
+    def _init_runtime_parameter(cls, parameter_rule: ToolParameter, parameters: dict):
         """
         init runtime parameter
         """
@@ -222,7 +221,7 @@ class ToolManager:
                     f"tool parameter {parameter_rule.name} value {parameter_value} not in options {options}"
                 )
 
-        return ToolParameterConverter.cast_parameter_by_type(parameter_value, parameter_rule.type)
+        return parameter_rule.type.cast_value(parameter_value)
 
     @classmethod
     def get_agent_tool_runtime(
@@ -243,7 +242,11 @@ class ToolManager:
         parameters = tool_entity.get_all_runtime_parameters()
         for parameter in parameters:
             # check file types
-            if parameter.type == ToolParameter.ToolParameterType.FILE:
+            if parameter.type in {
+                ToolParameter.ToolParameterType.SYSTEM_FILES,
+                ToolParameter.ToolParameterType.FILE,
+                ToolParameter.ToolParameterType.FILES,
+            }:
                 raise ValueError(f"file type parameter {parameter.name} not supported in agent")
 
             if parameter.form == ToolParameter.ToolParameterForm.FORM:

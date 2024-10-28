@@ -24,6 +24,7 @@ import {
   fetchDefaultProcessRule,
 } from '@/service/datasets'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
@@ -52,7 +53,7 @@ import { ModelTypeEnum } from '@/app/components/header/account-setting/model-pro
 import { Globe01 } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 
 type ValueOf<T> = T[keyof T]
-type StepTwoProps = {
+interface StepTwoProps {
   isSetting?: boolean
   documentDetail?: FullDocumentDetail
   isAPIKeySet: boolean
@@ -202,7 +203,6 @@ const StepTwo = ({
   }
 
   const fetchFileIndexingEstimate = async (docForm = DocForm.TEXT, language?: string) => {
-    // eslint-disable-next-line ts/no-use-before-define
     const res = await didFetchFileIndexingEstimate(getFileIndexingEstimateParams(docForm, language)!)
     if (segmentationType === SegmentType.CUSTOM)
       setCustomFileIndexingEstimate(res)
@@ -211,6 +211,10 @@ const StepTwo = ({
   }
 
   const confirmChangeCustomConfig = () => {
+    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
+      return
+    }
     setCustomFileIndexingEstimate(null)
     setShowPreview()
     fetchFileIndexingEstimate()
@@ -338,13 +342,17 @@ const StepTwo = ({
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.overlapCheck') })
       return
     }
+    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
+      return
+    }
     if (isSetting) {
       params = {
         original_document_id: documentDetail?.id,
         doc_form: docForm,
         doc_language: docLanguage,
         process_rule: getProcessRule(),
-        // eslint-disable-next-line ts/no-use-before-define
+
         retrieval_model: retrievalConfig, // Readonly. If want to changed, just go to settings page.
         embedding_model: embeddingModel.model, // Readonly
         embedding_model_provider: embeddingModel.provider, // Readonly
@@ -357,7 +365,7 @@ const StepTwo = ({
           rerankDefaultModel,
           isRerankDefaultModelValid: !!isRerankDefaultModelValid,
           rerankModelList,
-          // eslint-disable-next-line ts/no-use-before-define
+
           retrievalConfig,
           indexMethod: indexMethod as string,
         })
@@ -367,7 +375,7 @@ const StepTwo = ({
       }
       const postRetrievalConfig = ensureRerankModelSelected({
         rerankDefaultModel: rerankDefaultModel!,
-        // eslint-disable-next-line ts/no-use-before-define
+
         retrievalConfig,
         indexMethod: indexMethod as string,
       })
@@ -646,29 +654,26 @@ const StepTwo = ({
                           }
                         />
                       </div>
-                      <input
+                      <Input
                         type="text"
-                        className={s.input}
-                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''}
-                        value={segmentIdentifier}
-                        onChange={e => doSetSegmentIdentifier(e.target.value)}
+                        className='h-9'
+                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''} value={segmentIdentifier}
+                        onChange={e => setSegmentIdentifier(e.target.value)}
                       />
                     </div>
                   </div>
                   <div className={s.formRow}>
                     <div className='w-full'>
                       <div className={s.label}>{t('datasetCreation.stepTwo.maxLength')}</div>
-                      <div className='relative w-full'>
-                        <input
-                          type="number"
-                          className={s.input}
-                          placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
-                          value={max}
-                          min={1}
-                          onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
-                        />
-                        <div className='absolute top-2.5 right-2.5 text-text-tertiary system-sm-regular'>Tokens</div>
-                      </div>
+                      <Input
+                        type="number"
+                        className='h-9'
+                        placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
+                        value={max}
+                        max={4000}
+                        min={1}
+                        onChange={e => setMax(Number.parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                      />
                     </div>
                   </div>
                   <div className={s.formRow}>
@@ -683,17 +688,14 @@ const StepTwo = ({
                           }
                         />
                       </div>
-                      <div className='relative w-full'>
-                        <input
-                          type="number"
-                          className={s.input}
-                          placeholder={t('datasetCreation.stepTwo.overlap') || ''}
-                          value={overlap}
-                          min={1}
-                          onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))}
-                        />
-                        <div className='absolute top-2.5 right-2.5 text-text-tertiary system-sm-regular'>Tokens</div>
-                      </div>
+                      <Input
+                        type="number"
+                        className='h-9'
+                        placeholder={t('datasetCreation.stepTwo.overlap') || ''}
+                        value={overlap}
+                        min={1}
+                        onChange={e => setOverlap(Number.parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                      />
                     </div>
                   </div>
                   <div className={s.formRow}>

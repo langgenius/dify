@@ -1,8 +1,9 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import { memo } from 'react'
+import Textarea from '@/app/components/base/textarea'
 
-type InputProps = {
+interface InputProps {
   form: any
   value: string
   onChange: (variable: string, value: string) => void
@@ -23,9 +24,9 @@ const FormInput: FC<InputProps> = ({
 
   if (type === 'paragraph') {
     return (
-      <textarea
+      <Textarea
         value={value}
-        className='grow h-[104px] rounded-lg bg-gray-100 px-2.5 py-2 outline-none appearance-none resize-none'
+        className='resize-none'
         onChange={e => onChange(variable, e.target.value)}
         placeholder={`${label}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
       />

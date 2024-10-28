@@ -18,7 +18,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Badge from '@/app/components/base/badge'
 import { useKnowledge } from '@/hooks/use-knowledge'
 
-type Props = {
+interface Props {
   payload: DataSet
   onRemove: () => void
   onChange: (dataSet: DataSet) => void
@@ -71,7 +71,7 @@ const DatasetItem: FC<Props> = ({
               <Folder className='w-4 h-4 text-[#444CE7]' />
             </div>
         }
-        <div className='w-0 grow text-[13px] font-normal text-gray-800 truncate'>{payload.name}</div>
+        <div className='w-0 grow text-text-secondary system-sm-medium truncate'>{payload.name}</div>
       </div>
       {!readonly && (
         <div className='hidden group-hover/dataset-item:flex shrink-0 ml-2  items-center space-x-1'>

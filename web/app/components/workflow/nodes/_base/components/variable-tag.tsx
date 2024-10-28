@@ -18,14 +18,16 @@ import { getNodeInfoById, isConversationVar, isENV, isSystemVar } from '@/app/co
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 
-type VariableTagProps = {
+interface VariableTagProps {
   valueSelector: ValueSelector
   varType: VarType
+  isShort?: boolean
   availableNodes?: Node[]
 }
 const VariableTag = ({
   valueSelector,
   varType,
+  isShort,
   availableNodes,
 }: VariableTagProps) => {
   const nodes = useNodes<CommonNodeType>()
@@ -76,7 +78,7 @@ const VariableTag = ({
           {variableName}
         </div>
         {
-          varType && (
+          !isShort && varType && (
             <div className='shrink-0 ml-0.5 text-text-tertiary'>{capitalize(varType)}</div>
           )
         }

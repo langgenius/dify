@@ -38,13 +38,15 @@ import type {
 import type { RETRIEVE_METHOD } from '@/types/app'
 import type { SystemFeatures } from '@/types/feature'
 
-type LoginSuccess = {
+interface LoginSuccess {
   result: 'success'
   data: { access_token: string;refresh_token: string }
 }
-type LoginFail = {
+interface LoginFail {
   result: 'fail'
   data: string
+  code: string
+  message: string
 }
 type LoginResponse = LoginSuccess | LoginFail
 export const login: Fetcher<LoginResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
@@ -169,19 +171,19 @@ export const updatePluginProviderAIKey: Fetcher<UpdateOpenAIKeyResponse, { url: 
   return post<UpdateOpenAIKeyResponse>(url, { body })
 }
 
-export const invitationCheck: Fetcher<CommonResponse & { is_valid: boolean; workspace_name: string }, { url: string; params: { workspace_id: string; email: string; token: string } }> = ({ url, params }) => {
-  return get<CommonResponse & { is_valid: boolean; workspace_name: string }>(url, { params })
+export const invitationCheck: Fetcher<CommonResponse & { is_valid: boolean; data: { workspace_name: string; email: string; workspace_id: string } }, { url: string; params: { workspace_id?: string; email?: string; token: string } }> = ({ url, params }) => {
+  return get<CommonResponse & { is_valid: boolean; data: { workspace_name: string; email: string; workspace_id: string } }>(url, { params })
 }
 
-export const activateMember: Fetcher<CommonResponse, { url: string; body: any }> = ({ url, body }) => {
-  return post<CommonResponse>(url, { body })
+export const activateMember: Fetcher<LoginResponse, { url: string; body: any }> = ({ url, body }) => {
+  return post<LoginResponse>(url, { body })
 }
 
 export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (url) => {
   return get<{ data: ModelProvider[] }>(url)
 }
 
-export type ModelProviderCredentials = {
+export interface ModelProviderCredentials {
   credentials?: Record<string, string | undefined | boolean>
   load_balancing: ModelLoadBalancingConfig
 }
@@ -295,8 +297,8 @@ export const moderate = (url: string, body: { app_id: string; text: string }) =>
   return post(url, { body }) as Promise<ModerateResponse>
 }
 
-type RetrievalMethodsRes = {
-  'retrieval_method': RETRIEVE_METHOD[]
+interface RetrievalMethodsRes {
+  retrieval_method: RETRIEVE_METHOD[]
 }
 export const fetchSupportRetrievalMethods: Fetcher<RetrievalMethodsRes, string> = (url) => {
   return get<RetrievalMethodsRes>(url)
@@ -312,8 +314,8 @@ export const enableModel = (url: string, body: { model: string; model_type: Mode
 export const disableModel = (url: string, body: { model: string; model_type: ModelTypeEnum }) =>
   patch<CommonResponse>(url, { body })
 
-export const sendForgotPasswordEmail: Fetcher<CommonResponse, { url: string; body: { email: string } }> = ({ url, body }) =>
-  post<CommonResponse>(url, { body })
+export const sendForgotPasswordEmail: Fetcher<CommonResponse & { data: string }, { url: string; body: { email: string } }> = ({ url, body }) =>
+  post<CommonResponse & { data: string }>(url, { body })
 
 export const verifyForgotPasswordToken: Fetcher<CommonResponse & { is_valid: boolean; email: string }, { url: string; body: { token: string } }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse & { is_valid: boolean; email: string }>
@@ -321,3 +323,18 @@ export const verifyForgotPasswordToken: Fetcher<CommonResponse & { is_valid: boo
 
 export const changePasswordWithToken: Fetcher<CommonResponse, { url: string; body: { token: string; new_password: string; password_confirm: string } }> = ({ url, body }) =>
   post<CommonResponse>(url, { body })
+
+export const fetchRemoteFileInfo = (url: string) => {
+  return get<{ file_type: string; file_length: number }>(`/remote-files/${url}`)
+}
+export const sendEMailLoginCode = (email: string, language = 'en-US') =>
+  post<CommonResponse & { data: string }>('/email-code-login', { body: { email, language } })
+
+export const emailLoginWithCode = (data: { email: string;code: string;token: string }) =>
+  post<LoginResponse>('/email-code-login/validity', { body: data })
+
+export const sendResetPasswordCode = (email: string, language = 'en-US') =>
+  post<CommonResponse & { data: string;message?: string ;code?: string }>('/forgot-password', { body: { email, language } })
+
+export const verifyResetPasswordCode = (body: { email: string;code: string;token: string }) =>
+  post<CommonResponse & { is_valid: boolean }>('/forgot-password/validity', { body })

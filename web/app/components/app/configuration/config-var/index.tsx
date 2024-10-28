@@ -33,7 +33,7 @@ import { InputVarType } from '@/app/components/workflow/types'
 
 export const ADD_EXTERNAL_DATA_TOOL = 'ADD_EXTERNAL_DATA_TOOL'
 
-type ExternalDataToolParams = {
+interface ExternalDataToolParams {
   key: string
   type: string
   index: number
@@ -43,7 +43,7 @@ type ExternalDataToolParams = {
   icon_background?: string
 }
 
-export type IConfigVarProps = {
+export interface IConfigVarProps {
   promptVariables: PromptVariable[]
   readonly?: boolean
   onPromptVariablesChange?: (promptVariables: PromptVariable[]) => void
@@ -271,7 +271,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   }
   return (
     <Panel
-      className="mt-4"
+      className="mt-2"
       headerIcon={
         <VarIcon className='w-4 h-4 text-primary-500' />
       }

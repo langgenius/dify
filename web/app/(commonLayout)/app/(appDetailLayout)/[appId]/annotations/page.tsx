@@ -1,8 +1,8 @@
 import React from 'react'
 import Main from '@/app/components/app/log-annotation'
-import { PageType } from '@/app/components/app/configuration/toolbox/annotation/type'
+import { PageType } from '@/app/components/base/features/new-feature-panel/annotation-reply/type'
 
-export type IProps = {
+export interface IProps {
   params: { appId: string }
 }
 

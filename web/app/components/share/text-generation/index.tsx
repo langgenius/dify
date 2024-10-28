@@ -46,17 +46,17 @@ enum TaskStatus {
   failed = 'failed',
 }
 
-type TaskParam = {
+interface TaskParam {
   inputs: Record<string, any>
 }
 
-type Task = {
+interface Task {
   id: number
   status: TaskStatus
   params: TaskParam
 }
 
-export type IMainProps = {
+export interface IMainProps {
   isInstalledApp?: boolean
   installedAppInfo?: InstalledApp
   isWorkflow?: boolean
@@ -132,9 +132,9 @@ const TextGeneration: FC<IMainProps> = ({
   const handleSend = () => {
     setIsCallBatchAPI(false)
     setControlSend(Date.now())
-    // eslint-disable-next-line ts/no-use-before-define
+
     setAllTaskList([]) // clear batch task running status
-    // eslint-disable-next-line ts/no-use-before-define
+
     showResSidebar()
   }
 
@@ -314,7 +314,7 @@ const TextGeneration: FC<IMainProps> = ({
     setControlSend(Date.now())
     // clear run once task status
     setControlStopResponding(Date.now())
-    // eslint-disable-next-line ts/no-use-before-define
+
     showResSidebar()
   }
   const handleCompleted = (completionRes: string, taskId?: number, isSuccess?: boolean) => {
@@ -390,6 +390,7 @@ const TextGeneration: FC<IMainProps> = ({
       setVisionConfig({
         ...file_upload.image,
         image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
+        fileUploadConfig: appParams?.system_parameters,
       })
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({

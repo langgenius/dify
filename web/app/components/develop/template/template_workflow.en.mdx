@@ -44,6 +44,7 @@ Workflow applications offers non-session support and is ideal for translation, a
         Allows the entry of various variable values defined by the App.
         The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
         The workflow application requires at least one key/value pair to be inputted.
+        If the variable is of File type, specify an object that has the keys described in `files` below.
       - `response_mode` (string) Required
         The mode of response return, supporting:
         - `streaming` Streaming mode (recommended), implements a typewriter-like output through SSE ([Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)).
@@ -53,8 +54,12 @@ Workflow applications offers non-session support and is ideal for translation, a
         User identifier, used to define the identity of the end-user for retrieval and statistics.
         Should be uniquely defined by the developer within the application.
       - `files` (array[object]) Optional
-        File list, suitable for inputting files (images) combined with text understanding and answering questions, available only when the model supports Vision capability.
-          - `type` (string) Supported type: `image` (currently only supports image type)
+        File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports Vision capability.
+          - `type` (string) Supported type: 
+            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
+            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
+            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
+            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
           - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
           - `url` (string) Image URL (when the transfer method is `remote_url`)
           - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
@@ -325,6 +330,81 @@ Workflow applications offers non-session support and is ideal for translation, a
 ---
 
 <Heading
+  url='/files/upload'
+  method='POST'
+  title='File Upload'
+  name='#file-upload'
+/>
+<Row>
+  <Col>
+  Upload a file for use when sending messages, enabling multimodal understanding of images and text.
+  Supports any formats that are supported by your workflow.
+  Uploaded files are for use by the current end-user only.
+
+  ### Request Body
+  This interface requires a `multipart/form-data` request.
+  - `file` (File) Required
+    The file to be uploaded.
+  - `user` (string) Required
+    User identifier, defined by the developer's rules, must be unique within the application.
+
+  ### Response
+  After a successful upload, the server will return the file's ID and related information.
+  - `id` (uuid) ID
+  - `name` (string) File name
+  - `size` (int) File size (bytes)
+  - `extension` (string) File extension
+  - `mime_type` (string) File mime-type
+  - `created_by` (uuid) End-user ID
+  - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
+
+  ### Errors
+  - 400, `no_file_uploaded`, a file must be provided
+  - 400, `too_many_files`, currently only one file is accepted
+  - 400, `unsupported_preview`, the file does not support preview
+  - 400, `unsupported_estimate`, the file does not support estimation
+  - 413, `file_too_large`, the file is too large
+  - 415, `unsupported_file_type`, unsupported extension, currently only document files are accepted
+  - 503, `s3_connection_failed`, unable to connect to S3 service
+  - 503, `s3_permission_denied`, no permission to upload files to S3
+  - 503, `s3_file_too_large`, file exceeds S3 size limit
+  - 500, internal server error
+
+
+  </Col>
+  <Col sticky>
+  ### Request Example
+  <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/files/upload' \
+    --header 'Authorization: Bearer {api_key}' \
+    --form 'file=@"/path/to/file"'
+    ```
+
+    </CodeGroup>
+
+
+  ### Response Example
+  <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",
+      "name": "example.png",
+      "size": 1024,
+      "extension": "png",
+      "mime_type": "image/png",
+      "created_by": "6ad1ab0a-73ff-4ac1-b9e4-cdb312f71f13",
+      "created_at": 1577836800,
+    }
+  ```
+  </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/parameters'
   method='GET'
   title='Get Application Information'
@@ -367,7 +447,10 @@ Workflow applications offers non-session support and is ideal for translation, a
         - `number_limits` (int) Image number limit, default is 3
         - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
     - `system_parameters` (object) System parameters
-      - `image_file_size_limit` (string) Image file upload size limit (MB)
+      - `file_size_limit` (int) Document upload size limit (MB)
+      - `image_file_size_limit` (int) Image file upload size limit (MB)
+      - `audio_file_size_limit` (int) Audio file upload size limit (MB)
+      - `video_file_size_limit` (int) Video file upload size limit (MB)
 
   </Col>
   <Col sticky>
@@ -406,7 +489,10 @@ Workflow applications offers non-session support and is ideal for translation, a
           }
       },
       "system_parameters": {
-          "image_file_size_limit": "10"
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
       }
     }
     ```

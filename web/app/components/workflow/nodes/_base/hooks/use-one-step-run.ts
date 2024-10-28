@@ -58,7 +58,7 @@ const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.Iteration]: checkIterationValid,
 } as any
 
-type Params<T> = {
+interface Params<T> {
   id: string
   data: CommonNodeType<T>
   defaultRunInputData: Record<string, any>
@@ -81,8 +81,10 @@ const varTypeToInputVarType = (type: VarType, {
     return InputVarType.number
   if ([VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(type))
     return InputVarType.json
+  if (type === VarType.file)
+    return InputVarType.singleFile
   if (type === VarType.arrayFile)
-    return InputVarType.files
+    return InputVarType.multiFiles
 
   return InputVarType.textInput
 }
@@ -124,7 +126,7 @@ const useOneStepRun = <T>({
         res = curr
       }
       else {
-        if (curr?.type === VarType.object)
+        if (curr?.type === VarType.object || curr?.type === VarType.file)
           curr = curr.children
       }
     })

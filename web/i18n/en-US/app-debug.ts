@@ -68,17 +68,17 @@ const translation = {
     },
     speechToText: {
       title: 'Speech to Text',
-      description: 'Once enabled, you can use voice input.',
+      description: 'Voice input can be used in chat.',
       resDes: 'Voice input is enabled',
     },
     textToSpeech: {
       title: 'Text to Speech',
-      description: 'Once enabled, text can be converted to speech.',
+      description: 'Conversation messages can be converted to speech.',
       resDes: 'Text to Audio is enabled',
     },
     citation: {
       title: 'Citations and Attributions',
-      description: 'Once enabled, show source document and attributed section of the generated content.',
+      description: 'Show source document and attributed section of the generated content.',
       resDes: 'Citations and Attributions is enabled',
     },
     annotation: {
@@ -163,9 +163,10 @@ const translation = {
     moderation: {
       title: 'Content moderation',
       description: 'Secure model output by using moderation API or maintaining a sensitive word list.',
-      allEnabled: 'INPUT/OUTPUT Content Enabled',
-      inputEnabled: 'INPUT Content Enabled',
-      outputEnabled: 'OUTPUT Content Enabled',
+      contentEnableLabel: 'Enabled moderate content',
+      allEnabled: 'INPUT & OUTPUT',
+      inputEnabled: 'INPUT',
+      outputEnabled: 'OUTPUT',
       modal: {
         title: 'Content moderation settings',
         provider: {
@@ -198,6 +199,39 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'File Upload',
+      description: 'The chat input box allows uploading of images, documents, and other files.',
+      supportedTypes: 'Support File Types',
+      numberLimit: 'Max uploads',
+      modalTitle: 'File Upload Setting',
+    },
+    imageUpload: {
+      title: 'Image Upload',
+      description: 'Allow uploading images.',
+      supportedTypes: 'Support File Types',
+      numberLimit: 'Max uploads',
+      modalTitle: 'Image Upload Setting',
+    },
+    bar: {
+      empty: 'Enable feature to enhance web app user experience',
+      enableText: 'Features Enabled',
+      manage: 'Manage',
+    },
+  },
+  codegen: {
+    title: 'Code Generator',
+    description: 'The Code Generator uses configured models to generate high-quality code based on your instructions. Please provide clear and detailed instructions.',
+    instruction: 'Instructions',
+    instructionPlaceholder: 'Enter detailed description of the code you want to generate.',
+    generate: 'Generate',
+    generatedCodeTitle: 'Generated Code',
+    loading: 'Generating code...',
+    apply: 'Apply',
+    applyChanges: 'Apply Changes',
+    resTitle: 'Generated Code',
+    overwriteConfirmTitle: 'Overwrite existing code?',
+    overwriteConfirmMessage: 'This action will overwrite the existing code. Do you want to continue?',
   },
   generate: {
     title: 'Prompt Generator',
@@ -267,6 +301,7 @@ const translation = {
       'Please wait for the response to the batch task to complete.',
     notSelectModel: 'Please choose a model',
     waitForImgUpload: 'Please wait for the image to upload',
+    waitForFileUpload: 'Please wait for the file/files to upload',
   },
   warningMessage: {
     timeoutExceeded: 'Results are not displayed due to timeout. Please refer to the logs to gather complete results.',
@@ -314,6 +349,8 @@ const translation = {
     'paragraph': 'Paragraph',
     'select': 'Select',
     'number': 'Number',
+    'single-file': 'Single File',
+    'multi-files': 'File List',
     'notSet': 'Not set, try typing {{input}} in the prefix prompt',
     'stringTitle': 'Form text box options',
     'maxLength': 'Max length',
@@ -325,6 +362,31 @@ const translation = {
     'inputPlaceholder': 'Please input',
     'content': 'Content',
     'required': 'Required',
+    'file': {
+      supportFileTypes: 'Support File Types',
+      image: {
+        name: 'Image',
+      },
+      audio: {
+        name: 'Audio',
+      },
+      document: {
+        name: 'Document',
+      },
+      video: {
+        name: 'Video',
+      },
+      custom: {
+        name: 'Other file types',
+        description: 'Specify other file types.',
+        createPlaceholder: '+ File extension, e.g .doc',
+      },
+    },
+    'uploadFileTypes': 'Upload File Types',
+    'localUpload': 'Local Upload',
+    'both': 'Both',
+    'maxNumberOfUploads': 'Max number of uploads',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'errorMsg': {
       labelNameRequired: 'Label name is required',
       varNameCanBeRepeat: 'Variable name can not be repeated',
@@ -335,6 +397,7 @@ const translation = {
   vision: {
     name: 'Vision',
     description: 'Enable Vision will allows the model to take in images and answer questions about them. ',
+    onlySupportVisionModelTip: 'Only supports vision models',
     settings: 'Settings',
     visionSettings: {
       title: 'Vision Settings',
@@ -362,14 +425,14 @@ const translation = {
       resolutionTooltip: 'Text-to-speech voice support language。',
       voice: 'Voice',
       autoPlay: 'Auto Play',
-      autoPlayEnabled: 'Turn On',
-      autoPlayDisabled: 'Turn Off',
+      autoPlayEnabled: 'On',
+      autoPlayDisabled: 'Off',
     },
   },
   openingStatement: {
     title: 'Conversation Opener',
     add: 'Add',
-    writeOpener: 'Write opener',
+    writeOpener: 'Edit opener',
     placeholder: 'Write your opener message here, you can use variables, try type {{variable}}.',
     openingQuestion: 'Opening Questions',
     noDataPlaceHolder:
@@ -388,7 +451,7 @@ const translation = {
     },
   },
   inputs: {
-    title: 'Debug and Preview',
+    title: 'Debug & Preview',
     noPrompt: 'Try write some prompt in pre-prompt input',
     userInputField: 'User Input Field',
     noVar: 'Fill in the value of the variable, which will be automatically replaced in the prompt word every time a new session is started.',
@@ -402,6 +465,7 @@ const translation = {
     run: 'RUN',
   },
   result: 'Output Text',
+  noResult: 'Output will be displayed here.',
   datasetConfig: {
     settingTitle: 'Retrieval settings',
     knowledgeTip: 'Click the “+” button to add knowledge',

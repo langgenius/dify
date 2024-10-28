@@ -6,7 +6,7 @@ import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiFileCopyLine, RiZoom
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
 
-type ImagePreviewProps = {
+interface ImagePreviewProps {
   url: string
   title: string
   onCancel: () => void
@@ -94,7 +94,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
 
     for (let offset = 0; offset < byteCharacters.length; offset += 512) {
       const slice = byteCharacters.slice(offset, offset + 512)
-      const byteNumbers = new Array(slice.length)
+      const byteNumbers = Array.from({ length: slice.length })
       for (let i = 0; i < slice.length; i++)
         byteNumbers[i] = slice.charCodeAt(i)
 
@@ -258,7 +258,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           <RiAddBoxLine className='w-4 h-4 text-gray-500'/>
         </div>
       </Tooltip>
-      <Tooltip popupContent={t('common.operation.close')}>
+      <Tooltip popupContent={t('common.operation.cancel')}>
         <div
           className='absolute top-6 right-6 flex items-center justify-center w-8 h-8 bg-white/8 rounded-lg backdrop-blur-[2px] cursor-pointer'
           onClick={onCancel}>

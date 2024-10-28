@@ -1,10 +1,3 @@
-"""
-获取文档
-"""
-
-__author__ = "佐井"
-__created__ = "2024-06-01 10:45:20"
-
 from typing import Any, Union
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -20,5 +13,6 @@ class AliYuqueDescribeDocumentsTool(AliYuqueTool, BuiltinTool):
         if not token:
             raise Exception("token is required")
         return self.create_text_message(
-            self.request("GET", token, tool_parameters, "/api/v2/repos/{book_id}/docs/{id}")
+            self.request("GET", token, tool_parameters,
+                         "/api/v2/repos/{book_id}/docs/{id}")
         )

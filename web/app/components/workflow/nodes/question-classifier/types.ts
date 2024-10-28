@@ -1,6 +1,6 @@
-import type { CommonNodeType, Memory, ModelConfig, ValueSelector } from '@/app/components/workflow/types'
+import type { CommonNodeType, Memory, ModelConfig, ValueSelector, VisionSetting } from '@/app/components/workflow/types'
 
-export type Topic = {
+export interface Topic {
   id: string
   name: string
 }
@@ -11,4 +11,8 @@ export type QuestionClassifierNodeType = CommonNodeType & {
   classes: Topic[]
   instruction: string
   memory?: Memory
+  vision: {
+    enabled: boolean
+    configs?: VisionSetting
+  }
 }

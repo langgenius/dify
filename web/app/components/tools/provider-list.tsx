@@ -7,7 +7,7 @@ import cn from '@/utils/classnames'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import LabelFilter from '@/app/components/tools/labels/filter'
-import SearchInput from '@/app/components/base/search-input'
+import Input from '@/app/components/base/input'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { fetchCollectionList } from '@/service/tools'
@@ -86,7 +86,14 @@ const ProviderList = () => {
           />
           <div className='flex items-center gap-2'>
             <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
-            <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+            <Input
+              showLeftIcon
+              showClearIcon
+              wrapperClassName='w-[200px]'
+              value={keywords}
+              onChange={e => handleKeywordsChange(e.target.value)}
+              onClear={() => handleKeywordsChange('')}
+            />
           </div>
         </div>
         <div className={cn(

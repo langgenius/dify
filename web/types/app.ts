@@ -6,6 +6,7 @@ import type {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import type { UploadFileSetting } from '@/app/components/workflow/types'
 
 export enum Theme {
   light = 'light',
@@ -24,14 +25,14 @@ export enum ProviderType {
 }
 
 export enum AppType {
-  'chat' = 'chat',
-  'completion' = 'completion',
+  chat = 'chat',
+  completion = 'completion',
 }
 
 export enum ModelModeType {
-  'chat' = 'chat',
-  'completion' = 'completion',
-  'unset' = '',
+  chat = 'chat',
+  completion = 'completion',
+  unset = '',
 }
 
 export enum RETRIEVE_TYPE {
@@ -47,7 +48,7 @@ export enum RETRIEVE_METHOD {
   keywordSearch = 'keyword_search',
 }
 
-export type VariableInput = {
+export interface VariableInput {
   key: string
   name: string
   value: string
@@ -68,7 +69,7 @@ export type VariableType = typeof VariableTypes[number]
 /**
  * Prompt variable parameter
  */
-export type PromptVariable = {
+export interface PromptVariable {
   /** Variable key */
   key: string
   /** Variable name */
@@ -81,7 +82,7 @@ export type PromptVariable = {
   max_length?: number
 }
 
-export type TextTypeFormItem = {
+export interface TextTypeFormItem {
   default: string
   label: string
   variable: string
@@ -89,7 +90,7 @@ export type TextTypeFormItem = {
   max_length: number
 }
 
-export type SelectTypeFormItem = {
+export interface SelectTypeFormItem {
   default: string
   label: string
   variable: string
@@ -97,7 +98,7 @@ export type SelectTypeFormItem = {
   options: string[]
 }
 
-export type ParagraphTypeFormItem = {
+export interface ParagraphTypeFormItem {
   default: string
   label: string
   variable: string
@@ -109,12 +110,12 @@ export type ParagraphTypeFormItem = {
 export type UserInputFormItem = {
   'text-input': TextTypeFormItem
 } | {
-  'select': SelectTypeFormItem
+  select: SelectTypeFormItem
 } | {
-  'paragraph': TextTypeFormItem
+  paragraph: TextTypeFormItem
 }
 
-export type AgentTool = {
+export interface AgentTool {
   provider_id: string
   provider_type: CollectionType
   provider_name: string
@@ -144,7 +145,7 @@ export enum AgentStrategy {
   react = 'react',
 }
 
-export type CompletionParams = {
+export interface CompletionParams {
   /** Maximum number of tokens in the answer message returned by Completion */
   max_tokens: number
   /**
@@ -192,7 +193,7 @@ export type CompletionParams = {
 /**
  * Model configuration. The backend type.
  */
-export type Model = {
+export interface Model {
   /** LLM provider, e.g., OPENAI */
   provider: string
   /** Model name, e.g, gpt-3.5.turbo */
@@ -202,7 +203,7 @@ export type Model = {
   completion_params: CompletionParams
 }
 
-export type ModelConfig = {
+export interface ModelConfig {
   opening_statement: string
   suggested_questions?: string[]
   pre_prompt: string
@@ -212,7 +213,7 @@ export type ModelConfig = {
   user_input_form: UserInputFormItem[]
   dataset_query_variable?: string
   more_like_this: {
-    enabled: boolean
+    enabled?: boolean
   }
   suggested_questions_after_answer: {
     enabled: boolean
@@ -242,9 +243,10 @@ export type ModelConfig = {
   dataset_configs: DatasetConfigs
   file_upload?: {
     image: VisionSettings
-  }
+  } & UploadFileSetting
   files?: VisionFile[]
   created_at?: number
+  updated_at?: number
 }
 
 export type Language = typeof LanguagesSupported[number]
@@ -252,7 +254,7 @@ export type Language = typeof LanguagesSupported[number]
 /**
  * Web Application Configuration
  */
-export type SiteConfig = {
+export interface SiteConfig {
   /** Application URL Identifier: `http://dify.app/{access_token}` */
   access_token: string
   /** Public Title */
@@ -305,7 +307,7 @@ export type AppIconType = 'image' | 'emoji'
 /**
  * App
  */
-export type App = {
+export interface App {
   /** App ID */
   id: string
   /** Name */
@@ -351,14 +353,14 @@ export type App = {
   tags: Tag[]
 }
 
-export type AppSSO = {
+export interface AppSSO {
   enable_sso: boolean
 }
 
 /**
  * App Template
  */
-export type AppTemplate = {
+export interface AppTemplate {
   /** Name */
   name: string
   /** Description */
@@ -387,7 +389,7 @@ export enum TtsAutoPlay {
 
 export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
 
-export type VisionSettings = {
+export interface VisionSettings {
   enabled: boolean
   number_limits: number
   detail: Resolution
@@ -395,7 +397,7 @@ export type VisionSettings = {
   image_file_size_limit?: number | string
 }
 
-export type ImageFile = {
+export interface ImageFile {
   type: TransferMethod
   _id: string
   fileId: string
@@ -406,7 +408,7 @@ export type ImageFile = {
   deleted?: boolean
 }
 
-export type VisionFile = {
+export interface VisionFile {
   id?: string
   type: string
   transfer_method: TransferMethod
@@ -415,7 +417,7 @@ export type VisionFile = {
   belongs_to?: string
 }
 
-export type RetrievalConfig = {
+export interface RetrievalConfig {
   search_method: RETRIEVE_METHOD
   reranking_enable: boolean
   reranking_model: {

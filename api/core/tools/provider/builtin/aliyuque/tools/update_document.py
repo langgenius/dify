@@ -1,10 +1,3 @@
-"""
-更新文档
-"""
-
-__author__ = "佐井"
-__created__ = "2024-06-19 16:50:07"
-
 from typing import Any, Union
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -20,5 +13,6 @@ class AliYuqueUpdateDocumentTool(AliYuqueTool, BuiltinTool):
         if not token:
             raise Exception("token is required")
         return self.create_text_message(
-            self.request("PUT", token, tool_parameters, "/api/v2/repos/{book_id}/docs/{id}")
+            self.request("PUT", token, tool_parameters,
+                         "/api/v2/repos/{book_id}/docs/{id}")
         )

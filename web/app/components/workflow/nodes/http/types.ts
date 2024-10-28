@@ -1,4 +1,4 @@
-import type { CommonNodeType, Variable } from '@/app/components/workflow/types'
+import type { CommonNodeType, ValueSelector, Variable } from '@/app/components/workflow/types'
 
 export enum Method {
   get = 'get',
@@ -15,17 +15,32 @@ export enum BodyType {
   xWwwFormUrlencoded = 'x-www-form-urlencoded',
   rawText = 'raw-text',
   json = 'json',
+  binary = 'binary',
 }
 
-export type KeyValue = {
+export interface KeyValue {
   id?: string
   key: string
   value: string
+  type?: string
+  file?: ValueSelector
 }
 
-export type Body = {
+export enum BodyPayloadValueType {
+  text = 'text',
+  file = 'file',
+}
+
+export type BodyPayload = {
+  id?: string
+  key?: string
+  type: BodyPayloadValueType
+  file?: ValueSelector // when type is file
+  value?: string // when type is text
+}[]
+export interface Body {
   type: BodyType
-  data: string
+  data: string | BodyPayload // string is deprecated, it would convert to BodyPayload after loaded
 }
 
 export enum AuthorizationType {
@@ -39,7 +54,7 @@ export enum APIType {
   custom = 'custom',
 }
 
-export type Authorization = {
+export interface Authorization {
   type: AuthorizationType
   config?: {
     type: APIType
@@ -48,7 +63,7 @@ export type Authorization = {
   } | null
 }
 
-export type Timeout = {
+export interface Timeout {
   connect?: number
   read?: number
   write?: number

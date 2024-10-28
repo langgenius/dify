@@ -20,7 +20,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { checkOrSetAccessToken } from '@/app/components/share/utils'
 import AppUnavailable from '@/app/components/base/app-unavailable'
 
-type ChatWithHistoryProps = {
+interface ChatWithHistoryProps {
   className?: string
 }
 const ChatWithHistory: FC<ChatWithHistoryProps> = ({
@@ -99,7 +99,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
   )
 }
 
-export type ChatWithHistoryWrapProps = {
+export interface ChatWithHistoryWrapProps {
   installedAppInfo?: InstalledApp
   className?: string
 }
@@ -125,6 +125,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
     conversationList,
     showConfigPanelBeforeChat,
     newConversationInputs,
+    newConversationInputsRef,
     handleNewConversationInputsChange,
     inputsForms,
     handleNewConversation,
@@ -158,6 +159,7 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       conversationList,
       showConfigPanelBeforeChat,
       newConversationInputs,
+      newConversationInputsRef,
       handleNewConversationInputsChange,
       inputsForms,
       handleNewConversation,

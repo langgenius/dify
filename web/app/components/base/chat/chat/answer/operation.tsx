@@ -12,7 +12,7 @@ import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import AudioBtn from '@/app/components/base/audio-btn'
-import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
+import AnnotationCtrlBtn from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-btn'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import {
   ThumbsDown,
@@ -21,7 +21,7 @@ import {
 import Tooltip from '@/app/components/base/tooltip'
 import Log from '@/app/components/base/chat/chat/log'
 
-type OperationProps = {
+interface OperationProps {
   item: ChatItem
   question: string
   index: number

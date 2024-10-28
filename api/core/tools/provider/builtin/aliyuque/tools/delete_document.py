@@ -1,11 +1,3 @@
-#!/usr/bin/env python3
-"""
-删除文档
-"""
-
-__author__ = "佐井"
-__created__ = "2024-09-17 22:04"
-
 from typing import Any, Union
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -21,5 +13,6 @@ class AliYuqueDeleteDocumentTool(AliYuqueTool, BuiltinTool):
         if not token:
             raise Exception("token is required")
         return self.create_text_message(
-            self.request("DELETE", token, tool_parameters, "/api/v2/repos/{book_id}/docs/{id}")
+            self.request("DELETE", token, tool_parameters,
+                         "/api/v2/repos/{book_id}/docs/{id}")
         )

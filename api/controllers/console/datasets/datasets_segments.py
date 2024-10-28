@@ -24,7 +24,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import segment_fields
 from libs.login import login_required
-from models.dataset import DocumentSegment
+from models import DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task

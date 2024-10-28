@@ -6,7 +6,7 @@ import cn from '@/utils/classnames'
 import Popover from '@/app/components/base/popover'
 import { languages } from '@/i18n/language'
 
-export type ILanguageSelectProps = {
+export interface ILanguageSelectProps {
   currentLanguage: string
   onSelect: (language: string) => void
   disabled?: boolean
@@ -24,7 +24,7 @@ const LanguageSelect: FC<ILanguageSelectProps> = ({
       disabled={disabled}
       htmlContent={
         <div className='w-full py-1'>
-          {languages.filter(language => language.supported).map(({ prompt_name, name }) => (
+          {languages.filter(language => language.supported).map(({ prompt_name }) => (
             <div
               key={prompt_name}
               className='py-2 px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer text-gray-700 text-sm'

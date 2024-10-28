@@ -9,8 +9,9 @@ from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
+from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset
+from models.dataset import Dataset, Whitelist
 
 
 class AbstractVectorFactory(ABC):
@@ -35,8 +36,18 @@ class Vector:
 
     def _init_vector(self) -> BaseVector:
         vector_type = dify_config.VECTOR_STORE
+
         if self._dataset.index_struct_dict:
             vector_type = self._dataset.index_struct_dict["type"]
+        else:
+            if dify_config.VECTOR_STORE_WHITELIST_ENABLE:
+                whitelist = (
+                    db.session.query(Whitelist)
+                    .filter(Whitelist.tenant_id == self._dataset.tenant_id, Whitelist.category == "vector_db")
+                    .one_or_none()
+                )
+                if whitelist:
+                    vector_type = VectorType.TIDB_ON_QDRANT
 
         if not vector_type:
             raise ValueError("Vector store must be specified.")
@@ -111,6 +122,14 @@ class Vector:
                 from core.rag.datasource.vdb.vikingdb.vikingdb_vector import VikingDBVectorFactory
 
                 return VikingDBVectorFactory
+            case VectorType.UPSTASH:
+                from core.rag.datasource.vdb.upstash.upstash_vector import UpstashVectorFactory
+
+                return UpstashVectorFactory
+            case VectorType.TIDB_ON_QDRANT:
+                from core.rag.datasource.vdb.tidb_on_qdrant.tidb_on_qdrant_vector import TidbOnQdrantVectorFactory
+
+                return TidbOnQdrantVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 

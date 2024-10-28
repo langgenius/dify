@@ -1,14 +1,16 @@
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Annotation, MessageRating } from '@/models/log'
-import type { VisionFile } from '@/types/app'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { InputVarType } from '@/app/components/workflow/types'
+import type { FileResponse } from '@/types/workflow'
 
-export type MessageMore = {
+export interface MessageMore {
   time: string
   tokens: number
   latency: number | string
 }
 
-export type FeedbackType = {
+export interface FeedbackType {
   rating: MessageRating
   content?: string | null
 }
@@ -24,7 +26,7 @@ export type SubmitAnnotationFunc = (
 
 export type DisplayScene = 'web' | 'console'
 
-export type ToolInfoInThought = {
+export interface ToolInfoInThought {
   name: string
   label: string
   input: string
@@ -32,7 +34,7 @@ export type ToolInfoInThought = {
   isFinished: boolean
 }
 
-export type ThoughtItem = {
+export interface ThoughtItem {
   id: string
   tool: string // plugin or dataset. May has multi.
   thought: string
@@ -42,10 +44,10 @@ export type ThoughtItem = {
   observation: string
   position: number
   files?: string[]
-  message_files?: VisionFile[]
+  message_files?: FileEntity[]
 }
 
-export type CitationItem = {
+export interface CitationItem {
   content: string
   data_source_type: string
   dataset_name: string
@@ -60,7 +62,7 @@ export type CitationItem = {
   word_count: number
 }
 
-export type IChatItem = {
+export interface IChatItem {
   id: string
   content: string
   citation?: CitationItem[]
@@ -88,17 +90,21 @@ export type IChatItem = {
   useCurrentUserAvatar?: boolean
   isOpeningStatement?: boolean
   suggestedQuestions?: string[]
-  log?: { role: string; text: string; files?: VisionFile[] }[]
+  log?: { role: string; text: string; files?: FileEntity[] }[]
   agent_thoughts?: ThoughtItem[]
-  message_files?: VisionFile[]
+  message_files?: FileEntity[]
   workflow_run_id?: string
   // for agent log
   conversationId?: string
   input?: any
-  parentMessageId?: string
+  parentMessageId?: string | null
+  siblingCount?: number
+  siblingIndex?: number
+  prevSibling?: string
+  nextSibling?: string
 }
 
-export type Metadata = {
+export interface Metadata {
   retriever_resources?: CitationItem[]
   annotation_reply: {
     id: string
@@ -109,23 +115,32 @@ export type Metadata = {
   }
 }
 
-export type MessageEnd = {
+export interface MessageEnd {
   id: string
   metadata: Metadata
+  files?: FileResponse[]
 }
 
-export type MessageReplace = {
+export interface MessageReplace {
   id: string
   task_id: string
   answer: string
   conversation_id: string
 }
 
-export type AnnotationReply = {
+export interface AnnotationReply {
   id: string
   task_id: string
   answer: string
   conversation_id: string
   annotation_id: string
   annotation_author_name: string
+}
+
+export interface InputForm {
+  type: InputVarType
+  label: string
+  variable: any
+  required: boolean
+  [key: string]: any
 }

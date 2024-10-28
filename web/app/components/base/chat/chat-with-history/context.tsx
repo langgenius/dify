@@ -16,7 +16,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 
-export type ChatWithHistoryContextValue = {
+export interface ChatWithHistoryContextValue {
   appInfoError?: any
   appInfoLoading?: boolean
   appMeta?: AppMeta
@@ -30,6 +30,7 @@ export type ChatWithHistoryContextValue = {
   conversationList: AppConversationData['data']
   showConfigPanelBeforeChat: boolean
   newConversationInputs: Record<string, any>
+  newConversationInputsRef: RefObject<Record<string, any>>
   handleNewConversationInputsChange: (v: Record<string, any>) => void
   inputsForms: any[]
   handleNewConversation: () => void
@@ -57,6 +58,7 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   conversationList: [],
   showConfigPanelBeforeChat: false,
   newConversationInputs: {},
+  newConversationInputsRef: { current: {} },
   handleNewConversationInputsChange: () => {},
   inputsForms: [],
   handleNewConversation: () => {},

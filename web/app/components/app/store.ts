@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { App, AppSSO } from '@/types/app'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 
-type State = {
+interface State {
   appDetail?: App & Partial<AppSSO>
   appSidebarExpand: string
   currentLogItem?: IChatItem
@@ -10,9 +10,10 @@ type State = {
   showPromptLogModal: boolean
   showAgentLogModal: boolean
   showMessageLogModal: boolean
+  showAppConfigureFeaturesModal: boolean
 }
 
-type Action = {
+interface Action {
   setAppDetail: (appDetail?: App & Partial<AppSSO>) => void
   setAppSiderbarExpand: (state: string) => void
   setCurrentLogItem: (item?: IChatItem) => void
@@ -20,6 +21,7 @@ type Action = {
   setShowPromptLogModal: (showPromptLogModal: boolean) => void
   setShowAgentLogModal: (showAgentLogModal: boolean) => void
   setShowMessageLogModal: (showMessageLogModal: boolean) => void
+  setShowAppConfigureFeaturesModal: (showAppConfigureFeaturesModal: boolean) => void
 }
 
 export const useStore = create<State & Action>(set => ({
@@ -47,4 +49,6 @@ export const useStore = create<State & Action>(set => ({
       }
     }
   }),
+  showAppConfigureFeaturesModal: false,
+  setShowAppConfigureFeaturesModal: showAppConfigureFeaturesModal => set(() => ({ showAppConfigureFeaturesModal })),
 }))

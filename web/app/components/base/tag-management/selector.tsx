@@ -9,14 +9,14 @@ import cn from '@/utils/classnames'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
-import SearchInput from '@/app/components/base/search-input'
+import Input from '@/app/components/base/input'
 import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import Checkbox from '@/app/components/base/checkbox'
 import { bindTag, createTag, fetchTagList, unBindTag } from '@/service/tag'
 import { ToastContext } from '@/app/components/base/toast'
 
-type TagSelectorProps = {
+interface TagSelectorProps {
   targetID: string
   isPopover?: boolean
   position?: 'bl' | 'br'
@@ -127,7 +127,14 @@ const Panel = (props: PanelProps) => {
   return (
     <div className='relative w-full bg-white rounded-lg border-[0.5px] border-gray-200'>
       <div className='p-2 border-b-[0.5px] border-black/5'>
-        <SearchInput placeholder={t('common.tag.selectorPlaceholder') || ''} white value={keywords} onChange={handleKeywordsChange} />
+        <Input
+          showLeftIcon
+          showClearIcon
+          value={keywords}
+          placeholder={t('common.tag.selectorPlaceholder') || ''}
+          onChange={e => handleKeywordsChange(e.target.value)}
+          onClear={() => handleKeywordsChange('')}
+        />
       </div>
       {keywords && notExisted && (
         <div className='p-1'>

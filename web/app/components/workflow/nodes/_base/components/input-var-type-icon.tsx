@@ -1,22 +1,23 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import { RiAlignLeft, RiCheckboxMultipleLine, RiFileCopy2Line, RiFileList2Line, RiHashtag, RiTextSnippet } from '@remixicon/react'
 import { InputVarType } from '../../../types'
-import { AlignLeft, LetterSpacing01 } from '@/app/components/base/icons/src/vender/line/editor'
-import { CheckDone01, Hash02 } from '@/app/components/base/icons/src/vender/line/general'
 
-type Props = {
+interface Props {
   className?: string
   type: InputVarType
 }
 
 const getIcon = (type: InputVarType) => {
   return ({
-    [InputVarType.textInput]: LetterSpacing01,
-    [InputVarType.paragraph]: AlignLeft,
-    [InputVarType.select]: CheckDone01,
-    [InputVarType.number]: Hash02,
-  } as any)[type] || LetterSpacing01
+    [InputVarType.textInput]: RiTextSnippet,
+    [InputVarType.paragraph]: RiAlignLeft,
+    [InputVarType.select]: RiCheckboxMultipleLine,
+    [InputVarType.number]: RiHashtag,
+    [InputVarType.singleFile]: RiFileList2Line,
+    [InputVarType.multiFiles]: RiFileCopy2Line,
+  } as any)[type] || RiTextSnippet
 }
 
 const InputVarTypeIcon: FC<Props> = ({

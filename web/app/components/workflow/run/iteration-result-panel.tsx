@@ -13,7 +13,7 @@ import cn from '@/utils/classnames'
 import type { NodeTracing } from '@/types/workflow'
 const i18nPrefix = 'workflow.singleRun'
 
-type Props = {
+interface Props {
   list: NodeTracing[][]
   onHide: () => void
   onBack: () => void
@@ -111,7 +111,7 @@ const IterationResultPanel: FC<Props> = ({
       }}
       onClick={handleNotBubble}
     >
-      <div className='h-full rounded-2xl bg-white flex flex-col'>
+      <div className='h-full rounded-2xl bg-components-panel-bg flex flex-col'>
         {main}
       </div>
     </div >

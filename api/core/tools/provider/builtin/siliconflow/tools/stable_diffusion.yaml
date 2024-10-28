@@ -40,6 +40,9 @@ parameters:
       - value: sd_xl
         label:
           en_US: Stable Diffusion XL
+      - value: sd_3.5_large
+        label:
+          en_US: Stable Diffusion 3.5 Large
     default: sd_3
     label:
       en_US: Choose Image Model

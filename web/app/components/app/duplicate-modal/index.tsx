@@ -6,13 +6,14 @@ import s from './style.module.css'
 import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import type { AppIconType } from '@/types/app'
 
-export type DuplicateAppModalProps = {
+export interface DuplicateAppModalProps {
   appName: string
   icon_type: AppIconType | null
   icon: string
@@ -87,10 +88,10 @@ const DuplicateAppModal = ({
               background={appIcon.type === 'image' ? undefined : appIcon.background}
               imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
             />
-            <input
+            <Input
               value={name}
               onChange={e => setName(e.target.value)}
-              className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow'
+              className='h-10'
             />
           </div>
           {isAppsFull && <AppsFull loc='app-duplicate-create' />}

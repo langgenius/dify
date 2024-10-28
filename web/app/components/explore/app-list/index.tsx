@@ -23,9 +23,9 @@ import Loading from '@/app/components/base/loading'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { getRedirection } from '@/utils/app-redirection'
-import SearchInput from '@/app/components/base/search-input'
+import Input from '@/app/components/base/input'
 
-type AppsProps = {
+interface AppsProps {
   pageType?: PageType
   onSuccess?: () => void
 }
@@ -187,7 +187,14 @@ const Apps = ({
             allCategoriesEn={allCategoriesEn}
           />
         </>
-        <SearchInput value={keywords} onChange={handleKeywordsChange}/>
+        <Input
+          showLeftIcon
+          showClearIcon
+          wrapperClassName='w-[200px]'
+          value={keywords}
+          onChange={e => handleKeywordsChange(e.target.value)}
+          onClear={() => handleKeywordsChange('')}
+        />
 
       </div>
 

@@ -29,7 +29,7 @@ const map2Options = (map: { [key: string]: string }) => {
   return Object.keys(map).map(key => ({ value: key, name: map[key] }))
 }
 
-type IFieldInfoProps = {
+interface IFieldInfoProps {
   label: string
   value?: string
   displayedValue?: string
@@ -78,7 +78,6 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
                 placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
               />
               : <Input
-                className={s.input}
                 onChange={e => onUpdate?.(e.target.value)}
                 value={value}
                 defaultValue={defaultValue}
@@ -115,7 +114,7 @@ const IconButton: FC<{
   )
 }
 
-type IMetadataProps = {
+interface IMetadataProps {
   docDetail?: FullDocumentDetail
   loading: boolean
   onUpdate: () => void

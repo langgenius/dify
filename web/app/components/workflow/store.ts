@@ -45,7 +45,7 @@ type PreviewRunningData = WorkflowRunningData & {
   resultText?: string
 }
 
-type Shape = {
+interface Shape {
   appId: string
   panelWidth: number
   showSingleRunPanel: boolean
@@ -109,6 +109,8 @@ type Shape = {
   setEnvSecrets: (envSecrets: Record<string, string>) => void
   showChatVariablePanel: boolean
   setShowChatVariablePanel: (showChatVariablePanel: boolean) => void
+  showGlobalVariablePanel: boolean
+  setShowGlobalVariablePanel: (showGlobalVariablePanel: boolean) => void
   conversationVariables: ConversationVariable[]
   setConversationVariables: (conversationVariables: ConversationVariable[]) => void
   selection: null | { x1: number; y1: number; x2: number; y2: number }
@@ -167,9 +169,15 @@ type Shape = {
 }
 
 export const createWorkflowStore = () => {
+  const hideAllPanel = {
+    showDebugAndPreviewPanel: false,
+    showEnvPanel: false,
+    showChatVariablePanel: false,
+    showGlobalVariablePanel: false,
+  }
   return createStore<Shape>(set => ({
     appId: '',
-    panelWidth: localStorage.getItem('workflow-node-panel-width') ? parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420,
+    panelWidth: localStorage.getItem('workflow-node-panel-width') ? Number.parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420,
     showSingleRunPanel: false,
     setShowSingleRunPanel: showSingleRunPanel => set(() => ({ showSingleRunPanel })),
     workflowRunningData: undefined,
@@ -227,6 +235,13 @@ export const createWorkflowStore = () => {
     setEnvSecrets: envSecrets => set(() => ({ envSecrets })),
     showChatVariablePanel: false,
     setShowChatVariablePanel: showChatVariablePanel => set(() => ({ showChatVariablePanel })),
+    showGlobalVariablePanel: false,
+    setShowGlobalVariablePanel: showGlobalVariablePanel => set(() => {
+      if (showGlobalVariablePanel)
+        return { ...hideAllPanel, showGlobalVariablePanel: true }
+      else
+        return { showGlobalVariablePanel: false }
+    }),
     conversationVariables: [],
     setConversationVariables: conversationVariables => set(() => ({ conversationVariables })),
     selection: null,
