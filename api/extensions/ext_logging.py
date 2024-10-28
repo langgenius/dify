@@ -11,6 +11,7 @@ from logging.handlers import RotatingFileHandler
 from configs import dify_config
 
 
+# 在顶级定义（函数）之前添加两个空行
 def replace_env_variables(text):
     def replace(match):
         var_name = match.group(1)
