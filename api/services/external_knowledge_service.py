@@ -6,6 +6,8 @@ from typing import Any, Optional, Union
 import httpx
 import validators
 
+from constants import HIDDEN_VALUE
+
 # from tasks.external_document_indexing_task import external_document_indexing_task
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
@@ -92,6 +94,8 @@ class ExternalDatasetService:
         ).first()
         if external_knowledge_api is None:
             raise ValueError("api template not found")
+        if args.get("settings") and args.get("settings").get("api_key") == HIDDEN_VALUE:
+            args.get("settings")["api_key"] = external_knowledge_api.settings_dict.get("api_key")
 
         external_knowledge_api.name = args.get("name")
         external_knowledge_api.description = args.get("description", "")
