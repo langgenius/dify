@@ -290,5 +290,24 @@ class WorkflowEntry:
                 if new_value:
                     input_value = new_value
 
+            if node_type == NodeType.TOOL and isinstance(input_value, dict) and "transferMethod" in input_value:
+                if input_value.get("supportFileType"):
+                    type = FileType.value_of(input_value.get("supportFileType"))
+                else:
+                    type = FileType.CUSTOM
+                transfer_method = FileTransferMethod.value_of(input_value.get("transferMethod"))
+                file = File(
+                    tenant_id=tenant_id,
+                    type=type,
+                    transfer_method=transfer_method,
+                    remote_url=input_value.get("url")
+                    if transfer_method == FileTransferMethod.REMOTE_URL
+                    else None,
+                    related_id=input_value.get("uploadedId")
+                    if transfer_method == FileTransferMethod.LOCAL_FILE
+                    else None,
+                )
+                input_value = file
+
             # append variable and value to variable pool
             variable_pool.add([variable_node_id] + variable_key_list, input_value)

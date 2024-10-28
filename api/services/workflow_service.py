@@ -6,6 +6,7 @@ from typing import Optional
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.file.models import File
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.variables import Variable
 from core.workflow.entities.node_entities import NodeRunResult
@@ -262,6 +263,9 @@ class WorkflowService:
 
         if run_succeeded and node_run_result:
             # create workflow node execution
+            for key, value in node_run_result.inputs.items():
+                if isinstance(value, File):
+                    node_run_result.inputs[key] = value.to_dict()
             workflow_node_execution.inputs = json.dumps(node_run_result.inputs) if node_run_result.inputs else None
             workflow_node_execution.process_data = (
                 json.dumps(node_run_result.process_data) if node_run_result.process_data else None
