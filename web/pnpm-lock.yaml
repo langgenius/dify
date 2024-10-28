@@ -167,7 +167,7 @@ importers:
         specifier: ~18.2.0
         version: 18.2.0(react@18.2.0)
       react-easy-crop:
-        specifier: ^5.0.8
+        specifier: ^5.1.0
         version: 5.1.0(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react-error-boundary:
         specifier: ^4.1.2
