@@ -1,10 +1,12 @@
-import logging
 import os
 import re
 import sys
-from logging.handlers import RotatingFileHandler
 
 from flask import Flask
+from logging.handlers import RotatingFileHandler
+
+import logging
+
 
 from configs import dify_config
 
@@ -13,9 +15,10 @@ def replace_env_variables(text):
         var_name = match.group(1)
         var_value = os.getenv(var_name)
         return '' if var_value is None else var_value
-    
+
     pattern = r'\$\{([^}]+)\}'
     return re.sub(pattern, replace, text)
+
 
 def init_app(app: Flask):
     log_handlers = None
@@ -31,7 +34,8 @@ def init_app(app: Flask):
                 backupCount=replace_env_variables(dify_config.LOG_FILE_BACKUP_COUNT),
             ),
             logging.StreamHandler(sys.stdout),
-        ] 
+        ]
+    
     logging.basicConfig(
         level=replace_env_variables(dify_config.LOG_LEVEL),
         format=replace_env_variables(dify_config.LOG_FORMAT),
@@ -39,6 +43,7 @@ def init_app(app: Flask):
         handlers=log_handlers,
         force=True,
     )
+    
     log_tz = replace_env_variables(dify_config.LOG_TZ)
     if log_tz:
         from datetime import datetime
