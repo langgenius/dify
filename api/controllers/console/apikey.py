@@ -4,15 +4,16 @@ from flask_restful import Resource, fields, marshal_with
 from werkzeug.exceptions import Forbidden
 
 from extensions.ext_database import db
+from extensions.ext_redis import cache
 from libs.helper import TimestampField
 from libs.login import login_required
 from models.dataset import Dataset
 from models.model import ApiToken, App
 
+from ..service_api.wraps import get_api_token_from_db
 from . import api
 from .setup import setup_required
 from .wraps import account_initialization_required
-from ..service_api.wraps import get_api_token_from_db
 
 api_key_fields = {
     "id": fields.String,
@@ -117,6 +118,7 @@ class BaseApiKeyResource(Resource):
         db.session.query(ApiToken).filter(ApiToken.id == api_key_id).delete()
         db.session.commit()
 
+        cache.delete_memoized(get_api_token_from_db, key.token, self.resource_type)
         return {"result": "success"}, 204
 
 
@@ -137,25 +139,6 @@ class AppApiKeyResource(BaseApiKeyResource):
         resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Credentials"] = "true"
         return resp
-
-    def delete(self, resource_id, api_key_id):
-        key = (
-            db.session.query(ApiToken)
-            .filter(
-                getattr(ApiToken, self.resource_id_field) == str(resource_id),
-                ApiToken.type == self.resource_type,
-                ApiToken.id == str(api_key_id),
-            )
-            .first()
-        )
-
-        response = super().delete(resource_id, api_key_id)
-
-        if response[1] == 204 and key:
-            from extensions.ext_redis import cache
-            cache.delete_memoized(get_api_token_from_db, key.token, "app")
-
-        return response
 
     resource_type = "app"
     resource_model = App
@@ -179,25 +162,6 @@ class DatasetApiKeyResource(BaseApiKeyResource):
         resp.headers["Access-Control-Allow-Origin"] = "*"
         resp.headers["Access-Control-Allow-Credentials"] = "true"
         return resp
-
-    def delete(self, resource_id, api_key_id):
-        key = (
-            db.session.query(ApiToken)
-            .filter(
-                getattr(ApiToken, self.resource_id_field) == str(resource_id),
-                ApiToken.type == self.resource_type,
-                ApiToken.id == str(api_key_id),
-            )
-            .first()
-        )
-
-        response = super().delete(resource_id, api_key_id)
-
-        if response[1] == 204 and key:
-            from extensions.ext_redis import cache
-            cache.delete_memoized(get_api_token_from_db, key.token, "dataset")
-
-        return response
 
     resource_type = "dataset"
     resource_model = Dataset
