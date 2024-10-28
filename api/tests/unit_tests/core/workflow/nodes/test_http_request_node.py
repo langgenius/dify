@@ -192,7 +192,7 @@ def test_http_request_node_form_with_file(monkeypatch):
 
     def attr_checker(*args, **kwargs):
         assert kwargs["data"] == {"name": "test"}
-        assert kwargs["files"] == {"file": b"test"}
+        assert kwargs["files"] == {"file": (None, b"test", "application/octet-stream")}
         return httpx.Response(200, content=b"")
 
     monkeypatch.setattr(
