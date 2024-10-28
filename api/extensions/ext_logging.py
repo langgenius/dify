@@ -13,8 +13,8 @@ def replace_env_variables(text):
         var_name=math.group(1)
         var_value=os.getenv(var_name)
         return '' if var_value is None else var_value
-    pattern =r'\$\{([^}]+)\}'
-    return re.sub(pattern,replace,text)
+    pattern = r'\$\{([^}]+)\}'
+    return re.sub(pattern, replace, text)
 
 def init_app(app: Flask):
     log_handlers = None
