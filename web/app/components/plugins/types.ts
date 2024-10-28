@@ -15,7 +15,7 @@ export enum PluginSource {
   debugging = 'remote',
 }
 
-export interface PluginToolDeclaration {
+export type PluginToolDeclaration = {
   identity: {
     author: string
     name: string
@@ -27,17 +27,17 @@ export interface PluginToolDeclaration {
   credentials_schema: ToolCredential[] // TODO
 }
 
-export interface PluginEndpointDeclaration {
+export type PluginEndpointDeclaration = {
   settings: ToolCredential[]
   endpoints: EndpointItem[]
 }
 
-export interface EndpointItem {
+export type EndpointItem = {
   path: string
   method: string
 }
 
-export interface EndpointListItem {
+export type EndpointListItem = {
   id: string
   created_at: string
   updated_at: string
@@ -53,7 +53,7 @@ export interface EndpointListItem {
 }
 
 // Plugin manifest
-export interface PluginDeclaration {
+export type PluginDeclaration = {
   version: string
   author: string
   icon: string
@@ -70,7 +70,7 @@ export interface PluginDeclaration {
   model: any // TODO
 }
 
-export interface PluginDetail {
+export type PluginDetail = {
   id: string
   created_at: string
   updated_at: string
@@ -87,7 +87,7 @@ export interface PluginDetail {
   meta?: any
 }
 
-export interface Plugin {
+export type Plugin = {
   type: PluginType
   org: string
   name: string
@@ -113,7 +113,7 @@ export enum PermissionType {
   noOne = 'noOne',
 }
 
-export interface Permissions {
+export type Permissions = {
   canManagement: PermissionType
   canDebugger: PermissionType
 }
@@ -125,7 +125,7 @@ export enum InstallStepFromGitHub {
   installed = 'installed',
 }
 
-export interface InstallState {
+export type InstallState = {
   step: InstallStepFromGitHub
   repoUrl: string
   selectedVersion: string
@@ -133,34 +133,34 @@ export interface InstallState {
   releases: GitHubRepoReleaseResponse[]
 }
 
-export interface GitHubUrlInfo {
+export type GitHubUrlInfo = {
   isValid: boolean
   owner?: string
   repo?: string
 }
 
 // endpoint
-export interface CreateEndpointRequest {
+export type CreateEndpointRequest = {
   plugin_unique_identifier: string
   settings: Record<string, any>
   name: string
 }
-export interface EndpointOperationResponse {
+export type EndpointOperationResponse = {
   result: 'success' | 'error'
 }
-export interface EndpointsRequest {
+export type EndpointsRequest = {
   limit: number
   page: number
   plugin_id: string
 }
-export interface EndpointsResponse {
+export type EndpointsResponse = {
   endpoints: EndpointListItem[]
   has_more: boolean
   limit: number
   total: number
   page: number
 }
-export interface UpdateEndpointRequest {
+export type UpdateEndpointRequest = {
   endpoint_id: string
   settings: Record<string, any>
   name: string
@@ -175,24 +175,24 @@ export enum InstallStep {
   installFailed = 'failed',
 }
 
-export interface GitHubAsset {
+export type GitHubAsset = {
   id: number
   name: string
   browser_download_url: string
 }
 
-export interface GitHubRepoReleaseResponse {
+export type GitHubRepoReleaseResponse = {
   tag_name: string
   assets: GitHubAsset[]
 }
 
-export interface InstallPackageResponse {
+export type InstallPackageResponse = {
   plugin_unique_identifier: string
   all_installed: boolean
   task_id: string
 }
 
-export interface DebugInfo {
+export type DebugInfo = {
   key: string
   host: string
   port: number
@@ -204,19 +204,21 @@ export enum TaskStatus {
   failed = 'failed',
 }
 
-export interface PluginStatus {
+export type PluginStatus = {
   plugin_unique_identifier: string
   plugin_id: string
   status: TaskStatus
   message: string
 }
 
-export interface TaskStatusResponse {
-  id: string
-  created_at: string
-  updated_at: string
-  status: string
-  total_plugins: number
-  completed_plugins: number
-  plugins: PluginStatus[]
+export type TaskStatusResponse = {
+  task: {
+    id: string
+    created_at: string
+    updated_at: string
+    status: string
+    total_plugins: number
+    completed_plugins: number
+    plugins: PluginStatus[]
+  }
 }

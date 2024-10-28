@@ -4,7 +4,7 @@ import { TaskStatus } from '../../types'
 
 const INTERVAL = 10 * 1000 // 10 seconds
 
-interface Params {
+type Params = {
   taskId: string
   pluginUniqueIdentifier: string
 }
@@ -18,7 +18,8 @@ function checkTaskStatus() {
     pluginUniqueIdentifier,
   }: Params) => {
     if (isStop) return
-    const { plugins } = await fetchCheckTaskStatus(taskId)
+    const res = await fetchCheckTaskStatus(taskId)
+    const { plugins } = res.task
     const plugin = plugins.find((p: PluginStatus) => p.plugin_unique_identifier === pluginUniqueIdentifier)
     if (!plugin) {
       nextStatus = TaskStatus.failed

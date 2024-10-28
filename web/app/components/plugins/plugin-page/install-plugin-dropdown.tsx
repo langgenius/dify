@@ -37,6 +37,19 @@ const InstallPluginDropdown = ({
     }
   }
 
+  // TODO TEST INSTALL : uninstall
+  // const [pluginLists, setPluginLists] = useState<any>([])
+  // useEffect(() => {
+  //   (async () => {
+  //     const list: any = await get('workspaces/current/plugin/list')
+  //   })()
+  // })
+
+  // const handleUninstall = async (id: string) => {
+  //   const res = await post('workspaces/current/plugin/uninstall', { body: { plugin_installation_id: id } })
+  //   console.log(res)
+  // }
+
   return (
     <PortalToFollowElem
       open={isMenuOpen}
@@ -110,6 +123,9 @@ const InstallPluginDropdown = ({
         />
         )
       }
+      {/* {pluginLists.map((item: any) => (
+        <div key={item.id} onClick={() => handleUninstall(item.id)}>{item.name} 卸载</div>
+      ))} */}
     </PortalToFollowElem>
   )
 }
