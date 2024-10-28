@@ -44,11 +44,10 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 
 logger = logging.getLogger(__name__)
 
-
-def inference(predictor, messages: list[dict[str, Any]], params: dict[str, Any], stop: list, stream=False):
-    """
+def inference(predictor, messages:list[dict[str,Any]], params:dict[str,Any], stop:list, stream=False):
+    """    
     params:
-    predictor : Sagemaker Predictor
+    predictor : Sagemaker Predictor 
     messages (List[Dict[str,Any]]): message list。
                 messages = [
                 {"role": "system", "content":"please answer in Chinese"},
@@ -56,19 +55,19 @@ def inference(predictor, messages: list[dict[str, Any]], params: dict[str, Any],
             ]
     params (Dict[str,Any]): model parameters for LLM。
     stream (bool): False by default。
-
+    
     response:
     result of inference if stream is False
     Iterator of Chunks if stream is True
     """
     payload = {
-        "model": params.get("model_name"),
-        "stop": stop,
+        "model" : params.get('model_name'),
+        "stop" : stop,
         "messages": messages,
-        "stream": stream,
-        "max_tokens": params.get("max_new_tokens", params.get("max_tokens", 2048)),
-        "temperature": params.get("temperature", 0.1),
-        "top_p": params.get("top_p", 0.9),
+        "stream" : stream,
+        "max_tokens" : params.get('max_new_tokens', params.get('max_tokens', 2048)),
+        "temperature" : params.get('temperature', 0.1),
+        "top_p" : params.get('top_p', 0.9),
     }
 
     if not stream:
@@ -78,41 +77,36 @@ def inference(predictor, messages: list[dict[str, Any]], params: dict[str, Any],
         response_stream = predictor.predict_stream(payload)
         return response_stream
 
-
 class SageMakerLargeLanguageModel(LargeLanguageModel):
     """
     Model class for Cohere large language model.
     """
+    sagemaker_client: Any = None
+    sagemaker_sess : Any = None
+    predictor : Any = None
 
-    sagemaker_session: Any = None
-    predictor: Any = None
-    sagemaker_endpoint: str = None
-
-    def _handle_chat_generate_response(
-        self,
-        model: str,
-        credentials: dict,
-        prompt_messages: list[PromptMessage],
-        tools: list[PromptMessageTool],
-        resp: bytes,
-    ) -> LLMResult:
+    def _handle_chat_generate_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                                       tools: list[PromptMessageTool],
+                                       resp: bytes) -> LLMResult:
         """
-        handle normal chat generate response
+            handle normal chat generate response
         """
-        resp_obj = json.loads(resp.decode("utf-8"))
-        resp_str = resp_obj.get("choices")[0].get("message").get("content")
+        resp_obj = json.loads(resp.decode('utf-8'))
+        resp_str = resp_obj.get('choices')[0].get('message').get('content')
 
         if len(resp_str) == 0:
             raise InvokeServerUnavailableError("Empty response")
 
-        assistant_prompt_message = AssistantPromptMessage(content=resp_str, tool_calls=[])
+        assistant_prompt_message = AssistantPromptMessage(
+            content=resp_str,
+            tool_calls=[]
+        )
 
         prompt_tokens = self._num_tokens_from_messages(messages=prompt_messages, tools=tools)
         completion_tokens = self._num_tokens_from_messages(messages=[assistant_prompt_message], tools=tools)
 
-        usage = self._calc_response_usage(
-            model=model, credentials=credentials, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens
-        )
+        usage = self._calc_response_usage(model=model, credentials=credentials, prompt_tokens=prompt_tokens,
+                                          completion_tokens=completion_tokens)
 
         response = LLMResult(
             model=model,
@@ -124,43 +118,37 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
 
         return response
 
-    def _handle_chat_stream_response(
-        self,
-        model: str,
-        credentials: dict,
-        prompt_messages: list[PromptMessage],
-        tools: list[PromptMessageTool],
-        resp: Iterator[bytes],
-    ) -> Generator:
+    def _handle_chat_stream_response(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                                     tools: list[PromptMessageTool],
+                                     resp: Iterator[bytes]) -> Generator:
         """
-        handle stream chat generate response
+            handle stream chat generate response
         """
-        full_response = ""
+        full_response = ''
         buffer = ""
         for chunk_bytes in resp:
-            buffer += chunk_bytes.decode("utf-8")
+            buffer += chunk_bytes.decode('utf-8')
             last_idx = 0
-            for match in re.finditer(r"^data:\s*(.+?)(\n\n)", buffer):
+            for match in re.finditer(r'^data:\s*(.+?)(\n\n)', buffer):
                 try:
                     data = json.loads(match.group(1).strip())
                     last_idx = match.span()[1]
 
                     if "content" in data["choices"][0]["delta"]:
                         chunk_content = data["choices"][0]["delta"]["content"]
-                        assistant_prompt_message = AssistantPromptMessage(content=chunk_content, tool_calls=[])
+                        assistant_prompt_message = AssistantPromptMessage(
+                            content=chunk_content,
+                            tool_calls=[] 
+                        )
 
-                        if data["choices"][0]["finish_reason"] is not None:
-                            temp_assistant_prompt_message = AssistantPromptMessage(content=full_response, tool_calls=[])
+                        if data["choices"][0]['finish_reason'] is not None:
+                            temp_assistant_prompt_message = AssistantPromptMessage(
+                                content=full_response,
+                                tool_calls=[]
+                            )
                             prompt_tokens = self._num_tokens_from_messages(messages=prompt_messages, tools=tools)
-                            completion_tokens = self._num_tokens_from_messages(
-                                messages=[temp_assistant_prompt_message], tools=[]
-                            )
-                            usage = self._calc_response_usage(
-                                model=model,
-                                credentials=credentials,
-                                prompt_tokens=prompt_tokens,
-                                completion_tokens=completion_tokens,
-                            )
+                            completion_tokens = self._num_tokens_from_messages(messages=[temp_assistant_prompt_message], tools=[])
+                            usage = self._calc_response_usage(model=model, credentials=credentials, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
 
                             yield LLMResultChunk(
                                 model=model,
@@ -169,8 +157,8 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
                                 delta=LLMResultChunkDelta(
                                     index=0,
                                     message=assistant_prompt_message,
-                                    finish_reason=data["choices"][0]["finish_reason"],
-                                    usage=usage,
+                                    finish_reason=data["choices"][0]['finish_reason'],
+                                    usage=usage
                                 ),
                             )
                         else:
@@ -178,7 +166,10 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
                                 model=model,
                                 prompt_messages=prompt_messages,
                                 system_fingerprint=None,
-                                delta=LLMResultChunkDelta(index=0, message=assistant_prompt_message),
+                                delta=LLMResultChunkDelta(
+                                    index=0,
+                                    message=assistant_prompt_message
+                                ),
                             )
 
                             full_response += chunk_content
@@ -188,17 +179,11 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
 
             buffer = buffer[last_idx:]
 
-    def _invoke(
-        self,
-        model: str,
-        credentials: dict,
-        prompt_messages: list[PromptMessage],
-        model_parameters: dict,
-        tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
-        stream: bool = True,
-        user: Optional[str] = None,
-    ) -> Union[LLMResult, Generator]:
+    def _invoke(self, model: str, credentials: dict,
+                prompt_messages: list[PromptMessage], model_parameters: dict,
+                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
+                stream: bool = True, user: Optional[str] = None) \
+            -> Union[LLMResult, Generator]:
         """
         Invoke large language model
 
@@ -212,7 +197,7 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
-        if not self.sagemaker_session:
+        if not self.sagemaker_client:
             access_key = credentials.get("aws_access_key_id")
             secret_key = credentials.get("aws_secret_access_key")
             aws_region = credentials.get("aws_region")
@@ -220,39 +205,37 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
             if aws_region:
                 if access_key and secret_key:
                     boto_session = boto3.Session(
-                        aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=aws_region
+                        aws_access_key_id=access_key,
+                        aws_secret_access_key=secret_key,
+                        region_name=aws_region
                     )
                 else:
                     boto_session = boto3.Session(region_name=aws_region)
             else:
                 boto_session = boto3.Session()
 
-            sagemaker_client = boto_session.client("sagemaker")
-            self.sagemaker_session = Session(boto_session=boto_session, sagemaker_client=sagemaker_client)
-
-        if self.sagemaker_endpoint != credentials.get("sagemaker_endpoint"):
-            self.sagemaker_endpoint = credentials.get("sagemaker_endpoint")
+            self.sagemaker_client = boto_session.client("sagemaker")
+            sagemaker_session = Session(boto_session=boto_session, sagemaker_client=self.sagemaker_client)
             self.predictor = Predictor(
-                endpoint_name=self.sagemaker_endpoint,
-                sagemaker_session=self.sagemaker_session,
+                endpoint_name=credentials.get("sagemaker_endpoint"),
+                sagemaker_session=sagemaker_session,
                 serializer=serializers.JSONSerializer(),
             )
 
-        messages: list[dict[str, Any]] = [{"role": p.role.value, "content": p.content} for p in prompt_messages]
-        response = inference(
-            predictor=self.predictor, messages=messages, params=model_parameters, stop=stop, stream=stream
-        )
+
+        messages:list[dict[str,Any]] = [ {"role": p.role.value, "content": p.content} for p in prompt_messages ]
+        response = inference(predictor=self.predictor, messages=messages, params=model_parameters, stop=stop, stream=stream)
 
         if stream:
             if tools and len(tools) > 0:
                 raise InvokeBadRequestError(f"{model}'s tool calls does not support stream mode")
 
-            return self._handle_chat_stream_response(
-                model=model, credentials=credentials, prompt_messages=prompt_messages, tools=tools, resp=response
-            )
-        return self._handle_chat_generate_response(
-            model=model, credentials=credentials, prompt_messages=prompt_messages, tools=tools, resp=response
-        )
+            return self._handle_chat_stream_response(model=model, credentials=credentials,
+                                                     prompt_messages=prompt_messages,
+                                                     tools=tools, resp=response)
+        return self._handle_chat_generate_response(model=model, credentials=credentials,
+                                                   prompt_messages=prompt_messages,
+                                                   tools=tools, resp=response)
 
     def _convert_prompt_message_to_dict(self, message: PromptMessage) -> dict:
         """
@@ -267,13 +250,19 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
                 for message_content in message.content:
                     if message_content.type == PromptMessageContentType.TEXT:
                         message_content = cast(PromptMessageContent, message_content)
-                        sub_message_dict = {"type": "text", "text": message_content.data}
+                        sub_message_dict = {
+                            "type": "text",
+                            "text": message_content.data
+                        }
                         sub_messages.append(sub_message_dict)
                     elif message_content.type == PromptMessageContentType.IMAGE:
                         message_content = cast(ImagePromptMessageContent, message_content)
                         sub_message_dict = {
                             "type": "image_url",
-                            "image_url": {"url": message_content.data, "detail": message_content.detail.value},
+                            "image_url": {
+                                "url": message_content.data,
+                                "detail": message_content.detail.value
+                            }
                         }
                         sub_messages.append(sub_message_dict)
                 message_dict = {"role": "user", "content": sub_messages}
@@ -283,7 +272,7 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
             if message.tool_calls and len(message.tool_calls) > 0:
                 message_dict["function_call"] = {
                     "name": message.tool_calls[0].function.name,
-                    "arguments": message.tool_calls[0].function.arguments,
+                    "arguments": message.tool_calls[0].function.arguments
                 }
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
@@ -296,9 +285,8 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
 
         return message_dict
 
-    def _num_tokens_from_messages(
-        self, messages: list[PromptMessage], tools: list[PromptMessageTool], is_completion_model: bool = False
-    ) -> int:
+    def _num_tokens_from_messages(self, messages: list[PromptMessage], tools: list[PromptMessageTool],
+                                  is_completion_model: bool = False) -> int:
         def tokens(text: str):
             return self._get_num_tokens_by_gpt2(text)
 
@@ -314,10 +302,10 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
             num_tokens += tokens_per_message
             for key, value in message.items():
                 if isinstance(value, list):
-                    text = ""
+                    text = ''
                     for item in value:
-                        if isinstance(item, dict) and item["type"] == "text":
-                            text += item["text"]
+                        if isinstance(item, dict) and item['type'] == 'text':
+                            text += item['text']
 
                     value = text
 
@@ -354,13 +342,8 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
 
         return num_tokens
 
-    def get_num_tokens(
-        self,
-        model: str,
-        credentials: dict,
-        prompt_messages: list[PromptMessage],
-        tools: Optional[list[PromptMessageTool]] = None,
-    ) -> int:
+    def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                       tools: Optional[list[PromptMessageTool]] = None) -> int:
         """
         Get number of tokens for given prompt messages
 
@@ -401,63 +384,89 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
         :return: Invoke error mapping
         """
         return {
-            InvokeConnectionError: [InvokeConnectionError],
-            InvokeServerUnavailableError: [InvokeServerUnavailableError],
-            InvokeRateLimitError: [InvokeRateLimitError],
-            InvokeAuthorizationError: [InvokeAuthorizationError],
-            InvokeBadRequestError: [InvokeBadRequestError, KeyError, ValueError],
+            InvokeConnectionError: [
+                InvokeConnectionError
+            ],
+            InvokeServerUnavailableError: [
+                InvokeServerUnavailableError
+            ],
+            InvokeRateLimitError: [
+                InvokeRateLimitError
+            ],
+            InvokeAuthorizationError: [
+                InvokeAuthorizationError
+            ],
+            InvokeBadRequestError: [
+                InvokeBadRequestError,
+                KeyError,
+                ValueError
+            ]
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
         """
-        used to define customizable model schema
+            used to define customizable model schema
         """
         rules = [
             ParameterRule(
-                name="temperature",
+                name='temperature',
                 type=ParameterType.FLOAT,
-                use_template="temperature",
-                label=I18nObject(zh_Hans="温度", en_US="Temperature"),
+                use_template='temperature',
+                label=I18nObject(
+                    zh_Hans='温度',
+                    en_US='Temperature'
+                ),
             ),
             ParameterRule(
-                name="top_p",
+                name='top_p',
                 type=ParameterType.FLOAT,
-                use_template="top_p",
-                label=I18nObject(zh_Hans="Top P", en_US="Top P"),
+                use_template='top_p',
+                label=I18nObject(
+                    zh_Hans='Top P',
+                    en_US='Top P'
+                )
             ),
             ParameterRule(
-                name="max_tokens",
+                name='max_tokens',
                 type=ParameterType.INT,
-                use_template="max_tokens",
+                use_template='max_tokens',
                 min=1,
-                max=credentials.get("context_length", 2048),
+                max=credentials.get('context_length', 2048),
                 default=512,
-                label=I18nObject(zh_Hans="最大生成长度", en_US="Max Tokens"),
-            ),
+                label=I18nObject(
+                    zh_Hans='最大生成长度',
+                    en_US='Max Tokens'
+                )
+            )
         ]
 
         completion_type = LLMMode.value_of(credentials["mode"]).value
 
         features = []
 
-        support_function_call = credentials.get("support_function_call", False)
+        support_function_call = credentials.get('support_function_call', False)
         if support_function_call:
             features.append(ModelFeature.TOOL_CALL)
 
-        support_vision = credentials.get("support_vision", False)
+        support_vision = credentials.get('support_vision', False)
         if support_vision:
             features.append(ModelFeature.VISION)
 
-        context_length = credentials.get("context_length", 2048)
+        context_length = credentials.get('context_length', 2048)
 
         entity = AIModelEntity(
             model=model,
-            label=I18nObject(en_US=model),
+            label=I18nObject(
+                en_US=model
+            ),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.LLM,
             features=features,
-            model_properties={ModelPropertyKey.MODE: completion_type, ModelPropertyKey.CONTEXT_SIZE: context_length},
-            parameter_rules=rules,
+            model_properties={
+                ModelPropertyKey.MODE: completion_type,
+                ModelPropertyKey.CONTEXT_SIZE: context_length
+            },
+            parameter_rules=rules
         )
 
         return entity
