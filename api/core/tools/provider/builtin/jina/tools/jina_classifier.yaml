@@ -1,0 +1,56 @@
+identity:
+  name: jina_classifier
+  author: ZiniuYu
+  label:
+    en_US: Classifier
+    zh_Hans: 分类器
+    pt_BR: Classificador
+description:
+  human:
+    en_US: Classify inputs using zero-shot classification.
+    zh_Hans: 使用零样本分类对输入进行分类.
+    pt_BR: Classificar entradas usando classificação de tiro zero
+  llm: Classify inputs using zero-shot classification.
+parameters:
+  - name: model
+    type: select
+    options:
+      - value: jina-embeddings-v3
+        label:
+          en_US: jina-embeddings-v3
+      - value: jina-clip-v1
+        label:
+          en_US: jina-clip-v1
+    required: true
+    label:
+      en_US: Model
+      zh_Hans: 模型
+      pt_BR: Modelo
+    llm_description: the jina embedding model to use
+    form: form
+  - name: input
+    type: string
+    required: true
+    label:
+      en_US: Input to classify
+      zh_Hans: 待分类的输入
+      pt_BR: Entrada para classificar
+    human_description:
+      en_US: For text, it can be a sentence up to 8192 tokens. For images, it can be a URL or a base64-encoded image.
+      zh_Hans: 对于文本，可以是长达 8192 个词元的句子。对于图像，可以是 URL 或 base64 编码的图像。
+      pt_BR: Para texto, pode ser uma frase de até 8192 tokens. Para imagens, pode ser uma URL ou uma imagem codificada em base64.
+    llm_description: For text, it can be a sentence up to 8192 tokens. For images, it can be a URL or a base64-encoded image.
+    form: llm
+  - name: labels
+    type: string
+    required: true
+    label:
+      en_US: Labels to classify
+      zh_Hans: 待分类的标签
+      pt_BR: Etiquetas para classificar
+    human_description:
+      en_US: Inputs will be categorized into these labels. It can be up to 256 classes. Use semantic labels for better performance. Please separate labels with double pipes (||).
+      zh_Hans: 输入将被分类到这些标签中。最多可以有 256 个标签。使用语义标签以获得更好的性能。请用双管道符号 (||) 分隔标签。
+      pt_BR: As entradas serão categorizadas nesses rótulos. Podem ser até 256 classes. Use rótulos semânticos para melhor desempenho. Separe os rótulos com barras verticais duplas (||).
+    llm_description: Inputs will be categorized into these labels. It can be up to 256 classes. Use semantic labels for better performance. Please separate labels with double pipes (||).
+    form: llm
