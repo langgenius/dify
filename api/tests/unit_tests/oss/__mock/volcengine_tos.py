@@ -77,18 +77,12 @@ MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 @pytest.fixture
 def setup_volcengine_tos_mock(monkeypatch: MonkeyPatch):
     if MOCK:
-        monkeypatch.setattr(TosClientV2, "__init__",
-                            MockVolcengineTosClass.__init__)
-        monkeypatch.setattr(TosClientV2, "put_object",
-                            MockVolcengineTosClass.put_object)
-        monkeypatch.setattr(TosClientV2, "get_object",
-                            MockVolcengineTosClass.get_object)
-        monkeypatch.setattr(TosClientV2, "get_object_to_file",
-                            MockVolcengineTosClass.get_object_to_file)
-        monkeypatch.setattr(TosClientV2, "head_object",
-                            MockVolcengineTosClass.head_object)
-        monkeypatch.setattr(TosClientV2, "delete_object",
-                            MockVolcengineTosClass.delete_object)
+        monkeypatch.setattr(TosClientV2, "__init__", MockVolcengineTosClass.__init__)
+        monkeypatch.setattr(TosClientV2, "put_object", MockVolcengineTosClass.put_object)
+        monkeypatch.setattr(TosClientV2, "get_object", MockVolcengineTosClass.get_object)
+        monkeypatch.setattr(TosClientV2, "get_object_to_file", MockVolcengineTosClass.get_object_to_file)
+        monkeypatch.setattr(TosClientV2, "head_object", MockVolcengineTosClass.head_object)
+        monkeypatch.setattr(TosClientV2, "delete_object", MockVolcengineTosClass.delete_object)
 
     yield
 

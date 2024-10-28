@@ -35,8 +35,7 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
 
     def _run(self):
         variable_selector = self.node_data.variable_selector
-        variable = self.graph_runtime_state.variable_pool.get(
-            variable_selector)
+        variable = self.graph_runtime_state.variable_pool.get(variable_selector)
 
         if variable is None:
             error_message = f"File variable not found for selector: {variable_selector}"
@@ -47,8 +46,7 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
 
         value = variable.value
         inputs = {"variable_selector": variable_selector}
-        process_data = {"documents": value if isinstance(value, list) else [
-            value]}
+        process_data = {"documents": value if isinstance(value, list) else [value]}
 
         try:
             if isinstance(value, list):
@@ -68,8 +66,7 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
                     outputs={"text": extracted_text},
                 )
             else:
-                raise DocumentExtractorError(
-                    f"Unsupported variable type: {type(value)}")
+                raise DocumentExtractorError(f"Unsupported variable type: {type(value)}")
         except DocumentExtractorError as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -105,8 +102,7 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
         case "application/json":
             return _extract_text_from_json(file_content)
         case _:
-            raise UnsupportedFileTypeError(
-                f"Unsupported MIME type: {mime_type}")
+            raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
 
 def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str) -> str:
@@ -135,8 +131,7 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
         case ".msg":
             return _extract_text_from_msg(file_content)
         case _:
-            raise UnsupportedFileTypeError(
-                f"Unsupported Extension Type: {file_extension}")
+            raise UnsupportedFileTypeError(f"Unsupported Extension Type: {file_extension}")
 
 
 def _extract_text_from_plain_text(file_content: bytes) -> str:
@@ -151,8 +146,7 @@ def _extract_text_from_json(file_content: bytes) -> str:
         json_data = json.loads(file_content.decode("utf-8"))
         return json.dumps(json_data, indent=2, ensure_ascii=False)
     except (UnicodeDecodeError, json.JSONDecodeError) as e:
-        raise TextExtractionError(
-            f"Failed to decode or parse JSON file: {e}") from e
+        raise TextExtractionError(f"Failed to decode or parse JSON file: {e}") from e
 
 
 def _extract_text_from_pdf(file_content: bytes) -> str:
@@ -167,8 +161,7 @@ def _extract_text_from_pdf(file_content: bytes) -> str:
             page.close()
         return text
     except Exception as e:
-        raise TextExtractionError(
-            f"Failed to extract text from PDF: {str(e)}") from e
+        raise TextExtractionError(f"Failed to extract text from PDF: {str(e)}") from e
 
 
 def _extract_text_from_doc(file_content: bytes) -> str:
@@ -177,8 +170,7 @@ def _extract_text_from_doc(file_content: bytes) -> str:
         doc = docx.Document(doc_file)
         return "\n".join([paragraph.text for paragraph in doc.paragraphs])
     except Exception as e:
-        raise TextExtractionError(
-            f"Failed to extract text from DOC/DOCX: {str(e)}") from e
+        raise TextExtractionError(f"Failed to extract text from DOC/DOCX: {str(e)}") from e
 
 
 def _download_file_content(file: File) -> bytes:
@@ -193,8 +185,7 @@ def _download_file_content(file: File) -> bytes:
         elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
             return file_manager.download(file)
         else:
-            raise ValueError(
-                f"Unsupported transfer method: {file.transfer_method}")
+            raise ValueError(f"Unsupported transfer method: {file.transfer_method}")
     except Exception as e:
         raise FileDownloadError(f"Error downloading file: {str(e)}") from e
 
@@ -202,14 +193,11 @@ def _download_file_content(file: File) -> bytes:
 def _extract_text_from_file(file: File):
     file_content = _download_file_content(file)
     if file.extension:
-        extracted_text = _extract_text_by_file_extension(
-            file_content=file_content, file_extension=file.extension)
+        extracted_text = _extract_text_by_file_extension(file_content=file_content, file_extension=file.extension)
     elif file.mime_type:
-        extracted_text = _extract_text_by_mime_type(
-            file_content=file_content, mime_type=file.mime_type)
+        extracted_text = _extract_text_by_mime_type(file_content=file_content, mime_type=file.mime_type)
     else:
-        raise UnsupportedFileTypeError(
-            "Unable to determine file type: MIME type or file extension is missing")
+        raise UnsupportedFileTypeError("Unable to determine file type: MIME type or file extension is missing")
     return extracted_text
 
 
@@ -230,8 +218,7 @@ def _extract_text_from_csv(file_content: bytes) -> str:
 
         return markdown_table.strip()
     except Exception as e:
-        raise TextExtractionError(
-            f"Failed to extract text from CSV: {str(e)}") from e
+        raise TextExtractionError(f"Failed to extract text from CSV: {str(e)}") from e
 
 
 def _extract_text_from_excel(file_content: bytes) -> str:
@@ -247,8 +234,7 @@ def _extract_text_from_excel(file_content: bytes) -> str:
         markdown_table = df.to_markdown(index=False)
         return markdown_table
     except Exception as e:
-        raise TextExtractionError(
-            f"Failed to extract text from Excel file: {str(e)}") from e
+        raise TextExtractionError(f"Failed to extract text from Excel file: {str(e)}") from e
 
 
 def _extract_text_from_ppt(file_content: bytes) -> str:
@@ -257,8 +243,7 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
             elements = partition_ppt(file=file)
         return "\n".join([getattr(element, "text", "") for element in elements])
     except Exception as e:
-        raise TextExtractionError(
-            f"Failed to extract text from PPT: {str(e)}") from e
+        raise TextExtractionError(f"Failed to extract text from PPT: {str(e)}") from e
 
 
 def _extract_text_from_pptx(file_content: bytes) -> str:
@@ -267,8 +252,7 @@ def _extract_text_from_pptx(file_content: bytes) -> str:
             elements = partition_pptx(file=file)
         return "\n".join([getattr(element, "text", "") for element in elements])
     except Exception as e:
-        raise TextExtractionError(
-            f"Failed to extract text from PPTX: {str(e)}") from e
+        raise TextExtractionError(f"Failed to extract text from PPTX: {str(e)}") from e
 
 
 def _extract_text_from_epub(file_content: bytes) -> str:
@@ -277,8 +261,7 @@ def _extract_text_from_epub(file_content: bytes) -> str:
             elements = partition_epub(file=file)
         return "\n".join([str(element) for element in elements])
     except Exception as e:
-        raise TextExtractionError(
-            f"Failed to extract text from EPUB: {str(e)}") from e
+        raise TextExtractionError(f"Failed to extract text from EPUB: {str(e)}") from e
 
 
 def _extract_text_from_eml(file_content: bytes) -> str:
@@ -287,8 +270,7 @@ def _extract_text_from_eml(file_content: bytes) -> str:
             elements = partition_email(file=file)
         return "\n".join([str(element) for element in elements])
     except Exception as e:
-        raise TextExtractionError(
-            f"Failed to extract text from EML: {str(e)}") from e
+        raise TextExtractionError(f"Failed to extract text from EML: {str(e)}") from e
 
 
 def _extract_text_from_msg(file_content: bytes) -> str:
@@ -297,5 +279,4 @@ def _extract_text_from_msg(file_content: bytes) -> str:
             elements = partition_msg(file=file)
         return "\n".join([str(element) for element in elements])
     except Exception as e:
-        raise TextExtractionError(
-            f"Failed to extract text from MSG: {str(e)}") from e
+        raise TextExtractionError(f"Failed to extract text from MSG: {str(e)}") from e

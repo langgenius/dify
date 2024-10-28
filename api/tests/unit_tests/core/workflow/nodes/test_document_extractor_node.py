@@ -65,8 +65,7 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
 @pytest.mark.parametrize(
     ("mime_type", "file_content", "expected_text", "transfer_method", "extension"),
     [
-        ("text/plain", b"Hello, world!",
-         ["Hello, world!"], FileTransferMethod.LOCAL_FILE, ".txt"),
+        ("text/plain", b"Hello, world!", ["Hello, world!"], FileTransferMethod.LOCAL_FILE, ".txt"),
         (
             "application/pdf",
             b"%PDF-1.5\n%Test PDF content",
@@ -81,8 +80,7 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
             FileTransferMethod.REMOTE_URL,
             "",
         ),
-        ("text/plain", b"Remote content",
-         ["Remote content"], FileTransferMethod.REMOTE_URL, None),
+        ("text/plain", b"Remote content", ["Remote content"], FileTransferMethod.REMOTE_URL, None),
     ],
 )
 def test_run_extract_text(
@@ -119,12 +117,10 @@ def test_run_extract_text(
 
     if mime_type == "application/pdf":
         mock_pdf_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr(
-            "core.workflow.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
+        monkeypatch.setattr("core.workflow.nodes.document_extractor.node._extract_text_from_pdf", mock_pdf_extract)
     elif mime_type.startswith("application/vnd.openxmlformats"):
         mock_docx_extract = Mock(return_value=expected_text[0])
-        monkeypatch.setattr(
-            "core.workflow.nodes.document_extractor.node._extract_text_from_doc", mock_docx_extract)
+        monkeypatch.setattr("core.workflow.nodes.document_extractor.node._extract_text_from_doc", mock_docx_extract)
 
     result = document_extractor_node._run()
 
@@ -134,8 +130,7 @@ def test_run_extract_text(
     assert result.outputs["text"] == expected_text
 
     if transfer_method == FileTransferMethod.REMOTE_URL:
-        mock_ssrf_proxy_get.assert_called_once_with(
-            "https://example.com/file.txt")
+        mock_ssrf_proxy_get.assert_called_once_with("https://example.com/file.txt")
     elif transfer_method == FileTransferMethod.LOCAL_FILE:
         mock_download.assert_called_once_with(mock_file)
 

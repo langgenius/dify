@@ -10,10 +10,8 @@ class AliYuqueTool:
     @staticmethod
     def auth(token):
         session = requests.Session()
-        session.headers.update(
-            {"Accept": "application/json", "X-Auth-Token": token})
-        login = session.request(
-            "GET", AliYuqueTool.server_url + "/api/v2/user")
+        session.headers.update({"Accept": "application/json", "X-Auth-Token": token})
+        login = session.request("GET", AliYuqueTool.server_url + "/api/v2/user")
         login.raise_for_status()
         resp = login.json()
         return resp
@@ -22,12 +20,10 @@ class AliYuqueTool:
         if not token:
             raise Exception("token is required")
         session = requests.Session()
-        session.headers.update(
-            {"accept": "application/json", "X-Auth-Token": token})
+        session.headers.update({"accept": "application/json", "X-Auth-Token": token})
         new_params = {**tool_parameters}
 
-        replacements = {k: v for k, v in new_params.items()
-                        if f"{{{k}}}" in path}
+        replacements = {k: v for k, v in new_params.items() if f"{{{k}}}" in path}
 
         for key, value in replacements.items():
             path = path.replace(f"{{{key}}}", str(value))
@@ -39,10 +35,8 @@ class AliYuqueTool:
                     "Content-Type": "application/json",
                 }
             )
-            response = session.request(
-                method.upper(), self.server_url + path, json=new_params)
+            response = session.request(method.upper(), self.server_url + path, json=new_params)
         else:
-            response = session.request(
-                method, self.server_url + path, params=new_params)
+            response = session.request(method, self.server_url + path, params=new_params)
         response.raise_for_status()
         return response.text

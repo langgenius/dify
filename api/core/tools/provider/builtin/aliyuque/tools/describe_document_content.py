@@ -33,16 +33,14 @@ class AliYuqueDescribeDocumentContentTool(AliYuqueTool, BuiltinTool):
         new_params["group_login"] = group_id
         new_params["book_slug"] = book_slug
         index_page = json.loads(
-            self.request("GET", token, new_params,
-                         "/api/v2/repos/{group_login}/{book_slug}/index_page")
+            self.request("GET", token, new_params, "/api/v2/repos/{group_login}/{book_slug}/index_page")
         )
         book_id = index_page.get("data", {}).get("book", {}).get("id")
         if not book_id:
             raise Exception(f"can not parse book_id from {index_page}")
         new_params["book_id"] = book_id
         new_params["id"] = doc_id
-        data = self.request("GET", token, new_params,
-                            "/api/v2/repos/{book_id}/docs/{id}")
+        data = self.request("GET", token, new_params, "/api/v2/repos/{book_id}/docs/{id}")
         data = json.loads(data)
         body_only = tool_parameters.get("body_only") or ""
         if body_only.lower() == "true":
