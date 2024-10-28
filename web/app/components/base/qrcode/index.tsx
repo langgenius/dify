@@ -1,11 +1,11 @@
 'use client'
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import QRCode from 'qrcode.react'
+import { QRCodeCanvas as QRCode } from 'qrcode.react'
 import QrcodeStyle from './style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 
-type Props = {
+interface Props {
   content: string
   selectorId: string
   className?: string

@@ -116,7 +116,7 @@ importers:
         specifier: ^1.0.7
         version: 1.0.7
       js-cookie:
-        specifier: ^3.0.1
+        specifier: ^3.0.5
         version: 3.0.5
       jwt-decode:
         specifier: ^4.0.0
@@ -149,10 +149,10 @@ importers:
         specifier: ^3.23.0
         version: 3.25.0
       qrcode.react:
-        specifier: ^3.1.0
-        version: 3.2.0(react@18.2.0)
+        specifier: ^4.1.0
+        version: 4.1.0(react@18.2.0)
       qs:
-        specifier: ^6.11.1
+        specifier: ^6.13.0
         version: 6.13.0
       rc-textarea:
         specifier: ^1.5.2
@@ -239,7 +239,7 @@ importers:
         specifier: ^0.0.1
         version: 0.0.1
       sharp:
-        specifier: ^0.33.2
+        specifier: ^0.33.5
         version: 0.33.5
       sortablejs:
         specifier: ^1.15.0
@@ -282,8 +282,8 @@ importers:
         specifier: ^9.13.0
         version: 9.13.0
       '@faker-js/faker':
-        specifier: ^7.6.0
-        version: 7.6.0
+        specifier: ^9.0.3
+        version: 9.0.3
       '@rgrove/parse-xml':
         specifier: ^4.1.0
         version: 4.1.0
@@ -333,10 +333,10 @@ importers:
         specifier: ^29.5.12
         version: 29.5.13
       '@types/js-cookie':
-        specifier: ^3.0.3
+        specifier: ^3.0.6
         version: 3.0.6
       '@types/lodash-es':
-        specifier: ^4.17.7
+        specifier: ^4.17.12
         version: 4.17.12
       '@types/negotiator':
         specifier: ^0.6.1
@@ -345,7 +345,7 @@ importers:
         specifier: 18.15.0
         version: 18.15.0
       '@types/qs':
-        specifier: ^6.9.7
+        specifier: ^6.9.16
         version: 6.9.16
       '@types/react':
         specifier: ~18.2.0
@@ -420,7 +420,7 @@ importers:
         specifier: ^8.4.31
         version: 8.4.47
       sass:
-        specifier: ^1.61.0
+        specifier: ^1.80.3
         version: 1.80.3
       storybook:
         specifier: ^8.3.6
@@ -1408,9 +1408,9 @@ packages:
     resolution: {integrity: sha512-HFZ4Mp26nbWk9d/BpvP0YNL6W4UoZF0VFcTw/aPPA8RpOxeFQgK+ClABGgAUXs9Y/RGX/l1vOmrqz1MQt9MNuw==}
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
 
-  '@faker-js/faker@7.6.0':
-    resolution: {integrity: sha512-XK6BTq1NDMo9Xqw/YkYyGjSsg44fbNwYRx7QK2CuoQgyy+f1rrTDHoExVM5PsyXCtfl2vs2vVJ0MN0yN6LppRw==}
-    engines: {node: '>=14.0.0', npm: '>=6.0.0'}
+  '@faker-js/faker@9.0.3':
+    resolution: {integrity: sha512-lWrrK4QNlFSU+13PL9jMbMKLJYXDFu3tQfayBsMXX7KL/GiQeqfB1CzHkqD5UHBUtPAuPo6XwGbMFNdVMZObRA==}
+    engines: {node: '>=18.0.0', npm: '>=9.0.0'}
 
   '@floating-ui/core@1.6.8':
     resolution: {integrity: sha512-7XJ9cPU+yI2QeLS+FCSlqNFZJq8arvswefkZrYI1yQBbftw6FyrZOxYSh+9S7z7TpeWlRt9zJ5IhM1WIL334jA==}
@@ -6652,8 +6652,8 @@ packages:
   pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
 
-  qrcode.react@3.2.0:
-    resolution: {integrity: sha512-YietHHltOHA4+l5na1srdaMx4sVSOjV9tamHs+mwiLWAMr6QVACRUw1Neax5CptFILcNoITctJY0Ipyn5enQ8g==}
+  qrcode.react@4.1.0:
+    resolution: {integrity: sha512-uqXVIIVD/IPgWLYxbOczCNAQw80XCM/LulYDADF+g2xDsPj5OoRwSWtIS4jGyp295wyjKstfG1qIv/I2/rNWpQ==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0
 
@@ -9321,7 +9321,7 @@ snapshots:
     dependencies:
       levn: 0.4.1
 
-  '@faker-js/faker@7.6.0': {}
+  '@faker-js/faker@9.0.3': {}
 
   '@floating-ui/core@1.6.8':
     dependencies:
@@ -16239,7 +16239,7 @@ snapshots:
 
   pure-rand@6.1.0: {}
 
-  qrcode.react@3.2.0(react@18.2.0):
+  qrcode.react@4.1.0(react@18.2.0):
     dependencies:
       react: 18.2.0
 
