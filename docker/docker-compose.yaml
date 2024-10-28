@@ -230,6 +230,7 @@ services:
     build:
       context: ../api
       dockerfile: Dockerfile
+      network: host
 #    image: langgenius/dify-api:0.9.2
     image: data/dify-api:0.9.2
     restart: always
@@ -274,6 +275,7 @@ services:
     build:
       context: ../web
       dockerfile: Dockerfile
+      network: host
 #    image: langgenius/dify-web:0.9.2
     image: data/dify-web:0.9.2
     restart: always
