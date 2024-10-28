@@ -1,6 +1,7 @@
 import os
 import re
 import sys
+import logging
 
 
 from flask import Flask
@@ -8,9 +9,6 @@ from logging.handlers import RotatingFileHandler
 
 
 from configs import dify_config
-
-
-import logging
 
 
 def replace_env_variables(text):
