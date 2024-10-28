@@ -35,6 +35,7 @@ class PluginService:
                 if plugin.plugin_id in manifests:
                     # set latest_version
                     plugin.latest_version = manifests[plugin.plugin_id].latest_version
+                    plugin.latest_unique_identifier = manifests[plugin.plugin_id].latest_package_identifier
 
         return plugins
 
