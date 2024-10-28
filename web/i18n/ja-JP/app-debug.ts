@@ -214,7 +214,7 @@ const translation = {
       modalTitle: '画像アップロード設置',
     },
     bar: {
-      empty: 'ウェブアプリのユーザーエクスペリアンスを強化させる機能を有効にする',
+      empty: 'Webアプリのユーザーエクスペリアンスを強化させる機能を有効にする',
       enableText: '有効な機能',
       manage: '管理',
     },
