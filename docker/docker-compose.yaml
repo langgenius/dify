@@ -242,7 +242,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: dify-api:aws
+    image: warren830/dify-api:aws-warren
     restart: always
     environment:
       # Use the shared environment variables.
@@ -262,7 +262,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: dify-api:aws
+    image: warren830/dify-api:aws-warren
     restart: always
     environment:
       # Use the shared environment variables.
