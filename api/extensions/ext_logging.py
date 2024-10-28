@@ -13,9 +13,9 @@ def replace_env_variables(text):
     def replace(match):
         var_name = match.group(1)
         var_value = os.getenv(var_name)
-        return "" if var_value is None else var_value
+        return '' if var_value is None else var_value
 
-    pattern = r"\$\{([^}]+)\}"
+    pattern = r'\$\{([^}]+)\}'
     return re.sub(pattern, replace, text)
 
 
@@ -25,23 +25,25 @@ def init_app(app: Flask):
     if log_file:
         log_dir = os.path.dirname(log_file)
         os.makedirs(log_dir, exist_ok=True)
+
         log_handlers = [
             RotatingFileHandler(
                 filename=log_file,
-                maxBytes=replace_env_variables(dify_config.LOG_FILE_MAX_SIZE) * 1024 * 1024,
-                backupCount=replace_env_variables(dify_config.LOG_FILE_BACKUP_COUNT),
+                maxBytes=dify_config.LOG_FILE_MAX_SIZE * 1024 * 1024,
+                backupCount=dify_config.LOG_FILE_BACKUP_COUNT,
             ),
             logging.StreamHandler(sys.stdout),
         ]
-
+    
     logging.basicConfig(
-        level=replace_env_variables(dify_config.LOG_LEVEL),
-        format=replace_env_variables(dify_config.LOG_FORMAT),
-        datefmt=replace_env_variables(dify_config.LOG_DATEFORMAT),
+        level=dify_config.LOG_LEVEL,
+        format=dify_config.LOG_FORMAT,
+        datefmt=dify_config.LOG_DATEFORMAT,
         handlers=log_handlers,
         force=True,
     )
-    log_tz = replace_env_variables(dify_config.LOG_TZ)
+    log_tz = dify_config.LOG_TZ
+
     if log_tz:
         from datetime import datetime
 
@@ -54,3 +56,4 @@ def init_app(app: Flask):
 
         for handler in logging.root.handlers:
             handler.formatter.converter = time_converter
+            
