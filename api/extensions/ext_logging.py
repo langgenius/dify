@@ -22,7 +22,6 @@ def replace_env_variables(text):
 def init_app(app: Flask):
     log_handlers = None
     log_file = replace_env_variables(dify_config.LOG_FILE)
-    
     if log_file:
         log_dir = os.path.dirname(log_file)
         os.makedirs(log_dir, exist_ok=True)
@@ -42,7 +41,6 @@ def init_app(app: Flask):
         handlers=log_handlers,
         force=True,
     )
-    
     log_tz = replace_env_variables(dify_config.LOG_TZ)
     if log_tz:
         from datetime import datetime
@@ -56,8 +54,4 @@ def init_app(app: Flask):
 
         for handler in logging.root.handlers:
             handler.formatter.converter = time_converter
-
-
-
-
-
+            
