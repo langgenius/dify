@@ -48,7 +48,6 @@ export const getLocaleOnServer = (): Locale => {
 
   // Validate languages
   if (!Array.isArray(languages) || languages.length === 0 || !languages.every(lang => typeof lang === 'string' && /^[\w-]+$/.test(lang))) {
-    console.error(`Invalid languages: ${languages}`)
     languages = [i18n.defaultLocale]
   }
 
