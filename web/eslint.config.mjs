@@ -63,7 +63,6 @@ export default combine(
     overrides: {
       // useful, but big change
       'ts/no-empty-object-type': 'off',
-      // 'ts/no-use-before-define': 'off'
     },
   }),
   unicorn(),
