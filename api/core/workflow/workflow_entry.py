@@ -300,9 +300,7 @@ class WorkflowEntry:
                     tenant_id=tenant_id,
                     type=type,
                     transfer_method=transfer_method,
-                    remote_url=input_value.get("url")
-                    if transfer_method == FileTransferMethod.REMOTE_URL
-                    else None,
+                    remote_url=input_value.get("url") if transfer_method == FileTransferMethod.REMOTE_URL else None,
                     related_id=input_value.get("uploadedId")
                     if transfer_method == FileTransferMethod.LOCAL_FILE
                     else None,
