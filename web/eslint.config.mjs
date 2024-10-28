@@ -61,6 +61,9 @@ export default combine(
   }),
   typescript({
     overrides: {
+      // original config
+      'ts/consistent-type-definitions': ['warn', 'type'],
+
       // useful, but big change
       'ts/no-empty-object-type': 'off',
     },
