@@ -2,13 +2,16 @@ import os
 import re
 import sys
 
+
 from flask import Flask
 from logging.handlers import RotatingFileHandler
 
-import logging
-
 
 from configs import dify_config
+
+
+import logging
+
 
 def replace_env_variables(text):
     def replace(match):
