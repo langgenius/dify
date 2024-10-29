@@ -1,10 +1,12 @@
 import json
-import math
 import logging
-
+import math
 from typing import Any
 
 from pydantic import BaseModel, model_validator
+from pyobvector import VECTOR, ObVecClient
+from sqlalchemy import JSON, Column, String, func
+from sqlalchemy.dialects.mysql import LONGTEXT
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -13,10 +15,7 @@ from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
-from pyobvector import ObVecClient, VECTOR
 from models.dataset import Dataset
-from sqlalchemy import JSON, Column, String
-from sqlalchemy.dialects.mysql import LONGTEXT
 
 logger = logging.getLogger(__name__)
 
@@ -42,32 +41,29 @@ class OceanBaseVectorConfig(BaseModel):
             raise ValueError("config OCEANBASE_VECTOR_PORT is required")
         if not values["user"]:
             raise ValueError("config OCEANBASE_VECTOR_USER is required")
-        if not values["password"]:
-            raise ValueError("config OCEANBASE_VECTOR_PASSWORD is required")
         if not values["database"]:
             raise ValueError("config OCEANBASE_VECTOR_DATABASE is required")
         return values
 
 
 class OceanBaseVector(BaseVector):
-
     def __init__(self, collection_name: str, config: OceanBaseVectorConfig):
         super().__init__(collection_name)
         self._config = config
+        self._hnsw_ef_search = -1
+        self._client = ObVecClient(
+            uri=f"{self._config.host}:{self._config.port}",
+            user=self._config.user,
+            password=self._config.password,
+            db_name=self._config.database,
+        )
 
     def get_type(self) -> str:
         return VectorType.OCEANBASE
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self._vec_dim = len(embeddings[0])
-        self._hnsw_ef_search = -1
-        self._client = ObVecClient(
-            uri=f"{self._config.host}:{self._config.port}",
-            user=self._config.user,
-            password=self._config.password,
-            database=self._config.database,
-        )
-
+        self._create_collection()
         self.add_texts(texts, embeddings)
 
     def _create_collection(self) -> None:
@@ -102,11 +98,26 @@ class OceanBaseVector(BaseVector):
                 columns=cols,
                 vidxs=vidx_params,
             )
+            vals = []
+            params = self._client.perform_raw_text_sql("SHOW PARAMETERS LIKE '%ob_vector_memory_limit_percentage%'")
+            for row in params:
+                val = int(row[6])
+                vals.append(val)
+            if len(vals) == 0:
+                print("ob_vector_memory_limit_percentage not found in parameters.")
+                exit(1)
+            if any(val == 0 for val in vals):
+                try:
+                    self._client.perform_raw_text_sql("ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30")
+                except Exception as e:
+                    raise Exception(
+                        "Failed to set ob_vector_memory_limit_percentage. "
+                        + "Maybe the database user has insufficient privilege.",
+                        e,
+                    )
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
-    def add_texts(
-        self, documents: list[Document], embeddings: list[list[float]], **kwargs
-    ):
+    def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         ids = self._get_uuids(documents)
         for id, doc, emb in zip(ids, documents, embeddings):
             self._client.insert(
@@ -141,18 +152,19 @@ class OceanBaseVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         return []
 
-    def search_by_vector(
-        self, query_vector: list[float], **kwargs: Any
-    ) -> list[Document]:
+    def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         ef_search = kwargs.get("ef_search", self._hnsw_ef_search)
         if ef_search != self._hnsw_ef_search:
             self._client.set_ob_hnsw_ef_search(ef_search)
             self._hnsw_ef_search = ef_search
-
+        topk = kwargs.get("top_k", 10)
         cur = self._client.ann_search(
             table_name=self._collection_name,
+            vec_column_name="vector",
             vec_data=query_vector,
-            output_fields=["text", "metadata"],
+            topk=topk,
+            distance_func=func.l2_distance,
+            output_column_names=["text", "metadata"],
             with_dist=True,
         )
         docs = []
@@ -168,7 +180,7 @@ class OceanBaseVector(BaseVector):
         return docs
 
     def delete(self) -> None:
-        self._client.drop_table_if_exist()
+        self._client.drop_table_if_exist(self._collection_name)
 
 
 class OceanBaseVectorFactory(AbstractVectorFactory):
@@ -179,24 +191,19 @@ class OceanBaseVectorFactory(AbstractVectorFactory):
         embeddings: Embeddings,
     ) -> BaseVector:
         if dataset.index_struct_dict:
-            class_prefix: str = dataset.index_struct_dict["vector_store"][
-                "class_prefix"
-            ]
+            class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
-            dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict(VectorType.OCEANBASE, collection_name)
-            )
-
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.OCEANBASE, collection_name))
         return OceanBaseVector(
             collection_name,
             OceanBaseVectorConfig(
                 host=dify_config.OCEANBASE_VECTOR_HOST,
                 port=dify_config.OCEANBASE_VECTOR_PORT,
                 user=dify_config.OCEANBASE_VECTOR_USER,
-                password=dify_config.OCEANBASE_VECTOR_PASSWORD,
+                password=(dify_config.OCEANBASE_VECTOR_PASSWORD or ""),
                 database=dify_config.OCEANBASE_VECTOR_DATABASE,
             ),
         )

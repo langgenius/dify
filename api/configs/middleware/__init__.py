@@ -21,6 +21,7 @@ from configs.middleware.vdb.couchbase_config import CouchbaseConfig
 from configs.middleware.vdb.elasticsearch_config import ElasticsearchConfig
 from configs.middleware.vdb.milvus_config import MilvusConfig
 from configs.middleware.vdb.myscale_config import MyScaleConfig
+from configs.middleware.vdb.oceanbase_config import OceanBaseVectorConfig
 from configs.middleware.vdb.opensearch_config import OpenSearchConfig
 from configs.middleware.vdb.oracle_config import OracleConfig
 from configs.middleware.vdb.pgvector_config import PGVectorConfig
@@ -33,7 +34,6 @@ from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
 from configs.middleware.vdb.upstash_config import UpstashConfig
 from configs.middleware.vdb.vikingdb_config import VikingDBConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
-from configs.middleware.vdb.oceanbase_config import OceanBaseVectorConfig
 
 
 class StorageConfig(BaseSettings):

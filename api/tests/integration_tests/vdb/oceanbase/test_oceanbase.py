@@ -34,9 +34,7 @@ class OceanBaseVectorTest(AbstractVectorTest):
         self.vector = vector
 
     def search_by_vector(self):
-        hits_by_vector = self.vector.search_by_vector(
-            query_vector=self.example_embedding
-        )
+        hits_by_vector = self.vector.search_by_vector(query_vector=self.example_embedding)
         assert len(hits_by_vector) == 0
 
     def search_by_full_text(self):
@@ -48,23 +46,25 @@ class OceanBaseVectorTest(AbstractVectorTest):
         assert exist == True
 
     def get_ids_by_metadata_field(self):
-        ids = self.vector.get_ids_by_metadata_field(
-            key="document_id", value=self.example_doc_id
-        )
+        ids = self.vector.get_ids_by_metadata_field(key="document_id", value=self.example_doc_id)
         assert len(ids) == 0
 
 
 @pytest.fixture
-def setup_mock_oceanbase_vector(oceanbase_vector):
-    with patch(
-        "core.rag.datasource.vdb.oceanbase.oceanbase_vector.ObVecClient",
-        new_callable=MagicMock,
-    ) as mock_client:
+def setup_mock_oceanbase_client():
+    with patch("core.rag.datasource.vdb.oceanbase.oceanbase_vector.ObVecClient", new_callable=MagicMock) as mock_client:
         yield mock_client
+
+
+@pytest.fixture
+def setup_mock_oceanbase_vector(oceanbase_vector):
+    with patch.object(oceanbase_vector, "_client"):
+        yield oceanbase_vector
 
 
 def test_oceanbase_vector(
     setup_mock_redis,
+    setup_mock_oceanbase_client,
     setup_mock_oceanbase_vector,
     oceanbase_vector,
 ):
