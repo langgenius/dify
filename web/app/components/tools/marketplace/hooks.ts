@@ -5,22 +5,16 @@ import {
 } from 'react'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { MarketplaceCollection } from '@/app/components/plugins/marketplace/types'
+import { getMarketplaceCollectionsAndPlugins } from '@/app/components/plugins/marketplace/utils'
 
 export const useMarketplace = () => {
   const [marketplaceCollections, setMarketplaceCollections] = useState<MarketplaceCollection[]>([])
   const [marketplaceCollectionPluginsMap, setMarketplaceCollectionPluginsMap] = useState<Record<string, Plugin[]>>({})
+  const [isLoading, setIsLoading] = useState(true)
   const getMarketplaceCollections = useCallback(async () => {
-    const marketplaceCollectionsData = await globalThis.fetch('https://marketplace.dify.dev/api/v1/collections')
-    const marketplaceCollectionsDataJson = await marketplaceCollectionsData.json()
-    const marketplaceCollections = marketplaceCollectionsDataJson.data.collections
-    const marketplaceCollectionPluginsMap = {} as Record<string, Plugin[]>
-    await Promise.all(marketplaceCollections.map(async (collection: MarketplaceCollection) => {
-      const marketplaceCollectionPluginsData = await globalThis.fetch(`https://marketplace.dify.dev/api/v1/collections/${collection.name}/plugins`)
-      const marketplaceCollectionPluginsDataJson = await marketplaceCollectionPluginsData.json()
-      const plugins = marketplaceCollectionPluginsDataJson.data.plugins
-
-      marketplaceCollectionPluginsMap[collection.name] = plugins
-    }))
+    setIsLoading(true)
+    const { marketplaceCollections, marketplaceCollectionPluginsMap } = await getMarketplaceCollectionsAndPlugins()
+    setIsLoading(false)
     setMarketplaceCollections(marketplaceCollections)
     setMarketplaceCollectionPluginsMap(marketplaceCollectionPluginsMap)
   }, [])
@@ -29,6 +23,7 @@ export const useMarketplace = () => {
   }, [getMarketplaceCollections])
 
   return {
+    isLoading,
     marketplaceCollections,
     marketplaceCollectionPluginsMap,
   }

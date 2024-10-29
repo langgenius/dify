@@ -13,6 +13,7 @@ import { useDebounceFn } from 'ahooks'
 import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import type { Plugin } from '../types'
 import type { PluginsSearchParams } from './types'
+import { getMarketplacePlugins } from './utils'
 
 export type MarketplaceContextValue = {
   intersected: boolean
@@ -57,31 +58,10 @@ export const MarketplaceContextProvider = ({
   const [activePluginType, setActivePluginType] = useState(PLUGIN_TYPE_SEARCH_MAP.all)
   const [plugins, setPlugins] = useState<Plugin[]>()
 
-  const handleUpdatePlugins = useCallback((query: PluginsSearchParams) => {
-    const fetchPlugins = async () => {
-      const response = await fetch(
-        'https://marketplace.dify.dev/api/v1/plugins/search/basic',
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            query: query.query,
-            page: 1,
-            page_size: 10,
-            sort_by: query.sortBy,
-            sort_order: query.sortOrder,
-            category: query.category,
-            tag: query.tag,
-          }),
-        },
-      )
-      const data = await response.json()
-      setPlugins(data.data.plugins)
-    }
+  const handleUpdatePlugins = useCallback(async (query: PluginsSearchParams) => {
+    const { marketplacePlugins } = await getMarketplacePlugins(query)
 
-    fetchPlugins()
+    setPlugins(marketplacePlugins)
   }, [])
 
   const { run: handleUpdatePluginsWithDebounced } = useDebounceFn(handleUpdatePlugins, {

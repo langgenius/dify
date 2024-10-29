@@ -1,6 +1,7 @@
 import { RiArrowUpDoubleLine } from '@remixicon/react'
 import { useMarketplace } from './hooks'
 import List from '@/app/components/plugins/marketplace/list'
+import Loading from '@/app/components/base/loading'
 
 type MarketplaceProps = {
   onMarketplaceScroll: () => void
@@ -8,7 +9,12 @@ type MarketplaceProps = {
 const Marketplace = ({
   onMarketplaceScroll,
 }: MarketplaceProps) => {
-  const { marketplaceCollections, marketplaceCollectionPluginsMap } = useMarketplace()
+  const {
+    isLoading,
+    marketplaceCollections,
+    marketplaceCollectionPluginsMap,
+  } = useMarketplace()
+
   return (
     <div className='shrink-0 sticky -bottom-[442px] h-[530px] overflow-y-auto px-12 py-2 pt-0 bg-background-default-subtle'>
       <RiArrowUpDoubleLine
@@ -37,10 +43,21 @@ const Marketplace = ({
           in Dify Marketplace
         </div>
       </div>
-      <List
-        marketplaceCollections={marketplaceCollections}
-        marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
-      />
+      {
+        isLoading && (
+          <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'>
+            <Loading />
+          </div>
+        )
+      }
+      {
+        !isLoading && (
+          <List
+            marketplaceCollections={marketplaceCollections}
+            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+          />
+        )
+      }
     </div>
   )
 }

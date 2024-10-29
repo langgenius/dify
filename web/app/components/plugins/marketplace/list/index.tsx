@@ -27,7 +27,7 @@ const List = ({
       }
       {
         plugins && (
-          <div className='grid grid-cols-4 gap-3 mt-2'>
+          <div className='grid grid-cols-4 gap-3'>
             {
               plugins.map(plugin => (
                 <Card
