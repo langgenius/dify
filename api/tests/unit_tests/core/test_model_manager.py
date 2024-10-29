@@ -39,6 +39,11 @@ def lb_model_manager():
     return lb_model_manager
 
 
+class FakeRedisClient:
+    def __init__(self, host='localhost', port=6379, db=0):
+        self.client = redis.Redis(host=host, port=port, db=db)
+
+
 def test_lb_model_manager_fetch_next(mocker, lb_model_manager):
     assert len(lb_model_manager._load_balancing_configs) == 3
 
@@ -57,7 +62,7 @@ def test_lb_model_manager_fetch_next(mocker, lb_model_manager):
         start_index += 1
         return start_index
 
-    fake_redis_client = redis.Redis(host="localhost", port=6379, db=0)
+    fake_redis_client = FakeRedisClient()
     redis_client = RedisClientWrapper()
     redis_client.initialize(fake_redis_client)
     
