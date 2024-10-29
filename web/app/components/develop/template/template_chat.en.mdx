@@ -690,6 +690,11 @@ Chat applications support session persistence, allowing previous chat history to
       <Property name='pinned' type='bool' key='pinned'>
         Return only pinned conversations as `true`, only non-pinned as `false`
       </Property>
+      <Property name='sort_by' type='string' key='sort_by'>
+        Sorting Field (Optional), Default: -updated_at (sorted in descending order by update time)
+        - Available Values: created_at, -created_at, updated_at, -updated_at
+        - The symbol before the field represents the order or reverse, "-" represents reverse order.
+      </Property>
     </Properties>
 
     ### Response
