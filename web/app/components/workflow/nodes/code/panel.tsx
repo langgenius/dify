@@ -92,6 +92,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           language={inputs.code_language}
           value={inputs.code}
           onChange={handleCodeChange}
+          showCodeGenerator={true}
         />
       </div>
       <Split />

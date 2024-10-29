@@ -63,17 +63,24 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
 
 
 @pytest.mark.parametrize(
-    ("mime_type", "file_content", "expected_text", "transfer_method"),
+    ("mime_type", "file_content", "expected_text", "transfer_method", "extension"),
     [
-        ("text/plain", b"Hello, world!", ["Hello, world!"], FileTransferMethod.LOCAL_FILE),
-        ("application/pdf", b"%PDF-1.5\n%Test PDF content", ["Mocked PDF content"], FileTransferMethod.LOCAL_FILE),
+        ("text/plain", b"Hello, world!", ["Hello, world!"], FileTransferMethod.LOCAL_FILE, ".txt"),
+        (
+            "application/pdf",
+            b"%PDF-1.5\n%Test PDF content",
+            ["Mocked PDF content"],
+            FileTransferMethod.LOCAL_FILE,
+            ".pdf",
+        ),
         (
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             b"PK\x03\x04",
             ["Mocked DOCX content"],
-            FileTransferMethod.LOCAL_FILE,
+            FileTransferMethod.REMOTE_URL,
+            "",
         ),
-        ("text/plain", b"Remote content", ["Remote content"], FileTransferMethod.REMOTE_URL),
+        ("text/plain", b"Remote content", ["Remote content"], FileTransferMethod.REMOTE_URL, None),
     ],
 )
 def test_run_extract_text(
@@ -83,6 +90,7 @@ def test_run_extract_text(
     file_content,
     expected_text,
     transfer_method,
+    extension,
     monkeypatch,
 ):
     document_extractor_node.graph_runtime_state = mock_graph_runtime_state
@@ -92,6 +100,7 @@ def test_run_extract_text(
     mock_file.transfer_method = transfer_method
     mock_file.related_id = "test_file_id" if transfer_method == FileTransferMethod.LOCAL_FILE else None
     mock_file.remote_url = "https://example.com/file.txt" if transfer_method == FileTransferMethod.REMOTE_URL else None
+    mock_file.extension = extension
 
     mock_array_file_segment = Mock(spec=ArrayFileSegment)
     mock_array_file_segment.value = [mock_file]
@@ -116,7 +125,7 @@ def test_run_extract_text(
     result = document_extractor_node._run()
 
     assert isinstance(result, NodeRunResult)
-    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED, result.error
     assert result.outputs is not None
     assert result.outputs["text"] == expected_text
 

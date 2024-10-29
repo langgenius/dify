@@ -43,17 +43,17 @@ x-shared-env: &shared-api-worker-env
   REDIS_USERNAME: ${REDIS_USERNAME:-}
   REDIS_PASSWORD: ${REDIS_PASSWORD:-difyai123456}
   REDIS_USE_SSL: ${REDIS_USE_SSL:-false}
-  REDIS_DB: 0
+  REDIS_DB: ${REDIS_DB:-0}
   REDIS_USE_SENTINEL: ${REDIS_USE_SENTINEL:-false}
   REDIS_SENTINELS: ${REDIS_SENTINELS:-}
   REDIS_SENTINEL_SERVICE_NAME: ${REDIS_SENTINEL_SERVICE_NAME:-}
   REDIS_SENTINEL_USERNAME: ${REDIS_SENTINEL_USERNAME:-}
   REDIS_SENTINEL_PASSWORD: ${REDIS_SENTINEL_PASSWORD:-}
-  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
   REDIS_SENTINEL_SOCKET_TIMEOUT: ${REDIS_SENTINEL_SOCKET_TIMEOUT:-0.1}
   REDIS_CLUSTERS: ${REDIS_CLUSTERS:-}
   REDIS_USE_CLUSTERS: ${REDIS_USE_CLUSTERS:-false}
   REDIS_CLUSTERS_PASSWORD: ${REDIS_CLUSTERS_PASSWORD:-}
+  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
   CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://:difyai123456@redis:6379/1}
   BROKER_USE_SSL: ${BROKER_USE_SSL:-false}
   CELERY_USE_SENTINEL: ${CELERY_USE_SENTINEL:-false}
@@ -62,7 +62,7 @@ x-shared-env: &shared-api-worker-env
   WEB_API_CORS_ALLOW_ORIGINS: ${WEB_API_CORS_ALLOW_ORIGINS:-*}
   CONSOLE_CORS_ALLOW_ORIGINS: ${CONSOLE_CORS_ALLOW_ORIGINS:-*}
   STORAGE_TYPE: ${STORAGE_TYPE:-local}
-  STORAGE_LOCAL_PATH: storage
+  STORAGE_LOCAL_PATH: ${STORAGE_LOCAL_PATH:-storage}
   S3_USE_AWS_MANAGED_IAM: ${S3_USE_AWS_MANAGED_IAM:-false}
   S3_ENDPOINT: ${S3_ENDPOINT:-}
   S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
@@ -113,6 +113,11 @@ x-shared-env: &shared-api-worker-env
   QDRANT_CLIENT_TIMEOUT: ${QDRANT_CLIENT_TIMEOUT:-20}
   QDRANT_GRPC_ENABLED: ${QDRANT_GRPC_ENABLED:-false}
   QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
+  COUCHBASE_CONNECTION_STRING: ${COUCHBASE_CONNECTION_STRING:-'couchbase-server'}
+  COUCHBASE_USER: ${COUCHBASE_USER:-Administrator}
+  COUCHBASE_PASSWORD: ${COUCHBASE_PASSWORD:-password}
+  COUCHBASE_BUCKET_NAME: ${COUCHBASE_BUCKET_NAME:-Embeddings}
+  COUCHBASE_SCOPE_NAME: ${COUCHBASE_SCOPE_NAME:-_default}
   MILVUS_URI: ${MILVUS_URI:-http://127.0.0.1:19530}
   MILVUS_TOKEN: ${MILVUS_TOKEN:-}
   MILVUS_USER: ${MILVUS_USER:-root}
@@ -211,7 +216,7 @@ x-shared-env: &shared-api-worker-env
   SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
   SMTP_OPPORTUNISTIC_TLS: ${SMTP_OPPORTUNISTIC_TLS:-false}
   RESEND_API_KEY: ${RESEND_API_KEY:-your-resend-api-key}
-  RESEND_API_URL: https://api.resend.com
+  RESEND_API_URL: ${RESEND_API_URL:-https://api.resend.com}
   INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-1000}
   INVITE_EXPIRY_HOURS: ${INVITE_EXPIRY_HOURS:-72}
   RESET_PASSWORD_TOKEN_EXPIRY_MINUTES: ${RESET_PASSWORD_TOKEN_EXPIRY_MINUTES:-5}
@@ -240,11 +245,12 @@ x-shared-env: &shared-api-worker-env
   POSITION_PROVIDER_PINS: ${POSITION_PROVIDER_PINS:-}
   POSITION_PROVIDER_INCLUDES: ${POSITION_PROVIDER_INCLUDES:-}
   POSITION_PROVIDER_EXCLUDES: ${POSITION_PROVIDER_EXCLUDES:-}
+  MAX_VARIABLE_SIZE: ${MAX_VARIABLE_SIZE:-204800}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.10.1
+    image: langgenius/dify-api:0.10.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -264,7 +270,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.10.1
+    image: langgenius/dify-api:0.10.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -283,7 +289,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.10.1
+    image: langgenius/dify-web:0.10.2
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -476,6 +482,39 @@ services:
       - ./volumes/qdrant:/qdrant/storage
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
+
+  # The Couchbase vector store.
+  couchbase-server:
+    build: ./couchbase-server
+    profiles:
+      - couchbase
+    restart: always
+    environment:
+      - CLUSTER_NAME=dify_search
+      - COUCHBASE_ADMINISTRATOR_USERNAME=${COUCHBASE_USER:-Administrator}
+      - COUCHBASE_ADMINISTRATOR_PASSWORD=${COUCHBASE_PASSWORD:-password}
+      - COUCHBASE_BUCKET=${COUCHBASE_BUCKET_NAME:-Embeddings}
+      - COUCHBASE_BUCKET_RAMSIZE=512
+      - COUCHBASE_RAM_SIZE=2048
+      - COUCHBASE_EVENTING_RAM_SIZE=512
+      - COUCHBASE_INDEX_RAM_SIZE=512
+      - COUCHBASE_FTS_RAM_SIZE=1024
+    hostname: couchbase-server
+    container_name: couchbase-server
+    working_dir: /opt/couchbase
+    stdin_open: true
+    tty: true
+    entrypoint: [""]
+    command: sh -c "/opt/couchbase/init/init-cbserver.sh"
+    volumes:
+      - ./volumes/couchbase/data:/opt/couchbase/var/lib/couchbase/data
+    healthcheck:
+      # ensure bucket was created before proceeding
+      test: [ "CMD-SHELL", "curl -s -f -u Administrator:password http://localhost:8091/pools/default/buckets | grep -q '\\[{' || exit 1" ]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+      timeout: 10s
 
   # The pgvector vector database.
   pgvector:

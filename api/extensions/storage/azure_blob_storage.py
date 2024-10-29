@@ -32,13 +32,9 @@ class AzureBlobStorage(BaseStorage):
 
     def load_stream(self, filename: str) -> Generator:
         client = self._sync_client()
-
-        def generate(filename: str = filename) -> Generator:
-            blob = client.get_blob_client(container=self.bucket_name, blob=filename)
-            blob_data = blob.download_blob()
-            yield from blob_data.chunks()
-
-        return generate(filename)
+        blob = client.get_blob_client(container=self.bucket_name, blob=filename)
+        blob_data = blob.download_blob()
+        yield from blob_data.chunks()
 
     def download(self, filename, target_filepath):
         client = self._sync_client()
