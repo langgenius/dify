@@ -58,6 +58,7 @@ const MarkdownForm = ({ node }: any) => {
   }
   return (
     <form
+      autoComplete="off"
       className='flex flex-col self-stretch'
       onSubmit={(e: any) => {
         e.preventDefault()
