@@ -8,7 +8,8 @@ const MarkdownButton = ({ node }: any) => {
   const message = node.properties.dataMessage
   const size = node.properties.dataSize
 
-  return <Button variant={variant}
+  return <Button
+    variant={variant}
     size={size}
     className={cn('!h-8 !px-3 select-none')}
     onClick={() => onSend?.(message)}
