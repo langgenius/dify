@@ -243,6 +243,12 @@ x-shared-env: &shared-api-worker-env
   POSITION_PROVIDER_INCLUDES: ${POSITION_PROVIDER_INCLUDES:-}
   POSITION_PROVIDER_EXCLUDES: ${POSITION_PROVIDER_EXCLUDES:-}
   MAX_VARIABLE_SIZE: ${MAX_VARIABLE_SIZE:-204800}
+  OCEANBASE_VECTOR_HOST: ${OCEANBASE_VECTOR_HOST:-http://oceanbase-vector}
+  OCEANBASE_VECTOR_PORT: ${OCEANBASE_VECTOR_PORT:-2881}
+  OCEANBASE_VECTOR_USER: ${OCEANBASE_VECTOR_USER:-root@test}
+  OCEANBASE_VECTOR_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-""}
+  OCEANBASE_VECTOR_DATABASE: ${OCEANBASE_VECTOR_DATABASE:-test}
+  OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
 
 services:
   # API service
@@ -572,6 +578,18 @@ services:
       CHROMA_SERVER_AUTHN_CREDENTIALS: ${CHROMA_SERVER_AUTHN_CREDENTIALS:-difyai123456}
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
+
+  # OceanBase vector database
+  oceanbase-vector:
+    image: quay.io/oceanbase/oceanbase-ce:4.3.3.0-100000142024101215
+    profiles:
+      - oceanbase-vector
+    restart: always
+    volumes:
+      - ./volumes/oceanbase/data:/root/ob
+      - ./volumes/oceanbase/conf:/root/.obd/cluster
+    environment:
+      OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
 
   # Oracle vector database
   oracle:
