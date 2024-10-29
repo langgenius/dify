@@ -94,7 +94,7 @@ class Response:
     @property
     def is_file(self):
         content_type = self.content_type
-        content_disposition = self.response.headers.get("Content-Disposition", "")
+        content_disposition = self.response.headers.get("content-disposition", "")
 
         return "attachment" in content_disposition or (
             not any(non_file in content_type for non_file in NON_FILE_CONTENT_TYPES)
@@ -103,7 +103,7 @@ class Response:
 
     @property
     def content_type(self) -> str:
-        return self.headers.get("Content-Type", "")
+        return self.headers.get("content-type", "")
 
     @property
     def text(self) -> str:
