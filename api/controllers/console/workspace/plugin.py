@@ -302,7 +302,6 @@ class PluginChangePermissionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @plugin_permission_required(debug_required=True)
     def post(self):
         user = current_user
         if not user.is_admin_or_owner:
