@@ -142,6 +142,7 @@ const translation = {
     websiteSource: 'Site de pré-processamento',
     webpageUnit: 'Páginas',
     separatorTip: 'Um delimitador é o caractere usado para separar o texto. \\n\\n e \\n são delimitadores comumente usados para separar parágrafos e linhas. Combinado com vírgulas (\\n\\n,\\n), os parágrafos serão segmentados por linhas ao exceder o comprimento máximo do bloco. Você também pode usar delimitadores especiais definidos por você (por exemplo, ***).',
+    maxLengthCheck: 'O comprimento máximo do chunk deve ser inferior a 4000',
   },
   stepThree: {
     creationTitle: '🎉 Conhecimento criado',
