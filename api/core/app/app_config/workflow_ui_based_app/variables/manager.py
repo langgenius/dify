@@ -17,6 +17,6 @@ class WorkflowVariablesConfigManager:
 
         # variables
         for variable in user_input_form:
-            variables.append(VariableEntity(**variable))
+            variables.append(VariableEntity.model_validate(variable))
 
         return variables

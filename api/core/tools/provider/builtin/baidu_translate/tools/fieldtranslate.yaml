@@ -1,0 +1,123 @@
+identity:
+  name: field_translate
+  author: Xiao Ley
+  label:
+    en_US: Field translate
+    zh_Hans: 百度领域翻译
+description:
+  human:
+    en_US: A tool for Baidu Field translate (Currently, the fields of "novel" and "wiki" only support Chinese to English translation. If the language direction is set to English to Chinese, the default output will be a universal translation result).
+    zh_Hans: 百度领域翻译，提供多种领域的文本翻译（目前“网络文学领域”和“人文社科领域”仅支持中到英，如设置语言方向为英到中，则默认输出通用翻译结果）
+  llm: A tool for Baidu Field translate
+parameters:
+  - name: q
+    type: string
+    required: true
+    label:
+      en_US: Text content
+      zh_Hans: 文本内容
+    human_description:
+      en_US: Text content to be translated
+      zh_Hans: 需要翻译的文本内容
+    llm_description: Text content to be translated
+    form: llm
+  - name: from
+    type: select
+    required: true
+    label:
+      en_US: source language
+      zh_Hans: 源语言
+    human_description:
+      en_US: The source language of the input text
+      zh_Hans: 输入的文本的源语言
+    default: auto
+    form: form
+    options:
+      - value: auto
+        label:
+          en_US: auto
+          zh_Hans: 自动检测
+      - value: zh
+        label:
+          en_US: Chinese
+          zh_Hans: 中文
+      - value: en
+        label:
+          en_US: English
+          zh_Hans: 英语
+  - name: to
+    type: select
+    required: true
+    label:
+      en_US: destination language
+      zh_Hans: 目标语言
+    human_description:
+      en_US: The destination language of the input text
+      zh_Hans: 输入文本的目标语言
+    default: en
+    form: form
+    options:
+      - value: zh
+        label:
+          en_US: Chinese
+          zh_Hans: 中文
+      - value: en
+        label:
+          en_US: English
+          zh_Hans: 英语
+  - name: domain
+    type: select
+    required: true
+    label:
+      en_US: domain
+      zh_Hans: 领域
+    human_description:
+      en_US: The domain of the input text
+      zh_Hans: 输入文本的领域
+    default: novel
+    form: form
+    options:
+      - value: it
+        label:
+          en_US: it
+          zh_Hans: 信息技术领域
+      - value: finance
+        label:
+          en_US: finance
+          zh_Hans: 金融财经领域
+      - value: machinery
+        label:
+          en_US: machinery
+          zh_Hans: 机械制造领域
+      - value: senimed
+        label:
+          en_US: senimed
+          zh_Hans: 生物医药领域
+      - value: novel
+        label:
+          en_US: novel (only support Chinese to English translation)
+          zh_Hans: 网络文学领域（仅支持中到英）
+      - value: academic
+        label:
+          en_US: academic
+          zh_Hans: 学术论文领域
+      - value: aerospace
+        label:
+          en_US: aerospace
+          zh_Hans: 航空航天领域
+      - value: wiki
+        label:
+          en_US: wiki (only support Chinese to English translation)
+          zh_Hans: 人文社科领域（仅支持中到英）
+      - value: news
+        label:
+          en_US: news
+          zh_Hans: 新闻咨询领域
+      - value: law
+        label:
+          en_US: law
+          zh_Hans: 法律法规领域
+      - value: contract
+        label:
+          en_US: contract
+          zh_Hans: 合同领域

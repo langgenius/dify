@@ -18,6 +18,7 @@ from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from models.enums import CreatedByRole
 from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
@@ -109,9 +110,10 @@ class WordExtractor(BaseExtractor):
                     key=file_key,
                     name=file_key,
                     size=0,
-                    extension=image_ext,
-                    mime_type=mime_type,
+                    extension=str(image_ext),
+                    mime_type=mime_type or "",
                     created_by=self.user_id,
+                    created_by_role=CreatedByRole.ACCOUNT,
                     created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
                     used=True,
                     used_by=self.user_id,
@@ -121,7 +123,7 @@ class WordExtractor(BaseExtractor):
                 db.session.add(upload_file)
                 db.session.commit()
                 image_map[rel.target_part] = (
-                    f"![image]({dify_config.CONSOLE_API_URL}/files/{upload_file.id}/image-preview)"
+                    f"![image]({dify_config.CONSOLE_API_URL}/files/{upload_file.id}/file-preview)"
                 )
 
         return image_map
@@ -232,7 +234,7 @@ class WordExtractor(BaseExtractor):
         def parse_paragraph(paragraph):
             paragraph_content = []
             for run in paragraph.runs:
-                if hasattr(run.element, "tag") and isinstance(element.tag, str) and run.element.tag.endswith("r"):
+                if hasattr(run.element, "tag") and isinstance(run.element.tag, str) and run.element.tag.endswith("r"):
                     drawing_elements = run.element.findall(
                         ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing"
                     )

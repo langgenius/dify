@@ -5,9 +5,12 @@ import requests
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
-SDURL = {
-    "sd_3": "https://api.siliconflow.cn/v1/stabilityai/stable-diffusion-3-medium/text-to-image",
-    "sd_xl": "https://api.siliconflow.cn/v1/stabilityai/stable-diffusion-xl-base-1.0/text-to-image",
+SILICONFLOW_API_URL = "https://api.siliconflow.cn/v1/image/generations"
+
+SD_MODELS = {
+    "sd_3": "stabilityai/stable-diffusion-3-medium",
+    "sd_xl": "stabilityai/stable-diffusion-xl-base-1.0",
+    "sd_3.5_large": "stabilityai/stable-diffusion-3-5-large",
 }
 
 
@@ -22,9 +25,10 @@ class StableDiffusionTool(BuiltinTool):
         }
 
         model = tool_parameters.get("model", "sd_3")
-        url = SDURL.get(model)
+        sd_model = SD_MODELS.get(model)
 
         payload = {
+            "model": sd_model,
             "prompt": tool_parameters.get("prompt"),
             "negative_prompt": tool_parameters.get("negative_prompt", ""),
             "image_size": tool_parameters.get("image_size", "1024x1024"),
@@ -34,7 +38,7 @@ class StableDiffusionTool(BuiltinTool):
             "num_inference_steps": tool_parameters.get("num_inference_steps", 20),
         }
 
-        response = requests.post(url, json=payload, headers=headers)
+        response = requests.post(SILICONFLOW_API_URL, json=payload, headers=headers)
         if response.status_code != 200:
             return self.create_text_message(f"Got Error Response:{response.text}")
 

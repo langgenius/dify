@@ -27,7 +27,9 @@ from configs.middleware.vdb.pgvectors_config import PGVectoRSConfig
 from configs.middleware.vdb.qdrant_config import QdrantConfig
 from configs.middleware.vdb.relyt_config import RelytConfig
 from configs.middleware.vdb.tencent_vector_config import TencentVectorDBConfig
+from configs.middleware.vdb.tidb_on_qdrant_config import TidbOnQdrantConfig
 from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
+from configs.middleware.vdb.upstash_config import UpstashConfig
 from configs.middleware.vdb.vikingdb_config import VikingDBConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
 
@@ -35,7 +37,8 @@ from configs.middleware.vdb.weaviate_config import WeaviateConfig
 class StorageConfig(BaseSettings):
     STORAGE_TYPE: str = Field(
         description="Type of storage to use."
-        " Options: 'local', 's3', 'azure-blob', 'aliyun-oss', 'google-storage'. Default is 'local'.",
+        " Options: 'local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', 'google-storage', 'huawei-obs', "
+        "'oci-storage', 'tencent-cos', 'volcengine-tos', 'supabase'. Default is 'local'.",
         default="local",
     )
 
@@ -50,6 +53,11 @@ class VectorStoreConfig(BaseSettings):
         description="Type of vector store to use for efficient similarity search."
         " Set to None if not using a vector store.",
         default=None,
+    )
+
+    VECTOR_STORE_WHITELIST_ENABLE: Optional[bool] = Field(
+        description="Enable whitelist for vector store.",
+        default=False,
     )
 
 
@@ -245,5 +253,7 @@ class MiddlewareConfig(
     ElasticsearchConfig,
     InternalTestConfig,
     VikingDBConfig,
+    UpstashConfig,
+    TidbOnQdrantConfig,
 ):
     pass

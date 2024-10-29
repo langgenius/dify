@@ -2,9 +2,10 @@ from typing import Optional
 
 from core.model_manager import ModelInstance
 from core.rag.models.document import Document
+from core.rag.rerank.rerank_base import BaseRerankRunner
 
 
-class RerankModelRunner:
+class RerankModelRunner(BaseRerankRunner):
     def __init__(self, rerank_model_instance: ModelInstance) -> None:
         self.rerank_model_instance = rerank_model_instance
 

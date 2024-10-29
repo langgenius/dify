@@ -1,0 +1,44 @@
+identity:
+  name: timezone_conversion
+  author: zhuhao
+  label:
+    en_US: convert time to equivalent time zone
+    zh_Hans: 时区转换
+description:
+  human:
+    en_US: A tool to convert time to equivalent time zone
+    zh_Hans: 时区转换
+  llm: A tool to convert time to equivalent time zone
+parameters:
+  - name: current_time
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: current time
+      zh_Hans: 当前时间
+    human_description:
+      en_US: current time, such as 2024-1-1 0:0:0
+      zh_Hans: 当前时间, 比如2024-1-1 0:0:0
+  - name: current_timezone
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Current Timezone
+      zh_Hans: 当前时区
+    human_description:
+      en_US: Current Timezone, such as Asia/Shanghai
+      zh_Hans: 当前时区, 比如Asia/Shanghai
+    default: Asia/Shanghai
+  - name: target_timezone
+    type: string
+    required: true
+    form: llm
+    label:
+      en_US: Target Timezone
+      zh_Hans: 目标时区
+    human_description:
+      en_US: Target Timezone, such as Asia/Tokyo
+      zh_Hans: 目标时区, 比如Asia/Tokyo
+    default: Asia/Tokyo

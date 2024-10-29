@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import { useContext } from 'use-context-selector'
+import { useContext, useContextSelector } from 'use-context-selector'
 import Collapse from '../collapse'
 import type { IItem } from '../collapse'
 import s from './index.module.css'
@@ -11,7 +11,7 @@ import Modal from '@/app/components/base/modal'
 import Confirm from '@/app/components/base/confirm'
 import Button from '@/app/components/base/button'
 import { updateUserProfile } from '@/service/common'
-import { useAppContext } from '@/context/app-context'
+import AppContext, { useAppContext } from '@/context/app-context'
 import { ToastContext } from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import Avatar from '@/app/components/base/avatar'
@@ -42,6 +42,7 @@ export default function AccountPage() {
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showDeleteAccountModal, setShowDeleteAccountModal] = useState(false)
+  const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
 
   const handleEditName = () => {
     setEditNameModalVisible(true)
@@ -144,7 +145,7 @@ export default function AccountPage() {
         <div className={titleClassName}>{t('common.account.email')}</div>
         <div className={classNames(inputClassName, 'cursor-pointer')}>{userProfile.email}</div>
       </div>
-      {IS_CE_EDITION && (
+      {systemFeatures.enable_email_password_login && (
         <div className='mb-8'>
           <div className='mb-1 text-sm font-medium text-gray-900'>{t('common.account.password')}</div>
           <div className='mb-2 text-xs text-gray-500'>{t('common.account.passwordTip')}</div>
