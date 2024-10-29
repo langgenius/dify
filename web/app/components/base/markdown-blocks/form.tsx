@@ -64,7 +64,7 @@ const MarkdownForm = ({ node }: any) => {
         e.stopPropagation()
       }}
     >
-      {node.children.filter(i => i.type === 'element').map((child: any, index: number) => {
+      {node.children.filter((i: any) => i.type === 'element').map((child: any, index: number) => {
         if (child.tagName === SUPPORTED_TAGS.LABEL) {
           return (
             <label
