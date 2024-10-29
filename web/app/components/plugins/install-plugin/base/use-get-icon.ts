@@ -1,10 +1,10 @@
-import { fetchIcon } from '@/service/plugins'
+import { apiPrefix } from '@/config'
 import { fetchWorkspaces } from '@/service/common'
 
 let tenantId: string | null | undefined = null
 
 const useGetIcon = () => {
-  const getIcon = async (fileName: string) => {
+  const getIconUrl = async (fileName: string) => {
     if (!tenantId) {
       const { workspaces } = await fetchWorkspaces({
         url: '/workspaces',
@@ -12,12 +12,11 @@ const useGetIcon = () => {
       })
       tenantId = workspaces.find(v => v.current)?.id
     }
-    const res = await fetchIcon(tenantId!, fileName)
-    return res
+    return `${apiPrefix}/workspaces/current/plugin/icon?tenant_id=${tenantId}&filename=${fileName}`
   }
 
   return {
-    getIcon,
+    getIconUrl,
   }
 }
 

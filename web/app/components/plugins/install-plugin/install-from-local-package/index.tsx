@@ -39,7 +39,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
     return t(`${i18nPrefix}.installPlugin`)
   }, [step])
 
-  const { getIcon } = useGetIcon()
+  const { getIconUrl } = useGetIcon()
 
   const handleUploaded = useCallback(async (result: {
     uniqueIdentifier: string
@@ -49,8 +49,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       manifest,
       uniqueIdentifier,
     } = result
-    // TODO: wait for api to fix result
-    const icon: any = await getIcon(manifest!.icon)
+    const icon = await getIconUrl(manifest!.icon)
     setUniqueIdentifier(uniqueIdentifier)
     setManifest({
       ...manifest,
