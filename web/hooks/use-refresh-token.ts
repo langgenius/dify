@@ -41,6 +41,7 @@ const useRefreshToken = () => {
       return new Error('No access token or refresh token found')
     }
     if (localStorage?.getItem('is_refreshing') === '1') {
+      clearTimeout(timer.current)
       timer.current = setTimeout(() => {
         getNewAccessToken()
       }, 1000)
@@ -61,12 +62,14 @@ const useRefreshToken = () => {
       localStorage?.setItem('console_token', access_token)
       localStorage?.setItem('refresh_token', refresh_token)
       const newTokenExpireTime = getExpireTime(access_token)
+      clearTimeout(timer.current)
       timer.current = setTimeout(() => {
         getNewAccessToken()
       }, newTokenExpireTime - advanceTime.current - getCurrentTimeStamp())
     }
     else {
       const newTokenExpireTime = getExpireTime(currentAccessToken)
+      clearTimeout(timer.current)
       timer.current = setTimeout(() => {
         getNewAccessToken()
       }, newTokenExpireTime - advanceTime.current - getCurrentTimeStamp())
@@ -74,8 +77,15 @@ const useRefreshToken = () => {
     return null
   }, [getExpireTime, getCurrentTimeStamp, handleError])
 
+  const handleVisibilityChange = useCallback(() => {
+    if (document.visibilityState === 'visible')
+      getNewAccessToken()
+  }, [])
+
   useEffect(() => {
+    window.addEventListener('visibilitychange', handleVisibilityChange)
     return () => {
+      window.removeEventListener('visibilitychange', handleVisibilityChange)
       clearTimeout(timer.current)
       localStorage?.removeItem('is_refreshing')
     }
