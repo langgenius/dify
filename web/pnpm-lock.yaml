@@ -17,7 +17,7 @@ importers:
         specifier: ^7.22.3
         version: 7.25.7
       '@dagrejs/dagre':
-        specifier: ^1.1.2
+        specifier: ^1.1.4
         version: 1.1.4
       '@emoji-mart/data':
         specifier: ^1.2.1
@@ -173,7 +173,7 @@ importers:
         specifier: ^4.1.2
         version: 4.1.2(react@18.2.0)
       react-headless-pagination:
-        specifier: ^1.1.4
+        specifier: ^1.1.6
         version: 1.1.6(react@18.2.0)
       react-hook-form:
         specifier: ^7.51.4
@@ -188,10 +188,10 @@ importers:
         specifier: ^8.0.6
         version: 8.0.7(@types/react@18.2.79)(react@18.2.0)
       react-multi-email:
-        specifier: ^1.0.14
+        specifier: ^1.0.25
         version: 1.0.25(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
       react-papaparse:
-        specifier: ^4.1.0
+        specifier: ^4.4.0
         version: 4.4.0
       react-slider:
         specifier: ^2.0.6
