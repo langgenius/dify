@@ -14,6 +14,7 @@ import {
   NodeRunningStatus,
   WorkflowRunningStatus,
 } from '../types'
+import { DEFAULT_ITER_TIMES } from '../constants'
 import { useWorkflowUpdate } from './use-workflow-interactions'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { IOtherOptions } from '@/service/base'
@@ -428,6 +429,7 @@ export const useWorkflowRun = () => {
           const {
             workflowRunningData,
             setWorkflowRunningData,
+            setIterTimes,
           } = workflowStore.getState()
           const {
             getNodes,
@@ -437,6 +439,7 @@ export const useWorkflowRun = () => {
             transform,
           } = store.getState()
           const nodes = getNodes()
+          setIterTimes(DEFAULT_ITER_TIMES)
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             draft.tracing!.push({
               ...data,
@@ -533,7 +536,7 @@ export const useWorkflowRun = () => {
               })
             }
           }))
-          setIterTimes(1)
+          setIterTimes(DEFAULT_ITER_TIMES)
           const newNodes = produce(nodes, (draft) => {
             const currentNode = draft.find(node => node.id === data.node_id)!
 

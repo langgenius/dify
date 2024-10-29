@@ -75,7 +75,7 @@ const IterationResultPanel: FC<Props> = ({
                 {
                   iteration.some(item => item.status === 'failed')
                     ? (
-                      <RiErrorWarningLine className='w-4 h-4 text-[#F04438]' />
+                      <RiErrorWarningLine className='w-4 h-4 text-text-destructive' />
                     )
                     : (< RiArrowRightSLine className={
                       cn(

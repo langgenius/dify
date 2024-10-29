@@ -10,6 +10,7 @@ import { uniqBy } from 'lodash-es'
 import { useWorkflowRun } from '../../hooks'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 import { useWorkflowStore } from '../../store'
+import { DEFAULT_ITER_TIMES } from '../../constants'
 import type {
   ChatItem,
   Inputs,
@@ -107,7 +108,7 @@ export const useChat = (
     handleResponding(false)
     if (stopChat && taskIdRef.current)
       stopChat(taskIdRef.current)
-    setIterTimes(1)
+    setIterTimes(DEFAULT_ITER_TIMES)
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
   }, [handleResponding, setIterTimes, stopChat])
@@ -116,7 +117,7 @@ export const useChat = (
     conversationId.current = ''
     taskIdRef.current = ''
     handleStop()
-    setIterTimes(1)
+    setIterTimes(DEFAULT_ITER_TIMES)
     const newChatList = config?.opening_statement
       ? [{
         id: `${Date.now()}`,

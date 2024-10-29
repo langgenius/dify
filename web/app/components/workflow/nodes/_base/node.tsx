@@ -168,9 +168,11 @@ const BaseNode: FC<BaseNodeProps> = ({
           />
           <div
             title={data.title}
-            className='grow mr-1 system-sm-semibold-uppercase font-medium truncate'
+            className='grow mr-1 system-sm-semibold-uppercase text-text-primary truncate flex items-center'
           >
-            {data.title}
+            <div>
+              {data.title}
+            </div>
             {
               data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
                 <Tooltip popupContent={
@@ -181,7 +183,7 @@ const BaseNode: FC<BaseNodeProps> = ({
                     {t('workflow.nodes.iteration.parallelModeEnableDesc')}
                   </div>}
                 >
-                  <div className='text-[#DC6803] border-2 border-[#DC6803] rounded-lg pl-1 pr-1 inline text-sm ml-1'>
+                  <div className='flex justify-center items-center px-[5px] py-[3px] ml-1 border-[1px] border-text-warning rounded-[5px] text-text-warning system-2xs-medium-uppercase '>
                     {t('workflow.nodes.iteration.parallelModeUpper')}
                   </div>
                 </Tooltip>
