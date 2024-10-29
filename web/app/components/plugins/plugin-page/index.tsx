@@ -74,9 +74,8 @@ const PluginPage = ({
     (async () => {
       await sleep(100)
       if (packageId) {
-        const data = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
-        // wait for add cors
-        setManifest(data)
+        const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
+        setManifest(data.plugin)
         showInstallFromMarketplace()
       }
     })()

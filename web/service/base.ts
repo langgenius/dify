@@ -290,11 +290,15 @@ const baseFetch = <T>(
   }: IOtherOptions,
 ): Promise<T> => {
   const options: typeof baseOptions & FetchOptionType = Object.assign({}, baseOptions, fetchOptions)
+  if (isMarketplaceAPI)
+    options.credentials = 'omit'
+
   if (getAbortController) {
     const abortController = new AbortController()
     getAbortController(abortController)
     options.signal = abortController.signal
   }
+
   if (isPublicAPI) {
     const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
     const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
