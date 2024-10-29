@@ -197,6 +197,7 @@ simple_conversation_fields = {
     "status": fields.String,
     "introduction": fields.String,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
 }
 
 conversation_infinite_scroll_pagination_fields = {
