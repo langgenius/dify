@@ -76,8 +76,16 @@ def to_prompt_message_content(f: File, /):
 
 
 def download(f: File, /):
-    upload_file = file_repository.get_upload_file(session=db.session(), file=f)
-    return _download_file_content(upload_file.key)
+    if f.transfer_method == FileTransferMethod.TOOL_FILE:
+        tool_file = file_repository.get_tool_file(session=db.session(), file=f)
+        return _download_file_content(tool_file.file_key)
+    elif f.transfer_method == FileTransferMethod.LOCAL_FILE:
+        upload_file = file_repository.get_upload_file(session=db.session(), file=f)
+        return _download_file_content(upload_file.key)
+    # remote file
+    response = ssrf_proxy.get(f.remote_url, follow_redirects=True)
+    response.raise_for_status()
+    return response.content
 
 
 def _download_file_content(path: str, /):
