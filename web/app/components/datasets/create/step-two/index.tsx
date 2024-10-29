@@ -212,6 +212,10 @@ const StepTwo = ({
   }
 
   const confirmChangeCustomConfig = () => {
+    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
+      return
+    }
     setCustomFileIndexingEstimate(null)
     setShowPreview()
     fetchFileIndexingEstimate()
@@ -337,6 +341,10 @@ const StepTwo = ({
     let params
     if (segmentationType === SegmentType.CUSTOM && overlap > max) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.overlapCheck') })
+      return
+    }
+    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
       return
     }
     if (isSetting) {
@@ -663,6 +671,7 @@ const StepTwo = ({
                         className='h-9'
                         placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
                         value={max}
+                        max={4000}
                         min={1}
                         onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
                       />

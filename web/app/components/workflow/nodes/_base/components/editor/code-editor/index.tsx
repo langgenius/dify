@@ -31,6 +31,7 @@ export type Props = {
   noWrapper?: boolean
   isExpand?: boolean
   showFileList?: boolean
+  showCodeGenerator?: boolean
 }
 
 export const languageMap = {
@@ -63,6 +64,7 @@ const CodeEditor: FC<Props> = ({
   noWrapper,
   isExpand,
   showFileList,
+  showCodeGenerator = false,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
@@ -207,6 +209,7 @@ const CodeEditor: FC<Props> = ({
             codeLanguages={language}
             fileList={fileList}
             showFileList={showFileList}
+            showCodeGenerator={showCodeGenerator}
           >
             {main}
           </Base>

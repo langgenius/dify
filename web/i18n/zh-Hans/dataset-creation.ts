@@ -103,6 +103,7 @@ const translation = {
     separatorTip: '分隔符是用于分隔文本的字符。\\n\\n 和 \\n 是常用于分隔段落和行的分隔符。用逗号连接分隔符（\\n\\n,\\n），当段落超过最大块长度时，会按行进行分割。你也可以使用自定义的特殊分隔符（例如 ***）。',
     separatorPlaceholder: '\\n\\n 用于分段；\\n 用于分行',
     maxLength: '分段最大长度',
+    maxLengthCheck: '分段最大长度不能大于 4000',
     overlap: '分段重叠长度',
     overlapTip: '设置分段之间的重叠长度可以保留分段之间的语义关系，提升召回效果。建议设置为最大分段长度的10%-25%',
     overlapCheck: '分段重叠长度不能大于分段最大长度',

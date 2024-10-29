@@ -12,7 +12,7 @@ description:
   llm: Update doc in a knowledge base via ID/path.
 parameters:
   - name: book_id
-    type: number
+    type: string
     required: true
     form: llm
     label:
