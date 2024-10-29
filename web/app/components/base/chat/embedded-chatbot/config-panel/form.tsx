@@ -9,6 +9,7 @@ import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uplo
 const Form = () => {
   const { t } = useTranslation()
   const {
+    appParams,
     inputsForms,
     newConversationInputs,
     newConversationInputsRef,
@@ -73,6 +74,7 @@ const Form = () => {
             allowed_file_extensions: form.allowed_file_extensions,
             allowed_file_upload_methods: form.allowed_file_upload_methods,
             number_limits: 1,
+            fileUploadConfig: (appParams as any).system_parameters,
           }}
         />
       )
@@ -87,6 +89,7 @@ const Form = () => {
             allowed_file_extensions: form.allowed_file_extensions,
             allowed_file_upload_methods: form.allowed_file_upload_methods,
             number_limits: form.max_length,
+            fileUploadConfig: (appParams as any).system_parameters,
           }}
         />
       )

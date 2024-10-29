@@ -19,3 +19,4 @@ class VectorType(str, Enum):
     BAIDU = "baidu"
     VIKINGDB = "vikingdb"
     UPSTASH = "upstash"
+    TIDB_ON_QDRANT = "tidb_on_qdrant"

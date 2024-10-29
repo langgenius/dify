@@ -1,5 +1,6 @@
 import type { ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { VisionFile } from '@/types/app'
 
 export const sortAgentSorts = (list: ThoughtItem[]) => {
   if (!list)
@@ -11,7 +12,7 @@ export const sortAgentSorts = (list: ThoughtItem[]) => {
   return temp
 }
 
-export const addFileInfos = (list: ThoughtItem[], messageFiles: FileEntity[]) => {
+export const addFileInfos = (list: ThoughtItem[], messageFiles: (FileEntity | VisionFile)[]) => {
   if (!list || !messageFiles)
     return list
   return list.map((item) => {
