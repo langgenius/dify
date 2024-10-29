@@ -178,7 +178,7 @@ const translation = {
     editName: 'Edit Name',
     showAppLength: 'Show {{length}} apps',
     delete: 'Delete Account',
-    deleteTip: 'This action cannot be undone. This will permanently delete your entire account.  All workspaces you own will be deleted, and you will be removed from all shared workspaces.',
+    deleteTip: 'This action cannot be undone. This will permanently delete your entire account, and you won’t be able to re-register with the same email for 30 days. All workspaces you own will be deleted, and you will be removed from all shared workspaces.',
     deleteSuccessTip: 'Your account needs time to finish deleting. We\'ll email you when it\'s all done.',
     deleteLabel: 'Please type in your email to confirm',
     deletePlaceholder: 'Please enter your email',
@@ -187,7 +187,7 @@ const translation = {
     verificationPlaceholder: 'Paste the 6-digit code',
     permanentlyDeleteButton: 'Permanently Delete Account',
     feedbackTitle: 'Feedback',
-    feedbackLabel: 'Tell us why you deleted your account',
+    feedbackLabel: 'Tell us why you deleted your account?',
     feedbackPlaceholder: 'Optional',
   },
   members: {
