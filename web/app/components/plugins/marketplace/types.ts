@@ -27,3 +27,8 @@ export type PluginsSearchParams = {
   category?: string
   tag?: string
 }
+
+export type PluginsSort = {
+  sortBy: string
+  sortOrder: string
+}

@@ -36,7 +36,7 @@ export const getMarketplacePlugins = async (query: PluginsSearchParams) => {
   let marketplacePlugins = [] as Plugin[]
   try {
     const marketplacePluginsData = await globalThis.fetch(
-      `${MARKETPLACE_API_PREFIX}/plugins`,
+      `${MARKETPLACE_API_PREFIX}/plugins/search/basic`,
       {
         method: 'POST',
         headers: {

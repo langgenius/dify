@@ -13,7 +13,7 @@ const SearchBox = () => {
   return (
     <div
       className={cn(
-        'sticky top-3 flex items-center m-auto p-1.5 w-[640px] h-11 border border-components-chat-input-border bg-components-panel-bg-blur rounded-xl shadow-md z-[11]',
+        'sticky top-3 flex items-center mx-auto p-1.5 w-[640px] h-11 border border-components-chat-input-border bg-components-panel-bg-blur rounded-xl shadow-md z-[11]',
         !intersected && 'w-[508px] transition-[width] duration-300',
       )}
     >

@@ -12,8 +12,12 @@ import {
 import { useDebounceFn } from 'ahooks'
 import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import type { Plugin } from '../types'
-import type { PluginsSearchParams } from './types'
+import type {
+  PluginsSearchParams,
+  PluginsSort,
+} from './types'
 import { getMarketplacePlugins } from './utils'
+import { DEFAULT_SORT } from './constants'
 
 export type MarketplaceContextValue = {
   intersected: boolean
@@ -26,6 +30,8 @@ export type MarketplaceContextValue = {
   handleActivePluginTypeChange: (type: string) => void
   plugins?: Plugin[]
   setPlugins?: (plugins: Plugin[]) => void
+  sort: PluginsSort
+  handleSortChange: (sort: PluginsSort) => void
 }
 
 export const MarketplaceContext = createContext<MarketplaceContextValue>({
@@ -39,6 +45,8 @@ export const MarketplaceContext = createContext<MarketplaceContextValue>({
   handleActivePluginTypeChange: () => {},
   plugins: undefined,
   setPlugins: () => {},
+  sort: DEFAULT_SORT,
+  handleSortChange: () => {},
 })
 
 type MarketplaceContextProviderProps = {
@@ -57,6 +65,7 @@ export const MarketplaceContextProvider = ({
   const [filterPluginTags, setFilterPluginTags] = useState<string[]>([])
   const [activePluginType, setActivePluginType] = useState(PLUGIN_TYPE_SEARCH_MAP.all)
   const [plugins, setPlugins] = useState<Plugin[]>()
+  const [sort, setSort] = useState(DEFAULT_SORT)
 
   const handleUpdatePlugins = useCallback(async (query: PluginsSearchParams) => {
     const { marketplacePlugins } = await getMarketplacePlugins(query)
@@ -82,6 +91,10 @@ export const MarketplaceContextProvider = ({
     setActivePluginType(type)
   }, [])
 
+  const handleSortChange = useCallback((sort: PluginsSort) => {
+    setSort(sort)
+  }, [])
+
   return (
     <MarketplaceContext.Provider
       value={{
@@ -95,6 +108,8 @@ export const MarketplaceContextProvider = ({
         handleActivePluginTypeChange,
         plugins,
         setPlugins,
+        sort,
+        handleSortChange,
       }}
     >
       {children}
