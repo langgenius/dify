@@ -204,7 +204,7 @@ class ToolParameter(BaseModel):
                         return str(value)
 
             except Exception:
-                raise ValueError(f"The tool parameter value {value} is not in correct type of {parameter_type}.")
+                raise ValueError(f"The tool parameter value {value} is not in correct type.")
 
     class ToolParameterForm(Enum):
         SCHEMA = "schema"  # should be set while adding tool
