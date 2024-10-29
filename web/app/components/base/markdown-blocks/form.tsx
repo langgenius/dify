@@ -28,7 +28,13 @@ const MarkdownForm = ({ node }: any) => {
   }
 
   return (
-    <form className='flex flex-col self-stretch'>
+    <form
+      className='flex flex-col self-stretch'
+      onSubmit={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}
+    >
       {node.children.map((child: any, index: number) => {
         console.log(child)
         if (child.tagName === 'label') {
