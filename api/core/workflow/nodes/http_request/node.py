@@ -147,7 +147,6 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         content = response.content
 
         if is_file and content_type:
-        if content_type:
             # extract filename from url
             filename = path.basename(url)
             # extract extension if possible
