@@ -8,10 +8,11 @@ import Uploading from './steps/uploading'
 import Install from './steps/install'
 import Installed from '../base/installed'
 import { useTranslation } from 'react-i18next'
+import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 
 const i18nPrefix = 'plugin.installModal'
 
-interface InstallFromLocalPackageProps {
+type InstallFromLocalPackageProps = {
   file: File
   onSuccess: () => void
   onClose: () => void
@@ -38,12 +39,23 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
     return t(`${i18nPrefix}.installPlugin`)
   }, [step])
 
-  const handleUploaded = useCallback((result: {
+  const { getIcon } = useGetIcon()
+
+  const handleUploaded = useCallback(async (result: {
     uniqueIdentifier: string
     manifest: PluginDeclaration
   }) => {
-    setUniqueIdentifier(result.uniqueIdentifier)
-    setManifest(result.manifest)
+    const {
+      manifest,
+      uniqueIdentifier,
+    } = result
+    // TODO: wait for api to fix result
+    const icon: any = await getIcon(manifest!.icon)
+    setUniqueIdentifier(uniqueIdentifier)
+    setManifest({
+      ...manifest,
+      icon,
+    })
     setStep(InstallStep.readyToInstall)
   }, [])
 

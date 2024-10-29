@@ -71,6 +71,10 @@ export const installPackageFromLocal = async (uniqueIdentifier: string) => {
   })
 }
 
+export const fetchIcon = (tenantId: string, fileName: string) => {
+  return get(`workspaces/current/plugin/icon?tenant_id=${tenantId}&filename=${fileName}`)
+}
+
 export const fetchManifest = async (uniqueIdentifier: string) => {
   return get<PluginDeclaration>(`/workspaces/current/plugin/fetch-manifest?plugin_unique_identifier=${uniqueIdentifier}`)
 }
