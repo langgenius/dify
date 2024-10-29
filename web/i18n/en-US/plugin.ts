@@ -1,5 +1,6 @@
 const translation = {
   from: 'From',
+  findMoreInMarketplace: 'Find more in Marketplace',
   fromMarketplace: 'From Marketplace',
   endpointsEnabled: '{{num}} sets of endpoints enabled',
   detailPanel: {

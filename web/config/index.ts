@@ -5,22 +5,20 @@ import { PromptRole } from '@/models/debug'
 export let apiPrefix = ''
 export let publicApiPrefix = ''
 export let marketplaceApiPrefix = ''
+export let marketplaceUrlPrefix = ''
 
 // NEXT_PUBLIC_API_PREFIX=/console/api NEXT_PUBLIC_PUBLIC_API_PREFIX=/api npm run start
-if (process.env.NEXT_PUBLIC_API_PREFIX && process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX && process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX) {
+if (process.env.NEXT_PUBLIC_API_PREFIX && process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX) {
   apiPrefix = process.env.NEXT_PUBLIC_API_PREFIX
   publicApiPrefix = process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX
-  marketplaceApiPrefix = process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX
 }
 else if (
   globalThis.document?.body?.getAttribute('data-api-prefix')
   && globalThis.document?.body?.getAttribute('data-pubic-api-prefix')
-  && globalThis.document?.body?.getAttribute('data-marketplace-api-prefix')
 ) {
   // Not build can not get env from process.env.NEXT_PUBLIC_ in browser https://nextjs.org/docs/basic-features/environment-variables#exposing-environment-variables-to-the-browser
   apiPrefix = globalThis.document.body.getAttribute('data-api-prefix') as string
   publicApiPrefix = globalThis.document.body.getAttribute('data-pubic-api-prefix') as string
-  marketplaceApiPrefix = globalThis.document.body.getAttribute('data-marketplace-api-prefix') as string
 }
 else {
   // const domainParts = globalThis.location?.host?.split('.');
@@ -29,6 +27,15 @@ else {
   apiPrefix = 'http://localhost:5001/console/api'
   publicApiPrefix = 'http://localhost:5001/api' // avoid browser private mode api cross origin
   marketplaceApiPrefix = 'http://localhost:5002/api'
+}
+
+if (process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX && process.env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX) {
+  marketplaceApiPrefix = process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX
+  marketplaceUrlPrefix = process.env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX
+}
+else {
+  marketplaceApiPrefix = globalThis.document?.body?.getAttribute('data-marketplace-api-prefix') || ''
+  marketplaceUrlPrefix = globalThis.document?.body?.getAttribute('data-marketplace-url-prefix') || ''
 }
 
 export const API_PREFIX: string = apiPrefix

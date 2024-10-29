@@ -5,15 +5,20 @@ import useStickyScroll, { ScrollPosition } from '../use-sticky-scroll'
 import Item from './item'
 import type { Plugin } from '@/app/components/plugins/types.ts'
 import cn from '@/utils/classnames'
+import Link from 'next/link'
+import { marketplaceUrlPrefix } from '@/config'
+import { RiArrowRightUpLine } from '@remixicon/react'
 // import { RiArrowRightUpLine } from '@remixicon/react'
 
 type Props = {
   wrapElemRef: React.RefObject<HTMLElement>
+  hasSearchText: boolean
   list: Plugin[]
 }
 
 const List = ({
   wrapElemRef,
+  hasSearchText,
   list,
 }: Props, ref: any) => {
   const { t } = useTranslation()
@@ -44,6 +49,16 @@ const List = ({
       return
 
     nextToStickyELemRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }
+
+  if (!hasSearchText) {
+    return (
+      <Link className='sticky bottom-0 z-10 flex h-8 px-4 py-1 system-sm-medium  items-center rounded-b-xl border-t border-[0.5px] border-components-panel-border bg-components-panel-bg-blur  shadow-lg text-text-accent-light-mode-only cursor-pointer'
+        href={`${marketplaceUrlPrefix}/plugins`} target='_blank'>
+        <span>{t('plugin.findMoreInMarketplace')}</span>
+        <RiArrowRightUpLine className='ml-0.5 w-3 h-3' />
+      </Link>
+    )
   }
 
   return (
