@@ -1,4 +1,4 @@
-import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
+import { API_PREFIX, IS_CE_EDITION, MARKETPLACE_API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
@@ -70,6 +70,7 @@ export type IOnTextReplace = (textReplace: TextReplaceResponse) => void
 
 export type IOtherOptions = {
   isPublicAPI?: boolean
+  isMarketplaceAPI?: boolean
   bodyStringify?: boolean
   needAllResponseContent?: boolean
   deleteContentType?: boolean
@@ -114,7 +115,7 @@ function unicodeToChar(text: string) {
     return ''
 
   return text.replace(/\\u[0-9a-f]{4}/g, (_match, p1) => {
-    return String.fromCharCode(parseInt(p1, 16))
+    return String.fromCharCode(Number.parseInt(p1, 16))
   })
 }
 
@@ -280,6 +281,7 @@ const baseFetch = <T>(
   fetchOptions: FetchOptionType,
   {
     isPublicAPI = false,
+    isMarketplaceAPI = false,
     bodyStringify = true,
     needAllResponseContent,
     deleteContentType,
@@ -305,7 +307,7 @@ const baseFetch = <T>(
     }
     options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
   }
-  else {
+  else if (!isMarketplaceAPI) {
     const accessToken = localStorage.getItem('console_token') || ''
     options.headers.set('Authorization', `Bearer ${accessToken}`)
   }
@@ -319,7 +321,13 @@ const baseFetch = <T>(
       options.headers.set('Content-Type', ContentType.json)
   }
 
-  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
+  const urlPrefix = (() => {
+    if (isMarketplaceAPI)
+      return MARKETPLACE_API_PREFIX
+    if (isPublicAPI)
+      return PUBLIC_API_PREFIX
+    return API_PREFIX
+  })()
   let urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
 
   const { method, params, body } = options
@@ -357,6 +365,9 @@ const baseFetch = <T>(
             const bodyJson = res.json()
             switch (res.status) {
               case 401: {
+                if (isMarketplaceAPI)
+                  return
+
                 if (isPublicAPI) {
                   return bodyJson.then((data: ResponseError) => {
                     if (data.code === 'web_sso_auth_required')
@@ -580,6 +591,11 @@ export const get = <T>(url: string, options = {}, otherOptions?: IOtherOptions) 
 // For public API
 export const getPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return get<T>(url, options, { ...otherOptions, isPublicAPI: true })
+}
+
+// For Marketplace API
+export const getMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return get<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
 }
 
 export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {

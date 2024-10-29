@@ -1,5 +1,5 @@
 import type { Fetcher } from 'swr'
-import { del, get, post, upload } from './base'
+import { del, get, getMarketplace, post, upload } from './base'
 import type {
   CreateEndpointRequest,
   EndpointOperationResponse,
@@ -77,6 +77,10 @@ export const fetchIcon = (tenantId: string, fileName: string) => {
 
 export const fetchManifest = async (uniqueIdentifier: string) => {
   return get<PluginDeclaration>(`/workspaces/current/plugin/fetch-manifest?plugin_unique_identifier=${uniqueIdentifier}`)
+}
+
+export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => {
+  return getMarketplace<PluginDeclaration>(`/plugins/identifier?unique_identifier=${uniqueIdentifier}`)
 }
 
 export const installPackageFromMarketPlace = async (uniqueIdentifier: string) => {

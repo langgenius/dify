@@ -30,12 +30,12 @@ import {
   useSearchParams,
 } from 'next/navigation'
 import type { PluginDeclaration } from '../types'
-import { toolNotionManifest } from '../card/card-mock'
 import { sleep } from '@/utils'
+import { fetchManifestFromMarketPlace } from '@/service/plugins'
 
 const PACKAGE_IDS_KEY = 'package-ids'
 
-export interface PluginPageProps {
+export type PluginPageProps = {
   plugins: React.ReactNode
   marketplace: React.ReactNode
 }
@@ -74,10 +74,9 @@ const PluginPage = ({
     (async () => {
       await sleep(100)
       if (packageId) {
-        // setManifest(toolNotionManifest)
-        // TODO
-        // const data = await fetchManifest(encodeURIComponent(packageId))
-        setManifest(toolNotionManifest)
+        const data = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
+        // wait for add cors
+        setManifest(data)
         showInstallFromMarketplace()
       }
     })()
