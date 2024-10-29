@@ -4,7 +4,7 @@ import type { Plugin } from '@/app/components/plugins/types'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 
-interface ListWithCollectionProps {
+type ListWithCollectionProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
 }
