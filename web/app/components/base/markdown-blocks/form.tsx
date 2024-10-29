@@ -3,6 +3,13 @@ import Input from '@/app/components/base/input'
 
 const MarkdownForm = ({ node }: any) => {
   // const supportedTypes = ['text', 'password', 'email', 'number', 'radio']
+  //   <form>
+  //      <label for="username">Username:</label>
+  //      <input type="text" name="username" />
+  //      <label for="password">Password:</label>
+  //      <input type="password" name="password" />
+  //      <button>Login</button>
+  //   </form>
   const getFormValues = (children: any) => {
     const formValues: { [key: string]: any } = {}
     children.forEach((child: any) => {
