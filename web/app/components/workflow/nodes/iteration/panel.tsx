@@ -8,6 +8,7 @@ import VarReferencePicker from '../_base/components/variable/var-reference-picke
 import Split from '../_base/components/split'
 import ResultPanel from '../../run/result-panel'
 import IterationResultPanel from '../../run/iteration-result-panel'
+import { MAX_ITERATION_PARALLEL_NUM, MIN_ITERATION_PARALLEL_NUM } from '../../constants'
 import type { IterationNodeType } from './types'
 import useConfig from './use-config'
 import { ErrorHandleMode, InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
@@ -113,21 +114,24 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           <Switch defaultValue={inputs.is_parallel} onChange={changeParallel} />
         </Field>
       </div>
-      <div className='px-4 pb-4 space-y-4'>
-        <Field title={t(`${i18nPrefix}.MaxParallelismTitle`)} tooltip={<div className='w-[230px]'>{t(`${i18nPrefix}.MaxParallelismDesc`)}</div>}>
-          <div className='flex row'>
-            <Input type='number' wrapperClassName='w-18 mr-4 ' max={10} min={1} value={inputs.parallel_nums} onChange={(e) => { changeParallelNums(Number(e.target.value)) }} />
-            <Slider
-              value={inputs.parallel_nums}
-              onChange={changeParallelNums}
-              max={10}
-              min={1}
-              className=' flex-shrink-0 flex-1 mt-4'
-            />
-          </div>
+      {
+        inputs.is_parallel && (<div className='px-4 pb-4 space-y-4'>
+          <Field title={t(`${i18nPrefix}.MaxParallelismTitle`)} tooltip={<div className='w-[230px]'>{t(`${i18nPrefix}.MaxParallelismDesc`)}</div>}>
+            <div className='flex row'>
+              <Input type='number' wrapperClassName='w-18 mr-4 ' max={MAX_ITERATION_PARALLEL_NUM} min={MIN_ITERATION_PARALLEL_NUM} value={inputs.parallel_nums} onChange={(e) => { changeParallelNums(Number(e.target.value)) }} />
+              <Slider
+                value={inputs.parallel_nums}
+                onChange={changeParallelNums}
+                max={MAX_ITERATION_PARALLEL_NUM}
+                min={MIN_ITERATION_PARALLEL_NUM}
+                className=' flex-shrink-0 flex-1 mt-4'
+              />
+            </div>
 
-        </Field>
-      </div>
+          </Field>
+        </div>)
+      }
+
       <Divider className='ml-4 mr-4' />
       <div className='px-4 pb-4 space-y-4'>
         <Field title={t(`${i18nPrefix}.errorResponseMethod`)} >

@@ -188,7 +188,6 @@ class IterationNode(BaseNode[IterationNodeData]):
                             q.put(None)
                             yield event
                     except Empty:
-                        logger.warning("iteration parallel queue is empty.")
                         continue
 
                 # wait all threads
