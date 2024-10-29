@@ -69,7 +69,7 @@ class RedisConfig(BaseSettings):
         default=0.1,
     )
 
-    REDIS_USE_CLUSTERS: Optional[bool] = Field(
+    REDIS_USE_CLUSTERS: bool = Field(
         description="Enable Redis Clusters mode for high availability",
         default=False,
     )
