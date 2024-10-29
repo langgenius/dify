@@ -125,7 +125,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                     "description": value.get("description", ""),
                     "enum": value.get("enum", []),
                 }
-            
+
             if properties:
                 parameters = glm.Schema(
                     type=glm.Type.OBJECT,
@@ -134,7 +134,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                 )
             else:
                 parameters = None
-            
+
             function_declaration = glm.FunctionDeclaration(
                 name=tool.name,
                 parameters=parameters,
