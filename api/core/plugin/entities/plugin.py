@@ -110,6 +110,12 @@ class PluginEntity(BasePluginEntity):
     source: PluginInstallationSource
     meta: Mapping[str, Any]
 
+    @model_validator(mode="after")
+    def set_plugin_id(self):
+        if self.declaration.tool:
+            self.declaration.tool.plugin_id = self.plugin_id
+        return self
+
 
 class GithubPackage(BaseModel):
     repo: str

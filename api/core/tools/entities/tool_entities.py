@@ -377,6 +377,7 @@ class ToolEntity(BaseModel):
 
 class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
+    plugin_id: Optional[str] = Field(None, description="The id of the plugin")
     credentials_schema: list[ProviderConfig] = Field(default_factory=list)
 
 
