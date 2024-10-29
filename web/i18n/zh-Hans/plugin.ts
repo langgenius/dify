@@ -1,5 +1,6 @@
 const translation = {
   from: '来自',
+  findMoreInMarketplace: '在 Marketplace 中查找更多',
   fromMarketplace: '来自市场',
   endpointsEnabled: '{{num}} 组端点已启用',
   detailPanel: {
