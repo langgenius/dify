@@ -3,17 +3,17 @@ import type {
   MarketplaceCollection,
   PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 
-const MARKETPLACE_API_URL = 'https://marketplace.dify.dev/api/v1'
 export const getMarketplaceCollectionsAndPlugins = async () => {
   let marketplaceCollections = [] as MarketplaceCollection[]
   let marketplaceCollectionPluginsMap = {} as Record<string, Plugin[]>
   try {
-    const marketplaceCollectionsData = await globalThis.fetch(`${MARKETPLACE_API_URL}/collections`)
+    const marketplaceCollectionsData = await globalThis.fetch(`${MARKETPLACE_API_PREFIX}/collections`)
     const marketplaceCollectionsDataJson = await marketplaceCollectionsData.json()
     marketplaceCollections = marketplaceCollectionsDataJson.data.collections
     await Promise.all(marketplaceCollections.map(async (collection: MarketplaceCollection) => {
-      const marketplaceCollectionPluginsData = await globalThis.fetch(`${MARKETPLACE_API_URL}/collections/${collection.name}/plugins`)
+      const marketplaceCollectionPluginsData = await globalThis.fetch(`${MARKETPLACE_API_PREFIX}/collections/${collection.name}/plugins`)
       const marketplaceCollectionPluginsDataJson = await marketplaceCollectionPluginsData.json()
       const plugins = marketplaceCollectionPluginsDataJson.data.plugins
 
@@ -36,7 +36,7 @@ export const getMarketplacePlugins = async (query: PluginsSearchParams) => {
   let marketplacePlugins = [] as Plugin[]
   try {
     const marketplacePluginsData = await globalThis.fetch(
-      `${MARKETPLACE_API_URL}/plugins`,
+      `${MARKETPLACE_API_PREFIX}/plugins`,
       {
         method: 'POST',
         headers: {
