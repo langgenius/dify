@@ -6,6 +6,7 @@ import type {
   EndpointsRequest,
   EndpointsResponse,
   InstallPackageResponse,
+  Permissions,
   PluginDeclaration,
   PluginManifestInMarket,
   TaskStatusResponse,
@@ -100,4 +101,12 @@ export const fetchMarketplaceCollectionPlugins: Fetcher<MarketplaceCollectionPlu
 
 export const checkTaskStatus = async (taskId: string) => {
   return get<TaskStatusResponse>(`/workspaces/current/plugin/tasks/${taskId}`)
+}
+
+export const fetchPermission = async () => {
+  return get<Permissions>('/workspaces/current/plugin/permission/fetch')
+}
+
+export const updatePermission = async (permissions: Permissions) => {
+  return post('/workspaces/current/plugin/permission/change', { body: permissions })
 }

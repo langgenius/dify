@@ -31,8 +31,8 @@ const PluginSettingModal: FC<Props> = ({
     }
   }, [tempPrivilege])
 
-  const handleSave = useCallback(() => {
-    onSave(tempPrivilege)
+  const handleSave = useCallback(async () => {
+    await onSave(tempPrivilege)
     onHide()
   }, [tempPrivilege])
 
@@ -49,8 +49,8 @@ const PluginSettingModal: FC<Props> = ({
         </div>
         <div className='flex px-6 py-3 flex-col justify-center items-start gap-4 self-stretch'>
           {[
-            { title: t(`${i18nPrefix}.whoCanInstall`), key: 'canManagement', value: tempPrivilege.canManagement },
-            { title: t(`${i18nPrefix}.whoCanDebug`), key: 'canDebugger', value: tempPrivilege.canDebugger },
+            { title: t(`${i18nPrefix}.whoCanInstall`), key: 'install_permission', value: tempPrivilege.install_permission },
+            { title: t(`${i18nPrefix}.whoCanDebug`), key: 'debug_permission', value: tempPrivilege.debug_permission },
           ].map(({ title, key, value }) => (
             <div key={key} className='flex flex-col items-start gap-1 self-stretch'>
               <div className='flex h-6 items-center gap-0.5'>

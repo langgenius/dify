@@ -42,8 +42,8 @@ const translation = {
     whoCanInstall: '谁可以安装和管理插件？',
     whoCanDebug: '谁可以调试插件？',
     everyone: '所有人',
-    admin: '管理员',
-    noOne: '无人',
+    admins: '管理员',
+    noone: '无人',
   },
   pluginInfoModal: {
     title: '插件信息',

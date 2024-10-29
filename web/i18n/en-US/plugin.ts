@@ -42,8 +42,8 @@ const translation = {
     whoCanInstall: 'Who can install and manage plugins?',
     whoCanDebug: 'Who can debug plugins?',
     everyone: 'Everyone',
-    admin: 'Admins',
-    noOne: 'No one',
+    admins: 'Admins',
+    noone: 'No one',
   },
   pluginInfoModal: {
     title: 'Plugin info',

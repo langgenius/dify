@@ -121,13 +121,13 @@ export type Plugin = {
 
 export enum PermissionType {
   everyone = 'everyone',
-  admin = 'admin',
-  noOne = 'noOne',
+  admin = 'admins',
+  noOne = 'noone',
 }
 
 export type Permissions = {
-  canManagement: PermissionType
-  canDebugger: PermissionType
+  install_permission: PermissionType
+  debug_permission: PermissionType
 }
 
 export enum InstallStepFromGitHub {
