@@ -584,7 +584,7 @@ services:
     restart: always
     volumes:
       - ./volumes/oceanbase/data:/root/ob
-      - ./volume/oceanbase/conf:/root/.obd/cluster
+      - ./volumes/oceanbase/conf:/root/.obd/cluster
     environment:
       OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
 
