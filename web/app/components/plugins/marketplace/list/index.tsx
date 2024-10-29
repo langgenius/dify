@@ -5,7 +5,7 @@ import ListWithCollection from './list-with-collection'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 
-interface ListProps {
+type ListProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   plugins?: Plugin[]
@@ -16,7 +16,7 @@ const List = ({
   plugins,
 }: ListProps) => {
   return (
-    <div className='px-12 py-2 bg-background-default-subtle'>
+    <>
       {
         !plugins && (
           <ListWithCollection
@@ -45,7 +45,7 @@ const List = ({
           </div>
         )
       }
-    </div>
+    </>
   )
 }
 

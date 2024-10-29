@@ -15,11 +15,13 @@ const ListWrapper = ({
   const plugins = useMarketplaceContext(s => s.plugins)
 
   return (
-    <List
-      marketplaceCollections={marketplaceCollections}
-      marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
-      plugins={plugins}
-    />
+    <div className='px-12 py-2 bg-background-default-subtle'>
+      <List
+        marketplaceCollections={marketplaceCollections}
+        marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+        plugins={plugins}
+      />
+    </div>
   )
 }
 
