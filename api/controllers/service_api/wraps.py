@@ -176,10 +176,7 @@ def validate_dataset_token(view=None):
 
 @cache.memoize(timeout=3600)
 def get_api_token_from_db(auth_token, scope):
-    return db.session.query(ApiToken).filter(
-        ApiToken.token == auth_token,
-        ApiToken.type == scope
-    ).first()
+    return db.session.query(ApiToken).filter(ApiToken.token == auth_token, ApiToken.type == scope).first()
 
 
 @shared_task(queue="ops_trace", bind=True, max_retries=3)

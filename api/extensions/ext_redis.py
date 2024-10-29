@@ -75,11 +75,11 @@ def init_app(app):
         redis_client.initialize(master)
 
         cache_config = {
-            'CACHE_TYPE': 'redis',
-            'CACHE_REDIS_SENTINELS': app.config.get('REDIS_SENTINELS'),
-            'CACHE_REDIS_SENTINEL_MASTER': app.config.get('REDIS_SENTINEL_SERVICE_NAME'),
-            'CACHE_REDIS_SENTINEL_PASSWORD': app.config.get('REDIS_SENTINEL_PASSWORD'),
-            'CACHE_DEFAULT_TIMEOUT': 3600
+            "CACHE_TYPE": "redis",
+            "CACHE_REDIS_SENTINELS": app.config.get("REDIS_SENTINELS"),
+            "CACHE_REDIS_SENTINEL_MASTER": app.config.get("REDIS_SENTINEL_SERVICE_NAME"),
+            "CACHE_REDIS_SENTINEL_PASSWORD": app.config.get("REDIS_SENTINEL_PASSWORD"),
+            "CACHE_DEFAULT_TIMEOUT": 3600,
         }
     else:
         redis_params.update(
@@ -93,12 +93,12 @@ def init_app(app):
         redis_client.initialize(redis.Redis(connection_pool=pool))
 
         cache_config = {
-            'CACHE_TYPE': 'redis',
-            'CACHE_REDIS_HOST': app.config.get('REDIS_HOST'),
-            'CACHE_REDIS_PORT': app.config.get('REDIS_PORT'),
-            'CACHE_REDIS_PASSWORD': app.config.get('REDIS_PASSWORD'),
-            'CACHE_REDIS_DB': app.config.get('REDIS_DB'),
-            'CACHE_DEFAULT_TIMEOUT': 3600
+            "CACHE_TYPE": "redis",
+            "CACHE_REDIS_HOST": app.config.get("REDIS_HOST"),
+            "CACHE_REDIS_PORT": app.config.get("REDIS_PORT"),
+            "CACHE_REDIS_PASSWORD": app.config.get("REDIS_PASSWORD"),
+            "CACHE_REDIS_DB": app.config.get("REDIS_DB"),
+            "CACHE_DEFAULT_TIMEOUT": 3600,
         }
 
     cache.init_app(app, config=cache_config)
