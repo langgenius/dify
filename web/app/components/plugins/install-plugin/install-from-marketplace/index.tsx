@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState } from 'react'
 import Modal from '@/app/components/base/modal'
-import type { PluginDeclaration } from '../../types'
+import type { PluginManifestInMarket } from '../../types'
 import { InstallStep } from '../../types'
 import Install from './steps/install'
 import Installed from '../base/installed'
@@ -10,9 +10,9 @@ import { useTranslation } from 'react-i18next'
 
 const i18nPrefix = 'plugin.installModal'
 
-interface InstallFromMarketplaceProps {
+type InstallFromMarketplaceProps = {
   uniqueIdentifier: string
-  manifest: PluginDeclaration
+  manifest: PluginManifestInMarket
   onSuccess: () => void
   onClose: () => void
 }
@@ -75,6 +75,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
         ([InstallStep.installed, InstallStep.installFailed].includes(step)) && (
           <Installed
             payload={manifest!}
+            isMarketPayload
             isFailed={step === InstallStep.installFailed}
             errMsg={errorMsg}
             onCancel={onSuccess}

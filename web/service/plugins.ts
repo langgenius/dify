@@ -7,6 +7,7 @@ import type {
   EndpointsResponse,
   InstallPackageResponse,
   PluginDeclaration,
+  PluginManifestInMarket,
   TaskStatusResponse,
   UpdateEndpointRequest,
 } from '@/app/components/plugins/types'
@@ -80,7 +81,7 @@ export const fetchManifest = async (uniqueIdentifier: string) => {
 }
 
 export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => {
-  return getMarketplace<{ data: { plugin: PluginDeclaration } }>(`/plugins/identifier?unique_identifier=${uniqueIdentifier}`)
+  return getMarketplace<{ data: { plugin: PluginManifestInMarket } }>(`/plugins/identifier?unique_identifier=${uniqueIdentifier}`)
 }
 
 export const installPackageFromMarketPlace = async (uniqueIdentifier: string) => {

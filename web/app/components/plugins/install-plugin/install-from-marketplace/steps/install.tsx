@@ -2,9 +2,9 @@
 import type { FC } from 'react'
 import React, { useMemo } from 'react'
 import { RiInformation2Line } from '@remixicon/react'
-import type { PluginDeclaration } from '../../../types'
+import type { PluginManifestInMarket } from '../../../types'
 import Card from '../../../card'
-import { pluginManifestToCardPluginProps } from '../../utils'
+import { pluginManifestInMarketToPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
@@ -14,9 +14,9 @@ import checkTaskStatus from '../../base/check-task-status'
 
 const i18nPrefix = 'plugin.installModal'
 
-interface Props {
+type Props = {
   uniqueIdentifier: string
-  payload: PluginDeclaration
+  payload: PluginManifestInMarket
   onCancel: () => void
   onInstalled: () => void
   onFailed: (message?: string) => void
@@ -74,14 +74,14 @@ const Installed: FC<Props> = ({
 
   const versionInfo = useMemo(() => {
     return (<>{
-      payload.version === toInstallVersion || !supportCheckInstalled
+      payload.latest_version === toInstallVersion || !supportCheckInstalled
         ? (
-          <Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version}</Badge>
+          <Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.latest_version}</Badge>
         )
         : (
           <>
             <Badge className='mx-1' size="s" state={BadgeState.Warning}>
-              {`${payload.version} -> ${toInstallVersion}`}
+              {`${payload.latest_version} -> ${toInstallVersion}`}
             </Badge>
             <div className='flex px-0.5 justify-center items-center gap-0.5'>
               <div className='text-text-warning system-xs-medium'>Used in 3 apps</div>
@@ -101,7 +101,7 @@ const Installed: FC<Props> = ({
         <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap rounded-2xl bg-background-section-burn'>
           <Card
             className='w-full'
-            payload={pluginManifestToCardPluginProps(payload)}
+            payload={pluginManifestInMarketToPluginProps(payload)}
             titleLeft={versionInfo}
           />
         </div>

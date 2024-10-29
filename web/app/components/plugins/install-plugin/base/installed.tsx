@@ -1,15 +1,16 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import type { PluginDeclaration } from '../../types'
+import type { PluginDeclaration, PluginManifestInMarket } from '../../types'
 import Card from '../../card'
 import Button from '@/app/components/base/button'
-import { pluginManifestToCardPluginProps } from '../utils'
+import { pluginManifestInMarketToPluginProps, pluginManifestToCardPluginProps } from '../utils'
 import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 
 type Props = {
-  payload?: PluginDeclaration | null
+  payload?: PluginDeclaration | PluginManifestInMarket | null
+  isMarketPayload?: boolean
   isFailed: boolean
   errMsg?: string | null
   onCancel: () => void
@@ -17,6 +18,7 @@ type Props = {
 
 const Installed: FC<Props> = ({
   payload,
+  isMarketPayload,
   isFailed,
   errMsg,
   onCancel,
@@ -30,10 +32,10 @@ const Installed: FC<Props> = ({
           <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap rounded-2xl bg-background-section-burn'>
             <Card
               className='w-full'
-              payload={pluginManifestToCardPluginProps(payload)}
+              payload={isMarketPayload ? pluginManifestInMarketToPluginProps(payload as PluginManifestInMarket) : pluginManifestToCardPluginProps(payload as PluginDeclaration)}
               installed={!isFailed}
               installFailed={isFailed}
-              titleLeft={<Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version}</Badge>}
+              titleLeft={<Badge className='mx-1' size="s" state={BadgeState.Default}>{(payload as PluginDeclaration).version || (payload as PluginManifestInMarket).latest_version}</Badge>}
             />
           </div>
         )}

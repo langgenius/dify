@@ -70,6 +70,18 @@ export type PluginDeclaration = {
   model: any // TODO
 }
 
+export type PluginManifestInMarket = {
+  name: string
+  org: string
+  icon: string
+  label: Record<Locale, string>
+  category: PluginType
+  latest_version: string
+  brief: Record<Locale, string>
+  introduction: string
+  verified: boolean
+}
+
 export type PluginDetail = {
   id: string
   created_at: string

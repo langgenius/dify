@@ -29,9 +29,10 @@ import {
   useRouter,
   useSearchParams,
 } from 'next/navigation'
-import type { PluginDeclaration } from '../types'
+import type { PluginDeclaration, PluginManifestInMarket } from '../types'
 import { sleep } from '@/utils'
 import { fetchManifestFromMarketPlace } from '@/service/plugins'
+import { marketplaceApiPrefix } from '@/config'
 
 const PACKAGE_IDS_KEY = 'package-ids'
 
@@ -68,14 +69,18 @@ const PluginPage = ({
     url.searchParams.delete(PACKAGE_IDS_KEY)
     replace(url.toString())
   }
-  const [manifest, setManifest] = useState<PluginDeclaration | null>(null)
+  const [manifest, setManifest] = useState<PluginDeclaration | PluginManifestInMarket | null>(null)
 
   useEffect(() => {
     (async () => {
       await sleep(100)
       if (packageId) {
         const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
-        setManifest(data.plugin)
+        const { plugin } = data
+        setManifest({
+          ...plugin,
+          icon: `${marketplaceApiPrefix}/plugins/${plugin.org}/${plugin.name}/icon`,
+        })
         showInstallFromMarketplace()
       }
     })()
@@ -229,7 +234,7 @@ const PluginPage = ({
       {
         isShowInstallFromMarketplace && (
           <InstallFromMarketplace
-            manifest={manifest!}
+            manifest={manifest! as PluginManifestInMarket}
             uniqueIdentifier={packageId}
             onClose={hideInstallFromMarketplace}
             onSuccess={hideInstallFromMarketplace}

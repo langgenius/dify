@@ -41,7 +41,7 @@ const Card = ({
   const { type, name, org, label, brief, icon, verified } = payload
 
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
-    obj?.[locale] || obj?.['en-US'] || ''
+    obj?.[locale] || obj?.['en-US'] || obj?.en_US || ''
 
   const wrapClassName = cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)
   if (isLoading) {
