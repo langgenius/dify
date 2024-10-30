@@ -25,10 +25,14 @@ export type PluginsSearchParams = {
   sortBy?: string
   sortOrder?: string
   category?: string
-  tag?: string
+  tags?: string[]
 }
 
 export type PluginsSort = {
   sortBy: string
   sortOrder: string
+}
+
+export type CollectionsAndPluginsSearchParams = {
+  category?: string
 }

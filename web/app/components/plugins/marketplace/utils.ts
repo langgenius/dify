@@ -1,11 +1,16 @@
 import type { Plugin } from '@/app/components/plugins/types'
 import type {
+  CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
   PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 
-export const getMarketplaceCollectionsAndPlugins = async () => {
+export const getPluginIconInMarketplace = (plugin: Plugin) => {
+  return `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`
+}
+
+export const getMarketplaceCollectionsAndPlugins = async (query?: CollectionsAndPluginsSearchParams) => {
   let marketplaceCollections = [] as MarketplaceCollection[]
   let marketplaceCollectionPluginsMap = {} as Record<string, Plugin[]>
   try {
@@ -13,12 +18,12 @@ export const getMarketplaceCollectionsAndPlugins = async () => {
     const marketplaceCollectionsDataJson = await marketplaceCollectionsData.json()
     marketplaceCollections = marketplaceCollectionsDataJson.data.collections
     await Promise.all(marketplaceCollections.map(async (collection: MarketplaceCollection) => {
-      const marketplaceCollectionPluginsData = await globalThis.fetch(`${MARKETPLACE_API_PREFIX}/collections/${collection.name}/plugins`)
+      const marketplaceCollectionPluginsData = await globalThis.fetch(`${MARKETPLACE_API_PREFIX}/collections/${collection.name}/plugins?category=${query?.category}`)
       const marketplaceCollectionPluginsDataJson = await marketplaceCollectionPluginsData.json()
       const plugins = marketplaceCollectionPluginsDataJson.data.plugins.map((plugin: Plugin) => {
         return {
           ...plugin,
-          icon: `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`,
+          icon: getPluginIconInMarketplace(plugin),
         }
       })
 
@@ -54,7 +59,7 @@ export const getMarketplacePlugins = async (query: PluginsSearchParams) => {
           sort_by: query.sortBy,
           sort_order: query.sortOrder,
           category: query.category,
-          tag: query.tag,
+          tags: query.tags,
         }),
       },
     )
@@ -62,7 +67,7 @@ export const getMarketplacePlugins = async (query: PluginsSearchParams) => {
     marketplacePlugins = marketplacePluginsDataJson.data.plugins.map((plugin: Plugin) => {
       return {
         ...plugin,
-        icon: `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`,
+        icon: getPluginIconInMarketplace(plugin),
       }
     })
   }

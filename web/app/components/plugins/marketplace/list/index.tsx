@@ -3,6 +3,7 @@ import type { Plugin } from '../../types'
 import type { MarketplaceCollection } from '../types'
 import ListWithCollection from './list-with-collection'
 import CardWrapper from './card-wrapper'
+import Empty from '../empty'
 
 type ListProps = {
   marketplaceCollections: MarketplaceCollection[]
@@ -28,7 +29,7 @@ const List = ({
         )
       }
       {
-        plugins && (
+        plugins && !!plugins.length && (
           <div className='grid grid-cols-4 gap-3'>
             {
               plugins.map(plugin => (
@@ -40,6 +41,11 @@ const List = ({
               ))
             }
           </div>
+        )
+      }
+      {
+        plugins && !plugins.length && (
+          <Empty />
         )
       }
     </>
