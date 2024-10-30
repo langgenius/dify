@@ -142,10 +142,11 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         Extract files from response
         """
         files = []
+        is_file = response.is_file
         content_type = response.content_type
         content = response.content
 
-        if content_type:
+        if is_file and content_type:
             # extract filename from url
             filename = path.basename(url)
             # extract extension if possible

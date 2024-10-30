@@ -110,6 +110,11 @@ x-shared-env: &shared-api-worker-env
   QDRANT_CLIENT_TIMEOUT: ${QDRANT_CLIENT_TIMEOUT:-20}
   QDRANT_GRPC_ENABLED: ${QDRANT_GRPC_ENABLED:-false}
   QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
+  COUCHBASE_CONNECTION_STRING: ${COUCHBASE_CONNECTION_STRING:-'couchbase-server'}
+  COUCHBASE_USER: ${COUCHBASE_USER:-Administrator}
+  COUCHBASE_PASSWORD: ${COUCHBASE_PASSWORD:-password}
+  COUCHBASE_BUCKET_NAME: ${COUCHBASE_BUCKET_NAME:-Embeddings}
+  COUCHBASE_SCOPE_NAME: ${COUCHBASE_SCOPE_NAME:-_default}
   MILVUS_URI: ${MILVUS_URI:-http://127.0.0.1:19530}
   MILVUS_TOKEN: ${MILVUS_TOKEN:-}
   MILVUS_USER: ${MILVUS_USER:-root}
@@ -135,6 +140,18 @@ x-shared-env: &shared-api-worker-env
   TIDB_VECTOR_USER: ${TIDB_VECTOR_USER:-}
   TIDB_VECTOR_PASSWORD: ${TIDB_VECTOR_PASSWORD:-}
   TIDB_VECTOR_DATABASE: ${TIDB_VECTOR_DATABASE:-dify}
+  TIDB_ON_QDRANT_URL: ${TIDB_ON_QDRANT_URL:-http://127.0.0.1}
+  TIDB_ON_QDRANT_API_KEY: ${TIDB_ON_QDRANT_API_KEY:-dify}
+  TIDB_ON_QDRANT_CLIENT_TIMEOUT: ${TIDB_ON_QDRANT_API_KEY:-20}
+  TIDB_ON_QDRANT_GRPC_ENABLED: ${TIDB_ON_QDRANT_GRPC_ENABLED:-false}
+  TIDB_ON_QDRANT_GRPC_PORT: ${TIDB_ON_QDRANT_GRPC_PORT:-6334}
+  TIDB_PUBLIC_KEY: ${TIDB_PUBLIC_KEY:-dify}
+  TIDB_PRIVATE_KEY: ${TIDB_PRIVATE_KEY:-dify}
+  TIDB_API_URL: ${TIDB_API_URL:-http://127.0.0.1}
+  TIDB_IAM_API_URL: ${TIDB_IAM_API_URL:-http://127.0.0.1}
+  TIDB_REGION: ${TIDB_REGION:-regions/aws-us-east-1}
+  TIDB_PROJECT_ID: ${TIDB_PROJECT_ID:-dify}
+  TIDB_SPEND_LIMIT: ${TIDB_SPEND_LIMIT:-100}
   ORACLE_HOST: ${ORACLE_HOST:-oracle}
   ORACLE_PORT: ${ORACLE_PORT:-1521}
   ORACLE_USER: ${ORACLE_USER:-dify}
@@ -238,6 +255,12 @@ x-shared-env: &shared-api-worker-env
   POSITION_PROVIDER_INCLUDES: ${POSITION_PROVIDER_INCLUDES:-}
   POSITION_PROVIDER_EXCLUDES: ${POSITION_PROVIDER_EXCLUDES:-}
   MAX_VARIABLE_SIZE: ${MAX_VARIABLE_SIZE:-204800}
+  OCEANBASE_VECTOR_HOST: ${OCEANBASE_VECTOR_HOST:-http://oceanbase-vector}
+  OCEANBASE_VECTOR_PORT: ${OCEANBASE_VECTOR_PORT:-2881}
+  OCEANBASE_VECTOR_USER: ${OCEANBASE_VECTOR_USER:-root@test}
+  OCEANBASE_VECTOR_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-""}
+  OCEANBASE_VECTOR_DATABASE: ${OCEANBASE_VECTOR_DATABASE:-test}
+  OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
 
 services:
   # API service
@@ -475,6 +498,39 @@ services:
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
 
+  # The Couchbase vector store.
+  couchbase-server:
+    build: ./couchbase-server
+    profiles:
+      - couchbase
+    restart: always
+    environment:
+      - CLUSTER_NAME=dify_search
+      - COUCHBASE_ADMINISTRATOR_USERNAME=${COUCHBASE_USER:-Administrator}
+      - COUCHBASE_ADMINISTRATOR_PASSWORD=${COUCHBASE_PASSWORD:-password}
+      - COUCHBASE_BUCKET=${COUCHBASE_BUCKET_NAME:-Embeddings}
+      - COUCHBASE_BUCKET_RAMSIZE=512
+      - COUCHBASE_RAM_SIZE=2048
+      - COUCHBASE_EVENTING_RAM_SIZE=512
+      - COUCHBASE_INDEX_RAM_SIZE=512
+      - COUCHBASE_FTS_RAM_SIZE=1024
+    hostname: couchbase-server
+    container_name: couchbase-server
+    working_dir: /opt/couchbase
+    stdin_open: true
+    tty: true
+    entrypoint: [""]
+    command: sh -c "/opt/couchbase/init/init-cbserver.sh"
+    volumes:
+      - ./volumes/couchbase/data:/opt/couchbase/var/lib/couchbase/data
+    healthcheck:
+      # ensure bucket was created before proceeding
+      test: [ "CMD-SHELL", "curl -s -f -u Administrator:password http://localhost:8091/pools/default/buckets | grep -q '\\[{' || exit 1" ]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+      timeout: 10s
+
   # The pgvector vector database.
   pgvector:
     image: pgvector/pgvector:pg16
@@ -531,6 +587,18 @@ services:
       CHROMA_SERVER_AUTHN_CREDENTIALS: ${CHROMA_SERVER_AUTHN_CREDENTIALS:-difyai123456}
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
+
+  # OceanBase vector database
+  oceanbase-vector:
+    image: quay.io/oceanbase/oceanbase-ce:4.3.3.0-100000142024101215
+    profiles:
+      - oceanbase-vector
+    restart: always
+    volumes:
+      - ./volumes/oceanbase/data:/root/ob
+      - ./volumes/oceanbase/conf:/root/.obd/cluster
+    environment:
+      OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
 
   # Oracle vector database
   oracle:
