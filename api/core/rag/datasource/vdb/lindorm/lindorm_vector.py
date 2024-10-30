@@ -222,7 +222,7 @@ class LindormVectorStore(BaseVector):
             )
         docs = []
         for doc, score in docs_and_scores:
-            score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
+            score_threshold = kwargs.get("score_threshold", 0.0) or 0.0
             if score > score_threshold:
                 doc.metadata["score"] = score
                 docs.append(doc)
@@ -482,7 +482,7 @@ def default_vector_search_query(
         client_refactor: Optional[str] = None,  # "true"
         vector_field: str = Field.VECTOR.value,
         filters: Optional[list[dict]] = None,
-        filter_type: str = None,
+        filter_type: Optional[str] = None,
         **kwargs
 ) -> dict:
     if filters is not None:
