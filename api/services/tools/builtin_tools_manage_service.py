@@ -178,11 +178,11 @@ class BuiltinToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def get_builtin_tool_provider_icon(provider: str, tenant_id: str):
+    def get_builtin_tool_provider_icon(provider: str):
         """
         get tool provider icon and it's mimetype
         """
-        icon_path, mime_type = ToolManager.get_builtin_provider_icon(provider, tenant_id)
+        icon_path, mime_type = ToolManager.get_hardcoded_provider_icon(provider)
         icon_bytes = Path(icon_path).read_bytes()
 
         return icon_bytes, mime_type
@@ -233,7 +233,7 @@ class BuiltinToolManageService:
                 )
 
                 # add icon
-                ToolTransformService.repack_provider(user_builtin_provider)
+                ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_builtin_provider)
 
                 tools = provider_controller.get_tools()
                 for tool in tools:

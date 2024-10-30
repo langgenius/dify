@@ -128,12 +128,7 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
 class ToolBuiltinProviderIconApi(Resource):
     @setup_required
     def get(self, provider):
-        user = current_user
-
-        user_id = user.id
-        tenant_id = user.current_tenant_id
-
-        icon_bytes, mimetype = BuiltinToolManageService.get_builtin_tool_provider_icon(provider, tenant_id)
+        icon_bytes, mimetype = BuiltinToolManageService.get_builtin_tool_provider_icon(provider)
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 

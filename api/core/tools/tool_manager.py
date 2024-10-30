@@ -57,6 +57,17 @@ class ToolManager:
     _builtin_tools_labels = {}
 
     @classmethod
+    def get_hardcoded_provider(cls, provider: str) -> BuiltinToolProviderController:
+        """
+        get the hardcoded provider
+        """
+        if len(cls._hardcoded_providers) == 0:
+            # init the builtin providers
+            cls.load_hardcoded_providers_cache()
+
+        return cls._hardcoded_providers[provider]
+
+    @classmethod
     def get_builtin_provider(
         cls, provider: str, tenant_id: str
     ) -> BuiltinToolProviderController | PluginToolProviderController:
@@ -407,9 +418,9 @@ class ToolManager:
         return tool_entity
 
     @classmethod
-    def get_builtin_provider_icon(cls, provider: str, tenant_id: str) -> tuple[str, str]:
+    def get_hardcoded_provider_icon(cls, provider: str) -> tuple[str, str]:
         """
-        get the absolute path of the icon of the builtin provider
+        get the absolute path of the icon of the hardcoded provider
 
         :param provider: the name of the provider
         :param tenant_id: the id of the tenant
@@ -417,7 +428,7 @@ class ToolManager:
         :return: the absolute path of the icon, the mime type of the icon
         """
         # get provider
-        provider_controller = cls.get_builtin_provider(provider, tenant_id)
+        provider_controller = cls.get_hardcoded_provider(provider)
 
         absolute_path = path.join(
             path.dirname(path.realpath(__file__)),

@@ -60,6 +60,7 @@ class WorkflowToolProviderController(ToolProviderController):
                     icon=db_provider.icon,
                 ),
                 credentials_schema=[],
+                plugin_id=None,
             ),
             provider_id=db_provider.id,
         )
