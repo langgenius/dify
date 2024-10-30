@@ -32,7 +32,7 @@ import OpeningSettingModal from '@/app/components/base/features/new-feature-pane
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 
-export interface ModalState<T> {
+export type ModalState<T> = {
   payload: T
   onCancelCallback?: () => void
   onSaveCallback?: (newPayload: T) => void
@@ -43,7 +43,7 @@ export interface ModalState<T> {
   datasetBindings?: { id: string; name: string }[]
 }
 
-export interface ModelModalType {
+export type ModelModalType = {
   currentProvider: ModelProvider
   currentConfigurationMethod: ConfigurationMethodEnum
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
@@ -52,7 +52,7 @@ export type LoadBalancingEntryModalType = ModelModalType & {
   entry?: ModelLoadBalancingConfigEntry
   index?: number
 }
-export interface ModalContextState {
+export type ModalContextState = {
   setShowAccountSettingModal: Dispatch<SetStateAction<ModalState<string> | null>>
   setShowApiBasedExtensionModal: Dispatch<SetStateAction<ModalState<ApiBasedExtension> | null>>
   setShowModerationSettingModal: Dispatch<SetStateAction<ModalState<ModerationConfig> | null>>
@@ -90,7 +90,7 @@ export const useModalContext = () => useContext(ModalContext)
 export const useModalContextSelector = <T,>(selector: (state: ModalContextState) => T): T =>
   useContextSelector(ModalContext, selector)
 
-interface ModalContextProviderProps {
+type ModalContextProviderProps = {
   children: React.ReactNode
 }
 export const ModalContextProvider = ({

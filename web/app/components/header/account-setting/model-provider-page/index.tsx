@@ -91,7 +91,7 @@ const ModelProviderPage = () => {
         if (configurationMethod === ConfigurationMethodEnum.customizableModel && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
           eventEmitter?.emit({
             type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-            payload: provider.provider,
+            payload: provider,
           } as any)
 
           if (CustomConfigurationModelFixedFields?.__model_type)

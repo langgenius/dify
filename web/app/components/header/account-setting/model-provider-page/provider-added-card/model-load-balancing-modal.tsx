@@ -19,7 +19,7 @@ export type ModelLoadBalancingModalProps = {
   model: ModelItem
   open?: boolean
   onClose?: () => void
-  onSave?: (provider: string) => void
+  onSave?: (provider: ModelProvider) => void
 }
 
 // model balancing config modal
@@ -94,7 +94,7 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
       if (res.result === 'success') {
         notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         mutate()
-        onSave?.(provider.provider)
+        onSave?.(provider)
         onClose?.()
       }
     }

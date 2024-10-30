@@ -57,7 +57,7 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
 
       eventEmitter?.emit({
         type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-        payload: provider.provider,
+        payload: provider,
       } as any)
     }
   }
