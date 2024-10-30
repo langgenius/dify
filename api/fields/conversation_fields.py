@@ -121,6 +121,7 @@ conversation_fields = {
     "from_account_name": fields.String,
     "read_at": TimestampField,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
     "annotation": fields.Nested(annotation_fields, allow_null=True),
     "model_config": fields.Nested(simple_model_config_fields),
     "user_feedback_stats": fields.Nested(feedback_stat_fields),
@@ -182,6 +183,7 @@ conversation_detail_fields = {
     "from_end_user_id": fields.String,
     "from_account_id": fields.String,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
     "annotated": fields.Boolean,
     "introduction": fields.String,
     "model_config": fields.Nested(model_config_fields),
@@ -197,6 +199,7 @@ simple_conversation_fields = {
     "status": fields.String,
     "introduction": fields.String,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
 }
 
 conversation_infinite_scroll_pagination_fields = {
