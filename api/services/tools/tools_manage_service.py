@@ -19,7 +19,7 @@ class ToolCommonService:
 
         # add icon
         for provider in providers:
-            ToolTransformService.repack_provider(provider)
+            ToolTransformService.repack_provider(tenant_id=tenant_id, provider=provider)
 
         result = [provider.to_dict() for provider in providers]
 

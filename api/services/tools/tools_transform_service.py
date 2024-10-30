@@ -2,6 +2,8 @@ import json
 import logging
 from typing import Optional, Union
 
+from yarl import URL
+
 from configs import dify_config
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -26,14 +28,19 @@ logger = logging.getLogger(__name__)
 
 class ToolTransformService:
     @classmethod
+    def get_plugin_icon_url(cls, tenant_id: str, filename: str) -> str:
+        url_prefix = URL(dify_config.CONSOLE_API_URL) / "console" / "api" / "workspaces" / "current" / "plugin" / "icon"
+        return str(url_prefix % {"tenant_id": tenant_id, "filename": filename})
+
+    @classmethod
     def get_tool_provider_icon_url(cls, provider_type: str, provider_name: str, icon: str | dict) -> Union[str, dict]:
         """
         get tool provider icon url
         """
-        url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/"
+        url_prefix = URL(dify_config.CONSOLE_API_URL) / "console" / "api" / "workspaces" / "current" / "tool-provider"
 
         if provider_type == ToolProviderType.BUILT_IN.value:
-            return url_prefix + "builtin/" + provider_name + "/icon"
+            return str(url_prefix / "builtin" / provider_name / "icon")
         elif provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value}:
             try:
                 if isinstance(icon, str):
@@ -45,7 +52,7 @@ class ToolTransformService:
         return ""
 
     @staticmethod
-    def repack_provider(provider: Union[dict, ToolProviderApiEntity]):
+    def repack_provider(tenant_id: str, provider: Union[dict, ToolProviderApiEntity]):
         """
         repack provider
 
@@ -56,9 +63,12 @@ class ToolTransformService:
                 provider_type=provider["type"], provider_name=provider["name"], icon=provider["icon"]
             )
         elif isinstance(provider, ToolProviderApiEntity):
-            provider.icon = ToolTransformService.get_tool_provider_icon_url(
-                provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
-            )
+            if provider.plugin_id:
+                provider.icon = ToolTransformService.get_plugin_icon_url(tenant_id=tenant_id, filename=provider.icon)
+            else:
+                provider.icon = ToolTransformService.get_tool_provider_icon_url(
+                    provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
+                )
 
     @classmethod
     def builtin_provider_to_user_provider(
