@@ -2,18 +2,19 @@
 import type { Plugin } from '../../types'
 import type { MarketplaceCollection } from '../types'
 import ListWithCollection from './list-with-collection'
-import Card from '@/app/components/plugins/card'
-import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
+import CardWrapper from './card-wrapper'
 
 type ListProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   plugins?: Plugin[]
+  showInstallButton?: boolean
 }
 const List = ({
   marketplaceCollections,
   marketplaceCollectionPluginsMap,
   plugins,
+  showInstallButton,
 }: ListProps) => {
   return (
     <>
@@ -22,6 +23,7 @@ const List = ({
           <ListWithCollection
             marketplaceCollections={marketplaceCollections}
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+            showInstallButton={showInstallButton}
           />
         )
       }
@@ -30,15 +32,10 @@ const List = ({
           <div className='grid grid-cols-4 gap-3'>
             {
               plugins.map(plugin => (
-                <Card
+                <CardWrapper
                   key={plugin.name}
-                  payload={plugin}
-                  footer={
-                    <CardMoreInfo
-                      downloadCount={plugin.install_count}
-                      tags={['Search', 'Productivity']}
-                    />
-                  }
+                  plugin={plugin}
+                  showInstallButton={showInstallButton}
                 />
               ))
             }

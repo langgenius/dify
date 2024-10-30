@@ -8,10 +8,12 @@ import SortDropdown from '../sort-dropdown'
 type ListWrapperProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
+  showInstallButton?: boolean
 }
 const ListWrapper = ({
   marketplaceCollections,
   marketplaceCollectionPluginsMap,
+  showInstallButton,
 }: ListWrapperProps) => {
   const plugins = useMarketplaceContext(s => s.plugins)
 
@@ -26,6 +28,7 @@ const ListWrapper = ({
         marketplaceCollections={marketplaceCollections}
         marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
         plugins={plugins}
+        showInstallButton={showInstallButton}
       />
     </div>
   )

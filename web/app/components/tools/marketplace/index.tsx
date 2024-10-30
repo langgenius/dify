@@ -55,6 +55,7 @@ const Marketplace = ({
           <List
             marketplaceCollections={marketplaceCollections}
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+            showInstallButton
           />
         )
       }

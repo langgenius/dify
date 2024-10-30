@@ -15,7 +15,12 @@ export const getMarketplaceCollectionsAndPlugins = async () => {
     await Promise.all(marketplaceCollections.map(async (collection: MarketplaceCollection) => {
       const marketplaceCollectionPluginsData = await globalThis.fetch(`${MARKETPLACE_API_PREFIX}/collections/${collection.name}/plugins`)
       const marketplaceCollectionPluginsDataJson = await marketplaceCollectionPluginsData.json()
-      const plugins = marketplaceCollectionPluginsDataJson.data.plugins
+      const plugins = marketplaceCollectionPluginsDataJson.data.plugins.map((plugin: Plugin) => {
+        return {
+          ...plugin,
+          icon: `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`,
+        }
+      })
 
       marketplaceCollectionPluginsMap[collection.name] = plugins
     }))
@@ -54,7 +59,12 @@ export const getMarketplacePlugins = async (query: PluginsSearchParams) => {
       },
     )
     const marketplacePluginsDataJson = await marketplacePluginsData.json()
-    marketplacePlugins = marketplacePluginsDataJson.data.plugins
+    marketplacePlugins = marketplacePluginsDataJson.data.plugins.map((plugin: Plugin) => {
+      return {
+        ...plugin,
+        icon: `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`,
+      }
+    })
   }
   // eslint-disable-next-line unused-imports/no-unused-vars
   catch (e) {

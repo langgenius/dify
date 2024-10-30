@@ -6,7 +6,12 @@ import PluginTypeSwitch from './plugin-type-switch'
 import ListWrapper from './list/list-wrapper'
 import { getMarketplaceCollectionsAndPlugins } from './utils'
 
-const Marketplace = async () => {
+type MarketplaceProps = {
+  showInstallButton?: boolean
+}
+const Marketplace = async ({
+  showInstallButton = true,
+}: MarketplaceProps) => {
   const { marketplaceCollections, marketplaceCollectionPluginsMap } = await getMarketplaceCollectionsAndPlugins()
 
   return (
@@ -18,6 +23,7 @@ const Marketplace = async () => {
       <ListWrapper
         marketplaceCollections={marketplaceCollections}
         marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+        showInstallButton={showInstallButton}
       />
     </MarketplaceContextProvider>
   )
