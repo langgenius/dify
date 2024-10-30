@@ -89,7 +89,7 @@ importers:
         specifier: ^1.11.13
         version: 1.11.13
       echarts:
-        specifier: ^5.4.1
+        specifier: ^5.5.1
         version: 5.5.1
       echarts-for-react:
         specifier: ^3.0.2
