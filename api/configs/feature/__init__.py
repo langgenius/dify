@@ -10,7 +10,6 @@ from pydantic import (
     PositiveInt,
     computed_field,
 )
-from pydantic_extra_types.timezone_name import TimeZoneName
 from pydantic_settings import BaseSettings
 
 from configs.feature.hosted_service import HostedServiceConfig
@@ -340,9 +339,8 @@ class LoggingConfig(BaseSettings):
         default=None,
     )
 
-    LOG_TZ: Optional[TimeZoneName] = Field(
-        description="Timezone for log timestamps. Allowed timezone values can be referred to IANA Time Zone Database,"
-        " e.g., 'America/New_York')",
+    LOG_TZ: Optional[str] = Field(
+        description="Timezone for log timestamps (e.g., 'America/New_York')",
         default=None,
     )
 
