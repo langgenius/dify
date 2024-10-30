@@ -1,6 +1,6 @@
 export type FormValue = Record<string, any>
 
-export interface TypeWithI18N<T = string> {
+export type TypeWithI18N<T = string> = {
   en_US: T
   zh_Hans: T
   [key: string]: T
@@ -17,7 +17,7 @@ export enum FormTypeEnum {
   file = 'file',
 }
 
-export interface FormOption {
+export type FormOption = {
   label: TypeWithI18N
   value: string
   show_on: FormShowOnObject[]
@@ -89,12 +89,12 @@ export enum CustomConfigurationStatusEnum {
   noConfigure = 'no-configure',
 }
 
-export interface FormShowOnObject {
+export type FormShowOnObject = {
   variable: string
   value: string
 }
 
-export interface CredentialFormSchemaBase {
+export type CredentialFormSchemaBase = {
   variable: string
   label: TypeWithI18N
   type: FormTypeEnum
@@ -112,7 +112,7 @@ export type CredentialFormSchemaRadio = CredentialFormSchemaBase & { options: Fo
 export type CredentialFormSchemaSecretInput = CredentialFormSchemaBase & { placeholder?: TypeWithI18N }
 export type CredentialFormSchema = CredentialFormSchemaTextInput | CredentialFormSchemaSelect | CredentialFormSchemaRadio | CredentialFormSchemaSecretInput
 
-export interface ModelItem {
+export type ModelItem = {
   model: string
   label: TypeWithI18N
   model_type: ModelTypeEnum
@@ -141,7 +141,7 @@ export enum QuotaUnitEnum {
   credits = 'credits',
 }
 
-export interface QuotaConfiguration {
+export type QuotaConfiguration = {
   quota_type: CurrentSystemQuotaTypeEnum
   quota_unit: QuotaUnitEnum
   quota_limit: number
@@ -150,7 +150,8 @@ export interface QuotaConfiguration {
   is_valid: boolean
 }
 
-export interface ModelProvider {
+export type ModelProvider = {
+  plugin_id: string
   provider: string
   label: TypeWithI18N
   description?: TypeWithI18N
@@ -184,7 +185,8 @@ export interface ModelProvider {
   }
 }
 
-export interface Model {
+export type Model = {
+  plugin_id: string
   provider: string
   icon_large: TypeWithI18N
   icon_small: TypeWithI18N
@@ -193,27 +195,29 @@ export interface Model {
   status: ModelStatusEnum
 }
 
-export interface DefaultModelResponse {
+export type DefaultModelResponse = {
   model: string
   model_type: ModelTypeEnum
   provider: {
+    plugin_id: string
     provider: string
     icon_large: TypeWithI18N
     icon_small: TypeWithI18N
   }
 }
 
-export interface DefaultModel {
+export type DefaultModel = {
+  plugin_id: string
   provider: string
   model: string
 }
 
-export interface CustomConfigurationModelFixedFields {
+export type CustomConfigurationModelFixedFields = {
   __model_name: string
   __model_type: ModelTypeEnum
 }
 
-export interface ModelParameterRule {
+export type ModelParameterRule = {
   default?: number | string | boolean | string[]
   help?: TypeWithI18N
   label: TypeWithI18N
@@ -228,7 +232,7 @@ export interface ModelParameterRule {
   tagPlaceholder?: TypeWithI18N
 }
 
-export interface ModelLoadBalancingConfigEntry {
+export type ModelLoadBalancingConfigEntry = {
   /** model balancing config entry id */
   id?: string
   /** is config entry enabled */
@@ -243,7 +247,7 @@ export interface ModelLoadBalancingConfigEntry {
   ttl?: number
 }
 
-export interface ModelLoadBalancingConfig {
+export type ModelLoadBalancingConfig = {
   enabled: boolean
   configs: ModelLoadBalancingConfigEntry[]
 }

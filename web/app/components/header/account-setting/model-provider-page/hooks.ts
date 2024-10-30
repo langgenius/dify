@@ -36,11 +36,12 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
   modelList,
 ) => {
   const currentDefaultModel = useMemo(() => {
-    const currentProvider = modelList.find(provider => provider.provider === defaultModel?.provider.provider)
+    const currentProvider = modelList.find(provider => provider.provider === defaultModel?.provider.provider && provider.plugin_id === defaultModel?.provider.plugin_id)
     const currentModel = currentProvider?.models.find(model => model.model === defaultModel?.model)
     const currentDefaultModel = currentProvider && currentModel && {
       model: currentModel.model,
       provider: currentProvider.provider,
+      plugin_id: currentProvider.plugin_id,
     }
 
     return currentDefaultModel
@@ -172,7 +173,11 @@ export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: Mode
   const { modelList, defaultModel } = useModelListAndDefaultModel(type)
   const { currentProvider, currentModel } = useCurrentProviderAndModel(
     modelList,
-    { provider: defaultModel?.provider.provider || '', model: defaultModel?.model || '' },
+    {
+      plugin_id: defaultModel?.provider.plugin_id || '',
+      provider: defaultModel?.provider.provider || '',
+      model: defaultModel?.model || '',
+    },
   )
 
   return {
