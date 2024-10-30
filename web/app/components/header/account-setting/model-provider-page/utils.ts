@@ -56,14 +56,14 @@ export const validateCredentials = async (predefined: boolean, provider: string,
   }
 }
 
-export const validateLoadBalancingCredentials = async (predefined: boolean, provider: string, v: FormValue, id?: string): Promise<{
+export const validateLoadBalancingCredentials = async (predefined: boolean, pluginID: string, provider: string, v: FormValue, id?: string): Promise<{
   status: ValidatedStatus
   message?: string
 }> => {
   const { __model_name, __model_type, ...credentials } = v
   try {
     const res = await validateModelLoadBalancingCredentials({
-      url: `/workspaces/current/model-providers/${provider}/models/load-balancing-configs/${id ? `${id}/` : ''}credentials-validate`,
+      url: `/workspaces/current/model-providers/${pluginID}/${provider}/models/load-balancing-configs/${id ? `${id}/` : ''}credentials-validate`,
       body: {
         model: __model_name,
         model_type: __model_type,
