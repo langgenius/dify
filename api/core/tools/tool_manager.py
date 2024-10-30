@@ -647,4 +647,4 @@ class ToolManager:
             raise ValueError(f"provider type {provider_type} not found")
 
 
-Thread(target=ToolManager.load_builtin_providers_cache, name="pre_load_builtin_providers_cache").start()
+Thread(target=ToolManager.load_builtin_providers_cache, name="pre_load_builtin_providers_cache", daemon=True).start()
