@@ -8,7 +8,7 @@ env = environs.Env()
 
 class Config:
     SEARCH_ENDPOINT = env.str("SEARCH_ENDPOINT", "http://ld-*************-proxy-search-pub.lindorm.aliyuncs.com:30070")
-    SEARCH_USERNAME = env.str("SEARCH_USERNAME", 'ADMIN')
+    SEARCH_USERNAME = env.str("SEARCH_USERNAME", "ADMIN")
     SEARCH_PWD = env.str("SEARCH_PWD", "PWD")
 
 

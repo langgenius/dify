@@ -20,8 +20,8 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logging.getLogger('opensearch').setLevel(logging.WARN)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.getLogger("lindorm").setLevel(logging.WARN)
 
 
 class LindormVectorStoreConfig(BaseModel):
@@ -66,21 +66,18 @@ class LindormVectorStore(BaseVector):
     def refresh(self):
         self._client.indices.refresh(index=self._collection_name)
 
-    def __filter_existed_ids(self,
-                             texts: list[str],
-                             metadatas: list[dict],
-                             ids: list[str],
-                             bulk_size: int = 1024,
-                             ) -> tuple[Iterable[str], Optional[list[dict]], Optional[list[str]]]:
+    def __filter_existed_ids(
+        self,
+        texts: list[str],
+        metadatas: list[dict],
+        ids: list[str],
+        bulk_size: int = 1024,
+    ) -> tuple[Iterable[str], Optional[list[dict]], Optional[list[str]]]:
         @retry(stop=stop_after_attempt(3), wait=wait_fixed(60))
         def __fetch_existing_ids(batch_ids: list[str]) -> set[str]:
             try:
-                existing_docs = self._client.mget(
-                    index=self._collection_name,
-                    body={"ids": batch_ids},
-                    _source=False
-                )
-                return {doc['_id'] for doc in existing_docs['docs'] if doc['found']}
+                existing_docs = self._client.mget(index=self._collection_name, body={"ids": batch_ids}, _source=False)
+                return {doc["_id"] for doc in existing_docs["docs"] if doc["found"]}
             except Exception as e:
                 logger.error(f"Error fetching batch {batch_ids}: {e}")
                 return set()
@@ -89,16 +86,15 @@ class LindormVectorStore(BaseVector):
         def __fetch_existing_routing_ids(batch_ids: list[str], route_ids: list[str]) -> set[str]:
             try:
                 existing_docs = self._client.mget(
-                    body={"docs": [
-                        {
-                            "_index": self._collection_name,
-                            "_id": id,
-                            "routing": routing
-                        } for id, routing in zip(batch_ids, route_ids)
-                    ]},
-                    _source=False
+                    body={
+                        "docs": [
+                            {"_index": self._collection_name, "_id": id, "routing": routing}
+                            for id, routing in zip(batch_ids, route_ids)
+                        ]
+                    },
+                    _source=False,
                 )
-                return {doc['_id'] for doc in existing_docs['docs'] if doc['found']}
+                return {doc["_id"] for doc in existing_docs["docs"] if doc["found"]}
             except Exception as e:
                 logger.error(f"Error fetching batch {batch_ids}: {e}")
                 return set()
@@ -116,13 +112,13 @@ class LindormVectorStore(BaseVector):
         def batch(iterable, n):
             length = len(iterable)
             for idx in range(0, length, n):
-                yield iterable[idx:min(idx + n, length)]
+                yield iterable[idx : min(idx + n, length)]
 
-        for ids_batch, texts_batch, metadatas_batch in zip(batch(ids, bulk_size), batch(texts, bulk_size),
-                                                           batch(metadatas,
-                                                                 bulk_size) if metadatas is not None else batch(
-                                                               [None] * len(ids), bulk_size)):
-
+        for ids_batch, texts_batch, metadatas_batch in zip(
+            batch(ids, bulk_size),
+            batch(texts, bulk_size),
+            batch(metadatas, bulk_size) if metadatas is not None else batch([None] * len(ids), bulk_size),
+        ):
             existing_ids_set = __fetch_existing_ids(ids_batch)
             for text, metadata, doc_id in zip(texts_batch, metadatas_batch, ids_batch):
                 if doc_id not in existing_ids_set:
@@ -246,7 +242,7 @@ class LindormVectorStore(BaseVector):
             should=should,
             minimum_should_match=minimum_should_match,
             filters=filters,
-            routing=routing
+            routing=routing,
         )
         response = self._client.search(index=self._collection_name, body=full_text_query)
         docs = []
@@ -261,9 +257,7 @@ class LindormVectorStore(BaseVector):
 
         return docs
 
-    def create_collection(
-            self, dimension: int, **kwargs
-    ):
+    def create_collection(self, dimension: int, **kwargs):
         lock_name = f"vector_indexing_lock_{self._collection_name}"
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
@@ -307,18 +301,14 @@ class LindormVectorStore(BaseVector):
                 centroids_hnsw_m=centroids_hnsw_m,
                 centroids_hnsw_ef_construct=centroids_hnsw_ef_construct,
                 centroids_hnsw_ef_search=centroids_hnsw_ef_search,
-                **kwargs
+                **kwargs,
             )
             self._client.indices.create(index=self._collection_name.lower(), body=mapping)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
             # logger.info(f"create index success: {self._collection_name}")
 
 
-def default_text_mapping(
-        dimension: int,
-        method_name: str,
-        **kwargs: Any
-) -> dict:
+def default_text_mapping(dimension: int, method_name: str, **kwargs: Any) -> dict:
     routing_field = kwargs.get("routing_field")
     excludes_from_source = kwargs.get("excludes_from_source")
     analyzer = kwargs.get("analyzer", "ik_max_word")
@@ -342,27 +332,19 @@ def default_text_mapping(
             "centroids_use_hnsw": centroids_use_hnsw,
             "centroids_hnsw_m": centroids_hnsw_m,
             "centroids_hnsw_ef_construct": centroids_hnsw_ef_construct,
-            "centroids_hnsw_ef_search": centroids_hnsw_ef_search
+            "centroids_hnsw_ef_search": centroids_hnsw_ef_search,
         }
     elif method_name == "hnsw":
         neighbor = kwargs["hnsw_m"]
         ef_construction = kwargs["hnsw_ef_construction"]
-        parameters = {
-            "m": neighbor,
-            "ef_construction": ef_construction
-        }
+        parameters = {"m": neighbor, "ef_construction": ef_construction}
     elif method_name == "flat":
         parameters = {}
     else:
         raise RuntimeError(f"unexpected method_name: {method_name}")
 
     mapping = {
-        "settings": {
-            "index": {
-                "number_of_shards": shard,
-                "knn": True
-            }
-        },
+        "settings": {"index": {"number_of_shards": shard, "knn": True}},
         "mappings": {
             "properties": {
                 vector_field: {
@@ -373,15 +355,12 @@ def default_text_mapping(
                         "engine": engine,
                         "name": method_name,
                         "space_type": space_type,
-                        "parameters": parameters
-                    }
+                        "parameters": parameters,
+                    },
                 },
-                text_field: {
-                    "type": "text",
-                    "analyzer": analyzer
-                }
+                text_field: {"type": "text", "analyzer": analyzer},
             }
-        }
+        },
     }
 
     if excludes_from_source:
@@ -398,39 +377,29 @@ def default_text_mapping(
 
 
 def default_text_search_query(
-        query_text: str,
-        k: int = 4,
-        text_field: str = Field.CONTENT_KEY.value,
-        must: Optional[list[dict]] = None,
-        must_not: Optional[list[dict]] = None,
-        should: Optional[list[dict]] = None,
-        minimum_should_match: int = 0,
-        filters: Optional[list[dict]] = None,
-        routing: Optional[str] = None,
-        **kwargs
+    query_text: str,
+    k: int = 4,
+    text_field: str = Field.CONTENT_KEY.value,
+    must: Optional[list[dict]] = None,
+    must_not: Optional[list[dict]] = None,
+    should: Optional[list[dict]] = None,
+    minimum_should_match: int = 0,
+    filters: Optional[list[dict]] = None,
+    routing: Optional[str] = None,
+    **kwargs,
 ) -> dict:
     if routing is not None:
         routing_field = kwargs.get("routing_field", "routing_field")
         query_clause = {
             "bool": {
-                "must": [
-                    {"match": {text_field: query_text}},
-                    {"term": {f"metadata.{routing_field}.keyword": routing}}
-                ]
+                "must": [{"match": {text_field: query_text}}, {"term": {f"metadata.{routing_field}.keyword": routing}}]
             }
         }
     else:
-        query_clause = {
-            'match': {
-                text_field: query_text
-            }
-        }
+        query_clause = {"match": {text_field: query_text}}
     # build the simplest search_query when only query_text is specified
     if not must and not must_not and not should and not filters:
-        search_query = {
-            "size": k,
-            "query": query_clause
-        }
+        search_query = {"size": k, "query": query_clause}
         return search_query
 
     # build complex search_query when either of must/must_not/should/filter is specified
@@ -442,9 +411,7 @@ def default_text_search_query(
     else:
         must = [query_clause]
 
-    boolean_query = {
-        "must": must
-    }
+    boolean_query = {"must": must}
 
     if must_not:
         if not isinstance(must_not, list):
@@ -463,27 +430,22 @@ def default_text_search_query(
             raise RuntimeError(f"unexpected [filter] clause with {type(filters)}")
         boolean_query["filter"] = filters
 
-    search_query = {
-        "size": k,
-        "query": {
-            "bool": boolean_query
-        }
-    }
+    search_query = {"size": k, "query": {"bool": boolean_query}}
     return search_query
 
 
 def default_vector_search_query(
-        query_vector: list[float],
-        k: int = 4,
-        min_score: str = "0.0",
-        ef_search: Optional[str] = None,  # only for hnsw
-        nprobe: Optional[str] = None,  # "2000"
-        reorder_factor: Optional[str] = None,  # "20"
-        client_refactor: Optional[str] = None,  # "true"
-        vector_field: str = Field.VECTOR.value,
-        filters: Optional[list[dict]] = None,
-        filter_type: Optional[str] = None,
-        **kwargs
+    query_vector: list[float],
+    k: int = 4,
+    min_score: str = "0.0",
+    ef_search: Optional[str] = None,  # only for hnsw
+    nprobe: Optional[str] = None,  # "2000"
+    reorder_factor: Optional[str] = None,  # "20"
+    client_refactor: Optional[str] = None,  # "true"
+    vector_field: str = Field.VECTOR.value,
+    filters: Optional[list[dict]] = None,
+    filter_type: Optional[str] = None,
+    **kwargs,
 ) -> dict:
     if filters is not None:
         filter_type = "post_filter" if filter_type is None else filter_type
@@ -504,14 +466,7 @@ def default_vector_search_query(
     search_query = {
         "size": k,
         "_source": True,  # force return '_source'
-        "query": {
-            "knn": {
-                vector_field: {
-                    "vector": query_vector,
-                    "k": k
-                }
-            }
-        }
+        "query": {"knn": {vector_field: {"vector": query_vector, "k": k}}},
     }
 
     if filters is not None:

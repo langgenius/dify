@@ -8,6 +8,7 @@ class LindormConfig(BaseSettings):
     """
     Lindorm configs
     """
+
     LINDORM_URL: Optional[str] = Field(
         description="Lindorm url",
         default=None,

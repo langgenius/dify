@@ -256,6 +256,6 @@ class MiddlewareConfig(
     VikingDBConfig,
     UpstashConfig,
     TidbOnQdrantConfig,
-    LindormConfig
+    LindormConfig,
 ):
     pass
