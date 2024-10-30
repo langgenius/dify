@@ -20,12 +20,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </CodeGroup>
 </div>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/document/create-by-text'
   method='POST'
-  title='Create a document from text'
+  title='Create a Document from Text'
   name='#create-by-text'
 />
 <Row>
@@ -123,12 +123,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/document/create-by-file'
   method='POST'
-  title='Create documents from files'
+  title='Create a Document from a File'
   name='#create-by-file'
 />
 <Row>
@@ -221,12 +221,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets'
   method='POST'
-  title='Create an empty knowledge'
+  title='Create an Empty Knowledge Base'
   name='#create_empty_dataset'
 />
 <Row>
@@ -306,12 +306,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets'
   method='GET'
-  title='Knowledge list'
+  title='Get Knowledge Base List'
   name='#dataset_list'
 />
 <Row>
@@ -369,12 +369,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}'
   method='DELETE'
-  title='Delete knowledge'
+  title='Delete a Knowledge Base'
   name='#delete_dataset'
 />
 <Row>
@@ -406,12 +406,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/update-by-text'
   method='POST'
-  title='Update document via text'
+  title='Update a Document with Text'
   name='#update-by-text'
 />
 <Row>
@@ -503,12 +503,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/update-by-file'
   method='POST'
-  title='Update a document from a file'
+  title='Update a Document with a File'
   name='#update-by-file'
 />
 <Row>
@@ -597,12 +597,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{batch}/indexing-status'
   method='GET'
-  title='Get document embedding status (progress)'
+  title='Get Document Embedding Status (Progress)'
   name='#indexing_status'
 />
 <Row>
@@ -652,12 +652,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}'
   method='DELETE'
-  title='Delete document'
+  title='Delete a Document'
   name='#delete_document'
 />
 <Row>
@@ -694,12 +694,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents'
   method='GET'
-  title='Knowledge document list'
+  title='Get the Document List of a Knowledge Base'
   name='#dataset_document_list'
 />
 <Row>
@@ -769,12 +769,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments'
   method='POST'
-  title='Add segment'
+  title='Add Chunks to a Document'
   name='#create_new_segment'
 />
 <Row>
@@ -855,12 +855,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments'
   method='GET'
-  title='Get documents segments'
+  title='Get Chunks from a Document'
   name='#get_segment'
 />
 <Row>
@@ -933,12 +933,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
   method='DELETE'
-  title='Delete document segment'
+  title='Delete a Chunk in a Document'
   name='#delete_segment'
 />
 <Row>
@@ -979,12 +979,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
   method='POST'
-  title='Update document segment'
+  title='Update a Chunk in a Document '
   name='#update_segment'
 />
 <Row>
@@ -1067,12 +1067,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/retrieve'
   method='POST'
-  title='Retrieve knowledge'
+  title='Retrieve Chunks from a Knowledge Base'
   name='#dataset_retrieval'
 />
 <Row>
@@ -1212,7 +1212,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Row>
   <Col>

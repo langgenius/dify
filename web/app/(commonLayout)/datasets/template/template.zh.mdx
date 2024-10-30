@@ -20,7 +20,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </CodeGroup>
 </div>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/document/create-by-text'
@@ -123,7 +123,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/document/create-by-file'
@@ -221,7 +221,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets'
@@ -306,7 +306,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets'
@@ -369,7 +369,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}'
@@ -406,7 +406,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/update-by-text'
@@ -503,7 +503,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/update-by-file'
@@ -597,7 +597,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{batch}/indexing-status'
@@ -652,7 +652,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}'
@@ -694,7 +694,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents'
@@ -769,7 +769,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments'
@@ -793,7 +793,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <Properties>
       <Property name='segments' type='object list' key='segments'>
         - <code>content</code> (text) 文本内容/问题内容，必填
-        - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为qa模式则传值
+        - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为 Q&A 模式则传值
         - <code>keywords</code> (list) 关键字，非必填
       </Property>
     </Properties>
@@ -855,7 +855,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments'
@@ -933,7 +933,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
@@ -979,7 +979,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
@@ -1006,7 +1006,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <Properties>
       <Property name='segment' type='object' key='segment'>
         - <code>content</code> (text) 文本内容/问题内容，必填
-        - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为qa模式则传值
+        - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为 Q&A 模式则传值
         - <code>keywords</code> (list) 关键字，非必填
         - <code>enabled</code> (bool) false/true，非必填
       </Property>
@@ -1068,7 +1068,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   </Col>
 </Row>
 
----
+<hr className='ml-0 mr-0' />
 
 <Heading
   url='/datasets/{dataset_id}/retrieve'
@@ -1091,20 +1091,20 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         检索关键词
       </Property>
       <Property name='retrieval_model' type='object' key='retrieval_model'>
-        检索参数(选填，如不填，按照默认方式召回)
+        检索参数（选填，如不填，按照默认方式召回）
         - <code>search_method</code> (text) 检索方法：以下三个关键字之一，必填
           - <code>keyword_search</code> 关键字检索
           - <code>semantic_search</code> 语义检索
           - <code>full_text_search</code> 全文检索
           - <code>hybrid_search</code> 混合检索
-        - <code>reranking_enable</code> (bool) 是否启用 Reranking，非必填，如果检索模式为semantic_search模式或者hybrid_search则传值
+        - <code>reranking_enable</code> (bool) 是否启用 Reranking，非必填，如果检索模式为 semantic_search 模式或者 hybrid_search 则传值
         - <code>reranking_mode</code> (object) Rerank模型配置，非必填，如果启用了 reranking 则传值
             - <code>reranking_provider_name</code> (string) Rerank 模型提供商
             - <code>reranking_model_name</code> (string) Rerank 模型名称
         - <code>weights</code> (double) 混合检索模式下语意检索的权重设置
         - <code>top_k</code> (integer) 返回结果数量，非必填
-        - <code>score_threshold_enabled</code> (bool) 是否开启Score阈值
-        - <code>score_threshold</code> (double) Score阈值
+        - <code>score_threshold_enabled</code> (bool) 是否开启 score 阈值
+        - <code>score_threshold</code> (double) Score 阈值
       </Property>
       <Property name='external_retrieval_model' type='object' key='external_retrieval_model'>
           未启用字段
@@ -1214,7 +1214,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 </Row>
 
 
----
+<hr className='ml-0 mr-0' />
 
 <Row>
   <Col>
