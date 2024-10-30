@@ -1,11 +1,11 @@
 from datetime import timedelta
 
+import pytz
 from celery import Celery, Task
 from celery.schedules import crontab
 from flask import Flask
 
 from configs import dify_config
-import pytz
 
 
 def init_app(app: Flask) -> Celery:
