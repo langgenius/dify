@@ -1,5 +1,6 @@
 import logging
 import os
+import re
 import sys
 from logging.handlers import RotatingFileHandler
 
@@ -8,9 +9,19 @@ from flask import Flask
 from configs import dify_config
 
 
+def replace_env_variables(text):
+    def replace(match):
+        var_name = match.group(1)
+        var_value = os.getenv(var_name)
+        return "" if var_value is None else var_value
+
+    pattern = r"\$\{([^}]+)\}"
+    return re.sub(pattern, replace, text)
+
+
 def init_app(app: Flask):
     log_handlers = None
-    log_file = dify_config.LOG_FILE
+    log_file = replace_env_variables(dify_config.LOG_FILE)
     if log_file:
         log_dir = os.path.dirname(log_file)
         os.makedirs(log_dir, exist_ok=True)
