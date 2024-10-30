@@ -90,7 +90,11 @@ const AllTools = ({
           viewType={activeView}
         />
         {/* Plugins from marketplace */}
-        <PluginList wrapElemRef={wrapElemRef} list={[toolNotion, extensionDallE, modelGPT4] as any} ref={pluginRef} />
+        <PluginList
+          wrapElemRef={wrapElemRef}
+          list={[toolNotion, extensionDallE, modelGPT4] as any} ref={pluginRef}
+          searchText={searchText}
+        />
       </div>
     </div>
   )
