@@ -85,4 +85,3 @@
    cd ../
    poetry run -C api bash dev/pytest/pytest_all_tests.sh
    ```
-
