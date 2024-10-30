@@ -340,7 +340,7 @@ class LoggingConfig(BaseSettings):
         default=None,
     )
 
-    LOG_TZ: Optional[TimeZoneName] = Field(
+    LOG_TZ: Optional[str] = Field(
         description="Timezone for log timestamps. Allowed timezone values can be referred to IANA Time Zone Database,"
         " e.g., 'America/New_York')",
         default=None,
