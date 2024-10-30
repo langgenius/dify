@@ -4,8 +4,8 @@ import type { Locale } from '@/i18n'
 
 export enum PluginType {
   tool = 'tools',
-  model = 'model',
-  extension = 'extension',
+  model = 'models',
+  extension = 'endpoints',
 }
 
 export enum PluginSource {
@@ -117,6 +117,7 @@ export type Plugin = {
   endpoint: {
     settings: CredentialFormSchemaBase[]
   }
+  tags: { name: string }[]
 }
 
 export enum PermissionType {

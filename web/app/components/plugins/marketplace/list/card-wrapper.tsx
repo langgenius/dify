@@ -21,7 +21,7 @@ const CardWrapper = ({
         footer={
           <CardMoreInfo
             downloadCount={plugin.install_count}
-            tags={['Search', 'Productivity']}
+            tags={plugin.tags.map(tag => tag.name)}
           />
         }
       />
