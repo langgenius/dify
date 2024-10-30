@@ -1,8 +1,11 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import type {
+  ReactNode,
+} from 'react'
 import {
   useCallback,
+  useRef,
   useState,
 } from 'react'
 import {
@@ -75,10 +78,14 @@ export const MarketplaceContextProvider = ({
 }: MarketplaceContextProviderProps) => {
   const [intersected, setIntersected] = useState(true)
   const [searchPluginText, setSearchPluginText] = useState('')
+  const searchPluginTextRef = useRef(searchPluginText)
   const [filterPluginTags, setFilterPluginTags] = useState<string[]>([])
+  const filterPluginTagsRef = useRef(filterPluginTags)
   const [activePluginType, setActivePluginType] = useState(PLUGIN_TYPE_SEARCH_MAP.all)
+  const activePluginTypeRef = useRef(activePluginType)
   const [plugins, setPlugins] = useState<Plugin[]>()
   const [sort, setSort] = useState(DEFAULT_SORT)
+  const sortRef = useRef(sort)
   const [marketplaceCollectionsFromClient, setMarketplaceCollectionsFromClient] = useState<MarketplaceCollection[] | undefined>(undefined)
   const [marketplaceCollectionPluginsMapFromClient, setMarketplaceCollectionPluginsMapFromClient] = useState<Record<string, Plugin[]> | undefined>(undefined)
 
@@ -107,32 +114,35 @@ export const MarketplaceContextProvider = ({
 
   const handleSearchPluginTextChange = useCallback((text: string) => {
     setSearchPluginText(text)
+    searchPluginTextRef.current = text
 
     handleUpdatePluginsWithDebounced({
       query: text,
-      category: activePluginType === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginType,
-      tags: filterPluginTags,
-      sortBy: sort.sortBy,
-      sortOrder: sort.sortOrder,
+      category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
+      tags: filterPluginTagsRef.current,
+      sortBy: sortRef.current.sortBy,
+      sortOrder: sortRef.current.sortOrder,
     })
-  }, [handleUpdatePluginsWithDebounced, activePluginType, filterPluginTags, sort])
+  }, [handleUpdatePluginsWithDebounced])
 
   const handleFilterPluginTagsChange = useCallback((tags: string[]) => {
     setFilterPluginTags(tags)
+    filterPluginTagsRef.current = tags
 
     handleUpdatePlugins({
-      query: searchPluginText,
-      category: activePluginType === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginType,
+      query: searchPluginTextRef.current,
+      category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
       tags,
-      sortBy: sort.sortBy,
-      sortOrder: sort.sortOrder,
+      sortBy: sortRef.current.sortBy,
+      sortOrder: sortRef.current.sortOrder,
     })
-  }, [handleUpdatePlugins, searchPluginText, activePluginType, sort])
+  }, [handleUpdatePlugins])
 
   const handleActivePluginTypeChange = useCallback((type: string) => {
     setActivePluginType(type)
+    activePluginTypeRef.current = type
 
-    if (!searchPluginText && !filterPluginTags.length) {
+    if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
       handleUpdateMarketplaceCollectionsAndPlugins({
         category: type === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : type,
       })
@@ -141,25 +151,26 @@ export const MarketplaceContextProvider = ({
     }
 
     handleUpdatePlugins({
-      query: searchPluginText,
+      query: searchPluginTextRef.current,
       category: type === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : type,
-      tags: filterPluginTags,
-      sortBy: sort.sortBy,
-      sortOrder: sort.sortOrder,
+      tags: filterPluginTagsRef.current,
+      sortBy: sortRef.current.sortBy,
+      sortOrder: sortRef.current.sortOrder,
     })
-  }, [handleUpdatePlugins, searchPluginText, filterPluginTags, sort, handleUpdateMarketplaceCollectionsAndPlugins])
+  }, [handleUpdatePlugins, handleUpdateMarketplaceCollectionsAndPlugins])
 
   const handleSortChange = useCallback((sort: PluginsSort) => {
     setSort(sort)
+    sortRef.current = sort
 
     handleUpdatePlugins({
-      query: searchPluginText,
-      category: activePluginType === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginType,
-      tags: filterPluginTags,
-      sortBy: sort.sortBy,
-      sortOrder: sort.sortOrder,
+      query: searchPluginTextRef.current,
+      category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
+      tags: filterPluginTagsRef.current,
+      sortBy: sortRef.current.sortBy,
+      sortOrder: sortRef.current.sortOrder,
     })
-  }, [handleUpdatePlugins, searchPluginText, activePluginType, filterPluginTags])
+  }, [handleUpdatePlugins])
 
   return (
     <MarketplaceContext.Provider
