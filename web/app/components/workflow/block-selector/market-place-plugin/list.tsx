@@ -99,7 +99,7 @@ const List = ({
             target='_blank'
             className='shrink-0 flex items-center h-4 system-sm-medium text-text-accent-light-mode-only'
           >
-            <RiSearchLine className='w-3 h-3' />
+            <RiSearchLine className='mr-0.5 w-3 h-3' />
             <span>{t('plugin.searchInMarketplace')}</span>
           </Link>
           <div className="w-[90px] h-[2px] bg-gradient-to-l from-[rgba(255,255,255,0.01)] to-[rgba(16,24,40,0.08)]"></div>
