@@ -3,7 +3,7 @@ import logging
 import mimetypes
 from collections.abc import Generator
 from os import listdir, path
-from threading import Lock
+from threading import Lock, Thread
 from typing import Any, Optional, Union
 
 from configs import dify_config
@@ -647,10 +647,4 @@ class ToolManager:
             raise ValueError(f"provider type {provider_type} not found")
 
 
-async def async_preload_builtin_tool_providers():
-    ToolManager.load_builtin_providers_cache()
-
-
-import asyncio
-
-asyncio.get_event_loop().create_task(async_preload_builtin_tool_providers())
+Thread(target=ToolManager.load_builtin_providers_cache).start()
