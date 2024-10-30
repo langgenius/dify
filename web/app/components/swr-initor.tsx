@@ -85,6 +85,8 @@ const SwrInitor = ({
       <SWRConfig value={{
         shouldRetryOnError: false,
         revalidateOnFocus: false,
+        revalidateIfStale: false,
+        revalidateOnReconnect: false,
       }}>
         {children}
       </SWRConfig>
