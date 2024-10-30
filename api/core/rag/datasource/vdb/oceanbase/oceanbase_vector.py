@@ -104,8 +104,8 @@ class OceanBaseVector(BaseVector):
                 val = int(row[6])
                 vals.append(val)
             if len(vals) == 0:
-                print("ob_vector_memory_limit_percentage not found in parameters.")
-                exit(1)
+                logger.exception("ob_vector_memory_limit_percentage not found in parameters.")
+                raise Exception("ob_vector_memory_limit_percentage not found in parameters.")
             if any(val == 0 for val in vals):
                 try:
                     self._client.perform_raw_text_sql("ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30")
@@ -157,7 +157,7 @@ class OceanBaseVector(BaseVector):
         if ef_search != self._hnsw_ef_search:
             self._client.set_ob_hnsw_ef_search(ef_search)
             self._hnsw_ef_search = ef_search
-        topk = kwargs.get("top_k", 10)
+        topk = kwargs.get("top_k", 4)
         cur = self._client.ann_search(
             table_name=self._collection_name,
             vec_column_name="vector",
