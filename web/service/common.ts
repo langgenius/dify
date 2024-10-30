@@ -257,10 +257,6 @@ export const fetchFileUploadConfig: Fetcher<FileUploadConfigResponse, { url: str
   return get<FileUploadConfigResponse>(url)
 }
 
-export const fetchFreeQuotaVerify: Fetcher<{ result: string; flag: boolean; reason: string }, string> = (url) => {
-  return get(url) as Promise<{ result: string; flag: boolean; reason: string }>
-}
-
 export const fetchNotionConnection: Fetcher<{ data: string }, string> = (url) => {
   return get(url) as Promise<{ data: string }>
 }

@@ -199,6 +199,7 @@ export const useUpdateModelList = () => {
   return updateModelList
 }
 
+// deprecated ???
 export const useAnthropicBuyQuota = () => {
   const [loading, setLoading] = useState(false)
 
