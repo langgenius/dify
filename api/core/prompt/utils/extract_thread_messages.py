@@ -1,7 +1,9 @@
+from typing import Any
+
 from constants import UUID_NIL
 
 
-def extract_thread_messages(messages: list[dict]) -> list[dict]:
+def extract_thread_messages(messages: list[Any]):
     thread_messages = []
     next_message = None
 

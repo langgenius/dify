@@ -68,7 +68,7 @@ class AgentService:
                 "iterations": len(agent_thoughts),
             },
             "iterations": [],
-            "files": message.files,
+            "files": message.message_files,
         }
 
         agent_config = AgentConfigManager.convert(app_model.app_model_config.to_dict())

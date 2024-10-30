@@ -236,11 +236,30 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='name' type='string' key='name'>
         Knowledge name
       </Property>
+      <Property name='description' type='string' key='description'>
+        Knowledge description (optional)
+      </Property>
+      <Property name='indexing_technique' type='string' key='indexing_technique'>
+        Index Technique (optional)
+          - <code>high_quality</code> high_quality
+          - <code>economy</code> economy
+      </Property>
       <Property name='permission' type='string' key='permission'>
         Permission
           - <code>only_me</code> Only me
           - <code>all_team_members</code> All team members
           - <code>partial_members</code> Partial members
+      </Property>
+      <Property name='provider' type='string' key='provider'>
+        Provider (optional, default: vendor)
+          - <code>vendor</code> vendor
+          - <code>external</code> external knowledge
+      </Property>
+      <Property name='external_knowledge_api_id' type='str' key='external_knowledge_api_id'>
+        External Knowledge api id (optional)
+      </Property>
+      <Property name='external_knowledge_id' type='str' key='external_knowledge_id'>
+        External Knowledge id (optional)
       </Property>
     </Properties>
   </Col>

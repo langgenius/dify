@@ -13,6 +13,11 @@ import ContextVar from './context-var'
 import ConfigContext from '@/context/debug-configuration'
 import { AppType } from '@/types/app'
 import type { DataSet } from '@/models/datasets'
+import {
+  getMultipleRetrievalConfig,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const Icon = (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -31,13 +36,25 @@ const DatasetConfig: FC = () => {
     setModelConfig,
     showSelectDataSet,
     isAgent,
+    datasetConfigs,
+    setDatasetConfigs,
   } = useContext(ConfigContext)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
   const hasData = dataSet.length > 0
 
+  const {
+    currentModel: currentRerankModel,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+
   const onRemove = (id: string) => {
-    setDataSet(dataSet.filter(item => item.id !== id))
+    const filteredDataSets = dataSet.filter(item => item.id !== id)
+    setDataSet(filteredDataSets)
+    const retrievalConfig = getMultipleRetrievalConfig(datasetConfigs as any, filteredDataSets, dataSet, !!currentRerankModel)
+    setDatasetConfigs({
+      ...(datasetConfigs as any),
+      ...retrievalConfig,
+    })
     formattingChangedDispatcher()
   }
 
@@ -70,7 +87,7 @@ const DatasetConfig: FC = () => {
 
   return (
     <FeaturePanel
-      className='mt-3'
+      className='mt-2'
       headerIcon={Icon}
       title={t('appDebug.feature.dataSet.title')}
       headerRight={

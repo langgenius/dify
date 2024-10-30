@@ -1,18 +1,19 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional, Union, cast
+from typing import Any, Optional, Union
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.code.entities import CodeNodeData
+from core.workflow.nodes.enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 
-class CodeNode(BaseNode):
+class CodeNode(BaseNode[CodeNodeData]):
     _node_data_cls = CodeNodeData
     _node_type = NodeType.CODE
 
@@ -33,24 +34,22 @@ class CodeNode(BaseNode):
         return code_provider.get_default_config()
 
     def _run(self) -> NodeRunResult:
-        """
-        Run code
-        :return:
-        """
-        node_data = self.node_data
-        node_data = cast(CodeNodeData, node_data)
-
         # Get code language
-        code_language = node_data.code_language
-        code = node_data.code
+        code_language = self.node_data.code_language
+        code = self.node_data.code
 
         # Get variables
         variables = {}
-        for variable_selector in node_data.variables:
-            variable = variable_selector.variable
-            value = self.graph_runtime_state.variable_pool.get_any(variable_selector.value_selector)
-
-            variables[variable] = value
+        for variable_selector in self.node_data.variables:
+            variable_name = variable_selector.variable
+            variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+            if variable is None:
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs=variables,
+                    error=f"Variable `{variable_selector.value_selector}` not found",
+                )
+            variables[variable_name] = variable.to_object()
         # Run code
         try:
             result = CodeExecutor.execute_workflow_code_template(
@@ -60,7 +59,7 @@ class CodeNode(BaseNode):
             )
 
             # Transform result
-            result = self._transform_result(result, node_data.outputs)
+            result = self._transform_result(result, self.node_data.outputs)
         except (CodeExecutionError, ValueError) as e:
             return NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e))
 
@@ -316,7 +315,11 @@ class CodeNode(BaseNode):
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, graph_config: Mapping[str, Any], node_id: str, node_data: CodeNodeData
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: CodeNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping

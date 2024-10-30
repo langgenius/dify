@@ -19,10 +19,6 @@
 .desc {
   @apply text-sm font-normal text-gray-500;
 }
-.textarea {
-  height: 220px;
-  @apply border-none resize-none font-normal caret-primary-600 text-gray-700 text-sm w-full  focus-visible:outline-none placeholder:text-gray-300 placeholder:text-sm placeholder:font-normal !important;
-}
 .table {
   @apply text-[13px] text-gray-500;
 }

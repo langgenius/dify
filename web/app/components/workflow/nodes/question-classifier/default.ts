@@ -26,6 +26,9 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
         name: '',
       },
     ],
+    vision: {
+      enabled: false,
+    },
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode
@@ -50,6 +53,9 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
 
     if (!errorMessages && (payload.classes.some(item => !item.name)))
       errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.topicName`) })
+
+    if (!errorMessages && payload.vision?.enabled && !payload.vision.configs?.variable_selector?.length)
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.errorMsg.fields.visionVariable`) })
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,

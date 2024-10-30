@@ -16,13 +16,14 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
-from core.file.message_file_parser import MessageFileParser
+from core.file import file_manager
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.message_entities import (
+from core.model_runtime.entities import (
     AssistantPromptMessage,
+    LLMUsage,
     PromptMessage,
+    PromptMessageContent,
     PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
@@ -40,9 +41,9 @@ from core.tools.entities.tool_entities import (
 from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
 from core.tools.tool.tool import Tool
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 from extensions.ext_database import db
-from models.model import Conversation, Message, MessageAgentThought
+from factories import file_factory
+from models.model import Conversation, Message, MessageAgentThought, MessageFile
 from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
@@ -66,23 +67,6 @@ class BaseAgentRunner(AppRunner):
         db_variables: Optional[ToolConversationVariables] = None,
         model_instance: ModelInstance = None,
     ) -> None:
-        """
-        Agent runner
-        :param tenant_id: tenant id
-        :param application_generate_entity: application generate entity
-        :param conversation: conversation
-        :param app_config: app generate entity
-        :param model_config: model config
-        :param config: dataset config
-        :param queue_manager: queue manager
-        :param message: message
-        :param user_id: user id
-        :param memory: memory
-        :param prompt_messages: prompt messages
-        :param variables_pool: variables pool
-        :param db_variables: db variables
-        :param model_instance: model instance
-        """
         self.tenant_id = tenant_id
         self.application_generate_entity = application_generate_entity
         self.conversation = conversation
@@ -180,7 +164,13 @@ class BaseAgentRunner(AppRunner):
             if parameter.form != ToolParameter.ToolParameterForm.LLM:
                 continue
 
-            parameter_type = ToolParameterConverter.get_parameter_type(parameter.type)
+            parameter_type = parameter.type.as_normal_type()
+            if parameter.type in {
+                ToolParameter.ToolParameterType.SYSTEM_FILES,
+                ToolParameter.ToolParameterType.FILE,
+                ToolParameter.ToolParameterType.FILES,
+            }:
+                continue
             enum = []
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
                 enum = [option.value for option in parameter.options]
@@ -265,7 +255,13 @@ class BaseAgentRunner(AppRunner):
             if parameter.form != ToolParameter.ToolParameterForm.LLM:
                 continue
 
-            parameter_type = ToolParameterConverter.get_parameter_type(parameter.type)
+            parameter_type = parameter.type.as_normal_type()
+            if parameter.type in {
+                ToolParameter.ToolParameterType.SYSTEM_FILES,
+                ToolParameter.ToolParameterType.FILE,
+                ToolParameter.ToolParameterType.FILES,
+            }:
+                continue
             enum = []
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
                 enum = [option.value for option in parameter.options]
@@ -511,26 +507,24 @@ class BaseAgentRunner(AppRunner):
         return result
 
     def organize_agent_user_prompt(self, message: Message) -> UserPromptMessage:
-        message_file_parser = MessageFileParser(
-            tenant_id=self.tenant_id,
-            app_id=self.app_config.app_id,
-        )
-
-        files = message.message_files
+        files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
         if files:
             file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
 
             if file_extra_config:
-                file_objs = message_file_parser.transform_message_files(files, file_extra_config)
+                file_objs = file_factory.build_from_message_files(
+                    message_files=files, tenant_id=self.tenant_id, config=file_extra_config
+                )
             else:
                 file_objs = []
 
             if not file_objs:
                 return UserPromptMessage(content=message.query)
             else:
-                prompt_message_contents = [TextPromptMessageContent(data=message.query)]
+                prompt_message_contents: list[PromptMessageContent] = []
+                prompt_message_contents.append(TextPromptMessageContent(data=message.query))
                 for file_obj in file_objs:
-                    prompt_message_contents.append(file_obj.prompt_message_content)
+                    prompt_message_contents.append(file_manager.to_prompt_message_content(file_obj))
 
                 return UserPromptMessage(content=prompt_message_contents)
         else:

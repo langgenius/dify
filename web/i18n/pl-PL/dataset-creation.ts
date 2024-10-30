@@ -155,6 +155,7 @@ const translation = {
     webpageUnit: 'Stron',
     websiteSource: 'Witryna internetowa przetwarzania wstępnego',
     separatorTip: 'Ogranicznik to znak używany do oddzielania tekstu. \\n\\n i \\n są powszechnie używanymi ogranicznikami do oddzielania akapitów i wierszy. W połączeniu z przecinkami (\\n\\n,\\n), akapity będą segmentowane wierszami po przekroczeniu maksymalnej długości fragmentu. Możesz również skorzystać ze zdefiniowanych przez siebie specjalnych ograniczników (np. ***).',
+    maxLengthCheck: 'Maksymalna długość porcji powinna być mniejsza niż 4000',
   },
   stepThree: {
     creationTitle: '🎉 Utworzono Wiedzę',

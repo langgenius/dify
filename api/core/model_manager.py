@@ -1,9 +1,9 @@
 import logging
 import os
-from collections.abc import Callable, Generator, Sequence
-from typing import IO, Optional, Union, cast
+from collections.abc import Callable, Generator, Iterable, Sequence
+from typing import IO, Any, Optional, Union, cast
 
-from core.embedding.embedding_constant import EmbeddingInputType
+from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.errors.error import ProviderTokenNotInitError
@@ -274,7 +274,7 @@ class ModelInstance:
             user=user,
         )
 
-    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: Optional[str] = None) -> str:
+    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: Optional[str] = None) -> Iterable[bytes]:
         """
         Invoke large language tts model
 
@@ -298,7 +298,7 @@ class ModelInstance:
             voice=voice,
         )
 
-    def _round_robin_invoke(self, function: Callable, *args, **kwargs):
+    def _round_robin_invoke(self, function: Callable[..., Any], *args, **kwargs):
         """
         Round-robin invoke
         :param function: function to invoke

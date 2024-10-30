@@ -1,10 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Base from '../base'
 import cn from '@/utils/classnames'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import {
+  getFilesInLogs,
+} from '@/app/components/base/file-uploader/utils'
 
 import './style.css'
 
@@ -27,9 +30,11 @@ export type Props = {
   onMount?: (editor: any, monaco: any) => void
   noWrapper?: boolean
   isExpand?: boolean
+  showFileList?: boolean
+  showCodeGenerator?: boolean
 }
 
-const languageMap = {
+export const languageMap = {
   [CodeLanguage.javascript]: 'javascript',
   [CodeLanguage.python3]: 'python',
   [CodeLanguage.json]: 'json',
@@ -58,6 +63,8 @@ const CodeEditor: FC<Props> = ({
   onMount,
   noWrapper,
   isExpand,
+  showFileList,
+  showCodeGenerator = false,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
@@ -67,6 +74,12 @@ const CodeEditor: FC<Props> = ({
   const valueRef = useRef(value)
   useEffect(() => {
     valueRef.current = value
+  }, [value])
+
+  const fileList = useMemo(() => {
+    if (typeof value === 'object')
+      return getFilesInLogs(value)
+    return []
   }, [value])
 
   const editorRef = useRef<any>(null)
@@ -138,6 +151,9 @@ const CodeEditor: FC<Props> = ({
 
     return isFocus ? 'focus-theme' : 'blur-theme'
   })()
+  const handleGenerated = (code: string) => {
+    handleEditorChange(code)
+  }
 
   const main = (
     <>
@@ -189,6 +205,11 @@ const CodeEditor: FC<Props> = ({
             isFocus={isFocus && !readOnly}
             minHeight={minHeight}
             isInNode={isInNode}
+            onGenerated={handleGenerated}
+            codeLanguages={language}
+            fileList={fileList}
+            showFileList={showFileList}
+            showCodeGenerator={showCodeGenerator}
           >
             {main}
           </Base>

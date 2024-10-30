@@ -105,7 +105,7 @@ class ExtractProcessor:
                         extractor = PdfExtractor(file_path)
                     elif file_extension in {".md", ".markdown"}:
                         extractor = (
-                            UnstructuredMarkdownExtractor(file_path, unstructured_api_url)
+                            UnstructuredMarkdownExtractor(file_path, unstructured_api_url, unstructured_api_key)
                             if is_automatic
                             else MarkdownExtractor(file_path, autodetect_encoding=True)
                         )
@@ -116,17 +116,19 @@ class ExtractProcessor:
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == ".msg":
-                        extractor = UnstructuredMsgExtractor(file_path, unstructured_api_url)
+                        extractor = UnstructuredMsgExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".eml":
-                        extractor = UnstructuredEmailExtractor(file_path, unstructured_api_url)
+                        extractor = UnstructuredEmailExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".ppt":
                         extractor = UnstructuredPPTExtractor(file_path, unstructured_api_url, unstructured_api_key)
+                        # You must first specify the API key
+                        # because unstructured_api_key is necessary to parse .ppt documents
                     elif file_extension == ".pptx":
-                        extractor = UnstructuredPPTXExtractor(file_path, unstructured_api_url)
+                        extractor = UnstructuredPPTXExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".xml":
-                        extractor = UnstructuredXmlExtractor(file_path, unstructured_api_url)
+                        extractor = UnstructuredXmlExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".epub":
-                        extractor = UnstructuredEpubExtractor(file_path, unstructured_api_url)
+                        extractor = UnstructuredEpubExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     else:
                         # txt
                         extractor = (

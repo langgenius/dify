@@ -1,5 +1,4 @@
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.entities.node_entities import NodeType
 from core.workflow.nodes.answer.entities import (
     AnswerNodeData,
     AnswerStreamGenerateRoute,
@@ -7,6 +6,7 @@ from core.workflow.nodes.answer.entities import (
     TextGenerateRouteChunk,
     VarGenerateRouteChunk,
 )
+from core.workflow.nodes.enums import NodeType
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
 
@@ -149,10 +149,11 @@ class AnswerStreamGeneratorRouter:
             source_node_id = edge.source_node_id
             source_node_type = node_id_config_mapping[source_node_id].get("data", {}).get("type")
             if source_node_type in {
-                NodeType.ANSWER.value,
-                NodeType.IF_ELSE.value,
-                NodeType.QUESTION_CLASSIFIER.value,
-                NodeType.ITERATION.value,
+                NodeType.ANSWER,
+                NodeType.IF_ELSE,
+                NodeType.QUESTION_CLASSIFIER,
+                NodeType.ITERATION,
+                NodeType.CONVERSATION_VARIABLE_ASSIGNER,
             }:
                 answer_dependencies[answer_node_id].append(source_node_id)
             else:

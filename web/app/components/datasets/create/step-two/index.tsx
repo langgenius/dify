@@ -24,6 +24,7 @@ import {
   fetchDefaultProcessRule,
 } from '@/service/datasets'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
@@ -211,6 +212,10 @@ const StepTwo = ({
   }
 
   const confirmChangeCustomConfig = () => {
+    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
+      return
+    }
     setCustomFileIndexingEstimate(null)
     setShowPreview()
     fetchFileIndexingEstimate()
@@ -336,6 +341,10 @@ const StepTwo = ({
     let params
     if (segmentationType === SegmentType.CUSTOM && overlap > max) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.overlapCheck') })
+      return
+    }
+    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
       return
     }
     if (isSetting) {
@@ -646,29 +655,26 @@ const StepTwo = ({
                           }
                         />
                       </div>
-                      <input
+                      <Input
                         type="text"
-                        className={s.input}
-                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''}
-                        value={segmentIdentifier}
-                        onChange={e => doSetSegmentIdentifier(e.target.value)}
+                        className='h-9'
+                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''} value={segmentIdentifier}
+                        onChange={e => setSegmentIdentifier(e.target.value)}
                       />
                     </div>
                   </div>
                   <div className={s.formRow}>
                     <div className='w-full'>
                       <div className={s.label}>{t('datasetCreation.stepTwo.maxLength')}</div>
-                      <div className='relative w-full'>
-                        <input
-                          type="number"
-                          className={s.input}
-                          placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
-                          value={max}
-                          min={1}
-                          onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
-                        />
-                        <div className='absolute top-2.5 right-2.5 text-text-tertiary system-sm-regular'>Tokens</div>
-                      </div>
+                      <Input
+                        type="number"
+                        className='h-9'
+                        placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
+                        value={max}
+                        max={4000}
+                        min={1}
+                        onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                      />
                     </div>
                   </div>
                   <div className={s.formRow}>
@@ -683,17 +689,14 @@ const StepTwo = ({
                           }
                         />
                       </div>
-                      <div className='relative w-full'>
-                        <input
-                          type="number"
-                          className={s.input}
-                          placeholder={t('datasetCreation.stepTwo.overlap') || ''}
-                          value={overlap}
-                          min={1}
-                          onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))}
-                        />
-                        <div className='absolute top-2.5 right-2.5 text-text-tertiary system-sm-regular'>Tokens</div>
-                      </div>
+                      <Input
+                        type="number"
+                        className='h-9'
+                        placeholder={t('datasetCreation.stepTwo.overlap') || ''}
+                        value={overlap}
+                        min={1}
+                        onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                      />
                     </div>
                   </div>
                   <div className={s.formRow}>

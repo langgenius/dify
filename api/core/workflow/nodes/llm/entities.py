@@ -1,17 +1,15 @@
-from typing import Any, Literal, Optional, Union
+from collections.abc import Sequence
+from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
+from core.model_runtime.entities import ImagePromptMessageContent
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.variable_entities import VariableSelector
+from core.workflow.nodes.base import BaseNodeData
 
 
 class ModelConfig(BaseModel):
-    """
-    Model Config.
-    """
-
     provider: str
     name: str
     mode: str
@@ -19,62 +17,43 @@ class ModelConfig(BaseModel):
 
 
 class ContextConfig(BaseModel):
-    """
-    Context Config.
-    """
-
     enabled: bool
     variable_selector: Optional[list[str]] = None
 
 
+class VisionConfigOptions(BaseModel):
+    variable_selector: Sequence[str] = Field(default_factory=lambda: ["sys", "files"])
+    detail: ImagePromptMessageContent.DETAIL = ImagePromptMessageContent.DETAIL.HIGH
+
+
 class VisionConfig(BaseModel):
-    """
-    Vision Config.
-    """
+    enabled: bool = False
+    configs: VisionConfigOptions = Field(default_factory=VisionConfigOptions)
 
-    class Configs(BaseModel):
-        """
-        Configs.
-        """
-
-        detail: Literal["low", "high"]
-
-    enabled: bool
-    configs: Optional[Configs] = None
+    @field_validator("configs", mode="before")
+    @classmethod
+    def convert_none_configs(cls, v: Any):
+        if v is None:
+            return VisionConfigOptions()
+        return v
 
 
 class PromptConfig(BaseModel):
-    """
-    Prompt Config.
-    """
-
     jinja2_variables: Optional[list[VariableSelector]] = None
 
 
 class LLMNodeChatModelMessage(ChatModelMessage):
-    """
-    LLM Node Chat Model Message.
-    """
-
     jinja2_text: Optional[str] = None
 
 
 class LLMNodeCompletionModelPromptTemplate(CompletionModelPromptTemplate):
-    """
-    LLM Node Chat Model Prompt Template.
-    """
-
     jinja2_text: Optional[str] = None
 
 
 class LLMNodeData(BaseNodeData):
-    """
-    LLM Node Data.
-    """
-
     model: ModelConfig
-    prompt_template: Union[list[LLMNodeChatModelMessage], LLMNodeCompletionModelPromptTemplate]
+    prompt_template: Sequence[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
     prompt_config: Optional[PromptConfig] = None
     memory: Optional[MemoryConfig] = None
     context: ContextConfig
-    vision: VisionConfig
+    vision: VisionConfig = Field(default_factory=VisionConfig)

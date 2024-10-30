@@ -1,22 +1,24 @@
-from core.workflow.entities.node_entities import NodeType
-from core.workflow.nodes.answer.answer_node import AnswerNode
-from core.workflow.nodes.code.code_node import CodeNode
-from core.workflow.nodes.end.end_node import EndNode
-from core.workflow.nodes.http_request.http_request_node import HttpRequestNode
-from core.workflow.nodes.if_else.if_else_node import IfElseNode
-from core.workflow.nodes.iteration.iteration_node import IterationNode
-from core.workflow.nodes.iteration.iteration_start_node import IterationStartNode
-from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
-from core.workflow.nodes.llm.llm_node import LLMNode
-from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
-from core.workflow.nodes.question_classifier.question_classifier_node import QuestionClassifierNode
-from core.workflow.nodes.start.start_node import StartNode
-from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
-from core.workflow.nodes.tool.tool_node import ToolNode
-from core.workflow.nodes.variable_aggregator.variable_aggregator_node import VariableAggregatorNode
+from core.workflow.nodes.answer import AnswerNode
+from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.code import CodeNode
+from core.workflow.nodes.document_extractor import DocumentExtractorNode
+from core.workflow.nodes.end import EndNode
+from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.http_request import HttpRequestNode
+from core.workflow.nodes.if_else import IfElseNode
+from core.workflow.nodes.iteration import IterationNode, IterationStartNode
+from core.workflow.nodes.knowledge_retrieval import KnowledgeRetrievalNode
+from core.workflow.nodes.list_operator import ListOperatorNode
+from core.workflow.nodes.llm import LLMNode
+from core.workflow.nodes.parameter_extractor import ParameterExtractorNode
+from core.workflow.nodes.question_classifier import QuestionClassifierNode
+from core.workflow.nodes.start import StartNode
+from core.workflow.nodes.template_transform import TemplateTransformNode
+from core.workflow.nodes.tool import ToolNode
+from core.workflow.nodes.variable_aggregator import VariableAggregatorNode
 from core.workflow.nodes.variable_assigner import VariableAssignerNode
 
-node_classes = {
+node_type_classes_mapping: dict[NodeType, type[BaseNode]] = {
     NodeType.START: StartNode,
     NodeType.END: EndNode,
     NodeType.ANSWER: AnswerNode,
@@ -34,4 +36,6 @@ node_classes = {
     NodeType.ITERATION_START: IterationStartNode,
     NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode,
     NodeType.CONVERSATION_VARIABLE_ASSIGNER: VariableAssignerNode,
+    NodeType.DOCUMENT_EXTRACTOR: DocumentExtractorNode,
+    NodeType.LIST_OPERATOR: ListOperatorNode,
 }

@@ -8,6 +8,7 @@ supported_model_types:
   - llm
   - text-embedding
   - speech2text
+  - rerank
 configurate_methods:
   - customizable-model
 model_credential_schema:
@@ -78,6 +79,19 @@ model_credential_schema:
       show_on:
         - variable: __model_type
           value: text-embedding
+      type: text-input
+      default: '4096'
+      placeholder:
+        zh_Hans: 在此输入您的模型上下文长度
+        en_US: Enter your Model context size
+    - variable: context_size
+      label:
+        zh_Hans: 模型上下文长度
+        en_US: Model context size
+      required: true
+      show_on:
+        - variable: __model_type
+          value: rerank
       type: text-input
       default: '4096'
       placeholder:
