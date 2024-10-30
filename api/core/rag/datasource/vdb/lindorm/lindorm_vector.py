@@ -10,11 +10,11 @@ from pydantic import BaseModel, model_validator
 from tenacity import retry, stop_after_attempt, wait_fixed
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -149,9 +149,10 @@ class LindormVectorStore(BaseVector):
             }
             actions.append(action)
         bulk(self._client, actions)
+        self.refresh()
 
     def get_ids_by_metadata_field(self, key: str, value: str):
-        query = {"_source": True, "query": {"term": {f"{Field.METADATA_KEY.value}.{key}": value}}}
+        query = {"query": {"term": {f"{Field.METADATA_KEY.value}.{key}.keyword": value}}}
         response = self._client.search(index=self._collection_name, body=query)
         if response["hits"]["hits"]:
             return [hit["_id"] for hit in response["hits"]["hits"]]
@@ -229,13 +230,13 @@ class LindormVectorStore(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        must = kwargs.get("must", None)
-        must_not = kwargs.get("must_not", None)
-        should = kwargs.get("should", None)
+        must = kwargs.get("must")
+        must_not = kwargs.get("must_not")
+        should = kwargs.get("should")
         minimum_should_match = kwargs.get("minimum_should_match", 0)
         top_k = kwargs.get("top_k", 10)
-        filters = kwargs.get("filter", None)
-        routing = kwargs.get("routing", None)
+        filters = kwargs.get("filter")
+        routing = kwargs.get("routing")
         full_text_query = default_text_search_query(
             query_text=query,
             k=top_k,
@@ -318,8 +319,8 @@ def default_text_mapping(
         method_name: str,
         **kwargs: Any
 ) -> dict:
-    routing_field = kwargs.get("routing_field", None)
-    excludes_from_source = kwargs.get("excludes_from_source", None)
+    routing_field = kwargs.get("routing_field")
+    excludes_from_source = kwargs.get("excludes_from_source")
     analyzer = kwargs.get("analyzer", "ik_max_word")
     text_field = kwargs.get("text_field", Field.CONTENT_KEY.value)
     engine = kwargs["engine"]

@@ -1,5 +1,4 @@
 import environs
-import pytest
 
 from core.rag.datasource.vdb.lindorm.lindorm_vector import LindormVectorStore, LindormVectorStoreConfig
 from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, setup_mock_redis
@@ -25,15 +24,12 @@ class TestLindormVectorStore(AbstractVectorTest):
             ),
         )
 
+    def get_ids_by_metadata_field(self):
+        ids = self.vector.get_ids_by_metadata_field(key="doc_id", value=self.example_doc_id)
+        assert ids is not None
+        assert len(ids) == 1
+        assert ids[0] == self.example_doc_id
+
 
 def test_lindorm_vector(setup_mock_redis):
-    # TestLindormVectorStore().run_all_tests()
-    lindormStore = TestLindormVectorStore()
-    lindormStore.create_vector()
-    lindormStore.search_by_vector()
-    lindormStore.search_by_full_text()
-    lindormStore.text_exists()
-    lindormStore.get_ids_by_metadata_field()
-    added_doc_ids = lindormStore.add_texts()
-    lindormStore.delete_by_ids(added_doc_ids)
-    lindormStore.delete_vector()
+    TestLindormVectorStore().run_all_tests()
