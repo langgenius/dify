@@ -1,6 +1,7 @@
 export type ModelAndParameter = {
   id: string
   model: string
+  plugin_id: string
   provider: string
   parameters: Record<string, any>
 }

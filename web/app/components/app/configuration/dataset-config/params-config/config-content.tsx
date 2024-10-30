@@ -25,7 +25,7 @@ import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowled
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 
-interface Props {
+type Props = {
   datasetConfigs: DatasetConfigs
   onChange: (configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void
   isInWorkflow?: boolean
@@ -71,6 +71,7 @@ const ConfigContent: FC<Props> = ({
       ? {
         ...rerankDefaultModel,
         provider: rerankDefaultModel.provider.provider,
+        plugin_id: rerankDefaultModel.provider.plugin_id,
       }
       : undefined,
   )
@@ -80,12 +81,14 @@ const ConfigContent: FC<Props> = ({
       return {
         provider_name: datasetConfigs.reranking_model.reranking_provider_name,
         model_name: datasetConfigs.reranking_model.reranking_model_name,
+        plugin_id: datasetConfigs.reranking_model.reranking_plugin_id,
       }
     }
     else if (rerankDefaultModel) {
       return {
         provider_name: rerankDefaultModel.provider.provider,
         model_name: rerankDefaultModel.model,
+        plugin_id: rerankDefaultModel.provider.plugin_id,
       }
     }
   })()
@@ -172,7 +175,7 @@ const ConfigContent: FC<Props> = ({
       return false
 
     return datasetConfigs.reranking_enable
-  }, [canManuallyToggleRerank, datasetConfigs.reranking_enable])
+  }, [canManuallyToggleRerank, datasetConfigs.reranking_enable, isRerankDefaultModelValid])
 
   const handleDisabledSwitchClick = useCallback(() => {
     if (!currentRerankModel && !showRerankModel)
@@ -300,13 +303,14 @@ const ConfigContent: FC<Props> = ({
                 </div>
                 <div>
                   <ModelSelector
-                    defaultModel={rerankModel && { provider: rerankModel?.provider_name, model: rerankModel?.model_name }}
+                    defaultModel={rerankModel && { provider: rerankModel?.provider_name, model: rerankModel?.model_name, plugin_id: rerankModel?.plugin_id }}
                     onSelect={(v) => {
                       onChange({
                         ...datasetConfigs,
                         reranking_model: {
                           reranking_provider_name: v.provider,
                           reranking_model_name: v.model,
+                          reranking_plugin_id: v.plugin_id,
                         },
                       })
                     }}
@@ -384,6 +388,7 @@ const ConfigContent: FC<Props> = ({
             portalToFollowElemContentClassName='!z-[1002]'
             isAdvancedMode={true}
             mode={model?.mode}
+            pluginId={model?.plugin_id}
             provider={model?.provider}
             completionParams={model?.completion_params}
             modelId={model?.name}

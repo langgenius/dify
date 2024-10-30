@@ -38,8 +38,9 @@ export type ModelParameterModalProps = {
   isAdvancedMode: boolean
   mode: string
   modelId: string
+  pluginId: string
   provider: string
-  setModel: (model: { modelId: string; provider: string; mode?: string; features?: string[] }) => void
+  setModel: (model: { modelId: string; provider: string; pluginId: string; mode?: string; features?: string[] }) => void
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
   hideDebugWithMultipleModel?: boolean
@@ -74,6 +75,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   portalToFollowElemContentClassName,
   isAdvancedMode,
   modelId,
+  pluginId,
   provider,
   setModel,
   completionParams,
@@ -88,13 +90,17 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
   const { t } = useTranslation()
   const { isAPIKeySet } = useProviderContext()
   const [open, setOpen] = useState(false)
-  const { data: parameterRulesData, isLoading } = useSWR((provider && modelId) ? `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}` : null, fetchModelParameterRules)
+  const { data: parameterRulesData, isLoading } = useSWR((provider && modelId) ? `/workspaces/current/model-providers/${pluginId}/${provider}/models/parameter-rules?model=${modelId}` : null, fetchModelParameterRules)
   const {
     currentProvider,
     currentModel,
     activeTextGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(
-    { provider, model: modelId },
+    {
+      plugin_id: pluginId,
+      provider,
+      model: modelId,
+    },
   )
 
   const hasDeprecated = !currentProvider || !currentModel
@@ -112,11 +118,12 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
     })
   }
 
-  const handleChangeModel = ({ provider, model }: DefaultModel) => {
+  const handleChangeModel = ({ provider, model, plugin_id }: DefaultModel) => {
     const targetProvider = activeTextGenerationModelList.find(modelItem => modelItem.provider === provider)
     const targetModelItem = targetProvider?.models.find(modelItem => modelItem.model === model)
     setModel({
       modelId: model,
+      pluginId: plugin_id,
       provider,
       mode: targetModelItem?.model_properties.mode as string,
       features: targetModelItem?.features || [],
@@ -201,7 +208,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                   {t('common.modelProvider.model').toLocaleUpperCase()}
                 </div>
                 <ModelSelector
-                  defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
+                  defaultModel={(provider || modelId) ? { plugin_id: pluginId, provider, model: modelId } : undefined}
                   modelList={activeTextGenerationModelList}
                   onSelect={handleChangeModel}
                   triggerClassName='max-w-[295px]'

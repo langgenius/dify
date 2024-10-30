@@ -37,7 +37,7 @@ export enum ControlMode {
   Hand = 'hand',
 }
 
-export interface Branch {
+export type Branch = {
   id: string
   name: string
 }
@@ -68,7 +68,7 @@ export type CommonNodeType<T = {}> = {
   height?: number
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 
-export interface CommonEdgeType {
+export type CommonEdgeType = {
   _hovering?: boolean
   _connectedNodeIsHovering?: boolean
   _connectedNodeIsSelected?: boolean
@@ -82,14 +82,14 @@ export interface CommonEdgeType {
 
 export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>
 export type SelectedNode = Pick<Node, 'id' | 'data'>
-export interface NodeProps<T = unknown> { id: string; data: CommonNodeType<T> }
-export interface NodePanelProps<T> {
+export type NodeProps<T = unknown> = { id: string; data: CommonNodeType<T> }
+export type NodePanelProps<T> = {
   id: string
   data: CommonNodeType<T>
 }
 export type Edge = ReactFlowEdge<CommonEdgeType>
 
-export interface WorkflowDataUpdater {
+export type WorkflowDataUpdater = {
   nodes: Node[]
   edges: Edge[]
   viewport: Viewport
@@ -97,7 +97,7 @@ export interface WorkflowDataUpdater {
 
 export type ValueSelector = string[] // [nodeId, key | obj key path]
 
-export interface Variable {
+export type Variable = {
   variable: string
   label?: string | {
     nodeType: BlockEnum
@@ -112,14 +112,14 @@ export interface Variable {
   isParagraph?: boolean
 }
 
-export interface EnvironmentVariable {
+export type EnvironmentVariable = {
   id: string
   name: string
   value: any
   value_type: 'string' | 'number' | 'secret'
 }
 
-export interface ConversationVariable {
+export type ConversationVariable = {
   id: string
   name: string
   value_type: ChatVarType
@@ -127,13 +127,13 @@ export interface ConversationVariable {
   description: string
 }
 
-export interface GlobalVariable {
+export type GlobalVariable = {
   name: string
   value_type: 'string' | 'number'
   description: string
 }
 
-export interface VariableWithValue {
+export type VariableWithValue = {
   key: string
   value: string
 }
@@ -169,7 +169,8 @@ export type InputVar = {
   value_selector?: ValueSelector
 } & Partial<UploadFileSetting>
 
-export interface ModelConfig {
+export type ModelConfig = {
+  plugin_id: string
   provider: string
   name: string
   mode: string
@@ -187,7 +188,7 @@ export enum EditionType {
   jinja2 = 'jinja2',
 }
 
-export interface PromptItem {
+export type PromptItem = {
   id?: string
   role?: PromptRole
   text: string
@@ -200,12 +201,12 @@ export enum MemoryRole {
   assistant = 'assistant',
 }
 
-export interface RolePrefix {
+export type RolePrefix = {
   user: string
   assistant: string
 }
 
-export interface Memory {
+export type Memory = {
   role_prefix?: RolePrefix
   window: {
     enabled: boolean
@@ -229,7 +230,7 @@ export enum VarType {
   any = 'any',
 }
 
-export interface Var {
+export type Var = {
   variable: string
   type: VarType
   children?: Var[] // if type is obj, has the children struct
@@ -240,21 +241,21 @@ export interface Var {
   des?: string
 }
 
-export interface NodeOutPutVar {
+export type NodeOutPutVar = {
   nodeId: string
   title: string
   vars: Var[]
   isStartNode?: boolean
 }
 
-export interface Block {
+export type Block = {
   classification?: string
   type: BlockEnum
   title: string
   description?: string
 }
 
-export interface NodeDefault<T> {
+export type NodeDefault<T> = {
   defaultValue: Partial<T>
   getAvailablePrevNodes: (isChatMode: boolean) => BlockEnum[]
   getAvailableNextNodes: (isChatMode: boolean) => BlockEnum[]
@@ -294,19 +295,19 @@ export type OnNodeAdd = (
   }
 ) => void
 
-export interface CheckValidRes {
+export type CheckValidRes = {
   isValid: boolean
   errorMessage?: string
 }
 
-export interface RunFile {
+export type RunFile = {
   type: string
   transfer_method: TransferMethod[]
   url?: string
   upload_file_id?: string
 }
 
-export interface WorkflowRunningData {
+export type WorkflowRunningData = {
   task_id?: string
   message_id?: string
   conversation_id?: string
@@ -331,7 +332,7 @@ export interface WorkflowRunningData {
   tracing?: NodeTracing[]
 }
 
-export interface HistoryWorkflowData {
+export type HistoryWorkflowData = {
   id: string
   sequence_number: number
   status: string
@@ -343,7 +344,7 @@ export enum ChangeType {
   remove = 'remove',
 }
 
-export interface MoreInfo {
+export type MoreInfo = {
   type: ChangeType
   payload?: {
     beforeKey: string
@@ -363,7 +364,7 @@ export enum SupportUploadFileTypes {
   custom = 'custom',
 }
 
-export interface UploadFileSetting {
+export type UploadFileSetting = {
   allowed_file_upload_methods: TransferMethod[]
   allowed_file_types: SupportUploadFileTypes[]
   allowed_file_extensions?: string[]
@@ -371,7 +372,7 @@ export interface UploadFileSetting {
   number_limits?: number
 }
 
-export interface VisionSetting {
+export type VisionSetting = {
   variable_selector: ValueSelector
   detail: Resolution
 }
