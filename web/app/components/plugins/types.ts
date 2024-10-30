@@ -3,7 +3,7 @@ import type { ToolCredential } from '@/app/components/tools/types'
 import type { Locale } from '@/i18n'
 
 export enum PluginType {
-  tool = 'tool',
+  tool = 'tools',
   model = 'model',
   extension = 'extension',
 }

@@ -18,7 +18,10 @@ export const getMarketplaceCollectionsAndPlugins = async (query?: CollectionsAnd
     const marketplaceCollectionsDataJson = await marketplaceCollectionsData.json()
     marketplaceCollections = marketplaceCollectionsDataJson.data.collections
     await Promise.all(marketplaceCollections.map(async (collection: MarketplaceCollection) => {
-      const marketplaceCollectionPluginsData = await globalThis.fetch(`${MARKETPLACE_API_PREFIX}/collections/${collection.name}/plugins?category=${query?.category}`)
+      let url = `${MARKETPLACE_API_PREFIX}/collections/${collection.name}/plugins`
+      if (query?.category)
+        url += `?category=${query.category}`
+      const marketplaceCollectionPluginsData = await globalThis.fetch(url)
       const marketplaceCollectionPluginsDataJson = await marketplaceCollectionPluginsData.json()
       const plugins = marketplaceCollectionPluginsDataJson.data.plugins.map((plugin: Plugin) => {
         return {
