@@ -327,7 +327,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             if variable is None:
                 raise ValueError(f"Variable {variable_selector.variable} not found")
             if isinstance(variable, NoneSegment):
-                continue
+                inputs[variable_selector.variable] = ""
             inputs[variable_selector.variable] = variable.to_object()
 
         memory = node_data.memory
