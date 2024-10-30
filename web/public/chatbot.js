@@ -1,53 +1,53 @@
-!function(){const n="difyChatbotConfig",p=window[n];
+!(function() {
+  const CONFIG_KEY = 'difyChatbotConfig';
+  const config = window[CONFIG_KEY];
 
-async function e(){
-  if(p && p.token){
-    var e = new URLSearchParams(await async function(){
-      var e=p?.inputs||{};const n={};return await Promise.all(Object.entries(e).map(async([e,t])=>{n[e]=(e=t,e=(new TextEncoder).encode(e),e=new Response(new Blob([e]).stream().pipeThrough(new CompressionStream("gzip"))).arrayBuffer(),e=new Uint8Array(await e),await btoa(String.fromCharCode(...e)))})),n}());
-
-    const i = `${p.baseUrl || `https://${p.isDev ? "dev." : ""}udify.app`}/chatbot/${p.token}?` + e;
-
-    function createFullscreenChatbot() {
-      const iframe = document.createElement("iframe");
-      iframe.allow = "fullscreen;microphone";
-      iframe.title = "dify chatbot full screen";
-      iframe.id = "dify-chatbot-fullscreen";
-      iframe.src = i;
-      iframe.style.cssText = `
-        border: none;
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100vw;
-        height: 100vh;
-        z-index: 2147483647;
-        background-color: #F3F4F6;
-        overflow: hidden;
-      `;
-      document.body.appendChild(iframe);
-
-      // Ensure no scrollbars appear on the body or html elements
-      document.body.style.overflow = 'hidden';
-      document.documentElement.style.overflow = 'hidden';
+  async function initChatbot() {
+    if (!config || !config.token) {
+      console.error(CONFIG_KEY + ' is empty or token is not provided');
+      return;
     }
 
-    // Create and append the fullscreen chatbot immediately
-    createFullscreenChatbot();
+    // Create URL with compressed inputs
+    const params = new URLSearchParams(
+      await (async function() {
+        const inputs = config?.inputs || {};
+        const compressedInputs = {};
+        
+        await Promise.all(
+          Object.entries(inputs).map(async ([key, value]) => {
+            const encoded = new TextEncoder().encode(value);
+            const compressed = await new Response(
+              new Blob([encoded])
+                .stream()
+                .pipeThrough(new CompressionStream('gzip'))
+            ).arrayBuffer();
+            const uint8Array = new Uint8Array(await compressed);
+            compressedInputs[key] = btoa(String.fromCharCode(...uint8Array));
+          })
+        );
+        
+        return compressedInputs;
+      })()
+    );
 
-    // Add a message listener to handle any resize events from the iframe content
-    window.addEventListener('message', function(event) {
-      if (event.data === 'resize') {
-        const iframe = document.getElementById('dify-chatbot-fullscreen');
-        if (iframe) {
-          iframe.style.height = '100vh';
-        }
-      }
-    });
+    const chatbotUrl = `${config.baseUrl || `https://${config.isDev ? 'dev.' : ''}udify.app`}/chatbot/${config.token}?${params}`;
 
-  } else {
-    console.error(n + " is empty or token is not provided");
+    // Create and inject iframe into the container
+    const container = document.getElementById('chatbot');
+    if (!container) {
+      console.error('Chatbot container element not found');
+      return;
+    }
+
+    const iframe = document.createElement('iframe');
+    iframe.src = chatbotUrl;
+    iframe.allow = 'microphone';
+    iframe.style.cssText = 'border: none; width: 100%; height: 100%;';
+    
+    container.appendChild(iframe);
   }
-}
 
-p?.dynamicScript ? e() : document.body.onload = e;
-}();
+  // Initialize based on config
+  config?.dynamicScript ? initChatbot() : document.body.onload = initChatbot;
+})();
