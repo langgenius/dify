@@ -646,5 +646,5 @@ class ToolManager:
         else:
             raise ValueError(f"provider type {provider_type} not found")
 
-
+# preload builtin tool providers
 Thread(target=ToolManager.load_builtin_providers_cache, name="pre_load_builtin_providers_cache", daemon=True).start()
