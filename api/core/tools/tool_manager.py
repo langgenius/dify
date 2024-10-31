@@ -3,7 +3,7 @@ import logging
 import mimetypes
 from collections.abc import Generator
 from os import listdir, path
-from threading import Lock
+from threading import Lock, Thread
 from typing import Any, Optional, Union
 
 from configs import dify_config
@@ -242,11 +242,15 @@ class ToolManager:
         parameters = tool_entity.get_all_runtime_parameters()
         for parameter in parameters:
             # check file types
-            if parameter.type in {
-                ToolParameter.ToolParameterType.SYSTEM_FILES,
-                ToolParameter.ToolParameterType.FILE,
-                ToolParameter.ToolParameterType.FILES,
-            }:
+            if (
+                parameter.type
+                in {
+                    ToolParameter.ToolParameterType.SYSTEM_FILES,
+                    ToolParameter.ToolParameterType.FILE,
+                    ToolParameter.ToolParameterType.FILES,
+                }
+                and parameter.required
+            ):
                 raise ValueError(f"file type parameter {parameter.name} not supported in agent")
 
             if parameter.form == ToolParameter.ToolParameterForm.FORM:
@@ -643,4 +647,5 @@ class ToolManager:
             raise ValueError(f"provider type {provider_type} not found")
 
 
-ToolManager.load_builtin_providers_cache()
+# preload builtin tool providers
+Thread(target=ToolManager.load_builtin_providers_cache, name="pre_load_builtin_providers_cache", daemon=True).start()

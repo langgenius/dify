@@ -10,6 +10,7 @@ from core.variables import (
     ArrayNumberVariable,
     ArrayObjectSegment,
     ArrayObjectVariable,
+    ArraySegment,
     ArrayStringSegment,
     ArrayStringVariable,
     FileSegment,
@@ -79,7 +80,7 @@ def build_segment(value: Any, /) -> Segment:
     if isinstance(value, list):
         items = [build_segment(item) for item in value]
         types = {item.value_type for item in items}
-        if len(types) != 1:
+        if len(types) != 1 or all(isinstance(item, ArraySegment) for item in items):
             return ArrayAnySegment(value=value)
         match types.pop():
             case SegmentType.STRING:

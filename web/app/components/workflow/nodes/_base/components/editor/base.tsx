@@ -26,7 +26,7 @@ type Props = {
   isFocus: boolean
   isInNode?: boolean
   onGenerated?: (prompt: string) => void
-  codeLanguages: CodeLanguage
+  codeLanguages?: CodeLanguage
   fileList?: FileEntity[]
   showFileList?: boolean
   showCodeGenerator?: boolean
@@ -78,7 +78,7 @@ const Base: FC<Props> = ({
             e.stopPropagation()
           }}>
             {headerRight}
-            {showCodeGenerator && (
+            {showCodeGenerator && codeLanguages && (
               <div className='ml-1'>
                 <CodeGeneratorButton onGenerated={onGenerated} codeLanguages={codeLanguages}/>
               </div>

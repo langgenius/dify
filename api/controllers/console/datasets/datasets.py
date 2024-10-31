@@ -628,6 +628,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.BAIDU
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
+                | VectorType.OCEANBASE
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
@@ -640,6 +641,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.ELASTICSEARCH
                 | VectorType.PGVECTOR
                 | VectorType.TIDB_ON_QDRANT
+                | VectorType.COUCHBASE
             ):
                 return {
                     "retrieval_method": [
@@ -668,6 +670,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.BAIDU
                 | VectorType.VIKINGDB
                 | VectorType.UPSTASH
+                | VectorType.OCEANBASE
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
@@ -678,6 +681,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.MYSCALE
                 | VectorType.ORACLE
                 | VectorType.ELASTICSEARCH
+                | VectorType.COUCHBASE
                 | VectorType.PGVECTOR
             ):
                 return {
