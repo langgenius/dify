@@ -1,13 +1,13 @@
 'use client'
 import React, { useEffect, useReducer, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import useSWR from 'swr'
 import Link from 'next/link'
 import Toast from '../components/base/toast'
 import style from './page.module.css'
 import classNames from '@/utils/classnames'
-import { IS_CE_EDITION, SUPPORT_MAIL_LOGIN, apiPrefix, emailRegex } from '@/config'
+import { IS_CE_EDITION, apiPrefix, emailRegex } from '@/config'
 import Button from '@/app/components/base/button'
 import { login, oauth } from '@/service/common'
 import { getPurifyHref } from '@/utils'
@@ -63,10 +63,21 @@ function reducer(state: IState, action: IAction) {
 const NormalForm = () => {
   const { t } = useTranslation()
   const { getNewAccessToken } = useRefreshToken()
-//   const useEmailLogin = IS_CE_EDITION || SUPPORT_MAIL_LOGIN
-  const useEmailLogin = false
+  // const useEmailLogin = IS_CE_EDITION || SUPPORT_MAIL_LOGIN
 
   const router = useRouter()
+
+  const searchParmas = useSearchParams()
+  const message = decodeURIComponent(searchParmas.get('message') || '')
+
+  useEffect(() => {
+    if (message) {
+      Toast.notify({
+        type: 'error',
+        message,
+      })
+    }
+  }, [message])
 
   const [state, dispatch] = useReducer(reducer, {
     formValid: false,
@@ -115,23 +126,29 @@ const NormalForm = () => {
     }
   }
 
-  const { data: github, error: github_error } = useSWR(state.github
-    ? ({
-      url: '/oauth/login/github',
-      // params: {
-      //   provider: 'github',
-      // },
-    })
-    : null, oauth)
+  const { data: github, error: github_error } = useSWR(
+    state.github
+      ? {
+        url: '/oauth/login/github',
+        // params: {
+        //   provider: 'github',
+        // },
+      }
+      : null,
+    oauth,
+  )
 
-  const { data: google, error: google_error } = useSWR(state.google
-    ? ({
-      url: '/oauth/login/google',
-      // params: {
-      //   provider: 'google',
-      // },
-    })
-    : null, oauth)
+  const { data: google, error: google_error } = useSWR(
+    state.google
+      ? {
+        url: '/oauth/login/google',
+        // params: {
+        //   provider: 'google',
+        // },
+      }
+      : null,
+    oauth,
+  )
 
   useEffect(() => {
     if (github_error !== undefined)
@@ -151,154 +168,146 @@ const NormalForm = () => {
     <>
       <div className="w-full mx-auto">
         <h2 className="text-[32px] font-bold text-gray-900">{t('login.pageTitle')}</h2>
-        <p className='mt-1 text-sm text-gray-600'>{t('login.welcome')}</p>
+        <p className="mt-1 text-sm text-gray-600">{t('login.welcome')}</p>
       </div>
 
       <div className="w-full mx-auto mt-8">
         <div className="bg-white ">
-          {!useEmailLogin && (
-            <div className="flex flex-col gap-3 mt-6">
-              <div className='w-full'>
-                <a href={getPurifyHref(`${apiPrefix}/oauth/login/github`)}>
-                  <Button
-                    disabled={isLoading}
-                    className='w-full hover:!bg-gray-50'
-                  >
-                    <>
-                      <span className={
-                        classNames(
-                          style.githubIcon,
-                          'w-5 h-5 mr-2',
-                        )
-                      } />
-                      <span className="truncate text-gray-800">{t('login.withGitHub')}</span>
-                    </>
-                  </Button>
-                </a>
-              </div>
-              <div className='w-full'>
-                <a href={getPurifyHref(`${apiPrefix}/oauth/login/google`)}>
-                  <Button
-                    disabled={isLoading}
-                    className='w-full hover:!bg-gray-50'
-                  >
-                    <>
-                      <span className={
-                        classNames(
-                          style.googleIcon,
-                          'w-5 h-5 mr-2',
-                        )
-                      } />
-                      <span className="truncate text-gray-800">{t('login.withGoogle')}</span>
-                    </>
-                  </Button>
-                </a>
+          <div className="flex flex-col gap-3 mb-6">
+            {/* <div className="w-full">
+              <a href={getPurifyHref(`${apiPrefix}/oauth/login/github`)}>
+                <Button disabled={isLoading} className="w-full hover:!bg-gray-50">
+                  <>
+                    <span className={classNames(style.githubIcon, 'w-5 h-5 mr-2')} />
+                    <span className="truncate text-gray-800">{t('login.withGitHub')}</span>
+                  </>
+                </Button>
+              </a>
+            </div> */}
+            <div className="w-full">
+              <a href={getPurifyHref(`${apiPrefix}/oauth/login/google`)}>
+                <Button disabled={isLoading} className="w-full hover:!bg-gray-50 btn-large">
+                  <>
+                    <span className={classNames(style.googleIcon, 'w-5 h-5 mr-2')} />
+                    <span className="truncate text-gray-800">{t('login.withGoogle')}</span>
+                  </>
+                </Button>
+              </a>
+            </div>
+            {/* <div className="w-hull text-center block mt-2 text-xs text-gray-400">{t('login.loginTip')}</div> */}
+          </div>
+          <div className="relative mt-6">
+            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 text-gray-300 bg-white">OR</span>
+            </div>
+          </div>
+          <form onSubmit={() => {}}>
+            <div className="mb-5">
+              <label htmlFor="email" className="my-2 block text-sm font-medium text-gray-900">
+                {t('login.email')}
+              </label>
+              <div className="mt-1">
+                <input
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  id="email"
+                  type="email"
+                  autoComplete="email"
+                  placeholder={t('login.emailPlaceholder') || ''}
+                  className={
+                    'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'
+                  }
+                  tabIndex={1}
+                />
               </div>
             </div>
-          )}
 
-          {
-            useEmailLogin && <>
-              {/* <div className="relative mt-6">
-                <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                  <div className="w-full border-t border-gray-300" />
+            <div className="mb-4">
+              <label
+                htmlFor="password"
+                className="my-2 flex items-center justify-between text-sm font-medium text-gray-900"
+              >
+                <span>{t('login.password')}</span>
+                {/* <Link href="/forgot-password" className="text-primary-600">
+                  {t('login.forget')}
+                </Link> */}
+              </label>
+              <div className="relative mt-1">
+                <input
+                  id="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter')
+                      handleEmailPasswordLogin()
+                  }}
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="current-password"
+                  placeholder={t('login.passwordPlaceholder') || ''}
+                  className={
+                    'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'
+                  }
+                  tabIndex={2}
+                />
+                <div className="absolute inset-y-0 right-0 flex items-center pr-3">
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500"
+                  >
+                    {showPassword ? '👀' : '😝'}
+                  </button>
                 </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 text-gray-300 bg-white">OR</span>
-                </div>
-              </div> */}
+              </div>
+            </div>
 
-              <form onSubmit={() => { }}>
-                <div className='mb-5'>
-                  <label htmlFor="email" className="my-2 block text-sm font-medium text-gray-900">
-                    {t('login.email')}
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      id="email"
-                      type="email"
-                      autoComplete="email"
-                      placeholder={t('login.emailPlaceholder') || ''}
-                      className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
-                      tabIndex={1}
-                    />
-                  </div>
-                </div>
-
-                <div className='mb-4'>
-                  <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
-                    <span>{t('login.password')}</span>
-                    <Link href='/forgot-password' className='text-primary-600'>
-                      {t('login.forget')}
-                    </Link>
-                  </label>
-                  <div className="relative mt-1">
-                    <input
-                      id="password"
-                      value={password}
-                      onChange={e => setPassword(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter')
-                          handleEmailPasswordLogin()
-                      }}
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete="current-password"
-                      placeholder={t('login.passwordPlaceholder') || ''}
-                      className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
-                      tabIndex={2}
-                    />
-                    <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500"
-                      >
-                        {showPassword ? '👀' : '😝'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                <div className='mb-2'>
-                  <Button
-                    tabIndex={0}
-                    variant='primary'
-                    onClick={handleEmailPasswordLogin}
-                    disabled={isLoading}
-                    className="w-full"
-                  >{t('login.signBtn')}</Button>
-                </div>
-              </form>
-            </>
-          }
+            <div className="mb-2">
+              <Button
+                tabIndex={0}
+                variant="primary"
+                onClick={handleEmailPasswordLogin}
+                disabled={isLoading}
+                className="w-full"
+              >
+                {t('login.signBtn')}
+              </Button>
+            </div>
+          </form>
           {/*  agree to our Terms and Privacy Policy. */}
           <div className="w-hull text-center block mt-2 text-xs text-gray-600">
             {t('login.tosDesc')}
             &nbsp;
             <Link
-              className='text-primary-600'
-              target='_blank' rel='noopener noreferrer'
-              href='https://dify.ai/terms'
-            >{t('login.tos')}</Link>
+              className="text-primary-600"
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://dify.ai/terms"
+            >
+              {t('login.tos')}
+            </Link>
             &nbsp;&&nbsp;
             <Link
-              className='text-primary-600'
-              target='_blank' rel='noopener noreferrer'
-              href='https://dify.ai/privacy'
-            >{t('login.pp')}</Link>
+              className="text-primary-600"
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://dify.ai/privacy"
+            >
+              {t('login.pp')}
+            </Link>
           </div>
 
-          {IS_CE_EDITION && <div className="w-hull text-center block mt-2 text-xs text-gray-600">
-            {t('login.goToInit')}
-            &nbsp;
-            <Link
-              className='text-primary-600'
-              href='/install'
-            >{t('login.setAdminAccount')}</Link>
-          </div>}
-
+          {IS_CE_EDITION && (
+            <div className="w-hull text-center block mt-2 text-xs text-gray-600">
+              {t('login.goToInit')}
+              &nbsp;
+              <Link className="text-primary-600" href="/install">
+                {t('login.setAdminAccount')}
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </>
