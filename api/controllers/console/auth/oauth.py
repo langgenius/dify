@@ -46,9 +46,17 @@ class OAuthLogin(Resource):
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
-            logging.info(vars(oauth_provider))
-        if not oauth_provider:
-            return {"error": "Invalid provider"}, 400
+            if oauth_provider:
+                provider_info = {attr: getattr(oauth_provider, attr) for attr in dir(oauth_provider) if
+                                 not attr.startswith('__')}
+                logging.info(provider_info)
+            else:
+                return {"error": "Invalid provider"}, 400
+
+        #     oauth_provider = OAUTH_PROVIDERS.get(provider)
+        #     logging.info(oauth_provider)
+        # if not oauth_provider:
+        #     return {"error": "Invalid provider"}, 400
 
         auth_url = oauth_provider.get_authorization_url()
         logging.info(auth_url)
