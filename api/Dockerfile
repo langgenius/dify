@@ -25,6 +25,7 @@ FROM base AS packages
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends gcc g++ libc-dev libffi-dev libgmp-dev libmpfr-dev libmpc-dev
+    && apt-get install -y vim && apt-get install -y net-tools && apt-get install -y telnet && apt-get install -y less
 
 # Install Python dependencies
 COPY pyproject.toml poetry.lock ./

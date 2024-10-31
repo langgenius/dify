@@ -65,7 +65,9 @@ class OAuthCallback(Resource):
         logging.info(f"code-->{code}, oauth_provider-->{vars(oauth_provider)}")
         try:
             token = oauth_provider.get_access_token(code)
+            logging.info(f"token-->{token}")
             user_info = oauth_provider.get_user_info(token)
+            logging.info(f"user_info-->{user_info}")
         except requests.exceptions.HTTPError as e:
             logging.exception(f"An error occurred during the OAuth process with {provider}: {e.response.text}")
             return {"error": "OAuth process failed"}, 400
