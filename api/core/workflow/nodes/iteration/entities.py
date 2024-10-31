@@ -6,17 +6,10 @@ from pydantic import Field
 from core.workflow.nodes.base import BaseIterationNodeData, BaseIterationState, BaseNodeData
 
 
-class ErrorHandleMode(Enum):
+class ErrorHandleMode(str, Enum):
     TERMINATED = "Terminated"
     CONTINUE_ON_ERROR = "Continue on error"
     REMOVE_ABNORMAL_OUTPUT = "Remove abnormal output"
-
-    def to_json(self):
-        return self.value
-
-    @classmethod
-    def from_json(cls, value):
-        return cls(value)
 
 
 class IterationNodeData(BaseIterationNodeData):

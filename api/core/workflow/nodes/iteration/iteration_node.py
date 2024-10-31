@@ -4,7 +4,7 @@ from collections.abc import Generator, Mapping, Sequence
 from concurrent.futures import Future, wait
 from datetime import datetime, timezone
 from queue import Empty, Queue
-from typing import Any, Optional, cast
+from typing import TYPE_CHECKING, Any, Optional, cast
 
 from flask import Flask, current_app
 
@@ -38,6 +38,8 @@ from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
 from models.workflow import WorkflowNodeExecutionStatus
 
+if TYPE_CHECKING:
+    from core.workflow.graph_engine.graph_engine import GraphEngine
 logger = logging.getLogger(__name__)
 
 
@@ -339,8 +341,8 @@ class IterationNode(BaseNode[IterationNodeData]):
         inputs: dict[str, list],
         outputs: list,
         start_at: datetime,
-        graph_engine,
-        iteration_graph,
+        graph_engine: "GraphEngine",
+        iteration_graph: Graph,
         parallel_mode_run_id: Optional[str] = None,
     ):
         """
@@ -510,10 +512,10 @@ class IterationNode(BaseNode[IterationNodeData]):
         inputs: dict[str, list],
         outputs: list,
         start_at: datetime,
-        graph_engine,
-        iteration_graph,
-        index,
-        item,
+        graph_engine: "GraphEngine",
+        iteration_graph: Graph,
+        index: int,
+        item: Any,
     ):
         """
         run single iteration in parallel mode
