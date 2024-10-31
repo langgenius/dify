@@ -1070,7 +1070,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 ---
 
 <Heading
-  url='/datasets/{dataset_id}/hit_testing'
+  url='/datasets/{dataset_id}/hit-testing'
   method='POST'
   title='Dataset hit testing'
   name='#dataset_hit_testing'
@@ -1114,8 +1114,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup
       title="Request"
       tag="POST"
-      label="/datasets/{dataset_id}/hit_testing"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/hit_testing' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
+      label="/datasets/{dataset_id}/hit-testing"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/hit-testing' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
         "query": "test",
         "retrieval_model": {
             "search_method": "keyword_search",
@@ -1133,7 +1133,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     }'`}
     >
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/hit_testing' \
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/hit-testing' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
