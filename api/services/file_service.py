@@ -35,7 +35,7 @@ class FileService:
         filename = file.filename
         if not filename:
             raise FileNotExistsError
-        extension = filename.split(".")[-1]
+        extension = filename.split(".")[-1].lower()
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
 
