@@ -396,7 +396,7 @@ class AppModelConfig(db.Model):
             "file_upload": self.file_upload_dict,
         }
 
-    def from_model_config_dict(self, model_config: dict):
+    def from_model_config_dict(self, model_config: Mapping[str, Any]):
         self.opening_statement = model_config.get("opening_statement")
         self.suggested_questions = (
             json.dumps(model_config["suggested_questions"]) if model_config.get("suggested_questions") else None
