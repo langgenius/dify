@@ -1,0 +1,61 @@
+identity:
+  author: Dify
+  name: dalle
+  label:
+    en_US: DALL-E
+    zh_Hans: DALL-E 绘画
+    pt_BR: DALL-E
+  description:
+    en_US: DALL-E art
+    zh_Hans: DALL-E 绘画
+    pt_BR: DALL-E art
+  icon: icon.png
+  tags:
+    - image
+    - productivity
+credentials_for_provider:
+  openai_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: OpenAI API key
+      zh_Hans: OpenAI API key
+      pt_BR: OpenAI API key
+    help:
+      en_US: Please input your OpenAI API key
+      zh_Hans: 请输入你的 OpenAI API key
+      pt_BR: Please input your OpenAI API key
+    placeholder:
+      en_US: Please input your OpenAI API key
+      zh_Hans: 请输入你的 OpenAI API key
+      pt_BR: Please input your OpenAI API key
+  openai_organization_id:
+    type: text-input
+    required: false
+    label:
+      en_US: OpenAI organization ID
+      zh_Hans: OpenAI organization ID
+      pt_BR: OpenAI organization ID
+    help:
+      en_US: Please input your OpenAI organization ID
+      zh_Hans: 请输入你的 OpenAI organization ID
+      pt_BR: Please input your OpenAI organization ID
+    placeholder:
+      en_US: Please input your OpenAI organization ID
+      zh_Hans: 请输入你的 OpenAI organization ID
+      pt_BR: Please input your OpenAI organization ID
+  openai_base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: OpenAI base URL
+      zh_Hans: OpenAI base URL
+      pt_BR: OpenAI base URL
+    help:
+      en_US: Please input your OpenAI base URL
+      zh_Hans: 请输入你的 OpenAI base URL
+      pt_BR: Please input your OpenAI base URL
+    placeholder:
+      en_US: Please input your OpenAI base URL
+      zh_Hans: 请输入你的 OpenAI base URL
+      pt_BR: Please input your OpenAI base URL
