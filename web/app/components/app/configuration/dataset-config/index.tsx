@@ -59,7 +59,6 @@ const DatasetConfig: FC = () => {
     })
     const {
       allExternal,
-      allEconomic,
       allInternal,
       mixtureInternalAndExternal,
       mixtureHighQualityAndEconomic,
@@ -67,7 +66,7 @@ const DatasetConfig: FC = () => {
     } = getSelectedDatasetsMode(filteredDataSets)
 
     if (
-      (allInternal && (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
+      (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
       || mixtureInternalAndExternal
       || allExternal
     )

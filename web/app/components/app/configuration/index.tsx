@@ -254,7 +254,6 @@ const Configuration: FC = () => {
     hideSelectDataSet()
     const {
       allExternal,
-      allEconomic,
       allInternal,
       mixtureInternalAndExternal,
       mixtureHighQualityAndEconomic,
@@ -262,7 +261,7 @@ const Configuration: FC = () => {
     } = getSelectedDatasetsMode(newDatasets)
 
     if (
-      (allInternal && (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
+      (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
       || mixtureInternalAndExternal
       || allExternal
     )
