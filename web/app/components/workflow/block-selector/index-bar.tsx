@@ -3,6 +3,8 @@ import type { FC, RefObject } from 'react'
 import type { ToolWithProvider } from '../types'
 import { CollectionType } from '../../tools/types'
 
+export const CUSTOM_GROUP_NAME = '@@@custom@@@'
+export const WORKFLOW_GROUP_NAME = '@@@workflow@@@'
 /*
 {
   A: {
@@ -42,9 +44,9 @@ export const groupItems = (items: ToolWithProvider[], getFirstChar: (item: ToolW
     if (item.type === CollectionType.builtIn)
       groupName = item.author
     else if (item.type === CollectionType.custom)
-      groupName = 'custom'
+      groupName = CUSTOM_GROUP_NAME
     else
-      groupName = 'workflow'
+      groupName = WORKFLOW_GROUP_NAME
 
     if (!acc[letter][groupName])
       acc[letter][groupName] = []
@@ -76,7 +78,7 @@ const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs }) => {
       element.scrollIntoView({ behavior: 'smooth' })
   }
   return (
-    <div className="index-bar absolute right-4 top-36 flex flex-col items-center w-6 justify-center text-xs font-medium text-text-quaternary ">
+    <div className="index-bar absolute right-0 top-36 flex flex-col items-center w-6 justify-center text-xs font-medium text-text-quaternary ">
       <div className='absolute left-0 top-0 h-full w-px bg-[linear-gradient(270deg,rgba(255,255,255,0)_0%,rgba(16,24,40,0.08)_30%,rgba(16,24,40,0.08)_50%,rgba(16,24,40,0.08)_70.5%,rgba(255,255,255,0)_100%)]'></div>
       {letters.map(letter => (
         <div className="hover:text-text-secondary cursor-pointer" key={letter} onClick={() => handleIndexClick(letter)}>

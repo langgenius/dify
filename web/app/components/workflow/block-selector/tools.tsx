@@ -28,7 +28,6 @@ const Blocks = ({
   const { t } = useTranslation()
   const language = useGetLanguage()
   const isFlatView = viewType === ViewType.flat
-  const isTreeView = viewType === ViewType.tree
   const isShowLetterIndex = isFlatView && tools.length > 10
 
   /*
@@ -61,6 +60,16 @@ const Blocks = ({
     return result
   }, [withLetterAndGroupViewToolsData])
 
+  const listViewToolData = useMemo(() => {
+    const result: ToolWithProvider[] = []
+    Object.keys(withLetterAndGroupViewToolsData).forEach((letter) => {
+      Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
+        result.push(...withLetterAndGroupViewToolsData[letter][groupName])
+      })
+    })
+    return result
+  }, [withLetterAndGroupViewToolsData])
+
   const toolRefs = useRef({})
 
   return (
@@ -78,6 +87,9 @@ const Blocks = ({
       {!!tools.length && (
         isFlatView ? (
           <ToolListFlatView
+            payload={listViewToolData}
+            isShowLetterIndex={isShowLetterIndex}
+            onSelect={onSelect}
           />
         ) : (
           <ToolListTreeView

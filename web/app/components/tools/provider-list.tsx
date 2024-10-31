@@ -126,9 +126,13 @@ const ProviderList = () => {
         </div>
         {
           enable_marketplace && (
-            <Marketplace onMarketplaceScroll={() => {
-              containerRef.current?.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })
-            }} />
+            <Marketplace
+              onMarketplaceScroll={() => {
+                containerRef.current?.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })
+              }}
+              searchPluginText={keywords}
+              filterPluginTags={tagFilterValue}
+            />
           )
         }
       </div>
