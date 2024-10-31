@@ -88,11 +88,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         extras = {"auto_generate_conversation_name": args.get("auto_generate_name", False)}
 
         def update_inputs_with_new_input(existing_inputs, new_input):
-            # 假设 existing_inputs 是一个字典，new_input 是新接收到的输入内容
             existing_inputs.update(new_input)
             return existing_inputs
 
-        new_input = {"key": "value"}  # 这是新的输入
+        new_input = {"key": "value"}
         inputs = (
             conversation.inputs
             if conversation
@@ -104,7 +103,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             )
         )
 
-        if new_input:  # 假设这是你获取新输入的条件
+        if new_input:
             inputs = update_inputs_with_new_input(inputs, new_input)
 
         # get conversation
