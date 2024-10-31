@@ -20,7 +20,7 @@ import Title from '../card/base/title'
 import Action from './action'
 import cn from '@/utils/classnames'
 import I18n from '@/context/i18n'
-import { API_PREFIX } from '@/config'
+import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 
 type Props = {
   className?: string
@@ -112,7 +112,7 @@ const PluginItem: FC<Props> = ({
         <div className='flex items-center'>
           {source === PluginSource.github
             && <>
-              <a href='' target='_blank' className='flex items-center gap-1'>
+              <a href={meta.repo} target='_blank' className='flex items-center gap-1'>
                 <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('plugin.from')}</div>
                 <div className='flex items-center space-x-0.5 text-text-secondary'>
                   <Github className='w-3 h-3' />
@@ -124,7 +124,7 @@ const PluginItem: FC<Props> = ({
           }
           {source === PluginSource.marketplace
             && <>
-              <a href='' target='_blank' className='flex items-center gap-0.5'>
+              <a href={`${MARKETPLACE_URL_PREFIX}/plugin/${author}/${name}`} target='_blank' className='flex items-center gap-0.5'>
                 <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('plugin.from')} <span className='text-text-secondary'>marketplace</span></div>
                 <RiArrowRightUpLine className='w-3 h-3' />
               </a>
