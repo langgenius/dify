@@ -187,8 +187,8 @@ def update_token_last_used_at(self, token_id, last_used_time):
             if token:
                 token.last_used_at = last_used_time
     except Exception as e:
-        # 如果失败，最多重试3次
-        self.retry(exc=e, countdown=60)  # 1分钟后重试
+        # countdown 60 seconds to retry up to 3times
+        self.retry(exc=e, countdown=60)
 
 
 def validate_and_get_api_token(scope=None):
