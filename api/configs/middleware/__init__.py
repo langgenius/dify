@@ -16,6 +16,7 @@ from configs.middleware.storage.supabase_storage_config import SupabaseStorageCo
 from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
 from configs.middleware.storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
 from configs.middleware.vdb.analyticdb_config import AnalyticdbConfig
+from configs.middleware.vdb.baidu_vector_config import BaiduVectorDBConfig
 from configs.middleware.vdb.chroma_config import ChromaConfig
 from configs.middleware.vdb.couchbase_config import CouchbaseConfig
 from configs.middleware.vdb.elasticsearch_config import ElasticsearchConfig
@@ -34,7 +35,6 @@ from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
 from configs.middleware.vdb.upstash_config import UpstashConfig
 from configs.middleware.vdb.vikingdb_config import VikingDBConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
-from configs.middleware.vdb.baidu_vector_config import BaiduVectorDBConfig
 
 
 class StorageConfig(BaseSettings):

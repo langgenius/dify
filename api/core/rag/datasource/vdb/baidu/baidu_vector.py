@@ -2,14 +2,14 @@ import json
 import time
 import uuid
 from typing import Any
-import numpy as np
 
+import numpy as np
 from pydantic import BaseModel, model_validator
 from pymochow import MochowClient
 from pymochow.auth.bce_credentials import BceCredentials
 from pymochow.configuration import Configuration
-from pymochow.exception import ClientError, ServerError
-from pymochow.model.enum import FieldType, IndexState, IndexType, MetricType, TableState, ServerErrCode
+from pymochow.exception import ServerError
+from pymochow.model.enum import FieldType, IndexState, IndexType, MetricType, ServerErrCode, TableState
 from pymochow.model.schema import Field, HNSWParams, Schema, VectorIndex
 from pymochow.model.table import AnnSearch, HNSWSearchParams, Partition, Row
 

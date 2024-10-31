@@ -325,55 +325,6 @@ def migrate_knowledge_vector_database():
 
                 elif vector_type in lower_colletion_vector_types:
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
-                elif vector_type == VectorType.MILVUS:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": VectorType.MILVUS, "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.RELYT:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": "relyt", "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.TENCENT:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": VectorType.TENCENT, "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.PGVECTOR:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": VectorType.PGVECTOR, "vector_store": {"class_prefix": collection_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.OPENSEARCH:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {
-                        "type": VectorType.OPENSEARCH,
-                        "vector_store": {"class_prefix": collection_name},
-                    }
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.ANALYTICDB:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {
-                        "type": VectorType.ANALYTICDB,
-                        "vector_store": {"class_prefix": collection_name},
-                    }
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.ELASTICSEARCH:
-                    dataset_id = dataset.id
-                    index_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {"type": "elasticsearch", "vector_store": {"class_prefix": index_name}}
-                    dataset.index_struct = json.dumps(index_struct_dict)
-                elif vector_type == VectorType.BAIDU:
-                    dataset_id = dataset.id
-                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-                    index_struct_dict = {
-                        "type": VectorType.BAIDU,
-                        "vector_store": {"class_prefix": collection_name},
-                    }
-                    dataset.index_struct = json.dumps(index_struct_dict)
                 else:
                     raise ValueError(f"Vector store {vector_type} is not supported.")
 
