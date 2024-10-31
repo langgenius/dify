@@ -253,12 +253,18 @@ const Configuration: FC = () => {
     }
     hideSelectDataSet()
     const {
-      allEconomic,
+      allExternal,
+      allInternal,
+      mixtureInternalAndExternal,
       mixtureHighQualityAndEconomic,
       inconsistentEmbeddingModel,
     } = getSelectedDatasetsMode(newDatasets)
 
-    if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)
+    if (
+      (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
+      || mixtureInternalAndExternal
+      || allExternal
+    )
       setRerankSettingModalOpen(true)
 
     const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
