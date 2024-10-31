@@ -58,8 +58,8 @@ const Marketplace = ({
       {
         !isLoading && (
           <List
-            marketplaceCollections={marketplaceCollections}
-            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+            marketplaceCollections={marketplaceCollections || []}
+            marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
             plugins={plugins}
             showInstallButton
           />
