@@ -382,12 +382,12 @@ class AuthConfig(BaseSettings):
 
     GOOGLE_CLIENT_ID: Optional[str] = Field(
         description="Google OAuth client ID",
-        default="231575038402-s9p5k4djt2ro1d0u341ov58ivnfeffsv.apps.googleusercontent.com",
+        default=None,
     )
 
     GOOGLE_CLIENT_SECRET: Optional[str] = Field(
         description="Google OAuth client secret",
-        default="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",
+        default=None,
     )
 
     ACCESS_TOKEN_EXPIRE_MINUTES: PositiveInt = Field(
