@@ -153,6 +153,7 @@ Star Dify on GitHub and be instantly notified of new releases.
 
 Go to [quick-start](https://github.com/langgenius/dify?tab=readme-ov-file#quick-start) to setup your Dify or setup by source code.
 
+### If you......
 If you forget your admin account, you can refer to this [guide](https://docs.dify.ai/getting-started/install-self-hosted/faqs#id-4.-how-to-reset-the-password-of-the-admin-account) to reset the password.
 
 > Use docker compose up without "-d" to enable logs printing out in your terminal. This might be useful if you have encountered unknow problems when using Dify.
