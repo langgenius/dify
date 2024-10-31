@@ -1,5 +1,4 @@
 import json
-<<<<<<< HEAD
 import time
 import uuid
 from typing import Any
@@ -17,26 +16,6 @@ from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
-=======
-import uuid
-import time
-from typing import Any
-
-from pydantic import BaseModel, model_validator
-
-from pymochow import MochowClient
-from pymochow.configuration import Configuration
-from pymochow.auth.bce_credentials import BceCredentials
-from pymochow.model.enum import FieldType, IndexType, MetricType, TableState, IndexState
-from pymochow.model.schema import Schema, Field, VectorIndex, HNSWParams
-from pymochow.model.table import Partition, Row, AnnSearch, HNSWSearchParams
-
-from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
-from core.rag.datasource.vdb.vector_base import BaseVector
-from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
-from core.rag.datasource.vdb.vector_type import VectorType
->>>>>>> 72ebc3fd3 (feat:support baidu vector db)
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
