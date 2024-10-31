@@ -5,6 +5,7 @@ from typing import Optional
 
 from pydantic import BaseModel
 
+from core.entities import DEFAULT_PLUGIN_ID
 from core.helper.position_helper import get_provider_position_map, sort_to_dict_by_position_map
 from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
 from core.model_runtime.entities.provider_entities import ProviderConfig, ProviderEntity, SimpleProviderEntity
@@ -132,7 +133,7 @@ class ModelProviderFactory:
             tenant_id=self.tenant_id,
             user_id="unknown",
             plugin_id=plugin_model_provider_entity.plugin_id,
-            provider=provider,
+            provider=plugin_model_provider_entity.provider,
             credentials=filtered_credentials,
         )
 
@@ -167,7 +168,7 @@ class ModelProviderFactory:
             tenant_id=self.tenant_id,
             user_id="unknown",
             plugin_id=plugin_model_provider_entity.plugin_id,
-            provider=provider,
+            provider=plugin_model_provider_entity.provider,
             model_type=model_type.value,
             model=model,
             credentials=filtered_credentials,
@@ -337,7 +338,7 @@ class ModelProviderFactory:
         :param provider: provider name
         :return: plugin id and provider name
         """
-        plugin_id = "langgenius"
+        plugin_id = DEFAULT_PLUGIN_ID
         provider_name = provider
         if "/" in provider:
             # get the plugin_id before provider

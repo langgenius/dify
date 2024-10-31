@@ -50,6 +50,7 @@ class ProviderResponse(BaseModel):
     Model class for provider response.
     """
 
+    tenant_id: str
     provider: str
     label: I18nObject
     description: Optional[I18nObject] = None
@@ -71,7 +72,9 @@ class ProviderResponse(BaseModel):
     def __init__(self, **data) -> None:
         super().__init__(**data)
 
-        url_prefix = dify_config.CONSOLE_API_URL + f"/console/api/workspaces/current/model-providers/{self.provider}"
+        url_prefix = (
+            dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
+        )
         if self.icon_small is not None:
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
@@ -88,6 +91,7 @@ class ProviderWithModelsResponse(BaseModel):
     Model class for provider with models response.
     """
 
+    tenant_id: str
     provider: str
     label: I18nObject
     icon_small: Optional[I18nObject] = None
@@ -98,7 +102,9 @@ class ProviderWithModelsResponse(BaseModel):
     def __init__(self, **data) -> None:
         super().__init__(**data)
 
-        url_prefix = dify_config.CONSOLE_API_URL + f"/console/api/workspaces/current/model-providers/{self.provider}"
+        url_prefix = (
+            dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
+        )
         if self.icon_small is not None:
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
@@ -115,10 +121,14 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
     Simple provider entity response.
     """
 
+    tenant_id: str
+
     def __init__(self, **data) -> None:
         super().__init__(**data)
 
-        url_prefix = dify_config.CONSOLE_API_URL + f"/console/api/workspaces/current/model-providers/{self.provider}"
+        url_prefix = (
+            dify_config.CONSOLE_API_URL + f"/console/api/workspaces/{self.tenant_id}/model-providers/{self.provider}"
+        )
         if self.icon_small is not None:
             self.icon_small = I18nObject(
                 en_US=f"{url_prefix}/icon_small/en_US", zh_Hans=f"{url_prefix}/icon_small/zh_Hans"
@@ -150,5 +160,7 @@ class ModelWithProviderEntityResponse(ModelWithProviderEntity):
 
     provider: SimpleProviderEntityResponse
 
-    def __init__(self, model: ModelWithProviderEntity) -> None:
-        super().__init__(**model.model_dump())
+    def __init__(self, tenant_id: str, model: ModelWithProviderEntity) -> None:
+        dump_model = model.model_dump()
+        dump_model["provider"]["tenant_id"] = tenant_id
+        super().__init__(**dump_model)

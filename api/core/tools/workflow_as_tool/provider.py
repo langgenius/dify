@@ -62,7 +62,7 @@ class WorkflowToolProviderController(ToolProviderController):
                 credentials_schema=[],
                 plugin_id=None,
             ),
-            provider_id=db_provider.id,
+            provider_id=db_provider.id or "",
         )
 
         # init tools

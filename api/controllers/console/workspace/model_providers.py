@@ -1,6 +1,6 @@
 import io
 
-from flask import request, send_file
+from flask import send_file
 from flask_login import current_user
 from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
@@ -126,11 +126,7 @@ class ModelProviderIconApi(Resource):
     Get model provider icon
     """
 
-    def get(self, provider: str, icon_type: str, lang: str):
-        tenant_id = request.args.get("tenant_id")
-        if not tenant_id:
-            return {"content": "Invalid request."}, 400
-
+    def get(self, tenant_id: str, provider: str, icon_type: str, lang: str):
         model_provider_service = ModelProviderService()
         icon, mimetype = model_provider_service.get_model_provider_icon(
             tenant_id=tenant_id,
@@ -138,6 +134,9 @@ class ModelProviderIconApi(Resource):
             icon_type=icon_type,
             lang=lang,
         )
+
+        if not icon:
+            return {"message": "Icon not found"}, 404
 
         return send_file(io.BytesIO(icon), mimetype=mimetype)
 
@@ -193,11 +192,12 @@ api.add_resource(ModelProviderListApi, "/workspaces/current/model-providers")
 api.add_resource(ModelProviderCredentialApi, "/workspaces/current/model-providers/<path:provider>/credentials")
 api.add_resource(ModelProviderValidateApi, "/workspaces/current/model-providers/<path:provider>/credentials/validate")
 api.add_resource(ModelProviderApi, "/workspaces/current/model-providers/<path:provider>")
-api.add_resource(
-    ModelProviderIconApi, "/workspaces/current/model-providers/<path:provider>/<string:icon_type>/<string:lang>"
-)
 
 api.add_resource(
     PreferredProviderTypeUpdateApi, "/workspaces/current/model-providers/<path:provider>/preferred-provider-type"
 )
 api.add_resource(ModelProviderPaymentCheckoutUrlApi, "/workspaces/current/model-providers/<path:provider>/checkout-url")
+api.add_resource(
+    ModelProviderIconApi,
+    "/workspaces/<string:tenant_id>/model-providers/<path:provider>/<string:icon_type>/<string:lang>",
+)

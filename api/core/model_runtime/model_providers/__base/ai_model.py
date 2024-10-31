@@ -1,7 +1,7 @@
 import decimal
 from typing import Optional
 
-from pydantic import ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -15,7 +15,7 @@ from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.plugin.manager.model import PluginModelManager
 
 
-class AIModel:
+class AIModel(BaseModel):
     """
     Base class for all models.
     """
