@@ -46,6 +46,21 @@
 </p>
 
 
+## Content
+[Intro📖](https://github.com/langgenius/dify?tab=readme-ov-file#intro)
+[How to use🔧](https://github.com/langgenius/dify?tab=readme-ov-file#using-dify)
+[Stay Ahead🏃](https://github.com/langgenius/dify?tab=readme-ov-file#staying-ahead)
+[Quick-Start🌟](https://github.com/langgenius/dify?tab=readme-ov-file#quick-start)
+[Next Steps🏹](https://github.com/langgenius/dify?tab=readme-ov-file#next-steps)
+[Contributing💪](https://github.com/langgenius/dify?tab=readme-ov-file#contributing)
+[Community and Contact🏠](https://github.com/langgenius/dify?tab=readme-ov-file#community--contact)
+[Star-History📈](https://github.com/langgenius/dify?tab=readme-ov-file#star-history)
+[Security🔒](https://github.com/langgenius/dify?tab=readme-ov-file#security-disclosure)
+[License🤝](https://github.com/langgenius/dify?tab=readme-ov-file#license)
+
+> Make sure you read through this README before you start utilizing Dify😊
+
+## Intro
 Dify is an open-source LLM app development platform. Its intuitive interface combines AI workflow, RAG pipeline, agent capabilities, model management, observability features and more, letting you quickly go from prototype to production. Here's a list of the core features:
 </br> </br>
 
@@ -79,73 +94,6 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
   All of Dify's offerings come with corresponding APIs, so you could effortlessly integrate Dify into your own business logic.
 
 
-## Feature comparison
-<table style="width: 100%;">
-  <tr>
-    <th align="center">Feature</th>
-    <th align="center">Dify.AI</th>
-    <th align="center">LangChain</th>
-    <th align="center">Flowise</th>
-    <th align="center">OpenAI Assistants API</th>
-  </tr>
-  <tr>
-    <td align="center">Programming Approach</td>
-    <td align="center">API + App-oriented</td>
-    <td align="center">Python Code</td>
-    <td align="center">App-oriented</td>
-    <td align="center">API-oriented</td>
-  </tr>
-  <tr>
-    <td align="center">Supported LLMs</td>
-    <td align="center">Rich Variety</td>
-    <td align="center">Rich Variety</td>
-    <td align="center">Rich Variety</td>
-    <td align="center">OpenAI-only</td>
-  </tr>
-  <tr>
-    <td align="center">RAG Engine</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">Agent</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-  </tr>
-  <tr>
-    <td align="center">Workflow</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Observability</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Enterprise Features (SSO/Access control)</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-    <td align="center">❌</td>
-  </tr>
-  <tr>
-    <td align="center">Local Deployment</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">✅</td>
-    <td align="center">❌</td>
-  </tr>
-</table>
-
 ## Using Dify
 
 - **Cloud </br>**
@@ -169,20 +117,28 @@ Star Dify on GitHub and be instantly notified of new releases.
 
 
 ## Quick start
+The quickest way to deploy Dify locally is to run our docker-compose.yml. Follow the instructions to start in 5 minutes.
+
 > Before installing Dify, make sure your machine meets the following minimum system requirements:
 > 
 >- CPU >= 2 Core
 >- RAM >= 4 GiB
-
+>- Docker and Docker Compose Installed in the lateset version
 </br>
 
-The easiest way to start the Dify server is to run our [docker-compose.yml](docker/docker-compose.yaml) file. Before running the installation command, make sure that [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) are installed on your machine:
-
+Run the following command to clone the whole repo in your terminal.
 ```bash
+git clone https://github.com/langgenius/dify.git
+```
+After cloning,run the following command one by one
+```bash
+cd dify
 cd docker
 cp .env.example .env
 docker compose up -d
 ```
+Use docker compose up without "-d" to enable logs printing out in your terminal. This might be useful if you have encountered unknow problems when using Dify.
+If you encountered system error and would like to acquire help in Github issues, make sure you always paste logs of the error in the request to accerate the conversation.
 
 After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization process.
 
@@ -228,6 +184,7 @@ At the same time, please consider supporting Dify by sharing it on social media 
 * [GitHub Issues](https://github.com/langgenius/dify/issues). Best for: bugs you encounter using Dify.AI, and feature proposals. See our [Contribution Guide](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
 * [Discord](https://discord.gg/FngNHpbcY7). Best for: sharing your applications and hanging out with the community.
 * [X(Twitter)](https://twitter.com/dify_ai). Best for: sharing your applications and hanging out with the community.
+* Make sure a log, if possible, is attached to an error reported to maximize solution efficiency.
 
 ## Star history
 
