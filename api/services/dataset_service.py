@@ -736,11 +736,12 @@ class DocumentService:
                     dataset.retrieval_model = document_data.get("retrieval_model") or default_retrieval_model
 
         documents = []
-        batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
         if document_data.get("original_document_id"):
             document = DocumentService.update_document_with_dataset_id(dataset, document_data, account)
             documents.append(document)
+            batch = document.batch
         else:
+            batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
             # save process rule
             if not dataset_process_rule:
                 process_rule = document_data["process_rule"]
@@ -921,7 +922,7 @@ class DocumentService:
                 if duplicate_document_ids:
                     duplicate_document_indexing_task.delay(dataset.id, duplicate_document_ids)
 
-            return documents, batch
+        return documents, batch
 
     @staticmethod
     def check_documents_upload_quota(count: int, features: FeatureModel):
