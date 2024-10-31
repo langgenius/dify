@@ -1,7 +1,7 @@
 import { MarketplaceContextProvider } from './context'
 import Description from './description'
 import IntersectionLine from './intersection-line'
-import SearchBox from './search-box'
+import SearchBoxWrapper from './search-box/search-box-wrapper'
 import PluginTypeSwitch from './plugin-type-switch'
 import ListWrapper from './list/list-wrapper'
 import { getMarketplaceCollectionsAndPlugins } from './utils'
@@ -18,7 +18,7 @@ const Marketplace = async ({
     <MarketplaceContextProvider>
       <Description />
       <IntersectionLine />
-      <SearchBox />
+      <SearchBoxWrapper />
       <PluginTypeSwitch />
       <ListWrapper
         marketplaceCollections={marketplaceCollections}

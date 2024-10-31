@@ -6,7 +6,6 @@ import {
   RiCloseCircleFill,
   RiFilter3Line,
 } from '@remixicon/react'
-import { useMarketplaceContext } from '../context'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -16,9 +15,14 @@ import Checkbox from '@/app/components/base/checkbox'
 import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
 
-const TagsFilter = () => {
-  const filterPluginTags = useMarketplaceContext(v => v.filterPluginTags)
-  const handleFilterPluginTagsChange = useMarketplaceContext(v => v.handleFilterPluginTagsChange)
+type TagsFilterProps = {
+  tags: string[]
+  onTagsChange: (tags: string[]) => void
+}
+const TagsFilter = ({
+  tags,
+  onTagsChange,
+}: TagsFilterProps) => {
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const options = [
@@ -33,12 +37,12 @@ const TagsFilter = () => {
   ]
   const filteredOptions = options.filter(option => option.text.toLowerCase().includes(searchText.toLowerCase()))
   const handleCheck = (id: string) => {
-    if (filterPluginTags.includes(id))
-      handleFilterPluginTagsChange(filterPluginTags.filter((tag: string) => tag !== id))
+    if (tags.includes(id))
+      onTagsChange(tags.filter((tag: string) => tag !== id))
     else
-      handleFilterPluginTagsChange([...filterPluginTags, id])
+      onTagsChange([...tags, id])
   }
-  const selectedTagsLength = filterPluginTags.length
+  const selectedTagsLength = tags.length
 
   return (
     <PortalToFollowElem
@@ -66,7 +70,7 @@ const TagsFilter = () => {
               !selectedTagsLength && 'All Tags'
             }
             {
-              !!selectedTagsLength && filterPluginTags.slice(0, 2).join(',')
+              !!selectedTagsLength && tags.slice(0, 2).join(',')
             }
             {
               selectedTagsLength > 2 && (
@@ -80,7 +84,7 @@ const TagsFilter = () => {
             !!selectedTagsLength && (
               <RiCloseCircleFill
                 className='w-4 h-4 text-text-quaternary cursor-pointer'
-                onClick={() => handleFilterPluginTagsChange([])}
+                onClick={() => onTagsChange([])}
               />
             )
           }
@@ -111,7 +115,7 @@ const TagsFilter = () => {
                 >
                   <Checkbox
                     className='mr-1'
-                    checked={filterPluginTags.includes(option.value)}
+                    checked={tags.includes(option.value)}
                   />
                   <div className='px-1 system-sm-medium text-text-secondary'>
                     {option.text}
