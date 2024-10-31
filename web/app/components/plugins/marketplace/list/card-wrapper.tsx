@@ -1,5 +1,6 @@
 'use client'
 import { RiArrowRightUpLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import type { Plugin } from '@/app/components/plugins/types'
@@ -14,6 +15,7 @@ const CardWrapper = ({
   plugin,
   showInstallButton,
 }: CardWrapperProps) => {
+  const { t } = useTranslation()
   return (
     <div className='group relative rounded-xl cursor-pointer'>
       <Card
@@ -33,14 +35,15 @@ const CardWrapper = ({
               variant='primary'
               className='flex-1'
             >
-              Install
+              {t('plugin.detailPanel.operation.install')}
             </Button>
             <Button
               className='flex-1'
             >
-              <a href={`${MARKETPLACE_URL_PREFIX}/plugin/${plugin.org}/${plugin.name}`} target='_blank' className='flex items-center gap-0.5'></a>
-              Details
-              <RiArrowRightUpLine className='ml-1 w-4 h-4' />
+              <a href={`${MARKETPLACE_URL_PREFIX}/plugin/${plugin.org}/${plugin.name}`} target='_blank' className='flex items-center gap-0.5'>
+                {t('plugin.detailPanel.operation.detail')}
+                <RiArrowRightUpLine className='ml-1 w-4 h-4' />
+              </a>
             </Button>
           </div>
         )

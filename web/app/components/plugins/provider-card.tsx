@@ -1,6 +1,7 @@
 'use client'
 import React from 'react'
 import type { FC } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RiArrowRightUpLine, RiVerifiedBadgeLine } from '@remixicon/react'
 import Badge from '../base/badge'
 import type { Plugin } from './types'
@@ -22,6 +23,7 @@ const ProviderCard: FC<Props> = ({
   className,
   payload,
 }) => {
+  const { t } = useTranslation()
   const language = useGetLanguage()
   const { org, label } = payload
 
@@ -57,14 +59,14 @@ const ProviderCard: FC<Props> = ({
           className='flex-grow'
           variant='primary'
         >
-          Install
+          {t('plugin.detailPanel.operation.install')}
         </Button>
         <Button
           className='flex-grow'
           variant='secondary'
         >
           <a href={`${MARKETPLACE_URL_PREFIX}/plugin/${payload.org}/${payload.name}`} target='_blank' className='flex items-center gap-0.5'>
-            Details
+            {t('plugin.detailPanel.operation.detail')}
             <RiArrowRightUpLine className='w-4 h-4' />
           </a>
         </Button>
