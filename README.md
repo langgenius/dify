@@ -48,14 +48,23 @@
 
 ## Content
 [Intro📖](https://github.com/langgenius/dify?tab=readme-ov-file#intro)
+
 [How to use🔧](https://github.com/langgenius/dify?tab=readme-ov-file#using-dify)
+
 [Stay Ahead🏃](https://github.com/langgenius/dify?tab=readme-ov-file#staying-ahead)
+
 [Quick-Start🌟](https://github.com/langgenius/dify?tab=readme-ov-file#quick-start)
+
 [Next Steps🏹](https://github.com/langgenius/dify?tab=readme-ov-file#next-steps)
+
 [Contributing💪](https://github.com/langgenius/dify?tab=readme-ov-file#contributing)
+
 [Community and Contact🏠](https://github.com/langgenius/dify?tab=readme-ov-file#community--contact)
+
 [Star-History📈](https://github.com/langgenius/dify?tab=readme-ov-file#star-history)
+
 [Security🔒](https://github.com/langgenius/dify?tab=readme-ov-file#security-disclosure)
+
 [License🤝](https://github.com/langgenius/dify?tab=readme-ov-file#license)
 
 > Make sure you read through this README before you start utilizing Dify😊
@@ -126,23 +135,28 @@ The quickest way to deploy Dify locally is to run our docker-compose.yml. Follow
 >- Docker and Docker Compose Installed in the lateset version
 </br>
 
-Run the following command to clone the whole repo in your terminal.
+Run the following command in your terminal to clone the whole repo.
 ```bash
 git clone https://github.com/langgenius/dify.git
 ```
-After cloning,run the following command one by one
+After cloning,run the following command one by one.
 ```bash
 cd dify
 cd docker
 cp .env.example .env
 docker compose up -d
 ```
-Use docker compose up without "-d" to enable logs printing out in your terminal. This might be useful if you have encountered unknow problems when using Dify.
-If you encountered system error and would like to acquire help in Github issues, make sure you always paste logs of the error in the request to accerate the conversation.
+Use docker compose up without "-d" to enable logs printing out in your terminal. This might be useful if you have encountered unknow problems when using Dify.\
 
-After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization process.
+If you encountered system error and would like to acquire help in Github issues, make sure you always paste logs of the error in the request to accerate the conversation. Go to [Community & contact](https://github.com/langgenius/dify?tab=readme-ov-file#community--contact) for more information.
 
-> If you'd like to contribute to Dify or do additional development, refer to our [guide to deploying from source code](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)
+After running, you can access the Dify dashboard in your browser at [http://localhost/install](http://localhost/install) and start the initialization process. You will be asked to setup an admin account.
+
+If you forget your admin account, you can refer to this [guide](https://docs.dify.ai/getting-started/install-self-hosted/faqs#id-4.-how-to-reset-the-password-of-the-admin-account) to reset the password.
+
+> Please read the [Dify Documentation](https://docs.dify.ai/) for detailed how-to-use guidance. Most of the potential problems are explained in the doc.
+
+> If you'd like to contribute to Dify or make additional development, refer to our [guide to deploying from source code](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)
 
 ## Next steps
 
