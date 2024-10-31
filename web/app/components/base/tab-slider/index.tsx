@@ -2,6 +2,7 @@ import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import cn from '@/utils/classnames'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
+import { usePluginPageContext } from '../../plugins/plugin-page/context'
 type Option = {
   value: string
   text: string
@@ -22,6 +23,7 @@ const TabSlider: FC<TabSliderProps> = ({
 }) => {
   const [activeIndex, setActiveIndex] = useState(options.findIndex(option => option.value === value))
   const [sliderStyle, setSliderStyle] = useState({})
+  const pluginList = usePluginPageContext(v => v.installedPluginList)
 
   const updateSliderStyle = (index: number) => {
     const tabElement = document.getElementById(`tab-${index}`)
@@ -71,7 +73,7 @@ const TabSlider: FC<TabSliderProps> = ({
               uppercase={true}
               state={BadgeState.Default}
             >
-              6
+              {pluginList.length}
             </Badge>
           }
         </div>

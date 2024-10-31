@@ -6,10 +6,12 @@ import type {
   EndpointsRequest,
   EndpointsResponse,
   InstallPackageResponse,
+  InstalledPluginListResponse,
   Permissions,
   PluginDeclaration,
   PluginManifestInMarket,
   TaskStatusResponse,
+  UninstallPluginResponse,
   UpdateEndpointRequest,
 } from '@/app/components/plugins/types'
 import type { DebugInfo as DebugInfoTypes } from '@/app/components/plugins/types'
@@ -109,4 +111,12 @@ export const fetchPermission = async () => {
 
 export const updatePermission = async (permissions: Permissions) => {
   return post('/workspaces/current/plugin/permission/change', { body: permissions })
+}
+
+export const fetchInstalledPluginList: Fetcher<InstalledPluginListResponse, { url: string }> = ({ url }) => {
+  return get<InstalledPluginListResponse>(url)
+}
+
+export const uninstallPlugin = async (pluginId: string) => {
+  return post<UninstallPluginResponse>('/workspaces/current/plugin/uninstall', { body: { plugin_installation_id: pluginId } })
 }

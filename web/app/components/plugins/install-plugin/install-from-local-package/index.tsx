@@ -9,6 +9,7 @@ import Install from './steps/install'
 import Installed from '../base/installed'
 import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import { usePluginPageContext } from '../../plugin-page/context'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -28,6 +29,8 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
   const [manifest, setManifest] = useState<PluginDeclaration | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
+
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
       return t(`${i18nPrefix}.uploadFailed`)
@@ -63,9 +66,10 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
     setStep(InstallStep.uploadFailed)
   }, [])
 
-  const handleInstalled = useCallback(async () => {
+  const handleInstalled = useCallback(() => {
+    mutateInstalledPluginList()
     setStep(InstallStep.installed)
-  }, [])
+  }, [mutateInstalledPluginList])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     setStep(InstallStep.installFailed)

@@ -112,7 +112,7 @@ export type Plugin = {
   // Repo readme.md content
   introduction: string
   repository: string
-  category: string
+  category: PluginType
   install_count: number
   endpoint: {
     settings: CredentialFormSchemaBase[]
@@ -234,4 +234,30 @@ export type TaskStatusResponse = {
     completed_plugins: number
     plugins: PluginStatus[]
   }
+}
+
+export type MetaData = {
+  repo: string
+  version: string
+  package: string
+}
+
+export type InstalledPlugin = {
+  plugin_id: string
+  installation_id: string
+  declaration: PluginDeclaration
+  source: PluginSource
+  tenant_id: string
+  version: string
+  latest_version: string
+  endpoints_active: number
+  meta: MetaData
+}
+
+export type InstalledPluginListResponse = {
+  plugins: InstalledPlugin[]
+}
+
+export type UninstallPluginResponse = {
+  success: boolean
 }

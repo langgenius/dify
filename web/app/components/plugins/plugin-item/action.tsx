@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useCallback } from 'react'
+import type { MetaData } from '../types'
 import { RiDeleteBinLine, RiInformation2Line, RiLoopLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +9,8 @@ import PluginInfo from '../plugin-page/plugin-info'
 import ActionButton from '../../base/action-button'
 import Tooltip from '../../base/tooltip'
 import Confirm from '../../base/confirm'
+import { uninstallPlugin } from '@/service/plugins'
+import { usePluginPageContext } from '../plugin-page/context'
 
 const i18nPrefix = 'plugin.action'
 
@@ -20,22 +22,23 @@ type Props = {
   isShowInfo: boolean
   isShowDelete: boolean
   onDelete: () => void
+  meta: MetaData
 }
-
 const Action: FC<Props> = ({
+  pluginId,
   pluginName,
-  usedInApps,
   isShowFetchNewVersion,
   isShowInfo,
   isShowDelete,
   onDelete,
+  meta,
 }) => {
   const { t } = useTranslation()
-  const router = useRouter()
   const [isShowPluginInfo, {
     setTrue: showPluginInfo,
     setFalse: hidePluginInfo,
   }] = useBoolean(false)
+  const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
 
   const handleFetchNewVersion = () => { }
 
@@ -44,7 +47,14 @@ const Action: FC<Props> = ({
     setFalse: hideDeleteConfirm,
   }] = useBoolean(false)
 
-  // const handleDelete = () => { }
+  const handleDelete = useCallback(async () => {
+    const res = await uninstallPlugin(pluginId)
+    if (res.success) {
+      hideDeleteConfirm()
+      mutateInstalledPluginList()
+      onDelete()
+    }
+  }, [pluginId, onDelete])
   return (
     <div className='flex space-x-1'>
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
@@ -83,9 +93,9 @@ const Action: FC<Props> = ({
 
       {isShowPluginInfo && (
         <PluginInfo
-          repository='https://github.com/langgenius/dify-github-plugin'
-          release='1.2.5'
-          packageName='notion-sync.difypkg'
+          repository={meta.repo}
+          release={meta.version}
+          packageName={meta.package}
           onHide={hidePluginInfo}
         />
       )}
@@ -97,11 +107,12 @@ const Action: FC<Props> = ({
             content={
               <div>
                 {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{pluginName}</span>{t(`${i18nPrefix}.deleteContentRight`)}<br />
-                {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })}
+                {/* // todo: add usedInApps */}
+                {/* {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })} */}
               </div>
             }
             onCancel={hideDeleteConfirm}
-            onConfirm={onDelete}
+            onConfirm={handleDelete}
           />
         )
       }
