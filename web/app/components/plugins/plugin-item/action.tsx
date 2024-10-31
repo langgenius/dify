@@ -39,6 +39,10 @@ const Action: FC<Props> = ({
     setFalse: hidePluginInfo,
   }] = useBoolean(false)
   const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
+  const [deleting, {
+    setTrue: showDeleting,
+    setFalse: hideDeleting,
+  }] = useBoolean(false)
 
   const handleFetchNewVersion = () => { }
 
@@ -48,7 +52,9 @@ const Action: FC<Props> = ({
   }] = useBoolean(false)
 
   const handleDelete = useCallback(async () => {
+    showDeleting()
     const res = await uninstallPlugin(pluginId)
+    hideDeleting()
     if (res.success) {
       hideDeleteConfirm()
       mutateInstalledPluginList()
@@ -99,23 +105,21 @@ const Action: FC<Props> = ({
           onHide={hidePluginInfo}
         />
       )}
-      {
-        isShowDeleteConfirm && (
-          <Confirm
-            isShow
-            title={t(`${i18nPrefix}.delete`)}
-            content={
-              <div>
-                {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{pluginName}</span>{t(`${i18nPrefix}.deleteContentRight`)}<br />
-                {/* // todo: add usedInApps */}
-                {/* {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })} */}
-              </div>
-            }
-            onCancel={hideDeleteConfirm}
-            onConfirm={handleDelete}
-          />
-        )
-      }
+      <Confirm
+        isShow={isShowDeleteConfirm}
+        title={t(`${i18nPrefix}.delete`)}
+        content={
+          <div>
+            {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{pluginName}</span>{t(`${i18nPrefix}.deleteContentRight`)}<br />
+            {/* // todo: add usedInApps */}
+            {/* {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })} */}
+          </div>
+        }
+        onCancel={hideDeleteConfirm}
+        onConfirm={handleDelete}
+        isLoading={deleting}
+        isDisabled={deleting}
+      />
     </div>
   )
 }
