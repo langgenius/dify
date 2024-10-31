@@ -37,7 +37,7 @@ class TidbService:
         }
 
         spending_limit = {
-            "monthly": 100,
+            "monthly": dify_config.TIDB_SPEND_LIMIT,
         }
         password = str(uuid.uuid4()).replace("-", "")[:16]
         display_name = str(uuid.uuid4()).replace("-", "")[:16]

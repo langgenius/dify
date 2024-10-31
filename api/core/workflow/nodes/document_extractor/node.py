@@ -5,6 +5,7 @@ import json
 import docx
 import pandas as pd
 import pypdfium2
+import yaml
 from unstructured.partition.email import partition_email
 from unstructured.partition.epub import partition_epub
 from unstructured.partition.msg import partition_msg
@@ -101,6 +102,8 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
             return _extract_text_from_msg(file_content)
         case "application/json":
             return _extract_text_from_json(file_content)
+        case "application/x-yaml" | "text/yaml":
+            return _extract_text_from_yaml(file_content)
         case _:
             raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
@@ -112,6 +115,8 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             return _extract_text_from_plain_text(file_content)
         case ".json":
             return _extract_text_from_json(file_content)
+        case ".yaml" | ".yml":
+            return _extract_text_from_yaml(file_content)
         case ".pdf":
             return _extract_text_from_pdf(file_content)
         case ".doc" | ".docx":
@@ -147,6 +152,15 @@ def _extract_text_from_json(file_content: bytes) -> str:
         return json.dumps(json_data, indent=2, ensure_ascii=False)
     except (UnicodeDecodeError, json.JSONDecodeError) as e:
         raise TextExtractionError(f"Failed to decode or parse JSON file: {e}") from e
+
+
+def _extract_text_from_yaml(file_content: bytes) -> str:
+    """Extract the content from yaml file"""
+    try:
+        yaml_data = yaml.safe_load_all(file_content.decode("utf-8"))
+        return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
+    except (UnicodeDecodeError, yaml.YAMLError) as e:
+        raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
 
 
 def _extract_text_from_pdf(file_content: bytes) -> str:
