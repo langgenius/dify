@@ -3,6 +3,8 @@ import type { FC, RefObject } from 'react'
 import type { ToolWithProvider } from '../types'
 import { CollectionType } from '../../tools/types'
 
+export const CUSTOM_GROUP_NAME = '@@@custom@@@'
+export const WORKFLOW_GROUP_NAME = '@@@workflow@@@'
 /*
 {
   A: {
@@ -42,9 +44,9 @@ export const groupItems = (items: ToolWithProvider[], getFirstChar: (item: ToolW
     if (item.type === CollectionType.builtIn)
       groupName = item.author
     else if (item.type === CollectionType.custom)
-      groupName = 'custom'
+      groupName = CUSTOM_GROUP_NAME
     else
-      groupName = 'workflow'
+      groupName = WORKFLOW_GROUP_NAME
 
     if (!acc[letter][groupName])
       acc[letter][groupName] = []
