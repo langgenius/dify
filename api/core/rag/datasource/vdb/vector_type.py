@@ -22,4 +22,3 @@ class VectorType(str, Enum):
     UPSTASH = "upstash"
     TIDB_ON_QDRANT = "tidb_on_qdrant"
     OCEANBASE = "oceanbase"
-
