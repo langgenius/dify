@@ -10,7 +10,6 @@ import {
 } from '@remixicon/react'
 import SystemModelSelector from './system-model-selector'
 import ProviderAddedCard, { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
-// import ProviderCard from './provider-card'
 import type {
   CustomConfigurationModelFixedFields,
   ModelProvider,
@@ -35,6 +34,7 @@ import {
   useMarketplacePlugins,
 } from '@/app/components/plugins/marketplace/hooks'
 import { PluginType } from '@/app/components/plugins/types'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -213,7 +213,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
           </div>
           <div className='flex items-center mb-2 pt-2'>
             <span className='pr-1 text-text-tertiary system-sm-regular'>{t('common.modelProvider.discoverMore')}</span>
-            <Link target="_blank" href="/plugins" className='inline-flex items-center system-sm-medium text-text-accent'>
+            <Link target="_blank" href={`${MARKETPLACE_URL_PREFIX}`} className='inline-flex items-center system-sm-medium text-text-accent'>
               Dify Marketplace
               <RiArrowRightUpLine className='w-4 h-4' />
             </Link>
@@ -221,8 +221,8 @@ const ModelProviderPage = ({ searchText }: Props) => {
         </div>
         {!collapse && !isPluginsLoading && (
           <div className='grid grid-cols-2 gap-2'>
-            {plugins.map((plugin, index) => (
-              <ProviderCard key={index} installed={false} payload={plugin as any} />
+            {plugins.map(plugin => (
+              <ProviderCard key={plugin.plugin_id} payload={plugin} />
             ))}
           </div>
         )}
