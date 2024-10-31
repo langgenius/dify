@@ -236,6 +236,10 @@ services:
 #    image: langgenius/dify-api:0.9.2
     image: data/dify-api:0.9.2
     restart: always
+    dns:
+      - 10.173.49.128
+      - 10.173.49.129
+      - 8.8.8.8
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
@@ -248,7 +252,7 @@ services:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
     networks:
-      - ssrf_proxy_network
+#      - ssrf_proxy_network
       - default
 
   # worker service
