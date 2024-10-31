@@ -213,7 +213,7 @@ numexpr = "~2.9.0"
 pydub = "~0.25.1"
 qrcode = "~7.4.2"
 twilio = "~9.0.4"
-vanna = { version = "0.7.5", extras = ["postgres", "mysql", "clickhouse", "duckdb"] }
+vanna = { version = "0.7.5", extras = ["postgres", "mysql", "clickhouse", "duckdb", "oracle"] }
 wikipedia = "1.4.0"
 yfinance = "~0.2.40"
 
