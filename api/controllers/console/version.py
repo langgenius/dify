@@ -51,7 +51,7 @@ def _has_new_version(*, latest_version: str, current_version: str) -> bool:
     try:
         latest = version.parse(latest_version)
         current = version.parse(current_version)
-        
+
         # Compare versions
         return latest > current
     except version.InvalidVersion:
