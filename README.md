@@ -46,26 +46,26 @@
 </p>
 
 
-## Content
-[Intro📖](https://github.com/langgenius/dify?tab=readme-ov-file#intro)
+## Table of Content
+1. [Intro📖](https://github.com/langgenius/dify?tab=readme-ov-file#intro)
 
-[How to use🔧](https://github.com/langgenius/dify?tab=readme-ov-file#using-dify)
+2. [How to use🔧](https://github.com/langgenius/dify?tab=readme-ov-file#using-dify)
 
-[Stay Ahead🏃](https://github.com/langgenius/dify?tab=readme-ov-file#staying-ahead)
+3. [Stay Ahead🏃](https://github.com/langgenius/dify?tab=readme-ov-file#staying-ahead)
 
-[Quick-Start🌟](https://github.com/langgenius/dify?tab=readme-ov-file#quick-start)
+4. [Quick-Start🚀](https://github.com/langgenius/dify?tab=readme-ov-file#quick-start)
 
-[Next Steps🏹](https://github.com/langgenius/dify?tab=readme-ov-file#next-steps)
+5. [Next Steps🏹](https://github.com/langgenius/dify?tab=readme-ov-file#next-steps)
 
-[Contributing💪](https://github.com/langgenius/dify?tab=readme-ov-file#contributing)
+6. [Contributing💪](https://github.com/langgenius/dify?tab=readme-ov-file#contributing)
 
-[Community and Contact🏠](https://github.com/langgenius/dify?tab=readme-ov-file#community--contact)
+7. [Community and Contact🏠](https://github.com/langgenius/dify?tab=readme-ov-file#community--contact)
 
-[Star-History📈](https://github.com/langgenius/dify?tab=readme-ov-file#star-history)
+8. [Star-History📈](https://github.com/langgenius/dify?tab=readme-ov-file#star-history)
 
-[Security🔒](https://github.com/langgenius/dify?tab=readme-ov-file#security-disclosure)
+9. [Security🔒](https://github.com/langgenius/dify?tab=readme-ov-file#security-disclosure)
 
-[License🤝](https://github.com/langgenius/dify?tab=readme-ov-file#license)
+10. [License🤝](https://github.com/langgenius/dify?tab=readme-ov-file#license)
 
 > Make sure you read through this README before you start utilizing Dify😊
 
