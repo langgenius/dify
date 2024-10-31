@@ -1,6 +1,7 @@
 const translation = {
   pageTitle: 'Hey, let\'s get started!👋',
   welcome: 'Welcome to Dify, please log in to continue.',
+  loginTip: 'Only available for Shopee and SeaGroup employees.',
   email: 'Email address',
   emailPlaceholder: 'Your email',
   password: 'Password',
