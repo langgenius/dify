@@ -3,7 +3,7 @@ import logging
 import mimetypes
 from collections.abc import Generator
 from os import listdir, path
-from threading import Lock
+from threading import Lock, Thread
 from typing import Any, Optional, Union
 
 from configs import dify_config
@@ -647,4 +647,5 @@ class ToolManager:
             raise ValueError(f"provider type {provider_type} not found")
 
 
-ToolManager.load_builtin_providers_cache()
+# preload builtin tool providers
+Thread(target=ToolManager.load_builtin_providers_cache, name="pre_load_builtin_providers_cache", daemon=True).start()
