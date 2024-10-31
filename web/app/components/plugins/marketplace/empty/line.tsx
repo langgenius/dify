@@ -9,7 +9,7 @@ const Line = ({
       <path d="M1 0.5L1 240.5" stroke="url(#paint0_linear_1989_74474)"/>
       <defs>
         <linearGradient id="paint0_linear_1989_74474" x1="-7.99584" y1="240.5" x2="-7.88094" y2="0.50004" gradientUnits="userSpaceOnUse">
-          <stop stop-color="white" stopOpacity="0.01"/>
+          <stop stopColor="white" stopOpacity="0.01"/>
           <stop offset="0.503965" stopColor="#101828" stopOpacity="0.08"/>
           <stop offset="1" stopColor="white" stopOpacity="0.01"/>
         </linearGradient>

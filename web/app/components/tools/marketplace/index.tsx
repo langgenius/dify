@@ -4,16 +4,21 @@ import List from '@/app/components/plugins/marketplace/list'
 import Loading from '@/app/components/base/loading'
 
 type MarketplaceProps = {
+  searchPluginText: string
+  filterPluginTags: string[]
   onMarketplaceScroll: () => void
 }
 const Marketplace = ({
+  searchPluginText,
+  filterPluginTags,
   onMarketplaceScroll,
 }: MarketplaceProps) => {
   const {
     isLoading,
     marketplaceCollections,
     marketplaceCollectionPluginsMap,
-  } = useMarketplace()
+    plugins,
+  } = useMarketplace(searchPluginText, filterPluginTags)
 
   return (
     <div className='shrink-0 sticky -bottom-[442px] h-[530px] overflow-y-auto px-12 py-2 pt-0 bg-background-default-subtle'>
@@ -55,6 +60,7 @@ const Marketplace = ({
           <List
             marketplaceCollections={marketplaceCollections}
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+            plugins={plugins}
             showInstallButton
           />
         )
