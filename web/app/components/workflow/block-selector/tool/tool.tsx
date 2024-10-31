@@ -32,14 +32,11 @@ const Tool: FC<Props> = ({
   const language = useGetLanguage()
   const isTreeView = viewType === ViewType.tree
   const actions = payload.tools
-  const isToolPlugin = payload.type === CollectionType.builtIn
+  const hasAction = payload.type === CollectionType.builtIn
   const [isFold, {
     toggle: toggleFold,
   }] = useBoolean(false)
   const FoldIcon = isFold ? RiArrowDownSLine : RiArrowRightSLine
-  const {
-    label,
-  } = payload
 
   return (
     <div
@@ -48,21 +45,21 @@ const Tool: FC<Props> = ({
     >
       <div className={cn(className)}>
         <div
-          className='flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-gray-50 cursor-pointer'
-        // onClick={() => {
-        //   if (isToolPlugin) {
-        //     toggleFold()
-        //     return
-        //   }
-        //   onSelect(BlockEnum.Tool, {
-        //     provider_id: provider.id,
-        //     provider_type: provider.type,
-        //     provider_name: provider.name,
-        //     tool_name: payload.name,
-        //     tool_label: payload.label[language],
-        //     title: payload.label[language],
-        //   })
-        // }}
+          className='flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-gray-50 cursor-pointer select-none'
+          onClick={() => {
+            if (hasAction) {
+              toggleFold()
+              return
+            }
+            onSelect(BlockEnum.Tool, {
+              provider_id: payload.id,
+              provider_type: payload.type,
+              provider_name: payload.name,
+              tool_name: payload.name,
+              tool_label: payload.label[language],
+              title: payload.label[language],
+            })
+          }}
         >
           <div className='flex grow items-center h-8'>
             <BlockIcon
@@ -72,12 +69,12 @@ const Tool: FC<Props> = ({
             />
             <div className='ml-2 text-sm text-gray-900 flex-1 w-0 grow truncate'>{payload.label[language]}</div>
           </div>
-          {isToolPlugin && (
+          {hasAction && (
             <FoldIcon className={cn('w-4 h-4 text-text-quaternary shrink-0', isFold && 'text-text-tertiary')} />
           )}
         </div>
 
-        {isToolPlugin && (
+        {hasAction && isFold && (
           actions.map(action => (
             <ActonItem
               key={action.name}
