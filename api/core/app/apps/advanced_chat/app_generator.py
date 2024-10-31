@@ -87,6 +87,26 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         extras = {"auto_generate_conversation_name": args.get("auto_generate_name", False)}
 
+        def update_inputs_with_new_input(existing_inputs, new_input):
+            # 假设 existing_inputs 是一个字典，new_input 是新接收到的输入内容
+            existing_inputs.update(new_input)
+            return existing_inputs
+
+        new_input = {"key": "value"}  # 这是新的输入
+        inputs = (
+            conversation.inputs
+            if conversation
+            else self._prepare_user_inputs(
+                user_inputs=inputs,
+                app_config=app_config,
+                user_id=user.id,
+                role=role,
+            )
+        )
+
+        if new_input:  # 假设这是你获取新输入的条件
+            inputs = update_inputs_with_new_input(inputs, new_input)
+
         # get conversation
         conversation = None
         conversation_id = args.get("conversation_id")
