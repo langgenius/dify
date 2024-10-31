@@ -406,7 +406,9 @@ class FeishuRequest:
             "need_notification": need_notification,
         }
         res = self._send_request(url, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def create_spreadsheet(
         self,
@@ -818,5 +820,5 @@ class FeishuRequest:
             "record_ids": record_id_list,
             "user_id_type": user_id_type,
         }
-        res = self._send_request(url, method="GET", params=params, payload=payload)
+        res = self._send_request(url, method="POST", params=params, payload=payload)
         return res.get("data")

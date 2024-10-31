@@ -85,7 +85,7 @@ parameters:
       en_US: The page size, i.e., the number of data entries returned in a single request. The default value is 20, and the value range is [10,100].
       zh_Hans: 分页大小，即单次请求所返回的数据条目数。默认值为 20，取值范围为 [10,100]。
     llm_description: 分页大小，即单次请求所返回的数据条目数。默认值为 20，取值范围为 [10,100]。
-    form: llm
+    form: form
 
   - name: page_token
     type: string
