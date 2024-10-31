@@ -63,7 +63,8 @@ function reducer(state: IState, action: IAction) {
 const NormalForm = () => {
   const { t } = useTranslation()
   const { getNewAccessToken } = useRefreshToken()
-  const useEmailLogin = IS_CE_EDITION || SUPPORT_MAIL_LOGIN
+//   const useEmailLogin = IS_CE_EDITION || SUPPORT_MAIL_LOGIN
+  const useEmailLogin = false
 
   const router = useRouter()
 

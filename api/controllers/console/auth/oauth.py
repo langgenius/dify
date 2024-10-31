@@ -34,6 +34,7 @@ def get_oauth_providers():
                 client_id=dify_config.GOOGLE_CLIENT_ID,
                 client_secret=dify_config.GOOGLE_CLIENT_SECRET,
                 redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/google",
+                # redirect_uri="http://datafe.dev.shopee.io:9999/console/api/oauth/authorize/google",
             )
 
         OAUTH_PROVIDERS = {"github": github_oauth, "google": google_oauth}
@@ -45,11 +46,12 @@ class OAuthLogin(Resource):
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
-            print(vars(oauth_provider))
+            logging.info(vars(oauth_provider))
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
         auth_url = oauth_provider.get_authorization_url()
+        logging.info(auth_url)
         return redirect(auth_url)
 
 
@@ -70,9 +72,17 @@ class OAuthCallback(Resource):
             return {"error": "OAuth process failed"}, 400
 
         account = _generate_account(provider, user_info)
+        logging.info(vars(account))
+
         # Check account status
-        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
-            return {"error": "Account is banned or closed."}, 403
+        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value,
+                              AccountStatus.UNINITIALIZED.value}:
+            return redirect(
+                dify_config.CONSOLE_WEB_URL + "/signin?message=Your account is uninitialized. please contact admin to invite you to join in a workspace")
+
+            # return redirect(
+            #     f"http://datafe.dev.shopee.io:9999/signin?message=Account is uninitialized. please contact admin to invite you to join in a workspace"
+            # )
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
@@ -90,6 +100,10 @@ class OAuthCallback(Resource):
             f"{dify_config.CONSOLE_WEB_URL}?access_token={token_pair.access_token}&refresh_token={token_pair.refresh_token}"
         )
 
+        # return redirect(
+        #     f"http://datafe.dev.shopee.io:9999?access_token={token_pair.access_token}&refresh_token={token_pair.refresh_token}"
+        # )
+
 
 def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Optional[Account]:
     account = Account.get_by_openid(provider, user_info.id)
@@ -105,6 +119,9 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     account = _get_account_by_openid_or_email(provider, user_info)
 
     if not account:
+        return Account(
+            status=AccountStatus.UNINITIALIZED.value,
+        )
         # Create account
         account_name = user_info.name or "Dify"
         account = RegisterService.register(
