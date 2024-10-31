@@ -88,6 +88,7 @@ const Blocks = ({
         isFlatView ? (
           <ToolListFlatView
             payload={listViewToolData}
+            isShowLetterIndex={isShowLetterIndex}
             onSelect={onSelect}
           />
         ) : (

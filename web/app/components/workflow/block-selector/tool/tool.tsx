@@ -56,7 +56,7 @@ const Tool: FC<Props> = ({
   return (
     <div
       key={payload.id}
-      className='mb-1 last-of-type:mb-0'
+      className={cn('mb-1 last-of-type:mb-0', isShowLetterIndex && 'mr-6')}
     >
       <div className={cn(className)}>
         <div
@@ -99,7 +99,6 @@ const Tool: FC<Props> = ({
           actions.map(action => (
             <ActonItem
               key={action.name}
-              className={cn(isShowLetterIndex && 'mr-6')}
               provider={payload}
               payload={action}
               onSelect={onSelect}
