@@ -54,7 +54,7 @@ const List = ({
     window.open(urlWithSearchText, '_blank')
   }
 
-  if (!hasSearchText) {
+  if (hasSearchText) {
     return (
       <Link
         className='sticky bottom-0 z-10 flex h-8 px-4 py-1 system-sm-medium items-center rounded-b-xl border-t border-[0.5px] border-components-panel-border bg-components-panel-bg-blur  shadow-lg text-text-accent-light-mode-only cursor-pointer'

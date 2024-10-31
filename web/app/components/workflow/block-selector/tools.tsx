@@ -1,18 +1,17 @@
 import {
   memo,
-  useCallback,
+  useMemo,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BlockEnum, ToolWithProvider } from '../types'
-import { CollectionType } from '../../tools/types'
 import IndexBar, { groupItems } from './index-bar'
 import type { ToolDefaultValue } from './types'
-import ToolItem from './tool-item'
 import { ViewType } from './view-type-select'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { useGetLanguage } from '@/context/i18n'
-import cn from '@/utils/classnames'
+import ToolListTreeView from './tool/tool-list-tree-view/list'
+import ToolListFlatView from './tool/tool-list-flat-view/list'
 
 type ToolsProps = {
   showWorkflowEmpty: boolean
@@ -28,52 +27,41 @@ const Blocks = ({
 }: ToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
-  const isListView = viewType === ViewType.list
+  const isFlatView = viewType === ViewType.flat
   const isTreeView = viewType === ViewType.tree
+  const isShowLetterIndex = isFlatView && tools.length > 10
 
-  const { letters, groups: groupedTools } = groupItems(tools, tool => (tool as any).label[language][0])
-  const toolRefs = useRef({})
-
-  const renderGroup = useCallback((toolWithProvider: ToolWithProvider) => {
-    const list = toolWithProvider.tools
-
-    return (
-      <div
-        key={toolWithProvider.id}
-        className='mb-1 last-of-type:mb-0'
-      >
-        {isTreeView && (
-          <div className='flex items-start px-3 h-[22px] text-xs font-medium text-gray-500'>
-            {toolWithProvider.label[language]}
-          </div>
-        )}
-        {
-          list.map(tool => (
-            <ToolItem
-              key={tool.name}
-              className={cn(isListView && 'mr-6')}
-              isToolPlugin={toolWithProvider.type === CollectionType.builtIn}
-              provider={toolWithProvider}
-              payload={tool}
-              onSelect={onSelect}
-            />
-          ))
-        }
-      </div>
-    )
-  }, [onSelect, language])
-
-  const renderLetterGroup = (letter: string) => {
-    const tools = groupedTools[letter]
-    return (
-      <div
-        key={letter}
-        ref={el => ((toolRefs as any).current[letter] = el) as any}
-      >
-        {tools.map(renderGroup)}
-      </div>
-    )
+  /*
+  treeViewToolsData:
+  {
+    A: {
+      'google': [ // plugin organize name
+        ...tools
+      ],
+      'custom': [ // custom tools
+        ...tools
+      ],
+      'workflow': [ // workflow as tools
+        ...tools
+      ]
+    }
   }
+  */
+  const { letters, groups: withLetterAndGroupViewToolsData } = groupItems(tools, tool => (tool as any).label[language][0])
+  const treeViewToolsData = useMemo(() => {
+    const result: Record<string, ToolWithProvider[]> = {}
+    Object.keys(withLetterAndGroupViewToolsData).forEach((letter) => {
+      Object.keys(withLetterAndGroupViewToolsData[letter]).forEach((groupName) => {
+        if (!result[groupName])
+          result[groupName] = []
+
+        result[groupName].push(...withLetterAndGroupViewToolsData[letter][groupName])
+      })
+    })
+    return result
+  }, [withLetterAndGroupViewToolsData])
+
+  const toolRefs = useRef({})
 
   return (
     <div className='p-1 max-w-[320px]'>
@@ -87,8 +75,19 @@ const Blocks = ({
           <Empty />
         </div>
       )}
-      {!!tools.length && letters.map(renderLetterGroup)}
-      {isListView && tools.length > 10 && <IndexBar letters={letters} itemRefs={toolRefs} />}
+      {!!tools.length && (
+        isFlatView ? (
+          <ToolListFlatView
+          />
+        ) : (
+          <ToolListTreeView
+            payload={treeViewToolsData}
+            onSelect={onSelect}
+          />
+        )
+      )}
+
+      {isShowLetterIndex && <IndexBar letters={letters} itemRefs={toolRefs} />}
     </div>
   )
 }

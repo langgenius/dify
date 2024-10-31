@@ -1,8 +1,25 @@
 import { pinyin } from 'pinyin-pro'
 import type { FC, RefObject } from 'react'
+import type { ToolWithProvider } from '../types'
+import { CollectionType } from '../../tools/types'
 
-export const groupItems = (items: Array<any>, getFirstChar: (item: string) => string) => {
-  const groups = items.reduce((acc, item) => {
+/*
+{
+  A: {
+    'google': [ // plugin organize name
+      ...tools
+    ],
+    'custom': [ // custom tools
+      ...tools
+    ],
+    'workflow': [ // workflow as tools
+      ...tools
+    ]
+  }
+}
+*/
+export const groupItems = (items: ToolWithProvider[], getFirstChar: (item: ToolWithProvider) => string) => {
+  const groups = items.reduce((acc: Record<string, Record<string, ToolWithProvider[]>>, item) => {
     const firstChar = getFirstChar(item)
     if (!firstChar || firstChar.length === 0)
       return acc
@@ -19,9 +36,21 @@ export const groupItems = (items: Array<any>, getFirstChar: (item: string) => st
       letter = '#'
 
     if (!acc[letter])
-      acc[letter] = []
+      acc[letter] = {}
 
-    acc[letter].push(item)
+    let groupName: string = ''
+    if (item.type === CollectionType.builtIn)
+      groupName = item.author
+    else if (item.type === CollectionType.custom)
+      groupName = 'custom'
+    else
+      groupName = 'workflow'
+
+    if (!acc[letter][groupName])
+      acc[letter][groupName] = []
+
+    acc[letter][groupName].push(item)
+
     return acc
   }, {})
 

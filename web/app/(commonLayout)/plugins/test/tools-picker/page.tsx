@@ -22,7 +22,8 @@ const ToolsPicker = () => {
       setCustomTools(customTools)
       setWorkflowTools(workflowTools)
     })()
-  })
+  }, [])
+
   return (
     <div className="relative mt-5 mx-auto w-[320px] bg-white">
       <AllTools

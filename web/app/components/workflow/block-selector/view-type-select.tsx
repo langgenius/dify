@@ -5,7 +5,7 @@ import { RiNodeTree, RiSortAlphabetAsc } from '@remixicon/react'
 import cn from '@/utils/classnames'
 
 export enum ViewType {
-  list = 'list',
+  flat = 'flat',
   tree = 'tree',
 }
 
@@ -31,12 +31,12 @@ const ViewTypeSelect: FC<Props> = ({
       <div
         className={
           cn('p-[3px] rounded-lg',
-            viewType === ViewType.list
+            viewType === ViewType.flat
               ? 'bg-components-segmented-control-item-active-bg shadow-xs text-text-accent-light-mode-only'
               : 'text-text-tertiary cursor-pointer',
           )
         }
-        onClick={handleChange(ViewType.list)}
+        onClick={handleChange(ViewType.flat)}
       >
         <RiSortAlphabetAsc className='w-4 h-4' />
       </div>

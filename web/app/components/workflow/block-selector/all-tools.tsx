@@ -33,7 +33,7 @@ const AllTools = ({
   const language = useGetLanguage()
   const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
-  const [activeView, setActiveView] = useState<ViewType>(ViewType.list)
+  const [activeView, setActiveView] = useState<ViewType>(ViewType.flat)
 
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
