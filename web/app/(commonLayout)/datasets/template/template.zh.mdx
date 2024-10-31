@@ -1117,21 +1117,21 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       tag="POST"
       label="/datasets/{dataset_id}/retrieve"
       targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/retrieve' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
-        "query": "test",
-        "retrieval_model": {
-            "search_method": "keyword_search",
-            "reranking_enable": false,
-            "reranking_mode": null,
-            "reranking_model": {
-                "reranking_provider_name": "",
-                "reranking_model_name": ""
-            },
-            "weights": null,
-            "top_k": 1,
-            "score_threshold_enabled": false,
-            "score_threshold": null
-        }
-    }'`}
+    "query": "test",
+    "retrieval_model": {
+        "search_method": "keyword_search",
+        "reranking_enable": false,
+        "reranking_mode": null,
+        "reranking_model": {
+            "reranking_provider_name": "",
+            "reranking_model_name": ""
+        },
+        "weights": null,
+        "top_k": 1,
+        "score_threshold_enabled": false,
+        "score_threshold": null
+    }
+}'`}
     >
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/retrieve' \

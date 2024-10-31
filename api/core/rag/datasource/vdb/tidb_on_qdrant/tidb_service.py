@@ -4,6 +4,7 @@ import uuid
 import requests
 from requests.auth import HTTPDigestAuth
 
+from configs import dify_config
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from models.dataset import TidbAuthBinding
@@ -36,7 +37,7 @@ class TidbService:
         }
 
         spending_limit = {
-            "monthly": 100,
+            "monthly": dify_config.TIDB_SPEND_LIMIT,
         }
         password = str(uuid.uuid4()).replace("-", "")[:16]
         display_name = str(uuid.uuid4()).replace("-", "")[:16]
@@ -208,7 +209,7 @@ class TidbService:
             }
 
             spending_limit = {
-                "monthly": 10,
+                "monthly": dify_config.TIDB_SPEND_LIMIT,
             }
             password = str(uuid.uuid4()).replace("-", "")[:16]
             display_name = str(uuid.uuid4()).replace("-", "")

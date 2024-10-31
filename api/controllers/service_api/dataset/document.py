@@ -230,7 +230,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         document = documents[0]
-        documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": batch}
+        documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": document.batch}
         return documents_and_batch_fields, 200
 
 

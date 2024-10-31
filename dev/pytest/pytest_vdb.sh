@@ -13,3 +13,4 @@ pytest api/tests/integration_tests/vdb/chroma \
   api/tests/integration_tests/vdb/tcvectordb \
   api/tests/integration_tests/vdb/upstash \
   api/tests/integration_tests/vdb/couchbase \
+  api/tests/integration_tests/vdb/oceanbase \
