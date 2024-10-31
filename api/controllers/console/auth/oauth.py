@@ -36,7 +36,7 @@ def get_oauth_providers():
                 redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/google",
                 # redirect_uri="http://datafe.dev.shopee.io:9999/console/api/oauth/authorize/google",
             )
-
+        logging.info(f"console config --> {dify_config.CONSOLE_API_URL}, {dify_config.CONSOLE_WEB_URL}")
         OAUTH_PROVIDERS = {"github": github_oauth, "google": google_oauth}
         return OAUTH_PROVIDERS
 
@@ -46,7 +46,7 @@ class OAuthLogin(Resource):
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
-            logging.info("oauth_provider -->", oauth_provider)
+            logging.info(f"oauth_provider-->{oauth_provider}")
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
