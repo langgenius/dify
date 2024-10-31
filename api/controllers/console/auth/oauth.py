@@ -62,7 +62,7 @@ class OAuthCallback(Resource):
             return {"error": "Invalid provider"}, 400
 
         code = request.args.get("code")
-        logging.info(f"code-->{code}")
+        logging.info(f"code-->{code}, oauth_provider-->{oauth_provider}")
         try:
             token = oauth_provider.get_access_token(code)
             user_info = oauth_provider.get_user_info(token)
