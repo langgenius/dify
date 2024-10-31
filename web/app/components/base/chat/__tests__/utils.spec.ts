@@ -255,4 +255,10 @@ describe('build chat item tree and get thread messages', () => {
     const threadMessages6_2 = getThreadMessages(tree6, 'ff4c2b43-48a5-47ad-9dc5-08b34ddba61b')
     expect(threadMessages6_2).toMatchSnapshot()
   })
+
+  const partialMessages = (realWorldMessages as ChatItemInTree[]).slice(-10)
+  const tree7 = buildChatItemTree(partialMessages)
+  it('should work with partial messages', () => {
+    expect(tree7).toMatchSnapshot()
+  })
 })

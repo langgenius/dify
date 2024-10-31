@@ -195,8 +195,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         conversation_id: detail.id,
         limit: 10,
       }
-      if (allChatItems.at(-1)?.id)
-        params.first_id = allChatItems.at(-1)?.id.replace('question-', '')
+      if (allChatItems[0]?.id)
+        params.first_id = allChatItems[0]?.id.replace('question-', '')
       const messageRes = await fetchChatMessages({
         url: `/apps/${appDetail?.id}/chat-messages`,
         params,
