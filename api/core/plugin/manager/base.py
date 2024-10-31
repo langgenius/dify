@@ -1,4 +1,5 @@
 import json
+import logging
 from collections.abc import Callable, Generator
 from typing import Optional, TypeVar
 
@@ -20,6 +21,8 @@ plugin_daemon_inner_api_baseurl = dify_config.PLUGIN_API_URL
 plugin_daemon_inner_api_key = dify_config.PLUGIN_API_KEY
 
 T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
+
+logger = logging.getLogger(__name__)
 
 
 class BasePluginManager:
@@ -44,9 +47,14 @@ class BasePluginManager:
         if headers.get("Content-Type") == "application/json" and isinstance(data, dict):
             data = json.dumps(data)
 
-        response = requests.request(
-            method=method, url=str(url), headers=headers, data=data, params=params, stream=stream, files=files
-        )
+        try:
+            response = requests.request(
+                method=method, url=str(url), headers=headers, data=data, params=params, stream=stream, files=files
+            )
+        except requests.exceptions.ConnectionError as e:
+            logger.exception(f"Request to Plugin Daemon Service failed: {e}")
+            raise ValueError("Request to Plugin Daemon Service failed")
+
         return response
 
     def _stream_request(

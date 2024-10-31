@@ -47,6 +47,7 @@ class ModelProviderService:
                     continue
 
             provider_response = ProviderResponse(
+                tenant_id=tenant_id,
                 provider=provider_configuration.provider.provider,
                 label=provider_configuration.provider.label,
                 description=provider_configuration.provider.description,
@@ -90,7 +91,8 @@ class ModelProviderService:
 
         # Get provider available models
         return [
-            ModelWithProviderEntityResponse(model) for model in provider_configurations.get_models(provider=provider)
+            ModelWithProviderEntityResponse(tenant_id=tenant_id, model=model)
+            for model in provider_configurations.get_models(provider=provider)
         ]
 
     def get_provider_credentials(self, tenant_id: str, provider: str) -> Optional[dict]:
@@ -303,6 +305,7 @@ class ModelProviderService:
 
             providers_with_models.append(
                 ProviderWithModelsResponse(
+                    tenant_id=tenant_id,
                     provider=provider,
                     label=first_model.provider.label,
                     icon_small=first_model.provider.icon_small,
@@ -373,6 +376,7 @@ class ModelProviderService:
                     model=result.model,
                     model_type=result.model_type,
                     provider=SimpleProviderEntityResponse(
+                        tenant_id=tenant_id,
                         provider=result.provider.provider,
                         label=result.provider.label,
                         icon_small=result.provider.icon_small,
