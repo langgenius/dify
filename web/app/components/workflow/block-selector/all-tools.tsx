@@ -15,20 +15,26 @@ import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/card/card-mock'
+import ActionButton from '../../base/action-button'
+import { RiAddLine } from '@remixicon/react'
 
 type AllToolsProps = {
+  className?: string
   searchText: string
   buildInTools: ToolWithProvider[]
   customTools: ToolWithProvider[]
   workflowTools: ToolWithProvider[]
   onSelect: OnSelectBlock
+  supportAddCustomTool?: boolean
 }
 const AllTools = ({
+  className,
   searchText,
   onSelect,
   buildInTools,
   workflowTools,
   customTools,
+  supportAddCustomTool,
 }: AllToolsProps) => {
   const language = useGetLanguage()
   const tabs = useToolTabs()
@@ -57,7 +63,7 @@ const AllTools = ({
   const wrapElemRef = useRef<HTMLDivElement>(null)
 
   return (
-    <div>
+    <div className={cn(className)}>
       <div className='flex items-center justify-between px-3 bg-background-default-hover border-b-[0.5px] border-black/[0.08] shadow-xs'>
         <div className='flex items-center h-8 space-x-1'>
           {
@@ -77,6 +83,11 @@ const AllTools = ({
           }
         </div>
         <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
+        {supportAddCustomTool && (
+          <ActionButton>
+            <RiAddLine className='w-4 h-4' />
+          </ActionButton>
+        )}
       </div>
       <div
         ref={wrapElemRef}
