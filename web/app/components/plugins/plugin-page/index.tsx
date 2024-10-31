@@ -17,6 +17,7 @@ import InstallPluginDropdown from './install-plugin-dropdown'
 import { useUploader } from './use-uploader'
 import usePermission from './use-permission'
 import DebugInfo from './debug-info'
+import { usePluginTasks } from './hooks'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
@@ -123,6 +124,8 @@ const PluginPage = ({
   })
 
   const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
+
+  const { pluginTasks } = usePluginTasks()
 
   return (
     <div

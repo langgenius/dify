@@ -224,16 +224,22 @@ export type PluginStatus = {
   message: string
 }
 
+export type PluginTask = {
+  id: string
+  created_at: string
+  updated_at: string
+  status: string
+  total_plugins: number
+  completed_plugins: number
+  plugins: PluginStatus[]
+}
+
 export type TaskStatusResponse = {
-  task: {
-    id: string
-    created_at: string
-    updated_at: string
-    status: string
-    total_plugins: number
-    completed_plugins: number
-    plugins: PluginStatus[]
-  }
+  task: PluginTask
+}
+
+export type PluginTasksResponse = {
+  tasks: PluginTask[]
 }
 
 export type MetaData = {

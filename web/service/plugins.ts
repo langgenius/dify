@@ -10,6 +10,7 @@ import type {
   Permissions,
   PluginDeclaration,
   PluginManifestInMarket,
+  PluginTasksResponse,
   TaskStatusResponse,
   UninstallPluginResponse,
   UpdateEndpointRequest,
@@ -99,6 +100,10 @@ export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse
 
 export const fetchMarketplaceCollectionPlugins: Fetcher<MarketplaceCollectionPluginsResponse, { url: string }> = ({ url }) => {
   return get<MarketplaceCollectionPluginsResponse>(url)
+}
+
+export const fetchPluginTasks = async () => {
+  return get<PluginTasksResponse>('/workspaces/current/plugin/tasks?page=1&page_size=255')
 }
 
 export const checkTaskStatus = async (taskId: string) => {
