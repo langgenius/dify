@@ -132,6 +132,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <Button
+          className='relative'
           variant={notConfigured ? 'primary' : 'secondary'}
           size='small'
         >

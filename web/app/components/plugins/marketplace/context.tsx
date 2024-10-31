@@ -130,7 +130,7 @@ export const MarketplaceContextProvider = ({
       queryMarketplaceCollectionsAndPlugins({
         category: type === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : type,
       })
-      setPlugins(undefined)
+      setPlugins([])
 
       return
     }
