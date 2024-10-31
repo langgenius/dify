@@ -34,9 +34,7 @@ def get_oauth_providers():
                 client_id=dify_config.GOOGLE_CLIENT_ID,
                 client_secret=dify_config.GOOGLE_CLIENT_SECRET,
                 redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/google",
-                # redirect_uri="http://datafe.dev.shopee.io:9999/console/api/oauth/authorize/google",
             )
-        logging.info(f"console config --> {dify_config.CONSOLE_API_URL}, {dify_config.CONSOLE_WEB_URL}")
         OAUTH_PROVIDERS = {"github": github_oauth, "google": google_oauth}
         return OAUTH_PROVIDERS
 
@@ -64,6 +62,7 @@ class OAuthCallback(Resource):
             return {"error": "Invalid provider"}, 400
 
         code = request.args.get("code")
+        logging.info(f"code-->{code}")
         try:
             token = oauth_provider.get_access_token(code)
             user_info = oauth_provider.get_user_info(token)
@@ -71,6 +70,7 @@ class OAuthCallback(Resource):
             logging.exception(f"An error occurred during the OAuth process with {provider}: {e.response.text}")
             return {"error": "OAuth process failed"}, 400
 
+        logging.info(f"token-->{token}, user_info-->{user_info}")
         account = _generate_account(provider, user_info)
         logging.info(vars(account))
 
