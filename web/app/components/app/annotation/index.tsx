@@ -27,7 +27,7 @@ import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import type { App } from '@/types/app'
 
-interface Props {
+type Props = {
   appDetail: App
 }
 
@@ -283,6 +283,7 @@ const Annotation: FC<Props> = ({
               if (
                 embeddingModel.embedding_model_name !== annotationConfig?.embedding_model?.embedding_model_name
                 || embeddingModel.embedding_provider_name !== annotationConfig?.embedding_model?.embedding_provider_name
+                || embeddingModel.plugin_id !== annotationConfig?.embedding_model?.plugin_id
               ) {
                 const { job_id: jobId }: any = await updateAnnotationStatus(appDetail.id, AnnotationEnableStatus.enable, embeddingModel, score)
                 await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)

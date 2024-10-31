@@ -23,8 +23,9 @@ export type HitHistoryItem = {
 }
 
 export type EmbeddingModelConfig = {
-  embedding_provider_name: string
+  plugin_id: string
   embedding_model_name: string
+  embedding_provider_name: string
 }
 
 export enum AnnotationEnableStatus {
