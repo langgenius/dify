@@ -188,6 +188,17 @@ export const useFile = (fileConfig: FileUpload) => {
     }
   }, [fileStore, notify, t, handleUpdateFile, params])
 
+  const startProgressTimer = useCallback((fileId: string) => {
+    const timer = setInterval(() => {
+      const files = fileStore.getState().files
+      const file = files.find(file => file.id === fileId)
+
+      if (file && file.progress < 80 && file.progress >= 0)
+        handleUpdateFile({ ...file, progress: file.progress + 20 })
+      else
+        clearTimeout(timer)
+    }, 200)
+  }, [fileStore, handleUpdateFile])
   const handleLoadFileFromLink = useCallback((url: string) => {
     const allowedFileTypes = fileConfig.allowed_file_types
 
@@ -197,11 +208,13 @@ export const useFile = (fileConfig: FileUpload) => {
       type: '',
       size: 0,
       progress: 0,
-      transferMethod: TransferMethod.remote_url,
+      transferMethod: TransferMethod.local_file,
       supportFileType: '',
       url,
+      isRemote: true,
     }
     handleAddFile(uploadingFile)
+    startProgressTimer(uploadingFile.id)
 
     uploadRemoteFileInfo(url).then((res) => {
       const newFile = {
@@ -221,7 +234,7 @@ export const useFile = (fileConfig: FileUpload) => {
       notify({ type: 'error', message: t('common.fileUploader.pasteFileLinkInvalid') })
       handleRemoveFile(uploadingFile.id)
     })
-  }, [checkSizeLimit, handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types])
+  }, [checkSizeLimit, handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types, startProgressTimer])
 
   const handleLoadFileFromLinkSuccess = useCallback(() => { }, [])
 
