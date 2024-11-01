@@ -1,6 +1,6 @@
 from flask_restful import Resource, reqparse
 
-from controllers.console.setup import setup_required
+from controllers.console.wraps import setup_required
 from controllers.inner_api import api
 from controllers.inner_api.wraps import inner_api_only
 from events.tenant_event import tenant_was_created

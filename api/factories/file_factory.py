@@ -160,7 +160,7 @@ def _build_from_local_file(
         tenant_id=tenant_id,
         type=file_type,
         transfer_method=transfer_method,
-        remote_url=None,
+        remote_url=row.source_url,
         related_id=mapping.get("upload_file_id"),
         _extra_config=config,
         size=row.size,

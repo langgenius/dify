@@ -105,8 +105,8 @@ class Workflow(db.Model):
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
-    updated_by: Mapped[str] = mapped_column(StringUUID)
-    updated_at: Mapped[datetime] = mapped_column(db.DateTime)
+    updated_by: Mapped[Optional[str]] = mapped_column(StringUUID)
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False)
     _environment_variables: Mapped[str] = mapped_column(
         "environment_variables", db.Text, nullable=False, server_default="{}"
     )

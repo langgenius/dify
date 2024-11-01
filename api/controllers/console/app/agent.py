@@ -2,8 +2,7 @@ from flask_restful import Resource, reqparse
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from libs.helper import uuid_value
 from libs.login import login_required
 from models.model import AppMode
