@@ -30,6 +30,8 @@ def upgrade():
                nullable=False)
 
     op.execute("UPDATE workflows SET updated_at = created_at WHERE updated_at IS NULL")
+    op.execute("UPDATE workflows SET graph = '' WHERE graph IS NULL")
+    op.execute("UPDATE workflows SET features = '' WHERE features IS NULL")
 
     with op.batch_alter_table('workflows', schema=None) as batch_op:
         batch_op.alter_column('graph',
