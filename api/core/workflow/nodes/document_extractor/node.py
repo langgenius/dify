@@ -266,14 +266,12 @@ def _extract_text_from_pptx(file_content: bytes) -> str:
     try:
         with io.BytesIO(file_content) as file:
             if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
-
                 elements = partition_via_api(
                     file=file,
                     api_url=dify_config.UNSTRUCTURED_API_URL,
                     api_key=dify_config.UNSTRUCTURED_API_KEY,
                 )
             else:
-
                 elements = partition_pptx(file=file)
         return "\n".join([getattr(element, "text", "") for element in elements])
     except Exception as e:
