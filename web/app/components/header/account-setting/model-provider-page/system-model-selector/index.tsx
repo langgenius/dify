@@ -94,7 +94,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
         model_settings: [ModelTypeEnum.textGeneration, ModelTypeEnum.textEmbedding, ModelTypeEnum.rerank, ModelTypeEnum.speech2text, ModelTypeEnum.tts].map((modelType) => {
           return {
             model_type: modelType,
-            plugin_id: getCurrentDefaultModelByModelType(modelType)?.plugin_id,
             provider: getCurrentDefaultModelByModelType(modelType)?.provider,
             model: getCurrentDefaultModelByModelType(modelType)?.model,
           }

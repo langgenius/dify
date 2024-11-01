@@ -38,11 +38,11 @@ import type {
 import type { RETRIEVE_METHOD } from '@/types/app'
 import type { SystemFeatures } from '@/types/feature'
 
-type LoginSuccess = {
+interface LoginSuccess {
   result: 'success'
   data: { access_token: string;refresh_token: string }
 }
-type LoginFail = {
+interface LoginFail {
   result: 'fail'
   data: string
   code: string
@@ -183,7 +183,7 @@ export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (
   return get<{ data: ModelProvider[] }>(url)
 }
 
-export type ModelProviderCredentials = {
+export interface ModelProviderCredentials {
   credentials?: Record<string, string | undefined | boolean>
   load_balancing: ModelLoadBalancingConfig
 }
@@ -297,7 +297,7 @@ export const moderate = (url: string, body: { app_id: string; text: string }) =>
   return post(url, { body }) as Promise<ModerateResponse>
 }
 
-type RetrievalMethodsRes = {
+interface RetrievalMethodsRes {
   retrieval_method: RETRIEVE_METHOD[]
 }
 export const fetchSupportRetrievalMethods: Fetcher<RetrievalMethodsRes, string> = (url) => {
