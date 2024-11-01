@@ -6,12 +6,14 @@ import docx
 import pandas as pd
 import pypdfium2
 import yaml
+from unstructured.partition.api import partition_via_api
 from unstructured.partition.email import partition_email
 from unstructured.partition.epub import partition_epub
 from unstructured.partition.msg import partition_msg
 from unstructured.partition.ppt import partition_ppt
 from unstructured.partition.pptx import partition_pptx
 
+from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
 from core.helper import ssrf_proxy
 from core.variables import ArrayFileSegment
@@ -263,7 +265,14 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
 def _extract_text_from_pptx(file_content: bytes) -> str:
     try:
         with io.BytesIO(file_content) as file:
-            elements = partition_pptx(file=file)
+            if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
+                elements = partition_via_api(
+                    file=file,
+                    api_url=dify_config.UNSTRUCTURED_API_URL,
+                    api_key=dify_config.UNSTRUCTURED_API_KEY,
+                )
+            else:
+                elements = partition_pptx(file=file)
         return "\n".join([getattr(element, "text", "") for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from PPTX: {str(e)}") from e
