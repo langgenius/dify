@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import {
   RiDragDropLine,
   RiEqualizer2Line,
-  RiInstallFill,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
@@ -17,7 +16,8 @@ import InstallPluginDropdown from './install-plugin-dropdown'
 import { useUploader } from './use-uploader'
 import usePermission from './use-permission'
 import DebugInfo from './debug-info'
-import { usePluginTasks } from './hooks'
+import { usePluginTasksStore } from './store'
+import InstallInfo from './install-info'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
@@ -125,7 +125,11 @@ const PluginPage = ({
 
   const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
 
-  const { pluginTasks } = usePluginTasks()
+  const setPluginTasksWithPolling = usePluginTasksStore(s => s.setPluginTasksWithPolling)
+
+  useEffect(() => {
+    setPluginTasksWithPolling()
+  }, [setPluginTasksWithPolling])
 
   return (
     <div
@@ -149,22 +153,7 @@ const PluginPage = ({
             />
           </div>
           <div className='flex flex-shrink-0 items-center gap-1'>
-            <div className='relative'>
-              <Button
-                className='relative overflow-hidden border !border-[rgba(178,202,255,1)] !bg-[rgba(255,255,255,0.95)] cursor-default'
-              >
-                <div
-                  className='absolute left-0 top-0 h-full bg-state-accent-active'
-                  style={{ width: `${progressPercentage}%` }}
-                ></div>
-                <div className='relative z-10 flex items-center'>
-                  <RiInstallFill className='w-4 h-4 text-text-accent' />
-                  <div className='flex px-0.5 justify-center items-center gap-1'>
-                    <span className='text-text-accent system-sm-medium'>{activeTab === 'plugins' ? `Installing ${installed}/${total} plugins` : `${installed}/${total}`}</span>
-                  </div>
-                </div>
-              </Button>
-            </div>
+            <InstallInfo />
             {canManagement && (
               <InstallPluginDropdown
                 onSwitchToMarketplaceTab={() => setActiveTab('discover')}

@@ -119,7 +119,7 @@ const InstallPluginDropdown = ({
         && (<InstallFromLocalPackage
           file={selectedFile}
           onClose={() => setSelectedAction(null)}
-          onSuccess={() => { }}
+          onSuccess={() => {}}
         />
         )
       }
