@@ -43,8 +43,11 @@ const SwrInitor = ({
           router.replace('/install')
           return
         }
-        if (searchParams.has('access_token') || searchParams.has('refresh_token'))
+        if (searchParams.has('access_token') || searchParams.has('refresh_token')) {
+          localStorage.setItem('console_token', searchParams.get('access_token'))
+          localStorage.setItem('refresh_token', searchParams.get('refresh_token'))
           router.replace(pathname)
+        }
 
         setInit(true)
       }
