@@ -66,6 +66,12 @@ const Tool: FC<Props> = ({
               toggleFold()
               return
             }
+            // TODO: get workflow and custom tool params
+            // if (payload.parameters) {
+            //   payload.parameters.forEach((item) => {
+            //     params[item.name] = ''
+            //   })
+            // }
             onSelect(BlockEnum.Tool, {
               provider_id: payload.id,
               provider_type: payload.type,
@@ -73,6 +79,7 @@ const Tool: FC<Props> = ({
               tool_name: payload.name,
               tool_label: payload.label[language],
               title: payload.label[language],
+              params: {},
             })
           }}
         >
