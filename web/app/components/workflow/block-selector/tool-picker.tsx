@@ -21,6 +21,13 @@ import {
 import type { BlockEnum, ToolWithProvider } from '@/app/components/workflow/types'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useTranslation } from 'react-i18next'
+import { useBoolean } from 'ahooks'
+import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal/modal'
+import {
+  createCustomCollection,
+} from '@/service/tools'
+import type { CustomCollectionBackend } from '@/app/components/tools/types'
+import Toast from '@/app/components/base/toast'
 
 type Props = {
   disabled: boolean
@@ -61,6 +68,11 @@ const ToolPicker: FC<Props> = ({
     })()
   }, [])
 
+  const handleAddedCustomTool = async () => {
+    const customTools = await fetchAllCustomTools()
+    setCustomTools(customTools)
+  }
+
   const handleTriggerClick = () => {
     if (disabled) return
     onShowChange(true)
@@ -68,6 +80,32 @@ const ToolPicker: FC<Props> = ({
 
   const handleSelect = (_type: BlockEnum, tool?: ToolDefaultValue) => {
     onSelect(tool!)
+  }
+
+  const [isShowEditCollectionToolModal, {
+    setFalse: hideEditCustomCollectionModal,
+    setTrue: showEditCustomCollectionModal,
+  }] = useBoolean(false)
+
+  const doCreateCustomToolCollection = async (data: CustomCollectionBackend) => {
+    await createCustomCollection(data)
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+    hideEditCustomCollectionModal()
+    handleAddedCustomTool()
+  }
+
+  if (isShowEditCollectionToolModal) {
+    return (
+      <EditCustomToolModal
+        positionLeft
+        payload={null}
+        onHide={hideEditCustomCollectionModal}
+        onAdd={doCreateCustomToolCollection}
+      />
+    )
   }
 
   return (
@@ -84,6 +122,7 @@ const ToolPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
 
       <PortalToFollowElemContent className='z-[1000]'>
+        { }
         <div className="relative w-[320px] min-h-20 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
           <div className='p-2 pb-1'>
             <SearchBox
@@ -103,6 +142,8 @@ const ToolPicker: FC<Props> = ({
             customTools={customTools}
             workflowTools={workflowTools}
             supportAddCustomTool={supportAddCustomTool}
+            onAddedCustomTool={handleAddedCustomTool}
+            onShowAddCustomCollectionModal={showEditCustomCollectionModal}
           />
         </div>
       </PortalToFollowElemContent>

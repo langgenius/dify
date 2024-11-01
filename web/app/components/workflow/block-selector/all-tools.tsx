@@ -26,6 +26,8 @@ type AllToolsProps = {
   workflowTools: ToolWithProvider[]
   onSelect: OnSelectBlock
   supportAddCustomTool?: boolean
+  onAddedCustomTool?: () => void
+  onShowAddCustomCollectionModal?: () => void
 }
 const AllTools = ({
   className,
@@ -35,6 +37,7 @@ const AllTools = ({
   workflowTools,
   customTools,
   supportAddCustomTool,
+  onShowAddCustomCollectionModal,
 }: AllToolsProps) => {
   const language = useGetLanguage()
   const tabs = useToolTabs()
@@ -86,7 +89,10 @@ const AllTools = ({
         {supportAddCustomTool && (
           <div className='flex items-center'>
             <div className='mr-1.5 w-px h-3.5  bg-divider-regular'></div>
-            <ActionButton className='bg-components-button-primary-bg hover:bg-components-button-primary-bg text-components-button-primary-text hover:text-components-button-primary-text'>
+            <ActionButton
+              className='bg-components-button-primary-bg hover:bg-components-button-primary-bg text-components-button-primary-text hover:text-components-button-primary-text'
+              onClick={onShowAddCustomCollectionModal}
+            >
               <RiAddLine className='w-4 h-4' />
             </ActionButton>
           </div>
