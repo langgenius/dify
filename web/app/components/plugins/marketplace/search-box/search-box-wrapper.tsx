@@ -12,11 +12,15 @@ const SearchBoxWrapper = () => {
 
   return (
     <SearchBox
-      inputClassName={cn(!intersected && 'w-[508px] transition-[width] duration-300')}
+      inputClassName={cn(
+        'sticky top-3 mx-auto w-[640px]',
+        !intersected && 'w-[508px] transition-[width] duration-300',
+      )}
       search={searchPluginText}
       onSearchChange={handleSearchPluginTextChange}
       tags={filterPluginTags}
       onTagsChange={handleFilterPluginTagsChange}
+      size='large'
     />
   )
 }

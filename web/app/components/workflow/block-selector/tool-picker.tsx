@@ -19,6 +19,7 @@ import {
   fetchAllWorkflowTools,
 } from '@/service/tools'
 import type { BlockEnum, ToolWithProvider } from '@/app/components/workflow/types'
+import SearchBox from '@/app/components/plugins/marketplace/search-box'
 
 type Props = {
   disabled: boolean
@@ -83,7 +84,14 @@ const ToolPicker: FC<Props> = ({
 
       <PortalToFollowElemContent className='z-[1000]'>
         <div className="relative w-[320px] min-h-20 bg-white">
-          <input placeholder='search holder' value={searchText} onChange={e => setSearchText(e.target.value)} />
+          <SearchBox
+            search={searchText}
+            onSearchChange={setSearchText}
+            tags={[]}
+            onTagsChange={() => {}}
+            size='small'
+            placeholder='Search tools...'
+          />
           <AllTools
             className='mt-1'
             searchText={searchText}
