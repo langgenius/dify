@@ -11,7 +11,6 @@ import type {
   DefaultModel,
   DefaultModelResponse,
   Model,
-  ModelProvider,
   ModelTypeEnum,
 } from './declarations'
 import {
@@ -64,20 +63,20 @@ export const useLanguage = () => {
 }
 
 export const useProviderCredentialsAndLoadBalancing = (
-  provider: ModelProvider,
+  provider: string,
   configurationMethod: ConfigurationMethodEnum,
   configured?: boolean,
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
 ) => {
   const { data: predefinedFormSchemasValue, mutate: mutatePredefined } = useSWR(
     (configurationMethod === ConfigurationMethodEnum.predefinedModel && configured)
-      ? `/workspaces/current/model-providers/${provider.plugin_id}/${provider.provider}/credentials`
+      ? `/workspaces/current/model-providers/${provider}/credentials`
       : null,
     fetchModelProviderCredentials,
   )
   const { data: customFormSchemasValue, mutate: mutateCustomized } = useSWR(
     (configurationMethod === ConfigurationMethodEnum.customizableModel && currentCustomConfigurationModelFixedFields)
-      ? `/workspaces/current/model-providers/${provider.plugin_id}/${provider.provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}`
+      ? `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}`
       : null,
     fetchModelProviderCredentials,
   )

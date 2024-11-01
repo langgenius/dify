@@ -30,7 +30,7 @@ const ModelLoadBalancingModal = ({ provider, model, open = false, onClose, onSav
   const [loading, setLoading] = useState(false)
 
   const { data, mutate } = useSWR(
-    `/workspaces/current/model-providers/${provider.plugin_id}/${provider.provider}/models/credentials?model=${model.model}&model_type=${model.model_type}`,
+    `/workspaces/current/model-providers/${provider.provider}/models/credentials?model=${model.model}&model_type=${model.model_type}`,
     fetchModelLoadBalancingConfig,
   )
 

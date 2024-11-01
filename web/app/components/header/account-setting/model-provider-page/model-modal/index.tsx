@@ -72,7 +72,7 @@ const ModelModal: FC<ModelModalProps> = ({
     loadBalancing: originalConfig,
     mutate,
   } = useProviderCredentialsAndLoadBalancing(
-    provider,
+    provider.provider,
     configurateMethod,
     providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
     currentCustomConfigurationModelFixedFields,
