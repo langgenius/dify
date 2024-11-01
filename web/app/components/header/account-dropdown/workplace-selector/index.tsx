@@ -6,15 +6,12 @@ import { RiArrowDownSLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { switchWorkspace } from '@/service/common'
 import { useWorkspacesContext } from '@/context/workspace-context'
-import HeaderBillingBtn from '@/app/components/billing/header-billing-btn'
-import { useProviderContext } from '@/context/provider-context'
 import { ToastContext } from '@/app/components/base/toast'
 
 const WorkplaceSelector = () => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { workspaces } = useWorkspacesContext()
-  const { enableBilling } = useProviderContext()
   const currentWorkspace = workspaces.find(v => v.current)
   const handleSwitchWorkspace = async (tenant_id: string) => {
     try {
@@ -69,11 +66,6 @@ const WorkplaceSelector = () => {
                       <div className='flex py-1 pl-3 pr-2 items-center gap-2 self-stretch hover:bg-state-base-hover rounded-lg' key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
                         <div className='flex items-center justify-center w-7 h-7 bg-[#EFF4FF] rounded-md text-xs font-medium text-primary-600'>{workspace.name[0].toLocaleUpperCase()}</div>
                         <div className='line-clamp-1 flex-grow overflow-hidden text-text-secondary text-ellipsis system-md-regular'>{workspace.name}</div>
-                        {enableBilling && (
-                          <div className='select-none'>
-                            <HeaderBillingBtn isDisplayOnly={true} />
-                          </div>
-                        )}
                       </div>
                     ))
                   }

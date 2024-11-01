@@ -14,6 +14,7 @@ import type {
   TaskStatusResponse,
   UninstallPluginResponse,
   UpdateEndpointRequest,
+  uploadGitHubResponse,
 } from '@/app/components/plugins/types'
 import type { DebugInfo as DebugInfoTypes } from '@/app/components/plugins/types'
 import type {
@@ -51,12 +52,6 @@ export const disableEndpoint: Fetcher<EndpointOperationResponse, { url: string; 
   return post<EndpointOperationResponse>(url, { body: { endpoint_id: endpointID } })
 }
 
-export const installPackageFromGitHub: Fetcher<InstallPackageResponse, { repo: string; version: string; package: string }> = ({ repo, version, package: packageName }) => {
-  return post<InstallPackageResponse>('/workspaces/current/plugin/upload/github', {
-    body: { repo, version, package: packageName },
-  })
-}
-
 export const fetchDebugKey = async () => {
   return get<DebugInfoTypes>('/workspaces/current/plugin/debugging-key')
 }
@@ -72,6 +67,22 @@ export const uploadPackageFile = async (file: File) => {
 
 export const installPackageFromLocal = async (uniqueIdentifier: string) => {
   return post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
+    body: { plugin_unique_identifiers: [uniqueIdentifier] },
+  })
+}
+
+export const uploadGitHub = async (repoUrl: string, selectedVersion: string, selectedPackage: string) => {
+  return post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
+    body: {
+      repo: repoUrl,
+      version: selectedVersion,
+      package: selectedPackage,
+    },
+  })
+}
+
+export const installPackageFromGitHub = async (uniqueIdentifier: string) => {
+  return post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
     body: { plugin_unique_identifiers: [uniqueIdentifier] },
   })
 }

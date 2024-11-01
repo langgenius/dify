@@ -133,8 +133,8 @@ export type Permissions = {
 
 export enum InstallStepFromGitHub {
   setUrl = 'url',
-  setVersion = 'version',
-  setPackage = 'package',
+  selectPackage = 'selecting',
+  loaded = 'loaded',
   installed = 'installed',
 }
 
@@ -203,6 +203,11 @@ export type InstallPackageResponse = {
   plugin_unique_identifier: string
   all_installed: boolean
   task_id: string
+}
+
+export type uploadGitHubResponse = {
+  plugin_unique_identifier: string
+  manifest: PluginDeclaration
 }
 
 export type DebugInfo = {
