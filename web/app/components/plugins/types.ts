@@ -80,6 +80,7 @@ export type PluginManifestInMarket = {
   brief: Record<Locale, string>
   introduction: string
   verified: boolean
+  install_count: number
 }
 
 export type PluginDetail = {

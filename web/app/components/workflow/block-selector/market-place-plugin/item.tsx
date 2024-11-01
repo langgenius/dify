@@ -26,6 +26,8 @@ const Item: FC<Props> = ({
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
   const { locale } = useContext(I18n)
+  const getLocalizedText = (obj: Record<string, string> | undefined) =>
+    obj?.[locale] || obj?.['en-US'] || obj?.en_US || ''
 
   return (
     <div className='group/plugin flex rounded-lg py-1 pr-1 pl-3 hover:bg-state-base-hover'>
@@ -35,8 +37,8 @@ const Item: FC<Props> = ({
       />
       <div className='ml-2 w-0 grow flex'>
         <div className='w-0 grow'>
-          <div className='h-4 leading-4 text-text-primary system-sm-medium truncate '>{payload.label[locale]}</div>
-          <div className='h-5 leading-5 text-text-tertiary system-xs-regular truncate'>{payload.brief[locale]}</div>
+          <div className='h-4 leading-4 text-text-primary system-sm-medium truncate '>{getLocalizedText(payload.label)}</div>
+          <div className='h-5 leading-5 text-text-tertiary system-xs-regular truncate'>{getLocalizedText(payload.brief)}</div>
           <div className='flex text-text-tertiary system-xs-regular space-x-1'>
             <div>{payload.org}</div>
             <div>·</div>
