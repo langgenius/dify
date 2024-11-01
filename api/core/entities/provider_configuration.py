@@ -9,6 +9,7 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 from constants import HIDDEN_VALUE
+from core.entities import DEFAULT_PLUGIN_ID
 from core.entities.model_entities import ModelStatus, ModelWithProviderEntity, SimpleModelProviderEntity
 from core.entities.provider_entities import (
     CustomConfiguration,
@@ -1047,6 +1048,9 @@ class ProviderConfigurations(BaseModel):
         return list(self.values())
 
     def __getitem__(self, key):
+        if "/" not in key:
+            key = f"{DEFAULT_PLUGIN_ID}/{key}/{key}"
+
         return self.configurations[key]
 
     def __setitem__(self, key, value):
@@ -1059,6 +1063,9 @@ class ProviderConfigurations(BaseModel):
         return iter(self.configurations.values())
 
     def get(self, key, default=None):
+        if "/" not in key:
+            key = f"{DEFAULT_PLUGIN_ID}/{key}/{key}"
+
         return self.configurations.get(key, default)
 
 

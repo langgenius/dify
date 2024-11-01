@@ -25,6 +25,7 @@ from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
 from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
+from services.plugin.data_migration import PluginDataMigration
 
 
 @click.command("reset-password", help="Reset the account password.")
@@ -639,6 +640,18 @@ where sites.id is null limit 1000"""
     click.echo(click.style("Fix for missing app-related sites completed successfully!", fg="green"))
 
 
+@click.command("migrate-data-for-plugin", help="Migrate data for plugin.")
+def migrate_data_for_plugin():
+    """
+    Migrate data for plugin.
+    """
+    click.echo(click.style("Starting migrate data for plugin.", fg="white"))
+
+    PluginDataMigration.migrate()
+
+    click.echo(click.style("Migrate data for plugin completed.", fg="green"))
+
+
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
@@ -649,3 +662,4 @@ def register_commands(app):
     app.cli.add_command(create_tenant)
     app.cli.add_command(upgrade_db)
     app.cli.add_command(fix_app_site_missing)
+    app.cli.add_command(migrate_data_for_plugin)
