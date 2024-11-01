@@ -247,13 +247,9 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
-    network_mode: host
-#    networks:
-#      - ssrf_proxy_network
-#      - default
-    extra_hosts:
-      - "mysql:127.0.0.1"
-      - "redis:127.0.0.1"
+    networks:
+      - ssrf_proxy_network
+      - default
 
   # worker service
   # The Celery worker for processing the queue.
@@ -302,8 +298,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
       POSTGRES_DB: ${POSTGRES_DB:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
-    ports:
-      - "${DB_PORT:-5432}:5432"
     command: >
       postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
                -c 'shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}'
@@ -327,8 +321,6 @@ services:
       - ./volumes/redis/data:/data
     # Set the redis password when startup redis server.
     command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
-    ports:
-      - "${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ['CMD', 'redis-cli', 'ping']
 
