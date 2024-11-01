@@ -72,7 +72,7 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { fetchFileUploadConfig } from '@/service/common'
 
-type PublishConfig = {
+interface PublishConfig {
   modelConfig: ModelConfig
   completionParams: FormValue
 }
@@ -156,7 +156,6 @@ const Configuration: FC = () => {
   const setCompletionParams = (value: FormValue) => {
     const params = { ...value }
 
-    // eslint-disable-next-line ts/no-use-before-define
     if ((!params.stop || params.stop.length === 0) && (modeModeTypeRef.current === ModelModeType.completion)) {
       params.stop = getTempStop()
       setTempStop([])
@@ -165,7 +164,6 @@ const Configuration: FC = () => {
   }
 
   const [modelConfig, doSetModelConfig] = useState<ModelConfig>({
-    plugin_id: 'langgenius',
     provider: 'openai',
     model_id: 'gpt-3.5-turbo',
     mode: ModelModeType.unset,
@@ -200,7 +198,6 @@ const Configuration: FC = () => {
     reranking_model: {
       reranking_provider_name: '',
       reranking_model_name: '',
-      reranking_plugin_id: '',
     },
     top_k: DATASET_DEFAULT.top_k,
     score_threshold_enabled: false,
@@ -282,7 +279,6 @@ const Configuration: FC = () => {
       reranking_model: restConfigs.reranking_model && {
         reranking_provider_name: restConfigs.reranking_model.reranking_provider_name,
         reranking_model_name: restConfigs.reranking_model.reranking_model_name,
-        reranking_plugin_id: restConfigs.reranking_model.reranking_plugin_id,
       },
       retrieval_model,
       score_threshold_enabled,
@@ -324,7 +320,6 @@ const Configuration: FC = () => {
     textGenerationModelList,
   } = useTextGenerationCurrentProviderAndModelAndModelList(
     {
-      plugin_id: modelConfig.plugin_id,
       provider: modelConfig.provider,
       model: modelConfig.model_id,
     },
@@ -355,7 +350,6 @@ const Configuration: FC = () => {
   const [canReturnToSimpleMode, setCanReturnToSimpleMode] = useState(true)
   const setPromptMode = async (mode: PromptMode) => {
     if (mode === PromptMode.advanced) {
-      // eslint-disable-next-line ts/no-use-before-define
       await migrateToDefaultPrompt()
       setCanReturnToSimpleMode(true)
     }
@@ -551,7 +545,6 @@ const Configuration: FC = () => {
 
         const config = {
           modelConfig: {
-            plugin_id: model.plugin_id,
             provider: model.provider,
             model_id: model.name,
             mode: model.mode,
@@ -770,8 +763,8 @@ const Configuration: FC = () => {
     handleMultipleModelConfigsChange(
       true,
       [
-        { id: `${Date.now()}`, model: modelConfig.model_id, plugin_id: modelConfig.plugin_id, provider: modelConfig.provider, parameters: completionParams },
-        { id: `${Date.now()}-no-repeat`, model: '', plugin_id: '', provider: '', parameters: {} },
+        { id: `${Date.now()}`, model: modelConfig.model_id, provider: modelConfig.provider, parameters: completionParams },
+        { id: `${Date.now()}-no-repeat`, model: '', provider: '', parameters: {} },
       ],
     )
     setAppSiderbarExpand('collapse')
@@ -893,7 +886,6 @@ const Configuration: FC = () => {
                         <ModelParameterModal
                           isAdvancedMode={isAdvancedMode}
                           mode={mode}
-                          pluginId={modelConfig.plugin_id}
                           provider={modelConfig.provider}
                           completionParams={completionParams}
                           modelId={modelConfig.model_id}
