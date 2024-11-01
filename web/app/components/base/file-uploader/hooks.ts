@@ -25,7 +25,7 @@ import { TransferMethod } from '@/types/app'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { formatFileSize } from '@/utils/format'
-import { fetchRemoteFileInfo } from '@/service/common'
+import { uploadRemoteFileInfo } from '@/service/common'
 import type { FileUploadConfigResponse } from '@/models/common'
 
 export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) => {
@@ -49,7 +49,7 @@ export const useFile = (fileConfig: FileUpload) => {
   const params = useParams()
   const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(fileConfig.fileUploadConfig)
 
-  const checkSizeLimit = (fileType: string, fileSize: number) => {
+  const checkSizeLimit = useCallback((fileType: string, fileSize: number) => {
     switch (fileType) {
       case SupportUploadFileTypes.image: {
         if (fileSize > imgSizeLimit) {
@@ -120,7 +120,7 @@ export const useFile = (fileConfig: FileUpload) => {
         return true
       }
     }
-  }
+  }, [audioSizeLimit, docSizeLimit, imgSizeLimit, notify, t, videoSizeLimit])
 
   const handleAddFile = useCallback((newFile: FileEntity) => {
     const {
@@ -188,6 +188,17 @@ export const useFile = (fileConfig: FileUpload) => {
     }
   }, [fileStore, notify, t, handleUpdateFile, params])
 
+  const startProgressTimer = useCallback((fileId: string) => {
+    const timer = setInterval(() => {
+      const files = fileStore.getState().files
+      const file = files.find(file => file.id === fileId)
+
+      if (file && file.progress < 80 && file.progress >= 0)
+        handleUpdateFile({ ...file, progress: file.progress + 20 })
+      else
+        clearTimeout(timer)
+    }, 200)
+  }, [fileStore, handleUpdateFile])
   const handleLoadFileFromLink = useCallback((url: string) => {
     const allowedFileTypes = fileConfig.allowed_file_types
 
@@ -197,19 +208,27 @@ export const useFile = (fileConfig: FileUpload) => {
       type: '',
       size: 0,
       progress: 0,
-      transferMethod: TransferMethod.remote_url,
+      transferMethod: TransferMethod.local_file,
       supportFileType: '',
       url,
+      isRemote: true,
     }
     handleAddFile(uploadingFile)
+    startProgressTimer(uploadingFile.id)
 
-    fetchRemoteFileInfo(url).then((res) => {
+    uploadRemoteFileInfo(url).then((res) => {
       const newFile = {
         ...uploadingFile,
-        type: res.file_type,
-        size: res.file_length,
+        type: res.mime_type,
+        size: res.size,
         progress: 100,
-        supportFileType: getSupportFileType(url, res.file_type, allowedFileTypes?.includes(SupportUploadFileTypes.custom)),
+        supportFileType: getSupportFileType(res.name, res.mime_type, allowedFileTypes?.includes(SupportUploadFileTypes.custom)),
+        uploadedId: res.id,
+        url: res.url,
+      }
+      if (!isAllowedFileExtension(res.name, res.mime_type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
+        notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
+        handleRemoveFile(uploadingFile.id)
       }
       if (!checkSizeLimit(newFile.supportFileType, newFile.size))
         handleRemoveFile(uploadingFile.id)
@@ -219,7 +238,7 @@ export const useFile = (fileConfig: FileUpload) => {
       notify({ type: 'error', message: t('common.fileUploader.pasteFileLinkInvalid') })
       handleRemoveFile(uploadingFile.id)
     })
-  }, [checkSizeLimit, handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types])
+  }, [checkSizeLimit, handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig.allowed_file_extensions, startProgressTimer])
 
   const handleLoadFileFromLinkSuccess = useCallback(() => { }, [])
 
