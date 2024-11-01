@@ -6,6 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Literal, Optional
 
+import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
 from pydantic import BaseModel, Field
@@ -1384,7 +1385,7 @@ class UploadFile(db.Model):
     used_by: Mapped[str | None] = db.Column(StringUUID, nullable=True)
     used_at: Mapped[datetime | None] = db.Column(db.DateTime, nullable=True)
     hash: Mapped[str | None] = db.Column(db.String(255), nullable=True)
-    source_url: Mapped[str] = db.Column(db.String(255), nullable=False, server_default="")
+    source_url: Mapped[str] = mapped_column(sa.TEXT, default="")
 
     def __init__(
         self,
