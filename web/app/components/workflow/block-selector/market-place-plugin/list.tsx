@@ -1,5 +1,5 @@
 'use client'
-import React, { forwardRef, useImperativeHandle, useMemo, useRef } from 'react'
+import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import useStickyScroll, { ScrollPosition } from '../use-sticky-scroll'
 import Item from './item'
@@ -30,7 +30,6 @@ const List = ({
     wrapElemRef,
     nextToStickyELemRef,
   })
-
   const stickyClassName = useMemo(() => {
     switch (scrollPosition) {
       case ScrollPosition.aboveTheWrap:
@@ -38,13 +37,18 @@ const List = ({
       case ScrollPosition.showing:
         return 'bottom-0 pt-3 pb-1'
       case ScrollPosition.belowTheWrap:
-        return 'bottom-0 items-center rounded-b-xl border-t border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg cursor-pointer'
+        return 'bottom-0 items-center rounded-b-xl border-t border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg rounded-b-lg cursor-pointer'
     }
   }, [scrollPosition])
 
   useImperativeHandle(ref, () => ({
     handleScroll,
   }))
+
+  useEffect(() => {
+    handleScroll()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list])
 
   const handleHeadClick = () => {
     if (scrollPosition === ScrollPosition.belowTheWrap) {
@@ -57,7 +61,7 @@ const List = ({
   if (hasSearchText) {
     return (
       <Link
-        className='sticky bottom-0 z-10 flex h-8 px-4 py-1 system-sm-medium items-center rounded-b-xl border-t border-[0.5px] border-components-panel-border bg-components-panel-bg-blur  shadow-lg text-text-accent-light-mode-only cursor-pointer'
+        className='sticky bottom-0 z-10 flex h-8 px-4 py-1 system-sm-medium items-center border-t border-[0.5px] border-components-panel-border bg-components-panel-bg-blur rounded-b-lg shadow-lg text-text-accent-light-mode-only cursor-pointer'
         href={`${marketplaceUrlPrefix}/plugins`}
         target='_blank'
       >

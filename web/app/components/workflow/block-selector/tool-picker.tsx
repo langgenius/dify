@@ -20,6 +20,7 @@ import {
 } from '@/service/tools'
 import type { BlockEnum, ToolWithProvider } from '@/app/components/workflow/types'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   disabled: boolean
@@ -42,6 +43,7 @@ const ToolPicker: FC<Props> = ({
   onSelect,
   supportAddCustomTool,
 }) => {
+  const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
 
   const [buildInTools, setBuildInTools] = useState<ToolWithProvider[]>([])
@@ -83,15 +85,17 @@ const ToolPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
 
       <PortalToFollowElemContent className='z-[1000]'>
-        <div className="relative w-[320px] min-h-20 bg-white">
-          <SearchBox
-            search={searchText}
-            onSearchChange={setSearchText}
-            tags={[]}
-            onTagsChange={() => {}}
-            size='small'
-            placeholder='Search tools...'
-          />
+        <div className="relative w-[320px] min-h-20 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
+          <div className='p-2 pb-1'>
+            <SearchBox
+              search={searchText}
+              onSearchChange={setSearchText}
+              tags={[]}
+              onTagsChange={() => { }}
+              size='small'
+              placeholder={t('plugin.searchTools')!}
+            />
+          </div>
           <AllTools
             className='mt-1'
             searchText={searchText}

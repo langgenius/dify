@@ -4,6 +4,7 @@ const translation = {
   searchInMarketplace: '在 Marketplace 中搜索',
   fromMarketplace: '来自市场',
   endpointsEnabled: '{{num}} 组端点已启用',
+  searchTools: '搜索工具...',
   detailPanel: {
     categoryTip: {
       marketplace: '从 Marketplace 安装',
