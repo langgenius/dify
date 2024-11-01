@@ -543,7 +543,7 @@ class Conversation(db.Model):
     mode = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     summary = db.Column(db.Text)
-    _inputs: Mapped[dict] = mapped_column("inputs", db.JSON)
+    _inputs: Mapped[str] = mapped_column("inputs")
     introduction = db.Column(db.Text)
     system_instruction = db.Column(db.Text)
     system_instruction_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
@@ -735,7 +735,7 @@ class Message(db.Model):
     model_id = db.Column(db.String(255), nullable=True)
     override_model_configs = db.Column(db.Text)
     conversation_id = db.Column(StringUUID, db.ForeignKey("conversations.id"), nullable=False)
-    _inputs: Mapped[dict] = mapped_column("inputs", db.JSON)
+    _inputs: Mapped[str] = mapped_column("inputs")
     query: Mapped[str] = db.Column(db.Text, nullable=False)
     message = db.Column(db.JSON, nullable=False)
     message_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
@@ -1384,6 +1384,7 @@ class UploadFile(db.Model):
     used_by: Mapped[str | None] = db.Column(StringUUID, nullable=True)
     used_at: Mapped[datetime | None] = db.Column(db.DateTime, nullable=True)
     hash: Mapped[str | None] = db.Column(db.String(255), nullable=True)
+    source_url: Mapped[str] = db.Column(db.String(255), nullable=False, server_default="")
 
     def __init__(
         self,
@@ -1402,7 +1403,8 @@ class UploadFile(db.Model):
         used_by: str | None = None,
         used_at: datetime | None = None,
         hash: str | None = None,
-    ) -> None:
+        source_url: str = "",
+    ):
         self.tenant_id = tenant_id
         self.storage_type = storage_type
         self.key = key
@@ -1417,6 +1419,7 @@ class UploadFile(db.Model):
         self.used_by = used_by
         self.used_at = used_at
         self.hash = hash
+        self.source_url = source_url
 
 
 class ApiRequest(db.Model):

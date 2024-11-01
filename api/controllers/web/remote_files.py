@@ -52,6 +52,7 @@ class RemoteFileUploadApi(WebApiResource):
                 content=content,
                 mimetype=file_info.mimetype,
                 user=current_user,
+                source_url=url,
             )
         except Exception as e:
             return {"error": str(e)}, 400

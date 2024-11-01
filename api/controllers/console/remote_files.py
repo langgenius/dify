@@ -54,6 +54,7 @@ class RemoteFileUploadApi(Resource):
                 content=content,
                 mimetype=file_info.mimetype,
                 user=user,
+                source_url=url,
             )
         except Exception as e:
             return {"error": str(e)}, 400
