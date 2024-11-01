@@ -1,33 +1,22 @@
 from flask import request
-from flask_restful import Resource, marshal_with
+from flask_restful import marshal_with
 
 import services
 from controllers.common.errors import FilenameNotExistsError
-from controllers.service_api import api
-from controllers.service_api.app.error import (
-    FileTooLargeError,
-    NoFileUploadedError,
-    TooManyFilesError,
-    UnsupportedFileTypeError,
-)
-from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
+from controllers.web.error import FileTooLargeError, NoFileUploadedError, TooManyFilesError, UnsupportedFileTypeError
+from controllers.web.wraps import WebApiResource
 from fields.file_fields import file_fields
-from models.model import App, EndUser
 from services.file_service import FileService
 
 
-class FileApi(Resource):
-    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))
+class FileApi(WebApiResource):
     @marshal_with(file_fields)
-    def post(self, app_model: App, end_user: EndUser):
+    def post(self, app_model, end_user):
         file = request.files["file"]
+        source = request.form.get("source")
 
-        # check file
         if "file" not in request.files:
             raise NoFileUploadedError()
-
-        if not file.mimetype:
-            raise UnsupportedFileTypeError()
 
         if len(request.files) > 1:
             raise TooManyFilesError()
@@ -35,13 +24,16 @@ class FileApi(Resource):
         if not file.filename:
             raise FilenameNotExistsError
 
+        if source not in ("datasets", None):
+            source = None
+
         try:
             upload_file = FileService.upload_file(
                 filename=file.filename,
                 content=file.read(),
                 mimetype=file.mimetype,
                 user=end_user,
-                source="datasets",
+                source=source,
             )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
@@ -49,6 +41,3 @@ class FileApi(Resource):
             raise UnsupportedFileTypeError()
 
         return upload_file, 201
-
-
-api.add_resource(FileApi, "/files/upload")
