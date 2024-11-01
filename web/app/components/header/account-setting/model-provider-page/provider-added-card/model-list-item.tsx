@@ -33,10 +33,10 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
 
   const toggleModelEnablingStatus = useCallback(async (enabled: boolean) => {
     if (enabled)
-      await enableModel(`/workspaces/current/model-providers/${provider.plugin_id}/${provider.provider}/models/enable`, { model: model.model, model_type: model.model_type })
+      await enableModel(`/workspaces/current/model-providers/${provider.provider}/models/enable`, { model: model.model, model_type: model.model_type })
     else
-      await disableModel(`/workspaces/current/model-providers/${provider.plugin_id}/${provider.provider}/models/disable`, { model: model.model, model_type: model.model_type })
-  }, [model.model, model.model_type, provider.plugin_id, provider.provider])
+      await disableModel(`/workspaces/current/model-providers/${provider.provider}/models/disable`, { model: model.model, model_type: model.model_type })
+  }, [model.model, model.model_type, provider.provider])
 
   const { run: debouncedToggleModelEnablingStatus } = useDebounceFn(toggleModelEnablingStatus, { wait: 500 })
 

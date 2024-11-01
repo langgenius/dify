@@ -4,6 +4,7 @@ const translation = {
   searchInMarketplace: 'Search in Marketplace',
   fromMarketplace: 'From Marketplace',
   endpointsEnabled: '{{num}} sets of endpoints enabled',
+  searchTools: 'Search tools...',
   detailPanel: {
     categoryTip: {
       marketplace: 'Installed from Marketplace',
@@ -13,7 +14,7 @@ const translation = {
     },
     operation: {
       install: 'Install',
-      detail: 'Detail',
+      detail: 'Details',
       update: 'Update',
       info: 'Plugin Info',
       checkUpdate: 'Check Update',

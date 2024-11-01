@@ -41,11 +41,11 @@ const ModelSelector: FC<ModelSelectorProps> = ({
     defaultModel,
   )
 
-  const handleSelect = (pluginId: string, provider: string, model: ModelItem) => {
+  const handleSelect = (provider: string, model: ModelItem) => {
     setOpen(false)
 
     if (onSelect)
-      onSelect({ plugin_id: pluginId, provider, model: model.model })
+      onSelect({ provider, model: model.model })
   }
 
   const handleToggle = () => {

@@ -84,9 +84,12 @@ const AllTools = ({
         </div>
         <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
         {supportAddCustomTool && (
-          <ActionButton>
-            <RiAddLine className='w-4 h-4' />
-          </ActionButton>
+          <div className='flex items-center'>
+            <div className='mr-1.5 w-px h-3.5  bg-divider-regular'></div>
+            <ActionButton className='bg-components-button-primary-bg hover:bg-components-button-primary-bg text-components-button-primary-text hover:text-components-button-primary-text'>
+              <RiAddLine className='w-4 h-4' />
+            </ActionButton>
+          </div>
         )}
       </div>
       <div

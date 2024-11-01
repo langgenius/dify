@@ -18,10 +18,12 @@ import Input from '@/app/components/base/input'
 type TagsFilterProps = {
   tags: string[]
   onTagsChange: (tags: string[]) => void
+  size: 'small' | 'large'
 }
 const TagsFilter = ({
   tags,
   onTagsChange,
+  size,
 }: TagsFilterProps) => {
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
@@ -56,7 +58,9 @@ const TagsFilter = ({
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <div className={cn(
-          'flex items-center px-2 py-1 h-8 text-text-tertiary rounded-lg hover:bg-state-base-hover cursor-pointer',
+          'flex items-center text-text-tertiary rounded-lg hover:bg-state-base-hover cursor-pointer',
+          size === 'large' && 'px-2 py-1 h-8',
+          size === 'small' && 'pr-1.5 py-0.5 h-7 pl-1 ',
           selectedTagsLength && 'text-text-secondary',
           open && 'bg-state-base-hover',
         )}>
@@ -65,6 +69,8 @@ const TagsFilter = ({
           </div>
           <div className={cn(
             'flex items-center p-1 system-sm-medium',
+            size === 'large' && 'p-1',
+            size === 'small' && 'px-0.5 py-1',
           )}>
             {
               !selectedTagsLength && 'All Tags'
@@ -95,7 +101,7 @@ const TagsFilter = ({
           }
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
+      <PortalToFollowElemContent className='z-[1000]'>
         <div className='w-[240px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur rounded-xl shadow-lg'>
           <div className='p-2 pb-1'>
             <Input

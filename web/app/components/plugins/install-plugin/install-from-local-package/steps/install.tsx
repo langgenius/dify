@@ -13,10 +13,11 @@ import checkTaskStatus from '../../base/check-task-status'
 
 const i18nPrefix = 'plugin.installModal'
 
-interface Props {
+type Props = {
   uniqueIdentifier: string
   payload: PluginDeclaration
   onCancel: () => void
+  onStartToInstall?: () => void
   onInstalled: () => void
   onFailed: (message?: string) => void
 }
@@ -25,6 +26,7 @@ const Installed: FC<Props> = ({
   uniqueIdentifier,
   payload,
   onCancel,
+  onStartToInstall,
   onInstalled,
   onFailed,
 }) => {
@@ -43,6 +45,8 @@ const Installed: FC<Props> = ({
   const handleInstall = async () => {
     if (isInstalling) return
     setIsInstalling(true)
+    onStartToInstall?.()
+
     try {
       const {
         all_installed: isInstalled,

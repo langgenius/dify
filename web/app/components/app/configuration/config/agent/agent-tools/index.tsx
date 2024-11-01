@@ -27,10 +27,12 @@ import { MAX_TOOLS_NUM } from '@/config'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Tooltip from '@/app/components/base/tooltip'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
-import AddToolModal from '@/app/components/tools/add-tool-modal'
+// import AddToolModal from '@/app/components/tools/add-tool-modal'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import { updateBuiltInToolCredential } from '@/service/tools'
 import cn from '@/utils/classnames'
+import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
+import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 
 type AgentToolWithMoreInfo = AgentTool & { icon: any; collection?: Collection } | null
 const AgentTools: FC = () => {
@@ -81,6 +83,21 @@ const AgentTools: FC = () => {
 
   const [isDeleting, setIsDeleting] = useState<number>(-1)
 
+  const handleSelectTool = (tool: ToolDefaultValue) => {
+    const newModelConfig = produce(modelConfig, (draft) => {
+      draft.agentConfig.tools.push({
+        provider_id: tool.provider_id,
+        provider_type: tool.provider_type as CollectionType,
+        provider_name: tool.provider_name,
+        tool_name: tool.tool_name,
+        tool_label: tool.tool_label,
+        tool_parameters: {},
+        enabled: true,
+      })
+    })
+    setModelConfig(newModelConfig)
+  }
+
   return (
     <>
       <Panel
@@ -107,7 +124,14 @@ const AgentTools: FC = () => {
             {tools.length < MAX_TOOLS_NUM && (
               <>
                 <div className='ml-3 mr-1 h-3.5 w-px bg-gray-200'></div>
-                <OperationBtn type="add" onClick={() => setIsShowChooseTool(true)} />
+                <ToolPicker
+                  trigger={<OperationBtn type="add" />}
+                  isShow={isShowChooseTool}
+                  onShowChange={setIsShowChooseTool}
+                  disabled={false}
+                  supportAddCustomTool
+                  onSelect={handleSelectTool}
+                />
               </>
             )}
           </div>
@@ -125,8 +149,8 @@ const AgentTools: FC = () => {
                 {item.isDeleted && <DefaultToolIcon className='w-5 h-5' />}
                 {!item.isDeleted && (
                   <div className={cn((item.notAuthor || !item.enabled) && 'opacity-50')}>
-                    {typeof item.icon === 'string' && <div className='w-5 h-5 bg-cover bg-center rounded-md' style={{ backgroundImage: `url(${item.icon})` }}/>}
-                    {typeof item.icon !== 'string' && <AppIcon className='rounded-md' size='xs' icon={item.icon?.content} background={item.icon?.background}/>}
+                    {typeof item.icon === 'string' && <div className='w-5 h-5 bg-cover bg-center rounded-md' style={{ backgroundImage: `url(${item.icon})` }} />}
+                    {typeof item.icon !== 'string' && <AppIcon className='rounded-md' size='xs' icon={item.icon?.content} background={item.icon?.background} />}
                   </div>
                 )}
                 <div
@@ -245,9 +269,6 @@ const AgentTools: FC = () => {
           ))}
         </div >
       </Panel >
-      {isShowChooseTool && (
-        <AddToolModal onHide={() => setIsShowChooseTool(false)} />
-      )}
       {isShowSettingTool && (
         <SettingBuiltInTool
           toolName={currentTool?.tool_name as string}

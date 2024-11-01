@@ -26,15 +26,14 @@ export const isNullOrUndefined = (value: any) => {
   return value === undefined || value === null
 }
 
-// deprecated ???
-export const validateCredentials = async (predefined: boolean, pluginID: string, provider: string, v: FormValue) => {
+export const validateCredentials = async (predefined: boolean, provider: string, v: FormValue) => {
   let body, url
 
   if (predefined) {
     body = {
       credentials: v,
     }
-    url = `/workspaces/current/model-providers/${pluginID}/${provider}/credentials/validate`
+    url = `/workspaces/current/model-providers/${provider}/credentials/validate`
   }
   else {
     const { __model_name, __model_type, ...credentials } = v
@@ -43,7 +42,7 @@ export const validateCredentials = async (predefined: boolean, pluginID: string,
       model_type: __model_type,
       credentials,
     }
-    url = `/workspaces/current/model-providers/${pluginID}/${provider}/models/credentials/validate`
+    url = `/workspaces/current/model-providers/${provider}/models/credentials/validate`
   }
   try {
     const res = await validateModelProvider({ url, body })
@@ -57,14 +56,14 @@ export const validateCredentials = async (predefined: boolean, pluginID: string,
   }
 }
 
-export const validateLoadBalancingCredentials = async (predefined: boolean, pluginID: string, provider: string, v: FormValue, id?: string): Promise<{
+export const validateLoadBalancingCredentials = async (predefined: boolean, provider: string, v: FormValue, id?: string): Promise<{
   status: ValidatedStatus
   message?: string
 }> => {
   const { __model_name, __model_type, ...credentials } = v
   try {
     const res = await validateModelLoadBalancingCredentials({
-      url: `/workspaces/current/model-providers/${pluginID}/${provider}/models/load-balancing-configs/${id ? `${id}/` : ''}credentials-validate`,
+      url: `/workspaces/current/model-providers/${provider}/models/load-balancing-configs/${id ? `${id}/` : ''}credentials-validate`,
       body: {
         model: __model_name,
         model_type: __model_type,
@@ -81,7 +80,7 @@ export const validateLoadBalancingCredentials = async (predefined: boolean, plug
   }
 }
 
-export const saveCredentials = async (predefined: boolean, pluginID: string, provider: string, v: FormValue, loadBalancing?: ModelLoadBalancingConfig) => {
+export const saveCredentials = async (predefined: boolean, provider: string, v: FormValue, loadBalancing?: ModelLoadBalancingConfig) => {
   let body, url
 
   if (predefined) {
@@ -90,7 +89,7 @@ export const saveCredentials = async (predefined: boolean, pluginID: string, pro
       credentials: v,
       load_balancing: loadBalancing,
     }
-    url = `/workspaces/current/model-providers/${pluginID}/${provider}`
+    url = `/workspaces/current/model-providers/${provider}`
   }
   else {
     const { __model_name, __model_type, ...credentials } = v
@@ -100,7 +99,7 @@ export const saveCredentials = async (predefined: boolean, pluginID: string, pro
       credentials,
       load_balancing: loadBalancing,
     }
-    url = `/workspaces/current/model-providers/${pluginID}/${provider}/models`
+    url = `/workspaces/current/model-providers/${provider}/models`
   }
 
   return setModelProvider({ url, body })
@@ -120,12 +119,12 @@ export const savePredefinedLoadBalancingConfig = async (provider: string, v: For
   return setModelProvider({ url, body })
 }
 
-export const removeCredentials = async (predefined: boolean, pluginID: string, provider: string, v: FormValue) => {
+export const removeCredentials = async (predefined: boolean, provider: string, v: FormValue) => {
   let url = ''
   let body
 
   if (predefined) {
-    url = `/workspaces/current/model-providers/${pluginID}/${provider}`
+    url = `/workspaces/current/model-providers/${provider}`
   }
   else {
     if (v) {
@@ -134,7 +133,7 @@ export const removeCredentials = async (predefined: boolean, pluginID: string, p
         model: __model_name,
         model_type: __model_type,
       }
-      url = `/workspaces/current/model-providers/${pluginID}/${provider}/models`
+      url = `/workspaces/current/model-providers/${provider}/models`
     }
   }
 

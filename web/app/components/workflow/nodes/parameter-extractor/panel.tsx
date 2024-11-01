@@ -77,7 +77,6 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             isInWorkflow
             isAdvancedMode={true}
             mode={model?.mode}
-            pluginId={model?.plugin_id}
             provider={model?.provider}
             completionParams={model?.completion_params}
             modelId={model?.name}

@@ -103,6 +103,7 @@ export type Plugin = {
   type: PluginType
   org: string
   name: string
+  plugin_id: string
   version: string
   latest_version: string
   icon: string

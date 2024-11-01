@@ -123,7 +123,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     },
   })
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; pluginId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId
@@ -139,7 +139,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   useEffect(() => {
     if (currentProvider?.provider && currentModel?.model && !model.provider) {
       handleModelChanged({
-        pluginId: currentProvider?.plugin_id,
         provider: currentProvider?.provider,
         modelId: currentModel?.model,
         mode: currentModel?.model_properties?.mode as string,
