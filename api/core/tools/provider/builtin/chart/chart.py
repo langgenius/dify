@@ -1,5 +1,5 @@
 import matplotlib.pyplot as plt
-from matplotlib.font_manager import FontProperties
+from matplotlib.font_manager import FontProperties, fontManager
 
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
@@ -17,9 +17,10 @@ def set_chinese_font():
     ]
 
     for font in font_list:
-        chinese_font = FontProperties(font)
-        if chinese_font.get_name() == font:
-            return chinese_font
+        if font in fontManager.ttflist:
+            chinese_font = FontProperties(font)
+            if chinese_font.get_name() == font:
+                return chinese_font
 
     return FontProperties()
 
