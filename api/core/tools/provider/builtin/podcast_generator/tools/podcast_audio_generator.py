@@ -14,7 +14,6 @@ with catch_warnings():
     simplefilter("ignore", category=RuntimeWarning)
     from pydub import AudioSegment
 
-
 class PodcastAudioGeneratorTool(BuiltinTool):
     @staticmethod
     def _generate_silence(duration: float):
