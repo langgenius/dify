@@ -78,7 +78,6 @@ const ToolPicker: FC<Props> = ({
       onOpenChange={onShowChange}
     >
       <PortalToFollowElemTrigger
-        asChild
         onClick={handleTriggerClick}
       >
         {trigger}
