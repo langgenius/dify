@@ -30,7 +30,12 @@ async function getNewAccessToken(): Promise<void> {
       globalThis.localStorage.setItem('is_refreshing', '1')
       isRefreshing = true
       const refresh_token = globalThis.localStorage.getItem('refresh_token')
-      // do not use baseFetch for refresh token, if return 401, request will in a loop
+
+      // Do not use baseFetch to refresh tokens.
+      // If a 401 response occurs and baseFetch itself attempts to refresh the token,
+      // it can lead to an infinite loop if the refresh attempt also returns 401.
+      // To avoid this, handle token refresh separately in a dedicated function
+      // that does not call baseFetch and uses a single retry mechanism.
       const [error, ret] = await fetchWithRetry(globalThis.fetch(`${apiPrefix}/refresh-token`, {
         method: 'POST',
         headers: {
@@ -61,12 +66,10 @@ async function getNewAccessToken(): Promise<void> {
   }
 }
 
-export async function refreshAccessTokenOrRelogin() {
-  try {
-    await getNewAccessToken()
-  }
-  catch (error) {
-    console.error(error)
-    return Promise.reject(error)
-  }
+export async function refreshAccessTokenOrRelogin(timeout: number) {
+  return Promise.race([new Promise<void>((resolve, reject) => setTimeout(() => {
+    isRefreshing = false
+    globalThis.localStorage.removeItem('is_refreshing')
+    reject(new Error('request timeout'))
+  }, timeout)), getNewAccessToken()])
 }

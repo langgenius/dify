@@ -357,6 +357,8 @@ const baseFetch = <T>(
           if (!/^(2|3)\d{2}$/.test(String(res.status))) {
             const bodyJson = res.json()
             switch (res.status) {
+              case 401:
+                return Promise.reject(resClone)
               case 403:
                 bodyJson.then((data: ResponseError) => {
                   if (!silent)
@@ -502,7 +504,7 @@ export const ssePost = (
     .then((res) => {
       if (!/^(2|3)\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
-          refreshAccessTokenOrRelogin().then(() => {
+          refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
             ssePost(url, fetchOptions, otherOptions)
           }).catch(() => {
             res.json().then((data: any) => {
@@ -549,7 +551,7 @@ export const request = <T>(url: string, options = {}, otherOptions?: IOtherOptio
     const otherOptionsForBaseFetch = otherOptions || {}
     baseFetch<T>(url, options, otherOptionsForBaseFetch).then(resolve).catch((errResp) => {
       if (errResp?.status === 401) {
-        return refreshAccessTokenOrRelogin().then(() => {
+        return refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
           baseFetch<T>(url, options, otherOptionsForBaseFetch).then(resolve).catch(reject)
         }).catch(() => {
           const {
