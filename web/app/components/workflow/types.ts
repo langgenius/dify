@@ -27,6 +27,7 @@ export enum BlockEnum {
   ParameterExtractor = 'parameter-extractor',
   Iteration = 'iteration',
   DocExtractor = 'document-extractor',
+  MediaExtractor = 'media-extractor',
   ListFilter = 'list-operator',
   IterationStart = 'iteration-start',
   Assigner = 'assigner', // is now named as VariableAssigner
@@ -374,4 +375,14 @@ export type UploadFileSetting = {
 export type VisionSetting = {
   variable_selector: ValueSelector
   detail: Resolution
+}
+
+export type MediaConfig = {
+  extract_audio: string
+  word_timestamps: string
+  extract_video: string
+  splice_mode: string
+  max_collect_frames: number
+  blur_threshold: number
+  similarity_threshold: number
 }

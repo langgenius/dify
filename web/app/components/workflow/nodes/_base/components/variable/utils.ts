@@ -24,6 +24,7 @@ import {
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
+  MEDIA_EXTRACTOR_OUTPUT_STRUCT,
   PARAMETER_EXTRACTOR_COMMON_STRUCT,
   QUESTION_CLASSIFIER_OUTPUT_STRUCT,
   SUPPORT_OUTPUT_VARS_NODE,
@@ -143,6 +144,11 @@ const formatItem = (
 
     case BlockEnum.KnowledgeRetrieval: {
       res.vars = KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT
+      break
+    }
+
+    case BlockEnum.MediaExtractor: {
+      res.vars = MEDIA_EXTRACTOR_OUTPUT_STRUCT
       break
     }
 
@@ -1125,6 +1131,11 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
 
     case BlockEnum.DocExtractor: {
       res.push([id, 'text'])
+      break
+    }
+
+    case BlockEnum.MediaExtractor: {
+      varsToValueSelectorList(MEDIA_EXTRACTOR_OUTPUT_STRUCT, [id], res)
       break
     }
 

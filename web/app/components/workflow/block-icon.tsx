@@ -14,6 +14,7 @@ import {
   KnowledgeRetrieval,
   ListFilter,
   Llm,
+  MediaExtractor,
   ParameterExtractor,
   QuestionClassifier,
   TemplatingTransform,
@@ -51,6 +52,7 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.Iteration]: <Iteration className={className} />,
     [BlockEnum.ParameterExtractor]: <ParameterExtractor className={className} />,
     [BlockEnum.DocExtractor]: <DocsExtractor className={className} />,
+    [BlockEnum.MediaExtractor]: <MediaExtractor className={className} />,
     [BlockEnum.ListFilter]: <ListFilter className={className} />,
   }[type]
 }
@@ -71,6 +73,7 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.Assigner]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.ParameterExtractor]: 'bg-util-colors-blue-blue-500',
   [BlockEnum.DocExtractor]: 'bg-util-colors-green-green-500',
+  [BlockEnum.MediaExtractor]: 'bg-util-colors-green-green-500',
   [BlockEnum.ListFilter]: 'bg-util-colors-cyan-cyan-500',
 }
 const BlockIcon: FC<BlockIconProps> = ({

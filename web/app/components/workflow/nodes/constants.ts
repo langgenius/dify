@@ -31,7 +31,9 @@ import ParameterExtractorPanel from './parameter-extractor/panel'
 import IterationNode from './iteration/node'
 import IterationPanel from './iteration/panel'
 import DocExtractorNode from './document-extractor/node'
+import MediaExtractorNode from './media-extractor/node'
 import DocExtractorPanel from './document-extractor/panel'
+import MediaExtractorPanel from './media-extractor/panel'
 import ListFilterNode from './list-operator/node'
 import ListFilterPanel from './list-operator/panel'
 
@@ -53,6 +55,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.ParameterExtractor]: ParameterExtractorNode,
   [BlockEnum.Iteration]: IterationNode,
   [BlockEnum.DocExtractor]: DocExtractorNode,
+  [BlockEnum.MediaExtractor]: MediaExtractorNode,
   [BlockEnum.ListFilter]: ListFilterNode,
 }
 
@@ -74,6 +77,7 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.ParameterExtractor]: ParameterExtractorPanel,
   [BlockEnum.Iteration]: IterationPanel,
   [BlockEnum.DocExtractor]: DocExtractorPanel,
+  [BlockEnum.MediaExtractor]: MediaExtractorPanel,
   [BlockEnum.ListFilter]: ListFilterPanel,
 }
 

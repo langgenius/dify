@@ -21,4 +21,5 @@ class NodeType(str, Enum):
     PARAMETER_EXTRACTOR = "parameter-extractor"
     CONVERSATION_VARIABLE_ASSIGNER = "assigner"
     DOCUMENT_EXTRACTOR = "document-extractor"
+    MEDIA_EXTRACTOR = "media-extractor"
     LIST_OPERATOR = "list-operator"

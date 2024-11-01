@@ -376,6 +376,27 @@ export enum Resolution {
   high = 'high',
 }
 
+export enum IsExtractAudio {
+  enabled = 'enabled',
+  disabled = 'disabled',
+}
+
+export enum IsExtractVideo {
+  enabled = 'enabled',
+  disabled = 'disabled',
+}
+
+export enum SpliceMode {
+  vertical = 'vertical',
+  horizontal = 'horizontal',
+  images = 'images',
+}
+
+export enum IsExtractAudioWordTimestamps {
+  enabled = 'enabled',
+  disabled = 'disabled',
+}
+
 export enum TransferMethod {
   all = 'all',
   local_file = 'local_file',

@@ -16,6 +16,7 @@ import AssignerDefault from './nodes/assigner/default'
 import EndNodeDefault from './nodes/end/default'
 import IterationDefault from './nodes/iteration/default'
 import DocExtractorDefault from './nodes/document-extractor/default'
+import MediaExtractorDefault from './nodes/media-extractor/default'
 import ListFilterDefault from './nodes/list-operator/default'
 import IterationStartDefault from './nodes/iteration-start/default'
 
@@ -191,6 +192,15 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailableNextNodes: DocExtractorDefault.getAvailableNextNodes,
     checkValid: DocExtractorDefault.checkValid,
   },
+  [BlockEnum.MediaExtractor]: {
+    author: 'Charliewei',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: MediaExtractorDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: MediaExtractorDefault.getAvailableNextNodes,
+    checkValid: MediaExtractorDefault.checkValid,
+  },
   [BlockEnum.ListFilter]: {
     author: 'Dify',
     about: '',
@@ -333,6 +343,12 @@ export const NODES_INITIAL_DATA = {
     desc: '',
     ...DocExtractorDefault.defaultValue,
   },
+  [BlockEnum.MediaExtractor]: {
+    type: BlockEnum.MediaExtractor,
+    title: '',
+    desc: '',
+    ...MediaExtractorDefault.defaultValue,
+  },
   [BlockEnum.ListFilter]: {
     type: BlockEnum.ListFilter,
     title: '',
@@ -385,8 +401,7 @@ export const RETRIEVAL_OUTPUT_STRUCT = `{
 export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.Start, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.Code, BlockEnum.TemplateTransform,
   BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner, BlockEnum.VariableAggregator, BlockEnum.QuestionClassifier,
-  BlockEnum.ParameterExtractor, BlockEnum.Iteration,
-  BlockEnum.DocExtractor, BlockEnum.ListFilter,
+  BlockEnum.ParameterExtractor, BlockEnum.Iteration, BlockEnum.DocExtractor, BlockEnum.ListFilter, BlockEnum.MediaExtractor,
 ]
 
 export const LLM_OUTPUT_STRUCT: Var[] = [
@@ -432,6 +447,17 @@ export const HTTP_REQUEST_OUTPUT_STRUCT: Var[] = [
   },
   {
     variable: 'files',
+    type: VarType.arrayFile,
+  },
+]
+
+export const MEDIA_EXTRACTOR_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: 'text',
+    type: VarType.string,
+  },
+  {
+    variable: 'images',
     type: VarType.arrayFile,
   },
 ]
