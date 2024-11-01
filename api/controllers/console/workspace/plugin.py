@@ -92,9 +92,7 @@ class PluginUploadFromGithubApi(Resource):
 
         response = PluginService.upload_pkg_from_github(tenant_id, args["repo"], args["version"], args["package"])
 
-        return {
-            "plugin_unique_identifier": response,
-        }
+        return jsonable_encoder(response)
 
 
 class PluginInstallFromPkgApi(Resource):
