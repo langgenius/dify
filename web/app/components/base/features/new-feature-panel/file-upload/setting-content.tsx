@@ -1,6 +1,7 @@
 import React, { useCallback, useMemo, useState } from 'react'
 import produce from 'immer'
 import { useTranslation } from 'react-i18next'
+import useSWR from 'swr'
 import { RiCloseLine } from '@remixicon/react'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import Button from '@/app/components/base/button'
@@ -8,6 +9,7 @@ import { useFeatures, useFeaturesStore } from '@/app/components/base/features/ho
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { fetchFileUploadConfig } from '@/service/common'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 
 type SettingContentProps = {
@@ -23,6 +25,7 @@ const SettingContent = ({
   const { t } = useTranslation()
   const featuresStore = useFeaturesStore()
   const file = useFeatures(state => state.features.file)
+  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
   const fileSettingPayload = useMemo(() => {
     return {
       allowed_file_upload_methods: file?.allowed_file_upload_methods || ['local_file', 'remote_url'],
@@ -66,6 +69,7 @@ const SettingContent = ({
         hideSupportFileType={imageUpload}
         payload={tempPayload}
         onChange={(p: UploadFileSetting) => setTempPayload(p)}
+        maxFileUploadLimit={fileUploadConfigResponse?.workflow_file_upload_limit || 10}
       />
       <div className='mt-4 flex items-center justify-end'>
         <Button

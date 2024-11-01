@@ -21,6 +21,7 @@ type Props = {
   inFeaturePanel?: boolean
   hideSupportFileType?: boolean
   onChange: (payload: UploadFileSetting) => void
+  maxFileUploadLimit?: number
 }
 
 const FileUploadSetting: FC<Props> = ({
@@ -29,6 +30,7 @@ const FileUploadSetting: FC<Props> = ({
   inFeaturePanel = false,
   hideSupportFileType = false,
   onChange,
+  maxFileUploadLimit = 10,
 }) => {
   const { t } = useTranslation()
 
@@ -156,7 +158,7 @@ const FileUploadSetting: FC<Props> = ({
             <InputNumberWithSlider
               value={max_length}
               min={1}
-              max={10}
+              max={maxFileUploadLimit}
               onChange={handleMaxUploadNumLimitChange}
             />
           </div>
