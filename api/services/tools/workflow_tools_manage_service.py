@@ -198,7 +198,7 @@ class WorkflowToolManageService:
             user_tool_provider = ToolTransformService.workflow_provider_to_user_provider(
                 provider_controller=tool, labels=labels.get(tool.provider_id, [])
             )
-            ToolTransformService.repack_provider(user_tool_provider)
+            ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_tool_provider)
             user_tool_provider.tools = [
                 ToolTransformService.convert_tool_entity_to_api_entity(
                     tool=tool.get_tools(tenant_id)[0],

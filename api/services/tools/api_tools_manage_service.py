@@ -459,7 +459,7 @@ class ApiToolManageService:
             user_provider.labels = labels
 
             # add icon
-            ToolTransformService.repack_provider(user_provider)
+            ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_provider)
 
             tools = provider_controller.get_tools(tenant_id=tenant_id)
 

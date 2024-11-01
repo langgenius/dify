@@ -2,11 +2,15 @@ from pydantic import Field
 
 from core.entities.provider_entities import ProviderConfig
 from core.tools.__base.tool_provider import ToolProviderController
+from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    ToolDescription,
+    ToolEntity,
+    ToolIdentity,
     ToolProviderEntity,
     ToolProviderIdentity,
     ToolProviderType,
@@ -86,6 +90,7 @@ class ApiToolProviderController(ToolProviderController):
                     icon=db_provider.icon,
                 ),
                 credentials_schema=credentials_schema,
+                plugin_id=None,
             ),
             provider_id=db_provider.id or "",
             tenant_id=db_provider.tenant_id or "",
@@ -103,21 +108,25 @@ class ApiToolProviderController(ToolProviderController):
         :return: the tool
         """
         return ApiTool(
-            **{
-                "api_bundle": tool_bundle,
-                "identity": {
-                    "author": tool_bundle.author,
-                    "name": tool_bundle.operation_id,
-                    "label": {"en_US": tool_bundle.operation_id, "zh_Hans": tool_bundle.operation_id},
-                    "icon": self.entity.identity.icon,
-                    "provider": self.provider_id,
-                },
-                "description": {
-                    "human": {"en_US": tool_bundle.summary or "", "zh_Hans": tool_bundle.summary or ""},
-                    "llm": tool_bundle.summary or "",
-                },
-                "parameters": tool_bundle.parameters or [],
-            }
+            api_bundle=tool_bundle,
+            entity=ToolEntity(
+                identity=ToolIdentity(
+                    author=tool_bundle.author,
+                    name=tool_bundle.operation_id or "default_tool",
+                    label=I18nObject(
+                        en_US=tool_bundle.operation_id or "default_tool",
+                        zh_Hans=tool_bundle.operation_id or "default_tool",
+                    ),
+                    icon=self.entity.identity.icon,
+                    provider=self.provider_id,
+                ),
+                description=ToolDescription(
+                    human=I18nObject(en_US=tool_bundle.summary or "", zh_Hans=tool_bundle.summary or ""),
+                    llm=tool_bundle.summary or "",
+                ),
+                parameters=tool_bundle.parameters or [],
+            ),
+            runtime=ToolRuntime(tenant_id=self.tenant_id),
         )
 
     def load_bundled_tools(self, tools: list[ApiToolBundle]) -> list[ApiTool]:
