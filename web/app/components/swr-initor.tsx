@@ -44,8 +44,10 @@ const SwrInitor = ({
           return
         }
         if (searchParams.has('access_token') || searchParams.has('refresh_token')) {
-          localStorage.setItem('console_token', searchParams.get('access_token'))
-          localStorage.setItem('refresh_token', searchParams.get('refresh_token'))
+          const consoleToken = decodeURIComponent(searchParams.get('access_token') || '')
+          const refreshToken = decodeURIComponent(searchParams.get('refresh_token') || '')
+          consoleToken && localStorage.setItem('console_token', consoleToken)
+          refreshToken && localStorage.setItem('refresh_token', refreshToken)
           router.replace(pathname)
         }
 
