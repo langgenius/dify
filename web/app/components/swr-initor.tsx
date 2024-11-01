@@ -4,7 +4,6 @@ import { SWRConfig } from 'swr'
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import useRefreshToken from '@/hooks/use-refresh-token'
 import { fetchSetupStatus } from '@/service/common'
 
 type SwrInitorProps = {
@@ -16,11 +15,6 @@ const SwrInitor = ({
   const router = useRouter()
   const searchParams = useSearchParams()
   const pathname = usePathname()
-  const { getNewAccessToken } = useRefreshToken()
-  const consoleToken = searchParams.get('access_token')
-  const refreshToken = searchParams.get('refresh_token')
-  const consoleTokenFromLocalStorage = localStorage?.getItem('console_token')
-  const refreshTokenFromLocalStorage = localStorage?.getItem('refresh_token')
   const [init, setInit] = useState(false)
 
   const isSetupFinished = useCallback(async () => {
@@ -41,25 +35,6 @@ const SwrInitor = ({
     }
   }, [])
 
-  const setRefreshToken = useCallback(async () => {
-    try {
-      if (!(consoleToken || refreshToken || consoleTokenFromLocalStorage || refreshTokenFromLocalStorage))
-        return Promise.reject(new Error('No token found'))
-
-      if (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage)
-        await getNewAccessToken()
-
-      if (consoleToken && refreshToken) {
-        localStorage.setItem('console_token', consoleToken)
-        localStorage.setItem('refresh_token', refreshToken)
-        await getNewAccessToken()
-      }
-    }
-    catch (error) {
-      return Promise.reject(error)
-    }
-  }, [consoleToken, refreshToken, consoleTokenFromLocalStorage, refreshTokenFromLocalStorage, getNewAccessToken])
-
   useEffect(() => {
     (async () => {
       try {
@@ -68,7 +43,6 @@ const SwrInitor = ({
           router.replace('/install')
           return
         }
-        await setRefreshToken()
         if (searchParams.has('access_token') || searchParams.has('refresh_token'))
           router.replace(pathname)
 
@@ -78,15 +52,13 @@ const SwrInitor = ({
         router.replace('/signin')
       }
     })()
-  }, [isSetupFinished, setRefreshToken, router, pathname, searchParams])
+  }, [isSetupFinished, router, pathname, searchParams])
 
   return init
     ? (
       <SWRConfig value={{
         shouldRetryOnError: false,
         revalidateOnFocus: false,
-        revalidateIfStale: false,
-        revalidateOnReconnect: false,
       }}>
         {children}
       </SWRConfig>
