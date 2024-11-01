@@ -4,7 +4,7 @@ import logging
 import random
 import time
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 from flask_login import current_user
 from sqlalchemy import func
@@ -675,7 +675,7 @@ class DocumentService:
     def save_document_with_dataset_id(
         dataset: Dataset,
         document_data: dict,
-        account: Account,
+        account: Account | Any,
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
     ):
