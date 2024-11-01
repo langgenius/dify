@@ -230,7 +230,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         document = documents[0]
-        documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": batch}
+        documents_and_batch_fields = {"document": marshal(document, document_fields), "batch": document.batch}
         return documents_and_batch_fields, 200
 
 
@@ -331,10 +331,26 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         return data
 
 
-api.add_resource(DocumentAddByTextApi, "/datasets/<uuid:dataset_id>/document/create_by_text")
-api.add_resource(DocumentAddByFileApi, "/datasets/<uuid:dataset_id>/document/create_by_file")
-api.add_resource(DocumentUpdateByTextApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_text")
-api.add_resource(DocumentUpdateByFileApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_file")
+api.add_resource(
+    DocumentAddByTextApi,
+    "/datasets/<uuid:dataset_id>/document/create_by_text",
+    "/datasets/<uuid:dataset_id>/document/create-by-text",
+)
+api.add_resource(
+    DocumentAddByFileApi,
+    "/datasets/<uuid:dataset_id>/document/create_by_file",
+    "/datasets/<uuid:dataset_id>/document/create-by-file",
+)
+api.add_resource(
+    DocumentUpdateByTextApi,
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_text",
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update-by-text",
+)
+api.add_resource(
+    DocumentUpdateByFileApi,
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update_by_file",
+    "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/update-by-file",
+)
 api.add_resource(DocumentDeleteApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>")
 api.add_resource(DocumentListApi, "/datasets/<uuid:dataset_id>/documents")
 api.add_resource(DocumentIndexingStatusApi, "/datasets/<uuid:dataset_id>/documents/<string:batch>/indexing-status")

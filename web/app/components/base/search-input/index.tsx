@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiSearchLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
@@ -12,6 +12,7 @@ type SearchInputProps = {
   onChange: (v: string) => void
   white?: boolean
 }
+
 const SearchInput: FC<SearchInputProps> = ({
   placeholder,
   className,
@@ -21,6 +22,7 @@ const SearchInput: FC<SearchInputProps> = ({
 }) => {
   const { t } = useTranslation()
   const [focus, setFocus] = useState<boolean>(false)
+  const isComposing = useRef<boolean>(false)
 
   return (
     <div className={cn(
@@ -45,7 +47,14 @@ const SearchInput: FC<SearchInputProps> = ({
         placeholder={placeholder || t('common.operation.search')!}
         value={value}
         onChange={(e) => {
-          onChange(e.target.value)
+          if (!isComposing.current)
+            onChange(e.target.value)
+        }}
+        onCompositionStart={() => {
+          isComposing.current = true
+        }}
+        onCompositionEnd={() => {
+          isComposing.current = false
         }}
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}
