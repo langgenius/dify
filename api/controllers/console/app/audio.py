@@ -18,8 +18,7 @@ from controllers.console.app.error import (
     UnsupportedAudioTypeError,
 )
 from controllers.console.app.wraps import get_app_model
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
