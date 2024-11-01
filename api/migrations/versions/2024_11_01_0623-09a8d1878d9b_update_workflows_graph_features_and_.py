@@ -39,7 +39,6 @@ def upgrade():
                nullable=False)
         batch_op.alter_column('features',
                existing_type=sa.TEXT(),
-               type_=sa.String(),
                nullable=False)
         batch_op.alter_column('updated_at',
                existing_type=postgresql.TIMESTAMP(),
@@ -55,8 +54,7 @@ def downgrade():
                existing_type=postgresql.TIMESTAMP(),
                nullable=True)
         batch_op.alter_column('features',
-               existing_type=sa.String(),
-               type_=sa.TEXT(),
+               existing_type=sa.TEXT(),
                nullable=True)
         batch_op.alter_column('graph',
                existing_type=sa.TEXT(),
