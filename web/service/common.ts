@@ -38,11 +38,11 @@ import type {
 import type { RETRIEVE_METHOD } from '@/types/app'
 import type { SystemFeatures } from '@/types/feature'
 
-interface LoginSuccess {
+type LoginSuccess = {
   result: 'success'
   data: { access_token: string;refresh_token: string }
 }
-interface LoginFail {
+type LoginFail = {
   result: 'fail'
   data: string
   code: string
@@ -183,7 +183,7 @@ export const fetchModelProviders: Fetcher<{ data: ModelProvider[] }, string> = (
   return get<{ data: ModelProvider[] }>(url)
 }
 
-export interface ModelProviderCredentials {
+export type ModelProviderCredentials = {
   credentials?: Record<string, string | undefined | boolean>
   load_balancing: ModelLoadBalancingConfig
 }
@@ -257,10 +257,6 @@ export const fetchFileUploadConfig: Fetcher<FileUploadConfigResponse, { url: str
   return get<FileUploadConfigResponse>(url)
 }
 
-export const fetchFreeQuotaVerify: Fetcher<{ result: string; flag: boolean; reason: string }, string> = (url) => {
-  return get(url) as Promise<{ result: string; flag: boolean; reason: string }>
-}
-
 export const fetchNotionConnection: Fetcher<{ data: string }, string> = (url) => {
   return get(url) as Promise<{ data: string }>
 }
@@ -297,7 +293,7 @@ export const moderate = (url: string, body: { app_id: string; text: string }) =>
   return post(url, { body }) as Promise<ModerateResponse>
 }
 
-interface RetrievalMethodsRes {
+type RetrievalMethodsRes = {
   retrieval_method: RETRIEVE_METHOD[]
 }
 export const fetchSupportRetrievalMethods: Fetcher<RetrievalMethodsRes, string> = (url) => {
