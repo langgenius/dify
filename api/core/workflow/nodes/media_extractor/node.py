@@ -89,9 +89,7 @@ class MediaExtractorNode(BaseNode[MediaExtractorNodeData]):
         word_timestamps = self.node_data.variable_config.get("word_timestamps")
 
         if extract_audio == "enabled":
-            audio_text = self._extract_text_from_audio(
-                file=upload_file, timestamp=word_timestamps, app_model=self.app_model, user=self.user
-            )
+            audio_text = self._extract_text_from_audio(file=upload_file, timestamp=word_timestamps, app_model=self.app_model)
 
         if extract_video == "enabled":
             video_images = self._extract_images_from_video(file=upload_file)
@@ -119,14 +117,12 @@ class MediaExtractorNode(BaseNode[MediaExtractorNodeData]):
             raise FileDownloadError(f"Error downloading file: {str(e)}") from e
 
     @staticmethod
-    def _extract_text_from_audio(file: UploadFile, app_model, user: Account, timestamp: str) -> Optional[str]:
+    def _extract_text_from_audio(file: UploadFile, app_model, timestamp) -> Optional[str]:
         """
         Get video text data
         :return:
         """
-        return AudioService.transcript_asr(
-            file=file, app_model=app_model, user=user, word_timestamps=True if timestamp == "enabled" else False
-        )
+        return AudioService.transcript_asr(file=file, app_model=app_model)
 
     def _extract_images_from_video(self, file: UploadFile) -> list:
         """Extract text from a file based on its MIME type."""
@@ -148,14 +144,11 @@ class MediaExtractorNode(BaseNode[MediaExtractorNodeData]):
                 # video_base64 = list()
                 for video_image in video_obj:
                     image_upload_file = FileService.upload_file(
-                        file=video_image,
-                        source="app",
+                        content=video_image.read(),
                         user=self.user,
-                        file_name=f'{file.name.split(".")[0]}.jpeg',
-                        tenant_id=file.tenant_id,
+                        filename=f'{file.name.split(".")[0]}.jpeg',
+                        mimetype='image/jpeg'
                     )
-                    # image_url = UploadFileParser.get_image_data(upload_file=image_upload_file, force_url=True)
-                    # video_base64.append(UploadFileParser.get_image_data(upload_file=image_upload_file, force_url=False))
                     images.append(
                         File(tenant_id=image_upload_file.tenant_id,
                              type=FileType.IMAGE,
@@ -169,14 +162,11 @@ class MediaExtractorNode(BaseNode[MediaExtractorNodeData]):
                     )
             else:
                 image_upload_file = FileService.upload_file(
-                    file=video_obj,
-                    source="app",
+                    content=video_obj,
                     user=self.user,
-                    file_name=f'{file.name.split(".")[0]}.jpeg',
-                    tenant_id=file.tenant_id,
+                    filename=f'{file.name.split(".")[0]}.jpeg',
+                    mimetype='image/jpeg'
                 )
-                # image_url = UploadFileParser.get_image_data(upload_file=image_upload_file, force_url=True)
-                # video_base64 = UploadFileParser.get_image_data(upload_file=image_upload_file, force_url=False)
                 images.append(
                     File(tenant_id=image_upload_file.tenant_id,
                          type=FileType.IMAGE,
