@@ -91,7 +91,7 @@ const AgentTools: FC = () => {
         provider_name: tool.provider_name,
         tool_name: tool.tool_name,
         tool_label: tool.tool_label,
-        tool_parameters: {},
+        tool_parameters: tool.params,
         enabled: true,
       })
     })

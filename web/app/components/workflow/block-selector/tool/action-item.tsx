@@ -10,14 +10,12 @@ import { useGetLanguage } from '@/context/i18n'
 import BlockIcon from '../../block-icon'
 
 type Props = {
-  className?: string
   provider: ToolWithProvider
   payload: Tool
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
 
 const ToolItem: FC<Props> = ({
-  className,
   provider,
   payload,
   onSelect,
@@ -46,6 +44,12 @@ const ToolItem: FC<Props> = ({
         key={payload.name}
         className='rounded-lg pl-[21px] hover:bg-state-base-hover cursor-pointer'
         onClick={() => {
+          const params: Record<string, string> = {}
+          if (payload.parameters) {
+            payload.parameters.forEach((item) => {
+              params[item.name] = ''
+            })
+          }
           onSelect(BlockEnum.Tool, {
             provider_id: provider.id,
             provider_type: provider.type,
@@ -53,6 +57,7 @@ const ToolItem: FC<Props> = ({
             tool_name: payload.name,
             tool_label: payload.label[language],
             title: payload.label[language],
+            params,
           })
         }}
       >
