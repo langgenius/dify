@@ -4,6 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Optional, Union
 
+import sqlalchemy as sa
 from sqlalchemy import func
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -99,8 +100,8 @@ class Workflow(db.Model):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(db.String(255), nullable=False)
     version: Mapped[str] = mapped_column(db.String(255), nullable=False)
-    graph: Mapped[str] = mapped_column(db.Text)
-    _features: Mapped[str] = mapped_column("features")
+    graph: Mapped[str] = mapped_column(sa.Text)
+    _features: Mapped[str] = mapped_column("features", sa.TEXT)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
