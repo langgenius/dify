@@ -1,16 +1,15 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
+import { useDebounce } from 'ahooks'
 import {
   RiAlertFill,
   RiArrowDownSLine,
   RiArrowRightUpLine,
   RiBrainLine,
 } from '@remixicon/react'
-import { useContext } from 'use-context-selector'
 import SystemModelSelector from './system-model-selector'
 import ProviderAddedCard, { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
-// import ProviderCard from './provider-card'
 import type {
   CustomConfigurationModelFixedFields,
   ModelProvider,
@@ -26,16 +25,24 @@ import {
   useUpdateModelProviders,
 } from './hooks'
 import Divider from '@/app/components/base/divider'
+import Loading from '@/app/components/base/loading'
 import ProviderCard from '@/app/components/plugins/provider-card'
-import I18n from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import {
+  useMarketplacePlugins,
+} from '@/app/components/plugins/marketplace/hooks'
+import { PluginType } from '@/app/components/plugins/types'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 
-import { extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/card/card-mock'
+type Props = {
+  searchText: string
+}
 
-const ModelProviderPage = () => {
+const ModelProviderPage = ({ searchText }: Props) => {
+  const debouncedSearchText = useDebounce(searchText, { wait: 500 })
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
   const updateModelProviders = useUpdateModelProviders()
@@ -67,6 +74,18 @@ const ModelProviderPage = () => {
 
     return [configuredProviders, notConfiguredProviders]
   }, [providers])
+  const [filteredConfiguredProviders, filteredNotConfiguredProviders] = useMemo(() => {
+    const filteredConfiguredProviders = configuredProviders.filter(
+      provider => provider.provider.toLowerCase().includes(debouncedSearchText.toLowerCase())
+      || Object.values(provider.label).some(text => text.toLowerCase().includes(debouncedSearchText.toLowerCase())),
+    )
+    const filteredNotConfiguredProviders = notConfiguredProviders.filter(
+      provider => provider.provider.toLowerCase().includes(debouncedSearchText.toLowerCase())
+      || Object.values(provider.label).some(text => text.toLowerCase().includes(debouncedSearchText.toLowerCase())),
+    )
+
+    return [filteredConfiguredProviders, filteredNotConfiguredProviders]
+  }, [configuredProviders, debouncedSearchText, notConfiguredProviders])
 
   const handleOpenModal = (
     provider: ModelProvider,
@@ -91,7 +110,7 @@ const ModelProviderPage = () => {
         if (configurationMethod === ConfigurationMethodEnum.customizableModel && provider.custom_configuration.status === CustomConfigurationStatusEnum.active) {
           eventEmitter?.emit({
             type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-            payload: provider,
+            payload: provider.provider,
           } as any)
 
           if (CustomConfigurationModelFixedFields?.__model_type)
@@ -102,10 +121,28 @@ const ModelProviderPage = () => {
   }
 
   const [collapse, setCollapse] = useState(false)
-  const { locale } = useContext(I18n)
 
-  // TODO #Plugin list API#
-  const pluginList = [toolNotion, extensionDallE, modelGPT4]
+  const {
+    plugins,
+    queryPlugins,
+    queryPluginsWithDebounced,
+    isLoading: isPluginsLoading,
+  } = useMarketplacePlugins()
+
+  useEffect(() => {
+    if (searchText) {
+      queryPluginsWithDebounced({
+        query: searchText,
+        category: PluginType.model,
+      })
+    }
+    else {
+      queryPlugins({
+        query: searchText,
+        category: PluginType.model,
+      })
+    }
+  }, [queryPlugins, queryPluginsWithDebounced, searchText])
 
   return (
     <div className='relative pt-1 -mt-2'>
@@ -132,7 +169,7 @@ const ModelProviderPage = () => {
           />
         </div>
       </div>
-      {!configuredProviders?.length && (
+      {!filteredConfiguredProviders?.length && (
         <div className='mb-2 p-4 rounded-[10px]' style={{ background: 'linear-gradient(90deg, rgba(200, 206, 218, 0.20) 0%, rgba(200, 206, 218, 0.04) 100%)' }}>
           <div className='w-10 h-10 flex items-center justify-center rounded-[10px] border-[0.5px] border-components-card-border bg-components-card-bg shadow-lg backdrop-blur'>
             <RiBrainLine className='w-5 h-5 text-text-primary' />
@@ -141,9 +178,9 @@ const ModelProviderPage = () => {
           <div className='mt-1 text-text-tertiary system-xs-regular'>{t('common.modelProvider.emptyProviderTip')}</div>
         </div>
       )}
-      {!!configuredProviders?.length && (
+      {!!filteredConfiguredProviders?.length && (
         <div className='relative'>
-          {configuredProviders?.map(provider => (
+          {filteredConfiguredProviders?.map(provider => (
             <ProviderAddedCard
               key={provider.provider}
               provider={provider}
@@ -152,11 +189,11 @@ const ModelProviderPage = () => {
           ))}
         </div>
       )}
-      {false && !!notConfiguredProviders?.length && (
+      {!!filteredNotConfiguredProviders?.length && (
         <>
           <div className='flex items-center mb-2 pt-2 text-text-primary system-md-semibold'>{t('common.modelProvider.configureRequired')}</div>
           <div className='relative'>
-            {notConfiguredProviders?.map(provider => (
+            {filteredNotConfiguredProviders?.map(provider => (
               <ProviderAddedCard
                 notConfigured
                 key={provider.provider}
@@ -176,19 +213,20 @@ const ModelProviderPage = () => {
           </div>
           <div className='flex items-center mb-2 pt-2'>
             <span className='pr-1 text-text-tertiary system-sm-regular'>{t('common.modelProvider.discoverMore')}</span>
-            <Link target="_blank" href="/plugins" className='inline-flex items-center system-sm-medium text-text-accent'>
+            <Link target="_blank" href={`${MARKETPLACE_URL_PREFIX}`} className='inline-flex items-center system-sm-medium text-text-accent'>
               Dify Marketplace
               <RiArrowRightUpLine className='w-4 h-4' />
             </Link>
           </div>
         </div>
-        {!collapse && (
+        {!collapse && !isPluginsLoading && (
           <div className='grid grid-cols-2 gap-2'>
-            {pluginList.map((plugin, index) => (
-              <ProviderCard key={index} installed={false} payload={plugin as any} />
+            {plugins.map(plugin => (
+              <ProviderCard key={plugin.plugin_id} payload={plugin} />
             ))}
           </div>
         )}
+        {!collapse && isPluginsLoading && <Loading type='area' />}
       </div>
     </div>
   )

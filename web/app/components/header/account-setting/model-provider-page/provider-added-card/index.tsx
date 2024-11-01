@@ -52,12 +52,12 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const showQuota = systemConfig.enabled && [...MODEL_PROVIDER_QUOTA_GET_PAID].includes(provider.provider) && !IS_CE_EDITION
   const showCredential = configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && isCurrentWorkspaceManager
 
-  const getModelList = async (pluginID: string, providerName: string) => {
+  const getModelList = async (providerName: string) => {
     if (loading)
       return
     try {
       setLoading(true)
-      const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${pluginID}/${providerName}/models`)
+      const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${providerName}/models`)
       setModelList(modelsData.data)
       setCollapsed(false)
       setFetched(true)
@@ -72,12 +72,12 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
       return
     }
 
-    getModelList(provider.plugin_id, provider.provider)
+    getModelList(provider.provider)
   }
 
   eventEmitter?.useSubscription((v: any) => {
-    if (v?.type === UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST && v.payload.provider === provider.provider)
-      getModelList(v.payload.plugin_id, v.payload.provider)
+    if (v?.type === UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST && v.payload === provider.provider)
+      getModelList(v.payload)
   })
 
   return (
@@ -172,7 +172,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             models={modelList}
             onCollapse={() => setCollapsed(true)}
             onConfig={currentCustomConfigurationModelFixedFields => onOpenModal(ConfigurationMethodEnum.customizableModel, currentCustomConfigurationModelFixedFields)}
-            onChange={(provider: ModelProvider) => getModelList(provider.plugin_id, provider.provider)}
+            onChange={(provider: string) => getModelList(provider)}
           />
         )
       }

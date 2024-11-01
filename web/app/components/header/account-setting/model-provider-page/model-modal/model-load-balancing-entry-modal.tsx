@@ -209,7 +209,6 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
 
       const res = await validateLoadBalancingCredentials(
         providerFormSchemaPredefined,
-        provider.plugin_id,
         provider.provider,
         {
           ...value,

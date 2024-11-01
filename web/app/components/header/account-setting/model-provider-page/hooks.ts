@@ -11,7 +11,6 @@ import type {
   DefaultModel,
   DefaultModelResponse,
   Model,
-  ModelProvider,
   ModelTypeEnum,
 } from './declarations'
 import {
@@ -37,12 +36,11 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
   modelList,
 ) => {
   const currentDefaultModel = useMemo(() => {
-    const currentProvider = modelList.find(provider => provider.provider === defaultModel?.provider.provider && provider.plugin_id === defaultModel?.provider.plugin_id)
+    const currentProvider = modelList.find(provider => provider.provider === defaultModel?.provider.provider)
     const currentModel = currentProvider?.models.find(model => model.model === defaultModel?.model)
     const currentDefaultModel = currentProvider && currentModel && {
       model: currentModel.model,
       provider: currentProvider.provider,
-      plugin_id: currentProvider.plugin_id,
     }
 
     return currentDefaultModel
@@ -64,20 +62,20 @@ export const useLanguage = () => {
 }
 
 export const useProviderCredentialsAndLoadBalancing = (
-  provider: ModelProvider,
+  provider: string,
   configurationMethod: ConfigurationMethodEnum,
   configured?: boolean,
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
 ) => {
   const { data: predefinedFormSchemasValue, mutate: mutatePredefined } = useSWR(
     (configurationMethod === ConfigurationMethodEnum.predefinedModel && configured)
-      ? `/workspaces/current/model-providers/${provider.plugin_id}/${provider.provider}/credentials`
+      ? `/workspaces/current/model-providers/${provider}/credentials`
       : null,
     fetchModelProviderCredentials,
   )
   const { data: customFormSchemasValue, mutate: mutateCustomized } = useSWR(
     (configurationMethod === ConfigurationMethodEnum.customizableModel && currentCustomConfigurationModelFixedFields)
-      ? `/workspaces/current/model-providers/${provider.plugin_id}/${provider.provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}`
+      ? `/workspaces/current/model-providers/${provider}/models/credentials?model=${currentCustomConfigurationModelFixedFields?.__model_name}&model_type=${currentCustomConfigurationModelFixedFields?.__model_type}`
       : null,
     fetchModelProviderCredentials,
   )
@@ -174,11 +172,7 @@ export const useModelListAndDefaultModelAndCurrentProviderAndModel = (type: Mode
   const { modelList, defaultModel } = useModelListAndDefaultModel(type)
   const { currentProvider, currentModel } = useCurrentProviderAndModel(
     modelList,
-    {
-      plugin_id: defaultModel?.provider.plugin_id || '',
-      provider: defaultModel?.provider.provider || '',
-      model: defaultModel?.model || '',
-    },
+    { provider: defaultModel?.provider.provider || '', model: defaultModel?.model || '' },
   )
 
   return {
@@ -199,7 +193,6 @@ export const useUpdateModelList = () => {
   return updateModelList
 }
 
-// deprecated ???
 export const useAnthropicBuyQuota = () => {
   const [loading, setLoading] = useState(false)
 

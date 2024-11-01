@@ -41,7 +41,7 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
 
   const handleChangePriority = async (key: PreferredProviderTypeEnum) => {
     const res = await changeModelProviderPriority({
-      url: `/workspaces/current/model-providers/${provider.plugin_id}/${provider.provider}/preferred-provider-type`,
+      url: `/workspaces/current/model-providers/${provider.provider}/preferred-provider-type`,
       body: {
         preferred_provider_type: key,
       },
@@ -57,7 +57,7 @@ const CredentialPanel: FC<CredentialPanelProps> = ({
 
       eventEmitter?.emit({
         type: UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST,
-        payload: provider,
+        payload: provider.provider,
       } as any)
     }
   }

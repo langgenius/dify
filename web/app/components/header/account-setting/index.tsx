@@ -199,13 +199,13 @@ export default function AccountSetting({
             )}
           </div>
           <div className='px-4 sm:px-8 pt-2'>
+            {activeMenu === 'provider' && <ModelProviderPage searchText={searchValue} />}
             {activeMenu === 'members' && <MembersPage />}
             {activeMenu === 'billing' && <BillingPage />}
-            {activeMenu === 'language' && <LanguagePage />}
-            {activeMenu === 'provider' && <ModelProviderPage />}
             {activeMenu === 'data-source' && <DataSourcePage />}
             {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
             {activeMenu === 'custom' && <CustomPage />}
+            {activeMenu === 'language' && <LanguagePage />}
           </div>
         </div>
       </div>

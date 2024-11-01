@@ -72,7 +72,7 @@ const ModelModal: FC<ModelModalProps> = ({
     loadBalancing: originalConfig,
     mutate,
   } = useProviderCredentialsAndLoadBalancing(
-    provider,
+    provider.provider,
     configurateMethod,
     providerFormSchemaPredefined && provider.custom_configuration.status === CustomConfigurationStatusEnum.active,
     currentCustomConfigurationModelFixedFields,
@@ -229,7 +229,6 @@ const ModelModal: FC<ModelModalProps> = ({
       setLoading(true)
       const res = await saveCredentials(
         providerFormSchemaPredefined,
-        provider.plugin_id,
         provider.provider,
         encodeSecretValues(value),
         {
@@ -256,7 +255,6 @@ const ModelModal: FC<ModelModalProps> = ({
 
       const res = await removeCredentials(
         providerFormSchemaPredefined,
-        provider.plugin_id,
         provider.provider,
         value,
       )

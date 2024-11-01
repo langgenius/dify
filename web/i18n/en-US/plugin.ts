@@ -13,7 +13,7 @@ const translation = {
     },
     operation: {
       install: 'Install',
-      detail: 'Detail',
+      detail: 'Details',
       update: 'Update',
       info: 'Plugin Info',
       checkUpdate: 'Check Update',
