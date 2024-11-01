@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useChatWithHistoryContext } from '../context'
 import Input from './form-input'
@@ -8,6 +9,7 @@ import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uplo
 const Form = () => {
   const { t } = useTranslation()
   const {
+    appParams,
     inputsForms,
     newConversationInputs,
     newConversationInputsRef,
@@ -15,12 +17,12 @@ const Form = () => {
     isMobile,
   } = useChatWithHistoryContext()
 
-  const handleFormChange = (variable: string, value: any) => {
+  const handleFormChange = useCallback((variable: string, value: any) => {
     handleNewConversationInputsChange({
       ...newConversationInputsRef.current,
       [variable]: value,
     })
-  }
+  }, [newConversationInputsRef, handleNewConversationInputsChange])
 
   const renderField = (form: any) => {
     const {
@@ -60,6 +62,7 @@ const Form = () => {
             allowed_file_extensions: form.allowed_file_extensions,
             allowed_file_upload_methods: form.allowed_file_upload_methods,
             number_limits: 1,
+            fileUploadConfig: (appParams as any).system_parameters,
           }}
         />
       )
@@ -74,6 +77,7 @@ const Form = () => {
             allowed_file_extensions: form.allowed_file_extensions,
             allowed_file_upload_methods: form.allowed_file_upload_methods,
             number_limits: form.max_length,
+            fileUploadConfig: (appParams as any).system_parameters,
           }}
         />
       )

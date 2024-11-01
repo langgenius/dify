@@ -2,11 +2,12 @@ import json
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import Enum
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 if TYPE_CHECKING:
     from models.model import AppMode
 
+import sqlalchemy as sa
 from sqlalchemy import Index, PrimaryKeyConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -103,14 +104,14 @@ class Workflow(Base):
     app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(db.String(255), nullable=False)
     version: Mapped[str] = mapped_column(db.String(255), nullable=False)
-    graph: Mapped[str] = mapped_column(db.Text)
-    _features: Mapped[str] = mapped_column("features")
+    graph: Mapped[str] = mapped_column(sa.Text)
+    _features: Mapped[str] = mapped_column("features", sa.TEXT)
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
-    updated_by: Mapped[str] = mapped_column(StringUUID)
-    updated_at: Mapped[datetime] = mapped_column(db.DateTime)
+    updated_by: Mapped[Optional[str]] = mapped_column(StringUUID)
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False)
     _environment_variables: Mapped[str] = mapped_column(
         "environment_variables", db.Text, nullable=False, server_default="{}"
     )

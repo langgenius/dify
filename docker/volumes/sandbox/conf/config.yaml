@@ -1,0 +1,14 @@
+app:
+  port: 8194
+  debug: True
+  key: dify-sandbox
+max_workers: 4
+max_requests: 50
+worker_timeout: 5
+python_path: /usr/local/bin/python3
+enable_network: True # please make sure there is no network risk in your environment
+allowed_syscalls: # please leave it empty if you have no idea how seccomp works
+proxy:
+  socks5: ''
+  http: ''
+  https: ''

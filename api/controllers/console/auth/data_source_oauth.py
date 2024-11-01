@@ -11,8 +11,7 @@ from controllers.console import api
 from libs.login import login_required
 from libs.oauth_data_source import NotionOAuth
 
-from ..setup import setup_required
-from ..wraps import account_initialization_required
+from ..wraps import account_initialization_required, setup_required
 
 
 def get_oauth_providers():

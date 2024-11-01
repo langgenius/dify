@@ -2,6 +2,7 @@ import json
 from datetime import datetime
 from typing import Optional
 
+import sqlalchemy as sa
 from deprecated import deprecated
 from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
@@ -82,7 +83,7 @@ class ApiToolProvider(Base):
     # privacy policy
     privacy_policy = db.Column(db.String(255), nullable=True)
     # custom_disclaimer
-    custom_disclaimer = db.Column(db.String(255), nullable=True)
+    custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
 
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))

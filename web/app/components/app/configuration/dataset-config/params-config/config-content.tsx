@@ -55,7 +55,7 @@ const ConfigContent: FC<Props> = ({
         retrieval_model: RETRIEVE_TYPE.multiWay,
       }, isInWorkflow)
     }
-  }, [type])
+  }, [type, datasetConfigs, isInWorkflow, onChange])
 
   const {
     modelList: rerankModelList,
@@ -266,7 +266,7 @@ const ConfigContent: FC<Props> = ({
               <div className='mt-2'>
                 <div className='flex items-center'>
                   {
-                    selectedDatasetsMode.allEconomic && (
+                    selectedDatasetsMode.allEconomic && !selectedDatasetsMode.mixtureInternalAndExternal && (
                       <div
                         className='flex items-center'
                         onClick={handleDisabledSwitchClick}

@@ -1,9 +1,11 @@
 import csv
 import io
+import json
 
 import docx
 import pandas as pd
 import pypdfium2
+import yaml
 from unstructured.partition.email import partition_email
 from unstructured.partition.epub import partition_epub
 from unstructured.partition.msg import partition_msg
@@ -75,36 +77,66 @@ class DocumentExtractorNode(BaseNode[DocumentExtractorNodeData]):
             )
 
 
-def _extract_text(*, file_content: bytes, mime_type: str) -> str:
+def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
     """Extract text from a file based on its MIME type."""
-    if mime_type.startswith("text/plain") or mime_type in {"text/html", "text/htm", "text/markdown", "text/xml"}:
-        return _extract_text_from_plain_text(file_content)
-    elif mime_type == "application/pdf":
-        return _extract_text_from_pdf(file_content)
-    elif mime_type in {
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "application/msword",
-    }:
-        return _extract_text_from_doc(file_content)
-    elif mime_type == "text/csv":
-        return _extract_text_from_csv(file_content)
-    elif mime_type in {
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        "application/vnd.ms-excel",
-    }:
-        return _extract_text_from_excel(file_content)
-    elif mime_type == "application/vnd.ms-powerpoint":
-        return _extract_text_from_ppt(file_content)
-    elif mime_type == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-        return _extract_text_from_pptx(file_content)
-    elif mime_type == "application/epub+zip":
-        return _extract_text_from_epub(file_content)
-    elif mime_type == "message/rfc822":
-        return _extract_text_from_eml(file_content)
-    elif mime_type == "application/vnd.ms-outlook":
-        return _extract_text_from_msg(file_content)
-    else:
-        raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
+    match mime_type:
+        case "text/plain" | "text/html" | "text/htm" | "text/markdown" | "text/xml":
+            return _extract_text_from_plain_text(file_content)
+        case "application/pdf":
+            return _extract_text_from_pdf(file_content)
+        case "application/vnd.openxmlformats-officedocument.wordprocessingml.document" | "application/msword":
+            return _extract_text_from_doc(file_content)
+        case "text/csv":
+            return _extract_text_from_csv(file_content)
+        case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" | "application/vnd.ms-excel":
+            return _extract_text_from_excel(file_content)
+        case "application/vnd.ms-powerpoint":
+            return _extract_text_from_ppt(file_content)
+        case "application/vnd.openxmlformats-officedocument.presentationml.presentation":
+            return _extract_text_from_pptx(file_content)
+        case "application/epub+zip":
+            return _extract_text_from_epub(file_content)
+        case "message/rfc822":
+            return _extract_text_from_eml(file_content)
+        case "application/vnd.ms-outlook":
+            return _extract_text_from_msg(file_content)
+        case "application/json":
+            return _extract_text_from_json(file_content)
+        case "application/x-yaml" | "text/yaml":
+            return _extract_text_from_yaml(file_content)
+        case _:
+            raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
+
+
+def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str) -> str:
+    """Extract text from a file based on its file extension."""
+    match file_extension:
+        case ".txt" | ".markdown" | ".md" | ".html" | ".htm" | ".xml":
+            return _extract_text_from_plain_text(file_content)
+        case ".json":
+            return _extract_text_from_json(file_content)
+        case ".yaml" | ".yml":
+            return _extract_text_from_yaml(file_content)
+        case ".pdf":
+            return _extract_text_from_pdf(file_content)
+        case ".doc" | ".docx":
+            return _extract_text_from_doc(file_content)
+        case ".csv":
+            return _extract_text_from_csv(file_content)
+        case ".xls" | ".xlsx":
+            return _extract_text_from_excel(file_content)
+        case ".ppt":
+            return _extract_text_from_ppt(file_content)
+        case ".pptx":
+            return _extract_text_from_pptx(file_content)
+        case ".epub":
+            return _extract_text_from_epub(file_content)
+        case ".eml":
+            return _extract_text_from_eml(file_content)
+        case ".msg":
+            return _extract_text_from_msg(file_content)
+        case _:
+            raise UnsupportedFileTypeError(f"Unsupported Extension Type: {file_extension}")
 
 
 def _extract_text_from_plain_text(file_content: bytes) -> str:
@@ -112,6 +144,23 @@ def _extract_text_from_plain_text(file_content: bytes) -> str:
         return file_content.decode("utf-8")
     except UnicodeDecodeError as e:
         raise TextExtractionError("Failed to decode plain text file") from e
+
+
+def _extract_text_from_json(file_content: bytes) -> str:
+    try:
+        json_data = json.loads(file_content.decode("utf-8"))
+        return json.dumps(json_data, indent=2, ensure_ascii=False)
+    except (UnicodeDecodeError, json.JSONDecodeError) as e:
+        raise TextExtractionError(f"Failed to decode or parse JSON file: {e}") from e
+
+
+def _extract_text_from_yaml(file_content: bytes) -> str:
+    """Extract the content from yaml file"""
+    try:
+        yaml_data = yaml.safe_load_all(file_content.decode("utf-8"))
+        return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
+    except (UnicodeDecodeError, yaml.YAMLError) as e:
+        raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
 
 
 def _extract_text_from_pdf(file_content: bytes) -> str:
@@ -156,10 +205,13 @@ def _download_file_content(file: File) -> bytes:
 
 
 def _extract_text_from_file(file: File):
-    if file.mime_type is None:
-        raise UnsupportedFileTypeError("Unable to determine file type: MIME type is missing")
     file_content = _download_file_content(file)
-    extracted_text = _extract_text(file_content=file_content, mime_type=file.mime_type)
+    if file.extension:
+        extracted_text = _extract_text_by_file_extension(file_content=file_content, file_extension=file.extension)
+    elif file.mime_type:
+        extracted_text = _extract_text_by_mime_type(file_content=file_content, mime_type=file.mime_type)
+    else:
+        raise UnsupportedFileTypeError("Unable to determine file type: MIME type or file extension is missing")
     return extracted_text
 
 
@@ -172,7 +224,7 @@ def _extract_text_from_csv(file_content: bytes) -> str:
         if not rows:
             return ""
 
-        # Create markdown table
+        # Create Markdown table
         markdown_table = "| " + " | ".join(rows[0]) + " |\n"
         markdown_table += "| " + " | ".join(["---"] * len(rows[0])) + " |\n"
         for row in rows[1:]:
@@ -192,7 +244,7 @@ def _extract_text_from_excel(file_content: bytes) -> str:
         # Drop rows where all elements are NaN
         df.dropna(how="all", inplace=True)
 
-        # Convert DataFrame to markdown table
+        # Convert DataFrame to Markdown table
         markdown_table = df.to_markdown(index=False)
         return markdown_table
     except Exception as e:
