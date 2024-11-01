@@ -91,7 +91,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
         const value = newConfig[key]
         if (schema?.type === 'boolean') {
           if (typeof value === 'string')
-            newConfig[key] = parseInt(value, 10)
+            newConfig[key] = Number.parseInt(value, 10)
 
           if (typeof value === 'boolean')
             newConfig[key] = value ? 1 : 0
@@ -99,7 +99,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
         if (schema?.type === 'number-input') {
           if (typeof value === 'string' && value !== '')
-            newConfig[key] = parseFloat(value)
+            newConfig[key] = Number.parseFloat(value)
         }
       })
       draft.tool_configurations = newConfig
@@ -162,7 +162,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const [inputVarValues, doSetInputVarValues] = useState<Record<string, any>>({})
   const setInputVarValues = (value: Record<string, any>) => {
     doSetInputVarValues(value)
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
+    // eslint-disable-next-line ts/no-use-before-define
     setRunInputData(value)
   }
   // fill single run form variable with constant value first time

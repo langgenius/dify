@@ -103,6 +103,13 @@ class DatasetListApi(Resource):
             type=_validate_name,
         )
         parser.add_argument(
+            "description",
+            type=str,
+            nullable=True,
+            required=False,
+            default="",
+        )
+        parser.add_argument(
             "indexing_technique",
             type=str,
             location="json",
@@ -140,6 +147,7 @@ class DatasetListApi(Resource):
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=current_user.current_tenant_id,
                 name=args["name"],
+                description=args["description"],
                 indexing_technique=args["indexing_technique"],
                 account=current_user,
                 permission=DatasetPermissionEnum.ONLY_ME,
@@ -619,6 +627,8 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.PGVECTO_RS
                 | VectorType.BAIDU
                 | VectorType.VIKINGDB
+                | VectorType.UPSTASH
+                | VectorType.OCEANBASE
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
@@ -630,6 +640,8 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.ORACLE
                 | VectorType.ELASTICSEARCH
                 | VectorType.PGVECTOR
+                | VectorType.TIDB_ON_QDRANT
+                | VectorType.COUCHBASE
             ):
                 return {
                     "retrieval_method": [
@@ -657,6 +669,8 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.PGVECTO_RS
                 | VectorType.BAIDU
                 | VectorType.VIKINGDB
+                | VectorType.UPSTASH
+                | VectorType.OCEANBASE
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
@@ -667,6 +681,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.MYSCALE
                 | VectorType.ORACLE
                 | VectorType.ELASTICSEARCH
+                | VectorType.COUCHBASE
                 | VectorType.PGVECTOR
             ):
                 return {

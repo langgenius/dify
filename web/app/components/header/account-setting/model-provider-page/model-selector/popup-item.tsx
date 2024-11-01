@@ -25,7 +25,7 @@ import Tooltip from '@/app/components/base/tooltip'
 type PopupItemProps = {
   defaultModel?: DefaultModel
   model: Model
-  onSelect: (provider: string, model: ModelItem) => void
+  onSelect: (pluginId: string, provider: string, model: ModelItem) => void
 }
 const PopupItem: FC<PopupItemProps> = ({
   defaultModel,
@@ -39,11 +39,11 @@ const PopupItem: FC<PopupItemProps> = ({
   const updateModelList = useUpdateModelList()
   const updateModelProviders = useUpdateModelProviders()
   const currentProvider = modelProviders.find(provider => provider.provider === model.provider)!
-  const handleSelect = (provider: string, modelItem: ModelItem) => {
+  const handleSelect = (pluginId: string, provider: string, modelItem: ModelItem) => {
     if (modelItem.status !== ModelStatusEnum.active)
       return
 
-    onSelect(provider, modelItem)
+    onSelect(pluginId, provider, modelItem)
   }
   const handleOpenModelModal = () => {
     setShowModelModal({
@@ -80,7 +80,7 @@ const PopupItem: FC<PopupItemProps> = ({
                 group relative flex items-center px-3 py-1.5 h-8 rounded-lg
                 ${modelItem.status === ModelStatusEnum.active ? 'cursor-pointer hover:bg-gray-50' : 'cursor-not-allowed hover:bg-gray-50/60'}
               `}
-              onClick={() => handleSelect(model.provider, modelItem)}
+              onClick={() => handleSelect(model.plugin_id, model.provider, modelItem)}
             >
               <ModelIcon
                 className={`

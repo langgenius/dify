@@ -1,0 +1,42 @@
+identity:
+  name: create_base
+  author: Doug Lea
+  label:
+    en_US: Create Base
+    zh_Hans: 创建多维表格
+description:
+  human:
+    en_US: Create Multidimensional Table in Specified Directory
+    zh_Hans: 在指定目录下创建多维表格
+  llm: A tool for creating a multidimensional table in a specified directory. (在指定目录下创建多维表格)
+parameters:
+  - name: name
+    type: string
+    required: false
+    label:
+      en_US: name
+      zh_Hans: 多维表格 App 名字
+    human_description:
+      en_US: |
+        Name of the multidimensional table App. Example value: "A new multidimensional table".
+      zh_Hans: 多维表格 App 名字，示例值："一篇新的多维表格"。
+    llm_description: 多维表格 App 名字，示例值："一篇新的多维表格"。
+    form: llm
+
+  - name: folder_token
+    type: string
+    required: false
+    label:
+      en_US: folder_token
+      zh_Hans: 多维表格 App 归属文件夹
+    human_description:
+      en_US: |
+        Folder where the multidimensional table App belongs. Default is empty, meaning the table will be created in the root directory of the cloud space. Example values: Fa3sfoAgDlMZCcdcJy1cDFg8nJc or https://svi136aogf123.feishu.cn/drive/folder/Fa3sfoAgDlMZCcdcJy1cDFg8nJc.
+        The folder_token must be an existing folder and supports inputting folder token or folder URL.
+      zh_Hans: |
+        多维表格 App 归属文件夹。默认为空，表示多维表格将被创建在云空间根目录。示例值: Fa3sfoAgDlMZCcdcJy1cDFg8nJc 或者 https://svi136aogf123.feishu.cn/drive/folder/Fa3sfoAgDlMZCcdcJy1cDFg8nJc。
+        folder_token 必须是已存在的文件夹，支持输入文件夹 token 或者文件夹 URL。
+    llm_description: |
+      多维表格 App 归属文件夹。默认为空，表示多维表格将被创建在云空间根目录。示例值: Fa3sfoAgDlMZCcdcJy1cDFg8nJc 或者 https://svi136aogf123.feishu.cn/drive/folder/Fa3sfoAgDlMZCcdcJy1cDFg8nJc。
+      folder_token 必须是已存在的文件夹，支持输入文件夹 token 或者文件夹 URL。
+    form: llm

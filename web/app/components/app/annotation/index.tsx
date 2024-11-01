@@ -283,6 +283,7 @@ const Annotation: FC<Props> = ({
               if (
                 embeddingModel.embedding_model_name !== annotationConfig?.embedding_model?.embedding_model_name
                 || embeddingModel.embedding_provider_name !== annotationConfig?.embedding_model?.embedding_provider_name
+                || embeddingModel.plugin_id !== annotationConfig?.embedding_model?.plugin_id
               ) {
                 const { job_id: jobId }: any = await updateAnnotationStatus(appDetail.id, AnnotationEnableStatus.enable, embeddingModel, score)
                 await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)

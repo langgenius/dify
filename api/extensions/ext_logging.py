@@ -1,8 +1,10 @@
 import logging
 import os
 import sys
+from datetime import datetime
 from logging.handlers import RotatingFileHandler
 
+import pytz
 from flask import Flask
 
 from configs import dify_config
@@ -17,8 +19,8 @@ def init_app(app: Flask):
         log_handlers = [
             RotatingFileHandler(
                 filename=log_file,
-                maxBytes=1024 * 1024 * 1024,
-                backupCount=5,
+                maxBytes=dify_config.LOG_FILE_MAX_SIZE * 1024 * 1024,
+                backupCount=dify_config.LOG_FILE_BACKUP_COUNT,
             ),
             logging.StreamHandler(sys.stdout),
         ]
@@ -30,16 +32,10 @@ def init_app(app: Flask):
         handlers=log_handlers,
         force=True,
     )
+
     log_tz = dify_config.LOG_TZ
     if log_tz:
-        from datetime import datetime
-
-        import pytz
-
-        timezone = pytz.timezone(log_tz)
-
-        def time_converter(seconds):
-            return datetime.utcfromtimestamp(seconds).astimezone(timezone).timetuple()
-
         for handler in logging.root.handlers:
-            handler.formatter.converter = time_converter
+            handler.formatter.converter = lambda seconds: (
+                datetime.fromtimestamp(seconds, tz=pytz.UTC).astimezone(log_tz).timetuple()
+            )

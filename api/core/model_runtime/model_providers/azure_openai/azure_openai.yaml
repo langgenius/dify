@@ -1,0 +1,245 @@
+provider: azure_openai
+label:
+  en_US: Azure OpenAI Service Model
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.png
+background: "#E3F0FF"
+help:
+  title:
+    en_US: Get your API key from Azure
+    zh_Hans: 从 Azure 获取 API Key
+  url:
+    en_US: https://azure.microsoft.com/en-us/products/ai-services/openai-service
+supported_model_types:
+  - llm
+  - text-embedding
+  - speech2text
+  - tts
+configurate_methods:
+  - customizable-model
+model_credential_schema:
+  model:
+    label:
+      en_US: Deployment Name
+      zh_Hans: 部署名称
+    placeholder:
+      en_US: Enter your Deployment Name here, matching the Azure deployment name.
+      zh_Hans: 在此输入您的部署名称，与 Azure 部署名称匹配。
+  credential_form_schemas:
+    - variable: openai_api_base
+      label:
+        en_US: API Endpoint URL
+        zh_Hans: API 域名
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: '在此输入您的 API 域名，如：https://example.com/xxx'
+        en_US: 'Enter your API Endpoint, eg: https://example.com/xxx'
+    - variable: openai_api_key
+      label:
+        en_US: API Key
+        zh_Hans: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API key here
+    - variable: openai_api_version
+      label:
+        zh_Hans: API 版本
+        en_US: API Version
+      type: select
+      required: true
+      options:
+        - label:
+            en_US: 2024-10-01-preview
+          value: 2024-10-01-preview
+        - label:
+            en_US: 2024-09-01-preview
+          value: 2024-09-01-preview
+        - label:
+            en_US: 2024-08-01-preview
+          value: 2024-08-01-preview
+        - label:
+            en_US: 2024-07-01-preview
+          value: 2024-07-01-preview
+        - label:
+            en_US: 2024-05-01-preview
+          value: 2024-05-01-preview
+        - label:
+            en_US: 2024-04-01-preview
+          value: 2024-04-01-preview
+        - label:
+            en_US: 2024-03-01-preview
+          value: 2024-03-01-preview
+        - label:
+            en_US: 2024-02-15-preview
+          value: 2024-02-15-preview
+        - label:
+            en_US: 2023-12-01-preview
+          value: 2023-12-01-preview
+        - label:
+            en_US: '2024-02-01'
+          value: '2024-02-01'
+        - label:
+            en_US: '2024-06-01'
+          value: '2024-06-01'
+      placeholder:
+        zh_Hans: 在此选择您的 API 版本
+        en_US: Select your API Version here
+    - variable: base_model_name
+      label:
+        en_US: Base Model
+        zh_Hans: 基础模型
+      type: select
+      required: true
+      options:
+        - label:
+            en_US: gpt-35-turbo
+          value: gpt-35-turbo
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-35-turbo-0125
+          value: gpt-35-turbo-0125
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-35-turbo-16k
+          value: gpt-35-turbo-16k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4
+          value: gpt-4
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4-32k
+          value: gpt-4-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: o1-mini
+          value: o1-mini
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: o1-preview
+          value: o1-preview
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4o-mini
+          value: gpt-4o-mini
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4o-mini-2024-07-18
+          value: gpt-4o-mini-2024-07-18
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4o
+          value: gpt-4o
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4o-2024-05-13
+          value: gpt-4o-2024-05-13
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4o-2024-08-06
+          value: gpt-4o-2024-08-06
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4-turbo
+          value: gpt-4-turbo
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4-turbo-2024-04-09
+          value: gpt-4-turbo-2024-04-09
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4-0125-preview
+          value: gpt-4-0125-preview
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4-1106-preview
+          value: gpt-4-1106-preview
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4-vision-preview
+          value: gpt-4-vision-preview
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-35-turbo-instruct
+          value: gpt-35-turbo-instruct
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: text-embedding-ada-002
+          value: text-embedding-ada-002
+          show_on:
+            - variable: __model_type
+              value: text-embedding
+        - label:
+            en_US: text-embedding-3-small
+          value: text-embedding-3-small
+          show_on:
+            - variable: __model_type
+              value: text-embedding
+        - label:
+            en_US: text-embedding-3-large
+          value: text-embedding-3-large
+          show_on:
+            - variable: __model_type
+              value: text-embedding
+        - label:
+            en_US: whisper-1
+          value: whisper-1
+          show_on:
+            - variable: __model_type
+              value: speech2text
+        - label:
+            en_US: tts-1
+          value: tts-1
+          show_on:
+            - variable: __model_type
+              value: tts
+        - label:
+            en_US: tts-1-hd
+          value: tts-1-hd
+          show_on:
+            - variable: __model_type
+              value: tts
+      placeholder:
+        zh_Hans: 在此输入您的模型版本
+        en_US: Enter your model version

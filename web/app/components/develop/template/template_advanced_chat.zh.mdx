@@ -46,6 +46,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='inputs' type='object' key='inputs'>
         允许传入 App 定义的各变量值。
         inputs 参数包含了多组键值对（Key/Value pairs），每组的键对应一个特定变量，每组的值则是该变量的具体值。
+        如果变量是文件类型，请指定一个包含以下 `files` 中所述键的对象。
         默认 `{}`
       </Property>
       <Property name='response_mode' type='string' key='response_mode'>
@@ -61,8 +62,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       （选填）会话 ID，需要基于之前的聊天记录继续对话，必须传之前消息的 conversation_id。
       </Property>
       <Property name='files' type='array[object]' key='files'>
-          上传的文件。
-          - `type` (string) 支持类型：图片 `image`（目前仅支持图片格式） 。
+          文件列表，适用于传入文件结合文本理解并回答问题，仅当模型支持 Vision 能力时可用。
+          - `type` (string) 支持类型：
+            - `document` 具体类型包含：'TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB'
+            - `image` 具体类型包含：'JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG'
+            - `audio` 具体类型包含：'MP3', 'M4A', 'WAV', 'WEBM', 'AMR'
+            - `video` 具体类型包含：'MP4', 'MOV', 'MPEG', 'MPGA'
           - `transfer_method` (string)  传递方式:
             - `remote_url`: 图片地址。
             - `local_file`: 上传文件。
@@ -313,8 +318,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 />
 <Row>
   <Col>
-    上传文件（目前仅支持图片）并在发送消息时使用，可实现图文多模态理解。
-    支持 png, jpg, jpeg, webp, gif 格式。
+    上传文件并在发送消息时使用，可实现图文多模态理解。
+    支持您的应用程序所支持的所有格式。
     <i>上传的文件仅供当前终端用户使用。</i>
 
     ### Request Body
@@ -1003,7 +1008,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - `number_limits` (int) 图片数量限制，默认 3
         - `transfer_methods` (array[string]) 传递方式列表，remote_url , local_file，必选一个
     - `system_parameters` (object) 系统参数
-      - `image_file_size_limit` (string) 图片文件上传大小限制（MB）
+      - `file_size_limit` (int) Document upload size limit (MB)
+      - `image_file_size_limit` (int) Image file upload size limit (MB)
+      - `audio_file_size_limit` (int) Audio file upload size limit (MB)
+      - `video_file_size_limit` (int) Video file upload size limit (MB)
   </Col>
   <Col sticky>
 
@@ -1043,6 +1051,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
             "local_file"
           ]
         }
+      },
+      "system_parameters": {
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
       }
     }
     ```

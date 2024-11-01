@@ -42,6 +42,7 @@ const { checkValid: checkVariableAssignerValid } = VariableAssigner
 const { checkValid: checkParameterExtractorValid } = ParameterExtractorDefault
 const { checkValid: checkIterationValid } = IterationDefault
 
+// eslint-disable-next-line ts/no-unsafe-function-type
 const checkValidFns: Record<BlockEnum, Function> = {
   [BlockEnum.LLM]: checkLLMValid,
   [BlockEnum.KnowledgeRetrieval]: checkKnowledgeRetrievalValid,

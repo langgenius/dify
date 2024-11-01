@@ -44,7 +44,7 @@ const Flowchart = React.forwardRef((props: {
   const chartId = useRef(`flowchart_${CryptoJS.MD5(props.PrimitiveCode).toString()}`)
   const prevPrimitiveCode = usePrevious(props.PrimitiveCode)
   const [isLoading, setIsLoading] = useState(true)
-  const timeRef = useRef<NodeJS.Timeout>()
+  const timeRef = useRef<number>()
   const [errMsg, setErrMsg] = useState('')
 
   const renderFlowchart = async (PrimitiveCode: string) => {
@@ -74,15 +74,15 @@ const Flowchart = React.forwardRef((props: {
       return
     }
     if (timeRef.current)
-      clearTimeout(timeRef.current)
+      window.clearTimeout(timeRef.current)
 
-    timeRef.current = setTimeout(() => {
+    timeRef.current = window.setTimeout(() => {
       renderFlowchart(props.PrimitiveCode)
     }, 300)
   }, [props.PrimitiveCode])
 
   return (
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     <div ref={ref}>
       {
@@ -107,5 +107,7 @@ const Flowchart = React.forwardRef((props: {
     </div>
   )
 })
+
+Flowchart.displayName = 'Flowchart'
 
 export default Flowchart

@@ -1,4 +1,5 @@
 import type { TypeWithI18N } from '../header/account-setting/model-provider-page/declarations'
+
 export enum LOC {
   tools = 'tools',
   app = 'app',
@@ -16,10 +17,10 @@ export enum AuthHeaderPrefix {
 }
 
 export type Credential = {
-  'auth_type': AuthType
-  'api_key_header'?: string
-  'api_key_value'?: string
-  'api_key_header_prefix'?: AuthHeaderPrefix
+  auth_type: AuthType
+  api_key_header?: string
+  api_key_value?: string
+  api_key_header_prefix?: AuthHeaderPrefix
 }
 
 export enum CollectionType {
@@ -66,6 +67,7 @@ export type ToolParameter = {
   max?: number
 }
 
+// Action
 export type Tool = {
   name: string
   author: string

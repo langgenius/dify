@@ -107,6 +107,7 @@ export type MessageContent = {
   agent_thoughts: any[] // TODO
   workflow_run_id: string
   parent_message_id: string | null
+  plugin_id: string
 }
 
 export type CompletionConversationGeneralDetail = {
@@ -129,6 +130,7 @@ export type CompletionConversationGeneralDetail = {
     dislike: number
   }
   model_config: {
+    plugin_id: string
     provider: string
     model_id: string
     configs: Pick<ModelConfigDetail, 'prompt_template'>

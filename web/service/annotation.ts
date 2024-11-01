@@ -13,7 +13,9 @@ export const updateAnnotationStatus = (appId: string, action: AnnotationEnableSt
   if (embeddingModel) {
     body = {
       ...body,
-      ...embeddingModel,
+      embedding_model_plugin_id: embeddingModel.plugin_id,
+      embedding_provider_name: embeddingModel.embedding_provider_name,
+      embedding_model_name: embeddingModel.embedding_model_name,
     }
   }
 

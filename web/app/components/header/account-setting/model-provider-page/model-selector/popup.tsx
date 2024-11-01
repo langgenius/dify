@@ -15,7 +15,7 @@ import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 type PopupProps = {
   defaultModel?: DefaultModel
   modelList: Model[]
-  onSelect: (provider: string, model: ModelItem) => void
+  onSelect: (pluginId: string, provider: string, model: ModelItem) => void
 }
 const Popup: FC<PopupProps> = ({
   defaultModel,

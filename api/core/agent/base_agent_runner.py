@@ -156,6 +156,12 @@ class BaseAgentRunner(AppRunner):
                 continue
 
             parameter_type = parameter.type.as_normal_type()
+            if parameter.type in {
+                ToolParameter.ToolParameterType.SYSTEM_FILES,
+                ToolParameter.ToolParameterType.FILE,
+                ToolParameter.ToolParameterType.FILES,
+            }:
+                continue
             enum = []
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
                 enum = [option.value for option in parameter.options]
@@ -243,6 +249,12 @@ class BaseAgentRunner(AppRunner):
                 continue
 
             parameter_type = parameter.type.as_normal_type()
+            if parameter.type in {
+                ToolParameter.ToolParameterType.SYSTEM_FILES,
+                ToolParameter.ToolParameterType.FILE,
+                ToolParameter.ToolParameterType.FILES,
+            }:
+                continue
             enum = []
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
                 enum = [option.value for option in parameter.options]

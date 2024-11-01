@@ -4,7 +4,7 @@ const translation = {
   customToolTip: '了解更多关于 Dify 自定义工具的信息',
   type: {
     all: '全部',
-    builtIn: '内置',
+    builtIn: '工具',
     custom: '自定义',
     workflow: '工作流',
   },
@@ -21,7 +21,7 @@ const translation = {
     setupModalTitle: '设置授权',
     setupModalTitleDescription: '配置凭据后，工作区中的所有成员都可以在编排应用程序时使用此工具。',
   },
-  includeToolNum: '包含 {{num}} 个工具',
+  includeToolNum: '包含 {{num}} 个 action',
   addTool: '添加工具',
   addToolModal: {
     type: '类型',
@@ -148,6 +148,7 @@ const translation = {
   howToGet: '如何获取',
   openInStudio: '在工作室中打开',
   toolNameUsageTip: '工具调用名称，用于 Agent 推理和提示词',
+  copyToolName: '复制名称',
 }
 
 export default translation

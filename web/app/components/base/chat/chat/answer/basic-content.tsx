@@ -16,12 +16,11 @@ const BasicContent: FC<BasicContentProps> = ({
   } = item
 
   if (annotation?.logAnnotation)
-    return <Markdown content={annotation?.logAnnotation.content || ''} className='px-2 py-1' />
+    return <Markdown content={annotation?.logAnnotation.content || ''} />
 
   return (
     <Markdown
       className={cn(
-        'px-2 py-1',
         item.isError && '!text-[#F04438]',
       )}
       content={content}

@@ -93,6 +93,7 @@ export type AnnotationReplyConfig = {
   enabled: boolean
   score_threshold: number
   embedding_model: {
+    plugin_id: string
     embedding_provider_name: string
     embedding_model_name: string
   }
@@ -121,6 +122,7 @@ export type AgentConfig = {
 }
 // frontend use. Not the same as backend
 export type ModelConfig = {
+  plugin_id: string
   provider: string // LLM Provider: for example "OPENAI"
   model_id: string
   mode: ModelModeType
@@ -148,6 +150,7 @@ export type DatasetConfigs = {
   reranking_model: {
     reranking_provider_name: string
     reranking_model_name: string
+    reranking_plugin_id: string
   }
   top_k: number
   score_threshold_enabled: boolean

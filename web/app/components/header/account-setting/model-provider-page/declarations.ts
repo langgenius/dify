@@ -151,6 +151,7 @@ export type QuotaConfiguration = {
 }
 
 export type ModelProvider = {
+  plugin_id: string
   provider: string
   label: TypeWithI18N
   description?: TypeWithI18N
@@ -185,6 +186,7 @@ export type ModelProvider = {
 }
 
 export type Model = {
+  plugin_id: string
   provider: string
   icon_large: TypeWithI18N
   icon_small: TypeWithI18N
@@ -197,6 +199,7 @@ export type DefaultModelResponse = {
   model: string
   model_type: ModelTypeEnum
   provider: {
+    plugin_id: string
     provider: string
     icon_large: TypeWithI18N
     icon_small: TypeWithI18N
@@ -204,6 +207,7 @@ export type DefaultModelResponse = {
 }
 
 export type DefaultModel = {
+  plugin_id: string
   provider: string
   model: string
 }

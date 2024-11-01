@@ -1,0 +1,44 @@
+'use client'
+import type { MarketplaceCollection } from '../types'
+import CardWrapper from './card-wrapper'
+import type { Plugin } from '@/app/components/plugins/types'
+
+type ListWithCollectionProps = {
+  marketplaceCollections: MarketplaceCollection[]
+  marketplaceCollectionPluginsMap: Record<string, Plugin[]>
+  showInstallButton?: boolean
+}
+const ListWithCollection = ({
+  marketplaceCollections,
+  marketplaceCollectionPluginsMap,
+  showInstallButton,
+}: ListWithCollectionProps) => {
+  return (
+    <>
+      {
+        marketplaceCollections.map(collection => (
+          <div
+            key={collection.name}
+            className='py-3'
+          >
+            <div className='title-xl-semi-bold text-text-primary'>{collection.name}</div>
+            <div className='system-xs-regular text-text-tertiary'>{collection.description}</div>
+            <div className='grid grid-cols-4 gap-3 mt-2'>
+              {
+                marketplaceCollectionPluginsMap[collection.name].map(plugin => (
+                  <CardWrapper
+                    key={plugin.name}
+                    plugin={plugin}
+                    showInstallButton={showInstallButton}
+                  />
+                ))
+              }
+            </div>
+          </div>
+        ))
+      }
+    </>
+  )
+}
+
+export default ListWithCollection

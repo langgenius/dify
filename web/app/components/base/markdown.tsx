@@ -20,6 +20,8 @@ import { useChatContext } from '@/app/components/base/chat/chat/context'
 import VideoGallery from '@/app/components/base/video-gallery'
 import AudioGallery from '@/app/components/base/audio-gallery'
 import SVGRenderer from '@/app/components/base/svg-gallery'
+import MarkdownButton from '@/app/components/base/markdown-blocks/button'
+import MarkdownForm from '@/app/components/base/markdown-blocks/form'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -75,7 +77,6 @@ export function PreCode(props: { children: any }) {
   )
 }
 
-// eslint-disable-next-line unused-imports/no-unused-vars
 const useLazyLoad = (ref: RefObject<Element>): boolean => {
   const [isIntersecting, setIntersecting] = useState<boolean>(false)
 
@@ -271,6 +272,8 @@ export function Markdown(props: { content: string; className?: string }) {
           audio: AudioBlock,
           a: Link,
           p: Paragraph,
+          button: MarkdownButton,
+          form: MarkdownForm,
         }}
         linkTarget='_blank'
       >
@@ -297,11 +300,11 @@ export default class ErrorBoundary extends Component {
   }
 
   render() {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     if (this.state.hasError)
       return <div>Oops! An error occurred. This could be due to an ECharts runtime error or invalid SVG content. <br />(see the browser console for more information)</div>
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // eslint-disable-next-line ts/ban-ts-comment
     // @ts-expect-error
     return this.props.children
   }

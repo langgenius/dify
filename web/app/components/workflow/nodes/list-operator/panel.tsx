@@ -11,7 +11,7 @@ import { type ListFilterNodeType, OrderBy } from './types'
 import LimitConfig from './components/limit-config'
 import FilterCondition from './components/filter-condition'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { type NodePanelProps } from '@/app/components/workflow/types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import Switch from '@/app/components/base/switch'
 
 const i18nPrefix = 'workflow.nodes.listFilter'

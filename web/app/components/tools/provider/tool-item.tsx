@@ -29,14 +29,15 @@ const ToolItem = ({
   return (
     <>
       <div
-        className={cn('mb-2 px-4 py-3 rounded-xl bg-gray-25 border-[0.5px] border-gary-200  shadow-xs cursor-pointer', disabled && 'opacity-50 !cursor-not-allowed')}
+        className={cn('mb-2 px-4 py-3 bg-components-panel-item-bg rounded-xl border-[0.5px] border-components-panel-border-subtle shadow-xs cursor-pointer hover:bg-components-panel-on-panel-item-bg-hover', disabled && 'opacity-50 !cursor-not-allowed')}
         onClick={() => !disabled && setShowDetail(true)}
       >
-        <div className='text-gray-800 font-semibold text-sm leading-5'>{tool.label[language]}</div>
-        <div className='mt-0.5 text-xs leading-[18px] text-gray-500 line-clamp-2' title={tool.description[language]}>{tool.description[language]}</div>
+        <div className='pb-0.5 text-text-secondary system-md-semibold'>{tool.label[language]}</div>
+        <div className='text-text-tertiary system-xs-regular line-clamp-2' title={tool.description[language]}>{tool.description[language]}</div>
       </div>
       {showDetail && (
         <SettingBuiltInTool
+          showBackButton
           collection={collection}
           toolName={tool.name}
           readonly

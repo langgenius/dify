@@ -1,33 +1,32 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
 import type { Collection } from './types'
+import Marketplace from './marketplace'
 import cn from '@/utils/classnames'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import LabelFilter from '@/app/components/tools/labels/filter'
 import Input from '@/app/components/base/input'
-import { DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
-import { Colors } from '@/app/components/base/icons/src/vender/line/others'
-import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
-import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
-import ContributeCard from '@/app/components/tools/provider/contribute'
-import ProviderCard from '@/app/components/tools/provider/card'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { fetchCollectionList } from '@/service/tools'
+import Card from '@/app/components/plugins/card'
+import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
 
 const ProviderList = () => {
   const { t } = useTranslation()
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
 
   const [activeTab, setActiveTab] = useTabSearchParams({
     defaultTab: 'builtin',
   })
   const options = [
-    { value: 'builtin', text: t('tools.type.builtIn'), icon: <DotsGrid className='w-[14px] h-[14px] mr-1' /> },
-    { value: 'api', text: t('tools.type.custom'), icon: <Colors className='w-[14px] h-[14px] mr-1' /> },
-    { value: 'workflow', text: t('tools.type.workflow'), icon: <Route className='w-[14px] h-[14px] mr-1' /> },
+    { value: 'builtin', text: t('tools.type.builtIn') },
+    { value: 'api', text: t('tools.type.custom') },
+    { value: 'workflow', text: t('tools.type.workflow') },
   ]
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
   const handleTagsChange = (value: string[]) => {
@@ -68,7 +67,10 @@ const ProviderList = () => {
 
   return (
     <div className='relative flex overflow-hidden bg-gray-100 shrink-0 h-0 grow'>
-      <div className='relative flex flex-col overflow-y-auto bg-gray-100 grow'>
+      <div
+        ref={containerRef}
+        className='relative flex flex-col overflow-y-auto bg-gray-100 grow'
+      >
         <div className={cn(
           'sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-20 flex-wrap gap-y-2',
           currentProvider && 'pr-6',
@@ -96,28 +98,51 @@ const ProviderList = () => {
         </div>
         <div className={cn(
           'relative grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0',
-          currentProvider && 'pr-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
         )}>
-          {activeTab === 'builtin' && <ContributeCard />}
-          {activeTab === 'api' && <CustomCreateCard onRefreshData={getProviderList} />}
           {filteredCollectionList.map(collection => (
-            <ProviderCard
-              active={currentProvider?.id === collection.id}
-              onSelect={() => setCurrentProvider(collection)}
+            <div
               key={collection.id}
-              collection={collection}
-            />
+              onClick={() => setCurrentProvider(collection)}
+            >
+              <Card
+                className={cn(
+                  'border-[1.5px] border-transparent',
+                  currentProvider?.id === collection.id && 'border-components-option-card-option-selected-border',
+                )}
+                hideCornerMark
+                payload={{
+                  ...collection,
+                  brief: collection.description,
+                } as any}
+                footer={
+                  <CardMoreInfo
+                    tags={collection.labels}
+                  />
+                }
+              />
+            </div>
           ))}
           {!filteredCollectionList.length && <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'><Empty /></div>}
         </div>
+        {
+          enable_marketplace && (
+            <Marketplace
+              onMarketplaceScroll={() => {
+                containerRef.current?.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })
+              }}
+              searchPluginText={keywords}
+              filterPluginTags={tagFilterValue}
+            />
+          )
+        }
       </div>
-      <div className={cn(
-        'shrink-0 w-0 border-l-[0.5px] border-black/8 overflow-y-auto transition-all duration-200 ease-in-out',
-        currentProvider && 'w-[420px]',
-      )}>
-        {currentProvider && <ProviderDetail collection={currentProvider} onRefreshData={getProviderList} />}
-      </div>
-      <div className='absolute top-5 right-5 p-1 cursor-pointer' onClick={() => setCurrentProvider(undefined)}><RiCloseLine className='w-4 h-4' /></div>
+      {currentProvider && (
+        <ProviderDetail
+          collection={currentProvider}
+          onHide={() => setCurrentProvider(undefined)}
+          onRefreshData={getProviderList}
+        />
+      )}
     </div>
   )
 }

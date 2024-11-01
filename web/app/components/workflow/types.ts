@@ -170,6 +170,7 @@ export type InputVar = {
 } & Partial<UploadFileSetting>
 
 export type ModelConfig = {
+  plugin_id: string
   provider: string
   name: string
   mode: string

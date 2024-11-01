@@ -990,6 +990,9 @@ class Message(Base):
                     config=FileExtraConfig(),
                 )
             elif message_file.transfer_method == "tool_file":
+                if message_file.upload_file_id is None:
+                    assert message_file.url is not None
+                    message_file.upload_file_id = message_file.url.split("/")[-1].split(".")[0]
                 mapping = {
                     "id": message_file.id,
                     "type": message_file.type,
@@ -1014,6 +1017,7 @@ class Message(Base):
             for (file, message_file) in zip(files, message_files)
         ]
 
+        db.session.commit()
         return result
 
     @property
@@ -1122,7 +1126,7 @@ class MessageFile(Base):
         self.url = url
         self.belongs_to = belongs_to
         self.upload_file_id = upload_file_id
-        self.created_by_role = created_by_role
+        self.created_by_role = created_by_role.value
         self.created_by = created_by
 
     id: Mapped[str] = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))

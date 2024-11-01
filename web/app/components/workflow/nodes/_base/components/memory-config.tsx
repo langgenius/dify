@@ -88,7 +88,7 @@ const MemoryConfig: FC<Props> = ({
         limitedSize = null
       }
       else {
-        limitedSize = parseInt(limitedSize as string, 10)
+        limitedSize = Number.parseInt(limitedSize as string, 10)
         if (isNaN(limitedSize))
           limitedSize = WINDOW_SIZE_DEFAULT
 

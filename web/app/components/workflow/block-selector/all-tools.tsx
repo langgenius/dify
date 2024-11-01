@@ -1,32 +1,45 @@
 import {
   useMemo,
+  useRef,
   useState,
 } from 'react'
 import type {
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
-import { useStore } from '../store'
 import { ToolTypeEnum } from './types'
 import Tools from './tools'
 import { useToolTabs } from './hooks'
+import ViewTypeSelect, { ViewType } from './view-type-select'
 import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
+import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import { extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/card/card-mock'
+import ActionButton from '../../base/action-button'
+import { RiAddLine } from '@remixicon/react'
 
 type AllToolsProps = {
+  className?: string
   searchText: string
+  buildInTools: ToolWithProvider[]
+  customTools: ToolWithProvider[]
+  workflowTools: ToolWithProvider[]
   onSelect: OnSelectBlock
+  supportAddCustomTool?: boolean
 }
 const AllTools = ({
+  className,
   searchText,
   onSelect,
+  buildInTools,
+  workflowTools,
+  customTools,
+  supportAddCustomTool,
 }: AllToolsProps) => {
   const language = useGetLanguage()
   const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
+  const [activeView, setActiveView] = useState<ViewType>(ViewType.flat)
 
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
@@ -45,30 +58,55 @@ const AllTools = ({
       })
     })
   }, [activeTab, buildInTools, customTools, workflowTools, searchText, language])
+
+  const pluginRef = useRef(null)
+  const wrapElemRef = useRef<HTMLDivElement>(null)
+
   return (
-    <div>
-      <div className='flex items-center px-3 h-8 space-x-1 bg-gray-25 border-b-[0.5px] border-black/[0.08] shadow-xs'>
-        {
-          tabs.map(tab => (
-            <div
-              className={cn(
-                'flex items-center px-2 h-6 rounded-md hover:bg-gray-100 cursor-pointer',
-                'text-xs font-medium text-gray-700',
-                activeTab === tab.key && 'bg-gray-200',
-              )}
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-            >
-              {tab.name}
-            </div>
-          ))
-        }
+    <div className={cn(className)}>
+      <div className='flex items-center justify-between px-3 bg-background-default-hover border-b-[0.5px] border-black/[0.08] shadow-xs'>
+        <div className='flex items-center h-8 space-x-1'>
+          {
+            tabs.map(tab => (
+              <div
+                className={cn(
+                  'flex items-center px-2 h-6 rounded-md hover:bg-gray-100 cursor-pointer',
+                  'text-xs font-medium text-gray-700',
+                  activeTab === tab.key && 'bg-gray-200',
+                )}
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+              >
+                {tab.name}
+              </div>
+            ))
+          }
+        </div>
+        <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
+        {supportAddCustomTool && (
+          <ActionButton>
+            <RiAddLine className='w-4 h-4' />
+          </ActionButton>
+        )}
       </div>
-      <Tools
-        showWorkflowEmpty={activeTab === ToolTypeEnum.Workflow}
-        tools={tools}
-        onSelect={onSelect}
-      />
+      <div
+        ref={wrapElemRef}
+        className='max-h-[464px] overflow-y-auto'
+        onScroll={(pluginRef.current as any)?.handleScroll}
+      >
+        <Tools
+          showWorkflowEmpty={activeTab === ToolTypeEnum.Workflow}
+          tools={tools}
+          onSelect={onSelect}
+          viewType={activeView}
+        />
+        {/* Plugins from marketplace */}
+        <PluginList
+          wrapElemRef={wrapElemRef}
+          list={[toolNotion, extensionDallE, modelGPT4] as any} ref={pluginRef}
+          searchText={searchText}
+        />
+      </div>
     </div>
   )
 }

@@ -3,7 +3,7 @@
 import { SWRConfig } from 'swr'
 import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import useRefreshToken from '@/hooks/use-refresh-token'
 import { fetchSetupStatus } from '@/service/common'
 
@@ -15,6 +15,7 @@ const SwrInitor = ({
 }: SwrInitorProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const pathname = usePathname()
   const { getNewAccessToken } = useRefreshToken()
   const consoleToken = searchParams.get('access_token')
   const refreshToken = searchParams.get('refresh_token')
@@ -68,13 +69,16 @@ const SwrInitor = ({
           return
         }
         await setRefreshToken()
+        if (searchParams.has('access_token') || searchParams.has('refresh_token'))
+          router.replace(pathname)
+
         setInit(true)
       }
       catch (error) {
         router.replace('/signin')
       }
     })()
-  }, [isSetupFinished, setRefreshToken, router])
+  }, [isSetupFinished, setRefreshToken, router, pathname, searchParams])
 
   return init
     ? (

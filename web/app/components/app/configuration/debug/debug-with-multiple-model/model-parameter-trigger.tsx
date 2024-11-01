@@ -36,12 +36,13 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
   const language = useLanguage()
   const index = multipleModelConfigs.findIndex(v => v.id === modelAndParameter.id)
 
-  const handleSelectModel = ({ modelId, provider }: { modelId: string; provider: string }) => {
+  const handleSelectModel = ({ modelId, provider, pluginId }: { modelId: string; provider: string; pluginId: string }) => {
     const newModelConfigs = [...multipleModelConfigs]
     newModelConfigs[index] = {
       ...newModelConfigs[index],
       model: modelId,
       provider,
+      plugin_id: pluginId,
     }
     onMultipleModelConfigsChange(true, newModelConfigs)
   }
@@ -58,6 +59,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
     <ModelParameterModal
       mode={mode}
       isAdvancedMode={isAdvancedMode}
+      pluginId={modelAndParameter.plugin_id}
       provider={modelAndParameter.provider}
       modelId={modelAndParameter.model}
       completionParams={modelAndParameter.parameters}

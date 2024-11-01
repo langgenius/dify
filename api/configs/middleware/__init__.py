@@ -17,9 +17,11 @@ from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCO
 from configs.middleware.storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
 from configs.middleware.vdb.analyticdb_config import AnalyticdbConfig
 from configs.middleware.vdb.chroma_config import ChromaConfig
+from configs.middleware.vdb.couchbase_config import CouchbaseConfig
 from configs.middleware.vdb.elasticsearch_config import ElasticsearchConfig
 from configs.middleware.vdb.milvus_config import MilvusConfig
 from configs.middleware.vdb.myscale_config import MyScaleConfig
+from configs.middleware.vdb.oceanbase_config import OceanBaseVectorConfig
 from configs.middleware.vdb.opensearch_config import OpenSearchConfig
 from configs.middleware.vdb.oracle_config import OracleConfig
 from configs.middleware.vdb.pgvector_config import PGVectorConfig
@@ -27,7 +29,9 @@ from configs.middleware.vdb.pgvectors_config import PGVectoRSConfig
 from configs.middleware.vdb.qdrant_config import QdrantConfig
 from configs.middleware.vdb.relyt_config import RelytConfig
 from configs.middleware.vdb.tencent_vector_config import TencentVectorDBConfig
+from configs.middleware.vdb.tidb_on_qdrant_config import TidbOnQdrantConfig
 from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
+from configs.middleware.vdb.upstash_config import UpstashConfig
 from configs.middleware.vdb.vikingdb_config import VikingDBConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
 
@@ -51,6 +55,11 @@ class VectorStoreConfig(BaseSettings):
         description="Type of vector store to use for efficient similarity search."
         " Set to None if not using a vector store.",
         default=None,
+    )
+
+    VECTOR_STORE_WHITELIST_ENABLE: Optional[bool] = Field(
+        description="Enable whitelist for vector store.",
+        default=False,
     )
 
 
@@ -244,7 +253,11 @@ class MiddlewareConfig(
     TiDBVectorConfig,
     WeaviateConfig,
     ElasticsearchConfig,
+    CouchbaseConfig,
     InternalTestConfig,
     VikingDBConfig,
+    UpstashConfig,
+    TidbOnQdrantConfig,
+    OceanBaseVectorConfig,
 ):
     pass

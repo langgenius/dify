@@ -53,7 +53,7 @@ const NodePanel: FC<Props> = ({
     if (time < 1)
       return `${(time * 1000).toFixed(3)} ms`
     if (time > 60)
-      return `${parseInt(Math.round(time / 60).toString())} m ${(time % 60).toFixed(3)} s`
+      return `${Number.parseInt(Math.round(time / 60).toString())} m ${(time % 60).toFixed(3)} s`
     return `${time.toFixed(3)} s`
   }
 
@@ -61,9 +61,9 @@ const NodePanel: FC<Props> = ({
     if (tokens < 1000)
       return tokens
     if (tokens >= 1000 && tokens < 1000000)
-      return `${parseFloat((tokens / 1000).toFixed(3))}K`
+      return `${Number.parseFloat((tokens / 1000).toFixed(3))}K`
     if (tokens >= 1000000)
-      return `${parseFloat((tokens / 1000000).toFixed(3))}M`
+      return `${Number.parseFloat((tokens / 1000000).toFixed(3))}M`
   }
 
   const getCount = (iteration_curr_length: number | undefined, iteration_length: number) => {
