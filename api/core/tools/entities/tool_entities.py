@@ -116,10 +116,8 @@ class ToolInvokeMessage(BaseModel):
 
     class VariableMessage(BaseModel):
         variable_name: str = Field(..., description="The name of the variable")
-        variable_value: str = Field(...,
-                                    description="The value of the variable")
-        stream: bool = Field(
-            default=False, description="Whether the variable is streamed")
+        variable_value: str = Field(..., description="The value of the variable")
+        stream: bool = Field(default=False, description="Whether the variable is streamed")
 
         @field_validator("variable_value", mode="before")
         @classmethod
@@ -133,8 +131,7 @@ class ToolInvokeMessage(BaseModel):
             # if stream is true, the value must be a string
             if values.get("stream"):
                 if not isinstance(value, str):
-                    raise ValueError(
-                        "When 'stream' is True, 'variable_value' must be a string.")
+                    raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
 
             return value
 
@@ -271,8 +268,7 @@ class ToolParameter(BaseModel):
                         return str(value)
 
             except Exception:
-                raise ValueError(
-                    f"The tool parameter value {value} is not in correct type.")
+                raise ValueError(f"The tool parameter value {value} is not in correct type of {self.as_normal_type()}.")
 
     class ToolParameterForm(Enum):
         SCHEMA = "schema"  # should be set while adding tool
@@ -280,17 +276,12 @@ class ToolParameter(BaseModel):
         LLM = "llm"  # will be set by LLM
 
     name: str = Field(..., description="The name of the parameter")
-    label: I18nObject = Field(...,
-                              description="The label presented to the user")
-    human_description: Optional[I18nObject] = Field(
-        default=None, description="The description presented to the user")
-    placeholder: Optional[I18nObject] = Field(
-        default=None, description="The placeholder presented to the user")
-    type: ToolParameterType = Field(...,
-                                    description="The type of the parameter")
+    label: I18nObject = Field(..., description="The label presented to the user")
+    human_description: Optional[I18nObject] = Field(default=None, description="The description presented to the user")
+    placeholder: Optional[I18nObject] = Field(default=None, description="The placeholder presented to the user")
+    type: ToolParameterType = Field(..., description="The type of the parameter")
     scope: AppSelectorScope | ModelConfigScope | None = None
-    form: ToolParameterForm = Field(...,
-                                    description="The form of the parameter, schema/form/llm")
+    form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
     llm_description: Optional[str] = None
     required: Optional[bool] = False
     default: Optional[Union[float, int, str]] = None
@@ -346,8 +337,7 @@ class ToolParameter(BaseModel):
 class ToolProviderIdentity(BaseModel):
     author: str = Field(..., description="The author of the tool")
     name: str = Field(..., description="The name of the tool")
-    description: I18nObject = Field(...,
-                                    description="The description of the tool")
+    description: I18nObject = Field(..., description="The description of the tool")
     icon: str = Field(..., description="The icon of the tool")
     label: I18nObject = Field(..., description="The label of the tool")
     tags: Optional[list[ToolLabelEnum]] = Field(
@@ -365,8 +355,7 @@ class ToolIdentity(BaseModel):
 
 
 class ToolDescription(BaseModel):
-    human: I18nObject = Field(...,
-                              description="The description presented to the user")
+    human: I18nObject = Field(..., description="The description presented to the user")
     llm: str = Field(..., description="The description presented to the LLM")
 
 
@@ -375,8 +364,7 @@ class ToolEntity(BaseModel):
     parameters: list[ToolParameter] = Field(default_factory=list)
     description: Optional[ToolDescription] = None
     output_schema: Optional[dict] = None
-    has_runtime_parameters: bool = Field(
-        default=False, description="Whether the tool has runtime parameters")
+    has_runtime_parameters: bool = Field(default=False, description="Whether the tool has runtime parameters")
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
@@ -403,10 +391,8 @@ class WorkflowToolParameterConfiguration(BaseModel):
     """
 
     name: str = Field(..., description="The name of the parameter")
-    description: str = Field(...,
-                             description="The description of the parameter")
-    form: ToolParameter.ToolParameterForm = Field(
-        ..., description="The form of the parameter")
+    description: str = Field(..., description="The description of the parameter")
+    form: ToolParameter.ToolParameterForm = Field(..., description="The form of the parameter")
 
 
 class ToolInvokeMeta(BaseModel):
@@ -414,8 +400,7 @@ class ToolInvokeMeta(BaseModel):
     Tool invoke meta
     """
 
-    time_cost: float = Field(...,
-                             description="The time cost of the tool invoke")
+    time_cost: float = Field(..., description="The time cost of the tool invoke")
     error: Optional[str] = None
     tool_config: Optional[dict] = None
 
@@ -474,5 +459,4 @@ class ToolProviderID:
         if not re.match(r"^[a-z0-9_-]+\/[a-z0-9_-]+\/[a-z0-9_-]+$", value):
             raise ValueError("Invalid plugin id")
 
-        self.organization, self.plugin_name, self.provider_name = value.split(
-            "/")
+        self.organization, self.plugin_name, self.provider_name = value.split("/")

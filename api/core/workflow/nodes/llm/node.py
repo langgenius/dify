@@ -349,13 +349,11 @@ class LLMNode(BaseNode[LLMNodeData]):
         variable = self.graph_runtime_state.variable_pool.get(selector)
         if variable is None:
             return []
-        if isinstance(variable, FileSegment):
+        elif isinstance(variable, FileSegment):
             return [variable.value]
-        if isinstance(variable, ArrayFileSegment):
+        elif isinstance(variable, ArrayFileSegment):
             return variable.value
-        # FIXME: Temporary fix for empty array,
-        # all variables added to variable pool should be a Segment instance.
-        if isinstance(variable, ArrayAnySegment) and len(variable.value) == 0:
+        elif isinstance(variable, NoneSegment | ArrayAnySegment):
             return []
         raise ValueError(f"Invalid variable type: {type(variable)}")
 

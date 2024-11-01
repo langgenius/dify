@@ -11,6 +11,7 @@ if TYPE_CHECKING:
 
 from typing import Any, Literal
 
+import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
 from pydantic import BaseModel, Field
@@ -406,7 +407,7 @@ class AppModelConfig(Base):
             "file_upload": self.file_upload_dict,
         }
 
-    def from_model_config_dict(self, model_config: dict):
+    def from_model_config_dict(self, model_config: Mapping[str, Any]):
         self.opening_statement = model_config.get("opening_statement")
         self.suggested_questions = (
             json.dumps(model_config["suggested_questions"]) if model_config.get("suggested_questions") else None
@@ -493,7 +494,7 @@ class RecommendedApp(Base):
     description = db.Column(db.JSON, nullable=False)
     copyright = db.Column(db.String(255), nullable=False)
     privacy_policy = db.Column(db.String(255), nullable=False)
-    custom_disclaimer = db.Column(db.String(255), nullable=True)
+    custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
     category = db.Column(db.String(255), nullable=False)
     position = db.Column(db.Integer, nullable=False, default=0)
     is_listed = db.Column(db.Boolean, nullable=False, default=True)
@@ -1319,7 +1320,7 @@ class Site(Base):
     privacy_policy = db.Column(db.String(255))
     show_workflow_steps = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
     use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    custom_disclaimer = db.Column(db.String(255), nullable=True)
+    custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
     customize_domain = db.Column(db.String(255))
     customize_token_strategy = db.Column(db.String(255), nullable=False)
     prompt_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
@@ -1397,6 +1398,7 @@ class UploadFile(Base):
     used_by: Mapped[str | None] = db.Column(StringUUID, nullable=True)
     used_at: Mapped[datetime | None] = db.Column(db.DateTime, nullable=True)
     hash: Mapped[str | None] = db.Column(db.String(255), nullable=True)
+    source_url: Mapped[str] = mapped_column(sa.TEXT, default="")
 
     def __init__(
         self,
@@ -1415,7 +1417,8 @@ class UploadFile(Base):
         used_by: str | None = None,
         used_at: datetime | None = None,
         hash: str | None = None,
-    ) -> None:
+        source_url: str = "",
+    ):
         self.tenant_id = tenant_id
         self.storage_type = storage_type
         self.key = key
@@ -1430,6 +1433,7 @@ class UploadFile(Base):
         self.used_by = used_by
         self.used_at = used_at
         self.hash = hash
+        self.source_url = source_url
 
 
 class ApiRequest(Base):

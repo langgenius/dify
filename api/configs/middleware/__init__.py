@@ -16,6 +16,7 @@ from configs.middleware.storage.supabase_storage_config import SupabaseStorageCo
 from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
 from configs.middleware.storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
 from configs.middleware.vdb.analyticdb_config import AnalyticdbConfig
+from configs.middleware.vdb.baidu_vector_config import BaiduVectorDBConfig
 from configs.middleware.vdb.chroma_config import ChromaConfig
 from configs.middleware.vdb.couchbase_config import CouchbaseConfig
 from configs.middleware.vdb.elasticsearch_config import ElasticsearchConfig
@@ -259,5 +260,6 @@ class MiddlewareConfig(
     UpstashConfig,
     TidbOnQdrantConfig,
     OceanBaseVectorConfig,
+    BaiduVectorDBConfig,
 ):
     pass
