@@ -23,7 +23,7 @@ type ModelListProps = {
   models: ModelItem[]
   onCollapse: () => void
   onConfig: (currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields) => void
-  onChange?: (provider: ModelProvider) => void
+  onChange?: (provider: string) => void
 }
 const ModelList: FC<ModelListProps> = ({
   provider,
