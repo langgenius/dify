@@ -14,6 +14,10 @@ const SwrInitor = ({
 }: SwrInitorProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const consoleToken = decodeURIComponent(searchParams.get('access_token') || '')
+  const refreshToken = decodeURIComponent(searchParams.get('refresh_token') || '')
+  const consoleTokenFromLocalStorage = localStorage?.getItem('console_token')
+  const refreshTokenFromLocalStorage = localStorage?.getItem('refresh_token')
   const pathname = usePathname()
   const [init, setInit] = useState(false)
 
@@ -43,9 +47,11 @@ const SwrInitor = ({
           router.replace('/install')
           return
         }
+        if (!((consoleToken && refreshToken) || (consoleTokenFromLocalStorage && refreshTokenFromLocalStorage))) {
+          router.replace('/signin')
+          return
+        }
         if (searchParams.has('access_token') || searchParams.has('refresh_token')) {
-          const consoleToken = decodeURIComponent(searchParams.get('access_token') || '')
-          const refreshToken = decodeURIComponent(searchParams.get('refresh_token') || '')
           consoleToken && localStorage.setItem('console_token', consoleToken)
           refreshToken && localStorage.setItem('refresh_token', refreshToken)
           router.replace(pathname)
