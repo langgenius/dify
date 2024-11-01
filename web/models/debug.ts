@@ -93,7 +93,6 @@ export type AnnotationReplyConfig = {
   enabled: boolean
   score_threshold: number
   embedding_model: {
-    plugin_id: string
     embedding_provider_name: string
     embedding_model_name: string
   }

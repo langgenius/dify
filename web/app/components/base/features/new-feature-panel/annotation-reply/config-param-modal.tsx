@@ -18,7 +18,6 @@ type Props = {
   isShow: boolean
   onHide: () => void
   onSave: (embeddingModel: {
-    plugin_id: string
     embedding_provider_name: string
     embedding_model_name: string
   }, score: number) => void
@@ -44,13 +43,11 @@ const ConfigParamModal: FC<Props> = ({
   const [isLoading, setLoading] = useState(false)
   const [embeddingModel, setEmbeddingModel] = useState(oldAnnotationConfig.embedding_model
     ? {
-      plugin_id: oldAnnotationConfig.embedding_model.plugin_id,
       providerName: oldAnnotationConfig.embedding_model.embedding_provider_name,
       modelName: oldAnnotationConfig.embedding_model.embedding_model_name,
     }
     : (embeddingsDefaultModel
       ? {
-        plugin_id: embeddingsDefaultModel.provider.plugin_id,
         providerName: embeddingsDefaultModel.provider.provider,
         modelName: embeddingsDefaultModel.model,
       }
@@ -70,7 +67,6 @@ const ConfigParamModal: FC<Props> = ({
     }
     setLoading(true)
     await onSave({
-      plugin_id: embeddingModel.plugin_id,
       embedding_provider_name: embeddingModel.providerName,
       embedding_model_name: embeddingModel.modelName,
     }, annotationConfig.score_threshold)
@@ -111,14 +107,12 @@ const ConfigParamModal: FC<Props> = ({
           <div className='pt-1'>
             <ModelSelector
               defaultModel={embeddingModel && {
-                plugin_id: '',
                 provider: embeddingModel.providerName,
                 model: embeddingModel.modelName,
               }}
               modelList={embeddingsModelList}
               onSelect={(val) => {
                 setEmbeddingModel({
-                  plugin_id: val.plugin_id,
                   providerName: val.provider,
                   modelName: val.model,
                 })
