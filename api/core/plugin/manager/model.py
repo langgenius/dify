@@ -413,7 +413,7 @@ class PluginModelManager(BasePluginManager):
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
-            path=f"plugin/{tenant_id}/dispatch/model/voices",
+            path=f"plugin/{tenant_id}/dispatch/tts/model/voices",
             type=PluginVoicesResponse,
             data=jsonable_encoder(
                 {
@@ -434,8 +434,10 @@ class PluginModelManager(BasePluginManager):
         )
 
         for resp in response:
+            voices = []
             for voice in resp.voices:
-                return [{"name": voice.name, "value": voice.value}]
+                voices.append({"name": voice.name, "value": voice.value})
+            return voices
 
         return []
 
