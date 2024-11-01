@@ -31,13 +31,13 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
   useEffect(() => {
     if (nodesInitialized)
       handleNodeIterationRerender(id)
-    if (data.is_parallel && data._isShowTips && data._isFirstTime) {
+    if (data.is_parallel && data._isShowTips) {
       Toast.notify({
         type: 'warning',
         message: t(`${i18nPrefix}.answerNodeWarningDesc`),
         duration: 5000,
       })
-      data._isFirstTime = false
+      data._isShowTips = false
     }
   }, [nodesInitialized, id, handleNodeIterationRerender, data, t])
 

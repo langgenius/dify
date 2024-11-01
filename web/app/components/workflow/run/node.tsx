@@ -76,7 +76,11 @@ const NodePanel: FC<Props> = ({
     if (!details || details.length === 0)
       return 0
 
-    return details.flat().filter(item => item.status === 'failed').length
+    return details.reduce((acc, iteration) => {
+      if (iteration.some(item => item.status === 'failed'))
+        acc++
+      return acc
+    }, 0)
   }
   useEffect(() => {
     setCollapseState(!nodeInfo.expand)
