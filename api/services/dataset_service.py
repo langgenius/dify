@@ -986,9 +986,6 @@ class DocumentService:
             raise NotFound("Document not found")
         if document.display_status != "available":
             raise ValueError("Document is not available")
-        # update document name
-        if document_data.get("name"):
-            document.name = document_data["name"]
         # save process rule
         if document_data.get("process_rule"):
             process_rule = document_data["process_rule"]
@@ -1065,6 +1062,10 @@ class DocumentService:
             document.data_source_type = document_data["data_source"]["type"]
             document.data_source_info = json.dumps(data_source_info)
             document.name = file_name
+
+        # update document name
+        if document_data.get("name"):
+            document.name = document_data["name"]
         # update document to be waiting
         document.indexing_status = "waiting"
         document.completed_at = None
