@@ -1,6 +1,6 @@
 from flask_restful import Resource
 
-from controllers.console.setup import setup_required
+from controllers.console.wraps import setup_required
 from controllers.inner_api import api
 from controllers.inner_api.plugin.wraps import get_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
