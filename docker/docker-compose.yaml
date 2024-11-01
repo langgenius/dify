@@ -226,6 +226,14 @@ x-shared-env: &shared-api-worker-env
   HTTP_REQUEST_NODE_MAX_TEXT_SIZE: ${HTTP_REQUEST_NODE_MAX_TEXT_SIZE:-1048576}
   APP_MAX_EXECUTION_TIME: ${APP_MAX_EXECUTION_TIME:-12000}
 
+# 定义全局的 extra_hosts 配置
+x-extra-hosts: &common-extra-hosts
+  - "db:127.0.0.1"
+  - "redis:127.0.0.1"
+  - "weaviate:127.0.0.1"
+  - "ssrf_proxy:127.0.0.1"
+  - "sandbox:127.0.0.1"
+
 services:
   # API service
   api:
@@ -734,7 +742,7 @@ networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
     driver: bridge
-#    internal: true
+    internal: true
   milvus:
     driver: bridge
   opensearch-net:

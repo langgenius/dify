@@ -24,9 +24,7 @@ FROM base AS packages
 # RUN sed -i 's@deb.debian.org@mirrors.aliyun.com@g' /etc/apt/sources.list.d/debian.sources
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends gcc g++ libc-dev libffi-dev libgmp-dev libmpfr-dev libmpc-dev \
-    && apt-get install -y vim net-tools telnet less \
-    && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+    && apt-get install -y --no-install-recommends gcc g++ libc-dev libffi-dev libgmp-dev libmpfr-dev libmpc-dev
 
 # Install Python dependencies
 COPY pyproject.toml poetry.lock ./
@@ -59,6 +57,7 @@ RUN apt-get update \
     # For Security
 #     && apt-get install -y --no-install-recommends zlib1g=1:1.3.dfsg+really1.3.1-1 expat=2.6.3-1 libldap-2.5-0=2.5.18+dfsg-3 perl=5.38.2-5 libsqlite3-0=3.46.0-1 \
     && apt-get install -y --no-install-recommends zlib1g expat libldap-2.5-0 perl libsqlite3-0 \
+    && apt-get install -y vim net-tools telnet iputils-ping ca-certificates \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
