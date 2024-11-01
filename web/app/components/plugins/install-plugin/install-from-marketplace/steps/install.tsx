@@ -18,6 +18,7 @@ type Props = {
   uniqueIdentifier: string
   payload: PluginManifestInMarket
   onCancel: () => void
+  onStartToInstall?: () => void
   onInstalled: () => void
   onFailed: (message?: string) => void
 }
@@ -26,6 +27,7 @@ const Installed: FC<Props> = ({
   uniqueIdentifier,
   payload,
   onCancel,
+  onStartToInstall,
   onInstalled,
   onFailed,
 }) => {
@@ -43,6 +45,7 @@ const Installed: FC<Props> = ({
 
   const handleInstall = async () => {
     if (isInstalling) return
+    onStartToInstall?.()
     setIsInstalling(true)
 
     try {
@@ -90,7 +93,7 @@ const Installed: FC<Props> = ({
           </>
         )
     }</>)
-  }, [payload])
+  }, [payload.latest_version, supportCheckInstalled])
 
   return (
     <>
