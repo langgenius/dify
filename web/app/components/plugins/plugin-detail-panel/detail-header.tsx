@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import {
@@ -22,6 +22,7 @@ import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
 import { BoxSparkleFill } from '@/app/components/base/icons/src/vender/plugin'
 import { Github } from '@/app/components/base/icons/src/public/common'
+import { uninstallPlugin } from '@/service/plugins'
 import { useGetLanguage } from '@/context/i18n'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
@@ -43,6 +44,7 @@ const DetailHeader = ({
   const locale = useGetLanguage()
 
   const {
+    installation_id,
     source,
     tenant_id,
     version,
@@ -68,8 +70,23 @@ const DetailHeader = ({
     setFalse: hideDeleteConfirm,
   }] = useBoolean(false)
 
+  const [deleting, {
+    setTrue: showDeleting,
+    setFalse: hideDeleting,
+  }] = useBoolean(false)
+
+  const handleDelete = useCallback(async () => {
+    showDeleting()
+    const res = await uninstallPlugin(installation_id)
+    hideDeleting()
+    if (res.success) {
+      hideDeleteConfirm()
+      onDelete()
+    }
+  }, [hideDeleteConfirm, hideDeleting, installation_id, showDeleting, onDelete])
+
   // #plugin TODO# used in apps
-  const usedInApps = 3
+  // const usedInApps = 3
 
   return (
     <div className={cn('shrink-0 p-4 pb-3 border-b border-divider-subtle bg-components-panel-bg')}>
@@ -147,11 +164,13 @@ const DetailHeader = ({
           content={
             <div>
               {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{label[locale]}</span>{t(`${i18nPrefix}.deleteContentRight`)}<br />
-              {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })}
+              {/* {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })} */}
             </div>
           }
           onCancel={hideDeleteConfirm}
-          onConfirm={onDelete}
+          onConfirm={handleDelete}
+          isLoading={deleting}
+          isDisabled={deleting}
         />
       )}
     </div>

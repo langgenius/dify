@@ -12,6 +12,7 @@ import { useDebounceFn } from 'ahooks'
 const PluginsPanel = () => {
   const [filters, setFilters] = usePluginPageContext(v => [v.filters, v.setFilters])
   const pluginList = usePluginPageContext(v => v.installedPluginList) as InstalledPlugin[]
+  const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
   const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
   const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
 
@@ -50,7 +51,10 @@ const PluginsPanel = () => {
         endpointList={currentPluginEndpoints}
         onHide={() => {
           setCurrentPluginDetail(undefined)
-          setCurrentEndpoints([])
+        }}
+        onDelete={() => {
+          setCurrentPluginDetail(undefined)
+          mutateInstalledPluginList()
         }}
       />
     </>

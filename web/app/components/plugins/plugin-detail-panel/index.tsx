@@ -1,7 +1,6 @@
 'use client'
 import React from 'react'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { EndpointListItem, InstalledPlugin } from '../types'
 import DetailHeader from './detail-header'
 import EndpointList from './endpoint-list'
@@ -14,17 +13,15 @@ type Props = {
   pluginDetail: InstalledPlugin | undefined
   endpointList: EndpointListItem[]
   onHide: () => void
+  onDelete: () => void
 }
 
 const PluginDetailPanel: FC<Props> = ({
   pluginDetail,
   endpointList = [],
   onHide,
+  onDelete,
 }) => {
-  const { t } = useTranslation()
-
-  const handleDelete = () => {}
-
   if (!pluginDetail)
     return null
 
@@ -43,7 +40,7 @@ const PluginDetailPanel: FC<Props> = ({
           <DetailHeader
             detail={pluginDetail}
             onHide={onHide}
-            onDelete={handleDelete}
+            onDelete={onDelete}
           />
           <div className='grow overflow-y-auto'>
             {!!pluginDetail.declaration.endpoint && (
