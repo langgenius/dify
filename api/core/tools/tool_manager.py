@@ -233,8 +233,7 @@ class ToolManager:
         cls, tenant_id: str, app_id: str, agent_tool: AgentToolEntity, invoke_from: InvokeFrom = InvokeFrom.DEBUGGER
     ) -> Tool:
         """
-        get the agent tool runtime
-
+        get the agent tool runtim
         """
         tool_entity = cls.get_tool_runtime(
             provider_type=agent_tool.provider_type,
