@@ -2,13 +2,13 @@ from .constants import FILE_MODEL_IDENTITY
 from .enums import ArrayFileAttribute, FileAttribute, FileBelongsTo, FileTransferMethod, FileType
 from .models import (
     File,
-    FileExtraConfig,
+    FileUploadConfig,
     ImageConfig,
 )
 
 __all__ = [
     "FileType",
-    "FileExtraConfig",
+    "FileUploadConfig",
     "FileTransferMethod",
     "FileBelongsTo",
     "File",

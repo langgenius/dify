@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validat
 from constants import UUID_NIL
 from core.app.app_config.entities import AppConfig, EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
+from core.file import FileUploadConfig
 from core.file.models import File
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -110,6 +111,8 @@ class EasyUIBasedAppGenerateEntity(AppGenerateEntity):
     # app config
     app_config: EasyUIBasedAppConfig
     model_conf: ModelConfigWithCredentialsEntity
+
+    file_upload_config: Optional[FileUploadConfig] = None
 
     query: Optional[str] = None
 
