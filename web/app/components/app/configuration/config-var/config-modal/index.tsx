@@ -4,13 +4,11 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
-import useSWR from 'swr'
 import ModalFoot from '../modal-foot'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
 import SelectTypeItem from '../select-type-item'
 import Field from './field'
-import { fetchFileUploadConfig } from '@/service/common'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { checkKeys, getNewVarInWorkflow } from '@/utils/var'
@@ -48,7 +46,6 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const [tempPayload, setTempPayload] = useState<InputVar>(payload || getNewVarInWorkflow('') as any)
   const { type, label, variable, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
-  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
   useEffect(() => {
     // To fix the first input element auto focus, then directly close modal will raise error
     if (isShow)
@@ -233,7 +230,6 @@ const ConfigModal: FC<IConfigModalProps> = ({
               payload={tempPayload as UploadFileSetting}
               onChange={(p: UploadFileSetting) => setTempPayload(p as InputVar)}
               isMultiple={type === InputVarType.multiFiles}
-              maxFileUploadLimit={fileUploadConfigResponse?.workflow_file_upload_limit || 10}
             />
           )}
 

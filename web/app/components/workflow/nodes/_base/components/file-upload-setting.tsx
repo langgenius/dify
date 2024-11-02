@@ -21,7 +21,6 @@ type Props = {
   inFeaturePanel?: boolean
   hideSupportFileType?: boolean
   onChange: (payload: UploadFileSetting) => void
-  maxFileUploadLimit?: number
 }
 
 const FileUploadSetting: FC<Props> = ({
@@ -30,7 +29,6 @@ const FileUploadSetting: FC<Props> = ({
   inFeaturePanel = false,
   hideSupportFileType = false,
   onChange,
-  maxFileUploadLimit = 10,
 }) => {
   const { t } = useTranslation()
 
@@ -41,7 +39,13 @@ const FileUploadSetting: FC<Props> = ({
     allowed_file_extensions,
   } = payload
   const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
-  const { imgSizeLimit, docSizeLimit, audioSizeLimit, videoSizeLimit } = useFileSizeLimit(fileUploadConfigResponse)
+  const {
+    imgSizeLimit,
+    docSizeLimit,
+    audioSizeLimit,
+    videoSizeLimit,
+    maxFileUploadLimit,
+  } = useFileSizeLimit(fileUploadConfigResponse)
 
   const handleSupportFileTypeChange = useCallback((type: SupportUploadFileTypes) => {
     const newPayload = produce(payload, (draft) => {
