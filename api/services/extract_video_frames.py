@@ -120,7 +120,7 @@ class ExtractVideoFrames:
         :return:
         """
         prev_frame = None
-        filtered_frames = list()
+        filtered_frames = []
 
         for i, frame in enumerate(frames):
             if prev_frame is not None:
@@ -171,13 +171,15 @@ class ExtractVideoFrames:
                 separator = np.zeros((separator_size, frame.shape[1], 3), dtype=np.uint8)
                 text_position = (frame.shape[1] // 2 - 10, 20)
 
-                cv2.putText(separator, str(i + 1), text_position, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                cv2.putText(separator, str(i + 1), text_position, 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
             # Adjust position based on your font size and image dimensions
             elif splice_mode == "horizontal":
                 separator = np.zeros((frame.shape[0], separator_size, 3), dtype=np.uint8)
                 text_position = (5, frame.shape[0] // 2 + 7)
 
-                cv2.putText(separator, str(i + 1), text_position, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                cv2.putText(separator, str(i + 1), text_position, 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
             # Concatenate frame and its corresponding separator
             if stitched_image is None:
@@ -227,7 +229,7 @@ class ExtractVideoFrames:
             if not os.path.isfile(video_file):
                 raise NoVideoUploadedServiceError()
 
-            temp_keyframes = list()
+            temp_keyframes = []
             interval = 1  # Keyframe extraction interval
 
             # Video frame extraction
@@ -253,7 +255,7 @@ class ExtractVideoFrames:
 
             if self.splice_mode == "images":
                 # keyframe as image file list
-                images = list()
+                images = []
                 for keyframe in keyframes:
                     self.save_stitched_image(stitched_image=keyframe, file_path=video_image)
                     images.append(Path(video_image).read_bytes())

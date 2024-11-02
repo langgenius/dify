@@ -89,7 +89,9 @@ class MediaExtractorNode(BaseNode[MediaExtractorNodeData]):
         word_timestamps = self.node_data.variable_config.get("word_timestamps")
 
         if extract_audio == "enabled":
-            audio_text = self._extract_text_from_audio(file=upload_file, timestamp=word_timestamps, app_model=self.app_model)
+            audio_text = self._extract_text_from_audio(
+                file=upload_file, timestamp=word_timestamps, app_model=self.app_model
+            )
 
         if extract_video == "enabled":
             video_images = self._extract_images_from_video(file=upload_file)
@@ -140,42 +142,42 @@ class MediaExtractorNode(BaseNode[MediaExtractorNodeData]):
                 file=file,
             ).process_video()
             if video_config["splice_mode"] == "images":
-
                 # video_base64 = list()
                 for video_image in video_obj:
                     image_upload_file = FileService.upload_file(
                         content=video_image.read(),
                         user=self.user,
                         filename=f'{file.name.split(".")[0]}.jpeg',
-                        mimetype='image/jpeg'
+                        mimetype="image/jpeg",
                     )
                     images.append(
-                        File(tenant_id=image_upload_file.tenant_id,
-                             type=FileType.IMAGE,
-                             transfer_method=FileTransferMethod.LOCAL_FILE,
-                             remote_url=None,
-                             related_id=image_upload_file.id,
-                             filename=image_upload_file.name,
-                             extension=image_upload_file.extension,
-                             mime_type=image_upload_file.mime_type,
-                             size=image_upload_file.size)
+                        File(
+                            tenant_id=image_upload_file.tenant_id,
+                            type=FileType.IMAGE,
+                            transfer_method=FileTransferMethod.LOCAL_FILE,
+                            remote_url=None,
+                            related_id=image_upload_file.id,
+                            filename=image_upload_file.name,
+                            extension=image_upload_file.extension,
+                            mime_type=image_upload_file.mime_type,
+                            size=image_upload_file.size,
+                        )
                     )
             else:
                 image_upload_file = FileService.upload_file(
-                    content=video_obj,
-                    user=self.user,
-                    filename=f'{file.name.split(".")[0]}.jpeg',
-                    mimetype='image/jpeg'
+                    content=video_obj, user=self.user, filename=f'{file.name.split(".")[0]}.jpeg', mimetype="image/jpeg"
                 )
                 images.append(
-                    File(tenant_id=image_upload_file.tenant_id,
-                         type=FileType.IMAGE,
-                         transfer_method=FileTransferMethod.LOCAL_FILE,
-                         filename=image_upload_file.name,
-                         related_id=image_upload_file.id,
-                         extension=image_upload_file.extension,
-                         mime_type=image_upload_file.mime_type,
-                         size=image_upload_file.size)
+                    File(
+                        tenant_id=image_upload_file.tenant_id,
+                        type=FileType.IMAGE,
+                        transfer_method=FileTransferMethod.LOCAL_FILE,
+                        filename=image_upload_file.name,
+                        related_id=image_upload_file.id,
+                        extension=image_upload_file.extension,
+                        mime_type=image_upload_file.mime_type,
+                        size=image_upload_file.size,
+                    )
                 )
 
             end = time.perf_counter()
