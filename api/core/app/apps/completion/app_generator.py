@@ -112,6 +112,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             model_conf=ModelConfigConverter.convert(app_config),
+            file_upload_config=file_extra_config,
             inputs=self._prepare_user_inputs(user_inputs=inputs, app_config=app_config),
             query=query,
             files=file_objs,

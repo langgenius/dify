@@ -95,6 +95,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         application_generate_entity = WorkflowAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
+            file_upload_config=file_extra_config,
             inputs=self._prepare_user_inputs(user_inputs=inputs, app_config=app_config),
             files=system_files,
             user_id=user.id,
