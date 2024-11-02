@@ -1,6 +1,5 @@
 import urllib.parse
 
-from flask_login import current_user
 from flask_restful import marshal_with, reqparse
 
 from controllers.common import helpers
@@ -27,7 +26,7 @@ class RemoteFileInfoApi(WebApiResource):
 
 class RemoteFileUploadApi(WebApiResource):
     @marshal_with(file_fields_with_signed_url)
-    def post(self):
+    def post(self, app_model, end_user):  # Add app_model and end_user parameters
         parser = reqparse.RequestParser()
         parser.add_argument("url", type=str, required=True, help="URL is required")
         args = parser.parse_args()
@@ -51,7 +50,7 @@ class RemoteFileUploadApi(WebApiResource):
                 filename=file_info.filename,
                 content=content,
                 mimetype=file_info.mimetype,
-                user=current_user,
+                user=end_user,  # Use end_user instead of current_user
                 source_url=url,
             )
         except Exception as e:
