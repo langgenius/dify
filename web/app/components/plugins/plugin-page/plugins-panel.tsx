@@ -1,17 +1,19 @@
 'use client'
 import { useMemo, useState } from 'react'
-import type { EndpointListItem, InstalledPlugin, PluginDetail } from '../types'
+import type { EndpointListItem, InstalledPlugin } from '../types'
 import type { FilterState } from './filter-management'
 import FilterManagement from './filter-management'
 import List from './list'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
-import { toolNotion, toolNotionEndpoints } from '@/app/components/plugins/plugin-detail-panel/mock'
+import { toolNotionEndpoints } from '@/app/components/plugins/plugin-detail-panel/mock'
 import { usePluginPageContext } from './context'
 import { useDebounceFn } from 'ahooks'
 
 const PluginsPanel = () => {
   const [filters, setFilters] = usePluginPageContext(v => [v.filters, v.setFilters])
   const pluginList = usePluginPageContext(v => v.installedPluginList) as InstalledPlugin[]
+  const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
+  const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
 
   const { run: handleFilterChange } = useDebounceFn((filters: FilterState) => {
     setFilters(filters)
@@ -29,7 +31,6 @@ const PluginsPanel = () => {
     return filteredList
   }, [pluginList, filters])
 
-  const [currentPluginDetail, setCurrentPluginDetail] = useState<PluginDetail | undefined>(toolNotion as any)
   const [currentPluginEndpoints, setCurrentEndpoints] = useState<EndpointListItem[]>(toolNotionEndpoints as any)
   return (
     <>

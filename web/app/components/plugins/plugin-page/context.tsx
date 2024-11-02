@@ -19,6 +19,8 @@ export type PluginPageContextValue = {
   containerRef: React.RefObject<HTMLDivElement>
   permissions: Permissions
   setPermissions: (permissions: PluginPageContextValue['permissions']) => void
+  currentPluginDetail: InstalledPlugin | undefined
+  setCurrentPluginDetail: (plugin: InstalledPlugin) => void
   installedPluginList: InstalledPlugin[]
   mutateInstalledPluginList: () => void
   filters: FilterState
@@ -31,7 +33,9 @@ export const PluginPageContext = createContext<PluginPageContextValue>({
     install_permission: PermissionType.noOne,
     debug_permission: PermissionType.noOne,
   },
-  setPermissions: () => { },
+  setPermissions: () => {},
+  currentPluginDetail: undefined,
+  setCurrentPluginDetail: () => {},
   installedPluginList: [],
   mutateInstalledPluginList: () => {},
   filters: {
@@ -64,6 +68,7 @@ export const PluginPageContextProvider = ({
     searchQuery: '',
   })
   const { data, mutate: mutateInstalledPluginList } = useSWR({ url: '/workspaces/current/plugin/list' }, fetchInstalledPluginList)
+  const [currentPluginDetail, setCurrentPluginDetail] = useState<InstalledPlugin | undefined>()
 
   return (
     <PluginPageContext.Provider
@@ -71,6 +76,8 @@ export const PluginPageContextProvider = ({
         containerRef,
         permissions,
         setPermissions,
+        currentPluginDetail,
+        setCurrentPluginDetail,
         installedPluginList: data?.plugins || [],
         mutateInstalledPluginList,
         filters,

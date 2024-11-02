@@ -2,7 +2,7 @@
 import React from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { EndpointListItem, PluginDetail } from '../types'
+import type { EndpointListItem, InstalledPlugin } from '../types'
 import DetailHeader from './detail-header'
 import EndpointList from './endpoint-list'
 import ActionList from './action-list'
@@ -11,7 +11,7 @@ import Drawer from '@/app/components/base/drawer'
 import cn from '@/utils/classnames'
 
 type Props = {
-  pluginDetail: PluginDetail | undefined
+  pluginDetail: InstalledPlugin | undefined
   endpointList: EndpointListItem[]
   onHide: () => void
 }

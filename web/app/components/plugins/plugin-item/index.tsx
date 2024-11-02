@@ -10,6 +10,7 @@ import {
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { usePluginPageContext } from '../plugin-page/context'
 import { Github } from '../../base/icons/src/public/common'
 import Badge from '../../base/badge'
 import { type InstalledPlugin, PluginSource } from '../types'
@@ -20,6 +21,7 @@ import Title from '../card/base/title'
 import Action from './action'
 import cn from '@/utils/classnames'
 import I18n from '@/context/i18n'
+
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 
 type Props = {
@@ -33,6 +35,8 @@ const PluginItem: FC<Props> = ({
 }) => {
   const { locale } = useContext(I18n)
   const { t } = useTranslation()
+  const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
+  const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
 
   const {
     source,
@@ -42,6 +46,7 @@ const PluginItem: FC<Props> = ({
     meta,
     version,
     latest_version,
+    plugin_id,
   } = plugin
   const { category, author, name, label, description, icon, verified } = plugin.declaration
   // Only plugin installed from GitHub need to check if it's the new version
@@ -57,10 +62,15 @@ const PluginItem: FC<Props> = ({
     return locale.replace('-', '_')
   }, [locale])
   return (
-    <div className={`p-1 ${source === PluginSource.debugging
-      ? 'bg-[repeating-linear-gradient(-45deg,rgba(16,24,40,0.04),rgba(16,24,40,0.04)_5px,rgba(0,0,0,0.02)_5px,rgba(0,0,0,0.02)_10px)]'
-      : 'bg-background-section-burn'} 
-      rounded-xl`}
+    <div
+      className={cn(
+        'p-1 rounded-xl border-[1.5px] border-background-section-burn',
+        currentPluginDetail?.plugin_id === plugin_id && 'border-components-option-card-option-selected-border',
+        source === PluginSource.debugging
+          ? 'bg-[repeating-linear-gradient(-45deg,rgba(16,24,40,0.04),rgba(16,24,40,0.04)_5px,rgba(0,0,0,0.02)_5px,rgba(0,0,0,0.02)_10px)]'
+          : 'bg-background-section-burn',
+      )}
+      onClick={() => setCurrentPluginDetail(plugin)}
     >
       <div className={cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
         <CornerMark text={category} />
@@ -80,16 +90,18 @@ const PluginItem: FC<Props> = ({
             </div>
             <div className='flex items-center justify-between'>
               <Description text={description[tLocale]} descriptionLineRows={1}></Description>
-              <Action
-                pluginId={installation_id}
-                pluginName={label[tLocale]}
-                usedInApps={5}
-                isShowFetchNewVersion={hasNewVersion}
-                isShowInfo={source === PluginSource.github}
-                isShowDelete
-                meta={meta}
-                onDelete={() => {}}
-              />
+              <div onClick={e => e.stopPropagation()}>
+                <Action
+                  pluginId={installation_id}
+                  pluginName={label[tLocale]}
+                  usedInApps={5}
+                  isShowFetchNewVersion={hasNewVersion}
+                  isShowInfo={source === PluginSource.github}
+                  isShowDelete
+                  meta={meta}
+                  onDelete={() => {}}
+                />
+              </div>
             </div>
           </div>
         </div>

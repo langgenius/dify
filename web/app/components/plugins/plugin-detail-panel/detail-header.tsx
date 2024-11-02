@@ -8,7 +8,7 @@ import {
   RiHardDrive3Line,
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
-import type { PluginDetail } from '../types'
+import type { InstalledPlugin } from '../types'
 import { PluginSource } from '../types'
 import Description from '../card/base/description'
 import Icon from '../card/base/card-icon'
@@ -29,7 +29,7 @@ import cn from '@/utils/classnames'
 const i18nPrefix = 'plugin.action'
 
 type Props = {
-  detail: PluginDetail
+  detail: InstalledPlugin
   onHide: () => void
   onDelete: () => void
 }
