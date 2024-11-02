@@ -324,8 +324,8 @@ export const verifyForgotPasswordToken: Fetcher<CommonResponse & { is_valid: boo
 export const changePasswordWithToken: Fetcher<CommonResponse, { url: string; body: { token: string; new_password: string; password_confirm: string } }> = ({ url, body }) =>
   post<CommonResponse>(url, { body })
 
-export const uploadRemoteFileInfo = (url: string) => {
-  return post<{ id: string; name: string; size: number; mime_type: string; url: string }>('/remote-files/upload', { body: { url } })
+export const uploadRemoteFileInfo = (url: string, isPublic?: boolean) => {
+  return post<{ id: string; name: string; size: number; mime_type: string; url: string }>('/remote-files/upload', { body: { url } }, { isPublicAPI: isPublic })
 }
 
 export const sendEMailLoginCode = (email: string, language = 'en-US') =>

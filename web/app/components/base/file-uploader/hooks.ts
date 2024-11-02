@@ -216,7 +216,7 @@ export const useFile = (fileConfig: FileUpload) => {
     handleAddFile(uploadingFile)
     startProgressTimer(uploadingFile.id)
 
-    uploadRemoteFileInfo(url).then((res) => {
+    uploadRemoteFileInfo(url, !!params.token).then((res) => {
       const newFile = {
         ...uploadingFile,
         type: res.mime_type,
