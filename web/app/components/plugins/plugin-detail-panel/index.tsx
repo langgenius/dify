@@ -1,27 +1,26 @@
 'use client'
 import React from 'react'
 import type { FC } from 'react'
-import type { EndpointListItem, InstalledPlugin } from '../types'
 import DetailHeader from './detail-header'
 import EndpointList from './endpoint-list'
 import ActionList from './action-list'
 import ModelList from './model-list'
 import Drawer from '@/app/components/base/drawer'
+import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
 import cn from '@/utils/classnames'
 
 type Props = {
-  pluginDetail: InstalledPlugin | undefined
-  endpointList: EndpointListItem[]
-  onHide: () => void
   onDelete: () => void
 }
 
 const PluginDetailPanel: FC<Props> = ({
-  pluginDetail,
-  endpointList = [],
-  onHide,
   onDelete,
 }) => {
+  const pluginDetail = usePluginPageContext(v => v.currentPluginDetail)
+  const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
+
+  const handleHide = () => setCurrentPluginDetail(undefined)
+
   if (!pluginDetail)
     return null
 
@@ -29,7 +28,7 @@ const PluginDetailPanel: FC<Props> = ({
     <Drawer
       isOpen={!!pluginDetail}
       clickOutsideNotOpen={false}
-      onClose={onHide}
+      onClose={handleHide}
       footer={null}
       mask={false}
       positionCenter={false}
@@ -39,17 +38,11 @@ const PluginDetailPanel: FC<Props> = ({
         <>
           <DetailHeader
             detail={pluginDetail}
-            onHide={onHide}
+            onHide={handleHide}
             onDelete={onDelete}
           />
           <div className='grow overflow-y-auto'>
-            {!!pluginDetail.declaration.endpoint && (
-              <EndpointList
-                pluginUniqueID={pluginDetail.plugin_unique_identifier}
-                list={endpointList}
-                declaration={pluginDetail.declaration.endpoint}
-              />
-            )}
+            {!!pluginDetail.declaration.endpoint && <EndpointList />}
             {!!pluginDetail.declaration.tool && <ActionList />}
             {!!pluginDetail.declaration.model && <ModelList />}
           </div>
