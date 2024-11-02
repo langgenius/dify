@@ -224,6 +224,8 @@ const translation = {
     description: 'コードジェネレーターは、設定されたモデルを使用して指示に基づいて高品質なコードを生成します。明確で詳細な指示を提供してください。',
     instruction: '指示',
     instructionPlaceholder: '生成したいコードの詳細な説明を入力してください。',
+    noDataLine1: '左側に使用例を記入してください,',
+    noDataLine2: 'コードのプレビューがこちらに表示されます。',
     generate: '生成',
     generatedCodeTitle: '生成されたコード',
     loading: 'コードを生成中...',

@@ -24,8 +24,11 @@ from controllers.console.datasets.error import (
     InvalidActionError,
     InvalidMetadataError,
 )
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from controllers.console.wraps import (
+    account_initialization_required,
+    cloud_edition_billing_resource_check,
+    setup_required,
+)
 from core.errors.error import (
     LLMBadRequestError,
     ModelCurrentlyNotSupportError,
