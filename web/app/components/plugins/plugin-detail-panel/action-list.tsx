@@ -36,7 +36,7 @@ const ActionList = () => {
       <div className='mb-1 py-1'>
         <div className='mb-1 h-6 flex items-center justify-between text-text-secondary system-sm-semibold-uppercase'>
           {t('plugin.detailPanel.actionNum', { num: data.length })}
-          {providerDeclaration.is_team_authorization && (
+          {providerDeclaration.is_team_authorization && providerDeclaration.allow_delete && (
             <Button
               variant='secondary'
               size='small'
@@ -48,7 +48,7 @@ const ActionList = () => {
             </Button>
           )}
         </div>
-        {!providerDeclaration.is_team_authorization && (
+        {!providerDeclaration.is_team_authorization && providerDeclaration.allow_delete && (
           <Button
             variant='primary'
             className='w-full'
