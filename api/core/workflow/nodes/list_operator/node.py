@@ -9,6 +9,7 @@ from core.workflow.nodes.enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import ListOperatorNodeData
+from .exc import InvalidConditionError, InvalidFilterValueError, InvalidKeyError
 
 
 class ListOperatorNode(BaseNode[ListOperatorNodeData]):
@@ -45,14 +46,14 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
             for condition in self.node_data.filter_by.conditions:
                 if isinstance(variable, ArrayStringSegment):
                     if not isinstance(condition.value, str):
-                        raise ValueError(f"Invalid filter value: {condition.value}")
+                        raise InvalidFilterValueError(f"Invalid filter value: {condition.value}")
                     value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
                     filter_func = _get_string_filter_func(condition=condition.comparison_operator, value=value)
                     result = list(filter(filter_func, variable.value))
                     variable = variable.model_copy(update={"value": result})
                 elif isinstance(variable, ArrayNumberSegment):
                     if not isinstance(condition.value, str):
-                        raise ValueError(f"Invalid filter value: {condition.value}")
+                        raise InvalidFilterValueError(f"Invalid filter value: {condition.value}")
                     value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
                     filter_func = _get_number_filter_func(condition=condition.comparison_operator, value=float(value))
                     result = list(filter(filter_func, variable.value))
@@ -107,7 +108,7 @@ def _get_file_extract_number_func(*, key: str) -> Callable[[File], int]:
         case "size":
             return lambda x: x.size
         case _:
-            raise ValueError(f"Invalid key: {key}")
+            raise InvalidKeyError(f"Invalid key: {key}")
 
 
 def _get_file_extract_string_func(*, key: str) -> Callable[[File], str]:
@@ -125,7 +126,7 @@ def _get_file_extract_string_func(*, key: str) -> Callable[[File], str]:
         case "url":
             return lambda x: x.remote_url or ""
         case _:
-            raise ValueError(f"Invalid key: {key}")
+            raise InvalidKeyError(f"Invalid key: {key}")
 
 
 def _get_string_filter_func(*, condition: str, value: str) -> Callable[[str], bool]:
@@ -151,7 +152,7 @@ def _get_string_filter_func(*, condition: str, value: str) -> Callable[[str], bo
         case "not empty":
             return lambda x: x != ""
         case _:
-            raise ValueError(f"Invalid condition: {condition}")
+            raise InvalidConditionError(f"Invalid condition: {condition}")
 
 
 def _get_sequence_filter_func(*, condition: str, value: Sequence[str]) -> Callable[[str], bool]:
@@ -161,7 +162,7 @@ def _get_sequence_filter_func(*, condition: str, value: Sequence[str]) -> Callab
         case "not in":
             return lambda x: not _in(value)(x)
         case _:
-            raise ValueError(f"Invalid condition: {condition}")
+            raise InvalidConditionError(f"Invalid condition: {condition}")
 
 
 def _get_number_filter_func(*, condition: str, value: int | float) -> Callable[[int | float], bool]:
@@ -179,7 +180,7 @@ def _get_number_filter_func(*, condition: str, value: int | float) -> Callable[[
         case "≥":
             return _ge(value)
         case _:
-            raise ValueError(f"Invalid condition: {condition}")
+            raise InvalidConditionError(f"Invalid condition: {condition}")
 
 
 def _get_file_filter_func(*, key: str, condition: str, value: str | Sequence[str]) -> Callable[[File], bool]:
@@ -193,7 +194,7 @@ def _get_file_filter_func(*, key: str, condition: str, value: str | Sequence[str
         extract_func = _get_file_extract_number_func(key=key)
         return lambda x: _get_number_filter_func(condition=condition, value=float(value))(extract_func(x))
     else:
-        raise ValueError(f"Invalid key: {key}")
+        raise InvalidKeyError(f"Invalid key: {key}")
 
 
 def _contains(value: str):
