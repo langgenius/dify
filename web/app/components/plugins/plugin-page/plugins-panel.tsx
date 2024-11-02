@@ -44,16 +44,14 @@ const PluginsPanel = () => {
           <List pluginList={filteredList} />
         </div>
       </div>
-      {false && (
-        <PluginDetailPanel
-          pluginDetail={currentPluginDetail}
-          endpointList={currentPluginEndpoints}
-          onHide={() => {
-            setCurrentPluginDetail(undefined)
-            setCurrentEndpoints([])
-          }}
-        />
-      )}
+      <PluginDetailPanel
+        pluginDetail={currentPluginDetail}
+        endpointList={currentPluginEndpoints}
+        onHide={() => {
+          setCurrentPluginDetail(undefined)
+          setCurrentEndpoints([])
+        }}
+      />
     </>
   )
 }

@@ -2,7 +2,7 @@
 import React from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowRightUpLine, RiVerifiedBadgeLine } from '@remixicon/react'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import Badge from '../base/badge'
 import type { Plugin } from './types'
 import Description from './card/base/description'
@@ -35,7 +35,7 @@ const ProviderCard: FC<Props> = ({
         <div className="ml-3 w-0 grow">
           <div className="flex items-center h-5">
             <Title title={label[language]} />
-            <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />
+            {/* <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" /> */}
           </div>
           <div className='mb-1 flex justify-between items-center h-4'>
             <div className='flex items-center'>
