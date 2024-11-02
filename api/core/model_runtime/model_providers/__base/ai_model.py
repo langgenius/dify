@@ -10,8 +10,15 @@ from core.model_runtime.entities.model_entities import (
     PriceInfo,
     PriceType,
 )
-from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
-from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
+from core.plugin.entities.plugin_daemon import PluginDaemonInnerError, PluginModelProviderEntity
 from core.plugin.manager.model import PluginModelManager
 
 
@@ -31,7 +38,7 @@ class AIModel(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     @property
-    def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
+    def _invoke_error_mapping(self) -> dict[type[Exception], list[type[Exception]]]:
         """
         Map model invoke error to unified error
         The key is the error type thrown to the caller
@@ -40,9 +47,17 @@ class AIModel(BaseModel):
 
         :return: Invoke error mapping
         """
-        raise NotImplementedError
+        return {
+            InvokeConnectionError: [InvokeConnectionError],
+            InvokeServerUnavailableError: [InvokeServerUnavailableError],
+            InvokeRateLimitError: [InvokeRateLimitError],
+            InvokeAuthorizationError: [InvokeAuthorizationError],
+            InvokeBadRequestError: [InvokeBadRequestError],
+            PluginDaemonInnerError: [PluginDaemonInnerError],
+            ValueError: [ValueError],
+        }
 
-    def _transform_invoke_error(self, error: Exception) -> InvokeError:
+    def _transform_invoke_error(self, error: Exception) -> Exception:
         """
         Transform invoke error to unified error
 
@@ -52,13 +67,15 @@ class AIModel(BaseModel):
         for invoke_error, model_errors in self._invoke_error_mapping.items():
             if isinstance(error, tuple(model_errors)):
                 if invoke_error == InvokeAuthorizationError:
-                    return invoke_error(
+                    return InvokeAuthorizationError(
                         description=(
                             f"[{self.provider_name}] Incorrect model credentials provided, please check and try again."
                         )
                     )
-
-                return invoke_error(description=f"[{self.provider_name}] {invoke_error.description}, {str(error)}")
+                elif isinstance(invoke_error, InvokeError):
+                    return invoke_error(description=f"[{self.provider_name}] {invoke_error.description}, {str(error)}")
+                else:
+                    return error
 
         return InvokeError(description=f"[{self.provider_name}] Error: {str(error)}")
 

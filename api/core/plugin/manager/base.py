@@ -53,7 +53,7 @@ class BasePluginManager:
             )
         except requests.exceptions.ConnectionError as e:
             logger.exception(f"Request to Plugin Daemon Service failed: {e}")
-            raise ValueError("Request to Plugin Daemon Service failed")
+            raise PluginDaemonInnerError(code=-500, message="Request to Plugin Daemon Service failed")
 
         return response
 
@@ -157,8 +157,17 @@ class BasePluginManager:
         Make a stream request to the plugin daemon inner API and yield the response as a model.
         """
         for line in self._stream_request(method, path, params, headers, data, files):
-            line_data = json.loads(line)
-            rep = PluginDaemonBasicResponse[type](**line_data)
+            line_data = None
+            try:
+                line_data = json.loads(line)
+                rep = PluginDaemonBasicResponse[type](**line_data)
+            except Exception as e:
+                # TODO modify this when line_data has code and message
+                if line_data and "error" in line_data:
+                    raise ValueError(line_data["error"])
+                else:
+                    raise ValueError(line)
+
             if rep.code != 0:
                 if rep.code == -500:
                     try:
