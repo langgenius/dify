@@ -1,14 +1,18 @@
 import concurrent.futures
 import io
 import random
+import warnings
 from typing import Any, Literal, Optional, Union
 
 import openai
-from pydub import AudioSegment
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolParameterValidationError, ToolProviderCredentialValidationError
 from core.tools.tool.builtin_tool import BuiltinTool
+
+with warnings.catch_warnings():
+    warnings.simplefilter("ignore")
+    from pydub import AudioSegment
 
 
 class PodcastAudioGeneratorTool(BuiltinTool):
