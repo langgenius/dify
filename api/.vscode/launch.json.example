@@ -1,0 +1,61 @@
+{
+    "version": "0.2.0",
+    "compounds": [
+        {
+            "name": "Launch Flask and Celery",
+            "configurations": ["Python: Flask", "Python: Celery"]
+        }
+    ],
+    "configurations": [
+        {
+            "name": "Python: Flask",
+            "consoleName": "Flask",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "cwd": "${workspaceFolder}",
+            "envFile": ".env",
+            "module": "flask",
+            "justMyCode": true,
+            "jinja": true,
+            "env": {
+                "FLASK_APP": "app.py",
+                "GEVENT_SUPPORT": "True"
+            },
+            "args": [
+                "run",
+                "--port=5001"
+            ]
+        },
+        {
+            "name": "Python: Celery",
+            "consoleName": "Celery",
+            "type": "debugpy",
+            "request": "launch",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "cwd": "${workspaceFolder}",
+            "module": "celery",
+            "justMyCode": true,
+            "envFile": ".env",
+            "console": "integratedTerminal",
+            "env": {
+                "FLASK_APP": "app.py",
+                "FLASK_DEBUG": "1",
+                "GEVENT_SUPPORT": "True"
+            },
+            "args": [
+                "-A",
+                "app.celery",
+                "worker",
+                "-P",
+                "gevent",
+                "-c",
+                "1",
+                "--loglevel",
+                "DEBUG",
+                "-Q",
+                "dataset,generation,mail,ops_trace,app_deletion"
+            ]
+        }
+    ]
+}
