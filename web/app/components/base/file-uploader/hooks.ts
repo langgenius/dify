@@ -18,8 +18,8 @@ import {
   AUDIO_SIZE_LIMIT,
   FILE_SIZE_LIMIT,
   IMG_SIZE_LIMIT,
-  VIDEO_SIZE_LIMIT,
   MAX_FILE_UPLOAD_LIMIT,
+  VIDEO_SIZE_LIMIT,
 } from '@/app/components/base/file-uploader/constants'
 import { useToastContext } from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
