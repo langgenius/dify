@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
 import {
   RiBugLine,
@@ -23,7 +22,8 @@ import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
 import { BoxSparkleFill } from '@/app/components/base/icons/src/vender/plugin'
 import { Github } from '@/app/components/base/icons/src/public/common'
-import I18n from '@/context/i18n'
+import { useGetLanguage } from '@/context/i18n'
+import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 
 const i18nPrefix = 'plugin.action'
@@ -40,15 +40,22 @@ const DetailHeader = ({
   onDelete,
 }: Props) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const locale = useGetLanguage()
 
+  const {
+    source,
+    tenant_id,
+    version,
+    latest_version,
+    meta,
+  } = detail
+  const { author, name, label, description, icon, verified } = detail.declaration
+  // Only plugin installed from GitHub need to check if it's the new version
   const hasNewVersion = useMemo(() => {
-    if (!detail)
-      return false
-    return false
-    // return pluginDetail.latest_version !== pluginDetail.version
-  }, [detail])
+    return source === PluginSource.github && latest_version !== version
+  }, [source, latest_version, version])
 
+  // #plugin TODO# update plugin
   const handleUpdate = () => {}
 
   const [isShowPluginInfo, {
@@ -61,19 +68,20 @@ const DetailHeader = ({
     setFalse: hideDeleteConfirm,
   }] = useBoolean(false)
 
+  // #plugin TODO# used in apps
   const usedInApps = 3
 
   return (
     <div className={cn('shrink-0 p-4 pb-3 border-b border-divider-subtle bg-components-panel-bg')}>
       <div className="flex">
-        <Icon src={detail.declaration.icon} />
+        <Icon src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${icon}`} />
         <div className="ml-3 w-0 grow">
           <div className="flex items-center h-5">
-            <Title title={detail.declaration.label[locale]} />
-            {detail.declaration.verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
+            <Title title={label[locale]} />
+            {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
             <Badge
               className='mx-1'
-              text={detail.version}
+              text={version}
               hasRedCornerMark={hasNewVersion}
             />
             {hasNewVersion && (
@@ -81,32 +89,31 @@ const DetailHeader = ({
             )}
           </div>
           <div className='mb-1 flex justify-between items-center h-4'>
-            <div className='flex items-center'>
+            <div className='mt-0.5 flex items-center'>
               <OrgInfo
-                className="mt-0.5"
                 packageNameClassName='w-auto'
-                orgName={detail.declaration.author}
-                packageName={detail.declaration.name}
+                orgName={author}
+                packageName={name}
               />
               <div className='ml-1 mr-0.5 text-text-quaternary system-xs-regular'>·</div>
               {detail.source === PluginSource.marketplace && (
                 <Tooltip popupContent={t('plugin.detailPanel.categoryTip.marketplace')} >
-                  <BoxSparkleFill className='w-3.5 h-3.5 text-text-tertiary hover:text-text-accent' />
+                  <div><BoxSparkleFill className='w-3.5 h-3.5 text-text-tertiary hover:text-text-accent' /></div>
                 </Tooltip>
               )}
               {detail.source === PluginSource.github && (
                 <Tooltip popupContent={t('plugin.detailPanel.categoryTip.github')} >
-                  <Github className='w-3.5 h-3.5 text-text-secondary hover:text-text-primary' />
+                  <div><Github className='w-3.5 h-3.5 text-text-secondary hover:text-text-primary' /></div>
                 </Tooltip>
               )}
               {detail.source === PluginSource.local && (
                 <Tooltip popupContent={t('plugin.detailPanel.categoryTip.local')} >
-                  <RiHardDrive3Line className='w-3.5 h-3.5 text-text-tertiary' />
+                  <div><RiHardDrive3Line className='w-3.5 h-3.5 text-text-tertiary' /></div>
                 </Tooltip>
               )}
               {detail.source === PluginSource.debugging && (
                 <Tooltip popupContent={t('plugin.detailPanel.categoryTip.debugging')} >
-                  <RiBugLine className='w-3.5 h-3.5 text-text-tertiary hover:text-text-warning' />
+                  <div><RiBugLine className='w-3.5 h-3.5 text-text-tertiary hover:text-text-warning' /></div>
                 </Tooltip>
               )}
             </div>
@@ -115,19 +122,21 @@ const DetailHeader = ({
         <div className='flex gap-1'>
           <OperationDropdown
             onInfo={showPluginInfo}
+            onCheckVersion={handleUpdate}
             onRemove={showDeleteConfirm}
+            detailUrl={`${MARKETPLACE_URL_PREFIX}/plugin/${author}/${name}`}
           />
           <ActionButton onClick={onHide}>
             <RiCloseLine className='w-4 h-4' />
           </ActionButton>
         </div>
       </div>
-      <Description className='mt-3' text={detail.declaration.description[locale]} descriptionLineRows={2}></Description>
+      <Description className='mt-3' text={description[locale]} descriptionLineRows={2}></Description>
       {isShowPluginInfo && (
         <PluginInfo
-          repository={detail.meta?.repo}
-          release={detail.version}
-          packageName={detail.meta?.package}
+          repository={meta?.repo}
+          release={version}
+          packageName={meta?.package}
           onHide={hidePluginInfo}
         />
       )}
@@ -137,7 +146,7 @@ const DetailHeader = ({
           title={t(`${i18nPrefix}.delete`)}
           content={
             <div>
-              {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{detail.declaration.label[locale]}</span>{t(`${i18nPrefix}.deleteContentRight`)}<br />
+              {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{label[locale]}</span>{t(`${i18nPrefix}.deleteContentRight`)}<br />
               {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })}
             </div>
           }
