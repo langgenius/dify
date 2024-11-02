@@ -123,18 +123,35 @@ parameters:
     form: form
 ############## Scrape Options #######################
   - name: formats
-    type: string
+    type: multi-select
     label:
-      en_US: Formats
+      en_US: Output Formats
       zh_Hans: 结果的格式
-    placeholder:
-      en_US: Use commas to separate multiple tags
-      zh_Hans: 多个标签时使用半角逗号分隔
+    options:
+      - value: markdown
+        label:
+          en_US: markdown
+      - value: html
+        label:
+          en_US: html
+      - value: rawHtml
+        label:
+          en_US: rawHtml
+      - value: links
+        label:
+          en_US: links
+      - value: screenshot
+        label:
+          en_US: screenshot
+      - value: extract
+        label:
+          en_US: extract
+      - value: screenshot@fullPage
+        label:
+          en_US: screenshot@fullPage
     human_description:
-      en_US: |
-        Formats to include in the output. Available options: markdown, html, rawHtml, links, screenshot
-      zh_Hans: |
-        输出中应包含的格式。可以填入: markdown, html, rawHtml, links, screenshot
+      en_US: Formats to include in the output. Multiple selections possible.
+      zh_Hans: 输出中应包含的格式。可多选。
     form: form
   - name: headers
     type: string

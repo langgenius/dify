@@ -5,6 +5,7 @@ def test_get_parameter_type():
     assert ToolParameter.ToolParameterType.STRING.as_normal_type() == "string"
     assert ToolParameter.ToolParameterType.SELECT.as_normal_type() == "string"
     assert ToolParameter.ToolParameterType.SECRET_INPUT.as_normal_type() == "string"
+    assert ToolParameter.ToolParameterType.MULTI_SELECT.as_normal_type() == "array"
     assert ToolParameter.ToolParameterType.BOOLEAN.as_normal_type() == "boolean"
     assert ToolParameter.ToolParameterType.NUMBER.as_normal_type() == "number"
     assert ToolParameter.ToolParameterType.FILE.as_normal_type() == "file"
@@ -29,6 +30,10 @@ def test_cast_parameter_by_type():
     assert ToolParameter.ToolParameterType.SELECT.cast_value(1) == "1"
     assert ToolParameter.ToolParameterType.SELECT.cast_value(1.0) == "1.0"
     assert ToolParameter.ToolParameterType.SELECT.cast_value(None) == ""
+
+    # multi select
+    assert ToolParameter.ToolParameterType.MULTI_SELECT.cast_value(["test", "test2"]) == ["test", "test2"]
+    assert ToolParameter.ToolParameterType.MULTI_SELECT.cast_value([2, 1, 1.0]) == [2, 1, 1.0]
 
     # boolean
     true_values = [True, "True", "true", "1", "YES", "Yes", "yes", "y", "something"]

@@ -14,7 +14,7 @@ import { FormTypeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import Input from './Input'
 import cn from '@/utils/classnames'
-import { SimpleSelect } from '@/app/components/base/select'
+import { MultiSelect, SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip'
 import Radio from '@/app/components/base/radio'
 type FormProps = {
@@ -53,7 +53,7 @@ const Form: FC<FormProps> = ({
   const language = useLanguage()
   const [changeKey, setChangeKey] = useState('')
 
-  const handleFormChange = (key: string, val: string | boolean) => {
+  const handleFormChange = (key: string, val: string | boolean | any[]) => {
     if (isEditMode && (key === '__model_type' || key === '__model_name'))
       return
 
@@ -212,6 +212,44 @@ const Form: FC<FormProps> = ({
               return true
             }).map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
             onSelect={item => handleFormChange(variable, item.value as string)}
+            placeholder={placeholder?.[language] || placeholder?.en_US}
+          />
+          {fieldMoreInfo?.(formSchema)}
+          {validating && changeKey === variable && <ValidatingTip />}
+        </div>
+      )
+    }
+
+    if (formSchema.type === 'multi-select') {
+      const {
+        options,
+        variable,
+        label,
+        show_on,
+        required,
+        placeholder,
+      } = formSchema as CredentialFormSchemaSelect
+
+      if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
+        return null
+
+      const handleMultiSelect = (selectedItems: any[]) => {
+        handleFormChange(variable, selectedItems.map(item => item.value))
+      }
+
+      return (
+        <div key={variable} className={cn(itemClassName, 'py-3')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-sm text-gray-900')}>
+            {label[language] || label.en_US}
+            {required && <span className='ml-1 text-red-500'>*</span>}
+            {tooltipContent}
+          </div>
+          <MultiSelect
+            className={cn(inputClassName)}
+            disabled={readonly}
+            selectedValues={value[variable] || []}
+            items={options.map(item => ({ value: item.value, name: item.label[language] || item.label.en_US }))}
+            onSelect={handleMultiSelect}
             placeholder={placeholder?.[language] || placeholder?.en_US}
           />
           {fieldMoreInfo?.(formSchema)}

@@ -29,7 +29,7 @@ export type Item = {
 export type ISelectProps = {
   className?: string
   wrapperClassName?: string
-  renderTrigger?: (value: Item | null) => JSX.Element | null
+  renderTrigger?: (value: Item | Item[] | null) => JSX.Element | null
   items?: Item[]
   defaultValue?: number | string
   disabled?: boolean
@@ -378,5 +378,127 @@ const PortalSelect: FC<PortalSelectProps> = ({
     </PortalToFollowElem>
   )
 }
-export { SimpleSelect, PortalSelect }
+
+export type MultiSelectProps = Omit<ISelectProps, 'onSelect'> & {
+  onSelect: (values: Item[]) => void
+  selectedValues?: (number | string)[]
+}
+
+const MultiSelect: FC<MultiSelectProps> = ({
+  className,
+  wrapperClassName = '',
+  renderTrigger,
+  items = defaultItems,
+  selectedValues = [],
+  disabled = false,
+  onSelect,
+  placeholder,
+  optionWrapClassName,
+  optionClassName,
+  hideChecked,
+  renderOption,
+}) => {
+  const { t } = useTranslation()
+  const localPlaceholder = placeholder || t('common.placeholder.select')
+
+  const [selectedItems, setSelectedItems] = useState<Item[]>([])
+  useEffect(() => {
+    const defaultSelected = items.filter((item: Item) => selectedValues.includes(item.value))
+    setSelectedItems(defaultSelected)
+  }, [selectedValues, items])
+
+  const handleSelect = (newItems: Item[]) => {
+    if (!disabled) {
+      setSelectedItems(newItems)
+      onSelect(newItems)
+    }
+  }
+
+  const removeItem = (item: Item) => {
+    const newSelectedItems = selectedItems.filter(i => i.value !== item.value)
+    setSelectedItems(newSelectedItems)
+    onSelect(newSelectedItems)
+  }
+
+  return (
+    <Listbox
+      value={selectedItems}
+      onChange={handleSelect}
+      multiple
+    >
+      <div className={classNames('group/multi-select relative', wrapperClassName)}>
+        {renderTrigger && <Listbox.Button className='w-full'>{renderTrigger(selectedItems)}</Listbox.Button>}
+        {!renderTrigger && (
+          <Listbox.Button className={classNames(`flex flex-wrap items-center w-full min-h-[36px] rounded-lg border-0 bg-gray-100 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover/multi-select:bg-state-base-hover-alt ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}>
+            {selectedItems.length > 0
+              ? (selectedItems.map(item => (
+                <span key={item.value} className="inline-flex items-center m-1 px-2 py-1 rounded bg-gray-200">
+                  {item.name}
+                  <XMarkIcon
+                    className="ml-1 h-4 w-4 text-gray-400 cursor-pointer"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeItem(item)
+                    }}
+                  />
+                </span>
+              ))
+              )
+              : (
+                <span className="text-gray-400">{localPlaceholder}</span>
+              )}
+            <span className="absolute inset-y-0 right-0 flex items-center pr-2">
+              <ChevronDownIcon
+                className="h-4 w-4 text-text-quaternary group-hover/multi-select:text-text-secondary"
+                aria-hidden="true"
+              />
+            </span>
+          </Listbox.Button>
+        )}
+
+        {!disabled && (
+          <Transition
+            as={Fragment}
+            leave="transition ease-in duration-100"
+            leaveFrom="opacity-100"
+            leaveTo="opacity-0"
+          >
+            <Listbox.Options className={classNames('absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm', optionWrapClassName)}>
+              {items.map((item: Item) => (
+                <Listbox.Option
+                  key={item.value}
+                  className={({ active }) =>
+                    classNames(
+                      `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 ${active ? 'bg-gray-100' : ''}`,
+                      optionClassName,
+                    )
+                  }
+                  value={item}
+                >
+                  {({ selected }) => (
+                    <>
+                      {renderOption
+                        ? renderOption({ item, selected })
+                        : (
+                          <>
+                            <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
+                            {selected && !hideChecked && (
+                              <span className="absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700">
+                                <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                              </span>
+                            )}
+                          </>
+                        )}
+                    </>
+                  )}
+                </Listbox.Option>
+              ))}
+            </Listbox.Options>
+          </Transition>
+        )}
+      </div>
+    </Listbox>
+  )
+}
+export { SimpleSelect, PortalSelect, MultiSelect }
 export default React.memo(Select)

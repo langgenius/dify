@@ -117,6 +117,18 @@ class ToolProviderController(BaseModel, ABC):
                 if tool_parameters[parameter] not in [x.value for x in options]:
                     raise ToolParameterValidationError(f"parameter {parameter} should be one of {options}")
 
+            elif parameter_schema.type == ToolParameter.ToolParameterType.MULTI_SELECT:
+                if not isinstance(tool_parameters[parameter], list):
+                    raise ToolParameterValidationError(f"parameter {parameter} should be list")
+
+                options = parameter_schema.options
+                if not isinstance(options, list):
+                    raise ToolParameterValidationError(f"parameter {parameter} options should be list")
+
+                for item in tool_parameters[parameter]:
+                    if item not in [x.value for x in options]:
+                        raise ToolParameterValidationError(f"parameter {parameter} should be one of {options}")
+
             tool_parameters_need_to_validate.pop(parameter)
 
         for parameter in tool_parameters_need_to_validate:

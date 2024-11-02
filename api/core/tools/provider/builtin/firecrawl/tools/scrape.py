@@ -18,7 +18,7 @@ class ScrapeTool(BuiltinTool):
         payload = {}
         extract = {}
 
-        payload["formats"] = get_array_params(tool_parameters, "formats")
+        payload["formats"] = tool_parameters.get("formats")
         payload["onlyMainContent"] = tool_parameters.get("onlyMainContent", True)
         payload["includeTags"] = get_array_params(tool_parameters, "includeTags")
         payload["excludeTags"] = get_array_params(tool_parameters, "excludeTags")

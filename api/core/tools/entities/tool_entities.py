@@ -142,12 +142,13 @@ class ToolParameter(BaseModel):
         NUMBER = "number"
         BOOLEAN = "boolean"
         SELECT = "select"
+        MULTI_SELECT = "multi-select"
         SECRET_INPUT = "secret-input"
         FILE = "file"
         FILES = "files"
 
         # deprecated, should not use.
-        SYSTEM_FILES = "systme-files"
+        SYSTEM_FILES = "system-files"
 
         def as_normal_type(self):
             if self in {
@@ -155,6 +156,8 @@ class ToolParameter(BaseModel):
                 ToolParameter.ToolParameterType.SELECT,
             }:
                 return "string"
+            elif self == ToolParameter.ToolParameterType.MULTI_SELECT:
+                return "array"
             return self.value
 
         def cast_value(self, value: Any, /):
@@ -198,6 +201,7 @@ class ToolParameter(BaseModel):
                         ToolParameter.ToolParameterType.SYSTEM_FILES
                         | ToolParameter.ToolParameterType.FILE
                         | ToolParameter.ToolParameterType.FILES
+                        | ToolParameter.ToolParameterType.MULTI_SELECT
                     ):
                         return value
                     case _:

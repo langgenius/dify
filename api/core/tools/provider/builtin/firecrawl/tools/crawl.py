@@ -29,7 +29,7 @@ class CrawlTool(BuiltinTool):
         payload["allowExternalLinks"] = tool_parameters.get("allowExternalLinks", False)
         payload["webhook"] = tool_parameters.get("webhook")
 
-        scrapeOptions["formats"] = get_array_params(tool_parameters, "formats")
+        scrapeOptions["formats"] = tool_parameters.get("formats")
         scrapeOptions["headers"] = get_json_params(tool_parameters, "headers")
         scrapeOptions["includeTags"] = get_array_params(tool_parameters, "includeTags")
         scrapeOptions["excludeTags"] = get_array_params(tool_parameters, "excludeTags")

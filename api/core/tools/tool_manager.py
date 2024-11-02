@@ -220,6 +220,13 @@ class ToolManager:
                 raise ValueError(
                     f"tool parameter {parameter_rule.name} value {parameter_value} not in options {options}"
                 )
+        elif parameter_rule.type == ToolParameter.ToolParameterType.MULTI_SELECT and parameter_value is not None:
+            options = [x.value for x in parameter_rule.options]
+            for value in parameter_value:
+                if value not in options:
+                    raise ValueError(
+                        f"tool parameter {parameter_rule.name} value {value} not in options {options}"
+                    )
 
         return parameter_rule.type.cast_value(parameter_value)
 
