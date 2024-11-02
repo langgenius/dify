@@ -82,7 +82,7 @@ class MediaExtractorNode(BaseNode[MediaExtractorNodeData]):
             raise UnsupportedFileTypeError("Unable to determine file type: MIME type is missing")
 
         audio_text = None
-        video_images = list()
+        video_images = []
         upload_file = self._download_upload_file(file)
         extract_audio = self.node_data.variable_config.get("extract_audio")
         extract_video = self.node_data.variable_config.get("extract_video")
@@ -132,7 +132,7 @@ class MediaExtractorNode(BaseNode[MediaExtractorNodeData]):
 
         # Video frame extraction and audio extraction
         if video_config["extract_video"] == "enabled":
-            images = list()
+            images = []
             start = time.perf_counter()
             video_obj = ExtractVideoFrames(
                 max_collect_frames=video_config["max_collect_frames"],
@@ -142,7 +142,6 @@ class MediaExtractorNode(BaseNode[MediaExtractorNodeData]):
                 file=file,
             ).process_video()
             if video_config["splice_mode"] == "images":
-                # video_base64 = list()
                 for video_image in video_obj:
                     image_upload_file = FileService.upload_file(
                         content=video_image.read(),
