@@ -224,9 +224,7 @@ class ToolManager:
             options = [x.value for x in parameter_rule.options]
             for value in parameter_value:
                 if value not in options:
-                    raise ValueError(
-                        f"tool parameter {parameter_rule.name} value {value} not in options {options}"
-                    )
+                    raise ValueError(f"tool parameter {parameter_rule.name} value {value} not in options {options}")
 
         return parameter_rule.type.cast_value(parameter_value)
 
