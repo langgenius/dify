@@ -28,6 +28,31 @@ else
 fi
 export ACME_CHALLENGE_LOCATION
 
+if [ "${NGINX_CHATBOT_BASIC_AUTH_ENABLED}" = "true" ]; then
+    # install apache2-utils to get htpasswd
+    if command -v htpasswd >/dev/null 2>&1; then
+        echo "htpasswd is installed."
+    else
+        echo "htpasswd is not installed."
+        apt update
+        apt install -y apache2-utils
+    fi
+
+    # create htpassword file for basic auth
+    htpasswd -bc /etc/nginx/conf.d/.htpasswd "${NGINX_CHATBOT_BASIC_AUTH_USER}" "${NGINX_CHATBOT_BASIC_AUTH_PASSWORD}"
+
+    CHATBOT_BASIC_AUTH_CONFIG='location /chat {
+      auth_basic "Restricted";
+      auth_basic_user_file /etc/nginx/conf.d/.htpasswd;
+      proxy_pass http://web:3000;
+      include proxy.conf;
+    }
+    '
+else
+    CHATBOT_BASIC_AUTH_CONFIG=''
+fi
+export CHATBOT_BASIC_AUTH_CONFIG
+
 env_vars=$(printenv | cut -d= -f1 | sed 's/^/$/g' | paste -sd, -)
 
 envsubst "$env_vars" < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf
