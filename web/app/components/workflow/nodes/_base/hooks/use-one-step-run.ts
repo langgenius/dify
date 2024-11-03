@@ -117,18 +117,18 @@ const useOneStepRun = <T>({
     if (!curr)
       return
 
-    valueSelector.slice(1).forEach((key, i) => {
-      const isLast = i === valueSelector.length - 2
-      // conversation variable is start with 'conversation.'
-      curr = curr?.find((v: any) => v.variable.replace('conversation.', '') === key)
-      if (isLast) {
+    for (let i = 1; i < valueSelector.length; i++) {
+      const key = valueSelector[i]
+      const isLast = i === valueSelector.length - 1
+
+      if (Array.isArray(curr))
+        curr = curr.find((v: any) => v.variable.replace('conversation.', '') === key)
+
+      if (isLast)
         res = curr
-      }
-      else {
-        if (curr?.type === VarType.object || curr?.type === VarType.file)
-          curr = curr.children
-      }
-    })
+      else if (curr?.type === VarType.object || curr?.type === VarType.file)
+        curr = curr.children
+    }
 
     return res
   }
