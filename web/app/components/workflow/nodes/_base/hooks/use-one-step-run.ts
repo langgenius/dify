@@ -105,18 +105,15 @@ const useOneStepRun = <T>({
   const availableNodesIncludeParent = getBeforeNodesInSameBranchIncludeParent(id)
   const allOutputVars = toNodeOutputVars(availableNodes, isChatMode, undefined, undefined, conversationVariables)
   const getVar = (valueSelector: ValueSelector): Var | undefined => {
-    let res: Var | undefined
     const isSystem = valueSelector[0] === 'sys'
-    const targetVar = isSystem ? allOutputVars.find(item => !!item.isStartNode) : allOutputVars.find(v => v.nodeId === valueSelector[0])
+    const targetVar = allOutputVars.find(item => isSystem ? !!item.isStartNode : item.nodeId === valueSelector[0])
     if (!targetVar)
       return undefined
+
     if (isSystem)
       return targetVar.vars.find(item => item.variable.split('.')[1] === valueSelector[1])
 
     let curr: any = targetVar.vars
-    if (!curr)
-      return
-
     for (let i = 1; i < valueSelector.length; i++) {
       const key = valueSelector[i]
       const isLast = i === valueSelector.length - 1
@@ -125,12 +122,12 @@ const useOneStepRun = <T>({
         curr = curr.find((v: any) => v.variable.replace('conversation.', '') === key)
 
       if (isLast)
-        res = curr
+        return curr
       else if (curr?.type === VarType.object || curr?.type === VarType.file)
         curr = curr.children
     }
 
-    return res
+    return undefined
   }
 
   const checkValid = checkValidFns[data.type]
