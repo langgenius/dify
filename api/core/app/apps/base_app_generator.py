@@ -76,6 +76,7 @@ class BaseAppGenerator:
 
     def _validate_input(self, *, inputs: Mapping[str, Any], var: "VariableEntity"):
         user_input_value = inputs.get(var.variable)
+
         if not user_input_value:
             if var.required:
                 raise ValueError(f"{var.variable} is required in input form")
@@ -88,6 +89,7 @@ class BaseAppGenerator:
             VariableEntityType.PARAGRAPH,
         } and not isinstance(user_input_value, str):
             raise ValueError(f"(type '{var.type}') {var.variable} in input form must be a string")
+
         if var.type == VariableEntityType.NUMBER and isinstance(user_input_value, str):
             # may raise ValueError if user_input_value is not a valid number
             try:
@@ -97,25 +99,30 @@ class BaseAppGenerator:
                     return int(user_input_value)
             except ValueError:
                 raise ValueError(f"{var.variable} in input form must be a valid number")
-        if var.type == VariableEntityType.SELECT:
-            options = var.options
-            if user_input_value not in options:
-                raise ValueError(f"{var.variable} in input form must be one of the following: {options}")
-        elif var.type in {VariableEntityType.TEXT_INPUT, VariableEntityType.PARAGRAPH}:
-            if var.max_length and len(user_input_value) > var.max_length:
-                raise ValueError(f"{var.variable} in input form must be less than {var.max_length} characters")
-        elif var.type == VariableEntityType.FILE:
-            if not isinstance(user_input_value, dict) and not isinstance(user_input_value, File):
-                raise ValueError(f"{var.variable} in input form must be a file")
-        elif var.type == VariableEntityType.FILE_LIST:
-            if not (
-                isinstance(user_input_value, list)
-                and (
-                    all(isinstance(item, dict) for item in user_input_value)
-                    or all(isinstance(item, File) for item in user_input_value)
-                )
-            ):
-                raise ValueError(f"{var.variable} in input form must be a list of files")
+
+        match var.type:
+            case VariableEntityType.SELECT:
+                if user_input_value not in var.options:
+                    raise ValueError(f"{var.variable} in input form must be one of the following: {var.options}")
+            case VariableEntityType.TEXT_INPUT | VariableEntityType.PARAGRAPH:
+                if var.max_length and len(user_input_value) > var.max_length:
+                    raise ValueError(f"{var.variable} in input form must be less than {var.max_length} characters")
+            case VariableEntityType.FILE:
+                if not isinstance(user_input_value, dict) and not isinstance(user_input_value, File):
+                    raise ValueError(f"{var.variable} in input form must be a file")
+            case VariableEntityType.FILE_LIST:
+                # if number of files exceeds the limit, raise ValueError
+                if not (
+                    isinstance(user_input_value, list)
+                    and (
+                        all(isinstance(item, dict) for item in user_input_value)
+                        or all(isinstance(item, File) for item in user_input_value)
+                    )
+                ):
+                    raise ValueError(f"{var.variable} in input form must be a list of files")
+
+                if var.max_length and len(user_input_value) > var.max_length:
+                    raise ValueError(f"{var.variable} in input form must be less than {var.max_length} files")
 
         return user_input_value
 
