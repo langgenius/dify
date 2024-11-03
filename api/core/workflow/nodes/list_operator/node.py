@@ -1,5 +1,5 @@
 from collections.abc import Callable, Sequence
-from typing import Literal
+from typing import Literal, Union
 
 from core.file import File
 from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
@@ -9,7 +9,7 @@ from core.workflow.nodes.enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import ListOperatorNodeData
-from .exc import InvalidConditionError, InvalidFilterValueError, InvalidKeyError
+from .exc import InvalidConditionError, InvalidFilterValueError, InvalidKeyError, ListOperatorError
 
 
 class ListOperatorNode(BaseNode[ListOperatorNodeData]):
@@ -27,7 +27,17 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
             )
-        if variable.value and not isinstance(variable, ArrayFileSegment | ArrayNumberSegment | ArrayStringSegment):
+        if not variable.value:
+            inputs = {"variable": []}
+            process_data = {"variable": []}
+            outputs = {"result": [], "first_record": None, "last_record": None}
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                inputs=inputs,
+                process_data=process_data,
+                outputs=outputs,
+            )
+        if not isinstance(variable, ArrayFileSegment | ArrayNumberSegment | ArrayStringSegment):
             error_message = (
                 f"Variable {self.node_data.variable} is not an ArrayFileSegment, ArrayNumberSegment "
                 "or ArrayStringSegment"
@@ -37,70 +47,98 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
             )
 
         if isinstance(variable, ArrayFileSegment):
+            inputs = {"variable": [item.to_dict() for item in variable.value]}
             process_data["variable"] = [item.to_dict() for item in variable.value]
         else:
+            inputs = {"variable": variable.value}
             process_data["variable"] = variable.value
 
-        # Filter
-        if self.node_data.filter_by.enabled:
-            for condition in self.node_data.filter_by.conditions:
-                if isinstance(variable, ArrayStringSegment):
-                    if not isinstance(condition.value, str):
-                        raise InvalidFilterValueError(f"Invalid filter value: {condition.value}")
-                    value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
-                    filter_func = _get_string_filter_func(condition=condition.comparison_operator, value=value)
-                    result = list(filter(filter_func, variable.value))
-                    variable = variable.model_copy(update={"value": result})
-                elif isinstance(variable, ArrayNumberSegment):
-                    if not isinstance(condition.value, str):
-                        raise InvalidFilterValueError(f"Invalid filter value: {condition.value}")
-                    value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
-                    filter_func = _get_number_filter_func(condition=condition.comparison_operator, value=float(value))
-                    result = list(filter(filter_func, variable.value))
-                    variable = variable.model_copy(update={"value": result})
-                elif isinstance(variable, ArrayFileSegment):
-                    if isinstance(condition.value, str):
-                        value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
-                    else:
-                        value = condition.value
-                    filter_func = _get_file_filter_func(
-                        key=condition.key,
-                        condition=condition.comparison_operator,
-                        value=value,
-                    )
-                    result = list(filter(filter_func, variable.value))
-                    variable = variable.model_copy(update={"value": result})
+        try:
+            # Filter
+            if self.node_data.filter_by.enabled:
+                variable = self._apply_filter(variable)
 
-        # Order
-        if self.node_data.order_by.enabled:
+            # Order
+            if self.node_data.order_by.enabled:
+                variable = self._apply_order(variable)
+
+            # Slice
+            if self.node_data.limit.enabled:
+                variable = self._apply_slice(variable)
+
+            outputs = {
+                "result": variable.value,
+                "first_record": variable.value[0] if variable.value else None,
+                "last_record": variable.value[-1] if variable.value else None,
+            }
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                inputs=inputs,
+                process_data=process_data,
+                outputs=outputs,
+            )
+        except ListOperatorError as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=str(e),
+                inputs=inputs,
+                process_data=process_data,
+                outputs=outputs,
+            )
+
+    def _apply_filter(
+        self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
+    ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
+        for condition in self.node_data.filter_by.conditions:
             if isinstance(variable, ArrayStringSegment):
-                result = _order_string(order=self.node_data.order_by.value, array=variable.value)
+                if not isinstance(condition.value, str):
+                    raise InvalidFilterValueError(f"Invalid filter value: {condition.value}")
+                value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
+                filter_func = _get_string_filter_func(condition=condition.comparison_operator, value=value)
+                result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
             elif isinstance(variable, ArrayNumberSegment):
-                result = _order_number(order=self.node_data.order_by.value, array=variable.value)
+                if not isinstance(condition.value, str):
+                    raise InvalidFilterValueError(f"Invalid filter value: {condition.value}")
+                value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
+                filter_func = _get_number_filter_func(condition=condition.comparison_operator, value=float(value))
+                result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
             elif isinstance(variable, ArrayFileSegment):
-                result = _order_file(
-                    order=self.node_data.order_by.value, order_by=self.node_data.order_by.key, array=variable.value
+                if isinstance(condition.value, str):
+                    value = self.graph_runtime_state.variable_pool.convert_template(condition.value).text
+                else:
+                    value = condition.value
+                filter_func = _get_file_filter_func(
+                    key=condition.key,
+                    condition=condition.comparison_operator,
+                    value=value,
                 )
+                result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
+        return variable
 
-        # Slice
-        if self.node_data.limit.enabled:
-            result = variable.value[: self.node_data.limit.size]
+    def _apply_order(
+        self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
+    ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
+        if isinstance(variable, ArrayStringSegment):
+            result = _order_string(order=self.node_data.order_by.value, array=variable.value)
             variable = variable.model_copy(update={"value": result})
+        elif isinstance(variable, ArrayNumberSegment):
+            result = _order_number(order=self.node_data.order_by.value, array=variable.value)
+            variable = variable.model_copy(update={"value": result})
+        elif isinstance(variable, ArrayFileSegment):
+            result = _order_file(
+                order=self.node_data.order_by.value, order_by=self.node_data.order_by.key, array=variable.value
+            )
+            variable = variable.model_copy(update={"value": result})
+        return variable
 
-        outputs = {
-            "result": variable.value,
-            "first_record": variable.value[0] if variable.value else None,
-            "last_record": variable.value[-1] if variable.value else None,
-        }
-        return NodeRunResult(
-            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs=inputs,
-            process_data=process_data,
-            outputs=outputs,
-        )
+    def _apply_slice(
+        self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
+    ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
+        result = variable.value[: self.node_data.limit.size]
+        return variable.model_copy(update={"value": result})
 
 
 def _get_file_extract_number_func(*, key: str) -> Callable[[File], int]:
