@@ -3,6 +3,7 @@ from collections import defaultdict
 from json import JSONDecodeError
 from typing import Optional
 
+from Crypto.PublicKey import RSA
 from sqlalchemy.exc import IntegrityError
 
 from configs import dify_config
@@ -26,6 +27,7 @@ from core.model_runtime.model_providers import model_provider_factory
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from models import Tenant
 from models.provider import (
     LoadBalancingModelConfig,
     Provider,
@@ -592,7 +594,8 @@ class ProviderManager:
                                 provider_credentials.get(variable), self.decoding_rsa_key, self.decoding_cipher_rsa
                             )
                         except ValueError:
-                            pass
+                            # Check if public key in db is matched with private key
+                            self._validate_rsa_key(tenant_id, self.decoding_rsa_key)
 
                 # cache provider credentials
                 provider_credentials_cache.set(credentials=provider_credentials)
@@ -640,7 +643,8 @@ class ProviderManager:
                                 self.decoding_cipher_rsa,
                             )
                         except ValueError:
-                            pass
+                            # Check if public key in db is matched with private key
+                            self._validate_rsa_key(tenant_id, self.decoding_rsa_key)
 
                 # cache provider model credentials
                 provider_model_credentials_cache.set(credentials=provider_model_credentials)
@@ -761,7 +765,8 @@ class ProviderManager:
                                     provider_credentials.get(variable), self.decoding_rsa_key, self.decoding_cipher_rsa
                                 )
                             except ValueError:
-                                pass
+                                # Check if public key in db is matched with private key
+                                self._validate_rsa_key(tenant_id, self.decoding_rsa_key)
 
                     current_using_credentials = provider_credentials
 
@@ -898,7 +903,10 @@ class ProviderManager:
                                             self.decoding_cipher_rsa,
                                         )
                                     except ValueError:
-                                        pass
+                                        # Check if public key in db is matched with private key
+                                        self._validate_rsa_key(
+                                            load_balancing_model_config.tenant_id, self.decoding_rsa_key
+                                        )
 
                             # cache provider model credentials
                             provider_model_credentials_cache.set(credentials=provider_model_credentials)
@@ -923,3 +931,27 @@ class ProviderManager:
             )
 
         return model_settings
+
+    @staticmethod
+    def _validate_rsa_key(tenant_id: str, private_key: RSA.RsaKey) -> None:
+        """
+        Validate that the RSA public key and private key are matched.
+
+        :param tenant_id: workspace id
+        :param private_key: private key
+        :return:
+        """
+        if not (tenant := db.session.query(Tenant).filter(Tenant.id == tenant_id).first()):
+            raise ValueError(f"Tenant with id {tenant_id} not found when validating RSA key.")
+        public_key_in_db = RSA.import_key(tenant.encrypt_public_key)
+        public_key_from_private_key = private_key.publickey()
+        if public_key_in_db.n != public_key_from_private_key.n or public_key_in_db.e != public_key_from_private_key.e:
+            raise PrivkeyNotMatchError(
+                f"Public key and private key do not match for tenant id: {tenant_id}. "
+                "You can reset the key pair for the workspace. "
+                "See `flask reset-encrypt-key-pair --help` for more information."
+            )
+
+
+class PrivkeyNotMatchError(Exception):
+    pass
