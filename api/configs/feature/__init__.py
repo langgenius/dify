@@ -216,6 +216,11 @@ class FileUploadConfig(BaseSettings):
         default=20,
     )
 
+    WORKFLOW_FILE_UPLOAD_LIMIT: PositiveInt = Field(
+        description="Maximum number of files allowed in a workflow upload operation",
+        default=10,
+    )
+
 
 class HttpConfig(BaseSettings):
     """
