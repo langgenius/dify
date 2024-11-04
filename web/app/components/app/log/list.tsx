@@ -36,6 +36,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import MessageLogModal from '@/app/components/base/message-log-modal'
+import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -168,11 +169,13 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
+  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showMessageLogModal: state.showMessageLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
+    showPromptLogModal: state.showPromptLogModal,
+    setShowPromptLogModal: state.setShowPromptLogModal,
     currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
   const { t } = useTranslation()
@@ -192,8 +195,8 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         conversation_id: detail.id,
         limit: 10,
       }
-      if (allChatItems.at(-1)?.id)
-        params.first_id = allChatItems.at(-1)?.id.replace('question-', '')
+      if (allChatItems[0]?.id)
+        params.first_id = allChatItems[0]?.id.replace('question-', '')
       const messageRes = await fetchChatMessages({
         url: `/apps/${appDetail?.id}/chat-messages`,
         params,
@@ -555,6 +558,16 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             setShowMessageLogModal(false)
           }}
           defaultTab={currentLogModalActiveTab}
+        />
+      )}
+      {showPromptLogModal && (
+        <PromptLogModal
+          width={width}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowPromptLogModal(false)
+          }}
         />
       )}
     </div>
