@@ -295,4 +295,4 @@ def _order_file(*, order: Literal["asc", "desc"], order_by: str = "", array: Seq
         extract_func = _get_file_extract_number_func(key=order_by)
         return sorted(array, key=lambda x: extract_func(x), reverse=order == "desc")
     else:
-        raise ValueError(f"Invalid order key: {order_by}")
+        raise InvalidKeyError(f"Invalid order key: {order_by}")
