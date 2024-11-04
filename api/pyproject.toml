@@ -153,6 +153,7 @@ oci = "~2.135.1"
 openai = "~1.52.0"
 opencv-contrib-python = "4.10.0.84"
 opencv-python-headless = "4.9.0.80"
+scikit-image="0.23.1"
 openpyxl = "~3.1.5"
 pandas = { version = "~2.2.2", extras = ["performance", "excel"] }
 psycopg2-binary = "~2.9.6"
