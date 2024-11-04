@@ -48,9 +48,9 @@ class CodeNode(BaseNode[CodeNodeData]):
         variables = {}
         for variable_selector in self.node_data.variables:
             variable_name = variable_selector.variable
-            variable = self.graph_runtime_state.variable_pool.get_any(variable_selector.value_selector)
+            variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
 
-            variables[variable_name] = variable
+            variables[variable_name] = variable.to_object() if variable else None
         # Run code
         try:
             result = CodeExecutor.execute_workflow_code_template(
