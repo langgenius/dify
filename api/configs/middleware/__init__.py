@@ -20,6 +20,7 @@ from configs.middleware.vdb.baidu_vector_config import BaiduVectorDBConfig
 from configs.middleware.vdb.chroma_config import ChromaConfig
 from configs.middleware.vdb.couchbase_config import CouchbaseConfig
 from configs.middleware.vdb.elasticsearch_config import ElasticsearchConfig
+from configs.middleware.vdb.lindorm_config import LindormConfig
 from configs.middleware.vdb.milvus_config import MilvusConfig
 from configs.middleware.vdb.myscale_config import MyScaleConfig
 from configs.middleware.vdb.oceanbase_config import OceanBaseVectorConfig
@@ -259,6 +260,7 @@ class MiddlewareConfig(
     VikingDBConfig,
     UpstashConfig,
     TidbOnQdrantConfig,
+    LindormConfig,
     OceanBaseVectorConfig,
     BaiduVectorDBConfig,
 ):
