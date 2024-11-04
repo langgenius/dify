@@ -103,7 +103,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                     yield event
 
             if context:
-                node_inputs["#context#"] = context  # type: ignore
+                node_inputs["#context#"] = context
 
             # fetch model config
             model_instance, model_config = self._fetch_model_config(self.node_data.model)
