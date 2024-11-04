@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 import pytest
 import redis
-from api.extensions.ext_redis import RedisClientWrapper
+from extensions.ext_redis import RedisClientWrapper
 
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.model_manager import LBModelManager
