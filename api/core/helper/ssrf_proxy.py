@@ -31,24 +31,25 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
         allow_redirects = kwargs.pop("allow_redirects")
         if "follow_redirects" not in kwargs:
             kwargs["follow_redirects"] = allow_redirects
-
+    stream = kwargs.pop("stream", False)
     retries = 0
     while retries <= max_retries:
         try:
-            if SSRF_PROXY_ALL_URL:
-                with httpx.Client(proxy=SSRF_PROXY_ALL_URL) as client:
-                    response = client.request(method=method, url=url, **kwargs)
-            elif proxy_mounts:
-                with httpx.Client(mounts=proxy_mounts) as client:
-                    response = client.request(method=method, url=url, **kwargs)
-            else:
-                with httpx.Client() as client:
-                    response = client.request(method=method, url=url, **kwargs)
+            client_args = {"proxy": SSRF_PROXY_ALL_URL} if SSRF_PROXY_ALL_URL else {}
+            if proxy_mounts:
+                client_args["mounts"] = proxy_mounts
 
-            if response.status_code not in STATUS_FORCELIST:
-                return response
-            else:
-                logging.warning(f"Received status code {response.status_code} for URL {url} which is in the force list")
+            with httpx.Client(**client_args) as client:
+                response = client.request(method=method, url=url, **kwargs)
+
+                if response.status_code not in STATUS_FORCELIST:
+                    if stream:
+                        return response.iter_bytes()
+                    return response
+                else:
+                    logging.warning(
+                        f"Received status code {response.status_code} for URL {url} which is in the force list"
+                    )
 
         except httpx.RequestError as e:
             logging.warning(f"Request to URL {url} failed on attempt {retries + 1}: {e}")

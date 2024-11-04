@@ -81,7 +81,6 @@ class WordExtractor(BaseExtractor):
         os.makedirs(image_folder, exist_ok=True)
         image_count = 0
         image_map = {}
-
         for rel in doc.part.rels.values():
             if "image" in rel.target_ref:
                 image_count += 1
