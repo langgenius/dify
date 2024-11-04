@@ -171,15 +171,13 @@ class ExtractVideoFrames:
                 separator = np.zeros((separator_size, frame.shape[1], 3), dtype=np.uint8)
                 text_position = (frame.shape[1] // 2 - 10, 20)
 
-                cv2.putText(separator, str(i + 1), text_position, 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                cv2.putText(separator, str(i + 1), text_position, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
             # Adjust position based on your font size and image dimensions
             elif splice_mode == "horizontal":
                 separator = np.zeros((frame.shape[0], separator_size, 3), dtype=np.uint8)
                 text_position = (5, frame.shape[0] // 2 + 7)
 
-                cv2.putText(separator, str(i + 1), text_position, 
-                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
+                cv2.putText(separator, str(i + 1), text_position, cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
 
             # Concatenate frame and its corresponding separator
             if stitched_image is None:
