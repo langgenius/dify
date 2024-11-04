@@ -479,7 +479,7 @@ class WorkflowCycleManage:
 
     def _workflow_node_finish_to_stream_response(
         self,
-        event: QueueNodeSucceededEvent | QueueNodeFailedEvent,
+        event: QueueNodeSucceededEvent | QueueNodeFailedEvent | QueueNodeInIterationFailedEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[NodeFinishStreamResponse]:
