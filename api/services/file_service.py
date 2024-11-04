@@ -162,7 +162,7 @@ class FileService:
         upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
 
         if not upload_file:
-            raise NotFound("File not found or signature is invalid")
+            raise NotFound("File not found")
 
         # extract text from file
         extension = upload_file.extension
@@ -182,7 +182,7 @@ class FileService:
         upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
 
         if not upload_file:
-            raise NotFound("File not found or signature is invalid")
+            raise NotFound("File not found")
 
         generator = storage.load(upload_file.key, stream=True)
 
@@ -193,7 +193,7 @@ class FileService:
         upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
 
         if not upload_file:
-            raise NotFound("File not found or signature is invalid")
+            raise NotFound("File not found")
 
         # extract text from file
         extension = upload_file.extension
