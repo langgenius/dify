@@ -514,5 +514,5 @@ class AIPPTGenerateTool(BuiltinTool):
         return AIPPTGenerateToolAdapter(self).get_runtime_parameters()
 
     @classmethod
-    def _get_api_token(self, credentials: dict[str, str], user_id: str) -> str:
+    def _get_api_token(cls, credentials: dict[str, str], user_id: str) -> str:
         return AIPPTGenerateToolAdapter()._get_api_token(credentials, user_id)
