@@ -134,7 +134,7 @@ class ParameterExtractorNode(LLMNode):
             prompt_messages = self._generate_prompt_engineering_prompt(
                 data=node_data,
                 query=query,
-                variable_pool=variable_pool,
+                variable_pool=self.graph_runtime_state.variable_pool,
                 model_config=model_config,
                 memory=memory,
                 files=files,
