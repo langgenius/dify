@@ -24,7 +24,7 @@ parameters:
       zh_Hans: 要提取的 text 文档。
     llm_description: you should not input this parameter. just input the image_id.
     form: llm
-  - name: separators
+  - name: separator
     type: string
     required: false
     label:
