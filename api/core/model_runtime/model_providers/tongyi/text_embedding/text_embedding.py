@@ -144,7 +144,9 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
                 embedding_used_tokens += response.usage["total_tokens"]
             else:
                 raise ValueError("Response usage is missing or does not contain total tokens.")
-
+                
+            time.sleep(1)  # Adjust delay as necessary
+            
         return [list(map(float, e)) for e in embeddings], embedding_used_tokens
 
     def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
