@@ -1802,6 +1802,46 @@ six = "*"
 xmltodict = "*"
 
 [[package]]
+name = "couchbase"
+version = "4.3.3"
+description = "Python Client for Couchbase"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "couchbase-4.3.3-cp310-cp310-macosx_10_15_x86_64.whl", hash = "sha256:d8069e4f01332859d56cca597874645c914699162b3979d1b432f0dfc186b124"},
+    {file = "couchbase-4.3.3-cp310-cp310-macosx_11_0_arm64.whl", hash = "sha256:1caa6cfef49c785b35b1702102f718227f351df87bba2694b9334520c41e9eb5"},
+    {file = "couchbase-4.3.3-cp310-cp310-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:f4a9a65c44935249fa078fb90a3c28ea71da9d2d5889fcd514b12d0538010ae0"},
+    {file = "couchbase-4.3.3-cp310-cp310-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:4f144b8c482c18283d8e419b844630d41f3249b07d43d40b5e3535444e57d0fb"},
+    {file = "couchbase-4.3.3-cp310-cp310-musllinux_1_1_x86_64.whl", hash = "sha256:1c534fba6fdc7cf47eed9dee8a57d1e9eb867bf008574e321fa380a77cebf32f"},
+    {file = "couchbase-4.3.3-cp310-cp310-win_amd64.whl", hash = "sha256:b841be06e0e4370b69ebef6bca3409c378186f7d6e964cd645ba18e97216c022"},
+    {file = "couchbase-4.3.3-cp311-cp311-macosx_10_15_x86_64.whl", hash = "sha256:eee7a73b3acbdc78ae314fddf7f975b3c9e05df07df255f4dcc878939a2abae0"},
+    {file = "couchbase-4.3.3-cp311-cp311-macosx_11_0_arm64.whl", hash = "sha256:53417cafcf90ff4e2fd81ebba2a08b7ad56f17160d1c5019ad3b09c758aeb363"},
+    {file = "couchbase-4.3.3-cp311-cp311-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:0cefd13bea8b0f150f1b9d27fd7614f971f77419b31817781d26ba315ed658bb"},
+    {file = "couchbase-4.3.3-cp311-cp311-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:78fa1054d7740e2fe38fce0a2aab4e9a2d30263d894e0615ee5df297f02f59a3"},
+    {file = "couchbase-4.3.3-cp311-cp311-musllinux_1_1_x86_64.whl", hash = "sha256:eb093899cfad5a7472258a9b6a57775dbf23a6e0180241507ba89ce3ab241e41"},
+    {file = "couchbase-4.3.3-cp311-cp311-win_amd64.whl", hash = "sha256:f7cfbdc699af5715f49365ffbb05a6a7366a534c0d7161edf270ad3e735a6c5d"},
+    {file = "couchbase-4.3.3-cp312-cp312-macosx_10_15_x86_64.whl", hash = "sha256:58352cae9b8affdaa2ac012e0a03c8c2632ee6297a878232888b4e0360d0d5df"},
+    {file = "couchbase-4.3.3-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:728e7e3b5e1682706cb9d63993d289226d02a25089527b8ecb4e3889dabc38cf"},
+    {file = "couchbase-4.3.3-cp312-cp312-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:73014bf098cf14187a39cc13453e0d859c1d54568df28f69cc308a9a5f24feb2"},
+    {file = "couchbase-4.3.3-cp312-cp312-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:a743375804068ae01b73c916bfca738764c8c12f381bb399ef04e784935856a1"},
+    {file = "couchbase-4.3.3-cp312-cp312-musllinux_1_1_x86_64.whl", hash = "sha256:394c122cfe02a76a99e7d5178e64129f6da49843225e78d8629abcab556c24af"},
+    {file = "couchbase-4.3.3-cp312-cp312-win_amd64.whl", hash = "sha256:bf85d7a5cda548d9801614651206068b4445fa37972e62b14d7521a958198693"},
+    {file = "couchbase-4.3.3-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:92d23c9cedd571631070791f2afee0e3d7d8c9ce1bf2ea6e9a4f2fdbc37a0f1e"},
+    {file = "couchbase-4.3.3-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:38c42eb29a73cce2998ae5df45bd61b16dce9765d3bff968ec5cf6a622faa291"},
+    {file = "couchbase-4.3.3-cp38-cp38-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:afed137bf0edc642d7b201b6ab7b1e7117bb4c8eac6b2f253cc6e106f334a2a1"},
+    {file = "couchbase-4.3.3-cp38-cp38-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:954d991377d47883aaf903934c5d0f19577680a2abf80d3ce5bb9b3c80991fc7"},
+    {file = "couchbase-4.3.3-cp38-cp38-musllinux_1_1_x86_64.whl", hash = "sha256:d5552b9fa684630698dc98d6f3b1082540634c1b7ad5bf53b843b5da57b0169c"},
+    {file = "couchbase-4.3.3-cp38-cp38-win_amd64.whl", hash = "sha256:f88f2b7e0c894f7237d9f3fb5c46abc44b8151a97b3ca8e75f57d23ebf59f9da"},
+    {file = "couchbase-4.3.3-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:769e1e2367ea1d4de181fcd4b4e353e9abef97d15b581a6c5aea49ece3dc7d59"},
+    {file = "couchbase-4.3.3-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:47f59a0b35ffce060583fd11f98f049f3b70701cf14aab9ac092594aca486aeb"},
+    {file = "couchbase-4.3.3-cp39-cp39-manylinux2014_aarch64.manylinux_2_17_aarch64.whl", hash = "sha256:440bb93d611827ba0ea2403c6f204fe931467a6cb5811f0e03bf1779204ef843"},
+    {file = "couchbase-4.3.3-cp39-cp39-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:cdb4dde62e1d41c0b8707121ab68fa78b7a1508541bd48fc850be396f91bc8d9"},
+    {file = "couchbase-4.3.3-cp39-cp39-musllinux_1_1_x86_64.whl", hash = "sha256:7f8cf45f317b39cc19db5c67b565662f08d6c90305b3aa14e04bc22707258213"},
+    {file = "couchbase-4.3.3-cp39-cp39-win_amd64.whl", hash = "sha256:c97d48ad486c8f201b4482d5594258f949369cb44792ed148d5159a3d12ae21b"},
+    {file = "couchbase-4.3.3.tar.gz", hash = "sha256:27808500551564b39b46943cf3daab572694889c1eb638425d363edb48b20da7"},
+]
+
+[[package]]
 name = "coverage"
 version = "7.2.7"
 description = "Code coverage measurement for Python"
@@ -6850,6 +6890,19 @@ files = [
     {file = "pyarrow-17.0.0-cp312-cp312-win_amd64.whl", hash = "sha256:392bc9feabc647338e6c89267635e111d71edad5fcffba204425a7c8d13610d7"},
     {file = "pyarrow-17.0.0-cp38-cp38-macosx_10_15_x86_64.whl", hash = "sha256:af5ff82a04b2171415f1410cff7ebb79861afc5dae50be73ce06d6e870615204"},
     {file = "pyarrow-17.0.0-cp38-cp38-macosx_11_0_arm64.whl", hash = "sha256:edca18eaca89cd6382dfbcff3dd2d87633433043650c07375d095cd3517561d8"},
+    {file = "pyarrow-17.0.0-cp38-cp38-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:7c7916bff914ac5d4a8fe25b7a25e432ff921e72f6f2b7547d1e325c1ad9d155"},
+    {file = "pyarrow-17.0.0-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f553ca691b9e94b202ff741bdd40f6ccb70cdd5fbf65c187af132f1317de6145"},
+    {file = "pyarrow-17.0.0-cp38-cp38-manylinux_2_28_aarch64.whl", hash = "sha256:0cdb0e627c86c373205a2f94a510ac4376fdc523f8bb36beab2e7f204416163c"},
+    {file = "pyarrow-17.0.0-cp38-cp38-manylinux_2_28_x86_64.whl", hash = "sha256:d7d192305d9d8bc9082d10f361fc70a73590a4c65cf31c3e6926cd72b76bc35c"},
+    {file = "pyarrow-17.0.0-cp38-cp38-win_amd64.whl", hash = "sha256:02dae06ce212d8b3244dd3e7d12d9c4d3046945a5933d28026598e9dbbda1fca"},
+    {file = "pyarrow-17.0.0-cp39-cp39-macosx_10_15_x86_64.whl", hash = "sha256:13d7a460b412f31e4c0efa1148e1d29bdf18ad1411eb6757d38f8fbdcc8645fb"},
+    {file = "pyarrow-17.0.0-cp39-cp39-macosx_11_0_arm64.whl", hash = "sha256:9b564a51fbccfab5a04a80453e5ac6c9954a9c5ef2890d1bcf63741909c3f8df"},
+    {file = "pyarrow-17.0.0-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:32503827abbc5aadedfa235f5ece8c4f8f8b0a3cf01066bc8d29de7539532687"},
+    {file = "pyarrow-17.0.0-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:a155acc7f154b9ffcc85497509bcd0d43efb80d6f733b0dc3bb14e281f131c8b"},
+    {file = "pyarrow-17.0.0-cp39-cp39-manylinux_2_28_aarch64.whl", hash = "sha256:dec8d129254d0188a49f8a1fc99e0560dc1b85f60af729f47de4046015f9b0a5"},
+    {file = "pyarrow-17.0.0-cp39-cp39-manylinux_2_28_x86_64.whl", hash = "sha256:a48ddf5c3c6a6c505904545c25a4ae13646ae1f8ba703c4df4a1bfe4f4006bda"},
+    {file = "pyarrow-17.0.0-cp39-cp39-win_amd64.whl", hash = "sha256:42bf93249a083aca230ba7e2786c5f673507fa97bbd9725a1e2754715151a204"},
+    {file = "pyarrow-17.0.0.tar.gz", hash = "sha256:4beca9521ed2c0921c1023e68d097d0299b62c362639ea315572a58f3f50fd28"},
 ]
 
 [package.dependencies]
@@ -7215,6 +7268,22 @@ files = [
 [package.extras]
 ed25519 = ["PyNaCl (>=1.4.0)"]
 rsa = ["cryptography"]
+
+[[package]]
+name = "pyobvector"
+version = "0.1.6"
+description = "A python SDK for OceanBase Vector Store, based on SQLAlchemy, compatible with Milvus API."
+optional = false
+python-versions = "<4.0,>=3.9"
+files = [
+    {file = "pyobvector-0.1.6-py3-none-any.whl", hash = "sha256:0d700e865a85b4716b9a03384189e49288cd9d5f3cef88aed4740bc82d5fd136"},
+    {file = "pyobvector-0.1.6.tar.gz", hash = "sha256:05551addcac8c596992d5e38b480c83ca3481c6cfc6f56a1a1bddfb2e6ae037e"},
+]
+
+[package.dependencies]
+numpy = ">=1.26.0,<2.0.0"
+pymysql = ">=1.1.1,<2.0.0"
+sqlalchemy = ">=2.0.32,<3.0.0"
 
 [[package]]
 name = "pyopenssl"
@@ -8624,6 +8693,11 @@ files = [
     {file = "scikit_learn-1.5.2-cp312-cp312-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:f60021ec1574e56632be2a36b946f8143bf4e5e6af4a06d85281adc22938e0dd"},
     {file = "scikit_learn-1.5.2-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:394397841449853c2290a32050382edaec3da89e35b3e03d6cc966aebc6a8ae6"},
     {file = "scikit_learn-1.5.2-cp312-cp312-win_amd64.whl", hash = "sha256:57cc1786cfd6bd118220a92ede80270132aa353647684efa385a74244a41e3b1"},
+    {file = "scikit_learn-1.5.2-cp313-cp313-macosx_10_13_x86_64.whl", hash = "sha256:e9a702e2de732bbb20d3bad29ebd77fc05a6b427dc49964300340e4c9328b3f5"},
+    {file = "scikit_learn-1.5.2-cp313-cp313-macosx_12_0_arm64.whl", hash = "sha256:b0768ad641981f5d3a198430a1d31c3e044ed2e8a6f22166b4d546a5116d7908"},
+    {file = "scikit_learn-1.5.2-cp313-cp313-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:178ddd0a5cb0044464fc1bfc4cca5b1833bfc7bb022d70b05db8530da4bb3dd3"},
+    {file = "scikit_learn-1.5.2-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f7284ade780084d94505632241bf78c44ab3b6f1e8ccab3d2af58e0e950f9c12"},
+    {file = "scikit_learn-1.5.2-cp313-cp313-win_amd64.whl", hash = "sha256:b7b0f9a0b1040830d38c39b91b3a44e1b643f4b36e36567b80b7c6bd2202a27f"},
     {file = "scikit_learn-1.5.2-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:757c7d514ddb00ae249832fe87100d9c73c6ea91423802872d9e74970a0e40b9"},
     {file = "scikit_learn-1.5.2-cp39-cp39-macosx_12_0_arm64.whl", hash = "sha256:52788f48b5d8bca5c0736c175fa6bdaab2ef00a8f536cda698db61bd89c551c1"},
     {file = "scikit_learn-1.5.2-cp39-cp39-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:643964678f4b5fbdc95cbf8aec638acc7aa70f5f79ee2cdad1eec3df4ba6ead8"},
@@ -10866,4 +10940,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "1b268122d3d4771ba219f0e983322e0454b7b8644dba35da38d7d950d489e1ba"
+content-hash = "ef927b98c33d704d680e08db0e5c7d9a4e05454c66fcd6a5f656a65eb08e886b"

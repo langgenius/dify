@@ -63,3 +63,8 @@ class TidbOnQdrantConfig(BaseSettings):
         description="Tidb project id",
         default=None,
     )
+
+    TIDB_SPEND_LIMIT: Optional[int] = Field(
+        description="Tidb spend limit",
+        default=100,
+    )
