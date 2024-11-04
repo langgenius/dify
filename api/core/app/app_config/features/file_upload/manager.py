@@ -1,8 +1,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-from core.file.models import FileExtraConfig
-from models import FileUploadConfig
+from core.file import FileExtraConfig
 
 
 class FileUploadConfigManager:
@@ -43,6 +42,6 @@ class FileUploadConfigManager:
         if not config.get("file_upload"):
             config["file_upload"] = {}
         else:
-            FileUploadConfig.model_validate(config["file_upload"])
+            FileExtraConfig.model_validate(config["file_upload"])
 
         return config, ["file_upload"]

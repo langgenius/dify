@@ -18,6 +18,7 @@ import {
   AUDIO_SIZE_LIMIT,
   FILE_SIZE_LIMIT,
   IMG_SIZE_LIMIT,
+  MAX_FILE_UPLOAD_LIMIT,
   VIDEO_SIZE_LIMIT,
 } from '@/app/components/base/file-uploader/constants'
 import { useToastContext } from '@/app/components/base/toast'
@@ -33,12 +34,14 @@ export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) =>
   const docSizeLimit = Number(fileUploadConfig?.file_size_limit) * 1024 * 1024 || FILE_SIZE_LIMIT
   const audioSizeLimit = Number(fileUploadConfig?.audio_file_size_limit) * 1024 * 1024 || AUDIO_SIZE_LIMIT
   const videoSizeLimit = Number(fileUploadConfig?.video_file_size_limit) * 1024 * 1024 || VIDEO_SIZE_LIMIT
+  const maxFileUploadLimit = Number(fileUploadConfig?.workflow_file_upload_limit) || MAX_FILE_UPLOAD_LIMIT
 
   return {
     imgSizeLimit,
     docSizeLimit,
     audioSizeLimit,
     videoSizeLimit,
+    maxFileUploadLimit,
   }
 }
 

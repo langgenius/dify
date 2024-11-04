@@ -37,6 +37,7 @@ class FileApi(Resource):
             "image_file_size_limit": dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
             "video_file_size_limit": dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
             "audio_file_size_limit": dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
+            "workflow_file_upload_limit": dify_config.WORKFLOW_FILE_UPLOAD_LIMIT,
         }, 200
 
     @setup_required
