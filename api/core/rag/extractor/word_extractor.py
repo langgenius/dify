@@ -14,6 +14,7 @@ import requests
 from docx import Document as DocxDocument
 
 from configs import dify_config
+from core.helper import ssrf_proxy
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
@@ -86,7 +87,7 @@ class WordExtractor(BaseExtractor):
                 image_count += 1
                 if rel.is_external:
                     url = rel.reltype
-                    response = requests.get(url, stream=True)
+                    response = ssrf_proxy.get(url, stream=True)
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers["Content-Type"])
                         file_uuid = str(uuid.uuid4())
