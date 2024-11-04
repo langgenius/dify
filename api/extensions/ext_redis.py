@@ -1,12 +1,12 @@
 import redis
+from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
 from redis.sentinel import Sentinel
-from redis.cluster import RedisCluster, ClusterNode
 
 from configs import dify_config
 
 
-class RedisClientWrapper():
+class RedisClientWrapper:
     """
     A wrapper class for the Redis client that addresses the issue where the global
     `redis_client` variable cannot be updated when a new Redis instance is returned
