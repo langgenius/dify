@@ -71,6 +71,12 @@ export const installPackageFromLocal = async (uniqueIdentifier: string) => {
   })
 }
 
+export const updateFromMarketPlace = async (body: Record<string, string>) => {
+  return post<InstallPackageResponse>('/workspaces/current/plugin/upgrade/marketplace', {
+    body,
+  })
+}
+
 export const uploadGitHub = async (repoUrl: string, selectedVersion: string, selectedPackage: string) => {
   return post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
     body: {

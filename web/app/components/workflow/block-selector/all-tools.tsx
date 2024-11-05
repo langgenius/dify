@@ -66,7 +66,7 @@ const AllTools = ({
 
   const {
     queryPluginsWithDebounced: fetchPlugins,
-    plugins: notInstalledPlugins,
+    plugins: notInstalledPlugins = [],
   } = useMarketplacePlugins()
 
   useEffect(() => {

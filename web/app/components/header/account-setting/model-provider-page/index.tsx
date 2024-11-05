@@ -123,7 +123,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
   const [collapse, setCollapse] = useState(false)
 
   const {
-    plugins,
+    plugins = [],
     queryPlugins,
     queryPluginsWithDebounced,
     isLoading: isPluginsLoading,

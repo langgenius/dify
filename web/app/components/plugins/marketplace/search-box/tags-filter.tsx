@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   RiArrowDownSLine,
   RiCloseCircleFill,
@@ -26,9 +27,10 @@ const TagsFilter = ({
   onTagsChange,
   size,
 }: TagsFilterProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const options = useTags()
+  const { tags: options, tagsMap } = useTags()
   const filteredOptions = options.filter(option => option.label.toLowerCase().includes(searchText.toLowerCase()))
   const handleCheck = (id: string) => {
     if (tags.includes(id))
@@ -65,10 +67,10 @@ const TagsFilter = ({
             size === 'small' && 'px-0.5 py-1',
           )}>
             {
-              !selectedTagsLength && 'All Tags'
+              !selectedTagsLength && t('pluginTags.allTags')
             }
             {
-              !!selectedTagsLength && tags.slice(0, 2).join(',')
+              !!selectedTagsLength && tags.map(tag => tagsMap[tag].label).slice(0, 2).join(',')
             }
             {
               selectedTagsLength > 2 && (
@@ -100,7 +102,7 @@ const TagsFilter = ({
               showLeftIcon
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder='Search tags'
+              placeholder={t('pluginTags.searchTags') || ''}
             />
           </div>
           <div className='p-1 max-h-[448px] overflow-y-auto'>
