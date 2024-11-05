@@ -1,15 +1,25 @@
 import { useState } from 'react'
 import Toast from '@/app/components/base/toast'
 import { uploadGitHub } from '@/service/plugins'
+import { Octokit } from '@octokit/core'
+import { GITHUB_ACCESS_TOKEN } from '@/config'
 
 export const useGitHubReleases = () => {
-  const fetchReleases = async (owner: string, repo: string, setReleases: (releases: any) => void) => {
+  const fetchReleases = async (owner: string, repo: string) => {
     try {
-      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`)
-      if (!res.ok) throw new Error('Failed to fetch releases')
-      const data = await res.json()
+      const octokit = new Octokit({
+        auth: GITHUB_ACCESS_TOKEN,
+      })
+      const res = await octokit.request('GET /repos/{owner}/{repo}/releases', {
+        owner,
+        repo,
+        headers: {
+          'X-GitHub-Api-Version': '2022-11-28',
+        },
+      })
+      if (res.status !== 200) throw new Error('Failed to fetch releases')
 
-      const formattedReleases = data.map((release: any) => ({
+      const formattedReleases = res.data.map((release: any) => ({
         tag_name: release.tag_name,
         assets: release.assets.map((asset: any) => ({
           browser_download_url: asset.browser_download_url,
@@ -17,13 +27,14 @@ export const useGitHubReleases = () => {
         })),
       }))
 
-      setReleases(formattedReleases)
+      return formattedReleases
     }
     catch (error) {
       Toast.notify({
         type: 'error',
         message: 'Failed to fetch repository releases',
       })
+      return []
     }
   }
 

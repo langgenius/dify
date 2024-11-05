@@ -23,6 +23,7 @@ import { installPackageFromGitHub } from '@/service/plugins'
 type InstallFromGitHubProps = {
   updatePayload?: UpdateFromGitHubPayload
   onClose: () => void
+  onSuccess: () => void
 }
 
 const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, onClose }) => {
@@ -118,13 +119,12 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
           })
           break
         }
-        await fetchReleases(owner, repo, (fetchedReleases) => {
-          setState(prevState => ({
-            ...prevState,
-            releases: fetchedReleases,
-            step: InstallStepFromGitHub.selectPackage,
-          }))
-        })
+        const fetchedReleases = await fetchReleases(owner, repo)
+        setState(prevState => ({
+          ...prevState,
+          releases: fetchedReleases,
+          step: InstallStepFromGitHub.selectPackage,
+        }))
         break
       }
       case InstallStepFromGitHub.selectPackage: {

@@ -40,7 +40,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       return t(`${i18nPrefix}.installFailed`)
 
     return t(`${i18nPrefix}.installPlugin`)
-  }, [step])
+  }, [step, t])
 
   const { getIconUrl } = useGetIcon()
 
@@ -59,7 +59,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       icon,
     })
     setStep(InstallStep.readyToInstall)
-  }, [])
+  }, [getIconUrl])
 
   const handleUploadFail = useCallback((errorMsg: string) => {
     setErrorMsg(errorMsg)

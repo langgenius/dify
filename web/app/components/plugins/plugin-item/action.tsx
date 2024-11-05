@@ -10,13 +10,17 @@ import ActionButton from '../../base/action-button'
 import Tooltip from '../../base/tooltip'
 import Confirm from '../../base/confirm'
 import { uninstallPlugin } from '@/service/plugins'
-import { usePluginPageContext } from '../plugin-page/context'
+import { useGitHubReleases } from '../install-plugin/hooks'
+import { compareVersion, getLatestVersion } from '@/utils/semver'
+import Toast from '@/app/components/base/toast'
 
 const i18nPrefix = 'plugin.action'
 
 type Props = {
-  pluginId: string
+  author: string
+  installationId: string
   pluginName: string
+  version: string
   usedInApps: number
   isShowFetchNewVersion: boolean
   isShowInfo: boolean
@@ -25,8 +29,10 @@ type Props = {
   meta?: MetaData
 }
 const Action: FC<Props> = ({
-  pluginId,
+  author,
+  installationId,
   pluginName,
+  version,
   isShowFetchNewVersion,
   isShowInfo,
   isShowDelete,
@@ -38,13 +44,35 @@ const Action: FC<Props> = ({
     setTrue: showPluginInfo,
     setFalse: hidePluginInfo,
   }] = useBoolean(false)
-  const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
   const [deleting, {
     setTrue: showDeleting,
     setFalse: hideDeleting,
   }] = useBoolean(false)
+  const { fetchReleases } = useGitHubReleases()
 
-  const handleFetchNewVersion = () => { }
+  const handleFetchNewVersion = async () => {
+    try {
+      const fetchedReleases = await fetchReleases(author, pluginName)
+      const versions = fetchedReleases.map(release => release.tag_name)
+      const latestVersion = getLatestVersion(versions)
+      if (compareVersion(latestVersion, version) === 1) {
+        // todo: open plugin updating modal
+        console.log('New version available:', latestVersion)
+      }
+      else {
+        Toast.notify({
+          type: 'info',
+          message: 'No new version available',
+        })
+      }
+    }
+    catch {
+      Toast.notify({
+        type: 'error',
+        message: 'Failed to compare versions',
+      })
+    }
+  }
 
   const [isShowDeleteConfirm, {
     setTrue: showDeleteConfirm,
@@ -53,14 +81,13 @@ const Action: FC<Props> = ({
 
   const handleDelete = useCallback(async () => {
     showDeleting()
-    const res = await uninstallPlugin(pluginId)
+    const res = await uninstallPlugin(installationId)
     hideDeleting()
     if (res.success) {
       hideDeleteConfirm()
-      mutateInstalledPluginList()
       onDelete()
     }
-  }, [pluginId, onDelete])
+  }, [installationId])
   return (
     <div className='flex space-x-1'>
       {/* Only plugin installed from GitHub need to check if it's the new version  */}

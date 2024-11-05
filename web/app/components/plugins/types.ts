@@ -54,6 +54,7 @@ export type EndpointListItem = {
 
 // Plugin manifest
 export type PluginDeclaration = {
+  plugin_unique_identifier: string
   version: string
   author: string
   icon: string
@@ -71,6 +72,7 @@ export type PluginDeclaration = {
 }
 
 export type PluginManifestInMarket = {
+  plugin_unique_identifier: string
   name: string
   org: string
   icon: string
@@ -137,17 +139,18 @@ export type Permissions = {
 export type UpdateFromMarketPlacePayload = {
   originalPackageInfo: {
     id: string
+    payload: PluginDeclaration
   },
   targetPackageInfo: {
     id: string
-    payload: PluginDeclaration
+    version: string
   }
 }
 
 export type UpdateFromGitHubPayload = {
   originalPackageInfo: {
+    id: string
     repo: string
-    originalPluginId: string
     version: string
   }
 }

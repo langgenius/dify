@@ -3,6 +3,7 @@ import type { GitHubUrlInfo } from '@/app/components/plugins/types'
 
 export const pluginManifestToCardPluginProps = (pluginManifest: PluginDeclaration): Plugin => {
   return {
+    plugin_id: pluginManifest.plugin_unique_identifier,
     type: pluginManifest.category,
     category: pluginManifest.category,
     name: pluginManifest.name,
@@ -25,6 +26,7 @@ export const pluginManifestToCardPluginProps = (pluginManifest: PluginDeclaratio
 
 export const pluginManifestInMarketToPluginProps = (pluginManifest: PluginManifestInMarket): Plugin => {
   return {
+    plugin_id: pluginManifest.plugin_unique_identifier,
     type: pluginManifest.category,
     category: pluginManifest.category,
     name: pluginManifest.name,

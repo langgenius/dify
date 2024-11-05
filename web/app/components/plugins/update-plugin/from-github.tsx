@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import type { UpdateFromGitHubPayload } from '../types'
+import InstallFromGitHub from '../install-plugin/install-from-github'
 
 type Props = {
   payload: UpdateFromGitHubPayload
@@ -11,11 +12,15 @@ type Props = {
 
 const FromGitHub: FC<Props> = ({
   payload,
+  onSave,
+  onCancel,
 }) => {
   return (
-    <div>
-      {JSON.stringify(payload)}
-    </div>
+    <InstallFromGitHub
+      updatePayload={payload}
+      onClose={onCancel}
+      onSuccess={onSave}
+    />
   )
 }
 export default React.memo(FromGitHub)

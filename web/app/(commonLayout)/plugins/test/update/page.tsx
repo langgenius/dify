@@ -1,4 +1,5 @@
 'use client'
+import { toolNeko } from '@/app/components/plugins/card/card-mock'
 import { PluginSource } from '@/app/components/plugins/types'
 import { useModalContext } from '@/context/modal-context'
 import React from 'react'
@@ -11,11 +12,12 @@ const UpdatePlugin = () => {
         type: PluginSource.marketplace,
         marketPlace: {
           originalPackageInfo: {
-            id: 'original_xxx',
+            id: 'langgenius/neko:0.0.1@9e57d693739287c0efdc96847d7ed959ca93f70aa704471f2eb7ed3313821824',
+            payload: toolNeko as any,
           },
           targetPackageInfo: {
             id: 'target_xxx',
-            payload: {} as any,
+            version: '1.2.3',
           },
         },
       },
@@ -32,9 +34,14 @@ const UpdatePlugin = () => {
       payload: {
         type: PluginSource.github,
         github: {
-          repo: 'repo_xxx',
-          originalPluginId: 'original_xxx',
-          version: 'version_xxx',
+          originalPackageInfo: {
+            id: '111',
+            repo: 'aaa/bbb',
+            version: 'xxx',
+            url: 'aaa/bbb',
+            currVersion: '1.2.3',
+            currPackage: 'pack1',
+          } as any,
         },
       },
       onCancelCallback: () => {

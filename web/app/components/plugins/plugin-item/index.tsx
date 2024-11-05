@@ -37,6 +37,7 @@ const PluginItem: FC<Props> = ({
   const { t } = useTranslation()
   const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
   const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
+  const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
 
   const {
     source,
@@ -44,16 +45,10 @@ const PluginItem: FC<Props> = ({
     installation_id,
     endpoints_active,
     meta,
-    version,
-    latest_version,
     plugin_id,
+    version,
   } = plugin
   const { category, author, name, label, description, icon, verified } = plugin.declaration
-  // Only plugin installed from GitHub need to check if it's the new version
-  // todo check version manually
-  const hasNewVersion = useMemo(() => {
-    return source === PluginSource.github && latest_version !== version
-  }, [source, latest_version, version])
 
   const orgName = useMemo(() => {
     return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
@@ -79,6 +74,7 @@ const PluginItem: FC<Props> = ({
         <div className="flex">
           <div className='flex items-center justify-center w-10 h-10 overflow-hidden border-components-panel-border-subtle border-[1px] rounded-xl'>
             <img
+              className='w-full h-full'
               src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${icon}`}
               alt={`plugin-${installation_id}-logo`}
             />
@@ -87,20 +83,24 @@ const PluginItem: FC<Props> = ({
             <div className="flex items-center h-5">
               <Title title={label[tLocale]} />
               {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
-              <Badge className='ml-1' text={plugin.version} hasRedCornerMark={hasNewVersion} />
+              <Badge className='ml-1' text={plugin.version} />
             </div>
             <div className='flex items-center justify-between'>
               <Description text={description[tLocale]} descriptionLineRows={1}></Description>
               <div onClick={e => e.stopPropagation()}>
                 <Action
-                  pluginId={installation_id}
-                  pluginName={label[tLocale]}
+                  installationId={installation_id}
+                  author={author}
+                  pluginName={name}
+                  version={version}
                   usedInApps={5}
-                  isShowFetchNewVersion={hasNewVersion}
+                  isShowFetchNewVersion={source === PluginSource.github}
                   isShowInfo={source === PluginSource.github}
                   isShowDelete
                   meta={meta}
-                  onDelete={() => {}}
+                  onDelete={() => {
+                    mutateInstalledPluginList()
+                  }}
                 />
               </div>
             </div>
