@@ -146,8 +146,8 @@ export type UpdateFromMarketPlacePayload = {
 
 export type UpdateFromGitHubPayload = {
   originalPackageInfo: {
+    id: string
     repo: string
-    originalPluginId: string
     version: string
   }
 }
