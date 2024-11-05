@@ -6,7 +6,7 @@ import type { Item } from '@/app/components/base/select'
 import type { InstallState } from '@/app/components/plugins/types'
 import { useGitHubReleases, useGitHubUpload } from '../hooks'
 import { parseGitHubUrl } from '../utils'
-import type { PluginDeclaration } from '../../types'
+import type { PluginDeclaration, UpdatePluginPayload } from '../../types'
 import { InstallStepFromGitHub } from '../../types'
 import Toast from '@/app/components/base/toast'
 import SetURL from './steps/setURL'
@@ -16,16 +16,17 @@ import Loaded from './steps/loaded'
 import { useTranslation } from 'react-i18next'
 
 type InstallFromGitHubProps = {
+  updatePayload?: UpdatePluginPayload
   onClose: () => void
 }
 
-const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
+const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, onClose }) => {
   const { t } = useTranslation()
   const [state, setState] = useState<InstallState>({
-    step: InstallStepFromGitHub.setUrl,
-    repoUrl: '',
-    selectedVersion: '',
-    selectedPackage: '',
+    step: updatePayload ? InstallStepFromGitHub.selectPackage : InstallStepFromGitHub.setUrl,
+    repoUrl: updatePayload?.url || '',
+    selectedVersion: updatePayload?.currVersion || '',
+    selectedPackage: updatePayload?.currPackage || '',
     releases: [],
   })
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
@@ -140,6 +141,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
         )}
         {state.step === InstallStepFromGitHub.selectPackage && (
           <SelectPackage
+            isEdit={Boolean(updatePayload)}
             selectedVersion={state.selectedVersion}
             versions={versions}
             onSelectVersion={item => setState(prevState => ({ ...prevState, selectedVersion: item.value as string }))}

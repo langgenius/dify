@@ -70,6 +70,12 @@ export type PluginDeclaration = {
   model: any // TODO
 }
 
+export type UpdatePluginPayload = {
+  url: string
+  currVersion: string
+  currPackage: string
+}
+
 export type PluginManifestInMarket = {
   name: string
   org: string
