@@ -72,7 +72,16 @@ const NodePanel: FC<Props> = ({
 
     return iteration_length
   }
+  const getErrorCount = (details: NodeTracing[][] | undefined) => {
+    if (!details || details.length === 0)
+      return 0
 
+    return details.reduce((acc, iteration) => {
+      if (iteration.some(item => item.status === 'failed'))
+        acc++
+      return acc
+    }, 0)
+  }
   useEffect(() => {
     setCollapseState(!nodeInfo.expand)
   }, [nodeInfo.expand, setCollapseState])
@@ -136,7 +145,12 @@ const NodePanel: FC<Props> = ({
                   onClick={handleOnShowIterationDetail}
                 >
                   <Iteration className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
-                  <div className='flex-1 text-left system-sm-medium text-components-button-tertiary-text'>{t('workflow.nodes.iteration.iteration', { count: getCount(nodeInfo.details?.length, nodeInfo.metadata?.iterator_length) })}</div>
+                  <div className='flex-1 text-left system-sm-medium text-components-button-tertiary-text'>{t('workflow.nodes.iteration.iteration', { count: getCount(nodeInfo.details?.length, nodeInfo.metadata?.iterator_length) })}{getErrorCount(nodeInfo.details) > 0 && (
+                    <>
+                      {t('workflow.nodes.iteration.comma')}
+                      {t('workflow.nodes.iteration.error', { count: getErrorCount(nodeInfo.details) })}
+                    </>
+                  )}</div>
                   {justShowIterationNavArrow
                     ? (
                       <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />

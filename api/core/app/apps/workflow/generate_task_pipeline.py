@@ -16,6 +16,7 @@ from core.app.entities.queue_entities import (
     QueueIterationNextEvent,
     QueueIterationStartEvent,
     QueueNodeFailedEvent,
+    QueueNodeInIterationFailedEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueueParallelBranchRunFailedEvent,
@@ -275,7 +276,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
                 if response:
                     yield response
-            elif isinstance(event, QueueNodeFailedEvent):
+            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent):
                 workflow_node_execution = self._handle_workflow_node_execution_failed(event)
 
                 response = self._workflow_node_finish_to_stream_response(
