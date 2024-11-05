@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any
 
 from core.file import FileType
@@ -6,6 +7,20 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolParameterValidationError
 from core.tools.provider.builtin.comfyui.tools.comfyui_client import ComfyUiClient
 from core.tools.tool.builtin_tool import BuiltinTool
+
+
+def sanitize_json_string(s):
+    escape_dict = {
+        "\n": "\\n",
+        "\r": "\\r",
+        "\t": "\\t",
+        "\b": "\\b",
+        "\f": "\\f",
+    }
+    for char, escaped in escape_dict.items():
+        s = s.replace(char, escaped)
+
+    return s
 
 
 class ComfyUIWorkflowTool(BuiltinTool):
@@ -26,13 +41,17 @@ class ComfyUIWorkflowTool(BuiltinTool):
         set_prompt_with_ksampler = True
         if "{{positive_prompt}}" in workflow:
             set_prompt_with_ksampler = False
-            workflow = workflow.replace("{{positive_prompt}}", positive_prompt)
-            workflow = workflow.replace("{{negative_prompt}}", negative_prompt)
+            workflow = workflow.replace("{{positive_prompt}}", positive_prompt.replace('"', "'"))
+            workflow = workflow.replace("{{negative_prompt}}", negative_prompt.replace('"', "'"))
 
         try:
             prompt = json.loads(workflow)
-        except:
-            return self.create_text_message("the Workflow JSON is not correct")
+        except json.JSONDecodeError:
+            cleaned_string = sanitize_json_string(workflow)
+            try:
+                prompt = json.loads(cleaned_string)
+            except:
+                return self.create_text_message("the Workflow JSON is not correct")
 
         if set_prompt_with_ksampler:
             try:
