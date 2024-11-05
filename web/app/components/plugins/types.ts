@@ -152,6 +152,7 @@ export type UpdateFromGitHubPayload = {
     id: string
     repo: string
     version: string
+    package: string
   }
 }
 
@@ -170,8 +171,9 @@ export enum InstallStepFromGitHub {
   setUrl = 'url',
   selectPackage = 'selecting',
   readyToInstall = 'readyToInstall',
-  failed = 'failed',
+  uploadFailed = 'uploadFailed',
   installed = 'installed',
+  installFailed = 'failed',
 }
 
 export type InstallState = {
@@ -242,7 +244,7 @@ export type InstallPackageResponse = {
 }
 
 export type uploadGitHubResponse = {
-  plugin_unique_identifier: string
+  unique_identifier: string
   manifest: PluginDeclaration
 }
 

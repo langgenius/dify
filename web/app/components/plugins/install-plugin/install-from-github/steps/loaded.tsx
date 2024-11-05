@@ -7,18 +7,73 @@ import Card from '../../../card'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import { useTranslation } from 'react-i18next'
+import { installPackageFromGitHub } from '@/service/plugins'
+import { RiLoader2Line } from '@remixicon/react'
+import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/store'
+import checkTaskStatus from '../../base/check-task-status'
+import { parseGitHubUrl } from '../../utils'
 
 type LoadedProps = {
-  isLoading: boolean
+  uniqueIdentifier: string
   payload: PluginDeclaration
+  repoUrl: string
+  selectedVersion: string
+  selectedPackage: string
   onBack: () => void
-  onInstall: () => void
+  onInstalled: () => void
+  onFailed: (message?: string) => void
 }
 
 const i18nPrefix = 'plugin.installModal'
 
-const Loaded: React.FC<LoadedProps> = ({ isLoading, payload, onBack, onInstall }) => {
+const Loaded: React.FC<LoadedProps> = ({
+  uniqueIdentifier,
+  payload,
+  repoUrl,
+  selectedVersion,
+  selectedPackage,
+  onBack,
+  onInstalled,
+  onFailed,
+}) => {
   const { t } = useTranslation()
+  const [isInstalling, setIsInstalling] = React.useState(false)
+  const setPluginTasksWithPolling = usePluginTasksStore(s => s.setPluginTasksWithPolling)
+  const { check } = checkTaskStatus()
+
+  const handleInstall = async () => {
+    if (isInstalling) return
+    setIsInstalling(true)
+
+    try {
+      const { owner, repo } = parseGitHubUrl(repoUrl)
+      const { all_installed: isInstalled, task_id: taskId } = await installPackageFromGitHub(
+        `${owner}/${repo}`,
+        selectedVersion,
+        selectedPackage,
+        uniqueIdentifier,
+      )
+
+      if (isInstalled) {
+        onInstalled()
+        return
+      }
+
+      setPluginTasksWithPolling()
+      await check({
+        taskId,
+        pluginUniqueIdentifier: uniqueIdentifier,
+      })
+      onInstalled()
+    }
+    catch (e) {
+      onFailed(e instanceof Error ? e.message : String(e))
+    }
+    finally {
+      setIsInstalling(false)
+    }
+  }
+
   return (
     <>
       <div className='text-text-secondary system-md-regular'>
@@ -32,20 +87,19 @@ const Loaded: React.FC<LoadedProps> = ({ isLoading, payload, onBack, onInstall }
         />
       </div>
       <div className='flex justify-end items-center gap-2 self-stretch mt-4'>
-        <Button
-          variant='secondary'
-          className='min-w-[72px]'
-          onClick={onBack}
-        >
-          {t('plugin.installModal.back')}
-        </Button>
+        {!isInstalling && (
+          <Button variant='secondary' className='min-w-[72px]' onClick={onBack}>
+            {t('plugin.installModal.back')}
+          </Button>
+        )}
         <Button
           variant='primary'
-          className='min-w-[72px]'
-          onClick={onInstall}
-          disabled={isLoading}
+          className='min-w-[72px] flex space-x-0.5'
+          onClick={handleInstall}
+          disabled={isInstalling}
         >
-          {t('plugin.installModal.next')}
+          {isInstalling && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}
+          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
         </Button>
       </div>
     </>

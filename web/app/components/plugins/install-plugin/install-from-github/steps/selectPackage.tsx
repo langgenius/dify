@@ -4,34 +4,70 @@ import React from 'react'
 import type { Item } from '@/app/components/base/select'
 import { PortalSelect } from '@/app/components/base/select'
 import Button from '@/app/components/base/button'
-import type { UpdatePluginPayload } from '../../../types'
+import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import { useTranslation } from 'react-i18next'
+import { useGitHubUpload } from '../../hooks'
 
 type SelectPackageProps = {
-  updatePayload: UpdatePluginPayload
+  updatePayload: UpdateFromGitHubPayload
+  repoUrl: string
   selectedVersion: string
   versions: Item[]
   onSelectVersion: (item: Item) => void
   selectedPackage: string
   packages: Item[]
   onSelectPackage: (item: Item) => void
-  onNext: () => void
+  onUploaded: (result: {
+    uniqueIdentifier: string
+    manifest: PluginDeclaration
+  }) => void
+  onFailed: (errorMsg: string) => void
   onBack: () => void
 }
 
 const SelectPackage: React.FC<SelectPackageProps> = ({
   updatePayload,
+  repoUrl,
   selectedVersion,
   versions,
   onSelectVersion,
   selectedPackage,
   packages,
   onSelectPackage,
-  onNext,
+  onUploaded,
+  onFailed,
   onBack,
 }) => {
   const { t } = useTranslation()
   const isEdit = Boolean(updatePayload)
+  const [isUploading, setIsUploading] = React.useState(false)
+  const { handleUpload, error } = useGitHubUpload()
+
+  const handleUploadPackage = async () => {
+    if (isUploading) return
+    setIsUploading(true)
+
+    try {
+      const repo = repoUrl.replace('https://github.com/', '')
+      await handleUpload(repo, selectedVersion, selectedPackage, (GitHubPackage) => {
+        onUploaded({
+          uniqueIdentifier: GitHubPackage.unique_identifier,
+          manifest: GitHubPackage.manifest,
+        })
+      })
+    }
+    catch (e: any) {
+      if (e.response?.message)
+        onFailed(e.response?.message)
+
+      else
+        onFailed(t('plugin.error.uploadFailed'))
+    }
+    finally {
+      setIsUploading(false)
+    }
+  }
+
   return (
     <>
       <label
@@ -68,6 +104,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
             variant='secondary'
             className='min-w-[72px]'
             onClick={onBack}
+            disabled={isUploading}
           >
             {t('plugin.installModal.back')}
           </Button>
@@ -75,8 +112,8 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         <Button
           variant='primary'
           className='min-w-[72px]'
-          onClick={onNext}
-          disabled={!selectedVersion || !selectedPackage}
+          onClick={handleUploadPackage}
+          disabled={!selectedVersion || !selectedPackage || isUploading}
         >
           {t('plugin.installModal.next')}
         </Button>
