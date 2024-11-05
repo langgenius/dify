@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 type InstallFromGitHubProps = {
   updatePayload?: UpdateFromGitHubPayload
   onClose: () => void
+  onSuccess: () => void
 }
 
 const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, onClose }) => {

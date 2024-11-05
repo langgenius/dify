@@ -32,9 +32,14 @@ const UpdatePlugin = () => {
       payload: {
         type: PluginSource.github,
         github: {
-          repo: 'repo_xxx',
-          originalPluginId: 'original_xxx',
-          version: 'version_xxx',
+          originalPackageInfo: {
+            id: '111',
+            repo: 'aaa/bbb',
+            version: 'xxx',
+            url: 'aaa/bbb',
+            currVersion: '1.2.3',
+            currPackage: 'pack1',
+          } as any,
         },
       },
       onCancelCallback: () => {
