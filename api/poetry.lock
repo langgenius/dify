@@ -2533,6 +2533,19 @@ files = [
 ]
 
 [[package]]
+name = "fire"
+version = "0.7.0"
+description = "A library for automatically generating command line interfaces."
+optional = false
+python-versions = "*"
+files = [
+    {file = "fire-0.7.0.tar.gz", hash = "sha256:961550f07936eaf65ad1dc8360f2b2bf8408fad46abbfa4d2a3794f8d2a95cdf"},
+]
+
+[package.dependencies]
+termcolor = "*"
+
+[[package]]
 name = "flasgger"
 version = "0.9.7.1"
 description = "Extract swagger specs from your flask project"
@@ -2696,6 +2709,19 @@ files = [
     {file = "flatbuffers-24.3.25-py2.py3-none-any.whl", hash = "sha256:8dbdec58f935f3765e4f7f3cf635ac3a77f83568138d6a2311f524ec96364812"},
     {file = "flatbuffers-24.3.25.tar.gz", hash = "sha256:de2ec5b203f21441716617f38443e0a8ebf3d25bf0d9c0bb0ce68fa00ad546a4"},
 ]
+
+[[package]]
+name = "fontmeta"
+version = "1.6.1"
+description = "An Utility to get ttf/otf font metadata"
+optional = false
+python-versions = "*"
+files = [
+    {file = "fontmeta-1.6.1.tar.gz", hash = "sha256:837e5bc4da879394b41bda1428a8a480eb7c4e993799a93cfb582bab771a9c24"},
+]
+
+[package.dependencies]
+fonttools = "*"
 
 [[package]]
 name = "fonttools"
@@ -5278,6 +5304,22 @@ files = [
     {file = "monotonic-1.6-py2.py3-none-any.whl", hash = "sha256:68687e19a14f11f26d140dd5c86f3dba4bf5df58003000ed467e0e2a69bca96c"},
     {file = "monotonic-1.6.tar.gz", hash = "sha256:3a55207bcfed53ddd5c5bae174524062935efed17792e9de2ad0205ce9ad63f7"},
 ]
+
+[[package]]
+name = "mplfonts"
+version = "0.0.8"
+description = "Fonts manager for matplotlib"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "mplfonts-0.0.8-py3-none-any.whl", hash = "sha256:b2182e5b0baa216cf016dec19942740e5b48956415708ad2d465e03952112ec1"},
+    {file = "mplfonts-0.0.8.tar.gz", hash = "sha256:0abcb2fc0605645e1e7561c6923014d856f11676899b33b4d89757843f5e7c22"},
+]
+
+[package.dependencies]
+fire = ">=0.4.0"
+fontmeta = ">=1.6.1"
+matplotlib = ">=3.4"
 
 [[package]]
 name = "mpmath"
@@ -9301,6 +9343,20 @@ files = [
 tencentcloud-sdk-python-common = "3.0.1257"
 
 [[package]]
+name = "termcolor"
+version = "2.5.0"
+description = "ANSI color formatting for output in terminal"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "termcolor-2.5.0-py3-none-any.whl", hash = "sha256:37b17b5fc1e604945c2642c872a3764b5d547a48009871aea3edd3afa180afb8"},
+    {file = "termcolor-2.5.0.tar.gz", hash = "sha256:998d8d27da6d48442e8e1f016119076b690d962507531df4890fcd2db2ef8a6f"},
+]
+
+[package.extras]
+tests = ["pytest", "pytest-cov"]
+
+[[package]]
 name = "threadpoolctl"
 version = "3.5.0"
 description = "threadpoolctl"
@@ -10046,13 +10102,13 @@ files = [
 
 [[package]]
 name = "vanna"
-version = "0.7.3"
+version = "0.7.5"
 description = "Generate SQL queries from natural language"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "vanna-0.7.3-py3-none-any.whl", hash = "sha256:82ba39e5d6c503d1c8cca60835ed401d20ec3a3da98d487f529901dcb30061d6"},
-    {file = "vanna-0.7.3.tar.gz", hash = "sha256:4590dd94d2fe180b4efc7a83c867b73144ef58794018910dc226857cfb703077"},
+    {file = "vanna-0.7.5-py3-none-any.whl", hash = "sha256:07458c7befa49de517a8760c2d80a13147278b484c515d49a906acc88edcb835"},
+    {file = "vanna-0.7.5.tar.gz", hash = "sha256:2fdffc58832898e4fc8e93c45b173424db59a22773b22ca348640161d391eacf"},
 ]
 
 [package.dependencies]
@@ -10073,7 +10129,7 @@ sqlparse = "*"
 tabulate = "*"
 
 [package.extras]
-all = ["PyMySQL", "anthropic", "azure-common", "azure-identity", "azure-search-documents", "chromadb", "db-dtypes", "duckdb", "fastembed", "google-cloud-aiplatform", "google-cloud-bigquery", "google-generativeai", "httpx", "marqo", "mistralai (>=1.0.0)", "ollama", "openai", "opensearch-dsl", "opensearch-py", "pinecone-client", "psycopg2-binary", "pymilvus[model]", "qdrant-client", "qianfan", "snowflake-connector-python", "transformers", "weaviate-client", "zhipuai"]
+all = ["PyMySQL", "anthropic", "azure-common", "azure-identity", "azure-search-documents", "boto", "boto3", "botocore", "chromadb", "db-dtypes", "duckdb", "faiss-cpu", "fastembed", "google-cloud-aiplatform", "google-cloud-bigquery", "google-generativeai", "httpx", "langchain_core", "langchain_postgres", "marqo", "mistralai (>=1.0.0)", "ollama", "openai", "opensearch-dsl", "opensearch-py", "pinecone-client", "psycopg2-binary", "pymilvus[model]", "qdrant-client", "qianfan", "snowflake-connector-python", "transformers", "weaviate-client", "xinference-client", "zhipuai"]
 anthropic = ["anthropic"]
 azuresearch = ["azure-common", "azure-identity", "azure-search-documents", "fastembed"]
 bedrock = ["boto3", "botocore"]
@@ -10081,6 +10137,8 @@ bigquery = ["google-cloud-bigquery"]
 chromadb = ["chromadb"]
 clickhouse = ["clickhouse_connect"]
 duckdb = ["duckdb"]
+faiss-cpu = ["faiss-cpu"]
+faiss-gpu = ["faiss-gpu"]
 gemini = ["google-generativeai"]
 google = ["google-cloud-aiplatform", "google-generativeai"]
 hf = ["transformers"]
@@ -10091,6 +10149,7 @@ mysql = ["PyMySQL"]
 ollama = ["httpx", "ollama"]
 openai = ["openai"]
 opensearch = ["opensearch-dsl", "opensearch-py"]
+pgvector = ["langchain-postgres (>=0.0.12)"]
 pinecone = ["fastembed", "pinecone-client"]
 postgres = ["db-dtypes", "psycopg2-binary"]
 qdrant = ["fastembed", "qdrant-client"]
@@ -10099,6 +10158,7 @@ snowflake = ["snowflake-connector-python"]
 test = ["tox"]
 vllm = ["vllm"]
 weaviate = ["weaviate-client"]
+xinference-client = ["xinference-client"]
 zhipuai = ["zhipuai"]
 
 [[package]]
@@ -10940,4 +11000,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "ef927b98c33d704d680e08db0e5c7d9a4e05454c66fcd6a5f656a65eb08e886b"
+content-hash = "e4794898403da4ad7b51f248a6c07632a949114c1b569406d3aa6a94c62510a5"
