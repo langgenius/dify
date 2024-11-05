@@ -27,7 +27,7 @@ provider_credential_schema:
       placeholder:
         zh_Hans: 在此输入您的 API Key
         en_US: Enter your API Key
-    - variable: api_base
+    - variable: endpoint_url
       label:
         en_US: API Base
       type: text-input

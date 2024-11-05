@@ -23,6 +23,7 @@ class XAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
         stream: bool = True,
         user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:
+        self._add_custom_parameters(credentials)
         return super()._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
@@ -31,5 +32,5 @@ class XAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
 
     @staticmethod
     def _add_custom_parameters(credentials) -> None:
-        credentials["endpoint_url"] = str(URL(credentials["api_base"]) / "v1")
+        credentials["endpoint_url"] = str(URL(credentials["endpoint_url"]) / "v1")
         credentials["mode"] = LLMMode.CHAT.value
