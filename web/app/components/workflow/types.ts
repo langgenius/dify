@@ -37,9 +37,9 @@ export enum ControlMode {
   Hand = 'hand',
 }
 export enum ErrorHandleMode {
-  Terminated = 'Terminated',
-  ContinueOnError = 'Continue on error',
-  RemoveAbnormalOutput = 'Remove abnormal output',
+  Terminated = 'terminated',
+  ContinueOnError = 'continue-on-error',
+  RemoveAbnormalOutput = 'remove-abnormal-output',
 }
 export type Branch = {
   id: string

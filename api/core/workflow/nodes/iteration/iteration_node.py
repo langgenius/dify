@@ -311,7 +311,9 @@ class IterationNode(BaseNode[IterationNodeData]):
 
         return variable_mapping
 
-    def _handle_event_metadata(self, event: BaseNodeEvent, iter_run_index: str, parallel_mode_run_id: str):
+    def _handle_event_metadata(
+        self, event: BaseNodeEvent, iter_run_index: str, parallel_mode_run_id: str
+    ) -> NodeRunStartedEvent | BaseNodeEvent:
         """
         add iteration metadata to event.
         """
@@ -344,7 +346,7 @@ class IterationNode(BaseNode[IterationNodeData]):
         graph_engine: "GraphEngine",
         iteration_graph: Graph,
         parallel_mode_run_id: Optional[str] = None,
-    ):
+    ) -> Generator[NodeEvent | InNodeEvent, None, None]:
         """
         run single iteration
         """
@@ -472,7 +474,6 @@ class IterationNode(BaseNode[IterationNodeData]):
 
             if next_index < len(iterator_list_value):
                 variable_pool.add([self.node_id, "item"], iterator_list_value[next_index])
-
             yield IterationRunNextEvent(
                 iteration_id=self.id,
                 iteration_node_id=self.node_id,
@@ -516,7 +517,7 @@ class IterationNode(BaseNode[IterationNodeData]):
         iteration_graph: Graph,
         index: int,
         item: Any,
-    ):
+    ) -> Generator[NodeEvent | InNodeEvent, None, None]:
         """
         run single iteration in parallel mode
         """

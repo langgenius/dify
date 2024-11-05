@@ -568,9 +568,9 @@ const translation = {
       MaxParallelismDesc: 'The maximum parallelism is used to control the number of tasks executed simultaneously in a single iteration.',
       errorResponseMethod: 'Error response method',
       ErrorMethod: {
-        operationTerminated: 'Terminated',
-        continueOnError: 'Continue on error',
-        removeAbnormalOutput: 'Remove abnormal output',
+        operationTerminated: 'terminated',
+        continueOnError: 'continue-on-error',
+        removeAbnormalOutput: 'remove-abnormal-output',
       },
       answerNodeWarningDesc: 'Parallel mode warning: Answer nodes, conversation variable assignments, and persistent read/write operations within iterations may cause exceptions.',
     },

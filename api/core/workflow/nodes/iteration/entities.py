@@ -7,9 +7,9 @@ from core.workflow.nodes.base import BaseIterationNodeData, BaseIterationState, 
 
 
 class ErrorHandleMode(str, Enum):
-    TERMINATED = "Terminated"
-    CONTINUE_ON_ERROR = "Continue on error"
-    REMOVE_ABNORMAL_OUTPUT = "Remove abnormal output"
+    TERMINATED = "terminated"
+    CONTINUE_ON_ERROR = "continue-on-error"
+    REMOVE_ABNORMAL_OUTPUT = "remove-abnormal-output"
 
 
 class IterationNodeData(BaseIterationNodeData):
