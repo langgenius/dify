@@ -1,32 +1,10 @@
-import base64
-import enum
-import hashlib
-import hmac
-import json
-import logging
-import os
-import pickle
-import re
-import time
-from json import JSONDecodeError
-
-from sqlalchemy import func
-from sqlalchemy.dialects.postgresql import JSONB
-
-from configs import dify_config
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
-from extensions.ext_storage import storage
-
-from .account import Account
-from .model import App, Tag, TagBinding, UploadFile
-from .types import StringUUID
 
 
 class ComponentFailure(db.Model):
     __tablename__ = "component_failure"
     __table_args__ = (
-        db.UniqueConstraint('Date', 'Component', 'FailureMode', 'Cause', 'Technician', name='unique_failure_entry'),
+        db.UniqueConstraint("Date", "Component", "FailureMode", "Cause", "Technician", name="unique_failure_entry"),
     )
 
     FailureID = db.Column(db.Integer, primary_key=True, autoincrement=True)

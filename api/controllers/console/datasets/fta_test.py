@@ -1,30 +1,20 @@
 import json
 
-from flask import Response
 import requests
+from flask import Response
+from flask_restful import Resource, reqparse
 from sqlalchemy import text
 
 from controllers.console import api
-
-from flask_restful import Resource, reqparse
 from extensions.ext_database import db
-
-from models.fta import ComponentFailure, ComponentFailureStats
-
 from extensions.ext_storage import storage
+from models.fta import ComponentFailure, ComponentFailureStats
 
 
 class FATTestApi(Resource):
-
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument(
-            "log_process_data",
-            nullable=False,
-            required=True,
-            type=str,
-            location="args"
-        )
+        parser.add_argument("log_process_data", nullable=False, required=True, type=str, location="args")
         args = parser.parse_args()
         print(args["log_process_data"])
         # Extract the JSON string from the text field
@@ -47,7 +37,7 @@ class FATTestApi(Resource):
                     FailureMode=data["FailureMode"],
                     Cause=data["Cause"],
                     RepairAction=data["RepairAction"],
-                    Technician=data["Technician"]
+                    Technician=data["Technician"],
                 )
                 db.session.add(component_failure)
                 db.session.commit()
@@ -98,41 +88,31 @@ class FATTestApi(Resource):
         # Convert stats to list of tuples format
         stats_list = []
         for stat in component_failure_stats:
-            stats_list.append((
-                stat.StatID,
-                stat.Component,
-                stat.FailureMode,
-                stat.Cause,
-                stat.PossibleAction,
-                stat.Probability,
-                stat.MTBF
-            ))
+            stats_list.append(
+                (
+                    stat.StatID,
+                    stat.Component,
+                    stat.FailureMode,
+                    stat.Cause,
+                    stat.PossibleAction,
+                    stat.Probability,
+                    stat.MTBF,
+                )
+            )
         return {"data": stats_list}, 200
 
 
 # generate-fault-tree
 class GenerateFaultTreeApi(Resource):
-
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument(
-            "llm_text",
-            nullable=False,
-            required=True,
-            type=str,
-            location="args"
-        )
+        parser.add_argument("llm_text", nullable=False, required=True, type=str, location="args")
         args = parser.parse_args()
         entities = args["llm_text"].replace("```", "").replace("\\n", "\n")
         print(entities)
-        request_data = {
-            "fault_tree_text": entities
-        }
+        request_data = {"fault_tree_text": entities}
         url = "https://fta.cognitech-dev.live/generate-fault-tree"
-        headers = {
-            "accept": "application/json",
-            "Content-Type": "application/json"
-        }
+        headers = {"accept": "application/json", "Content-Type": "application/json"}
 
         response = requests.post(url, json=request_data, headers=headers)
         print(response.json())
@@ -140,24 +120,17 @@ class GenerateFaultTreeApi(Resource):
 
 
 class ExtractSVGApi(Resource):
-
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument(
-            "svg_text",
-            nullable=False,
-            required=True,
-            type=str,
-            location="args"
-        )
+        parser.add_argument("svg_text", nullable=False, required=True, type=str, location="args")
         args = parser.parse_args()
         # svg_text = ''.join(args["svg_text"].splitlines())
-        svg_text = args["svg_text"].replace('\n', '')
-        svg_text = svg_text.replace('\"', '"')
+        svg_text = args["svg_text"].replace("\n", "")
+        svg_text = svg_text.replace('"', '"')
         print(svg_text)
         svg_text_json = json.loads(svg_text)
         svg_content = svg_text_json.get("data").get("svg_content")[0]
-        svg_content = svg_content.replace('\n', '').replace('\"', '"')
+        svg_content = svg_content.replace("\n", "").replace('"', '"')
         file_key = "fta_svg/" + "fat.svg"
         if storage.exists(file_key):
             storage.delete(file_key)

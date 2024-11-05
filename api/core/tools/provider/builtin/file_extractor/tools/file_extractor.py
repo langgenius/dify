@@ -1,12 +1,7 @@
-from base64 import b64decode
-import json
 import tempfile
 from typing import Any, Union
 
-from openai import OpenAI
-from yarl import URL
 from core.file.enums import FileType
-
 from core.file.file_manager import download_to_target_path
 from core.rag.extractor.text_extractor import TextExtractor
 from core.rag.splitter.fixed_text_splitter import FixedRecursiveCharacterTextSplitter
@@ -45,6 +40,6 @@ class FileExtractorTool(BuiltinTool):
 
                 content = "\n".join([chunk.page_content for chunk in chunks])
                 return self.create_text_message(content)
-                
+
         else:
             raise ToolParameterValidationError("Please provide either file")
