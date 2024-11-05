@@ -59,7 +59,7 @@ const InstallInfo = () => {
             </div>
           </Tooltip>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent>
+        <PortalToFollowElemContent className='z-10'>
           <div className='p-1 pb-2 w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
             <div className='flex items-center px-2 pt-1 h-7 system-sm-semibold-uppercase'>3 plugins failed to install</div>
             <div className='flex items-center p-1 pl-2 h-8 rounded-lg hover:bg-state-base-hover'>

@@ -29,6 +29,7 @@ const loadLangResources = (lang: string) => ({
     workflow: require(`./${lang}/workflow`).default,
     runLog: require(`./${lang}/run-log`).default,
     plugin: require(`./${lang}/plugin`).default,
+    pluginTags: require(`./${lang}/plugin-tags`).default,
   },
 })
 

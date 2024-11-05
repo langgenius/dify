@@ -54,6 +54,7 @@ export type EndpointListItem = {
 
 // Plugin manifest
 export type PluginDeclaration = {
+  plugin_unique_identifier: string
   version: string
   author: string
   icon: string
@@ -71,6 +72,7 @@ export type PluginDeclaration = {
 }
 
 export type PluginManifestInMarket = {
+  plugin_unique_identifier: string
   name: string
   org: string
   icon: string
@@ -132,6 +134,36 @@ export enum PermissionType {
 export type Permissions = {
   install_permission: PermissionType
   debug_permission: PermissionType
+}
+
+export type UpdateFromMarketPlacePayload = {
+  originalPackageInfo: {
+    id: string
+    payload: PluginDeclaration
+  },
+  targetPackageInfo: {
+    id: string
+    version: string
+  }
+}
+
+export type UpdateFromGitHubPayload = {
+  originalPackageInfo: {
+    id: string
+    repo: string
+    version: string
+  }
+}
+
+export type UpdatePluginPayload = {
+  type: PluginSource
+  marketPlace?: UpdateFromMarketPlacePayload
+  github?: UpdateFromGitHubPayload
+}
+
+export type UpdatePluginModalType = UpdatePluginPayload & {
+  onCancel: () => void
+  onSave: () => void
 }
 
 export enum InstallStepFromGitHub {
