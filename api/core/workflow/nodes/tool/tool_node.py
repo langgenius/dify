@@ -53,7 +53,7 @@ class ToolNode(BaseNode[ToolNodeData]):
             )
 
         # get parameters
-        tool_parameters = tool_runtime.get_runtime_parameters() or []
+        tool_parameters = tool_runtime.parameters or []
         parameters = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,

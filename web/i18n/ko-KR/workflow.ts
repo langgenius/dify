@@ -557,6 +557,23 @@ const translation = {
       iteration_one: '{{count}} 반복',
       iteration_other: '{{count}} 반복',
       currentIteration: '현재 반복',
+      ErrorMethod: {
+        operationTerminated: '종료',
+        continueOnError: '오류 발생 시 계속',
+        removeAbnormalOutput: '비정상 출력 제거',
+      },
+      comma: ',',
+      error_one: '{{개수}} 오류',
+      parallelMode: '병렬 모드',
+      errorResponseMethod: '오류 응답 방법',
+      parallelModeUpper: '병렬 모드',
+      MaxParallelismTitle: '최대 병렬 처리',
+      error_other: '{{개수}} 오류',
+      parallelModeEnableTitle: 'Parallel Mode Enabled(병렬 모드 사용)',
+      parallelPanelDesc: '병렬 모드에서 반복의 작업은 병렬 실행을 지원합니다.',
+      parallelModeEnableDesc: '병렬 모드에서는 반복 내의 작업이 병렬 실행을 지원합니다. 오른쪽의 속성 패널에서 이를 구성할 수 있습니다.',
+      MaxParallelismDesc: '최대 병렬 처리는 단일 반복에서 동시에 실행되는 작업 수를 제어하는 데 사용됩니다.',
+      answerNodeWarningDesc: '병렬 모드 경고: 응답 노드, 대화 변수 할당 및 반복 내의 지속적인 읽기/쓰기 작업으로 인해 예외가 발생할 수 있습니다.',
     },
     note: {
       editor: {

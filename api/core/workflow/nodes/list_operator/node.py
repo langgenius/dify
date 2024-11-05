@@ -157,7 +157,7 @@ def _get_file_extract_string_func(*, key: str) -> Callable[[File], str]:
             return lambda x: x.type
         case "extension":
             return lambda x: x.extension or ""
-        case "mimetype":
+        case "mime_type":
             return lambda x: x.mime_type or ""
         case "transfer_method":
             return lambda x: x.transfer_method
@@ -295,4 +295,4 @@ def _order_file(*, order: Literal["asc", "desc"], order_by: str = "", array: Seq
         extract_func = _get_file_extract_number_func(key=order_by)
         return sorted(array, key=lambda x: extract_func(x), reverse=order == "desc")
     else:
-        raise ValueError(f"Invalid order key: {order_by}")
+        raise InvalidKeyError(f"Invalid order key: {order_by}")
