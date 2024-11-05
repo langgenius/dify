@@ -557,6 +557,23 @@ const translation = {
       iteration_one: '{{count}} Iteracja',
       iteration_other: '{{count}} Iteracje',
       currentIteration: 'Bieżąca iteracja',
+      ErrorMethod: {
+        continueOnError: 'kontynuacja w przypadku błędu',
+        operationTerminated: 'Zakończone',
+        removeAbnormalOutput: 'usuń-nieprawidłowe-wyjście',
+      },
+      comma: ',',
+      parallelModeUpper: 'TRYB RÓWNOLEGŁY',
+      parallelModeEnableTitle: 'Włączony tryb równoległy',
+      MaxParallelismTitle: 'Maksymalna równoległość',
+      error_one: '{{liczba}} Błąd',
+      error_other: '{{liczba}} Błędy',
+      parallelPanelDesc: 'W trybie równoległym zadania w iteracji obsługują wykonywanie równoległe.',
+      parallelMode: 'Tryb równoległy',
+      MaxParallelismDesc: 'Maksymalna równoległość służy do kontrolowania liczby zadań wykonywanych jednocześnie w jednej iteracji.',
+      parallelModeEnableDesc: 'W trybie równoległym zadania w iteracjach obsługują wykonywanie równoległe. Możesz to skonfigurować w panelu właściwości po prawej stronie.',
+      answerNodeWarningDesc: 'Ostrzeżenie w trybie równoległym: węzły odpowiedzi, przypisania zmiennych konwersacji i trwałe operacje odczytu/zapisu w iteracjach mogą powodować wyjątki.',
+      errorResponseMethod: 'Metoda odpowiedzi na błąd',
     },
     note: {
       editor: {
