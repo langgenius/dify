@@ -67,7 +67,9 @@ const TabSlider: FC<TabSliderProps> = ({
           }}
         >
           {option.text}
+          {/* if no plugin installed, the badge won't show */}
           {option.value === 'plugins'
+            && pluginList.length > 0
             && <Badge
               size='s'
               uppercase={true}

@@ -89,6 +89,24 @@ export type PluginManifestInMarket = {
   install_count: number
 }
 
+export type PluginDetail = {
+  id: string
+  created_at: string
+  updated_at: string
+  name: string
+  plugin_id: string
+  plugin_unique_identifier: string
+  declaration: PluginDeclaration
+  installation_id: string
+  tenant_id: string
+  endpoints_setups: number
+  endpoints_active: number
+  version: string
+  latest_version: string
+  source: PluginSource
+  meta?: MetaData
+}
+
 export type Plugin = {
   type: PluginType
   org: string
@@ -244,21 +262,8 @@ export type MetaData = {
   package: string
 }
 
-export type InstalledPlugin = {
-  plugin_id: string
-  plugin_unique_identifier: string
-  installation_id: string
-  declaration: PluginDeclaration
-  source: PluginSource
-  tenant_id: string
-  version: string
-  latest_version: string
-  endpoints_active: number
-  meta: MetaData
-}
-
 export type InstalledPluginListResponse = {
-  plugins: InstalledPlugin[]
+  plugins: PluginDetail[]
 }
 
 export type UninstallPluginResponse = {
