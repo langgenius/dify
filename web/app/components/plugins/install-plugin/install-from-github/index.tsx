@@ -64,13 +64,12 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ onClose }) => {
           })
           break
         }
-        await fetchReleases(owner, repo, (fetchedReleases) => {
-          setState(prevState => ({
-            ...prevState,
-            releases: fetchedReleases,
-            step: InstallStepFromGitHub.selectPackage,
-          }))
-        })
+        const fetchedReleases = await fetchReleases(owner, repo)
+        setState(prevState => ({
+          ...prevState,
+          releases: fetchedReleases,
+          step: InstallStepFromGitHub.selectPackage,
+        }))
         break
       }
       case InstallStepFromGitHub.selectPackage: {
