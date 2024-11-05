@@ -1,6 +1,64 @@
 import type { PluginDeclaration } from '../types'
 import { PluginType } from '../types'
 
+export const toolNeko: PluginDeclaration = {
+  version: '0.0.1',
+  author: 'langgenius',
+  name: 'neko',
+  description: {
+    en_US: 'Neko is a cute cat.',
+    zh_Hans: '这是一只可爱的小猫。',
+    pt_BR: 'Neko is a cute cat.',
+    ja_JP: 'Neko is a cute cat.',
+  },
+  icon: '241e5209ecc8b5ce6b7a29a8e50388e9c75b89c3047c6ecd8e552f26de758883.svg',
+  label: {
+    en_US: 'Neko',
+    zh_Hans: 'Neko',
+    pt_BR: 'Neko',
+    ja_JP: 'Neko',
+  },
+  category: 'extension' as any,
+  created_at: '2024-07-12T08:03:44.658609Z',
+  resource: {
+    memory: 1048576,
+    permission: {
+      tool: {
+        enabled: true,
+      },
+      model: {
+        enabled: true,
+        llm: true,
+        text_embedding: false,
+        rerank: false,
+        tts: false,
+        speech2text: false,
+        moderation: false,
+      },
+      node: null,
+      endpoint: {
+        enabled: true,
+      },
+      storage: {
+        enabled: true,
+        size: 1048576,
+      },
+    },
+  },
+  plugins: {
+    tools: null,
+    models: null,
+    endpoints: [
+      'provider/neko.yaml',
+    ],
+  },
+  tags: [],
+  verified: false,
+  tool: null,
+  model: null,
+  endpoint: null,
+}
+
 export const toolNotion = {
   type: PluginType.tool,
   org: 'Notion',
