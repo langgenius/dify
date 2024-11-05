@@ -1,0 +1,63 @@
+model: grok-beta
+label:
+  en_US: Grok beta
+model_type: llm
+features:
+  - multi-tool-call
+model_properties:
+  mode: chat
+  context_size: 131072
+parameter_rules:
+  - name: temperature
+    label:
+      en_US: "Temperature"
+      zh_Hans: "采样温度"
+    type: float
+    default: 0.7
+    min: 0.0
+    max: 2.0
+    precision: 1
+    required: true
+    help:
+      en_US: "The randomness of the sampling temperature control output. The temperature value is within the range of [0.0, 1.0]. The higher the value, the more random and creative the output; the lower the value, the more stable it is. It is recommended to adjust either top_p or temperature parameters according to your needs to avoid adjusting both at the same time."
+      zh_Hans: "采样温度控制输出的随机性。温度值在 [0.0, 1.0] 范围内，值越高，输出越随机和创造性；值越低，输出越稳定。建议根据需求调整 top_p 或 temperature 参数，避免同时调整两者。"
+
+  - name: top_p
+    label:
+      en_US: "Top P"
+      zh_Hans: "Top P"
+    type: float
+    default: 0.7
+    min: 0.0
+    max: 1.0
+    precision: 1
+    required: true
+    help:
+      en_US: "The value range of the sampling method is [0.0, 1.0]. The top_p value determines that the model selects tokens from the top p% of candidate words with the highest probability; when top_p is 0, this parameter is invalid. It is recommended to adjust either top_p or temperature parameters according to your needs to avoid adjusting both at the same time."
+      zh_Hans: "采样方法的取值范围为 [0.0,1.0]。top_p 值确定模型从概率最高的前p%的候选词中选取 tokens；当 top_p 为 0 时，此参数无效。建议根据需求调整 top_p 或 temperature 参数，避免同时调整两者。"
+
+  - name: frequency_penalty
+    use_template: frequency_penalty
+    label:
+      en_US: "Frequency Penalty"
+      zh_Hans: "频率惩罚"
+    type: float
+    default: 0
+    min: 0
+    max: 2.0
+    precision: 1
+    required: false
+    help:
+      en_US: "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim."
+      zh_Hans: "介于0和2.0之间的数字。正值会根据新标记在文本中迄今为止的现有频率来惩罚它们，从而降低模型一字不差地重复同一句话的可能性。"
+
+  - name: user
+    use_template: text
+    label:
+      en_US: "User"
+      zh_Hans: "用户"
+    type: string
+    required: false
+    help:
+      en_US: "Used to track and differentiate conversation requests from different users."
+      zh_Hans: "用于追踪和区分不同用户的对话请求。"
