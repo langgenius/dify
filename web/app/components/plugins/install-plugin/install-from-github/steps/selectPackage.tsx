@@ -4,10 +4,11 @@ import React from 'react'
 import type { Item } from '@/app/components/base/select'
 import { PortalSelect } from '@/app/components/base/select'
 import Button from '@/app/components/base/button'
+import type { UpdatePluginPayload } from '../../../types'
 import { useTranslation } from 'react-i18next'
 
 type SelectPackageProps = {
-  isEdit?: boolean
+  updatePayload: UpdatePluginPayload
   selectedVersion: string
   versions: Item[]
   onSelectVersion: (item: Item) => void
@@ -19,7 +20,7 @@ type SelectPackageProps = {
 }
 
 const SelectPackage: React.FC<SelectPackageProps> = ({
-  isEdit = false,
+  updatePayload,
   selectedVersion,
   versions,
   onSelectVersion,
@@ -30,6 +31,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   onBack,
 }) => {
   const { t } = useTranslation()
+  const isEdit = Boolean(updatePayload)
   return (
     <>
       <label

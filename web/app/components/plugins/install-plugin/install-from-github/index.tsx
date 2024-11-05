@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import Modal from '@/app/components/base/modal'
 import type { Item } from '@/app/components/base/select'
 import type { InstallState } from '@/app/components/plugins/types'
@@ -8,12 +8,17 @@ import { useGitHubReleases, useGitHubUpload } from '../hooks'
 import { parseGitHubUrl } from '../utils'
 import type { PluginDeclaration, UpdatePluginPayload } from '../../types'
 import { InstallStepFromGitHub } from '../../types'
+import checkTaskStatus from '../base/check-task-status'
+import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/store'
 import Toast from '@/app/components/base/toast'
 import SetURL from './steps/setURL'
 import SelectPackage from './steps/selectPackage'
 import Installed from './steps/installed'
 import Loaded from './steps/loaded'
+import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useTranslation } from 'react-i18next'
+import { usePluginPageContext } from '../../plugin-page/context'
+import { installPackageFromGitHub } from '@/service/plugins'
 
 type InstallFromGitHubProps = {
   updatePayload?: UpdatePluginPayload
@@ -29,8 +34,13 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
     selectedPackage: updatePayload?.currPackage || '',
     releases: [],
   })
+  const { getIconUrl } = useGetIcon()
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
   const [manifest, setManifest] = useState<PluginDeclaration | null>(null)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const setPluginTasksWithPolling = usePluginTasksStore(s => s.setPluginTasksWithPolling)
+  const { check } = checkTaskStatus()
+  const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
 
   const versions: Item[] = state.releases.map(release => ({
     value: release.tag_name,
@@ -50,9 +60,52 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
   const { isLoading, handleUpload, error } = useGitHubUpload()
   const { fetchReleases } = useGitHubReleases()
 
-  const handleInstall = async () => {
-
+  const handleError = (e: any) => {
+    const message = e?.response?.message || t('plugin.error.installFailed')
+    setErrorMsg(message)
+    setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.failed }))
   }
+
+  const handleUploaded = async (GitHubPackage: any) => {
+    try {
+      const icon = await getIconUrl(GitHubPackage.manifest.icon)
+      setManifest({
+        ...GitHubPackage.manifest,
+        icon,
+      })
+      setUniqueIdentifier(GitHubPackage.uniqueIdentifier)
+      setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.readyToInstall }))
+    }
+    catch (e) {
+      handleError(e)
+    }
+  }
+
+  const handleInstall = async () => {
+    try {
+      const { all_installed: isInstalled, task_id: taskId } = await installPackageFromGitHub(uniqueIdentifier!)
+
+      if (isInstalled) {
+        setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.installed }))
+        return
+      }
+
+      setPluginTasksWithPolling()
+      await check({
+        taskId,
+        pluginUniqueIdentifier: uniqueIdentifier!,
+      })
+      setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.installed }))
+    }
+    catch (e) {
+      handleError(e)
+    }
+  }
+
+  const handleInstalled = useCallback(() => {
+    mutateInstalledPluginList()
+    setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.installed }))
+  }, [mutateInstalledPluginList])
 
   const handleNext = async () => {
     switch (state.step) {
@@ -76,24 +129,16 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
       }
       case InstallStepFromGitHub.selectPackage: {
         const repo = state.repoUrl.replace('https://github.com/', '')
-        if (error) {
-          Toast.notify({
-            type: 'error',
-            message: error,
-          })
-        }
-        else {
-          await handleUpload(repo, state.selectedVersion, state.selectedPackage, (GitHubPackage) => {
-            setManifest(GitHubPackage.manifest)
-            setUniqueIdentifier(GitHubPackage.uniqueIdentifier)
-            setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.loaded }))
-          })
-        }
+        if (error)
+          handleError(error)
+
+        else
+          await handleUpload(repo, state.selectedVersion, state.selectedPackage, handleUploaded)
+
         break
       }
-      case InstallStepFromGitHub.loaded:
-        setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.installed }))
-        handleInstall()
+      case InstallStepFromGitHub.readyToInstall:
+        await handleInstall()
         break
       case InstallStepFromGitHub.installed:
         break
@@ -105,7 +150,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
       switch (prevState.step) {
         case InstallStepFromGitHub.selectPackage:
           return { ...prevState, step: InstallStepFromGitHub.setUrl }
-        case InstallStepFromGitHub.loaded:
+        case InstallStepFromGitHub.readyToInstall:
           return { ...prevState, step: InstallStepFromGitHub.selectPackage }
         default:
           return prevState
@@ -141,7 +186,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
         )}
         {state.step === InstallStepFromGitHub.selectPackage && (
           <SelectPackage
-            isEdit={Boolean(updatePayload)}
+            updatePayload={updatePayload!}
             selectedVersion={state.selectedVersion}
             versions={versions}
             onSelectVersion={item => setState(prevState => ({ ...prevState, selectedVersion: item.value as string }))}
@@ -152,7 +197,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
             onBack={handleBack}
           />
         )}
-        {state.step === InstallStepFromGitHub.loaded && (
+        {state.step === InstallStepFromGitHub.readyToInstall && (
           <Loaded
             isLoading={isLoading}
             payload={manifest as any}

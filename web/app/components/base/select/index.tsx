@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { Fragment, useEffect, useState } from 'react'
 import { Combobox, Listbox, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import Badge from '../badge/index'
 import { useTranslation } from 'react-i18next'
 import classNames from '@/utils/classnames'
 import {
@@ -26,7 +27,7 @@ export type Item = {
   name: string
 } & Record<string, any>
 
-export interface ISelectProps {
+export type ISelectProps = {
   className?: string
   wrapperClassName?: string
   renderTrigger?: (value: Item | null) => JSX.Element | null
@@ -284,11 +285,12 @@ const SimpleSelect: FC<ISelectProps> = ({
   )
 }
 
-interface PortalSelectProps {
+type PortalSelectProps = {
   value: string | number
   onSelect: (value: Item) => void
   items: Item[]
   placeholder?: string
+  installedValue?: string | number
   renderTrigger?: (value?: Item) => JSX.Element | null
   triggerClassName?: string
   triggerClassNameFn?: (open: boolean) => string
@@ -302,6 +304,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
   onSelect,
   items,
   placeholder,
+  installedValue,
   renderTrigger,
   triggerClassName,
   triggerClassNameFn,
@@ -366,7 +369,10 @@ const PortalSelect: FC<PortalSelectProps> = ({
                 className='w-0 grow truncate'
                 title={item.name}
               >
-                {item.name}
+                <span className='truncate'>{item.name}</span>
+                {item.value === installedValue && (
+                  <Badge uppercase={true} className='shrink-0 ml-1'>INSTALLED</Badge>
+                )}
               </span>
               {!hideChecked && item.value === value && (
                 <CheckIcon className='shrink-0 h-4 w-4 text-text-accent' />

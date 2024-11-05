@@ -143,7 +143,8 @@ export type Permissions = {
 export enum InstallStepFromGitHub {
   setUrl = 'url',
   selectPackage = 'selecting',
-  loaded = 'loaded',
+  readyToInstall = 'readyToInstall',
+  failed = 'failed',
   installed = 'installed',
 }
 
