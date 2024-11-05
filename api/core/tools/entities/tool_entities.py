@@ -258,11 +258,18 @@ class ToolParameter(BaseModel):
                                 return float(value)
                             else:
                                 return int(value)
-                    case (
-                        ToolParameter.ToolParameterType.SYSTEM_FILES
-                        | ToolParameter.ToolParameterType.FILE
-                        | ToolParameter.ToolParameterType.FILES
-                    ):
+                    case ToolParameter.ToolParameterType.SYSTEM_FILES | ToolParameter.ToolParameterType.FILES:
+                        if not isinstance(value, list):
+                            return [value]
+                        return value
+                    case ToolParameter.ToolParameterType.FILE:
+                        if isinstance(value, list):
+                            if len(value) != 1:
+                                raise ValueError(
+                                    "This parameter only accepts one file but got multiple files while invoking."
+                                )
+                            else:
+                                return value[0]
                         return value
                     case _:
                         return str(value)
