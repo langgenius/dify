@@ -7,6 +7,7 @@ import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 
 type SelectPackageProps = {
+  isEdit?: boolean
   selectedVersion: string
   versions: Item[]
   onSelectVersion: (item: Item) => void
@@ -18,6 +19,7 @@ type SelectPackageProps = {
 }
 
 const SelectPackage: React.FC<SelectPackageProps> = ({
+  isEdit = false,
   selectedVersion,
   versions,
   onSelectVersion,
@@ -34,7 +36,9 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         htmlFor='version'
         className='flex flex-col justify-center items-start self-stretch text-text-secondary'
       >
-        <span className='system-sm-semibold'>{t('plugin.installFromGitHub.selectVersion')}</span>
+        <span className='system-sm-semibold'>{isEdit ? t('plugin.installFromGitHub.updateVersion')
+          : t('plugin.installFromGitHub.selectVersion')}
+        </span>
       </label>
       <PortalSelect
         value={selectedVersion}
@@ -57,13 +61,15 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         popupClassName='w-[432px] z-[1001]'
       />
       <div className='flex justify-end items-center gap-2 self-stretch mt-4'>
-        <Button
-          variant='secondary'
-          className='min-w-[72px]'
-          onClick={onBack}
-        >
-          {t('plugin.installModal.back')}
-        </Button>
+        {!isEdit
+          && <Button
+            variant='secondary'
+            className='min-w-[72px]'
+            onClick={onBack}
+          >
+            {t('plugin.installModal.back')}
+          </Button>
+        }
         <Button
           variant='primary'
           className='min-w-[72px]'
