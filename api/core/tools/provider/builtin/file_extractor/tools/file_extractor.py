@@ -1,4 +1,5 @@
 from base64 import b64decode
+import json
 import tempfile
 from typing import Any, Union
 
@@ -41,7 +42,9 @@ class FileExtractorTool(BuiltinTool):
                     embedding_model_instance=None,
                 )
                 chunks = character_splitter.split_documents(documents)
-                return self.create_json_message(json.dumps([chunk.page_content for chunk in chunks]))
+
+                content = "\n".join([chunk.page_content for chunk in chunks])
+                return self.create_text_message(content)
                 
         else:
             raise ToolParameterValidationError("Please provide either file")
