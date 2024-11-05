@@ -157,6 +157,7 @@ docker-legacy/volumes/opensearch/data/*
 docker-legacy/volumes/pgvectors/data/*
 docker-legacy/volumes/pgvector/data/*
 
+docker/volumes/*
 docker/volumes/app/storage/*
 docker/volumes/certbot/*
 docker/volumes/db/data/*
@@ -173,6 +174,7 @@ docker/volumes/myscale/log/*
 docker/volumes/unstructured/*
 docker/volumes/pgvector/data/*
 docker/volumes/pgvecto_rs/data/*
+
 
 docker/nginx/conf.d/default.conf
 docker/middleware.env
