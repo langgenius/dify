@@ -44,12 +44,10 @@ class OAuthLogin(Resource):
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
-            logging.info(f"oauth_provider-->{oauth_provider}")
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
         auth_url = oauth_provider.get_authorization_url()
-        logging.info(auth_url)
         return redirect(auth_url)
 
 
@@ -62,19 +60,15 @@ class OAuthCallback(Resource):
             return {"error": "Invalid provider"}, 400
 
         code = request.args.get("code")
-        logging.info(f"code-->{code}, oauth_provider-->{vars(oauth_provider)}")
         try:
             token = oauth_provider.get_access_token(code)
-            logging.info(f"token-->{token}")
             user_info = oauth_provider.get_user_info(token)
-            logging.info(f"user_info-->{user_info}")
         except requests.exceptions.HTTPError as e:
             logging.exception(f"An error occurred during the OAuth process with {provider}: {e.response.text}")
             return {"error": "OAuth process failed"}, 400
 
-        logging.info(f"token-->{token}, user_info-->{user_info}")
+        logging.info(f"login user info --> {user_info}")
         account = _generate_account(provider, user_info)
-        logging.info(vars(account))
 
         # Check account status
         if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value,
