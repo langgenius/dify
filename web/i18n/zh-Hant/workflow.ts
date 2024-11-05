@@ -570,7 +570,7 @@ const translation = {
       parallelPanelDesc: '在並行模式下，反覆運算中的任務支援並行執行。',
       error_one: '{{count}}錯誤',
       errorResponseMethod: '錯誤回應方法',
-      parallelModeEnableDesc: '在 parallel 模式下，反覆運算中的任務支援並行執行。您可以在右側的 properties 面板中進行配置。',
+      parallelModeEnableDesc: '在並行模式下，反覆運算中的任務支援並行執行。您可以在右側的 properties 面板中進行配置。',
       answerNodeWarningDesc: '並行模式警告：反覆運算中的應答節點、對話變數賦值和持久讀/寫操作可能會導致異常。',
       error_other: '{{count}}錯誤',
       MaxParallelismDesc: '最大並行度用於控制在單個反覆運算中同時執行的任務數。',
