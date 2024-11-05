@@ -157,7 +157,7 @@ def _get_file_extract_string_func(*, key: str) -> Callable[[File], str]:
             return lambda x: x.type
         case "extension":
             return lambda x: x.extension or ""
-        case "mimetype":
+        case "mime_type":
             return lambda x: x.mime_type or ""
         case "transfer_method":
             return lambda x: x.transfer_method
