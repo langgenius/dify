@@ -6,7 +6,7 @@ import type { Item } from '@/app/components/base/select'
 import type { InstallState } from '@/app/components/plugins/types'
 import { useGitHubReleases, useGitHubUpload } from '../hooks'
 import { parseGitHubUrl } from '../utils'
-import type { PluginDeclaration, UpdatePluginPayload } from '../../types'
+import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
 import { InstallStepFromGitHub } from '../../types'
 import Toast from '@/app/components/base/toast'
 import SetURL from './steps/setURL'
@@ -16,7 +16,7 @@ import Loaded from './steps/loaded'
 import { useTranslation } from 'react-i18next'
 
 type InstallFromGitHubProps = {
-  updatePayload?: UpdatePluginPayload
+  updatePayload?: UpdateFromGitHubPayload
   onClose: () => void
 }
 
