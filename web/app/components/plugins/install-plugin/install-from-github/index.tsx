@@ -6,7 +6,7 @@ import type { Item } from '@/app/components/base/select'
 import type { InstallState } from '@/app/components/plugins/types'
 import { useGitHubReleases, useGitHubUpload } from '../hooks'
 import { parseGitHubUrl } from '../utils'
-import type { PluginDeclaration, UpdatePluginPayload } from '../../types'
+import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
 import { InstallStepFromGitHub } from '../../types'
 import checkTaskStatus from '../base/check-task-status'
 import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/store'
@@ -21,7 +21,7 @@ import { usePluginPageContext } from '../../plugin-page/context'
 import { installPackageFromGitHub } from '@/service/plugins'
 
 type InstallFromGitHubProps = {
-  updatePayload?: UpdatePluginPayload
+  updatePayload?: UpdateFromGitHubPayload
   onClose: () => void
 }
 

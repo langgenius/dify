@@ -1,10 +1,8 @@
 import type { FC } from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import { useDebounceFn, useMount } from 'ahooks'
+import { useDebounceFn } from 'ahooks'
 import { RiArrowDownSLine } from '@remixicon/react'
-import { useStore as useLabelStore } from './store'
 import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
@@ -16,11 +14,9 @@ import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financ
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import type { Label } from '@/app/components/tools/labels/constant'
-import { fetchLabelList } from '@/service/tools'
-import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { useTags } from '@/app/components/plugins/hooks'
 
-interface LabelFilterProps {
+type LabelFilterProps = {
   value: string[]
   onChange: (v: string[]) => void
 }
@@ -29,12 +25,9 @@ const LabelFilter: FC<LabelFilterProps> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
-  const language = getLanguage(locale)
   const [open, setOpen] = useState(false)
 
-  const labelList = useLabelStore(s => s.labelList)
-  const setLabelList = useLabelStore(s => s.setLabelList)
+  const labelList = useTags()
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -61,12 +54,6 @@ const LabelFilter: FC<LabelFilterProps> = ({
       onChange([...value, label.name])
   }
 
-  useMount(() => {
-    fetchLabelList().then((res) => {
-      setLabelList(res)
-    })
-  })
-
   return (
     <PortalToFollowElem
       open={open}
@@ -90,7 +77,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
             </div>
             <div className='text-[13px] leading-[18px] text-gray-700'>
               {!value.length && t('common.tag.placeholder')}
-              {!!value.length && currentLabel?.label[language]}
+              {!!value.length && currentLabel?.label}
             </div>
             {value.length > 1 && (
               <div className='text-xs font-medium leading-[18px] text-gray-500'>{`+${value.length - 1}`}</div>
@@ -128,7 +115,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
                   className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100'
                   onClick={() => selectLabel(label)}
                 >
-                  <div title={label.label[language]} className='grow text-sm text-gray-700 leading-5 truncate'>{label.label[language]}</div>
+                  <div title={label.label} className='grow text-sm text-gray-700 leading-5 truncate'>{label.label}</div>
                   {value.includes(label.name) && <Check className='shrink-0 w-4 h-4 text-primary-600' />}
                 </div>
               ))}
