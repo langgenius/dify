@@ -33,4 +33,3 @@ credentials_for_provider:
       en_US: Vanna.AI Endpoint Base URL
     placeholder:
       en_US: https://ask.vanna.ai/rpc
-      
