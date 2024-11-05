@@ -198,10 +198,8 @@ def _download_file_content(file: File) -> bytes:
             response = ssrf_proxy.get(file.remote_url)
             response.raise_for_status()
             return response.content
-        elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
-            return file_manager.download(file)
         else:
-            raise ValueError(f"Unsupported transfer method: {file.transfer_method}")
+            return file_manager.download(file)
     except Exception as e:
         raise FileDownloadError(f"Error downloading file: {str(e)}") from e
 
