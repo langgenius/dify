@@ -91,6 +91,8 @@ def build_segment(value: Any, /) -> Segment:
                 return ArrayObjectSegment(value=value)
             case SegmentType.FILE:
                 return ArrayFileSegment(value=value)
+            case SegmentType.NONE:
+                return ArrayAnySegment(value=value)
             case _:
                 raise ValueError(f"not supported value {value}")
     raise ValueError(f"not supported value {value}")
