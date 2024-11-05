@@ -1,5 +1,6 @@
 import json
 
+from flask import Response
 import requests
 from sqlalchemy import text
 
@@ -9,6 +10,8 @@ from flask_restful import Resource, reqparse
 from extensions.ext_database import db
 
 from models.fta import ComponentFailure, ComponentFailureStats
+
+from extensions.ext_storage import storage
 
 
 class FATTestApi(Resource):
@@ -25,9 +28,9 @@ class FATTestApi(Resource):
         args = parser.parse_args()
         print(args["log_process_data"])
         # Extract the JSON string from the text field
-        json_str = args["log_process_data"].strip("```json\\n").strip("```").strip().replace("\\", "").replace(",n", ",")
+        json_str = args["log_process_data"].strip("```json\\n").strip("```").strip().replace("\\n", "")
         log_data = json.loads(json_str)
-
+        db.session.query(ComponentFailure).delete()
         for data in log_data:
             if not isinstance(data, dict):
                 raise TypeError("Data must be a dictionary.")
@@ -38,7 +41,6 @@ class FATTestApi(Resource):
 
             try:
                 # Clear existing stats
-                db.session.query(ComponentFailure).delete()
                 component_failure = ComponentFailure(
                     Date=data["Date"],
                     Component=data["Component"],
@@ -97,7 +99,7 @@ class FATTestApi(Resource):
         stats_list = []
         for stat in component_failure_stats:
             stats_list.append((
-                stat.id,
+                stat.StatID,
                 stat.Component,
                 stat.FailureMode,
                 stat.Cause,
@@ -137,5 +139,34 @@ class GenerateFaultTreeApi(Resource):
         return {"data": response.json()}, 200
 
 
+class ExtractSVGApi(Resource):
+
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument(
+            "svg_text",
+            nullable=False,
+            required=True,
+            type=str,
+            location="args"
+        )
+        args = parser.parse_args()
+        # svg_text = ''.join(args["svg_text"].splitlines())
+        svg_text = args["svg_text"].replace('\n', '')
+        svg_text = svg_text.replace('\"', '"')
+        print(svg_text)
+        svg_text_json = json.loads(svg_text)
+        svg_content = svg_text_json.get("data").get("svg_content")[0]
+        svg_content = svg_content.replace('\n', '').replace('\"', '"')
+        file_key = "fta_svg/" + "fat.svg"
+        if storage.exists(file_key):
+            storage.delete(file_key)
+        storage.save(file_key, svg_content.encode("utf-8"))
+        generator = storage.load(file_key, stream=True)
+
+        return Response(generator, mimetype="image/svg+xml")
+
+
 api.add_resource(FATTestApi, "/fta/db-handler")
 api.add_resource(GenerateFaultTreeApi, "/fta/generate-fault-tree")
+api.add_resource(ExtractSVGApi, "/fta/extract-svg")
