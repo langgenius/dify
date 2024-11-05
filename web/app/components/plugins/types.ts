@@ -140,6 +140,33 @@ export type Permissions = {
   debug_permission: PermissionType
 }
 
+export type UpdateFromMarketPlacePayload = {
+  originalPackageInfo: {
+    id: string
+  },
+  targetPackageInfo: {
+    id: string
+    payload: PluginDeclaration
+  }
+}
+
+export type UpdateFromGitHubPayload = {
+  repo: string
+  originalPluginId: string
+  version: string
+}
+
+export type UpdatePluginPayload = {
+  type: PluginSource
+  marketPlace?: UpdateFromMarketPlacePayload
+  github?: UpdateFromGitHubPayload
+}
+
+export type UpdatePluginModalType = UpdatePluginPayload & {
+  onCancel: () => void
+  onSave: () => void
+}
+
 export enum InstallStepFromGitHub {
   setUrl = 'url',
   selectPackage = 'selecting',
