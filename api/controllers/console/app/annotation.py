@@ -6,8 +6,11 @@ from werkzeug.exceptions import Forbidden
 from controllers.console import api
 from controllers.console.app.error import NoFileUploadedError
 from controllers.console.datasets.error import TooManyFilesError
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from controllers.console.wraps import (
+    account_initialization_required,
+    cloud_edition_billing_resource_check,
+    setup_required,
+)
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import (
     annotation_fields,
