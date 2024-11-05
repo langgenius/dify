@@ -14,6 +14,7 @@ import {
 import Checkbox from '@/app/components/base/checkbox'
 import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
+import { useTags } from '@/app/components/plugins/hooks'
 
 type TagsFilterProps = {
   tags: string[]
@@ -27,17 +28,8 @@ const TagsFilter = ({
 }: TagsFilterProps) => {
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const options = [
-    {
-      value: 'search',
-      text: 'Search',
-    },
-    {
-      value: 'image',
-      text: 'Image',
-    },
-  ]
-  const filteredOptions = options.filter(option => option.text.toLowerCase().includes(searchText.toLowerCase()))
+  const options = useTags()
+  const filteredOptions = options.filter(option => option.label.toLowerCase().includes(searchText.toLowerCase()))
   const handleCheck = (id: string) => {
     if (tags.includes(id))
       onTagsChange(tags.filter((tag: string) => tag !== id))
@@ -115,16 +107,16 @@ const TagsFilter = ({
             {
               filteredOptions.map(option => (
                 <div
-                  key={option.value}
+                  key={option.name}
                   className='flex items-center px-2 py-1.5 h-7 rounded-lg cursor-pointer hover:bg-state-base-hover'
-                  onClick={() => handleCheck(option.value)}
+                  onClick={() => handleCheck(option.name)}
                 >
                   <Checkbox
                     className='mr-1'
-                    checked={tags.includes(option.value)}
+                    checked={tags.includes(option.name)}
                   />
                   <div className='px-1 system-sm-medium text-text-secondary'>
-                    {option.text}
+                    {option.label}
                   </div>
                 </div>
               ))

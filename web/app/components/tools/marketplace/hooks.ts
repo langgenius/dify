@@ -37,7 +37,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
     }
     else {
       queryMarketplaceCollectionsAndPlugins()
-      setPlugins([])
+      setPlugins(undefined)
     }
   }, [searchPluginText, filterPluginTags, queryPlugins, queryMarketplaceCollectionsAndPlugins, queryPluginsWithDebounced, setPlugins])
 

@@ -40,7 +40,7 @@ export const useMarketplaceCollectionsAndPlugins = () => {
 
 export const useMarketplacePlugins = () => {
   const [isLoading, setIsLoading] = useState(false)
-  const [plugins, setPlugins] = useState<Plugin[]>([])
+  const [plugins, setPlugins] = useState<Plugin[]>()
 
   const queryPlugins = useCallback(async (query: PluginsSearchParams) => {
     setIsLoading(true)

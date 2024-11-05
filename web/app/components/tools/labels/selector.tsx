@@ -1,10 +1,8 @@
 import type { FC } from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import { useDebounceFn, useMount } from 'ahooks'
+import { useDebounceFn } from 'ahooks'
 import { RiArrowDownSLine } from '@remixicon/react'
-import { useStore as useLabelStore } from './store'
 import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
@@ -15,11 +13,9 @@ import Input from '@/app/components/base/input'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Checkbox from '@/app/components/base/checkbox'
 import type { Label } from '@/app/components/tools/labels/constant'
-import { fetchLabelList } from '@/service/tools'
-import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import { useTags } from '@/app/components/plugins/hooks'
 
-interface LabelSelectorProps {
+type LabelSelectorProps = {
   value: string[]
   onChange: (v: string[]) => void
 }
@@ -28,12 +24,9 @@ const LabelSelector: FC<LabelSelectorProps> = ({
   onChange,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
-  const language = getLanguage(locale)
   const [open, setOpen] = useState(false)
 
-  const labelList = useLabelStore(s => s.labelList)
-  const setLabelList = useLabelStore(s => s.setLabelList)
+  const labelList = useTags()
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -50,8 +43,8 @@ const LabelSelector: FC<LabelSelectorProps> = ({
   }, [labelList, searchKeywords])
 
   const selectedLabels = useMemo(() => {
-    return value.map(v => labelList.find(l => l.name === v)?.label[language]).join(', ')
-  }, [value, labelList, language])
+    return value.map(v => labelList.find(l => l.name === v)?.label).join(', ')
+  }, [value, labelList])
 
   const selectLabel = (label: Label) => {
     if (value.includes(label.name))
@@ -59,12 +52,6 @@ const LabelSelector: FC<LabelSelectorProps> = ({
     else
       onChange([...value, label.name])
   }
-
-  useMount(() => {
-    fetchLabelList().then((res) => {
-      setLabelList(res)
-    })
-  })
 
   return (
     <PortalToFollowElem
@@ -114,7 +101,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
                     checked={value.includes(label.name)}
                     onCheck={() => { }}
                   />
-                  <div title={label.label[language]} className='grow text-sm text-gray-700 leading-5 truncate'>{label.label[language]}</div>
+                  <div title={label.label} className='grow text-sm text-gray-700 leading-5 truncate'>{label.label}</div>
                 </div>
               ))}
               {!filteredLabelList.length && (
