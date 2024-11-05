@@ -10,6 +10,9 @@ import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import type { UpdateFromMarketPlacePayload } from '../types'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
 import useGetIcon from '../install-plugin/base/use-get-icon'
+import { updateFromMarketPlace } from '@/service/plugins'
+import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
+import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/store'
 
 const i18nPrefix = 'plugin.upgrade'
 
@@ -43,7 +46,18 @@ const UpdatePluginModal: FC<Props> = ({
       setIcon(icon)
     })()
   }, [originalPackageInfo, getIconUrl])
+  const {
+    check,
+    stop,
+  } = checkTaskStatus()
+  const handleCancel = () => {
+    stop()
+    onCancel()
+  }
+
   const [uploadStep, setUploadStep] = useState<UploadStep>(UploadStep.notStarted)
+  const setPluginTasksWithPolling = usePluginTasksStore(s => s.setPluginTasksWithPolling)
+
   const configBtnText = useMemo(() => {
     return ({
       [UploadStep.notStarted]: t(`${i18nPrefix}.upgrade`),
@@ -52,19 +66,41 @@ const UpdatePluginModal: FC<Props> = ({
     })[uploadStep]
   }, [t, uploadStep])
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirm = useCallback(async () => {
     if (uploadStep === UploadStep.notStarted) {
       setUploadStep(UploadStep.upgrading)
-      setTimeout(() => {
-        setUploadStep(UploadStep.installed)
-      }, 1500)
-      return
+      const {
+        all_installed: isInstalled,
+        task_id: taskId,
+      } = await updateFromMarketPlace({
+        original_plugin_unique_identifier: originalPackageInfo.id,
+        new_plugin_unique_identifier: targetPackageInfo.id,
+      })
+      if (isInstalled) {
+        onSave()
+        return
+      }
+      setPluginTasksWithPolling()
+      await check({
+        taskId,
+        pluginUniqueIdentifier: targetPackageInfo.id,
+      })
+      onSave()
     }
     if (uploadStep === UploadStep.installed) {
       onSave()
       onCancel()
     }
-  }, [onCancel, onSave, uploadStep])
+  }, [onCancel, onSave, uploadStep, check, originalPackageInfo.id, setPluginTasksWithPolling, targetPackageInfo.id])
+  const usedInAppInfo = useMemo(() => {
+    return (
+      <div className='flex px-0.5 justify-center items-center gap-0.5'>
+        <div className='text-text-warning system-xs-medium'>{t(`${i18nPrefix}.usedInApps`, { num: 3 })}</div>
+        {/* show the used apps */}
+        <RiInformation2Line className='w-4 h-4 text-text-tertiary' />
+      </div>
+    )
+  }, [t])
   return (
     <Modal
       isShow={true}
@@ -89,11 +125,7 @@ const UpdatePluginModal: FC<Props> = ({
               <Badge className='mx-1' size="s" state={BadgeState.Warning}>
                 {`${originalPackageInfo.payload.version} -> ${targetPackageInfo.version}`}
               </Badge>
-              <div className='flex px-0.5 justify-center items-center gap-0.5'>
-                <div className='text-text-warning system-xs-medium'>{t(`${i18nPrefix}.usedInApps`, { num: 3 })}</div>
-                {/* show the used apps */}
-                <RiInformation2Line className='w-4 h-4 text-text-tertiary' />
-              </div>
+              {false && usedInAppInfo}
             </>
           }
         />
@@ -101,7 +133,7 @@ const UpdatePluginModal: FC<Props> = ({
       <div className='flex pt-5 justify-end items-center gap-2 self-stretch'>
         {uploadStep === UploadStep.notStarted && (
           <Button
-            onClick={onCancel}
+            onClick={handleCancel}
           >
             {t('common.operation.cancel')}
           </Button>
