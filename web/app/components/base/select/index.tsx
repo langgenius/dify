@@ -125,7 +125,7 @@ const Select: FC<ISelectProps> = ({
           </Combobox.Button>
         </div>
 
-        {filteredItems.length > 0 && (
+        {(filteredItems.length > 0 && open) && (
           <Combobox.Options className={`absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm ${overlayClassName}`}>
             {filteredItems.map((item: Item) => (
               <Combobox.Option
