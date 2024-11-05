@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import useSWR from 'swr'
 import { usePathname } from 'next/navigation'
 import { Pagination } from 'react-headless-pagination'
+import { useDebounce } from 'ahooks'
 import { omit } from 'lodash-es'
 import dayjs from 'dayjs'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
@@ -39,12 +40,12 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
   const pathSegments = pathname.split('/')
   pathSegments.pop()
   return <div className='flex items-center justify-center h-full'>
-    <div className='bg-gray-50 w-[560px] h-fit box-border px-5 py-4 rounded-2xl'>
-      <span className='text-gray-700 font-semibold'>{t('appLog.table.empty.element.title')}<ThreeDotsIcon className='inline relative -top-3 -left-1.5' /></span>
-      <div className='mt-2 text-gray-500 text-sm font-normal'>
+    <div className='bg-background-section-burn w-[560px] h-fit box-border px-5 py-4 rounded-2xl'>
+      <span className='text-text-secondary system-md-semibold'>{t('appLog.table.empty.element.title')}<ThreeDotsIcon className='inline relative -top-3 -left-1.5' /></span>
+      <div className='mt-2 text-text-tertiary system-sm-regular'>
         <Trans
           i18nKey="appLog.table.empty.element.content"
-          components={{ shareLink: <Link href={`${pathSegments.join('/')}/overview`} className='text-primary-600' />, testLink: <Link href={appUrl} className='text-primary-600' target='_blank' rel='noopener noreferrer' /> }}
+          components={{ shareLink: <Link href={`${pathSegments.join('/')}/overview`} className='text-util-colors-blue-blue-600' />, testLink: <Link href={appUrl} className='text-util-colors-blue-blue-600' target='_blank' rel='noopener noreferrer' /> }}
         />
       </div>
     </div>
@@ -59,6 +60,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     sort_by: '-created_at',
   })
   const [currPage, setCurrPage] = React.useState<number>(0)
+  const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
 
   // Get the app type first
   const isChatMode = appDetail.mode !== 'completion'
@@ -66,14 +68,14 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const query = {
     page: currPage + 1,
     limit: APP_PAGE_LIMIT,
-    ...(queryParams.period !== 'all'
+    ...(debouncedQueryParams.period !== 'all'
       ? {
-        start: dayjs().subtract(queryParams.period as number, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+        start: dayjs().subtract(debouncedQueryParams.period as number, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
         end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
       }
       : {}),
-    ...(isChatMode ? { sort_by: queryParams.sort_by } : {}),
-    ...omit(queryParams, ['period']),
+    ...(isChatMode ? { sort_by: debouncedQueryParams.sort_by } : {}),
+    ...omit(debouncedQueryParams, ['period']),
   }
 
   const getWebAppType = (appType: AppMode) => {
@@ -101,7 +103,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   return (
     <div className='flex flex-col h-full'>
-      <p className='flex text-sm font-normal text-gray-500'>{t('appLog.description')}</p>
+      <p className='text-text-tertiary system-sm-regular'>{t('appLog.description')}</p>
       <div className='flex flex-col py-4 flex-1'>
         <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams} />
         {total === undefined
@@ -119,8 +121,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
             middlePagesSiblingCount={1}
             setCurrentPage={setCurrPage}
             totalPages={Math.ceil(total / APP_PAGE_LIMIT)}
-            truncatableClassName="w-8 px-0.5 text-center"
-            truncatableText="..."
+            truncableClassName="w-8 px-0.5 text-center"
+            truncableText="..."
           >
             <Pagination.PrevButton
               disabled={currPage === 0}

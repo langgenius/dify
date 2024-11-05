@@ -6,11 +6,11 @@ from collections.abc import Generator
 from typing import Optional, Union, cast
 
 import google.ai.generativelanguage as glm
-import google.api_core.exceptions as exceptions
 import google.generativeai as genai
-import google.generativeai.client as client
 import requests
-from google.generativeai.types import ContentType, GenerateContentResponse, HarmBlockThreshold, HarmCategory
+from google.api_core import exceptions
+from google.generativeai.client import _ClientManager
+from google.generativeai.types import ContentType, GenerateContentResponse
 from google.generativeai.types.content_types import to_part
 from PIL import Image
 
@@ -45,7 +45,7 @@ if you are not sure about the structure.
 <instructions>
 {{instructions}}
 </instructions>
-"""
+"""  # noqa: E501
 
 
 class GoogleLargeLanguageModel(LargeLanguageModel):
@@ -116,26 +116,33 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         :param tools: tool messages
         :return: glm tools
         """
-        return glm.Tool(
-            function_declarations=[
-                glm.FunctionDeclaration(
-                    name=tool.name,
-                    parameters=glm.Schema(
-                        type=glm.Type.OBJECT,
-                        properties={
-                            key: {
-                                "type_": value.get("type", "string").upper(),
-                                "description": value.get("description", ""),
-                                "enum": value.get("enum", []),
-                            }
-                            for key, value in tool.parameters.get("properties", {}).items()
-                        },
-                        required=tool.parameters.get("required", []),
-                    ),
+        function_declarations = []
+        for tool in tools:
+            properties = {}
+            for key, value in tool.parameters.get("properties", {}).items():
+                properties[key] = {
+                    "type_": glm.Type.STRING,
+                    "description": value.get("description", ""),
+                    "enum": value.get("enum", []),
+                }
+
+            if properties:
+                parameters = glm.Schema(
+                    type=glm.Type.OBJECT,
+                    properties=properties,
+                    required=tool.parameters.get("required", []),
                 )
-                for tool in tools
-            ]
-        )
+            else:
+                parameters = None
+
+            function_declaration = glm.FunctionDeclaration(
+                name=tool.name,
+                parameters=parameters,
+                description=tool.description,
+            )
+            function_declarations.append(function_declaration)
+
+        return glm.Tool(function_declarations=function_declarations)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
@@ -200,24 +207,16 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                     history.append(content)
 
         # Create a new ClientManager with tenant's API key
-        new_client_manager = client._ClientManager()
+        new_client_manager = _ClientManager()
         new_client_manager.configure(api_key=credentials["google_api_key"])
         new_custom_client = new_client_manager.make_client("generative")
 
         google_model._client = new_custom_client
 
-        safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-        }
-
         response = google_model.generate_content(
             contents=history,
             generation_config=genai.types.GenerationConfig(**config_kwargs),
             stream=stream,
-            safety_settings=safety_settings,
             tools=self._convert_tools_to_glm_tool(tools) if tools else None,
             request_options={"timeout": 600},
         )
@@ -337,9 +336,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
             message_text = f"{human_prompt} {content}"
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
-        elif isinstance(message, SystemPromptMessage):
-            message_text = f"{human_prompt} {content}"
-        elif isinstance(message, ToolPromptMessage):
+        elif isinstance(message, SystemPromptMessage | ToolPromptMessage):
             message_text = f"{human_prompt} {content}"
         else:
             raise ValueError(f"Got unknown type {message}")

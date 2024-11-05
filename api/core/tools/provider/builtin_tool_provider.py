@@ -13,13 +13,12 @@ from core.tools.errors import (
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
-from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 from core.tools.utils.yaml_utils import load_yaml_file
 
 
 class BuiltinToolProviderController(ToolProviderController):
     def __init__(self, **data: Any) -> None:
-        if self.provider_type == ToolProviderType.API or self.provider_type == ToolProviderType.APP:
+        if self.provider_type in {ToolProviderType.API, ToolProviderType.APP}:
             super().__init__(**data)
             return
 
@@ -208,9 +207,7 @@ class BuiltinToolProviderController(ToolProviderController):
 
             # the parameter is not set currently, set the default value if needed
             if parameter_schema.default is not None:
-                default_value = ToolParameterConverter.cast_parameter_by_type(
-                    parameter_schema.default, parameter_schema.type
-                )
+                default_value = parameter_schema.type.cast_value(parameter_schema.default)
                 tool_parameters[parameter] = default_value
 
     def validate_credentials(self, credentials: dict[str, Any]) -> None:

@@ -31,16 +31,28 @@ class OpsService:
         if tracing_provider == "langfuse" and (
             "project_key" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_key")
         ):
-            project_key = OpsTraceManager.get_trace_config_project_key(decrypt_tracing_config, tracing_provider)
-            new_decrypt_tracing_config.update(
-                {"project_url": "{host}/project/{key}".format(host=decrypt_tracing_config.get("host"), key=project_key)}
-            )
+            try:
+                project_key = OpsTraceManager.get_trace_config_project_key(decrypt_tracing_config, tracing_provider)
+                new_decrypt_tracing_config.update(
+                    {
+                        "project_url": "{host}/project/{key}".format(
+                            host=decrypt_tracing_config.get("host"), key=project_key
+                        )
+                    }
+                )
+            except Exception:
+                new_decrypt_tracing_config.update(
+                    {"project_url": "{host}/".format(host=decrypt_tracing_config.get("host"))}
+                )
 
         if tracing_provider == "langsmith" and (
             "project_url" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_url")
         ):
-            project_url = OpsTraceManager.get_trace_config_project_url(decrypt_tracing_config, tracing_provider)
-            new_decrypt_tracing_config.update({"project_url": project_url})
+            try:
+                project_url = OpsTraceManager.get_trace_config_project_url(decrypt_tracing_config, tracing_provider)
+                new_decrypt_tracing_config.update({"project_url": project_url})
+            except Exception:
+                new_decrypt_tracing_config.update({"project_url": "https://smith.langchain.com/"})
 
         trace_config_data.tracing_config = new_decrypt_tracing_config
         return trace_config_data.to_dict()
@@ -54,7 +66,7 @@ class OpsService:
         :param tracing_config: tracing config
         :return:
         """
-        if tracing_provider not in provider_config_map.keys() and tracing_provider:
+        if tracing_provider not in provider_config_map and tracing_provider:
             return {"error": f"Invalid tracing provider: {tracing_provider}"}
 
         config_class, other_keys = (
@@ -113,7 +125,7 @@ class OpsService:
         :param tracing_config: tracing config
         :return:
         """
-        if tracing_provider not in provider_config_map.keys():
+        if tracing_provider not in provider_config_map:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         # check if trace config already exists

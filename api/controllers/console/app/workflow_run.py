@@ -3,8 +3,7 @@ from flask_restful.inputs import int_range
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from fields.workflow_run_fields import (
     advanced_chat_workflow_run_pagination_fields,
     workflow_run_detail_fields,
@@ -13,7 +12,8 @@ from fields.workflow_run_fields import (
 )
 from libs.helper import uuid_value
 from libs.login import login_required
-from models.model import App, AppMode
+from models import App
+from models.model import AppMode
 from services.workflow_run_service import WorkflowRunService
 
 

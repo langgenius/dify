@@ -51,6 +51,7 @@ class LangSmithRunModel(LangSmithTokenUsage, LangSmithMultiModel):
     output_attachments: Optional[dict[str, Any]] = Field(None, description="Output attachments of the run")
 
     @field_validator("inputs", "outputs")
+    @classmethod
     def ensure_dict(cls, v, info: ValidationInfo):
         field_name = info.field_name
         values = info.data
@@ -115,6 +116,7 @@ class LangSmithRunModel(LangSmithTokenUsage, LangSmithMultiModel):
             return v
         return v
 
+    @classmethod
     @field_validator("start_time", "end_time")
     def format_time(cls, v, info: ValidationInfo):
         if not isinstance(v, datetime):

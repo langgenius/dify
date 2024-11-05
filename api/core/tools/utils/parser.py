@@ -3,6 +3,7 @@ import uuid
 from json import dumps as json_dumps
 from json import loads as json_loads
 from json.decoder import JSONDecodeError
+from typing import Optional
 
 from requests import get
 from yaml import YAMLError, safe_load
@@ -16,7 +17,7 @@ from core.tools.errors import ToolApiSchemaError, ToolNotSupportedError, ToolPro
 class ApiBasedToolSchemaParser:
     @staticmethod
     def parse_openapi_to_tool_bundle(
-        openapi: dict, extra_info: dict = None, warning: dict = None
+        openapi: dict, extra_info: Optional[dict], warning: Optional[dict]
     ) -> list[ApiToolBundle]:
         warning = warning if warning is not None else {}
         extra_info = extra_info if extra_info is not None else {}
@@ -165,7 +166,7 @@ class ApiBasedToolSchemaParser:
         elif "schema" in parameter and "type" in parameter["schema"]:
             typ = parameter["schema"]["type"]
 
-        if typ == "integer" or typ == "number":
+        if typ in {"integer", "number"}:
             return ToolParameter.ToolParameterType.NUMBER
         elif typ == "boolean":
             return ToolParameter.ToolParameterType.BOOLEAN
@@ -174,7 +175,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def parse_openapi_yaml_to_tool_bundle(
-        yaml: str, extra_info: dict = None, warning: dict = None
+        yaml: str, extra_info: Optional[dict], warning: Optional[dict]
     ) -> list[ApiToolBundle]:
         """
         parse openapi yaml to tool bundle
@@ -191,7 +192,7 @@ class ApiBasedToolSchemaParser:
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
-    def parse_swagger_to_openapi(swagger: dict, extra_info: dict = None, warning: dict = None) -> dict:
+    def parse_swagger_to_openapi(swagger: dict, extra_info: Optional[dict], warning: Optional[dict]) -> dict:
         """
         parse swagger to openapi
 
@@ -253,7 +254,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def parse_openai_plugin_json_to_tool_bundle(
-        json: str, extra_info: dict = None, warning: dict = None
+        json: str, extra_info: Optional[dict], warning: Optional[dict]
     ) -> list[ApiToolBundle]:
         """
         parse openapi plugin yaml to tool bundle
@@ -287,7 +288,7 @@ class ApiBasedToolSchemaParser:
 
     @staticmethod
     def auto_parse_to_tool_bundle(
-        content: str, extra_info: dict = None, warning: dict = None
+        content: str, extra_info: Optional[dict] = None, warning: Optional[dict] = None
     ) -> tuple[list[ApiToolBundle], str]:
         """
         auto parse to tool bundle
@@ -315,7 +316,8 @@ class ApiBasedToolSchemaParser:
                 yaml_error = e
         if loaded_content is None:
             raise ToolApiSchemaError(
-                f"Invalid api schema, schema is neither json nor yaml. json error: {str(json_error)}, yaml error: {str(yaml_error)}"
+                f"Invalid api schema, schema is neither json nor yaml. json error: {str(json_error)},"
+                f" yaml error: {str(yaml_error)}"
             )
 
         swagger_error = None
@@ -355,5 +357,6 @@ class ApiBasedToolSchemaParser:
             openapi_plugin_error = e
 
         raise ToolApiSchemaError(
-            f"Invalid api schema, openapi error: {str(openapi_error)}, swagger error: {str(swagger_error)}, openapi plugin error: {str(openapi_plugin_error)}"
+            f"Invalid api schema, openapi error: {str(openapi_error)}, swagger error: {str(swagger_error)},"
+            f" openapi plugin error: {str(openapi_plugin_error)}"
         )

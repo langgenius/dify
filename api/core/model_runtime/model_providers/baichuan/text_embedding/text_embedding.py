@@ -4,6 +4,7 @@ from typing import Optional
 
 from requests import post
 
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.invoke import (
@@ -19,7 +20,7 @@ from core.model_runtime.model_providers.__base.text_embedding_model import TextE
 from core.model_runtime.model_providers.baichuan.llm.baichuan_tokenizer import BaichuanTokenizer
 from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (
     BadRequestError,
-    InsufficientAccountBalance,
+    InsufficientAccountBalanceError,
     InternalServerError,
     InvalidAPIKeyError,
     InvalidAuthenticationError,
@@ -35,7 +36,12 @@ class BaichuanTextEmbeddingModel(TextEmbeddingModel):
     api_base: str = "http://api.baichuan-ai.com/v1/embeddings"
 
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
@@ -44,6 +50,7 @@ class BaichuanTextEmbeddingModel(TextEmbeddingModel):
         :param credentials: model credentials
         :param texts: texts to embed
         :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
         api_key = credentials["api_key"]
@@ -109,7 +116,7 @@ class BaichuanTextEmbeddingModel(TextEmbeddingModel):
             if err == "invalid_api_key":
                 raise InvalidAPIKeyError(msg)
             elif err == "insufficient_quota":
-                raise InsufficientAccountBalance(msg)
+                raise InsufficientAccountBalanceError(msg)
             elif err == "invalid_authentication":
                 raise InvalidAuthenticationError(msg)
             elif err and "rate" in err:
@@ -166,7 +173,7 @@ class BaichuanTextEmbeddingModel(TextEmbeddingModel):
             InvokeRateLimitError: [RateLimitReachedError],
             InvokeAuthorizationError: [
                 InvalidAuthenticationError,
-                InsufficientAccountBalance,
+                InsufficientAccountBalanceError,
                 InvalidAPIKeyError,
             ],
             InvokeBadRequestError: [BadRequestError, KeyError],

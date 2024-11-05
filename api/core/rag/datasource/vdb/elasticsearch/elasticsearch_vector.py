@@ -1,5 +1,6 @@
 import json
 import logging
+import math
 from typing import Any, Optional
 from urllib.parse import urlparse
 
@@ -8,11 +9,11 @@ from elasticsearch import Elasticsearch
 from flask import current_app
 from pydantic import BaseModel, model_validator
 
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -27,6 +28,7 @@ class ElasticSearchConfig(BaseModel):
     password: str
 
     @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["host"]:
             raise ValueError("config HOST is required")
@@ -50,7 +52,7 @@ class ElasticSearchVector(BaseVector):
     def _init_client(self, config: ElasticSearchConfig) -> Elasticsearch:
         try:
             parsed_url = urlparse(config.host)
-            if parsed_url.scheme in ["http", "https"]:
+            if parsed_url.scheme in {"http", "https"}:
                 hosts = f"{config.host}:{config.port}"
             else:
                 hosts = f"http://{config.host}:{config.port}"
@@ -75,7 +77,7 @@ class ElasticSearchVector(BaseVector):
             raise ValueError("Elasticsearch vector database version must be greater than 8.0.0")
 
     def get_type(self) -> str:
-        return "elasticsearch"
+        return VectorType.ELASTICSEARCH
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
@@ -85,15 +87,15 @@ class ElasticSearchVector(BaseVector):
                 id=uuids[i],
                 document={
                     Field.CONTENT_KEY.value: documents[i].page_content,
-                    Field.VECTOR.value: embeddings[i] if embeddings[i] else None,
-                    Field.METADATA_KEY.value: documents[i].metadata if documents[i].metadata else {},
+                    Field.VECTOR.value: embeddings[i] or None,
+                    Field.METADATA_KEY.value: documents[i].metadata or {},
                 },
             )
         self._client.indices.refresh(index=self._collection_name)
         return uuids
 
     def text_exists(self, id: str) -> bool:
-        return self._client.exists(index=self._collection_name, id=id).__bool__()
+        return bool(self._client.exists(index=self._collection_name, id=id))
 
     def delete_by_ids(self, ids: list[str]) -> None:
         for id in ids:
@@ -110,8 +112,9 @@ class ElasticSearchVector(BaseVector):
         self._client.indices.delete(index=self._collection_name)
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
-        top_k = kwargs.get("top_k", 10)
-        knn = {"field": Field.VECTOR.value, "query_vector": query_vector, "k": top_k}
+        top_k = kwargs.get("top_k", 4)
+        num_candidates = math.ceil(top_k * 1.5)
+        knn = {"field": Field.VECTOR.value, "query_vector": query_vector, "k": top_k, "num_candidates": num_candidates}
 
         results = self._client.search(index=self._collection_name, knn=knn, size=top_k)
 
@@ -130,7 +133,7 @@ class ElasticSearchVector(BaseVector):
 
         docs = []
         for doc, score in docs_and_scores:
-            score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if score > score_threshold:
                 doc.metadata["score"] = score
             docs.append(doc)
@@ -139,7 +142,7 @@ class ElasticSearchVector(BaseVector):
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         query_str = {"match": {Field.CONTENT_KEY.value: query}}
-        results = self._client.search(index=self._collection_name, query=query_str)
+        results = self._client.search(index=self._collection_name, query=query_str, size=kwargs.get("top_k", 4))
         docs = []
         for hit in results["hits"]["hits"]:
             docs.append(

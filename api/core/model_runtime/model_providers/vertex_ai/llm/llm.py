@@ -2,11 +2,12 @@ import base64
 import io
 import json
 import logging
+import time
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
-import google.api_core.exceptions as exceptions
 import google.auth.transport.requests
+import requests
 import vertexai.generative_models as glm
 from anthropic import AnthropicVertex, Stream
 from anthropic.types import (
@@ -17,10 +18,10 @@ from anthropic.types import (
     MessageStopEvent,
     MessageStreamEvent,
 )
+from google.api_core import exceptions
 from google.cloud import aiplatform
 from google.oauth2 import service_account
 from PIL import Image
-from vertexai.generative_models import HarmBlockThreshold, HarmCategory
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
@@ -34,6 +35,7 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -114,8 +116,9 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
             credentials.refresh(request)
             token = credentials.token
 
-        # Vertex AI Anthropic Claude3 Opus model available in us-east5 region, Sonnet and Haiku available in us-central1 region
-        if "opus" or "claude-3-5-sonnet" in model:
+        # Vertex AI Anthropic Claude3 Opus model available in us-east5 region, Sonnet and Haiku available
+        # in us-central1 region
+        if "opus" in model or "claude-3-5-sonnet" in model:
             location = "us-east5"
         else:
             location = "us-central1"
@@ -123,7 +126,8 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         # use access token to authenticate
         if token:
             client = AnthropicVertex(region=location, project_id=project_id, access_token=token)
-        # When access token is empty, try to use the Google Cloud VM's built-in service account or the GOOGLE_APPLICATION_CREDENTIALS environment variable
+        # When access token is empty, try to use the Google Cloud VM's built-in service account
+        # or the GOOGLE_APPLICATION_CREDENTIALS environment variable
         else:
             client = AnthropicVertex(
                 region=location,
@@ -229,10 +233,10 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
                         ),
                     )
                 elif isinstance(chunk, ContentBlockDeltaEvent):
-                    chunk_text = chunk.delta.text if chunk.delta.text else ""
+                    chunk_text = chunk.delta.text or ""
                     full_assistant_content += chunk_text
                     assistant_prompt_message = AssistantPromptMessage(
-                        content=chunk_text if chunk_text else "",
+                        content=chunk_text or "",
                     )
                     index = chunk.index
                     yield LLMResultChunk(
@@ -344,7 +348,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
                             mime_type = data_split[0].replace("data:", "")
                             base64_data = data_split[1]
 
-                        if mime_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
+                        if mime_type not in {"image/jpeg", "image/png", "image/gif", "image/webp"}:
                             raise ValueError(
                                 f"Unsupported image type {mime_type}, "
                                 f"only support image/jpeg, image/png, image/gif, and image/webp"
@@ -501,20 +505,12 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
                     else:
                         history.append(content)
 
-        safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-        }
-
         google_model = glm.GenerativeModel(model_name=model, system_instruction=system_instruction)
 
         response = google_model.generate_content(
             contents=history,
             generation_config=glm.GenerationConfig(**config_kwargs),
             stream=stream,
-            safety_settings=safety_settings,
             tools=self._convert_tools_to_glm_tool(tools) if tools else None,
         )
 
@@ -633,9 +629,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
             message_text = f"{human_prompt} {content}"
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
-        elif isinstance(message, SystemPromptMessage):
-            message_text = f"{human_prompt} {content}"
-        elif isinstance(message, ToolPromptMessage):
+        elif isinstance(message, SystemPromptMessage | ToolPromptMessage):
             message_text = f"{human_prompt} {content}"
         else:
             raise ValueError(f"Got unknown type {message}")
@@ -660,9 +654,15 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
                     if c.type == PromptMessageContentType.TEXT:
                         parts.append(glm.Part.from_text(c.data))
                     else:
-                        metadata, data = c.data.split(",", 1)
-                        mime_type = metadata.split(";", 1)[0].split(":")[1]
-                        parts.append(glm.Part.from_data(mime_type=mime_type, data=data))
+                        message_content = cast(ImagePromptMessageContent, c)
+                        if not message_content.data.startswith("data:"):
+                            url_arr = message_content.data.split(".")
+                            mime_type = f"image/{url_arr[-1]}"
+                            parts.append(glm.Part.from_uri(mime_type=mime_type, uri=message_content.data))
+                        else:
+                            metadata, data = c.data.split(",", 1)
+                            mime_type = metadata.split(";", 1)[0].split(":")[1]
+                            parts.append(glm.Part.from_data(mime_type=mime_type, data=data))
                 glm_content = glm.Content(role="user", parts=parts)
             return glm_content
         elif isinstance(message, AssistantPromptMessage):

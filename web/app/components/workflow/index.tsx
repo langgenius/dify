@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from 'react'
+import useSWR from 'swr'
 import { setAutoFreeze } from 'immer'
 import {
   useEventListener,
@@ -35,6 +36,7 @@ import type {
 } from './types'
 import {
   ControlMode,
+  SupportUploadFileTypes,
 } from './types'
 import { WorkflowContextProvider } from './context'
 import {
@@ -91,6 +93,8 @@ import type { Features as FeaturesData } from '@/app/components/base/features/ty
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import Confirm from '@/app/components/base/confirm'
+import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import { fetchFileUploadConfig } from '@/service/common'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -175,6 +179,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     return () => {
       handleSyncWorkflowDraft(true, true)
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const { handleRefreshWorkflowDraft } = useWorkflowUpdate()
@@ -379,6 +384,7 @@ const WorkflowWrap = memo(() => {
     data,
     isLoading,
   } = useWorkflowInit()
+  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
 
   const nodesData = useMemo(() => {
     if (data)
@@ -405,10 +411,16 @@ const WorkflowWrap = memo(() => {
   const initialFeatures: FeaturesData = {
     file: {
       image: {
-        enabled: !!features.file_upload?.image.enabled,
-        number_limits: features.file_upload?.image.number_limits || 3,
-        transfer_methods: features.file_upload?.image.transfer_methods || ['local_file', 'remote_url'],
+        enabled: !!features.file_upload?.image?.enabled,
+        number_limits: features.file_upload?.image?.number_limits || 3,
+        transfer_methods: features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
       },
+      enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
+      allowed_file_types: features.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
+      allowed_file_extensions: features.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
+      allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+      number_limits: features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
+      fileUploadConfig: fileUploadConfigResponse,
     },
     opening: {
       enabled: !!features.opening_statement,

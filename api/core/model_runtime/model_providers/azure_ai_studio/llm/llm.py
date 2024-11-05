@@ -213,7 +213,7 @@ class AzureAIStudioLargeLanguageModel(LargeLanguageModel):
                 model=real_model,
                 prompt_messages=prompt_messages,
                 message=prompt_message,
-                usage=usage if usage else LLMUsage.empty_usage(),
+                usage=usage or LLMUsage.empty_usage(),
                 system_fingerprint=system_fingerprint,
             ),
             credentials=credentials,
@@ -294,7 +294,7 @@ class AzureAIStudioLargeLanguageModel(LargeLanguageModel):
             ],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         Used to define customizable model schema
         """

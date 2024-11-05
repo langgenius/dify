@@ -11,10 +11,10 @@ import { useLocalStorageState } from 'ahooks'
 import produce from 'immer'
 import type {
   ChatConfig,
-  ChatItem,
   Feedback,
 } from '../types'
 import { CONVERSATION_ID_INFO } from '../constants'
+import { getPrevChatList, getProcessedInputsFromUrlParams } from '../utils'
 import {
   fetchAppInfo,
   fetchAppMeta,
@@ -28,10 +28,10 @@ import type {
   // AppData,
   ConversationItem,
 } from '@/models/share'
-import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { useToastContext } from '@/app/components/base/toast'
 import { changeLanguage } from '@/i18n/i18next-config'
-import { getProcessedInputsFromUrlParams } from '@/app/components/base/chat/utils'
+import { InputVarType } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
 
 export const useEmbeddedChatbot = () => {
   const isInstalledApp = false
@@ -75,32 +75,12 @@ export const useEmbeddedChatbot = () => {
   const { data: appConversationData, isLoading: appConversationDataLoading, mutate: mutateAppConversationData } = useSWR(['appConversationData', isInstalledApp, appId, false], () => fetchConversations(isInstalledApp, appId, undefined, false, 100))
   const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null, () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId))
 
-  const appPrevChatList = useMemo(() => {
-    const data = appChatListData?.data || []
-    const chatList: ChatItem[] = []
-
-    if (currentConversationId && data.length) {
-      data.forEach((item: any) => {
-        chatList.push({
-          id: `question-${item.id}`,
-          content: item.query,
-          isAnswer: false,
-          message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
-        })
-        chatList.push({
-          id: item.id,
-          content: item.answer,
-          agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
-          feedback: item.feedback,
-          isAnswer: true,
-          citation: item.retriever_resources,
-          message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-        })
-      })
-    }
-
-    return chatList
-  }, [appChatListData, currentConversationId])
+  const appPrevChatList = useMemo(
+    () => (currentConversationId && appChatListData?.data.length)
+      ? getPrevChatList(appChatListData.data)
+      : [],
+    [appChatListData, currentConversationId],
+  )
 
   const [showNewConversationItemInList, setShowNewConversationItemInList] = useState(false)
 
@@ -116,7 +96,7 @@ export const useEmbeddedChatbot = () => {
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
-    return (appParams?.user_input_form || []).filter((item: any) => item.paragraph || item.select || item['text-input'] || item.number).map((item: any) => {
+    return (appParams?.user_input_form || []).filter((item: any) => !item.external_data_tool).map((item: any) => {
       if (item.paragraph) {
         let value = initInputs[item.paragraph.variable]
         if (value && item.paragraph.max_length && value.length > item.paragraph.max_length)
@@ -145,6 +125,20 @@ export const useEmbeddedChatbot = () => {
         }
       }
 
+      if (item['file-list']) {
+        return {
+          ...item['file-list'],
+          type: 'file-list',
+        }
+      }
+
+      if (item.file) {
+        return {
+          ...item.file,
+          type: 'file',
+        }
+      }
+
       let value = initInputs[item['text-input'].variable]
       if (value && item['text-input'].max_length && value.length > item['text-input'].max_length)
         value = value.slice(0, item['text-input'].max_length)
@@ -155,7 +149,7 @@ export const useEmbeddedChatbot = () => {
         type: 'text-input',
       }
     })
-  }, [appParams])
+  }, [initInputs, appParams])
 
   useEffect(() => {
     // init inputs from url params
@@ -214,21 +208,38 @@ export const useEmbeddedChatbot = () => {
 
   const { notify } = useToastContext()
   const checkInputsRequired = useCallback((silent?: boolean) => {
-    if (inputsForms.length) {
-      for (let i = 0; i < inputsForms.length; i += 1) {
-        const item = inputsForms[i]
-
-        if (item.required && !newConversationInputsRef.current[item.variable]) {
-          if (!silent) {
-            notify({
-              type: 'error',
-              message: t('appDebug.errorMessage.valueOfVarRequired', { key: item.variable }),
-            })
-          }
+    let hasEmptyInput = ''
+    let fileIsUploading = false
+    const requiredVars = inputsForms.filter(({ required }) => required)
+    if (requiredVars.length) {
+      requiredVars.forEach(({ variable, label, type }) => {
+        if (hasEmptyInput)
           return
+
+        if (fileIsUploading)
+          return
+
+        if (!newConversationInputsRef.current[variable] && !silent)
+          hasEmptyInput = label as string
+
+        if ((type === InputVarType.singleFile || type === InputVarType.multiFiles) && newConversationInputsRef.current[variable] && !silent) {
+          const files = newConversationInputsRef.current[variable]
+          if (Array.isArray(files))
+            fileIsUploading = files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
+          else
+            fileIsUploading = files.transferMethod === TransferMethod.local_file && !files.uploadedId
         }
-      }
-      return true
+      })
+    }
+
+    if (hasEmptyInput) {
+      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }) })
+      return false
+    }
+
+    if (fileIsUploading) {
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+      return
     }
 
     return true
@@ -300,6 +311,7 @@ export const useEmbeddedChatbot = () => {
     setShowConfigPanelBeforeChat,
     setShowNewConversationItemInList,
     newConversationInputs,
+    newConversationInputsRef,
     handleNewConversationInputsChange,
     inputsForms,
     handleNewConversation,

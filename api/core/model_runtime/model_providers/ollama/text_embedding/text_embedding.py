@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 import numpy as np
 import requests
 
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -38,7 +39,12 @@ class OllamaEmbeddingModel(TextEmbeddingModel):
     """
 
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
@@ -47,6 +53,7 @@ class OllamaEmbeddingModel(TextEmbeddingModel):
         :param credentials: model credentials
         :param texts: texts to embed
         :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
 
@@ -65,7 +72,7 @@ class OllamaEmbeddingModel(TextEmbeddingModel):
         inputs = []
         used_tokens = 0
 
-        for i, text in enumerate(texts):
+        for text in texts:
             # Here token count is only an approximation based on the GPT2 tokenizer
             num_tokens = self._get_num_tokens_by_gpt2(text)
 
@@ -77,7 +84,7 @@ class OllamaEmbeddingModel(TextEmbeddingModel):
                 inputs.append(text)
 
         # Prepare the payload for the request
-        payload = {"input": inputs, "model": model, "options": {"use_mmap": "true"}}
+        payload = {"input": inputs, "model": model, "options": {"use_mmap": True}}
 
         # Make the request to the Ollama API
         response = requests.post(endpoint_url, headers=headers, data=json.dumps(payload), timeout=(10, 300))

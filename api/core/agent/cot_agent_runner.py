@@ -256,7 +256,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     model=model_instance.model,
                     prompt_messages=prompt_messages,
                     message=AssistantPromptMessage(content=final_answer),
-                    usage=llm_usage["usage"] if llm_usage["usage"] else LLMUsage.empty_usage(),
+                    usage=llm_usage["usage"] or LLMUsage.empty_usage(),
                     system_fingerprint="",
                 )
             ),
@@ -369,7 +369,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         return message
 
     def _organize_historic_prompt_messages(
-        self, current_session_messages: list[PromptMessage] = None
+        self, current_session_messages: Optional[list[PromptMessage]] = None
     ) -> list[PromptMessage]:
         """
         organize historic prompt messages

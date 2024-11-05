@@ -6,6 +6,7 @@ import numpy as np
 import requests
 from huggingface_hub import HfApi, InferenceClient
 
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
@@ -18,8 +19,23 @@ HUGGINGFACE_ENDPOINT_API = "https://api.endpoints.huggingface.cloud/v2/endpoint/
 
 class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel):
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
+        """
+        Invoke text embedding model
+
+        :param model: model name
+        :param credentials: model credentials
+        :param texts: texts to embed
+        :param user: unique user id
+        :param input_type: input type
+        :return: embeddings result
+        """
         client = InferenceClient(token=credentials["huggingfacehub_api_token"])
 
         execute_model = model
@@ -121,7 +137,7 @@ class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel
 
             valid_tasks = "feature-extraction"
             if model_info.pipeline_tag not in valid_tasks:
-                raise ValueError(f"Model {model_name} is not a valid task, " f"must be one of {valid_tasks}.")
+                raise ValueError(f"Model {model_name} is not a valid task, must be one of {valid_tasks}.")
         except Exception as e:
             raise CredentialsValidateFailedError(f"{str(e)}")
 

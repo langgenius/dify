@@ -1,4 +1,5 @@
 import json
+import os
 from functools import wraps
 
 from flask import abort, request
@@ -6,8 +7,11 @@ from flask_login import current_user
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
+from models.model import DifySetup
 from services.feature_service import FeatureService
 from services.operation_service import OperationService
+
+from .error import NotInitValidateError, NotSetupError
 
 
 def account_initialization_required(view):
@@ -64,7 +68,8 @@ def cloud_edition_billing_resource_check(resource: str):
                 elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
                     abort(403, "The capacity of the vector space has reached the limit of your subscription.")
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
-                    # The api of file upload is used in the multiple places, so we need to check the source of the request from datasets
+                    # The api of file upload is used in the multiple places,
+                    # so we need to check the source of the request from datasets
                     source = request.args.get("source")
                     if source == "datasets":
                         abort(403, "The number of documents has reached the limit of your subscription.")
@@ -120,6 +125,20 @@ def cloud_utm_record(view):
                     OperationService.record_utm(current_user.current_tenant_id, utm_info)
         except Exception as e:
             pass
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def setup_required(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        # check setup
+        if dify_config.EDITION == "SELF_HOSTED" and os.environ.get("INIT_PASSWORD") and not DifySetup.query.first():
+            raise NotInitValidateError()
+        elif dify_config.EDITION == "SELF_HOSTED" and not DifySetup.query.first():
+            raise NotSetupError()
+
         return view(*args, **kwargs)
 
     return decorated

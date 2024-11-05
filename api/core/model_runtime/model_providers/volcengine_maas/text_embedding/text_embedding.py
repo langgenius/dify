@@ -2,6 +2,7 @@ import time
 from decimal import Decimal
 from typing import Optional
 
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -28,7 +29,7 @@ from core.model_runtime.model_providers.volcengine_maas.legacy.errors import (
     AuthErrors,
     BadRequestErrors,
     ConnectionErrors,
-    MaasException,
+    MaasError,
     RateLimitErrors,
     ServerUnavailableErrors,
 )
@@ -41,7 +42,12 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
     """
 
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
@@ -50,6 +56,7 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
         :param credentials: model credentials
         :param texts: texts to embed
         :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
         if ArkClientV3.is_legacy(credentials):
@@ -111,7 +118,7 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
     def _validate_credentials_v2(self, model: str, credentials: dict) -> None:
         try:
             self._invoke(model=model, credentials=credentials, texts=["ping"])
-        except MaasException as e:
+        except MaasError as e:
             raise CredentialsValidateFailedError(e.message)
 
     def _validate_credentials_v3(self, model: str, credentials: dict) -> None:

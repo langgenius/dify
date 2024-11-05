@@ -48,16 +48,17 @@ class MessageListApi(Resource):
         "tool_input": fields.String,
         "created_at": TimestampField,
         "observation": fields.String,
-        "message_files": fields.List(fields.String, attribute="files"),
+        "message_files": fields.List(fields.Nested(message_file_fields)),
     }
 
     message_fields = {
         "id": fields.String,
         "conversation_id": fields.String,
+        "parent_message_id": fields.String,
         "inputs": fields.Raw,
         "query": fields.String,
         "answer": fields.String(attribute="re_sign_file_url_answer"),
-        "message_files": fields.List(fields.Nested(message_file_fields), attribute="files"),
+        "message_files": fields.List(fields.Nested(message_file_fields)),
         "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
         "retriever_resources": fields.List(fields.Nested(retriever_resource_fields)),
         "created_at": TimestampField,
@@ -76,7 +77,7 @@ class MessageListApi(Resource):
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -117,7 +118,7 @@ class MessageSuggestedApi(Resource):
     def get(self, app_model: App, end_user: EndUser, message_id):
         message_id = str(message_id)
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         try:

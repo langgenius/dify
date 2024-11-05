@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import cast
+from typing import Optional, cast
 
 from httpx import Timeout
 from openai import (
@@ -212,7 +212,7 @@ class LocalAILanguageModel(LargeLanguageModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(f"Invalid credentials {str(ex)}")
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         completion_model = None
         if credentials["completion_type"] == "chat_completion":
             completion_model = LLMMode.CHAT.value
@@ -511,7 +511,7 @@ class LocalAILanguageModel(LargeLanguageModel):
             delta = chunk.choices[0]
 
             # transform assistant message to prompt message
-            assistant_prompt_message = AssistantPromptMessage(content=delta.text if delta.text else "", tool_calls=[])
+            assistant_prompt_message = AssistantPromptMessage(content=delta.text or "", tool_calls=[])
 
             if delta.finish_reason is not None:
                 # temp_assistant_prompt_message is used to calculate usage
@@ -578,11 +578,11 @@ class LocalAILanguageModel(LargeLanguageModel):
             if delta.delta.function_call:
                 function_calls = [delta.delta.function_call]
 
-            assistant_message_tool_calls = self._extract_response_tool_calls(function_calls if function_calls else [])
+            assistant_message_tool_calls = self._extract_response_tool_calls(function_calls or [])
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
-                content=delta.delta.content if delta.delta.content else "", tool_calls=assistant_message_tool_calls
+                content=delta.delta.content or "", tool_calls=assistant_message_tool_calls
             )
 
             if delta.finish_reason is not None:

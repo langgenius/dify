@@ -23,7 +23,7 @@ def invoke_error_mapping() -> dict[type[InvokeError], list[type[Exception]]]:
         InvokeRateLimitError: [RateLimitReachedError],
         InvokeAuthorizationError: [
             InvalidAuthenticationError,
-            InsufficientAccountBalance,
+            InsufficientAccountBalanceError,
             InvalidAPIKeyError,
         ],
         InvokeBadRequestError: [BadRequestError, KeyError],
@@ -42,7 +42,7 @@ class RateLimitReachedError(Exception):
     pass
 
 
-class InsufficientAccountBalance(Exception):
+class InsufficientAccountBalanceError(Exception):
     pass
 
 

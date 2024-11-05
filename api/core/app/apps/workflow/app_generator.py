@@ -3,7 +3,7 @@ import logging
 import os
 import threading
 import uuid
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Literal, Optional, Union, overload
 
 from flask import Flask, current_app
@@ -12,7 +12,7 @@ from pydantic import ValidationError
 import contexts
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError, PublishFrom
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.apps.workflow.app_runner import WorkflowAppRunner
@@ -20,13 +20,12 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
-from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
-from models.account import Account
-from models.model import App, EndUser
-from models.workflow import Workflow
+from factories import file_factory
+from models import Account, App, EndUser, Workflow
+from models.enums import CreatedByRole
 
 logger = logging.getLogger(__name__)
 
@@ -63,53 +62,52 @@ class WorkflowAppGenerator(BaseAppGenerator):
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: dict,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
         stream: bool = True,
         call_depth: int = 0,
         workflow_thread_pool_id: Optional[str] = None,
     ):
-        """
-        Generate App response.
+        files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
-        :param app_model: App
-        :param workflow: Workflow
-        :param user: account or end user
-        :param args: request args
-        :param invoke_from: invoke from source
-        :param stream: is stream
-        :param call_depth: call depth
-        :param workflow_thread_pool_id: workflow thread pool id
-        """
-        inputs = args["inputs"]
+        role = CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER
 
         # parse files
-        files = args["files"] if args.get("files") else []
-        message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
         file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
-        if file_extra_config:
-            file_objs = message_file_parser.validate_and_transform_files_arg(files, file_extra_config, user)
-        else:
-            file_objs = []
+        system_files = file_factory.build_from_mappings(
+            mappings=files,
+            tenant_id=app_model.tenant_id,
+            user_id=user.id,
+            role=role,
+            config=file_extra_config,
+        )
 
         # convert to app config
-        app_config = WorkflowAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
+        app_config = WorkflowAppConfigManager.get_app_config(
+            app_model=app_model,
+            workflow=workflow,
+        )
 
         # get tracing instance
-        user_id = user.id if isinstance(user, Account) else user.session_id
-        trace_manager = TraceQueueManager(app_model.id, user_id)
+        trace_manager = TraceQueueManager(
+            app_id=app_model.id,
+            user_id=user.id if isinstance(user, Account) else user.session_id,
+        )
 
+        inputs: Mapping[str, Any] = args["inputs"]
+        workflow_run_id = str(uuid.uuid4())
         # init application generate entity
         application_generate_entity = WorkflowAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
-            inputs=self._get_cleaned_inputs(inputs, app_config),
-            files=file_objs,
+            inputs=self._prepare_user_inputs(user_inputs=inputs, app_config=app_config, user_id=user.id, role=role),
+            files=system_files,
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,
             call_depth=call_depth,
             trace_manager=trace_manager,
+            workflow_run_id=workflow_run_id,
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
 
@@ -253,7 +251,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 )
 
                 runner.run()
-            except GenerateTaskStoppedException:
+            except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
                 queue_manager.publish_error(
@@ -302,7 +300,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             return generate_task_pipeline.process()
         except ValueError as e:
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise GenerateTaskStoppedException()
+                raise GenerateTaskStoppedError()
             else:
                 logger.exception(e)
                 raise e

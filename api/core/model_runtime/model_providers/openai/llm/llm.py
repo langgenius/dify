@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Generator
-from typing import Optional, Union, cast
+from typing import Any, Optional, Union, cast
 
 import tiktoken
 from openai import OpenAI, Stream
@@ -11,9 +11,9 @@ from openai.types.chat.chat_completion_chunk import ChoiceDeltaFunctionCall, Cho
 from openai.types.chat.chat_completion_message import FunctionCall
 
 from core.model_runtime.callbacks.base_callback import Callback
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (
+from core.model_runtime.entities import (
     AssistantPromptMessage,
+    AudioPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
@@ -23,6 +23,7 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, I18nObject, ModelType, PriceConfig
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -37,7 +38,7 @@ if you are not sure about the structure.
 <instructions>
 {{instructions}}
 </instructions>
-"""
+"""  # noqa: E501
 
 
 class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
@@ -111,7 +112,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         stop: Optional[list[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
-        callbacks: list[Callback] = None,
+        callbacks: Optional[list[Callback]] = None,
     ) -> Union[LLMResult, Generator]:
         """
         Code block mode wrapper for invoking large language model
@@ -125,7 +126,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         model_mode = self.get_model_mode(base_model, credentials)
 
         # transform response format
-        if "response_format" in model_parameters and model_parameters["response_format"] in ["JSON", "XML"]:
+        if "response_format" in model_parameters and model_parameters["response_format"] in {"JSON", "XML"}:
             stop = stop or []
             if model_mode == LLMMode.CHAT:
                 # chat model
@@ -508,7 +509,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 continue
 
             # transform assistant message to prompt message
-            text = delta.text if delta.text else ""
+            text = delta.text or ""
             assistant_prompt_message = AssistantPromptMessage(content=text)
 
             full_text += text
@@ -613,9 +614,23 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         # clear illegal prompt messages
         prompt_messages = self._clear_illegal_prompt_messages(model, prompt_messages)
 
+        # o1 compatibility
+        block_as_stream = False
+        if model.startswith("o1"):
+            if stream:
+                block_as_stream = True
+                stream = False
+
+                if "stream_options" in extra_model_kwargs:
+                    del extra_model_kwargs["stream_options"]
+
+            if "stop" in extra_model_kwargs:
+                del extra_model_kwargs["stop"]
+
         # chat model
+        messages: Any = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
         response = client.chat.completions.create(
-            messages=[self._convert_prompt_message_to_dict(m) for m in prompt_messages],
+            messages=messages,
             model=model,
             stream=stream,
             **model_parameters,
@@ -625,7 +640,47 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         if stream:
             return self._handle_chat_generate_stream_response(model, credentials, response, prompt_messages, tools)
 
-        return self._handle_chat_generate_response(model, credentials, response, prompt_messages, tools)
+        block_result = self._handle_chat_generate_response(model, credentials, response, prompt_messages, tools)
+
+        if block_as_stream:
+            return self._handle_chat_block_as_stream_response(block_result, prompt_messages, stop)
+
+        return block_result
+
+    def _handle_chat_block_as_stream_response(
+        self,
+        block_result: LLMResult,
+        prompt_messages: list[PromptMessage],
+        stop: Optional[list[str]] = None,
+    ) -> Generator[LLMResultChunk, None, None]:
+        """
+        Handle llm chat response
+
+        :param model: model name
+        :param credentials: credentials
+        :param response: response
+        :param prompt_messages: prompt messages
+        :param tools: tools for tool calling
+        :param stop: stop words
+        :return: llm response chunk generator
+        """
+        text = block_result.message.content
+        text = cast(str, text)
+
+        if stop:
+            text = self.enforce_stop_tokens(text, stop)
+
+        yield LLMResultChunk(
+            model=block_result.model,
+            prompt_messages=prompt_messages,
+            system_fingerprint=block_result.system_fingerprint,
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content=text),
+                finish_reason="stop",
+                usage=block_result.usage,
+            ),
+        )
 
     def _handle_chat_generate_response(
         self,
@@ -760,11 +815,9 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 final_tool_calls.extend(tool_calls)
 
             # transform assistant message to prompt message
-            assistant_prompt_message = AssistantPromptMessage(
-                content=delta.delta.content if delta.delta.content else "", tool_calls=tool_calls
-            )
+            assistant_prompt_message = AssistantPromptMessage(content=delta.delta.content or "", tool_calls=tool_calls)
 
-            full_assistant_content += delta.delta.content if delta.delta.content else ""
+            full_assistant_content += delta.delta.content or ""
 
             if has_finish_reason:
                 final_chunk = LLMResultChunk(
@@ -875,6 +928,20 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                                 ]
                             )
 
+        if model.startswith("o1"):
+            system_message_count = len([m for m in prompt_messages if isinstance(m, SystemPromptMessage)])
+            if system_message_count > 0:
+                new_prompt_messages = []
+                for prompt_message in prompt_messages:
+                    if isinstance(prompt_message, SystemPromptMessage):
+                        prompt_message = UserPromptMessage(
+                            content=prompt_message.content,
+                            name=prompt_message.name,
+                        )
+
+                    new_prompt_messages.append(prompt_message)
+                prompt_messages = new_prompt_messages
+
         return prompt_messages
 
     def _convert_prompt_message_to_dict(self, message: PromptMessage) -> dict:
@@ -882,21 +949,27 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         Convert PromptMessage to dict for OpenAI API
         """
         if isinstance(message, UserPromptMessage):
-            message = cast(UserPromptMessage, message)
             if isinstance(message.content, str):
                 message_dict = {"role": "user", "content": message.content}
-            else:
+            elif isinstance(message.content, list):
                 sub_messages = []
                 for message_content in message.content:
-                    if message_content.type == PromptMessageContentType.TEXT:
-                        message_content = cast(TextPromptMessageContent, message_content)
+                    if isinstance(message_content, TextPromptMessageContent):
                         sub_message_dict = {"type": "text", "text": message_content.data}
                         sub_messages.append(sub_message_dict)
-                    elif message_content.type == PromptMessageContentType.IMAGE:
-                        message_content = cast(ImagePromptMessageContent, message_content)
+                    elif isinstance(message_content, ImagePromptMessageContent):
                         sub_message_dict = {
                             "type": "image_url",
                             "image_url": {"url": message_content.data, "detail": message_content.detail.value},
+                        }
+                        sub_messages.append(sub_message_dict)
+                    elif isinstance(message_content, AudioPromptMessageContent):
+                        sub_message_dict = {
+                            "type": "input_audio",
+                            "input_audio": {
+                                "data": message_content.data,
+                                "format": message_content.format,
+                            },
                         }
                         sub_messages.append(sub_message_dict)
 
@@ -962,7 +1035,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             model = model.split(":")[1]
 
         # Currently, we can use gpt4o to calculate chatgpt-4o-latest's token.
-        if model == "chatgpt-4o-latest":
+        if model == "chatgpt-4o-latest" or model.startswith("o1"):
             model = "gpt-4o"
 
         try:
@@ -977,7 +1050,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             tokens_per_message = 4
             # if there's a name, the role is omitted
             tokens_per_name = -1
-        elif model.startswith("gpt-3.5-turbo") or model.startswith("gpt-4"):
+        elif model.startswith("gpt-3.5-turbo") or model.startswith("gpt-4") or model.startswith("o1"):
             tokens_per_message = 3
             tokens_per_name = 1
         else:

@@ -100,9 +100,9 @@ class MinimaxChatCompletion:
         return self._handle_chat_generate_response(response)
 
     def _handle_error(self, code: int, msg: str):
-        if code == 1000 or code == 1001 or code == 1013 or code == 1027:
+        if code in {1000, 1001, 1013, 1027}:
             raise InternalServerError(msg)
-        elif code == 1002 or code == 1039:
+        elif code in {1002, 1039}:
             raise RateLimitReachedError(msg)
         elif code == 1004:
             raise InvalidAuthenticationError(msg)

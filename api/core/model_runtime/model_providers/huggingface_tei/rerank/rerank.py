@@ -49,8 +49,7 @@ class HuggingfaceTeiRerankModel(RerankModel):
             return RerankResult(model=model, docs=[])
         server_url = credentials["server_url"]
 
-        if server_url.endswith("/"):
-            server_url = server_url[:-1]
+        server_url = server_url.removesuffix("/")
 
         try:
             results = TeiHelper.invoke_rerank(server_url, query, docs)
@@ -119,7 +118,7 @@ class HuggingfaceTeiRerankModel(RerankModel):
             InvokeBadRequestError: [InvokeBadRequestError, KeyError, ValueError],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

@@ -63,7 +63,6 @@ const AppPublisher = ({
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
   const appDetail = useAppStore(state => state.appDetail)
-  const [publishedTime, setPublishedTime] = useState<number | undefined>(publishedAt)
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
   const appURL = `${appBaseURL}/${appMode}/${accessToken}`
@@ -77,7 +76,6 @@ const AppPublisher = ({
     try {
       await onPublish?.(modelAndParameter)
       setPublished(true)
-      setPublishedTime(Date.now())
     }
     catch (e) {
       setPublished(false)
@@ -133,13 +131,13 @@ const AppPublisher = ({
         <div className='w-[336px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl'>
           <div className='p-4 pt-3'>
             <div className='flex items-center h-6 text-xs font-medium text-gray-500 uppercase'>
-              {publishedTime ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}
+              {publishedAt ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}
             </div>
-            {publishedTime
+            {publishedAt
               ? (
                 <div className='flex justify-between items-center h-[18px]'>
                   <div className='flex items-center mt-[3px] mb-[3px] leading-[18px] text-[13px] font-medium text-gray-700'>
-                    {t('workflow.common.publishedAt')} {formatTimeFromNow(publishedTime)}
+                    {t('workflow.common.publishedAt')} {formatTimeFromNow(publishedAt)}
                   </div>
                   <Button
                     className={`
@@ -177,18 +175,18 @@ const AppPublisher = ({
                   {
                     published
                       ? t('workflow.common.published')
-                      : publishedTime ? t('workflow.common.update') : t('workflow.common.publish')
+                      : publishedAt ? t('workflow.common.update') : t('workflow.common.publish')
                   }
                 </Button>
               )
             }
           </div>
           <div className='p-4 pt-3 border-t-[0.5px] border-t-black/5'>
-            <SuggestedAction disabled={!publishedTime} link={appURL} icon={<PlayCircle />}>{t('workflow.common.runApp')}</SuggestedAction>
+            <SuggestedAction disabled={!publishedAt} link={appURL} icon={<PlayCircle />}>{t('workflow.common.runApp')}</SuggestedAction>
             {appDetail?.mode === 'workflow'
               ? (
                 <SuggestedAction
-                  disabled={!publishedTime}
+                  disabled={!publishedAt}
                   link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
                   icon={<LeftIndent02 className='w-4 h-4' />}
                 >
@@ -201,16 +199,16 @@ const AppPublisher = ({
                     setEmbeddingModalOpen(true)
                     handleTrigger()
                   }}
-                  disabled={!publishedTime}
+                  disabled={!publishedAt}
                   icon={<CodeBrowser className='w-4 h-4' />}
                 >
                   {t('workflow.common.embedIntoSite')}
                 </SuggestedAction>
               )}
-            <SuggestedAction disabled={!publishedTime} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
+            <SuggestedAction disabled={!publishedAt} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
             {appDetail?.mode === 'workflow' && (
               <WorkflowToolConfigureButton
-                disabled={!publishedTime}
+                disabled={!publishedAt}
                 published={!!toolPublished}
                 detailNeedUpdate={!!toolPublished && published}
                 workflowAppId={appDetail?.id}

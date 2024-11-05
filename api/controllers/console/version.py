@@ -3,6 +3,7 @@ import logging
 
 import requests
 from flask_restful import Resource, reqparse
+from packaging import version
 
 from configs import dify_config
 
@@ -38,11 +39,24 @@ class VersionApi(Resource):
             return result
 
         content = json.loads(response.content)
-        result["version"] = content["version"]
-        result["release_date"] = content["releaseDate"]
-        result["release_notes"] = content["releaseNotes"]
-        result["can_auto_update"] = content["canAutoUpdate"]
+        if _has_new_version(latest_version=content["version"], current_version=f"{args.get('current_version')}"):
+            result["version"] = content["version"]
+            result["release_date"] = content["releaseDate"]
+            result["release_notes"] = content["releaseNotes"]
+            result["can_auto_update"] = content["canAutoUpdate"]
         return result
+
+
+def _has_new_version(*, latest_version: str, current_version: str) -> bool:
+    try:
+        latest = version.parse(latest_version)
+        current = version.parse(current_version)
+
+        # Compare versions
+        return latest > current
+    except version.InvalidVersion:
+        logging.warning(f"Invalid version format: latest={latest_version}, current={current_version}")
+        return False
 
 
 api.add_resource(VersionApi, "/version")

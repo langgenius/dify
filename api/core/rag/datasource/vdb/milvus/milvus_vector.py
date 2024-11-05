@@ -7,11 +7,11 @@ from pymilvus import MilvusClient, MilvusException
 from pymilvus.milvus_client import IndexParams
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -28,6 +28,7 @@ class MilvusConfig(BaseModel):
     database: str = "default"
 
     @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values.get("uri"):
             raise ValueError("config MILVUS_URI is required")
@@ -140,7 +141,7 @@ class MilvusVector(BaseVector):
         for result in results[0]:
             metadata = result["entity"].get(Field.METADATA_KEY.value)
             metadata["score"] = result["distance"]
-            score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if result["distance"] > score_threshold:
                 doc = Document(page_content=result["entity"].get(Field.CONTENT_KEY.value), metadata=metadata)
                 docs.append(doc)

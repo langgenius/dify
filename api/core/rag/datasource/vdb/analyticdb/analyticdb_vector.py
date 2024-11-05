@@ -9,10 +9,10 @@ _import_err_msg = (
 )
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -40,19 +40,8 @@ class AnalyticdbConfig(BaseModel):
 
 
 class AnalyticdbVector(BaseVector):
-    _instance = None
-    _init = False
-
-    def __new__(cls, *args, **kwargs):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
     def __init__(self, collection_name: str, config: AnalyticdbConfig):
-        # collection_name must be updated every time
         self._collection_name = collection_name.lower()
-        if AnalyticdbVector._init:
-            return
         try:
             from alibabacloud_gpdb20160503.client import Client
             from alibabacloud_tea_openapi import models as open_api_models
@@ -62,7 +51,6 @@ class AnalyticdbVector(BaseVector):
         self._client_config = open_api_models.Config(user_agent="dify", **config.to_analyticdb_client_params())
         self._client = Client(self._client_config)
         self._initialize()
-        AnalyticdbVector._init = True
 
     def _initialize(self) -> None:
         cache_key = f"vector_indexing_{self.config.instance_id}"
@@ -239,7 +227,7 @@ class AnalyticdbVector(BaseVector):
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 
-        score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
+        score_threshold = kwargs.get("score_threshold") or 0.0
         request = gpdb_20160503_models.QueryCollectionDataRequest(
             dbinstance_id=self.config.instance_id,
             region_id=self.config.region_id,
@@ -257,17 +245,20 @@ class AnalyticdbVector(BaseVector):
         documents = []
         for match in response.body.matches.match:
             if match.score > score_threshold:
+                metadata = json.loads(match.metadata.get("metadata_"))
+                metadata["score"] = match.score
                 doc = Document(
                     page_content=match.metadata.get("page_content"),
-                    metadata=json.loads(match.metadata.get("metadata_")),
+                    metadata=metadata,
                 )
                 documents.append(doc)
+        documents = sorted(documents, key=lambda x: x.metadata["score"], reverse=True)
         return documents
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 
-        score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
         request = gpdb_20160503_models.QueryCollectionDataRequest(
             dbinstance_id=self.config.instance_id,
             region_id=self.config.region_id,
@@ -286,12 +277,14 @@ class AnalyticdbVector(BaseVector):
         for match in response.body.matches.match:
             if match.score > score_threshold:
                 metadata = json.loads(match.metadata.get("metadata_"))
+                metadata["score"] = match.score
                 doc = Document(
                     page_content=match.metadata.get("page_content"),
                     vector=match.metadata.get("vector"),
                     metadata=metadata,
                 )
                 documents.append(doc)
+        documents = sorted(documents, key=lambda x: x.metadata["score"], reverse=True)
         return documents
 
     def delete(self) -> None:

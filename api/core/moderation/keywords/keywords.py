@@ -18,8 +18,12 @@ class KeywordsModeration(Moderation):
         if not config.get("keywords"):
             raise ValueError("keywords is required")
 
-        if len(config.get("keywords")) > 1000:
-            raise ValueError("keywords length must be less than 1000")
+        if len(config.get("keywords")) > 10000:
+            raise ValueError("keywords length must be less than 10000")
+
+        keywords_row_len = config["keywords"].split("\n")
+        if len(keywords_row_len) > 100:
+            raise ValueError("the number of rows for the keywords must be less than 100")
 
     def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
         flagged = False
@@ -56,14 +60,7 @@ class KeywordsModeration(Moderation):
         )
 
     def _is_violated(self, inputs: dict, keywords_list: list) -> bool:
-        for value in inputs.values():
-            if self._check_keywords_in_value(keywords_list, value):
-                return True
+        return any(self._check_keywords_in_value(keywords_list, value) for value in inputs.values())
 
-        return False
-
-    def _check_keywords_in_value(self, keywords_list, value):
-        for keyword in keywords_list:
-            if keyword.lower() in value.lower():
-                return True
-        return False
+    def _check_keywords_in_value(self, keywords_list, value) -> bool:
+        return any(keyword.lower() in value.lower() for keyword in keywords_list)

@@ -8,7 +8,7 @@ from sqlalchemy import and_
 
 from core.app.app_config.entities import EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
-from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException
+from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
     AgentChatAppGenerateEntity,
@@ -26,7 +26,8 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.easy_ui_based_generate_task_pipeline import EasyUIBasedGenerateTaskPipeline
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from extensions.ext_database import db
-from models.account import Account
+from models import Account
+from models.enums import CreatedByRole
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
@@ -77,7 +78,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             return generate_task_pipeline.process()
         except ValueError as e:
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
-                raise GenerateTaskStoppedException()
+                raise GenerateTaskStoppedError()
             else:
                 logger.exception(e)
                 raise e
@@ -148,7 +149,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         # get from source
         end_user_id = None
         account_id = None
-        if application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
+        if application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
             from_source = "api"
             end_user_id = application_generate_entity.user_id
         else:
@@ -165,11 +166,11 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             model_provider = application_generate_entity.model_conf.provider
             model_id = application_generate_entity.model_conf.model
             override_model_configs = None
-            if app_config.app_model_config_from == EasyUIBasedAppModelConfigFrom.ARGS and app_config.app_mode in [
+            if app_config.app_model_config_from == EasyUIBasedAppModelConfigFrom.ARGS and app_config.app_mode in {
                 AppMode.AGENT_CHAT,
                 AppMode.CHAT,
                 AppMode.COMPLETION,
-            ]:
+            }:
                 override_model_configs = app_config.app_model_config_dict
 
         # get conversation introduction
@@ -218,6 +219,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             answer_tokens=0,
             answer_unit_price=0,
             answer_price_unit=0,
+            parent_message_id=getattr(application_generate_entity, "parent_message_id", None),
             provider_response_latency=0,
             total_price=0,
             currency="USD",
@@ -234,13 +236,13 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         for file in application_generate_entity.files:
             message_file = MessageFile(
                 message_id=message.id,
-                type=file.type.value,
-                transfer_method=file.transfer_method.value,
+                type=file.type,
+                transfer_method=file.transfer_method,
                 belongs_to="user",
-                url=file.url,
+                url=file.remote_url,
                 upload_file_id=file.related_id,
-                created_by_role=("account" if account_id else "end_user"),
-                created_by=account_id or end_user_id,
+                created_by_role=(CreatedByRole.ACCOUNT if account_id else CreatedByRole.END_USER),
+                created_by=account_id or end_user_id or "",
             )
             db.session.add(message_file)
             db.session.commit()

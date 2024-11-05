@@ -38,6 +38,10 @@ const translation = {
     duplicate: 'Duplicate',
     rename: 'Rename',
     audioSourceUnavailable: 'AudioSource is unavailable',
+    copyImage: 'Copy Image',
+    zoomOut: 'Zoom Out',
+    zoomIn: 'Zoom In',
+    openInNewTab: 'Open in new tab',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
@@ -140,7 +144,7 @@ const translation = {
     logout: 'Log out',
   },
   settings: {
-    accountGroup: 'ACCOUNT',
+    accountGroup: 'GENERAL',
     workplaceGroup: 'WORKSPACE',
     account: 'My account',
     members: 'Members',
@@ -153,6 +157,9 @@ const translation = {
     apiBasedExtension: 'API Extension',
   },
   account: {
+    account: 'Account',
+    myAccount: 'My Account',
+    studio: 'Dify Studio',
     avatar: 'Avatar',
     name: 'Name',
     email: 'Email',
@@ -500,6 +507,7 @@ const translation = {
       vectorHash: 'Vector hash:',
       hitScore: 'Retrieval Score:',
     },
+    inputPlaceholder: 'Talk to Bot',
   },
   promptEditor: {
     placeholder: 'Write your prompt word here, enter \'{\' to insert a variable, enter \'/\' to insert a prompt content block',
@@ -557,6 +565,16 @@ const translation = {
     pasteImageLinkInputPlaceholder: 'Paste image link here',
     pasteImageLinkInvalid: 'Invalid image link',
     imageUpload: 'Image Upload',
+  },
+  fileUploader: {
+    uploadFromComputer: 'Local upload',
+    pasteFileLink: 'Paste file link',
+    pasteFileLinkInputPlaceholder: 'Enter URL...',
+    uploadFromComputerReadError: 'File reading failed, please try again.',
+    uploadFromComputerUploadError: 'File upload failed, please upload again.',
+    uploadFromComputerLimit: 'Upload {{type}} cannot exceed {{size}}',
+    pasteFileLinkInvalid: 'Invalid file link',
+    fileExtensionNotSupport: 'File extension not supported',
   },
   tag: {
     placeholder: 'All Tags',

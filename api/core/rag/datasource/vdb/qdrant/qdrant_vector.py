@@ -20,11 +20,11 @@ from qdrant_client.http.models import (
 from qdrant_client.local.qdrant_local import QdrantLocal
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -333,13 +333,13 @@ class QdrantVector(BaseVector):
             limit=kwargs.get("top_k", 4),
             with_payload=True,
             with_vectors=True,
-            score_threshold=kwargs.get("score_threshold", 0.0),
+            score_threshold=float(kwargs.get("score_threshold") or 0.0),
         )
         docs = []
         for result in results:
             metadata = result.payload.get(Field.METADATA_KEY.value) or {}
             # duplicate check score threshold
-            score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if result.score > score_threshold:
                 metadata["score"] = result.score
                 doc = Document(
@@ -428,14 +428,13 @@ class QdrantVectorFactory(AbstractVectorFactory):
         if not dataset.index_struct_dict:
             dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.QDRANT, collection_name))
 
-        config = current_app.config
         return QdrantVector(
             collection_name=collection_name,
             group_id=dataset.id,
             config=QdrantConfig(
                 endpoint=dify_config.QDRANT_URL,
                 api_key=dify_config.QDRANT_API_KEY,
-                root_path=config.root_path,
+                root_path=current_app.config.root_path,
                 timeout=dify_config.QDRANT_CLIENT_TIMEOUT,
                 grpc_port=dify_config.QDRANT_GRPC_PORT,
                 prefer_grpc=dify_config.QDRANT_GRPC_ENABLED,

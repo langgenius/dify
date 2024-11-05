@@ -21,7 +21,7 @@ class AudioTrunk:
         self.status = status
 
 
-def _invoiceTTS(text_content: str, model_instance, tenant_id: str, voice: str):
+def _invoice_tts(text_content: str, model_instance, tenant_id: str, voice: str):
     if not text_content or text_content.isspace():
         return
     return model_instance.invoke_tts(
@@ -81,7 +81,7 @@ class AppGeneratorTTSPublisher:
                 if message is None:
                     if self.msg_text and len(self.msg_text.strip()) > 0:
                         futures_result = self.executor.submit(
-                            _invoiceTTS, self.msg_text, self.model_instance, self.tenant_id, self.voice
+                            _invoice_tts, self.msg_text, self.model_instance, self.tenant_id, self.voice
                         )
                         future_queue.put(futures_result)
                     break
@@ -97,7 +97,7 @@ class AppGeneratorTTSPublisher:
                     self.MAX_SENTENCE += 1
                     text_content = "".join(sentence_arr)
                     futures_result = self.executor.submit(
-                        _invoiceTTS, text_content, self.model_instance, self.tenant_id, self.voice
+                        _invoice_tts, text_content, self.model_instance, self.tenant_id, self.voice
                     )
                     future_queue.put(futures_result)
                     if text_tmp:
@@ -110,7 +110,7 @@ class AppGeneratorTTSPublisher:
                 break
         future_queue.put(None)
 
-    def checkAndGetAudio(self) -> AudioTrunk | None:
+    def check_and_get_audio(self) -> AudioTrunk | None:
         try:
             if self._last_audio_event and self._last_audio_event.status == "finish":
                 if self.executor:

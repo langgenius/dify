@@ -35,7 +35,7 @@ class NovitaAiModelQueryTool(BuiltinTool):
             models_data=[],
             headers=headers,
             params=params,
-            recursive=False if result_type == "first sd_name" or result_type == "first name sd_name pair" else True,
+            recursive=result_type not in {"first sd_name", "first name sd_name pair"},
         )
 
         result_str = ""

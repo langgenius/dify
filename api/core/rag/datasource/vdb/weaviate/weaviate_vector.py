@@ -7,11 +7,11 @@ import weaviate
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -23,6 +23,7 @@ class WeaviateConfig(BaseModel):
     batch_size: int = 100
 
     @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["endpoint"]:
             raise ValueError("config WEAVIATE_ENDPOINT is required")
@@ -204,7 +205,7 @@ class WeaviateVector(BaseVector):
 
         docs = []
         for doc, score in docs_and_scores:
-            score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             # check score threshold
             if score > score_threshold:
                 doc.metadata["score"] = score
@@ -234,7 +235,7 @@ class WeaviateVector(BaseVector):
             query_obj = query_obj.with_where(kwargs.get("where_filter"))
         query_obj = query_obj.with_additional(["vector"])
         properties = ["text"]
-        result = query_obj.with_bm25(query=query, properties=properties).with_limit(kwargs.get("top_k", 2)).do()
+        result = query_obj.with_bm25(query=query, properties=properties).with_limit(kwargs.get("top_k", 4)).do()
         if "errors" in result:
             raise ValueError(f"Error during query: {result['errors']}")
         docs = []

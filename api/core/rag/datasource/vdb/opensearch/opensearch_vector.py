@@ -9,11 +9,11 @@ from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -29,6 +29,7 @@ class OpenSearchConfig(BaseModel):
     secure: bool = False
 
     @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values.get("host"):
             raise ValueError("config OPENSEARCH_HOST is required")
@@ -169,7 +170,7 @@ class OpenSearchVector(BaseVector):
                 metadata = {}
 
             metadata["score"] = hit["_score"]
-            score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if hit["_score"] > score_threshold:
                 doc = Document(page_content=hit["_source"].get(Field.CONTENT_KEY.value), metadata=metadata)
                 docs.append(doc)

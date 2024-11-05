@@ -1,6 +1,7 @@
 import json
 import logging
 from collections.abc import Generator
+from typing import cast
 
 from tencentcloud.common import credential
 from tencentcloud.common.exception import TencentCloudSDKException
@@ -11,9 +12,12 @@ from tencentcloud.hunyuan.v20230901 import hunyuan_client, models
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    ImagePromptMessageContent,
     PromptMessage,
+    PromptMessageContentType,
     PromptMessageTool,
     SystemPromptMessage,
+    TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
 )
@@ -131,7 +135,8 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
                         {
                             "Role": message.role.value,
                             # fix set content = "" while tool_call request
-                            # fix [hunyuan] None, [TencentCloudSDKException] code:InvalidParameter message:Messages Content and Contents not allowed empty at the same time.
+                            # fix [hunyuan] None, [TencentCloudSDKException] code:InvalidParameter
+                            # message:Messages Content and Contents not allowed empty at the same time.
                             "Content": " ",  # message.content if (message.content is not None) else "",
                             "ToolCalls": dict_tool_calls,
                         }
@@ -142,6 +147,25 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
                 tool_execute_result = {"result": message.content}
                 content = json.dumps(tool_execute_result, ensure_ascii=False)
                 dict_list.append({"Role": message.role.value, "Content": content, "ToolCallId": message.tool_call_id})
+            elif isinstance(message, UserPromptMessage):
+                message = cast(UserPromptMessage, message)
+                if isinstance(message.content, str):
+                    dict_list.append({"Role": message.role.value, "Content": message.content})
+                else:
+                    sub_messages = []
+                    for message_content in message.content:
+                        if message_content.type == PromptMessageContentType.TEXT:
+                            message_content = cast(TextPromptMessageContent, message_content)
+                            sub_message_dict = {"Type": "text", "Text": message_content.data}
+                            sub_messages.append(sub_message_dict)
+                        elif message_content.type == PromptMessageContentType.IMAGE:
+                            message_content = cast(ImagePromptMessageContent, message_content)
+                            sub_message_dict = {
+                                "Type": "image_url",
+                                "ImageUrl": {"Url": message_content.data},
+                            }
+                            sub_messages.append(sub_message_dict)
+                    dict_list.append({"Role": message.role.value, "Contents": sub_messages})
             else:
                 dict_list.append({"Role": message.role.value, "Content": message.content})
         return dict_list

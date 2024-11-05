@@ -3,7 +3,7 @@ from typing import Any, Literal, Union
 from pydantic import BaseModel, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
-from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.nodes.base import BaseNodeData
 
 
 class ToolEntity(BaseModel):
@@ -20,7 +20,7 @@ class ToolEntity(BaseModel):
         if not isinstance(value, dict):
             raise ValueError("tool_configurations must be a dictionary")
 
-        for key in values.data.get("tool_configurations", {}).keys():
+        for key in values.data.get("tool_configurations", {}):
             value = values.data.get("tool_configurations", {}).get(key)
             if not isinstance(value, str | int | float | bool):
                 raise ValueError(f"{key} must be a string")
@@ -51,7 +51,4 @@ class ToolNodeData(BaseNodeData, ToolEntity):
                 raise ValueError("value must be a string, int, float, or bool")
             return typ
 
-    """
-    Tool Node Schema
-    """
     tool_parameters: dict[str, ToolInput]

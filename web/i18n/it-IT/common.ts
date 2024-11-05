@@ -38,6 +38,10 @@ const translation = {
     duplicate: 'Duplica',
     rename: 'Rinomina',
     audioSourceUnavailable: 'AudioSource non è disponibile',
+    zoomOut: 'Zoom indietro',
+    zoomIn: 'Ingrandisci',
+    openInNewTab: 'Apri in una nuova scheda',
+    copyImage: 'Copia immagine',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -179,6 +183,9 @@ const translation = {
       'Eliminando il tuo account cancellerai permanentemente tutti i tuoi dati e non sarà possibile recuperarli.',
     deleteConfirmTip:
       'Per confermare, invia il seguente messaggio dalla tua email registrata a ',
+    myAccount: 'Il mio account',
+    account: 'Conto',
+    studio: 'Dify Studio',
   },
   members: {
     team: 'Team',
@@ -527,6 +534,7 @@ const translation = {
       vectorHash: 'Hash del vettore:',
       hitScore: 'Punteggio di recupero:',
     },
+    inputPlaceholder: 'Parla con il bot',
   },
   promptEditor: {
     placeholder:
@@ -603,6 +611,16 @@ const translation = {
     deleteTip: 'Il tag è in uso, eliminarlo?',
     created: 'Tag creato con successo',
     failed: 'Creazione del tag fallita',
+  },
+  fileUploader: {
+    uploadFromComputer: 'Caricamento locale',
+    uploadFromComputerLimit: 'Il file di caricamento non può superare {{size}}',
+    pasteFileLinkInvalid: 'Collegamento file non valido',
+    fileExtensionNotSupport: 'Estensione del file non supportata',
+    pasteFileLinkInputPlaceholder: 'Inserisci l\'URL...',
+    uploadFromComputerUploadError: 'Caricamento del file non riuscito, carica di nuovo.',
+    pasteFileLink: 'Incolla il collegamento del file',
+    uploadFromComputerReadError: 'Lettura del file non riuscita, riprovare.',
   },
 }
 

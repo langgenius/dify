@@ -8,19 +8,18 @@ from flask_restful import Resource, fields, marshal_with, reqparse
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
-from controllers.console.setup import setup_required
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidInvitationCodeError,
     RepeatPasswordNotMatchError,
 )
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.helper import TimestampField, timezone
 from libs.login import login_required
-from models.account import AccountIntegrate, InvitationCode
+from models import AccountIntegrate, InvitationCode
 from services.account_service import AccountService
 from services.errors.account import CurrentPasswordIncorrectError as ServiceCurrentPasswordIncorrectError
 

@@ -82,7 +82,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         langsmith_run = LangSmithRunModel(
             file_list=trace_info.file_list,
             total_tokens=trace_info.total_tokens,
-            id=trace_info.workflow_app_log_id if trace_info.workflow_app_log_id else trace_info.workflow_run_id,
+            id=trace_info.workflow_app_log_id or trace_info.workflow_run_id,
             name=TraceTaskName.WORKFLOW_TRACE.value,
             inputs=trace_info.workflow_run_inputs,
             run_type=LangSmithRunType.tool,
@@ -94,32 +94,41 @@ class LangSmithDataTrace(BaseTraceInstance):
             },
             error=trace_info.error,
             tags=["workflow"],
-            parent_run_id=trace_info.message_id if trace_info.message_id else None,
+            parent_run_id=trace_info.message_id or None,
         )
 
         self.add_run(langsmith_run)
 
         # through workflow_run_id get all_nodes_execution
-        workflow_nodes_executions = (
-            db.session.query(
-                WorkflowNodeExecution.id,
-                WorkflowNodeExecution.tenant_id,
-                WorkflowNodeExecution.app_id,
-                WorkflowNodeExecution.title,
-                WorkflowNodeExecution.node_type,
-                WorkflowNodeExecution.status,
-                WorkflowNodeExecution.inputs,
-                WorkflowNodeExecution.outputs,
-                WorkflowNodeExecution.created_at,
-                WorkflowNodeExecution.elapsed_time,
-                WorkflowNodeExecution.process_data,
-                WorkflowNodeExecution.execution_metadata,
-            )
+        workflow_nodes_execution_id_records = (
+            db.session.query(WorkflowNodeExecution.id)
             .filter(WorkflowNodeExecution.workflow_run_id == trace_info.workflow_run_id)
             .all()
         )
 
-        for node_execution in workflow_nodes_executions:
+        for node_execution_id_record in workflow_nodes_execution_id_records:
+            node_execution = (
+                db.session.query(
+                    WorkflowNodeExecution.id,
+                    WorkflowNodeExecution.tenant_id,
+                    WorkflowNodeExecution.app_id,
+                    WorkflowNodeExecution.title,
+                    WorkflowNodeExecution.node_type,
+                    WorkflowNodeExecution.status,
+                    WorkflowNodeExecution.inputs,
+                    WorkflowNodeExecution.outputs,
+                    WorkflowNodeExecution.created_at,
+                    WorkflowNodeExecution.elapsed_time,
+                    WorkflowNodeExecution.process_data,
+                    WorkflowNodeExecution.execution_metadata,
+                )
+                .filter(WorkflowNodeExecution.id == node_execution_id_record.id)
+                .first()
+            )
+
+            if not node_execution:
+                continue
+
             node_execution_id = node_execution.id
             tenant_id = node_execution.tenant_id
             app_id = node_execution.app_id
@@ -133,7 +142,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             else:
                 inputs = json.loads(node_execution.inputs) if node_execution.inputs else {}
             outputs = json.loads(node_execution.outputs) if node_execution.outputs else {}
-            created_at = node_execution.created_at if node_execution.created_at else datetime.now()
+            created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
@@ -180,9 +189,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                 extra={
                     "metadata": metadata,
                 },
-                parent_run_id=trace_info.workflow_app_log_id
-                if trace_info.workflow_app_log_id
-                else trace_info.workflow_run_id,
+                parent_run_id=trace_info.workflow_app_log_id or trace_info.workflow_run_id,
                 tags=["node_execution"],
             )
 

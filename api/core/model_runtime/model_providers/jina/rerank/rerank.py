@@ -48,8 +48,7 @@ class JinaRerankModel(RerankModel):
             return RerankResult(model=model, docs=[])
 
         base_url = credentials.get("base_url", "https://api.jina.ai/v1")
-        if base_url.endswith("/"):
-            base_url = base_url[:-1]
+        base_url = base_url.removesuffix("/")
 
         try:
             response = httpx.post(
@@ -62,11 +61,19 @@ class JinaRerankModel(RerankModel):
 
             rerank_documents = []
             for result in results["results"]:
+                index = result["index"]
+                if "document" in result:
+                    text = result["document"]["text"]
+                else:
+                    # llama.cpp rerank maynot return original documents
+                    text = docs[index]
+
                 rerank_document = RerankDocument(
-                    index=result["index"],
-                    text=result["document"]["text"],
+                    index=index,
+                    text=text,
                     score=result["relevance_score"],
                 )
+
                 if score_threshold is None or result["relevance_score"] >= score_threshold:
                     rerank_documents.append(rerank_document)
 

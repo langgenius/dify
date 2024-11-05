@@ -72,7 +72,9 @@ class AIModel(ABC):
             if isinstance(error, tuple(model_errors)):
                 if invoke_error == InvokeAuthorizationError:
                     return invoke_error(
-                        description=f"[{provider_name}] Incorrect model credentials provided, please check and try again. "
+                        description=(
+                            f"[{provider_name}] Incorrect model credentials provided, please check and try again."
+                        )
                     )
 
                 return invoke_error(description=f"[{provider_name}] {invoke_error.description}, {str(error)}")
@@ -198,7 +200,7 @@ class AIModel(ABC):
             except Exception as e:
                 model_schema_yaml_file_name = os.path.basename(model_schema_yaml_path).rstrip(".yaml")
                 raise Exception(
-                    f"Invalid model schema for {provider_name}.{model_type}.{model_schema_yaml_file_name}:" f" {str(e)}"
+                    f"Invalid model schema for {provider_name}.{model_type}.{model_schema_yaml_file_name}: {str(e)}"
                 )
 
             # cache model schema

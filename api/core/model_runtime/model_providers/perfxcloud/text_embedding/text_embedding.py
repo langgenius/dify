@@ -7,6 +7,7 @@ from urllib.parse import urljoin
 import numpy as np
 import requests
 
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -19,16 +20,21 @@ from core.model_runtime.entities.model_entities import (
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.model_providers.openai_api_compatible._common import _CommonOAI_API_Compat
+from core.model_runtime.model_providers.openai_api_compatible._common import _CommonOaiApiCompat
 
 
-class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
+class OAICompatEmbeddingModel(_CommonOaiApiCompat, TextEmbeddingModel):
     """
     Model class for an OpenAI API-compatible text embedding model.
     """
 
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
@@ -37,6 +43,7 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
         :param credentials: model credentials
         :param texts: texts to embed
         :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
 

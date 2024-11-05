@@ -1,4 +1,5 @@
 from collections.abc import Generator
+from typing import Optional
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
@@ -179,7 +180,7 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
                         index=0,
                         message=AssistantPromptMessage(content=message.content, tool_calls=[]),
                         usage=usage,
-                        finish_reason=message.stop_reason if message.stop_reason else None,
+                        finish_reason=message.stop_reason or None,
                     ),
                 )
             else:
@@ -189,11 +190,11 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
                     delta=LLMResultChunkDelta(
                         index=0,
                         message=AssistantPromptMessage(content=message.content, tool_calls=[]),
-                        finish_reason=message.stop_reason if message.stop_reason else None,
+                        finish_reason=message.stop_reason or None,
                     ),
                 )
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

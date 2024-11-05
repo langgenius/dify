@@ -1,4 +1,5 @@
 import json
+import operator
 from typing import Any, Union
 
 import boto3
@@ -71,7 +72,7 @@ class SageMakerReRankTool(BuiltinTool):
                 candidate_docs[idx]["score"] = scores[idx]
 
             line = 8
-            sorted_candidate_docs = sorted(candidate_docs, key=lambda x: x["score"], reverse=True)
+            sorted_candidate_docs = sorted(candidate_docs, key=operator.itemgetter("score"), reverse=True)
 
             line = 9
             return [self.create_json_message(res) for res in sorted_candidate_docs[: self.topk]]

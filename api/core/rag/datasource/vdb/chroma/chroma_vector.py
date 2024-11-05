@@ -6,10 +6,10 @@ from chromadb import QueryResult, Settings
 from pydantic import BaseModel
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -92,7 +92,7 @@ class ChromaVector(BaseVector):
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         collection = self._client.get_or_create_collection(self._collection_name)
         results: QueryResult = collection.query(query_embeddings=query_vector, n_results=kwargs.get("top_k", 4))
-        score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
         ids: list[str] = results["ids"][0]
         documents: list[str] = results["documents"][0]

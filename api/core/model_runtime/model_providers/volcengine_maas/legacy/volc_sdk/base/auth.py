@@ -1,5 +1,6 @@
 # coding : utf-8
 import datetime
+from itertools import starmap
 
 import pytz
 
@@ -48,7 +49,7 @@ class SignResult:
         self.authorization = ""
 
     def __str__(self):
-        return "\n".join(["{}:{}".format(*item) for item in self.__dict__.items()])
+        return "\n".join(list(starmap("{}:{}".format, self.__dict__.items())))
 
 
 class Credentials:
@@ -74,7 +75,7 @@ class Signer:
     def sign(request, credentials):
         if request.path == "":
             request.path = "/"
-        if request.method != "GET" and not ("Content-Type" in request.headers):
+        if request.method != "GET" and "Content-Type" not in request.headers:
             request.headers["Content-Type"] = "application/x-www-form-urlencoded; charset=utf-8"
 
         format_date = Signer.get_current_format_date()
@@ -95,7 +96,6 @@ class Signer:
         signing_key = Signer.get_signing_secret_key_v4(credentials.sk, md.date, md.region, md.service)
         sign = Util.to_hex(Util.hmac_sha256(signing_key, signing_str))
         request.headers["Authorization"] = Signer.build_auth_header_v4(sign, md, credentials)
-        return
 
     @staticmethod
     def hashed_canonical_request_v4(request, meta):
@@ -104,7 +104,7 @@ class Signer:
 
         signed_headers = {}
         for key in request.headers:
-            if key in ["Content-Type", "Content-Md5", "Host"] or key.startswith("X-"):
+            if key in {"Content-Type", "Content-Md5", "Host"} or key.startswith("X-"):
                 signed_headers[key.lower()] = request.headers[key]
 
         if "host" in signed_headers:

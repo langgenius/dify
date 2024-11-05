@@ -25,6 +25,7 @@ class SparkLLMClient:
             "spark-pro": {"version": "v3.1", "chat_domain": "generalv3"},
             "spark-pro-128k": {"version": "pro-128k", "chat_domain": "pro-128k"},
             "spark-max": {"version": "v3.5", "chat_domain": "generalv3.5"},
+            "spark-max-32k": {"version": "max-32k", "chat_domain": "max-32k"},
             "spark-4.0-ultra": {"version": "v4.0", "chat_domain": "4.0Ultra"},
         }
 
@@ -32,7 +33,7 @@ class SparkLLMClient:
 
         self.chat_domain = model_api_configs[model]["chat_domain"]
 
-        if model == "spark-pro-128k":
+        if model in ["spark-pro-128k", "spark-max-32k"]:
             self.api_base = f"wss://{domain}/{endpoint}/{api_version}"
         else:
             self.api_base = f"wss://{domain}/{api_version}/{endpoint}"
@@ -61,7 +62,10 @@ class SparkLLMClient:
 
         signature_sha_base64 = base64.b64encode(signature_sha).decode(encoding="utf-8")
 
-        authorization_origin = f'api_key="{api_key}", algorithm="hmac-sha256", headers="host date request-line", signature="{signature_sha_base64}"'
+        authorization_origin = (
+            f'api_key="{api_key}", algorithm="hmac-sha256", headers="host date request-line",'
+            f' signature="{signature_sha_base64}"'
+        )
 
         authorization = base64.b64encode(authorization_origin.encode("utf-8")).decode(encoding="utf-8")
 

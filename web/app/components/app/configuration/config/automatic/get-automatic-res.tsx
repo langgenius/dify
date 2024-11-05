@@ -18,20 +18,25 @@ import cn from 'classnames'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
 import { generateRule } from '@/service/debug'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
 import type { Model } from '@/types/app'
 import { AppType } from '@/types/app'
 import ConfigVar from '@/app/components/app/configuration/config-var'
-import OpeningStatement from '@/app/components/app/configuration/features/chat-group/opening-statement'
 import GroupName from '@/app/components/app/configuration/base/group-name'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
+import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
 
 // type
 import type { AutomaticRes } from '@/service/debug'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 export type IGetAutomaticResProps = {
   mode: AppType
@@ -67,7 +72,10 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   onFinished,
 }) => {
   const { t } = useTranslation()
-
+  const {
+    currentProvider,
+    currentModel,
+  } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
   const tryList = [
     {
       icon: RiTerminalBoxLine,
@@ -190,6 +198,19 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             <div className={`leading-[28px] text-lg font-bold ${s.textGradient}`}>{t('appDebug.generate.title')}</div>
             <div className='mt-1 text-[13px] font-normal text-gray-500'>{t('appDebug.generate.description')}</div>
           </div>
+          <div className='flex items-center mb-8'>
+            <ModelIcon
+              className='shrink-0 mr-1.5 '
+              provider={currentProvider}
+              modelName={currentModel?.model}
+            />
+            <ModelName
+              className='grow'
+              modelItem={currentModel!}
+              showMode
+              showFeatures
+            />
+          </div>
           <div >
             <div className='flex items-center'>
               <div className='mr-3 shrink-0 leading-[18px] text-xs font-semibold text-gray-500 uppercase'>{t('appDebug.generate.tryIt')}</div>
@@ -212,7 +233,11 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           <div className='mt-6'>
             <div className='text-[0px]'>
               <div className='mb-2 leading-5 text-sm font-medium text-gray-900'>{t('appDebug.generate.instruction')}</div>
-              <textarea className="w-full h-[200px] overflow-y-auto px-3 py-2 text-sm bg-gray-50 rounded-lg" placeholder={t('appDebug.generate.instructionPlaceHolder') as string} value={instruction} onChange={e => setInstruction(e.target.value)} />
+              <Textarea
+                className="h-[200px] resize-none"
+                placeholder={t('appDebug.generate.instructionPlaceHolder') as string}
+                value={instruction}
+                onChange={e => setInstruction(e.target.value)} />
             </div>
 
             <div className='mt-5 flex justify-end'>
@@ -257,10 +282,19 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   {(mode !== AppType.completion && res?.opening_statement) && (
                     <div className='mt-7'>
                       <GroupName name={t('appDebug.feature.groupChat.title')} />
-                      <OpeningStatement
-                        value={res?.opening_statement || ''}
-                        readonly
-                      />
+                      <div
+                        className='mb-1 p-3 border-t-[0.5px] border-l-[0.5px] border-effects-highlight rounded-xl bg-background-section-burn'
+                      >
+                        <div className='mb-2 flex items-center gap-2'>
+                          <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-blue-light-blue-light-500'>
+                            <LoveMessage className='w-4 h-4 text-text-primary-on-surface' />
+                          </div>
+                          <div className='grow flex items-center text-text-secondary system-sm-semibold'>
+                            {t('appDebug.feature.conversationOpener.title')}
+                          </div>
+                        </div>
+                        <div className='min-h-8 text-text-tertiary system-xs-regular'>{res.opening_statement}</div>
+                      </div>
                     </div>
                   )}
                 </>

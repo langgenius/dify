@@ -1,7 +1,7 @@
 from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, UserFrom
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import (
@@ -18,7 +18,8 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.event import RunCompletedEvent, RunStreamChunkEvent
-from core.workflow.nodes.llm.llm_node import LLMNode
+from core.workflow.nodes.llm.node import LLMNode
+from models.enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 
 
@@ -86,7 +87,7 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
                         {"role": "system", "text": "say hi"},
                         {"role": "user", "text": "{{#start.query#}}"},
                     ],
-                    "vision": {"configs": {"detail": "high"}, "enabled": False},
+                    "vision": {"configs": {"detail": "high", "variable_selector": []}, "enabled": False},
                 },
                 "id": "llm1",
             },
@@ -105,7 +106,7 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
                         {"role": "system", "text": "say bye"},
                         {"role": "user", "text": "{{#start.query#}}"},
                     ],
-                    "vision": {"configs": {"detail": "high"}, "enabled": False},
+                    "vision": {"configs": {"detail": "high", "variable_selector": []}, "enabled": False},
                 },
                 "id": "llm2",
             },
@@ -124,7 +125,7 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
                         {"role": "system", "text": "say good morning"},
                         {"role": "user", "text": "{{#start.query#}}"},
                     ],
-                    "vision": {"configs": {"detail": "high"}, "enabled": False},
+                    "vision": {"configs": {"detail": "high", "variable_selector": []}, "enabled": False},
                 },
                 "id": "llm3",
             },
@@ -210,7 +211,7 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
             assert not isinstance(item, NodeRunFailedEvent)
             assert not isinstance(item, GraphRunFailedEvent)
 
-            if isinstance(item, BaseNodeEvent) and item.route_node_state.node_id in ["llm2", "llm3", "end1", "end2"]:
+            if isinstance(item, BaseNodeEvent) and item.route_node_state.node_id in {"llm2", "llm3", "end1", "end2"}:
                 assert item.parallel_id is not None
 
         assert len(items) == 18
@@ -315,12 +316,12 @@ def test_run_parallel_in_chatflow(mock_close, mock_remove):
         assert not isinstance(item, NodeRunFailedEvent)
         assert not isinstance(item, GraphRunFailedEvent)
 
-        if isinstance(item, BaseNodeEvent) and item.route_node_state.node_id in [
+        if isinstance(item, BaseNodeEvent) and item.route_node_state.node_id in {
             "answer2",
             "answer3",
             "answer4",
             "answer5",
-        ]:
+        }:
             assert item.parallel_id is not None
 
     assert len(items) == 23

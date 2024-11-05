@@ -22,6 +22,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_runtime.errors.invoke import InvokeError
 from fields.conversation_fields import message_file_fields
 from fields.message_fields import agent_thought_fields
+from fields.raws import FilesContainedField
 from libs import helper
 from libs.helper import TimestampField, uuid_value
 from models.model import AppMode
@@ -57,10 +58,11 @@ class MessageListApi(WebApiResource):
     message_fields = {
         "id": fields.String,
         "conversation_id": fields.String,
-        "inputs": fields.Raw,
+        "parent_message_id": fields.String,
+        "inputs": FilesContainedField,
         "query": fields.String,
         "answer": fields.String(attribute="re_sign_file_url_answer"),
-        "message_files": fields.List(fields.Nested(message_file_fields), attribute="files"),
+        "message_files": fields.List(fields.Nested(message_file_fields)),
         "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
         "retriever_resources": fields.List(fields.Nested(retriever_resource_fields)),
         "created_at": TimestampField,
@@ -78,7 +80,7 @@ class MessageListApi(WebApiResource):
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model, end_user):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -89,7 +91,7 @@ class MessageListApi(WebApiResource):
 
         try:
             return MessageService.pagination_by_first_id(
-                app_model, end_user, args["conversation_id"], args["first_id"], args["limit"]
+                app_model, end_user, args["conversation_id"], args["first_id"], args["limit"], "desc"
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -160,7 +162,7 @@ class MessageMoreLikeThisApi(WebApiResource):
 class MessageSuggestedQuestionApi(WebApiResource):
     def get(self, app_model, end_user, message_id):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotCompletionAppError()
 
         message_id = str(message_id)

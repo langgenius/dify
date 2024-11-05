@@ -30,7 +30,7 @@ class ListWorksheetRecordsTool(BuiltinTool):
         elif not (host.startswith("http://") or host.startswith("https://")):
             return self.create_text_message("Invalid parameter Host Address")
         else:
-            host = f"{host[:-1] if host.endswith('/') else host}/api"
+            host = f"{host.removesuffix('/')}/api"
 
         url_fields = f"{host}/v2/open/worksheet/getWorksheetInfo"
         headers = {"Content-Type": "application/json"}
@@ -112,7 +112,10 @@ class ListWorksheetRecordsTool(BuiltinTool):
                     else:
                         result_text = f"Found {result['total']} rows in worksheet \"{worksheet_name}\"."
                         if result["total"] > 0:
-                            result_text += f" The following are {result['total'] if result['total'] < limit else limit} pieces of data presented in a table format:\n\n{table_header}"
+                            result_text += (
+                                f" The following are {min(limit, result['total'])}"
+                                f" pieces of data presented in a table format:\n\n{table_header}"
+                            )
                             for row in rows:
                                 result_values = []
                                 for f in fields:
@@ -142,7 +145,7 @@ class ListWorksheetRecordsTool(BuiltinTool):
         for control in controls:
             control_type_id = self.get_real_type_id(control)
             if (control_type_id in self._get_ignore_types()) or (
-                allow_fields and not control["controlId"] in allow_fields
+                allow_fields and control["controlId"] not in allow_fields
             ):
                 continue
             else:
@@ -180,11 +183,11 @@ class ListWorksheetRecordsTool(BuiltinTool):
         type_id = field.get("typeId")
         if type_id == 10:
             value = value if isinstance(value, str) else "、".join(value)
-        elif type_id in [28, 36]:
+        elif type_id in {28, 36}:
             value = field.get("options", {}).get(value, value)
-        elif type_id in [26, 27, 48, 14]:
+        elif type_id in {26, 27, 48, 14}:
             value = self.process_value(value)
-        elif type_id in [35, 29]:
+        elif type_id in {35, 29}:
             value = self.parse_cascade_or_associated(field, value)
         elif type_id == 40:
             value = self.parse_location(value)
@@ -201,9 +204,7 @@ class ListWorksheetRecordsTool(BuiltinTool):
             elif value.startswith('[{"organizeId"'):
                 value = json.loads(value)
                 value = "、".join([item["organizeName"] for item in value])
-            elif value.startswith('[{"file_id"'):
-                value = ""
-            elif value == "[]":
+            elif value.startswith('[{"file_id"') or value == "[]":
                 value = ""
         elif hasattr(value, "accountId"):
             value = value["fullname"]

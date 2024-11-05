@@ -5,9 +5,10 @@ from typing import Any, Optional
 from pydantic import BaseModel, field_validator
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
-from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType
+from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.workflow.nodes import NodeType
+from core.workflow.nodes.base import BaseNodeData
 
 
 class QueueEvent(str, Enum):
@@ -106,7 +107,8 @@ class QueueIterationNextEvent(AppQueueEvent):
     """parent parallel id if node is in parallel"""
     parent_parallel_start_node_id: Optional[str] = None
     """parent parallel start node id if node is in parallel"""
-
+    parallel_mode_run_id: Optional[str] = None
+    """iteratoin run in parallel mode run id"""
     node_run_index: int
     output: Optional[Any] = None  # output for the current iteration
 
@@ -272,6 +274,8 @@ class QueueNodeStartedEvent(AppQueueEvent):
     in_iteration_id: Optional[str] = None
     """iteration id if node is in iteration"""
     start_at: datetime
+    parallel_mode_run_id: Optional[str] = None
+    """iteratoin run in parallel mode run id"""
 
 
 class QueueNodeSucceededEvent(AppQueueEvent):
@@ -305,6 +309,37 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     error: Optional[str] = None
 
 
+class QueueNodeInIterationFailedEvent(AppQueueEvent):
+    """
+    QueueNodeInIterationFailedEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.NODE_FAILED
+
+    node_execution_id: str
+    node_id: str
+    node_type: NodeType
+    node_data: BaseNodeData
+    parallel_id: Optional[str] = None
+    """parallel id if node is in parallel"""
+    parallel_start_node_id: Optional[str] = None
+    """parallel start node id if node is in parallel"""
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
+    start_at: datetime
+
+    inputs: Optional[dict[str, Any]] = None
+    process_data: Optional[dict[str, Any]] = None
+    outputs: Optional[dict[str, Any]] = None
+    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
+
+    error: str
+
+
 class QueueNodeFailedEvent(AppQueueEvent):
     """
     QueueNodeFailedEvent entity
@@ -331,6 +366,7 @@ class QueueNodeFailedEvent(AppQueueEvent):
     inputs: Optional[dict[str, Any]] = None
     process_data: Optional[dict[str, Any]] = None
     outputs: Optional[dict[str, Any]] = None
+    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
 
     error: str
 

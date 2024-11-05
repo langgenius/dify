@@ -1,8 +1,9 @@
 import logging
 import os
-from collections.abc import Callable, Generator, Sequence
-from typing import IO, Optional, Union, cast
+from collections.abc import Callable, Generator, Iterable, Sequence
+from typing import IO, Any, Optional, Union, cast
 
+from core.entities.embedding_type import EmbeddingInputType
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.errors.error import ProviderTokenNotInitError
@@ -158,12 +159,15 @@ class ModelInstance:
             tools=tools,
         )
 
-    def invoke_text_embedding(self, texts: list[str], user: Optional[str] = None) -> TextEmbeddingResult:
+    def invoke_text_embedding(
+        self, texts: list[str], user: Optional[str] = None, input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
+    ) -> TextEmbeddingResult:
         """
         Invoke large language model
 
         :param texts: texts to embed
         :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
         if not isinstance(self.model_type_instance, TextEmbeddingModel):
@@ -176,6 +180,7 @@ class ModelInstance:
             credentials=self.credentials,
             texts=texts,
             user=user,
+            input_type=input_type,
         )
 
     def get_text_embedding_num_tokens(self, texts: list[str]) -> int:
@@ -269,7 +274,7 @@ class ModelInstance:
             user=user,
         )
 
-    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: Optional[str] = None) -> str:
+    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: Optional[str] = None) -> Iterable[bytes]:
         """
         Invoke large language tts model
 
@@ -293,7 +298,7 @@ class ModelInstance:
             voice=voice,
         )
 
-    def _round_robin_invoke(self, function: Callable, *args, **kwargs):
+    def _round_robin_invoke(self, function: Callable[..., Any], *args, **kwargs):
         """
         Round-robin invoke
         :param function: function to invoke

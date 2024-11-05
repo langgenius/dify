@@ -31,7 +31,7 @@ class Service:
         self.service_info.scheme = scheme
 
     def get(self, api, params, doseq=0):
-        if not (api in self.api_info):
+        if api not in self.api_info:
             raise Exception("no such api")
         api_info = self.api_info[api]
 
@@ -49,7 +49,7 @@ class Service:
             raise Exception(resp.text)
 
     def post(self, api, params, form):
-        if not (api in self.api_info):
+        if api not in self.api_info:
             raise Exception("no such api")
         api_info = self.api_info[api]
         r = self.prepare_request(api_info, params)
@@ -72,7 +72,7 @@ class Service:
             raise Exception(resp.text)
 
     def json(self, api, params, body):
-        if not (api in self.api_info):
+        if api not in self.api_info:
             raise Exception("no such api")
         api_info = self.api_info[api]
         r = self.prepare_request(api_info, params)

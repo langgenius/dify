@@ -11,7 +11,6 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.errors import ToolNotFoundError, ToolParameterValidationError, ToolProviderCredentialValidationError
 from core.tools.tool.tool import Tool
-from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 
 
 class ToolProviderController(BaseModel, ABC):
@@ -127,9 +126,7 @@ class ToolProviderController(BaseModel, ABC):
 
             # the parameter is not set currently, set the default value if needed
             if parameter_schema.default is not None:
-                tool_parameters[parameter] = ToolParameterConverter.cast_parameter_by_type(
-                    parameter_schema.default, parameter_schema.type
-                )
+                tool_parameters[parameter] = parameter_schema.type.cast_value(parameter_schema.default)
 
     def validate_credentials_format(self, credentials: dict[str, Any]) -> None:
         """
@@ -153,10 +150,13 @@ class ToolProviderController(BaseModel, ABC):
 
             # check type
             credential_schema = credentials_need_to_validate[credential_name]
-            if (
-                credential_schema == ToolProviderCredentials.CredentialsType.SECRET_INPUT
-                or credential_schema == ToolProviderCredentials.CredentialsType.TEXT_INPUT
-            ):
+            if not credential_schema.required and credentials[credential_name] is None:
+                continue
+
+            if credential_schema.type in {
+                ToolProviderCredentials.CredentialsType.SECRET_INPUT,
+                ToolProviderCredentials.CredentialsType.TEXT_INPUT,
+            }:
                 if not isinstance(credentials[credential_name], str):
                     raise ToolProviderCredentialValidationError(f"credential {credential_name} should be string")
 
@@ -184,11 +184,11 @@ class ToolProviderController(BaseModel, ABC):
             if credential_schema.default is not None:
                 default_value = credential_schema.default
                 # parse default value into the correct type
-                if (
-                    credential_schema.type == ToolProviderCredentials.CredentialsType.SECRET_INPUT
-                    or credential_schema.type == ToolProviderCredentials.CredentialsType.TEXT_INPUT
-                    or credential_schema.type == ToolProviderCredentials.CredentialsType.SELECT
-                ):
+                if credential_schema.type in {
+                    ToolProviderCredentials.CredentialsType.SECRET_INPUT,
+                    ToolProviderCredentials.CredentialsType.TEXT_INPUT,
+                    ToolProviderCredentials.CredentialsType.SELECT,
+                }:
                     default_value = str(default_value)
 
                 credentials[credential_name] = default_value

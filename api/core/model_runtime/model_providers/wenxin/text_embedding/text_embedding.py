@@ -7,6 +7,7 @@ from typing import Any, Optional
 import numpy as np
 from requests import Response, post
 
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.invoke import InvokeError
@@ -70,7 +71,12 @@ class WenxinTextEmbeddingModel(TextEmbeddingModel):
         return WenxinTextEmbedding(api_key, secret_key)
 
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
@@ -79,13 +85,14 @@ class WenxinTextEmbeddingModel(TextEmbeddingModel):
         :param credentials: model credentials
         :param texts: texts to embed
         :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
 
         api_key = credentials["api_key"]
         secret_key = credentials["secret_key"]
         embedding: TextEmbedding = self._create_text_embedding(api_key, secret_key)
-        user = user if user else "ErnieBotDefault"
+        user = user or "ErnieBotDefault"
 
         context_size = self._get_context_size(model, credentials)
         max_chunks = self._get_max_chunks(model, credentials)

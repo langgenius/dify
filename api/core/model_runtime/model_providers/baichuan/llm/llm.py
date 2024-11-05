@@ -29,7 +29,7 @@ from core.model_runtime.model_providers.baichuan.llm.baichuan_tokenizer import B
 from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo import BaichuanModel
 from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (
     BadRequestError,
-    InsufficientAccountBalance,
+    InsufficientAccountBalanceError,
     InternalServerError,
     InvalidAPIKeyError,
     InvalidAuthenticationError,
@@ -289,7 +289,7 @@ class BaichuanLanguageModel(LargeLanguageModel):
             InvokeRateLimitError: [RateLimitReachedError],
             InvokeAuthorizationError: [
                 InvalidAuthenticationError,
-                InsufficientAccountBalance,
+                InsufficientAccountBalanceError,
                 InvalidAPIKeyError,
             ],
             InvokeBadRequestError: [BadRequestError, KeyError],

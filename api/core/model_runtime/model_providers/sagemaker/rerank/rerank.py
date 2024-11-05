@@ -1,5 +1,6 @@
 import json
 import logging
+import operator
 from typing import Any, Optional
 
 import boto3
@@ -94,7 +95,7 @@ class SageMakerRerankModel(RerankModel):
             for idx in range(len(scores)):
                 candidate_docs.append({"content": docs[idx], "score": scores[idx]})
 
-            sorted(candidate_docs, key=lambda x: x["score"], reverse=True)
+            sorted(candidate_docs, key=operator.itemgetter("score"), reverse=True)
 
             line = 3
             rerank_documents = []
@@ -156,7 +157,7 @@ class SageMakerRerankModel(RerankModel):
             InvokeBadRequestError: [InvokeBadRequestError, KeyError, ValueError],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

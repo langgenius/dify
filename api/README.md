@@ -65,13 +65,11 @@
 
 8. Start Dify [web](../web) service.
 9. Setup your application by visiting `http://localhost:3000`...
-10. If you need to debug local async processing, please start the worker service.
+10. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
 
    ```bash
    poetry run python -m celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion
    ```
-
-   The started celery app handles the async tasks, e.g. dataset importing and documents indexing.
 
 ## Testing
 
@@ -87,3 +85,4 @@
    cd ../
    poetry run -C api bash dev/pytest/pytest_all_tests.sh
    ```
+

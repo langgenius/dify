@@ -72,7 +72,7 @@ const InputVarList: FC<Props> = ({
         }
         else {
           draft[variable] = {
-            type: varKindType,
+            type: VarKindType.variable,
             value: varValue,
           }
         }
@@ -93,6 +93,18 @@ const InputVarList: FC<Props> = ({
             type: VarKindType.mixed,
             value: itemValue,
           }
+        }
+      })
+      onChange(newValue)
+    }
+  }, [value, onChange])
+
+  const handleFileChange = useCallback((variable: string) => {
+    return (varValue: ValueSelector | string) => {
+      const newValue = produce(value, (draft: ToolVarInputs) => {
+        draft[variable] = {
+          type: VarKindType.variable,
+          value: varValue,
         }
       })
       onChange(newValue)
@@ -127,14 +139,16 @@ const InputVarList: FC<Props> = ({
           const varInput = value[variable]
           const isNumber = type === FormTypeEnum.textNumber
           const isSelect = type === FormTypeEnum.select
-          const isFile = type === FormTypeEnum.files
-          const isString = type !== FormTypeEnum.textNumber && type !== FormTypeEnum.files && type !== FormTypeEnum.select
+          const isFile = type === FormTypeEnum.file
+          const isFileArray = type === FormTypeEnum.files
+          const isString = !isNumber && !isSelect && !isFile && !isFileArray
+
           return (
             <div key={variable} className='space-y-1'>
               <div className='flex items-center h-[18px] space-x-2'>
-                <span className='text-[13px] font-medium text-gray-900'>{label[language] || label.en_US}</span>
-                <span className='text-xs font-normal text-gray-500'>{paramType(type)}</span>
-                {required && <span className='leading-[18px] text-xs font-normal text-[#EC4A0A]'>Required</span>}
+                <span className='text-text-secondary code-sm-semibold'>{label[language] || label.en_US}</span>
+                <span className='text-text-tertiary system-xs-regular'>{paramType(type)}</span>
+                {required && <span className='text-util-colors-orange-dark-orange-dark-600 system-xs-regular'>Required</span>}
               </div>
               {isString && (
                 <Input
@@ -157,8 +171,7 @@ const InputVarList: FC<Props> = ({
                   value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
                   onChange={handleNotMixedTypeChange(variable)}
                   onOpen={handleOpen(index)}
-                  isSupportConstantValue={isSupportConstantValue}
-                  defaultVarKindType={varInput?.type}
+                  defaultVarKindType={VarKindType.variable}
                   filterVar={isNumber ? filterVar : undefined}
                   availableVars={isSelect ? availableVars : undefined}
                   schema={schema}
@@ -169,14 +182,26 @@ const InputVarList: FC<Props> = ({
                   readonly={readOnly}
                   isShowNodeName
                   nodeId={nodeId}
-                  value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
-                  onChange={handleNotMixedTypeChange(variable)}
+                  value={varInput?.value || []}
+                  onChange={handleFileChange(variable)}
+                  onOpen={handleOpen(index)}
+                  defaultVarKindType={VarKindType.variable}
+                  filterVar={(varPayload: Var) => varPayload.type === VarType.file}
+                />
+              )}
+              {isFileArray && (
+                <VarReferencePicker
+                  readonly={readOnly}
+                  isShowNodeName
+                  nodeId={nodeId}
+                  value={varInput?.value || []}
+                  onChange={handleFileChange(variable)}
                   onOpen={handleOpen(index)}
                   defaultVarKindType={VarKindType.variable}
                   filterVar={(varPayload: Var) => varPayload.type === VarType.arrayFile}
                 />
               )}
-              {tooltip && <div className='leading-[18px] text-xs font-normal text-gray-600'>{tooltip[language] || tooltip.en_US}</div>}
+              {tooltip && <div className='text-text-tertiary body-xs-regular'>{tooltip[language] || tooltip.en_US}</div>}
             </div>
           )
         })

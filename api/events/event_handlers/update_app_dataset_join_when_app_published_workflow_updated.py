@@ -1,6 +1,6 @@
 from typing import cast
 
-from core.workflow.entities.node_entities import NodeType
+from core.workflow.nodes import NodeType
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from events.app_event import app_published_workflow_was_updated
 from extensions.ext_database import db
@@ -22,8 +22,7 @@ def handle(sender, **kwargs):
         added_dataset_ids = dataset_ids
     else:
         old_dataset_ids = set()
-        for app_dataset_join in app_dataset_joins:
-            old_dataset_ids.add(app_dataset_join.dataset_id)
+        old_dataset_ids.update(app_dataset_join.dataset_id for app_dataset_join in app_dataset_joins)
 
         added_dataset_ids = dataset_ids - old_dataset_ids
         removed_dataset_ids = old_dataset_ids - dataset_ids

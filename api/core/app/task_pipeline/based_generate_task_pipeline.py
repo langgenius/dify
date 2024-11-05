@@ -53,7 +53,7 @@ class BasedGenerateTaskPipeline:
         self._output_moderation_handler = self._init_output_moderation()
         self._stream = stream
 
-    def _handle_error(self, event: QueueErrorEvent, message: Optional[Message] = None) -> Exception:
+    def _handle_error(self, event: QueueErrorEvent, message: Optional[Message] = None):
         """
         Handle error event.
         :param event: event
@@ -65,7 +65,7 @@ class BasedGenerateTaskPipeline:
 
         if isinstance(e, InvokeAuthorizationError):
             err = InvokeAuthorizationError("Incorrect API key provided")
-        elif isinstance(e, InvokeError) or isinstance(e, ValueError):
+        elif isinstance(e, InvokeError | ValueError):
             err = e
         else:
             err = Exception(e.description if getattr(e, "description", None) is not None else str(e))
@@ -100,7 +100,7 @@ class BasedGenerateTaskPipeline:
 
         return message
 
-    def _error_to_stream_response(self, e: Exception) -> ErrorStreamResponse:
+    def _error_to_stream_response(self, e: Exception):
         """
         Error to stream response.
         :param e: exception

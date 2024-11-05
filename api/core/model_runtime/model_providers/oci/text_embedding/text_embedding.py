@@ -6,6 +6,7 @@ from typing import Optional
 import numpy as np
 import oci
 
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.invoke import (
@@ -41,7 +42,12 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
     """
 
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
@@ -50,6 +56,7 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
         :param credentials: model credentials
         :param texts: texts to embed
         :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
         # get model properties
@@ -146,7 +153,8 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
             config_items = oci_config_content.split("/")
             if len(config_items) != 5:
                 raise CredentialsValidateFailedError(
-                    "oci_config_content should be base64.b64encode('user_ocid/fingerprint/tenancy_ocid/region/compartment_ocid'.encode('utf-8'))"
+                    "oci_config_content should be base64.b64encode("
+                    "'user_ocid/fingerprint/tenancy_ocid/region/compartment_ocid'.encode('utf-8'))"
                 )
             oci_config["user"] = config_items[0]
             oci_config["fingerprint"] = config_items[1]

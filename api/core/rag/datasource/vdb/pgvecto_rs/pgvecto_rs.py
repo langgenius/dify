@@ -12,11 +12,11 @@ from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.pgvecto_rs.collection import CollectionORM
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -32,6 +32,7 @@ class PgvectoRSConfig(BaseModel):
     database: str
 
     @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["host"]:
             raise ValueError("config PGVECTO_RS_HOST is required")
@@ -185,7 +186,7 @@ class PGVectoRS(BaseVector):
                         query_vector,
                     ).label("distance"),
                 )
-                .limit(kwargs.get("top_k", 2))
+                .limit(kwargs.get("top_k", 4))
                 .order_by("distance")
             )
             res = session.execute(stmt)
@@ -197,25 +198,13 @@ class PGVectoRS(BaseVector):
             metadata = record.meta
             score = 1 - dis
             metadata["score"] = score
-            score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if score > score_threshold:
                 doc = Document(page_content=record.text, metadata=metadata)
                 docs.append(doc)
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        # with Session(self._client) as session:
-        #     select_statement = sql_text(
-        #         f"SELECT text, meta FROM {self._collection_name} WHERE to_tsvector(text) @@ '{query}'::tsquery"
-        #     )
-        #     results = session.execute(select_statement).fetchall()
-        # if results:
-        #     docs = []
-        #     for result in results:
-        #         doc = Document(page_content=result[0],
-        #                        metadata=result[1])
-        #         docs.append(doc)
-        #     return docs
         return []
 
 
@@ -227,7 +216,7 @@ class PGVectoRSFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
-            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.PGVECTO_RS, collection_name))
         dim = len(embeddings.embed_query("pgvecto_rs"))
 
         return PGVectoRS(

@@ -1,4 +1,3 @@
-import json
 import logging
 import time
 from collections.abc import Generator
@@ -17,6 +16,7 @@ from core.app.entities.queue_entities import (
     QueueIterationNextEvent,
     QueueIterationStartEvent,
     QueueNodeFailedEvent,
+    QueueNodeInIterationFailedEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
     QueueParallelBranchRunFailedEvent,
@@ -52,6 +52,7 @@ from models.workflow import (
     Workflow,
     WorkflowAppLog,
     WorkflowAppLogCreatedFrom,
+    WorkflowNodeExecution,
     WorkflowRun,
     WorkflowRunStatus,
 )
@@ -69,6 +70,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
     _task_state: WorkflowTaskState
     _application_generate_entity: WorkflowAppGenerateEntity
     _workflow_system_variables: dict[SystemVariableKey, Any]
+    _wip_workflow_node_executions: dict[str, WorkflowNodeExecution]
 
     def __init__(
         self,
@@ -97,9 +99,13 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         self._workflow_system_variables = {
             SystemVariableKey.FILES: application_generate_entity.files,
             SystemVariableKey.USER_ID: user_id,
+            SystemVariableKey.APP_ID: application_generate_entity.app_config.app_id,
+            SystemVariableKey.WORKFLOW_ID: workflow.id,
+            SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,
         }
 
         self._task_state = WorkflowTaskState()
+        self._wip_workflow_node_executions = {}
 
     def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
         """
@@ -162,10 +168,10 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
             yield WorkflowAppStreamResponse(workflow_run_id=workflow_run_id, stream_response=stream_response)
 
-    def _listenAudioMsg(self, publisher, task_id: str):
+    def _listen_audio_msg(self, publisher, task_id: str):
         if not publisher:
             return None
-        audio_msg: AudioTrunk = publisher.checkAndGetAudio()
+        audio_msg: AudioTrunk = publisher.check_and_get_audio()
         if audio_msg and audio_msg.status != "finish":
             return MessageAudioStreamResponse(audio=audio_msg.audio, task_id=task_id)
         return None
@@ -187,7 +193,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
         for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
             while True:
-                audio_response = self._listenAudioMsg(tts_publisher, task_id=task_id)
+                audio_response = self._listen_audio_msg(tts_publisher, task_id=task_id)
                 if audio_response:
                     yield audio_response
                 else:
@@ -199,7 +205,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             try:
                 if not tts_publisher:
                     break
-                audio_trunk = tts_publisher.checkAndGetAudio()
+                audio_trunk = tts_publisher.check_and_get_audio()
                 if audio_trunk is None:
                     # release cpu
                     # sleep 20 ms ( 40ms => 1280 byte audio file,20ms => 640 byte audio file)
@@ -212,7 +218,8 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             except Exception as e:
                 logger.error(e)
                 break
-        yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+        if tts_publisher:
+            yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
 
     def _process_stream_response(
         self,
@@ -269,7 +276,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
                 if response:
                     yield response
-            elif isinstance(event, QueueNodeFailedEvent):
+            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent):
                 workflow_node_execution = self._handle_workflow_node_execution_failed(event)
 
                 response = self._workflow_node_finish_to_stream_response(
@@ -327,9 +334,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                     start_at=graph_runtime_state.start_at,
                     total_tokens=graph_runtime_state.total_tokens,
                     total_steps=graph_runtime_state.node_run_steps,
-                    outputs=json.dumps(event.outputs)
-                    if isinstance(event, QueueWorkflowSucceededEvent) and event.outputs
-                    else None,
+                    outputs=event.outputs,
                     conversation_id=None,
                     trace_manager=trace_manager,
                 )

@@ -4,6 +4,7 @@ from typing import Optional
 
 from replicate import Client as ReplicateClient
 
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
@@ -14,8 +15,23 @@ from core.model_runtime.model_providers.replicate._common import _CommonReplicat
 
 class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
+        """
+        Invoke text embedding model
+
+        :param model: model name
+        :param credentials: model credentials
+        :param texts: texts to embed
+        :param user: unique user id
+        :param input_type: input type
+        :return: embeddings result
+        """
         client = ReplicateClient(api_token=credentials["replicate_api_token"], timeout=30)
 
         if "model_version" in credentials:
@@ -86,7 +102,7 @@ class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):
         )
 
         for input_property in input_properties:
-            if input_property[0] in ("text", "texts", "inputs"):
+            if input_property[0] in {"text", "texts", "inputs"}:
                 text_input_key = input_property[0]
                 return text_input_key
 
@@ -96,7 +112,7 @@ class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):
     def _generate_embeddings_by_text_input_key(
         client: ReplicateClient, replicate_model_version: str, text_input_key: str, texts: list[str]
     ) -> list[list[float]]:
-        if text_input_key in ("text", "inputs"):
+        if text_input_key in {"text", "inputs"}:
             embeddings = []
             for text in texts:
                 result = client.run(replicate_model_version, input={text_input_key: text})

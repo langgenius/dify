@@ -1,0 +1,72 @@
+identity:
+  name: add_cols
+  author: Doug Lea
+  label:
+    en_US: Add Cols
+    zh_Hans: 新增多列至工作表最后
+description:
+  human:
+    en_US: Add Cols
+    zh_Hans: 新增多列至工作表最后
+  llm: A tool for adding multiple columns to the end of a spreadsheet. (新增多列至工作表最后)
+parameters:
+  - name: spreadsheet_token
+    type: string
+    required: true
+    label:
+      en_US: spreadsheet_token
+      zh_Hans: 电子表格 token
+    human_description:
+      en_US: Spreadsheet token, supports input of spreadsheet URL.
+      zh_Hans: 电子表格 token，支持输入电子表格 url。
+    llm_description: 电子表格 token，支持输入电子表格 url。
+    form: llm
+
+  - name: sheet_id
+    type: string
+    required: false
+    label:
+      en_US: sheet_id
+      zh_Hans: 工作表 ID
+    human_description:
+      en_US: Sheet ID, either sheet_id or sheet_name must be filled.
+      zh_Hans: 工作表 ID，与 sheet_name 二者其一必填。
+    llm_description: 工作表 ID，与 sheet_name 二者其一必填。
+    form: llm
+
+  - name: sheet_name
+    type: string
+    required: false
+    label:
+      en_US: sheet_name
+      zh_Hans: 工作表名称
+    human_description:
+      en_US: Sheet name, either sheet_id or sheet_name must be filled.
+      zh_Hans: 工作表名称，与 sheet_id 二者其一必填。
+    llm_description: 工作表名称，与 sheet_id 二者其一必填。
+    form: llm
+
+  - name: length
+    type: number
+    required: true
+    label:
+      en_US: length
+      zh_Hans: 要增加的列数
+    human_description:
+      en_US: Number of columns to add, range (0-5000].
+      zh_Hans: 要增加的列数，范围(0-5000]。
+    llm_description: 要增加的列数，范围(0-5000]。
+    form: llm
+
+  - name: values
+    type: string
+    required: false
+    label:
+      en_US: values
+      zh_Hans: 新增列的单元格内容
+    human_description:
+      en_US: |
+        Content of the new columns, array of objects in string format, each array represents a row of table data, format like: [ [ "ID","Name","Age" ],[ 1,"Zhang San",10 ],[ 2,"Li Si",11 ] ].
+      zh_Hans: 新增列的单元格内容，数组对象字符串，每个数组一行表格数据，格式：[["编号","姓名","年龄"],[1,"张三",10],[2,"李四",11]]。
+    llm_description: 新增列的单元格内容，数组对象字符串，每个数组一行表格数据，格式：[["编号","姓名","年龄"],[1,"张三",10],[2,"李四",11]]。
+    form: llm

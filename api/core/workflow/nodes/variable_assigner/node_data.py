@@ -2,7 +2,7 @@ from collections.abc import Sequence
 from enum import Enum
 from typing import Optional
 
-from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.nodes.base import BaseNodeData
 
 
 class WriteMode(str, Enum):
