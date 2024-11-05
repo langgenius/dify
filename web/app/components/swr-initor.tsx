@@ -63,7 +63,7 @@ const SwrInitor = ({
         router.replace('/signin')
       }
     })()
-  }, [isSetupFinished, router, pathname, searchParams])
+  }, [isSetupFinished, router, pathname, searchParams, consoleToken, refreshToken, consoleTokenFromLocalStorage, refreshTokenFromLocalStorage])
 
   return init
     ? (
