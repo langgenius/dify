@@ -23,6 +23,7 @@ class NodeRunMetadataKey(str, Enum):
     PARALLEL_START_NODE_ID = "parallel_start_node_id"
     PARENT_PARALLEL_ID = "parent_parallel_id"
     PARENT_PARALLEL_START_NODE_ID = "parent_parallel_start_node_id"
+    PARALLEL_MODE_RUN_ID = "parallel_mode_run_id"
 
 
 class NodeRunResult(BaseModel):
