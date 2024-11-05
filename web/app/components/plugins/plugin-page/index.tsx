@@ -18,7 +18,6 @@ import usePermission from './use-permission'
 import DebugInfo from './debug-info'
 import { usePluginTasksStore } from './store'
 import InstallInfo from './install-info'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
@@ -100,22 +99,11 @@ const PluginPage = ({
   }] = useBoolean()
   const [currentFile, setCurrentFile] = useState<File | null>(null)
   const containerRef = usePluginPageContext(v => v.containerRef)
+  const options = usePluginPageContext(v => v.options)
+  const [activeTab, setActiveTab] = usePluginPageContext(v => [v.activeTab, v.setActiveTab])
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
   const [installed, total] = [2, 3] // Replace this with the actual progress
   const progressPercentage = (installed / total) * 100
-  const options = useMemo(() => {
-    return [
-      { value: 'plugins', text: t('common.menus.plugins') },
-      ...(
-        enable_marketplace
-          ? [{ value: 'discover', text: 'Explore Marketplace' }]
-          : []
-      ),
-    ]
-  }, [t, enable_marketplace])
-  const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: options[0].value,
-  })
 
   const uploaderProps = useUploader({
     onFileChange: setCurrentFile,

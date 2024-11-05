@@ -22,7 +22,7 @@ type Props = {
   isShowInfo: boolean
   isShowDelete: boolean
   onDelete: () => void
-  meta: MetaData
+  meta?: MetaData
 }
 const Action: FC<Props> = ({
   pluginId,
@@ -99,9 +99,9 @@ const Action: FC<Props> = ({
 
       {isShowPluginInfo && (
         <PluginInfo
-          repository={meta.repo}
-          release={meta.version}
-          packageName={meta.package}
+          repository={meta!.repo}
+          release={meta!.version}
+          packageName={meta!.package}
           onHide={hidePluginInfo}
         />
       )}

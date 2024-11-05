@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next'
 import { usePluginPageContext } from '../plugin-page/context'
 import { Github } from '../../base/icons/src/public/common'
 import Badge from '../../base/badge'
-import { type InstalledPlugin, PluginSource } from '../types'
+import { type PluginDetail, PluginSource } from '../types'
 import CornerMark from '../card/base/corner-mark'
 import Description from '../card/base/description'
 import OrgInfo from '../card/base/org-info'
@@ -26,7 +26,7 @@ import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 
 type Props = {
   className?: string
-  plugin: InstalledPlugin
+  plugin: PluginDetail
 }
 
 const PluginItem: FC<Props> = ({
@@ -50,6 +50,7 @@ const PluginItem: FC<Props> = ({
   } = plugin
   const { category, author, name, label, description, icon, verified } = plugin.declaration
   // Only plugin installed from GitHub need to check if it's the new version
+  // todo check version manually
   const hasNewVersion = useMemo(() => {
     return source === PluginSource.github && latest_version !== version
   }, [source, latest_version, version])
@@ -124,7 +125,7 @@ const PluginItem: FC<Props> = ({
         <div className='flex items-center'>
           {source === PluginSource.github
             && <>
-              <a href={meta.repo} target='_blank' className='flex items-center gap-1'>
+              <a href={meta!.repo} target='_blank' className='flex items-center gap-1'>
                 <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('plugin.from')}</div>
                 <div className='flex items-center space-x-0.5 text-text-secondary'>
                   <Github className='w-3 h-3' />

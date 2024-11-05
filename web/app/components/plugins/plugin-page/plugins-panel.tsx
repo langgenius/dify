@@ -1,16 +1,17 @@
 'use client'
 import { useMemo } from 'react'
-import type { InstalledPlugin } from '../types'
+import type { PluginDetail } from '../types'
 import type { FilterState } from './filter-management'
 import FilterManagement from './filter-management'
 import List from './list'
 import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { usePluginPageContext } from './context'
 import { useDebounceFn } from 'ahooks'
+import Empty from './empty'
 
 const PluginsPanel = () => {
   const [filters, setFilters] = usePluginPageContext(v => [v.filters, v.setFilters])
-  const pluginList = usePluginPageContext(v => v.installedPluginList) as InstalledPlugin[]
+  const pluginList = usePluginPageContext(v => v.installedPluginList) as PluginDetail[]
   const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
 
   const { run: handleFilterChange } = useDebounceFn((filters: FilterState) => {
@@ -37,11 +38,15 @@ const PluginsPanel = () => {
           onFilterChange={handleFilterChange}
         />
       </div>
-      <div className='flex px-12 items-start content-start gap-2 flex-grow self-stretch flex-wrap'>
-        <div className='w-full'>
-          <List pluginList={filteredList} />
+      {filteredList.length > 0 ? (
+        <div className='flex px-12 items-start content-start gap-2 flex-grow self-stretch flex-wrap'>
+          <div className='w-full'>
+            <List pluginList={filteredList} />
+          </div>
         </div>
-      </div>
+      ) : (
+        <Empty />
+      )}
       <PluginDetailPanel onDelete={() => mutateInstalledPluginList()}/>
     </>
   )
