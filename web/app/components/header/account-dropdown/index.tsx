@@ -46,8 +46,9 @@ export default function AppSelector({ isMobile }: IAppSelector) {
       params: {},
     })
 
-    if (localStorage?.getItem('console_token'))
-      localStorage.removeItem('console_token')
+    localStorage.removeItem('setup_status')
+    localStorage.removeItem('console_token')
+    localStorage.removeItem('refresh_token')
 
     router.push('/signin')
   }
