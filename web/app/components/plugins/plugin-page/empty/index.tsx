@@ -32,10 +32,10 @@ const Empty = () => {
       return 'No plugins installed'
     if (filters.categories.length > 0 || filters.tags.length > 0 || filters.searchQuery)
       return 'No plugins found'
-  }, [pluginList, filters])
+  }, [pluginList.length, filters])
 
   return (
-    <div className='grow w-full relative'>
+    <div className='grow w-full relative z-0'>
       {/* skeleton */}
       <div className='h-full w-full px-12 absolute top-0 grid grid-cols-2 gap-2 overflow-hidden z-10'>
         {Array.from({ length: 20 }).fill(0).map((_, i) => (
