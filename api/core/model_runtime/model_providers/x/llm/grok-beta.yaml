@@ -48,8 +48,8 @@ parameter_rules:
     precision: 1
     required: false
     help:
-      en_US: "Used to adjust the frequency of repeated content in automatically generated text. Positive numbers reduce repetition, while negative numbers increase repetition. After setting this parameter, if a word has already appeared in the text, the model will decrease the probability of choosing that word for subsequent generation."
-      zh_Hans: "用于调整自动生成文本中重复内容的频率。正数减少重复，负数增加重复。设置此参数后，如果一个词在文本中已经出现过，模型在后续生成中选择该词的概率会降低。"
+      en_US: "Number between 0 and 2.0. Positive values penalize new tokens based on their existing frequency in the text so far, decreasing the model's likelihood to repeat the same line verbatim."
+      zh_Hans: "介于0和2.0之间的数字。正值会根据新标记在文本中迄今为止的现有频率来惩罚它们，从而降低模型一字不差地重复同一句话的可能性。"
 
   - name: user
     use_template: text
