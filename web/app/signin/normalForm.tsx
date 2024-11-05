@@ -7,7 +7,7 @@ import Link from 'next/link'
 import Toast from '../components/base/toast'
 import style from './page.module.css'
 import classNames from '@/utils/classnames'
-import { IS_CE_EDITION, apiPrefix, emailRegex } from '@/config'
+import { apiPrefix, emailRegex } from '@/config'
 import Button from '@/app/components/base/button'
 import { login, oauth } from '@/service/common'
 import { getPurifyHref } from '@/utils'
@@ -196,15 +196,15 @@ const NormalForm = () => {
             </div>
             {/* <div className="w-hull text-center block mt-2 text-xs text-gray-400">{t('login.loginTip')}</div> */}
           </div>
-          <div className="relative mt-6">
+          {/* <div className="relative mt-6">
             <div className="absolute inset-0 flex items-center" aria-hidden="true">
               <div className="w-full border-t border-gray-300" />
             </div>
             <div className="relative flex justify-center text-sm">
               <span className="px-2 text-gray-300 bg-white">OR</span>
             </div>
-          </div>
-          <form onSubmit={() => {}}>
+          </div> */}
+          {/* <form onSubmit={() => {}}>
             <div className="mb-5">
               <label htmlFor="email" className="my-2 block text-sm font-medium text-gray-900">
                 {t('login.email')}
@@ -231,9 +231,9 @@ const NormalForm = () => {
                 className="my-2 flex items-center justify-between text-sm font-medium text-gray-900"
               >
                 <span>{t('login.password')}</span>
-                {/* <Link href="/forgot-password" className="text-primary-600">
+                <Link href="/forgot-password" className="text-primary-600">
                   {t('login.forget')}
-                </Link> */}
+                </Link>
               </label>
               <div className="relative mt-1">
                 <input
@@ -275,7 +275,7 @@ const NormalForm = () => {
                 {t('login.signBtn')}
               </Button>
             </div>
-          </form>
+          </form> */}
           {/*  agree to our Terms and Privacy Policy. */}
           <div className="w-hull text-center block mt-2 text-xs text-gray-600">
             {t('login.tosDesc')}
@@ -299,7 +299,7 @@ const NormalForm = () => {
             </Link>
           </div>
 
-          {IS_CE_EDITION && (
+          {/* {IS_CE_EDITION && (
             <div className="w-hull text-center block mt-2 text-xs text-gray-600">
               {t('login.goToInit')}
               &nbsp;
@@ -307,7 +307,7 @@ const NormalForm = () => {
                 {t('login.setAdminAccount')}
               </Link>
             </div>
-          )}
+          )} */}
         </div>
       </div>
     </>
