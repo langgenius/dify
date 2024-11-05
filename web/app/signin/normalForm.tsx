@@ -12,11 +12,9 @@ import cn from '@/utils/classnames'
 import { getSystemFeatures, invitationCheck } from '@/service/common'
 import { defaultSystemFeatures } from '@/types/feature'
 import Toast from '@/app/components/base/toast'
-import useRefreshToken from '@/hooks/use-refresh-token'
 import { IS_CE_EDITION } from '@/config'
 
 const NormalForm = () => {
-  const { getNewAccessToken } = useRefreshToken()
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -38,7 +36,6 @@ const NormalForm = () => {
       if (consoleToken && refreshToken) {
         localStorage.setItem('console_token', consoleToken)
         localStorage.setItem('refresh_token', refreshToken)
-        getNewAccessToken()
         router.replace('/apps')
         return
       }
@@ -71,7 +68,7 @@ const NormalForm = () => {
       setSystemFeatures(defaultSystemFeatures)
     }
     finally { setIsLoading(false) }
-  }, [consoleToken, refreshToken, message, router, invite_token, isInviteLink, getNewAccessToken])
+  }, [consoleToken, refreshToken, message, router, invite_token, isInviteLink])
   useEffect(() => {
     init()
   }, [init])
