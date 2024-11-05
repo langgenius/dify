@@ -45,31 +45,6 @@
   <a href="./README_VI.md"><img alt="README Tiếng Việt" src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-d9d9d9"></a>
 </p>
 
-
-## Table of Content
-0. [Quick-Start🚀](https://github.com/langgenius/dify?tab=readme-ov-file#quick-start)
-
-1. [Intro📖](https://github.com/langgenius/dify?tab=readme-ov-file#intro)
-
-2. [How to use🔧](https://github.com/langgenius/dify?tab=readme-ov-file#using-dify)
-
-3. [Stay Ahead🏃](https://github.com/langgenius/dify?tab=readme-ov-file#staying-ahead)
-
-4. [Next Steps🏹](https://github.com/langgenius/dify?tab=readme-ov-file#next-steps)
-
-5. [Contributing💪](https://github.com/langgenius/dify?tab=readme-ov-file#contributing)
-
-6. [Community and Contact🏠](https://github.com/langgenius/dify?tab=readme-ov-file#community--contact)
-
-7. [Star-History📈](https://github.com/langgenius/dify?tab=readme-ov-file#star-history)
-
-8. [Security🔒](https://github.com/langgenius/dify?tab=readme-ov-file#security-disclosure)
-
-9. [License🤝](https://github.com/langgenius/dify?tab=readme-ov-file#license)
-
-> Make sure you read through this README before you start utilizing Dify😊
-
-
 ## Quick start
 The quickest way to deploy Dify locally is to run our [docker-compose.yml](https://github.com/langgenius/dify/blob/main/docker/docker-compose.yaml). Follow the instructions to start in 5 minutes.
 
