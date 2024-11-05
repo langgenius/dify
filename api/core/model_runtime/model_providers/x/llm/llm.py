@@ -32,5 +32,6 @@ class XAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
 
     @staticmethod
     def _add_custom_parameters(credentials) -> None:
-        credentials["endpoint_url"] = str(URL(credentials["endpoint_url"]) / "v1")
+        credentials["endpoint_url"] = str(URL(credentials["endpoint_url"])) or "https://api.x.ai/v1"
         credentials["mode"] = LLMMode.CHAT.value
+        credentials["function_calling_type"] = "tool_call"
