@@ -1,7 +1,7 @@
 
+import re
 from typing import Any
 from urllib.parse import urlparse
-import re
 
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.vanna.tools.vanna import VannaTool
