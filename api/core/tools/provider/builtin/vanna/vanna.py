@@ -1,4 +1,3 @@
-
 import re
 from typing import Any
 from urllib.parse import urlparse
@@ -9,7 +8,6 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 
 
 class VannaProvider(BuiltinToolProviderController):
-
     def _get_protocol_and_main_domain(self, url):
         parsed_url = urlparse(url)
         protocol = parsed_url.scheme
@@ -20,7 +18,7 @@ class VannaProvider(BuiltinToolProviderController):
         is_ip = re.match(r"^\d{1,3}(\.\d{1,3}){3}$", hostname) is not None
 
         # Return the full hostname (with port if present) for IP addresses, otherwise return the main domain
-        main_domain = f"{hostname}{port}" if is_ip else '.'.join(hostname.split('.')[-2:]) + port
+        main_domain = f"{hostname}{port}" if is_ip else ".".join(hostname.split(".")[-2:]) + port
         return f"{protocol}://{main_domain}"
 
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
