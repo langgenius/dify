@@ -8,8 +8,7 @@ from flask_restful import Resource, reqparse
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from extensions.ext_database import db
 from libs.helper import DatetimeString
 from libs.login import login_required

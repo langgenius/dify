@@ -37,6 +37,17 @@ def _get_max_tokens(default: int, min_val: int, max_val: int) -> ParameterRule:
     return rule
 
 
+def _get_o1_max_tokens(default: int, min_val: int, max_val: int) -> ParameterRule:
+    rule = ParameterRule(
+        name="max_completion_tokens",
+        **PARAMETER_RULE_TEMPLATE[DefaultParameterName.MAX_TOKENS],
+    )
+    rule.default = default
+    rule.min = min_val
+    rule.max = max_val
+    return rule
+
+
 class AzureBaseModel(BaseModel):
     base_model_name: str
     entity: AIModelEntity
@@ -1099,14 +1110,6 @@ LLM_BASE_MODELS = [
             },
             parameter_rules=[
                 ParameterRule(
-                    name="temperature",
-                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.TEMPERATURE],
-                ),
-                ParameterRule(
-                    name="top_p",
-                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.TOP_P],
-                ),
-                ParameterRule(
                     name="response_format",
                     label=I18nObject(zh_Hans="回复格式", en_US="response_format"),
                     type="string",
@@ -1116,7 +1119,7 @@ LLM_BASE_MODELS = [
                     required=False,
                     options=["text", "json_object"],
                 ),
-                _get_max_tokens(default=512, min_val=1, max_val=32768),
+                _get_o1_max_tokens(default=512, min_val=1, max_val=32768),
             ],
             pricing=PriceConfig(
                 input=15.00,
@@ -1144,14 +1147,6 @@ LLM_BASE_MODELS = [
             },
             parameter_rules=[
                 ParameterRule(
-                    name="temperature",
-                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.TEMPERATURE],
-                ),
-                ParameterRule(
-                    name="top_p",
-                    **PARAMETER_RULE_TEMPLATE[DefaultParameterName.TOP_P],
-                ),
-                ParameterRule(
                     name="response_format",
                     label=I18nObject(zh_Hans="回复格式", en_US="response_format"),
                     type="string",
@@ -1161,7 +1156,7 @@ LLM_BASE_MODELS = [
                     required=False,
                     options=["text", "json_object"],
                 ),
-                _get_max_tokens(default=512, min_val=1, max_val=65536),
+                _get_o1_max_tokens(default=512, min_val=1, max_val=65536),
             ],
             pricing=PriceConfig(
                 input=3.00,

@@ -1,5 +1,3 @@
-from functools import wraps
-
 from flask import request
 from flask_restful import Resource, reqparse
 
@@ -10,7 +8,7 @@ from models.model import DifySetup
 from services.account_service import RegisterService, TenantService
 
 from . import api
-from .error import AlreadySetupError, NotInitValidateError, NotSetupError
+from .error import AlreadySetupError, NotInitValidateError
 from .init_validate import get_init_validate_status
 from .wraps import only_edition_self_hosted
 
@@ -52,26 +50,10 @@ class SetupApi(Resource):
         return {"result": "success"}, 201
 
 
-def setup_required(view):
-    @wraps(view)
-    def decorated(*args, **kwargs):
-        # check setup
-        if not get_init_validate_status():
-            raise NotInitValidateError()
-
-        elif not get_setup_status():
-            raise NotSetupError()
-
-        return view(*args, **kwargs)
-
-    return decorated
-
-
 def get_setup_status():
     if dify_config.EDITION == "SELF_HOSTED":
         return DifySetup.query.first()
-    else:
-        return True
+    return True
 
 
 api.add_resource(SetupApi, "/setup")
