@@ -273,7 +273,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.10.2
+    image: langgenius/dify-api:0.11.0
     restart: always
     build: '../api'
     environment:
@@ -294,7 +294,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.10.2
+    image: langgenius/dify-api:0.11.0
     restart: always
     build: '../api'
     environment:
@@ -314,7 +314,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.10.2
+    image: langgenius/dify-web:0.11.0
     restart: always
     build: '../web'
     environment:

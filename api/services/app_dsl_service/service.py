@@ -27,11 +27,7 @@ from .exc import (
 
 logger = logging.getLogger(__name__)
 
-current_dsl_version = "0.1.2"
-dsl_to_dify_version_mapping: dict[str, str] = {
-    "0.1.2": "0.8.0",
-    "0.1.1": "0.6.0",  # dsl version -> from dify version
-}
+current_dsl_version = "0.1.3"
 
 
 class AppDslService:
