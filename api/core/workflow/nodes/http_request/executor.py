@@ -88,8 +88,10 @@ class Executor:
         self.url = self.variable_pool.convert_template(self.node_data.url).text
 
     def _init_params(self):
-        params = self.variable_pool.convert_template(self.node_data.params).text
-        self.params = _plain_text_to_dict(params)
+        params = _plain_text_to_dict(self.node_data.params)
+        for key in params:
+            params[key] = self.variable_pool.convert_template(params[key]).text
+        self.params = params
 
     def _init_headers(self):
         headers = self.variable_pool.convert_template(self.node_data.headers).text
