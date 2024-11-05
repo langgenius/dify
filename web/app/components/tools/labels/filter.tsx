@@ -27,7 +27,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
-  const labelList = useTags()
+  const { tags: labelList } = useTags()
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
