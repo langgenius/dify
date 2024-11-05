@@ -1,5 +1,4 @@
 import json
-import re
 from typing import Any
 
 from core.file import FileType
