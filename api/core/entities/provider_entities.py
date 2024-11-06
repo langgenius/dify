@@ -3,7 +3,12 @@ from typing import Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.entities.parameter_entities import AppSelectorScope, CommonParameterType, ModelConfigScope
+from core.entities.parameter_entities import (
+    AppSelectorScope,
+    CommonParameterType,
+    ModelSelectorScope,
+    ToolSelectorScope,
+)
 from core.model_runtime.entities.model_entities import ModelType
 from core.tools.entities.common_entities import I18nObject
 
@@ -140,7 +145,8 @@ class BasicProviderConfig(BaseModel):
         SELECT = CommonParameterType.SELECT.value
         BOOLEAN = CommonParameterType.BOOLEAN.value
         APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
-        MODEL_CONFIG = CommonParameterType.MODEL_CONFIG.value
+        MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
+        TOOL_SELECTOR = CommonParameterType.TOOL_SELECTOR.value
 
         @classmethod
         def value_of(cls, value: str) -> "ProviderConfig.Type":
@@ -168,7 +174,7 @@ class ProviderConfig(BasicProviderConfig):
         value: str = Field(..., description="The value of the option")
         label: I18nObject = Field(..., description="The label of the option")
 
-    scope: AppSelectorScope | ModelConfigScope | None = None
+    scope: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | None = None
     required: bool = False
     default: Optional[Union[int, str]] = None
     options: Optional[list[Option]] = None

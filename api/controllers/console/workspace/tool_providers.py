@@ -61,6 +61,19 @@ class ToolBuiltinProviderListToolsApi(Resource):
         )
 
 
+class ToolBuiltinProviderInfoApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, provider):
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
+
+        return jsonable_encoder(BuiltinToolManageService.get_builtin_tool_provider_info(user_id, tenant_id, provider))
+
+
 class ToolBuiltinProviderDeleteApi(Resource):
     @setup_required
     @login_required
@@ -604,6 +617,7 @@ api.add_resource(ToolProviderListApi, "/workspaces/current/tool-providers")
 
 # builtin tool provider
 api.add_resource(ToolBuiltinProviderListToolsApi, "/workspaces/current/tool-provider/builtin/<path:provider>/tools")
+api.add_resource(ToolBuiltinProviderInfoApi, "/workspaces/current/tool-provider/builtin/<path:provider>/info")
 api.add_resource(ToolBuiltinProviderDeleteApi, "/workspaces/current/tool-provider/builtin/<path:provider>/delete")
 api.add_resource(ToolBuiltinProviderUpdateApi, "/workspaces/current/tool-provider/builtin/<path:provider>/update")
 api.add_resource(

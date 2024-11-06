@@ -121,7 +121,7 @@ class App(Base):
         return site
 
     @property
-    def app_model_config(self) -> Optional["AppModelConfig"]:
+    def app_model_config(self):
         if self.app_model_config_id:
             return db.session.query(AppModelConfig).filter(AppModelConfig.id == self.app_model_config_id).first()
 
@@ -1320,7 +1320,7 @@ class Site(Base):
     privacy_policy = db.Column(db.String(255))
     show_workflow_steps = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
     use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
+    _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", sa.TEXT, default="")
     customize_domain = db.Column(db.String(255))
     customize_token_strategy = db.Column(db.String(255), nullable=False)
     prompt_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
@@ -1330,6 +1330,16 @@ class Site(Base):
     updated_by = db.Column(StringUUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     code = db.Column(db.String(255))
+
+    @property
+    def custom_disclaimer(self):
+        return self._custom_disclaimer
+
+    @custom_disclaimer.setter
+    def custom_disclaimer(self, value: str):
+        if len(value) > 512:
+            raise ValueError("Custom disclaimer cannot exceed 512 characters.")
+        self._custom_disclaimer = value
 
     @staticmethod
     def generate_code(n):

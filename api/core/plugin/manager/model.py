@@ -437,6 +437,7 @@ class PluginModelManager(BasePluginManager):
             voices = []
             for voice in resp.voices:
                 voices.append({"name": voice.name, "value": voice.value})
+
             return voices
 
         return []

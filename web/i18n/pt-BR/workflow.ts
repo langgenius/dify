@@ -557,6 +557,23 @@ const translation = {
       iteration_one: '{{count}} Iteração',
       iteration_other: '{{count}} Iterações',
       currentIteration: 'Iteração atual',
+      ErrorMethod: {
+        continueOnError: 'continuar em erro',
+        removeAbnormalOutput: 'saída anormal de remoção',
+        operationTerminated: 'Terminada',
+      },
+      MaxParallelismTitle: 'Paralelismo máximo',
+      parallelModeEnableTitle: 'Modo paralelo ativado',
+      errorResponseMethod: 'Método de resposta de erro',
+      error_other: '{{contagem}} Erros',
+      parallelMode: 'Modo paralelo',
+      parallelModeUpper: 'MODO PARALELO',
+      error_one: '{{contagem}} Erro',
+      parallelModeEnableDesc: 'No modo paralelo, as tarefas dentro das iterações dão suporte à execução paralela. Você pode configurar isso no painel de propriedades à direita.',
+      comma: ',',
+      MaxParallelismDesc: 'O paralelismo máximo é usado para controlar o número de tarefas executadas simultaneamente em uma única iteração.',
+      answerNodeWarningDesc: 'Aviso de modo paralelo: nós de resposta, atribuições de variáveis de conversação e operações persistentes de leitura/gravação em iterações podem causar exceções.',
+      parallelPanelDesc: 'No modo paralelo, as tarefas na iteração dão suporte à execução paralela.',
     },
     note: {
       editor: {

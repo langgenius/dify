@@ -1,6 +1,6 @@
 import json
 from collections.abc import Mapping, Sequence
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union
 
@@ -111,7 +111,9 @@ class Workflow(Base):
         db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
     updated_by: Mapped[Optional[str]] = mapped_column(StringUUID)
-    updated_at: Mapped[datetime] = mapped_column(db.DateTime, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, default=datetime.now(tz=timezone.utc), server_onupdate=func.current_timestamp()
+    )
     _environment_variables: Mapped[str] = mapped_column(
         "environment_variables", db.Text, nullable=False, server_default="{}"
     )

@@ -103,7 +103,7 @@ class RetrievalService:
 
         if exceptions:
             exception_message = ";\n".join(exceptions)
-            raise Exception(exception_message)
+            raise ValueError(exception_message)
 
         if retrieval_method == RetrievalMethod.HYBRID_SEARCH.value:
             data_post_processor = DataPostProcessor(

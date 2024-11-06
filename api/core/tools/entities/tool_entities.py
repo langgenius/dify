@@ -5,7 +5,12 @@ from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator
 
-from core.entities.parameter_entities import AppSelectorScope, CommonParameterType, ModelConfigScope
+from core.entities.parameter_entities import (
+    AppSelectorScope,
+    CommonParameterType,
+    ModelSelectorScope,
+    ToolSelectorScope,
+)
 from core.entities.provider_entities import ProviderConfig
 from core.tools.entities.common_entities import I18nObject
 
@@ -209,6 +214,9 @@ class ToolParameter(BaseModel):
         SECRET_INPUT = CommonParameterType.SECRET_INPUT.value
         FILE = CommonParameterType.FILE.value
         FILES = CommonParameterType.FILES.value
+        APP_SELECTOR = CommonParameterType.APP_SELECTOR.value
+        TOOL_SELECTOR = CommonParameterType.TOOL_SELECTOR.value
+        MODEL_SELECTOR = CommonParameterType.MODEL_SELECTOR.value
 
         # deprecated, should not use.
         SYSTEM_FILES = CommonParameterType.SYSTEM_FILES.value
@@ -258,11 +266,26 @@ class ToolParameter(BaseModel):
                                 return float(value)
                             else:
                                 return int(value)
+                    case ToolParameter.ToolParameterType.SYSTEM_FILES | ToolParameter.ToolParameterType.FILES:
+                        if not isinstance(value, list):
+                            return [value]
+                        return value
+                    case ToolParameter.ToolParameterType.FILE:
+                        if isinstance(value, list):
+                            if len(value) != 1:
+                                raise ValueError(
+                                    "This parameter only accepts one file but got multiple files while invoking."
+                                )
+                            else:
+                                return value[0]
+                        return value
                     case (
-                        ToolParameter.ToolParameterType.SYSTEM_FILES
-                        | ToolParameter.ToolParameterType.FILE
-                        | ToolParameter.ToolParameterType.FILES
+                        ToolParameter.ToolParameterType.TOOL_SELECTOR
+                        | ToolParameter.ToolParameterType.MODEL_SELECTOR
+                        | ToolParameter.ToolParameterType.APP_SELECTOR
                     ):
+                        if not isinstance(value, dict):
+                            raise ValueError("The selector must be a dictionary.")
                         return value
                     case _:
                         return str(value)
@@ -280,7 +303,7 @@ class ToolParameter(BaseModel):
     human_description: Optional[I18nObject] = Field(default=None, description="The description presented to the user")
     placeholder: Optional[I18nObject] = Field(default=None, description="The placeholder presented to the user")
     type: ToolParameterType = Field(..., description="The type of the parameter")
-    scope: AppSelectorScope | ModelConfigScope | None = None
+    scope: AppSelectorScope | ModelSelectorScope | ToolSelectorScope | None = None
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
     llm_description: Optional[str] = None
     required: Optional[bool] = False
