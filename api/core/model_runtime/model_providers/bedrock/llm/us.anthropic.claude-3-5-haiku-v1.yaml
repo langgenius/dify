@@ -4,7 +4,6 @@ label:
 model_type: llm
 features:
   - agent-thought
-  - vision
   - tool-call
   - stream-tool-call
 model_properties:
