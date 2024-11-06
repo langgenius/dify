@@ -24,7 +24,6 @@ const CardWrapper = ({
     setTrue: showInstallFromMarketplace,
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
-  console.log(plugin)
 
   return (
     <div
