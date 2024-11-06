@@ -125,7 +125,7 @@ const PluginItem: FC<Props> = ({
         <div className='flex items-center'>
           {source === PluginSource.github
             && <>
-              <a href={meta!.repo} target='_blank' className='flex items-center gap-1'>
+              <a href={`https://github.com/${meta!.repo}`} target='_blank' className='flex items-center gap-1'>
                 <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('plugin.from')}</div>
                 <div className='flex items-center space-x-0.5 text-text-secondary'>
                   <Github className='w-3 h-3' />

@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import Modal from '@/app/components/base/modal'
 import type { Item } from '@/app/components/base/select'
 import type { InstallState } from '@/app/components/plugins/types'
@@ -133,6 +133,11 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
       }
     })
   }
+
+  useEffect(() => {
+    if (state.step === InstallStepFromGitHub.selectPackage)
+      handleUrlSubmit()
+  }, [])
 
   return (
     <Modal

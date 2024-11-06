@@ -40,7 +40,7 @@ const TabSlider: FC<TabSliderProps> = ({
     const newIndex = options.findIndex(option => option.value === value)
     setActiveIndex(newIndex)
     updateSliderStyle(newIndex)
-  }, [value, options])
+  }, [value, options, pluginList])
 
   return (
     <div className={cn(className, 'inline-flex p-0.5 rounded-[10px] bg-components-segmented-control-bg-normal relative items-center justify-center')}>

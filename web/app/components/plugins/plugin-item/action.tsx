@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
-import type { MetaData } from '../types'
+import { type MetaData, PluginSource } from '../types'
 import { RiDeleteBinLine, RiInformation2Line, RiLoopLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
@@ -13,6 +13,7 @@ import { uninstallPlugin } from '@/service/plugins'
 import { useGitHubReleases } from '../install-plugin/hooks'
 import { compareVersion, getLatestVersion } from '@/utils/semver'
 import Toast from '@/app/components/base/toast'
+import { useModalContext } from '@/context/modal-context'
 
 const i18nPrefix = 'plugin.action'
 
@@ -49,6 +50,7 @@ const Action: FC<Props> = ({
     setFalse: hideDeleting,
   }] = useBoolean(false)
   const { fetchReleases } = useGitHubReleases()
+  const { setShowUpdatePluginModal } = useModalContext()
 
   const handleFetchNewVersion = async () => {
     try {
@@ -56,8 +58,19 @@ const Action: FC<Props> = ({
       const versions = fetchedReleases.map(release => release.tag_name)
       const latestVersion = getLatestVersion(versions)
       if (compareVersion(latestVersion, version) === 1) {
-        // todo: open plugin updating modal
-        console.log('New version available:', latestVersion)
+        setShowUpdatePluginModal({
+          payload: {
+            type: PluginSource.github,
+            github: {
+              originalPackageInfo: {
+                id: installationId,
+                repo: `https://github.com/${meta!.repo}`,
+                version: meta!.version,
+                package: meta!.package,
+              },
+            },
+          },
+        })
       }
       else {
         Toast.notify({
@@ -87,7 +100,7 @@ const Action: FC<Props> = ({
       hideDeleteConfirm()
       onDelete()
     }
-  }, [installationId])
+  }, [installationId, onDelete])
   return (
     <div className='flex space-x-1'>
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
