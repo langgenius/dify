@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import type { PluginDeclaration, PluginManifestInMarket } from '../../types'
+import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import Card from '../../card'
 import Button from '@/app/components/base/button'
 import { pluginManifestInMarketToPluginProps, pluginManifestToCardPluginProps } from '../utils'
@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 
 type Props = {
-  payload?: PluginDeclaration | PluginManifestInMarket | null
+  payload?: Plugin | PluginDeclaration | PluginManifestInMarket | null
   isMarketPayload?: boolean
   isFailed: boolean
   errMsg?: string | null

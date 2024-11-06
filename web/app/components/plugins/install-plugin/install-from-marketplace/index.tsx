@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState } from 'react'
 import Modal from '@/app/components/base/modal'
-import type { PluginManifestInMarket } from '../../types'
+import type { Plugin, PluginManifestInMarket } from '../../types'
 import { InstallStep } from '../../types'
 import Install from './steps/install'
 import Installed from '../base/installed'
@@ -12,7 +12,7 @@ const i18nPrefix = 'plugin.installModal'
 
 type InstallFromMarketplaceProps = {
   uniqueIdentifier: string
-  manifest: PluginManifestInMarket
+  manifest: PluginManifestInMarket | Plugin
   onSuccess: () => void
   onClose: () => void
 }
@@ -36,7 +36,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     if (step === InstallStep.installFailed)
       return t(`${i18nPrefix}.installFailed`)
     return t(`${i18nPrefix}.installPlugin`)
-  }, [step])
+  }, [step, t])
 
   const handleInstalled = useCallback(() => {
     setStep(InstallStep.installed)
