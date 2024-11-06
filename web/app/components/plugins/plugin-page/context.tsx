@@ -27,6 +27,7 @@ export type PluginPageContextValue = {
   setCurrentPluginDetail: (plugin: PluginDetail) => void
   installedPluginList: PluginDetail[]
   mutateInstalledPluginList: () => void
+  isPluginListLoading: boolean
   filters: FilterState
   setFilters: (filter: FilterState) => void
   activeTab: string
@@ -45,6 +46,7 @@ export const PluginPageContext = createContext<PluginPageContextValue>({
   setCurrentPluginDetail: () => {},
   installedPluginList: [],
   mutateInstalledPluginList: () => {},
+  isPluginListLoading: true,
   filters: {
     categories: [],
     tags: [],
@@ -78,7 +80,7 @@ export const PluginPageContextProvider = ({
     tags: [],
     searchQuery: '',
   })
-  const { data, mutate: mutateInstalledPluginList } = useSWR({ url: '/workspaces/current/plugin/list' }, fetchInstalledPluginList)
+  const { data, mutate: mutateInstalledPluginList, isLoading: isPluginListLoading } = useSWR({ url: '/workspaces/current/plugin/list' }, fetchInstalledPluginList)
   const [currentPluginDetail, setCurrentPluginDetail] = useState<PluginDetail | undefined>()
 
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
@@ -106,6 +108,7 @@ export const PluginPageContextProvider = ({
         setCurrentPluginDetail,
         installedPluginList: data?.plugins || [],
         mutateInstalledPluginList,
+        isPluginListLoading,
         filters,
         setFilters,
         activeTab,
