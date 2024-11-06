@@ -7,9 +7,9 @@ import Modal from '../../base/modal'
 
 const i18nPrefix = 'plugin.pluginInfoModal'
 type Props = {
-  repository: string
-  release: string
-  packageName: string
+  repository?: string
+  release?: string
+  packageName?: string
   onHide: () => void
 }
 
@@ -30,9 +30,9 @@ const PlugInfo: FC<Props> = ({
       closable
     >
       <div className='mt-5 space-y-3'>
-        <KeyValueItem label={t(`${i18nPrefix}.repository`)} labelWidthClassName={labelWidthClassName} value={repository} />
-        <KeyValueItem label={t(`${i18nPrefix}.release`)} labelWidthClassName={labelWidthClassName} value={release} />
-        <KeyValueItem label={t(`${i18nPrefix}.packageName`)} labelWidthClassName={labelWidthClassName} value={packageName} />
+        {repository && <KeyValueItem label={t(`${i18nPrefix}.repository`)} labelWidthClassName={labelWidthClassName} value={repository} />}
+        {release && <KeyValueItem label={t(`${i18nPrefix}.release`)} labelWidthClassName={labelWidthClassName} value={release} />}
+        {packageName && <KeyValueItem label={t(`${i18nPrefix}.packageName`)} labelWidthClassName={labelWidthClassName} value={packageName} />}
       </div>
     </Modal>
   )

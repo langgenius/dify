@@ -52,13 +52,14 @@ const DetailHeader = ({
     meta,
   } = detail
   const { author, name, label, description, icon, verified } = detail.declaration
+  const isFromGitHub = source === PluginSource.github
   // Only plugin installed from GitHub need to check if it's the new version
   const hasNewVersion = useMemo(() => {
     return source === PluginSource.github && latest_version !== version
   }, [source, latest_version, version])
 
   // #plugin TODO# update plugin
-  const handleUpdate = () => {}
+  const handleUpdate = () => { }
 
   const [isShowPluginInfo, {
     setTrue: showPluginInfo,
@@ -151,7 +152,7 @@ const DetailHeader = ({
       <Description className='mt-3' text={description[locale]} descriptionLineRows={2}></Description>
       {isShowPluginInfo && (
         <PluginInfo
-          repository={meta?.repo}
+          repository={isFromGitHub ? meta?.repo : ''}
           release={version}
           packageName={meta?.package}
           onHide={hidePluginInfo}
