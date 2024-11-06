@@ -21,36 +21,7 @@ const Header: FC<IHeaderProps> = ({
   onCreateNewChat,
 }) => {
   const { t } = useTranslation()
-  if (!isMobile)
-    return null
-
-  return (
-    <div
-      className={`
-        shrink-0 flex items-center justify-between h-14 px-4 
-      `}
-      style={Object.assign({}, CssTransform(theme?.backgroundHeaderColorStyle ?? ''), CssTransform(theme?.headerBorderBottomStyle ?? '')) }
-    >
-      <div className="flex items-center space-x-2">
-        {customerIcon}
-        <div
-          className={'text-sm font-bold text-white'}
-          style={CssTransform(theme?.colorFontOnHeaderStyle ?? '')}
-        >
-          {title}
-        </div>
-      </div>
-      <Tooltip
-        popupContent={t('share.chat.resetChat')}
-      >
-        <div className='flex cursor-pointer hover:rounded-lg hover:bg-black/5 w-8 h-8 items-center justify-center' onClick={() => {
-          onCreateNewChat?.()
-        }}>
-          <RiRefreshLine className="h-4 w-4 text-sm font-bold text-white" color={theme?.colorPathOnHeader}/>
-        </div>
-      </Tooltip>
-    </div>
-  )
+  return null
 }
 
 export default React.memo(Header)
