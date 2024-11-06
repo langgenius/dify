@@ -66,7 +66,7 @@ jobs:
         run: sh .github/workflows/expose_service_ports.sh
 
       - name: Set up Sandbox
-        uses: hoverkraft-tech/compose-action@v2.0.0
+        uses: hoverkraft-tech/compose-action@v2.0.2
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml
