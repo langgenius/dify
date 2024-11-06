@@ -12,6 +12,7 @@ type SearchBoxProps = {
   onTagsChange: (tags: string[]) => void
   size?: 'small' | 'large'
   placeholder?: string
+  locale?: string
 }
 const SearchBox = ({
   search,
@@ -20,7 +21,8 @@ const SearchBox = ({
   tags,
   onTagsChange,
   size = 'small',
-  placeholder = 'Search tools...',
+  placeholder = '',
+  locale,
 }: SearchBoxProps) => {
   return (
     <div
@@ -35,6 +37,7 @@ const SearchBox = ({
         tags={tags}
         onTagsChange={onTagsChange}
         size={size}
+        locale={locale}
       />
       <div className='mx-1 w-[1px] h-3.5 bg-divider-regular'></div>
       <div className='grow flex items-center p-1 pl-2'>

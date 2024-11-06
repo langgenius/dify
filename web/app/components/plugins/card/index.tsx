@@ -10,6 +10,7 @@ import Description from './base/description'
 import Placeholder from './base/placeholder'
 import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
+import { getLanguage } from '@/i18n/language'
 
 export type Props = {
   className?: string
@@ -22,6 +23,7 @@ export type Props = {
   footer?: React.ReactNode
   isLoading?: boolean
   loadingFileName?: string
+  locale?: string
 }
 
 const Card = ({
@@ -35,8 +37,10 @@ const Card = ({
   footer,
   isLoading = false,
   loadingFileName,
+  locale: localeFromProps,
 }: Props) => {
-  const locale = useGetLanguage()
+  const defaultLocale = useGetLanguage()
+  const locale = localeFromProps ? getLanguage(localeFromProps) : defaultLocale
 
   const { type, name, org, label, brief, icon, verified } = payload
 

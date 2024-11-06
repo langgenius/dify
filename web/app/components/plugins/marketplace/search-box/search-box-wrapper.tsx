@@ -1,9 +1,16 @@
 'use client'
 import { useMarketplaceContext } from '../context'
+import { useMixedTranslation } from '../hooks'
 import SearchBox from './index'
 import cn from '@/utils/classnames'
 
-const SearchBoxWrapper = () => {
+type SearchBoxWrapperProps = {
+  locale?: string
+}
+const SearchBoxWrapper = ({
+  locale,
+}: SearchBoxWrapperProps) => {
+  const { t } = useMixedTranslation(locale)
   const intersected = useMarketplaceContext(v => v.intersected)
   const searchPluginText = useMarketplaceContext(v => v.searchPluginText)
   const handleSearchPluginTextChange = useMarketplaceContext(v => v.handleSearchPluginTextChange)
@@ -21,6 +28,8 @@ const SearchBoxWrapper = () => {
       tags={filterPluginTags}
       onTagsChange={handleFilterPluginTagsChange}
       size='large'
+      locale={locale}
+      placeholder={t('plugin.searchPlugins')}
     />
   )
 }

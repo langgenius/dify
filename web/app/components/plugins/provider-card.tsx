@@ -12,7 +12,9 @@ import DownloadCount from './card/base/download-count'
 import Button from '@/app/components/base/button'
 import { useGetLanguage } from '@/context/i18n'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
+import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import cn from '@/utils/classnames'
+import { useBoolean } from 'ahooks'
 
 type Props = {
   className?: string
@@ -24,6 +26,10 @@ const ProviderCard: FC<Props> = ({
   payload,
 }) => {
   const { t } = useTranslation()
+  const [isShowInstallFromMarketplace, {
+    setTrue: showInstallFromMarketplace,
+    setFalse: hideInstallFromMarketplace,
+  }] = useBoolean(false)
   const language = useGetLanguage()
   const { org, label } = payload
 
@@ -58,6 +64,7 @@ const ProviderCard: FC<Props> = ({
         <Button
           className='flex-grow'
           variant='primary'
+          onClick={showInstallFromMarketplace}
         >
           {t('plugin.detailPanel.operation.install')}
         </Button>
@@ -71,6 +78,16 @@ const ProviderCard: FC<Props> = ({
           </a>
         </Button>
       </div>
+      {
+        isShowInstallFromMarketplace && (
+          <InstallFromMarketplace
+            manifest={payload as any}
+            uniqueIdentifier={payload.latest_package_identifier}
+            onClose={hideInstallFromMarketplace}
+            onSuccess={hideInstallFromMarketplace}
+          />
+        )
+      }
     </div>
   )
 }

@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useMemo } from 'react'
 import { RiInformation2Line } from '@remixicon/react'
-import type { PluginManifestInMarket } from '../../../types'
+import type { Plugin, PluginManifestInMarket } from '../../../types'
 import Card from '../../../card'
 import { pluginManifestInMarketToPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
@@ -16,7 +16,7 @@ const i18nPrefix = 'plugin.installModal'
 
 type Props = {
   uniqueIdentifier: string
-  payload: PluginManifestInMarket
+  payload: PluginManifestInMarket | Plugin
   onCancel: () => void
   onStartToInstall?: () => void
   onInstalled: () => void
@@ -104,7 +104,7 @@ const Installed: FC<Props> = ({
         <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap rounded-2xl bg-background-section-burn'>
           <Card
             className='w-full'
-            payload={pluginManifestInMarketToPluginProps(payload)}
+            payload={pluginManifestInMarketToPluginProps(payload as PluginManifestInMarket)}
             titleLeft={versionInfo}
           />
         </div>

@@ -1,12 +1,14 @@
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 
 type Tag = {
   name: string
   label: string
 }
 
-export const useTags = () => {
-  const { t } = useTranslation()
+export const useTags = (translateFromOut?: TFunction) => {
+  const { t: translation } = useTranslation()
+  const t = translateFromOut || translation
 
   const tags = [
     {
