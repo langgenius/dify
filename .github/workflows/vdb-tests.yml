@@ -57,8 +57,8 @@ jobs:
       - name: Cache VDB Docker Images
         uses: actions/cache@v4
         with:
-          key: ${{ runner.os }}-vdb-docker-images
-          path: docker/docker-compose.yaml
+          key: ${{ runner.os }}-vdb-docker-images-${{ hashFiles('docker/docker-compose.yaml') }}
+          path: /var/lib/docker/
 
       - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase)
         uses: hoverkraft-tech/compose-action@v2.0.2
