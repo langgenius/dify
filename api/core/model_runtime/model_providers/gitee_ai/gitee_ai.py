@@ -1,6 +1,7 @@
 import logging
 
-from core.model_runtime.entities.model_entities import ModelType
+import requests
+
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.model_provider import ModelProvider
 
@@ -16,8 +17,18 @@ class GiteeAIProvider(ModelProvider):
         :param credentials: provider credentials, credentials form defined in `provider_credential_schema`.
         """
         try:
-            model_instance = self.get_model_instance(ModelType.LLM)
-            model_instance.validate_credentials(model="Qwen2-7B-Instruct", credentials=credentials)
+            api_key = credentials.get("api_key")
+            if not api_key:
+                raise CredentialsValidateFailedError("Credentials validation failed: api_key not given")
+
+            # send a get request to validate the credentials
+            headers = {"Authorization": f"Bearer {api_key}"}
+            response = requests.get("https://ai.gitee.com/api/base/account/me", headers=headers, timeout=(10, 300))
+
+            if response.status_code != 200:
+                raise CredentialsValidateFailedError(
+                    f"Credentials validation failed with status code {response.status_code}"
+                )
         except CredentialsValidateFailedError as ex:
             raise ex
         except Exception as ex:

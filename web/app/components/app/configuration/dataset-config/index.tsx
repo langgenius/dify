@@ -15,6 +15,7 @@ import { AppType } from '@/types/app'
 import type { DataSet } from '@/models/datasets'
 import {
   getMultipleRetrievalConfig,
+  getSelectedDatasetsMode,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -38,6 +39,7 @@ const DatasetConfig: FC = () => {
     isAgent,
     datasetConfigs,
     setDatasetConfigs,
+    setRerankSettingModalOpen,
   } = useContext(ConfigContext)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
@@ -55,6 +57,20 @@ const DatasetConfig: FC = () => {
       ...(datasetConfigs as any),
       ...retrievalConfig,
     })
+    const {
+      allExternal,
+      allInternal,
+      mixtureInternalAndExternal,
+      mixtureHighQualityAndEconomic,
+      inconsistentEmbeddingModel,
+    } = getSelectedDatasetsMode(filteredDataSets)
+
+    if (
+      (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
+      || mixtureInternalAndExternal
+      || allExternal
+    )
+      setRerankSettingModalOpen(true)
     formattingChangedDispatcher()
   }
 

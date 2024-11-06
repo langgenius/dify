@@ -20,6 +20,7 @@ from .entities import (
     HttpRequestNodeTimeout,
     Response,
 )
+from .exc import HttpRequestNodeError
 
 HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeTimeout(
     connect=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
@@ -77,7 +78,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                     "request": http_executor.to_log(),
                 },
             )
-        except Exception as e:
+        except HttpRequestNodeError as e:
             logger.warning(f"http request node {self.node_id} failed to run: {e}")
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -142,10 +143,11 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         Extract files from response
         """
         files = []
+        is_file = response.is_file
         content_type = response.content_type
         content = response.content
 
-        if content_type:
+        if is_file and content_type:
             # extract filename from url
             filename = path.basename(url)
             # extract extension if possible
