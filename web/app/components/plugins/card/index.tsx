@@ -22,6 +22,7 @@ export type Props = {
   footer?: React.ReactNode
   isLoading?: boolean
   loadingFileName?: string
+  locale?: string
 }
 
 const Card = ({
@@ -35,8 +36,10 @@ const Card = ({
   footer,
   isLoading = false,
   loadingFileName,
+  locale: localeFromProps,
 }: Props) => {
-  const locale = useGetLanguage()
+  const defaultLocale = useGetLanguage()
+  const locale = localeFromProps || defaultLocale
 
   const { type, name, org, label, brief, icon, verified } = payload
 
