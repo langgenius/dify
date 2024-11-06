@@ -110,6 +110,7 @@ export type Plugin = {
   plugin_id: string
   version: string
   latest_version: string
+  latest_package_identifier: string
   icon: string
   verified: boolean
   label: Record<Locale, string>
