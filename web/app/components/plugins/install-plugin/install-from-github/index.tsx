@@ -15,7 +15,6 @@ import Installed from '../base/installed'
 import Loaded from './steps/loaded'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useTranslation } from 'react-i18next'
-import { usePluginPageContext } from '../../plugin-page/context'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -25,7 +24,7 @@ type InstallFromGitHubProps = {
   onSuccess: () => void
 }
 
-const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, onClose }) => {
+const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, onClose, onSuccess }) => {
   const { t } = useTranslation()
   const [state, setState] = useState<InstallState>({
     step: updatePayload ? InstallStepFromGitHub.selectPackage : InstallStepFromGitHub.setUrl,
@@ -38,7 +37,6 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
   const [manifest, setManifest] = useState<PluginDeclaration | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
 
   const versions: Item[] = state.releases.map(release => ({
     value: release.tag_name,
@@ -111,9 +109,9 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
   }, [])
 
   const handleInstalled = useCallback(() => {
-    mutateInstalledPluginList()
     setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.installed }))
-  }, [mutateInstalledPluginList])
+    onSuccess()
+  }, [onSuccess])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.installFailed }))

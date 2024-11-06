@@ -15,6 +15,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { usePluginPageContext } from './context'
 
 type Props = {
   onSwitchToMarketplaceTab: () => void
@@ -27,6 +28,7 @@ const InstallPluginDropdown = ({
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+  const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -114,7 +116,10 @@ const InstallPluginDropdown = ({
           </div>
         </PortalToFollowElemContent>
       </div>
-      {selectedAction === 'github' && <InstallFromGitHub onClose={() => setSelectedAction(null)} />}
+      {selectedAction === 'github' && <InstallFromGitHub
+        onSuccess={() => { mutateInstalledPluginList() }}
+        onClose={() => setSelectedAction(null)}
+      />}
       {selectedAction === 'local' && selectedFile
         && (<InstallFromLocalPackage
           file={selectedFile}

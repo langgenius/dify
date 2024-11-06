@@ -14,6 +14,7 @@ import { useGitHubReleases } from '../install-plugin/hooks'
 import { compareVersion, getLatestVersion } from '@/utils/semver'
 import Toast from '@/app/components/base/toast'
 import { useModalContext } from '@/context/modal-context'
+import { usePluginPageContext } from '../plugin-page/context'
 
 const i18nPrefix = 'plugin.action'
 
@@ -51,6 +52,7 @@ const Action: FC<Props> = ({
   }] = useBoolean(false)
   const { fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
+  const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
 
   const handleFetchNewVersion = async () => {
     try {
@@ -59,6 +61,9 @@ const Action: FC<Props> = ({
       const latestVersion = getLatestVersion(versions)
       if (compareVersion(latestVersion, version) === 1) {
         setShowUpdatePluginModal({
+          onSaveCallback: () => {
+            mutateInstalledPluginList()
+          },
           payload: {
             type: PluginSource.github,
             github: {
