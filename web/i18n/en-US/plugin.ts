@@ -86,7 +86,10 @@ const translation = {
   },
   installFromGitHub: {
     installPlugin: 'Install plugin from GitHub',
-    updateVersion: 'Update plugin from GitHub',
+    updatePlugin: 'Update plugin from GitHub',
+    installedSuccessfully: 'Installation successful',
+    installFailed: 'Installation failed',
+    uploadFailed: 'Upload failed',
     gitHubRepo: 'GitHub repository',
     selectVersion: 'Select version',
     selectVersionPlaceholder: 'Please select a version',

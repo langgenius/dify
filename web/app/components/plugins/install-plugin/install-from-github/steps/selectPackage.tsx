@@ -41,7 +41,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   const { t } = useTranslation()
   const isEdit = Boolean(updatePayload)
   const [isUploading, setIsUploading] = React.useState(false)
-  const { handleUpload, error } = useGitHubUpload()
+  const { handleUpload } = useGitHubUpload()
 
   const handleUploadPackage = async () => {
     if (isUploading) return
@@ -59,7 +59,6 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
     catch (e: any) {
       if (e.response?.message)
         onFailed(e.response?.message)
-
       else
         onFailed(t('plugin.error.uploadFailed'))
     }
@@ -74,16 +73,15 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         htmlFor='version'
         className='flex flex-col justify-center items-start self-stretch text-text-secondary'
       >
-        <span className='system-sm-semibold'>{isEdit ? t('plugin.installFromGitHub.updateVersion')
-          : t('plugin.installFromGitHub.selectVersion')}
-        </span>
+        <span className='system-sm-semibold'>{t('plugin.installFromGitHub.selectVersion')}</span>
       </label>
       <PortalSelect
         value={selectedVersion}
         onSelect={onSelectVersion}
         items={versions}
+        installedValue={updatePayload?.originalPackageInfo.version}
         placeholder={t('plugin.installFromGitHub.selectVersionPlaceholder') || ''}
-        popupClassName='w-[432px] z-[1001]'
+        popupClassName='w-[512px] z-[1001]'
       />
       <label
         htmlFor='package'
@@ -96,7 +94,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         onSelect={onSelectPackage}
         items={packages}
         placeholder={t('plugin.installFromGitHub.selectPackagePlaceholder') || ''}
-        popupClassName='w-[432px] z-[1001]'
+        popupClassName='w-[512px] z-[1001]'
       />
       <div className='flex justify-end items-center gap-2 self-stretch mt-4'>
         {!isEdit

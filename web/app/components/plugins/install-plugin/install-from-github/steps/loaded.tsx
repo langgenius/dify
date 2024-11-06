@@ -2,18 +2,19 @@
 
 import React from 'react'
 import Button from '@/app/components/base/button'
-import type { PluginDeclaration } from '../../../types'
+import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import Card from '../../../card'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import { useTranslation } from 'react-i18next'
-import { installPackageFromGitHub } from '@/service/plugins'
+import { installPackageFromGitHub, uninstallPlugin } from '@/service/plugins'
 import { RiLoader2Line } from '@remixicon/react'
 import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/store'
 import checkTaskStatus from '../../base/check-task-status'
 import { parseGitHubUrl } from '../../utils'
 
 type LoadedProps = {
+  updatePayload: UpdateFromGitHubPayload
   uniqueIdentifier: string
   payload: PluginDeclaration
   repoUrl: string
@@ -27,6 +28,7 @@ type LoadedProps = {
 const i18nPrefix = 'plugin.installModal'
 
 const Loaded: React.FC<LoadedProps> = ({
+  updatePayload,
   uniqueIdentifier,
   payload,
   repoUrl,
@@ -54,6 +56,9 @@ const Loaded: React.FC<LoadedProps> = ({
         uniqueIdentifier,
       )
 
+      if (updatePayload && isInstalled)
+        await uninstallPlugin(updatePayload.originalPackageInfo.id)
+
       if (isInstalled) {
         onInstalled()
         return
@@ -64,10 +69,15 @@ const Loaded: React.FC<LoadedProps> = ({
         taskId,
         pluginUniqueIdentifier: uniqueIdentifier,
       })
+
       onInstalled()
     }
     catch (e) {
-      onFailed(e instanceof Error ? e.message : String(e))
+      if (typeof e === 'string') {
+        onFailed(e)
+        return
+      }
+      onFailed()
     }
     finally {
       setIsInstalling(false)

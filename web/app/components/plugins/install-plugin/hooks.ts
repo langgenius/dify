@@ -64,10 +64,10 @@ export const useGitHubUpload = () => {
       return GitHubPackage
     }
     catch (error) {
-      setError('Error installing package')
+      setError('Error uploading package')
       Toast.notify({
         type: 'error',
-        message: 'Error installing package',
+        message: 'Error uploading package',
       })
     }
     finally {
