@@ -69,6 +69,7 @@ export type PluginDeclaration = {
   endpoint: PluginEndpointDeclaration
   tool: PluginToolDeclaration
   model: any // TODO
+  tags: string[]
 }
 
 export type PluginManifestInMarket = {

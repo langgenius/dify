@@ -10,7 +10,7 @@ import { useDebounceFn } from 'ahooks'
 import Empty from './empty'
 
 const PluginsPanel = () => {
-  const [filters, setFilters] = usePluginPageContext(v => [v.filters, v.setFilters])
+  const [filters, setFilters] = usePluginPageContext(v => [v.filters, v.setFilters]) as [FilterState, (filter: FilterState) => void]
   const pluginList = usePluginPageContext(v => v.installedPluginList) as PluginDetail[]
   const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
 
@@ -19,11 +19,11 @@ const PluginsPanel = () => {
   }, { wait: 500 })
 
   const filteredList = useMemo(() => {
-    // todo: filter by tags
-    const { categories, searchQuery } = filters
+    const { categories, searchQuery, tags } = filters
     const filteredList = pluginList.filter((plugin) => {
       return (
         (categories.length === 0 || categories.includes(plugin.declaration.category))
+        && (tags.length === 0 || tags.some(tag => plugin.declaration.tags.includes(tag)))
         && (searchQuery === '' || plugin.plugin_id.toLowerCase().includes(searchQuery.toLowerCase()))
       )
     })

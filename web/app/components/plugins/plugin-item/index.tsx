@@ -21,7 +21,6 @@ import Title from '../card/base/title'
 import Action from './action'
 import cn from '@/utils/classnames'
 import I18n from '@/context/i18n'
-
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 
 type Props = {
