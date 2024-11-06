@@ -97,3 +97,4 @@ The `.env.example` file provided in the Docker setup is extensive and covers a w
 - **Support**: For detailed configuration options and environment variable settings, refer to the `.env.example` file and the Docker Compose configuration files in the `docker` directory.
 
 This README aims to guide you through the deployment process using the new Docker Compose setup. For any issues or further assistance, please refer to the official documentation or contact support.
+
