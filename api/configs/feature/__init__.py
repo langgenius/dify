@@ -286,6 +286,26 @@ class HttpConfig(BaseSettings):
         default=None,
     )
 
+    SSRF_DEFAULT_TIME_OUT: PositiveFloat = Field(
+        description="The default timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
+    SSRF_DEFAULT_CONNECT_TIME_OUT: PositiveFloat = Field(
+        description="The default connect timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
+    SSRF_DEFAULT_READ_TIME_OUT: PositiveFloat = Field(
+        description="The default read timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
+    SSRF_DEFAULT_WRITE_TIME_OUT: PositiveFloat = Field(
+        description="The default write timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
         description="Enable or disable the X-Forwarded-For Proxy Fix middleware from Werkzeug"
         " to respect X-* headers to redirect clients",
