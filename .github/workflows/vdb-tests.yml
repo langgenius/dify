@@ -54,6 +54,12 @@ jobs:
       - name: Expose Service Ports
         run: sh .github/workflows/expose_service_ports.sh
 
+      - name: Cache VDB Docker Images
+        uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-vdb-docker-images
+          path: docker/docker-compose.yaml
+
       - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase)
         uses: hoverkraft-tech/compose-action@v2.0.2
         with:
