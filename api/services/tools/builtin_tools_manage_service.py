@@ -63,6 +63,37 @@ class BuiltinToolManageService:
         return result
 
     @staticmethod
+    def get_builtin_tool_provider_info(user_id: str, tenant_id: str, provider: str):
+        """
+        get builtin tool provider info
+        """
+        provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
+        tool_provider_configurations = ProviderConfigEncrypter(
+            tenant_id=tenant_id,
+            config=[x.to_basic_provider_config() for x in provider_controller.get_credentials_schema()],
+            provider_type=provider_controller.provider_type.value,
+            provider_identity=provider_controller.entity.identity.name,
+        )
+        # check if user has added the provider
+        builtin_provider = BuiltinToolManageService._fetch_builtin_provider(provider, tenant_id)
+
+        credentials = {}
+        if builtin_provider is not None:
+            # get credentials
+            credentials = builtin_provider.credentials
+            credentials = tool_provider_configurations.decrypt(credentials)
+
+        entity = ToolTransformService.builtin_provider_to_user_provider(
+            provider_controller=provider_controller,
+            db_provider=builtin_provider,
+            decrypt_credentials=True,
+        )
+
+        entity.original_credentials = {}
+
+        return entity
+
+    @staticmethod
     def list_builtin_provider_credentials_schema(provider_name: str, tenant_id: str):
         """
         list builtin provider credentials schema
@@ -255,6 +286,7 @@ class BuiltinToolManageService:
     @staticmethod
     def _fetch_builtin_provider(provider_name: str, tenant_id: str) -> BuiltinToolProvider | None:
         try:
+            full_provider_name = provider_name
             provider_id_entity = ToolProviderID(provider_name)
             provider_name = provider_id_entity.provider_name
             if provider_id_entity.organization != "langgenius":
@@ -264,7 +296,8 @@ class BuiltinToolManageService:
                 db.session.query(BuiltinToolProvider)
                 .filter(
                     BuiltinToolProvider.tenant_id == tenant_id,
-                    (BuiltinToolProvider.provider == provider_name) | (BuiltinToolProvider.provider == provider_name),
+                    (BuiltinToolProvider.provider == provider_name)
+                    | (BuiltinToolProvider.provider == full_provider_name),
                 )
                 .first()
             )
