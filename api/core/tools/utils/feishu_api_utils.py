@@ -882,7 +882,7 @@ class FeishuRequest:
             "record_ids": record_id_list,
             "user_id_type": user_id_type,
         }
-        res = self._send_request(url, method="POST", params=params, payload=payload)
+        res = self._send_request(url, method="GET", params=params, payload=payload)
         if "data" in res:
             return res.get("data")
         return res
