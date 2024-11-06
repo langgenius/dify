@@ -54,3 +54,6 @@ class LangSmithConfig(BaseTracingConfig):
             raise ValueError("endpoint must start with https://")
 
         return v
+
+
+OPS_FILE_PATH = "ops_trace/"

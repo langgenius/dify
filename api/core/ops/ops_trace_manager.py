@@ -6,12 +6,13 @@ import threading
 import time
 from datetime import timedelta
 from typing import Any, Optional, Union
-from uuid import UUID
+from uuid import UUID, uuid4
 
 from flask import current_app
 
 from core.helper.encrypter import decrypt_token, encrypt_token, obfuscated_token
 from core.ops.entities.config_entity import (
+    OPS_FILE_PATH,
     LangfuseConfig,
     LangSmithConfig,
     TracingProviderEnum,
@@ -28,8 +29,9 @@ from core.ops.entities.trace_entity import (
 )
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
-from core.ops.utils import get_message_data
+from core.ops.utils import convert_datetime_to_str, get_message_data
 from extensions.ext_database import db
+from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, TraceAppConfig
 from models.workflow import WorkflowAppLog, WorkflowRun
 from tasks.ops_trace_task import process_trace_tasks
@@ -740,10 +742,19 @@ class TraceQueueManager:
     def send_to_celery(self, tasks: list[TraceTask]):
         with self.flask_app.app_context():
             for task in tasks:
+                file_id = uuid4().hex
                 trace_info = task.execute()
                 task_data = {
                     "app_id": task.app_id,
                     "trace_info_type": type(trace_info).__name__,
                     "trace_info": trace_info.model_dump() if trace_info else {},
                 }
-                process_trace_tasks.delay(task_data)
+                task_data = convert_datetime_to_str(task_data)
+                json_data = json.dumps(task_data, ensure_ascii=False).encode("utf-8")
+                file_path = f"{OPS_FILE_PATH}{task.app_id}/{file_id}.json"
+                storage.save(file_path, json_data)
+                file_info = {
+                    "file_id": file_id,
+                    "app_id": task.app_id,
+                }
+                process_trace_tasks.delay(file_info)

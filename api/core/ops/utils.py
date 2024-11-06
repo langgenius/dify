@@ -43,3 +43,17 @@ def replace_text_with_content(data):
         return [replace_text_with_content(item) for item in data]
     else:
         return data
+
+
+def convert_datetime_to_str(data):
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if isinstance(value, datetime):
+                data[key] = value.isoformat()
+            elif isinstance(value, dict):
+                data[key] = convert_datetime_to_str(value)
+            elif isinstance(value, list):
+                data[key] = [convert_datetime_to_str(item) if isinstance(item, dict | list) else item for item in value]
+    elif isinstance(data, list):
+        data = [convert_datetime_to_str(item) if isinstance(item, dict | list) else item for item in data]
+    return data
