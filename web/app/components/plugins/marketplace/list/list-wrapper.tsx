@@ -9,11 +9,13 @@ type ListWrapperProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   showInstallButton?: boolean
+  locale?: string
 }
 const ListWrapper = ({
   marketplaceCollections,
   marketplaceCollectionPluginsMap,
   showInstallButton,
+  locale,
 }: ListWrapperProps) => {
   const plugins = useMarketplaceContext(v => v.plugins)
   const marketplaceCollectionsFromClient = useMarketplaceContext(v => v.marketplaceCollectionsFromClient)
@@ -35,6 +37,7 @@ const ListWrapper = ({
         marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMapFromClient || marketplaceCollectionPluginsMap}
         plugins={plugins}
         showInstallButton={showInstallButton}
+        locale={locale}
       />
     </div>
   )

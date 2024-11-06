@@ -2,6 +2,8 @@ import {
   useCallback,
   useState,
 } from 'react'
+import i18n from 'i18next'
+import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
 import type { Plugin } from '../types'
 import type {
@@ -61,5 +63,16 @@ export const useMarketplacePlugins = () => {
     queryPluginsWithDebounced,
     isLoading,
     setIsLoading,
+  }
+}
+
+export const useMixedTranslation = (localeFromOuter?: string) => {
+  let t = useTranslation().t
+
+  if (localeFromOuter)
+    t = i18n.getFixedT(localeFromOuter)
+
+  return {
+    t,
   }
 }

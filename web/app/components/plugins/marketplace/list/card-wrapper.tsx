@@ -1,21 +1,23 @@
 'use client'
 import { RiArrowRightUpLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import type { Plugin } from '@/app/components/plugins/types'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import Button from '@/app/components/base/button'
+import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 
 type CardWrapperProps = {
   plugin: Plugin
   showInstallButton?: boolean
+  locale?: string
 }
 const CardWrapper = ({
   plugin,
   showInstallButton,
+  locale,
 }: CardWrapperProps) => {
-  const { t } = useTranslation()
+  const { t } = useMixedTranslation(locale)
   return (
     <div className='group relative rounded-xl cursor-pointer'>
       <Card

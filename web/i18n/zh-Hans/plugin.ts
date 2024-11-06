@@ -1,4 +1,11 @@
 const translation = {
+  category: {
+    models: '模型',
+    tools: '工具',
+    extensions: '扩展',
+    bundles: '捆绑包',
+  },
+  searchPlugins: '搜索插件',
   from: '来自',
   findMoreInMarketplace: '在 Marketplace 中查找更多',
   searchInMarketplace: '在 Marketplace 中搜索',

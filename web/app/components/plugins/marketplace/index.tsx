@@ -7,20 +7,23 @@ import ListWrapper from './list/list-wrapper'
 import { getMarketplaceCollectionsAndPlugins } from './utils'
 
 type MarketplaceProps = {
+  locale?: string
   showInstallButton?: boolean
 }
 const Marketplace = async ({
+  locale,
   showInstallButton = true,
 }: MarketplaceProps) => {
   const { marketplaceCollections, marketplaceCollectionPluginsMap } = await getMarketplaceCollectionsAndPlugins()
 
   return (
     <MarketplaceContextProvider>
-      <Description />
+      <Description locale={locale} />
       <IntersectionLine />
-      <SearchBoxWrapper />
-      <PluginTypeSwitch />
+      <SearchBoxWrapper locale={locale} />
+      <PluginTypeSwitch locale={locale} />
       <ListWrapper
+        locale={locale}
         marketplaceCollections={marketplaceCollections}
         marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
         showInstallButton={showInstallButton}

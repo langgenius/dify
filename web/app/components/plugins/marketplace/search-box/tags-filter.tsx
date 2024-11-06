@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiArrowDownSLine,
   RiCloseCircleFill,
@@ -16,21 +15,24 @@ import Checkbox from '@/app/components/base/checkbox'
 import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
 import { useTags } from '@/app/components/plugins/hooks'
+import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 
 type TagsFilterProps = {
   tags: string[]
   onTagsChange: (tags: string[]) => void
   size: 'small' | 'large'
+  locale?: string
 }
 const TagsFilter = ({
   tags,
   onTagsChange,
   size,
+  locale,
 }: TagsFilterProps) => {
-  const { t } = useTranslation()
+  const { t } = useMixedTranslation(locale)
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const { tags: options, tagsMap } = useTags()
+  const { tags: options, tagsMap } = useTags(t)
   const filteredOptions = options.filter(option => option.label.toLowerCase().includes(searchText.toLowerCase()))
   const handleCheck = (id: string) => {
     if (tags.includes(id))

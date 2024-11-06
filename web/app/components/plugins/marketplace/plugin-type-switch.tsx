@@ -1,5 +1,4 @@
 'use client'
-
 import {
   RiArchive2Line,
   RiBrain2Line,
@@ -8,6 +7,7 @@ import {
 } from '@remixicon/react'
 import { PluginType } from '../types'
 import { useMarketplaceContext } from './context'
+import { useMixedTranslation } from './hooks'
 import cn from '@/utils/classnames'
 
 export const PLUGIN_TYPE_SEARCH_MAP = {
@@ -17,36 +17,43 @@ export const PLUGIN_TYPE_SEARCH_MAP = {
   extension: PluginType.extension,
   bundle: 'bundle',
 }
-const options = [
-  {
-    value: PLUGIN_TYPE_SEARCH_MAP.all,
-    text: 'All',
-    icon: null,
-  },
-  {
-    value: PLUGIN_TYPE_SEARCH_MAP.model,
-    text: 'Models',
-    icon: <RiBrain2Line className='mr-1.5 w-4 h-4' />,
-  },
-  {
-    value: PLUGIN_TYPE_SEARCH_MAP.tool,
-    text: 'Tools',
-    icon: <RiHammerLine className='mr-1.5 w-4 h-4' />,
-  },
-  {
-    value: PLUGIN_TYPE_SEARCH_MAP.extension,
-    text: 'Extensions',
-    icon: <RiPuzzle2Line className='mr-1.5 w-4 h-4' />,
-  },
-  {
-    value: PLUGIN_TYPE_SEARCH_MAP.bundle,
-    text: 'Bundles',
-    icon: <RiArchive2Line className='mr-1.5 w-4 h-4' />,
-  },
-]
-const PluginTypeSwitch = () => {
+type PluginTypeSwitchProps = {
+  locale?: string
+}
+const PluginTypeSwitch = ({
+  locale,
+}: PluginTypeSwitchProps) => {
+  const { t } = useMixedTranslation(locale)
   const activePluginType = useMarketplaceContext(s => s.activePluginType)
   const handleActivePluginTypeChange = useMarketplaceContext(s => s.handleActivePluginTypeChange)
+
+  const options = [
+    {
+      value: PLUGIN_TYPE_SEARCH_MAP.all,
+      text: 'All',
+      icon: null,
+    },
+    {
+      value: PLUGIN_TYPE_SEARCH_MAP.model,
+      text: t('plugin.category.models'),
+      icon: <RiBrain2Line className='mr-1.5 w-4 h-4' />,
+    },
+    {
+      value: PLUGIN_TYPE_SEARCH_MAP.tool,
+      text: t('plugin.category.tools'),
+      icon: <RiHammerLine className='mr-1.5 w-4 h-4' />,
+    },
+    {
+      value: PLUGIN_TYPE_SEARCH_MAP.extension,
+      text: t('plugin.category.extensions'),
+      icon: <RiPuzzle2Line className='mr-1.5 w-4 h-4' />,
+    },
+    {
+      value: PLUGIN_TYPE_SEARCH_MAP.bundle,
+      text: t('plugin.category.bundles'),
+      icon: <RiArchive2Line className='mr-1.5 w-4 h-4' />,
+    },
+  ]
 
   return (
     <div className={cn(
