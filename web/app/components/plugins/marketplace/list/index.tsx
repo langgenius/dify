@@ -27,6 +27,7 @@ const List = ({
             marketplaceCollections={marketplaceCollections}
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
             showInstallButton={showInstallButton}
+            locale={locale}
           />
         )
       }

@@ -7,11 +7,13 @@ type ListWithCollectionProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   showInstallButton?: boolean
+  locale?: string
 }
 const ListWithCollection = ({
   marketplaceCollections,
   marketplaceCollectionPluginsMap,
   showInstallButton,
+  locale,
 }: ListWithCollectionProps) => {
   return (
     <>
@@ -30,6 +32,7 @@ const ListWithCollection = ({
                     key={plugin.name}
                     plugin={plugin}
                     showInstallButton={showInstallButton}
+                    locale={locale}
                   />
                 ))
               }

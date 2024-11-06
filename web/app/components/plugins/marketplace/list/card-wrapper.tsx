@@ -23,6 +23,7 @@ const CardWrapper = ({
       <Card
         key={plugin.name}
         payload={plugin}
+        locale={locale}
         footer={
           <CardMoreInfo
             downloadCount={plugin.install_count}
