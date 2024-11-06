@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from celery import states
 
@@ -16,8 +16,8 @@ class CeleryTask(db.Model):
     result = db.Column(db.PickleType, nullable=True)
     date_done = db.Column(
         db.DateTime,
-        default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
-        onupdate=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
+        default=lambda: datetime.now(UTC).replace(tzinfo=None),
+        onupdate=lambda: datetime.now(UTC).replace(tzinfo=None),
         nullable=True,
     )
     traceback = db.Column(db.Text, nullable=True)
@@ -37,4 +37,4 @@ class CeleryTaskSet(db.Model):
     id = db.Column(db.Integer, db.Sequence("taskset_id_sequence"), autoincrement=True, primary_key=True)
     taskset_id = db.Column(db.String(155), unique=True)
     result = db.Column(db.PickleType, nullable=True)
-    date_done = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None), nullable=True)
+    date_done = db.Column(db.DateTime, default=lambda: datetime.now(UTC).replace(tzinfo=None), nullable=True)
