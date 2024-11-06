@@ -168,7 +168,7 @@ readabilipy = "0.2.0"
 redis = { version = "~5.0.3", extras = ["hiredis"] }
 replicate = "~0.22.0"
 resend = "~0.7.0"
-sagemaker = "2.231.0"
+sagemaker = "~2.231.0"
 scikit-learn = "~1.5.1"
 sentry-sdk = { version = "~1.44.1", extras = ["flask"] }
 sqlalchemy = "~2.0.29"
