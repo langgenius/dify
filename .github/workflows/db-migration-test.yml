@@ -43,7 +43,7 @@ jobs:
           cp middleware.env.example middleware.env
 
       - name: Set up Middlewares
-        uses: hoverkraft-tech/compose-action@v2.0.0
+        uses: hoverkraft-tech/compose-action@v2.0.2
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml
