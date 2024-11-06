@@ -7,7 +7,7 @@ import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
 import SettingBuiltInTool from '@/app/components/app/configuration/config/agent/agent-tools/setting-built-in-tool'
 
-interface Props {
+type Props = {
   disabled?: boolean
   collection: Collection
   tool: Tool

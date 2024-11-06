@@ -92,7 +92,9 @@ const DetailHeader = ({
   return (
     <div className={cn('shrink-0 p-4 pb-3 border-b border-divider-subtle bg-components-panel-bg')}>
       <div className="flex">
-        <Icon src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${icon}`} />
+        <div className='overflow-hidden border-components-panel-border-subtle border rounded-xl'>
+          <Icon src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${icon}`} />
+        </div>
         <div className="ml-3 w-0 grow">
           <div className="flex items-center h-5">
             <Title title={label[locale]} />
@@ -154,7 +156,7 @@ const DetailHeader = ({
         <PluginInfo
           repository={isFromGitHub ? meta?.repo : ''}
           release={version}
-          packageName={meta?.package}
+          packageName={meta?.package || ''}
           onHide={hidePluginInfo}
         />
       )}

@@ -25,7 +25,7 @@ const EndpointList = () => {
       params: {
         plugin_id: pluginDetail.plugin_id,
         page: 1,
-        limit: 100,
+        page_size: 100,
       },
     },
     fetchEndpointList,

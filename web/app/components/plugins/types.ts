@@ -203,7 +203,7 @@ export type EndpointOperationResponse = {
   result: 'success' | 'error'
 }
 export type EndpointsRequest = {
-  limit: number
+  page_size: number
   page: number
   plugin_id: string
 }

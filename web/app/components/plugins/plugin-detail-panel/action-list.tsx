@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
@@ -18,9 +18,14 @@ const ActionList = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
-  const providerDeclaration = currentPluginDetail.declaration.tool.identity
+  const providerDeclaration = useMemo(() => {
+    return {
+      ...currentPluginDetail.declaration.tool.identity,
+      name: `${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`,
+    }
+  }, [currentPluginDetail.declaration.tool.identity, currentPluginDetail.name, currentPluginDetail.plugin_id])
   const { data } = useSWR(
-    `/workspaces/current/tool-provider/builtin/${currentPluginDetail.plugin_id}/${currentPluginDetail.name}/tools`,
+    `${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`,
     fetchBuiltInToolList,
   )
 
