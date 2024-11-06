@@ -6,17 +6,27 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
+import { uniqBy } from 'lodash-es'
 import { useWorkflowRun } from '../../hooks'
 import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
+import { useWorkflowStore } from '../../store'
+import { DEFAULT_ITER_TIMES } from '../../constants'
 import type {
   ChatItem,
   Inputs,
-  PromptVariable,
 } from '@/app/components/base/chat/types'
+import type { InputForm } from '@/app/components/base/chat/chat/type'
+import {
+  getProcessedInputs,
+  processOpeningStatement,
+} from '@/app/components/base/chat/chat/utils'
 import { useToastContext } from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
-import type { VisionFile } from '@/types/app'
-import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
+import {
+  getProcessedFiles,
+  getProcessedFilesFromResponse,
+} from '@/app/components/base/file-uploader/utils'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -24,9 +34,9 @@ type SendCallback = {
 }
 export const useChat = (
   config: any,
-  promptVariablesConfig?: {
+  formSettings?: {
     inputs: Inputs
-    promptVariables: PromptVariable[]
+    inputsForm: InputForm[]
   },
   prevChatList?: ChatItem[],
   stopChat?: (taskId: string) => void,
@@ -35,6 +45,7 @@ export const useChat = (
   const { notify } = useToastContext()
   const { handleRun } = useWorkflowRun()
   const hasStopResponded = useRef(false)
+  const workflowStore = useWorkflowStore()
   const conversationId = useRef('')
   const taskIdRef = useRef('')
   const [chatList, setChatList] = useState<ChatItem[]>(prevChatList || [])
@@ -44,6 +55,9 @@ export const useChat = (
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
 
+  const {
+    setIterTimes,
+  } = workflowStore.getState()
   useEffect(() => {
     setAutoFreeze(false)
     return () => {
@@ -62,8 +76,8 @@ export const useChat = (
   }, [])
 
   const getIntroduction = useCallback((str: string) => {
-    return replaceStringWithValues(str, promptVariablesConfig?.promptVariables || [], promptVariablesConfig?.inputs || {})
-  }, [promptVariablesConfig?.inputs, promptVariablesConfig?.promptVariables])
+    return processOpeningStatement(str, formSettings?.inputs || {}, formSettings?.inputsForm || [])
+  }, [formSettings?.inputs, formSettings?.inputsForm])
   useEffect(() => {
     if (config?.opening_statement) {
       handleUpdateChatList(produce(chatListRef.current, (draft) => {
@@ -94,15 +108,16 @@ export const useChat = (
     handleResponding(false)
     if (stopChat && taskIdRef.current)
       stopChat(taskIdRef.current)
-
+    setIterTimes(DEFAULT_ITER_TIMES)
     if (suggestedQuestionsAbortControllerRef.current)
       suggestedQuestionsAbortControllerRef.current.abort()
-  }, [handleResponding, stopChat])
+  }, [handleResponding, setIterTimes, stopChat])
 
   const handleRestart = useCallback(() => {
     conversationId.current = ''
     taskIdRef.current = ''
     handleStop()
+    setIterTimes(DEFAULT_ITER_TIMES)
     const newChatList = config?.opening_statement
       ? [{
         id: `${Date.now()}`,
@@ -118,6 +133,7 @@ export const useChat = (
     config,
     handleStop,
     handleUpdateChatList,
+    setIterTimes,
   ])
 
   const updateCurrentQA = useCallback(({
@@ -143,7 +159,11 @@ export const useChat = (
   }, [handleUpdateChatList])
 
   const handleSend = useCallback((
-    params: any,
+    params: {
+      query: string
+      files?: FileEntity[]
+      [key: string]: any
+    },
     {
       onGetSuggestedQuestions,
     }: SendCallback,
@@ -182,12 +202,14 @@ export const useChat = (
 
     handleResponding(true)
 
+    const { files, inputs, ...restParams } = params
     const bodyParams = {
-      conversation_id: conversationId.current,
-      ...params,
+      files: getProcessedFiles(files || []),
+      inputs: getProcessedInputs(inputs || {}, formSettings?.inputsForm || []),
+      ...restParams,
     }
     if (bodyParams?.files?.length) {
-      bodyParams.files = bodyParams.files.map((item: VisionFile) => {
+      bodyParams.files = bodyParams.files.map((item) => {
         if (item.transfer_method === TransferMethod.local_file) {
           return {
             ...item,
@@ -201,7 +223,7 @@ export const useChat = (
     let hasSetResponseId = false
 
     handleRun(
-      params,
+      bodyParams,
       {
         onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
           responseItem.content = responseItem.content + message
@@ -260,6 +282,8 @@ export const useChat = (
         },
         onMessageEnd: (messageEnd) => {
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
+          const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
+          responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
 
           const newListWithAnswer = produce(
             chatListRef.current.filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
@@ -382,7 +406,7 @@ export const useChat = (
         },
       },
     )
-  }, [handleRun, handleResponding, handleUpdateChatList, notify, t, updateCurrentQA, config.suggested_questions_after_answer?.enabled])
+  }, [handleRun, handleResponding, handleUpdateChatList, notify, t, updateCurrentQA, config.suggested_questions_after_answer?.enabled, formSettings])
 
   return {
     conversationId: conversationId.current,

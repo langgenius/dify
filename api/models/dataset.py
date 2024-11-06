@@ -560,15 +560,33 @@ class DocumentSegment(db.Model):
         )
 
     def get_sign_content(self):
-        pattern = r"/files/([a-f0-9\-]+)/image-preview"
-        text = self.content
-        matches = re.finditer(pattern, text)
         signed_urls = []
+        text = self.content
+
+        # For data before v0.10.0
+        pattern = r"/files/([a-f0-9\-]+)/image-preview"
+        matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
             nonce = os.urandom(16).hex()
             timestamp = str(int(time.time()))
             data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
+            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
+            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+            encoded_sign = base64.urlsafe_b64encode(sign).decode()
+
+            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+            signed_url = f"{match.group(0)}?{params}"
+            signed_urls.append((match.start(), match.end(), signed_url))
+
+        # For data after v0.10.0
+        pattern = r"/files/([a-f0-9\-]+)/file-preview"
+        matches = re.finditer(pattern, text)
+        for match in matches:
+            upload_file_id = match.group(1)
+            nonce = os.urandom(16).hex()
+            timestamp = str(int(time.time()))
+            data_to_sign = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
             secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
             sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
@@ -701,6 +719,38 @@ class DatasetCollectionBinding(db.Model):
     model_name = db.Column(db.String(255), nullable=False)
     type = db.Column(db.String(40), server_default=db.text("'dataset'::character varying"), nullable=False)
     collection_name = db.Column(db.String(64), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+
+class TidbAuthBinding(db.Model):
+    __tablename__ = "tidb_auth_bindings"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="tidb_auth_bindings_pkey"),
+        db.Index("tidb_auth_bindings_tenant_idx", "tenant_id"),
+        db.Index("tidb_auth_bindings_active_idx", "active"),
+        db.Index("tidb_auth_bindings_created_at_idx", "created_at"),
+        db.Index("tidb_auth_bindings_status_idx", "status"),
+    )
+    id = db.Column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=True)
+    cluster_id = db.Column(db.String(255), nullable=False)
+    cluster_name = db.Column(db.String(255), nullable=False)
+    active = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    status = db.Column(db.String(255), nullable=False, server_default=db.text("CREATING"))
+    account = db.Column(db.String(255), nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+
+class Whitelist(db.Model):
+    __tablename__ = "whitelists"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="whitelists_pkey"),
+        db.Index("whitelists_tenant_idx", "tenant_id"),
+    )
+    id = db.Column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=True)
+    category = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 

@@ -2,6 +2,9 @@
 import type { FC } from 'react'
 import React, { useCallback, useRef, useState } from 'react'
 import copy from 'copy-to-clipboard'
+import ToggleExpandBtn from '../toggle-expand-btn'
+import CodeGeneratorButton from '../code-generator-button'
+import type { CodeLanguage } from '../../../code/types'
 import Wrap from './wrap'
 import cn from '@/utils/classnames'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
@@ -9,8 +12,9 @@ import {
   Clipboard,
   ClipboardCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
-import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
 
 type Props = {
   className?: string
@@ -21,6 +25,11 @@ type Props = {
   value: string
   isFocus: boolean
   isInNode?: boolean
+  onGenerated?: (prompt: string) => void
+  codeLanguages?: CodeLanguage
+  fileList?: FileEntity[]
+  showFileList?: boolean
+  showCodeGenerator?: boolean
 }
 
 const Base: FC<Props> = ({
@@ -32,6 +41,11 @@ const Base: FC<Props> = ({
   value,
   isFocus,
   isInNode,
+  onGenerated,
+  codeLanguages,
+  fileList = [],
+  showFileList,
+  showCodeGenerator = false,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
   const {
@@ -64,6 +78,11 @@ const Base: FC<Props> = ({
             e.stopPropagation()
           }}>
             {headerRight}
+            {showCodeGenerator && codeLanguages && (
+              <div className='ml-1'>
+                <CodeGeneratorButton onGenerated={onGenerated} codeLanguages={codeLanguages}/>
+              </div>
+            )}
             {!isCopied
               ? (
                 <Clipboard className='mx-1 w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={handleCopy} />
@@ -72,6 +91,7 @@ const Base: FC<Props> = ({
                 <ClipboardCheck className='mx-1 w-3.5 h-3.5 text-gray-500' />
               )
             }
+
             <div className='ml-1'>
               <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />
             </div>
@@ -87,6 +107,9 @@ const Base: FC<Props> = ({
             {children}
           </div>
         </PromptEditorHeightResizeWrap>
+        {showFileList && fileList.length > 0 && (
+          <FileListInLog fileList={fileList} />
+        )}
       </div>
     </Wrap>
   )

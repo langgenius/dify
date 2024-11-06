@@ -2,9 +2,10 @@ from typing import Optional
 
 from core.model_manager import ModelInstance
 from core.rag.models.document import Document
+from core.rag.rerank.rerank_base import BaseRerankRunner
 
 
-class RerankModelRunner:
+class RerankModelRunner(BaseRerankRunner):
     def __init__(self, rerank_model_instance: ModelInstance) -> None:
         self.rerank_model_instance = rerank_model_instance
 
@@ -26,18 +27,17 @@ class RerankModelRunner:
         :return:
         """
         docs = []
-        doc_id = []
+        doc_id = set()
         unique_documents = []
-        dify_documents = [item for item in documents if item.provider == "dify"]
-        external_documents = [item for item in documents if item.provider == "external"]
-        for document in dify_documents:
-            if document.metadata["doc_id"] not in doc_id:
-                doc_id.append(document.metadata["doc_id"])
+        for document in documents:
+            if document.provider == "dify" and document.metadata["doc_id"] not in doc_id:
+                doc_id.add(document.metadata["doc_id"])
                 docs.append(document.page_content)
                 unique_documents.append(document)
-        for document in external_documents:
-            docs.append(document.page_content)
-            unique_documents.append(document)
+            elif document.provider == "external":
+                if document not in unique_documents:
+                    docs.append(document.page_content)
+                    unique_documents.append(document)
 
         documents = unique_documents
 

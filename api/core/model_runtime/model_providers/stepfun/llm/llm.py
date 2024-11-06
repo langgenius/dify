@@ -50,7 +50,7 @@ class StepfunLargeLanguageModel(OAIAPICompatLargeLanguageModel):
         self._add_custom_parameters(credentials)
         super().validate_credentials(model, credentials)
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         return AIModelEntity(
             model=model,
             label=I18nObject(en_US=model, zh_Hans=model),

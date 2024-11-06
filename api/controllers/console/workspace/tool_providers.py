@@ -7,8 +7,7 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.console import api
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import alphanumeric, uuid_value
 from libs.login import login_required
@@ -360,16 +359,15 @@ class ToolWorkflowProviderCreateApi(Resource):
         args = reqparser.parse_args()
 
         return WorkflowToolManageService.create_workflow_tool(
-            user_id,
-            tenant_id,
-            args["workflow_app_id"],
-            args["name"],
-            args["label"],
-            args["icon"],
-            args["description"],
-            args["parameters"],
-            args["privacy_policy"],
-            args.get("labels", []),
+            user_id=user_id,
+            tenant_id=tenant_id,
+            workflow_app_id=args["workflow_app_id"],
+            name=args["name"],
+            label=args["label"],
+            icon=args["icon"],
+            description=args["description"],
+            parameters=args["parameters"],
+            privacy_policy=args["privacy_policy"],
         )
 
 

@@ -150,7 +150,7 @@ const translation = {
       title: '会話履歴',
       description: '会話の役割に接頭辞名を設定します',
       tip: '会話履歴は有効になっていません。上記のプロンプトに <histories> を追加してください。',
-      learnMore: '詳細',
+      learnMore: '詳細を見る',
       editModal: {
         title: '会話役割名の編集',
         userPrefix: 'ユーザー接頭辞',
@@ -163,6 +163,7 @@ const translation = {
     moderation: {
       title: 'コンテンツのモデレーション',
       description: 'モデレーションAPIを使用するか、機密語リストを維持することで、モデルの出力を安全にします。',
+      contentEnableLabel: 'モデレート・コンテンツを有効にする',
       allEnabled: '入力/出力コンテンツが有効になっています',
       inputEnabled: '入力コンテンツが有効になっています',
       outputEnabled: '出力コンテンツが有効になっています',
@@ -198,6 +199,41 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'ファイル アップロード',
+      description: 'チャットの入力ボックスは画像やドキュメントやその他のファイルのアップロードをサポートします。',
+      supportedTypes: 'サポートされるファイルのタイプ',
+      numberLimit: '最大アップロード数',
+      modalTitle: 'ファイル アップロード設置',
+    },
+    imageUpload: {
+      title: '画像アップロード',
+      description: '画像アップロードをサポートする',
+      supportedTypes: 'サポートされるファイルのタイプ',
+      numberLimit: '最大アップロード数',
+      modalTitle: '画像アップロード設置',
+    },
+    bar: {
+      empty: 'Webアプリのユーザーエクスペリアンスを強化させる機能を有効にする',
+      enableText: '有効な機能',
+      manage: '管理',
+    },
+  },
+  codegen: {
+    title: 'コードジェネレーター',
+    description: 'コードジェネレーターは、設定されたモデルを使用して指示に基づいて高品質なコードを生成します。明確で詳細な指示を提供してください。',
+    instruction: '指示',
+    instructionPlaceholder: '生成したいコードの詳細な説明を入力してください。',
+    noDataLine1: '左側に使用例を記入してください,',
+    noDataLine2: 'コードのプレビューがこちらに表示されます。',
+    generate: '生成',
+    generatedCodeTitle: '生成されたコード',
+    loading: 'コードを生成中...',
+    apply: '適用',
+    applyChanges: '変更を適用',
+    resTitle: '生成されたコード',
+    overwriteConfirmTitle: '既存のコードを上書きしますか？',
+    overwriteConfirmMessage: 'この操作は既存のコードを上書きします。続行しますか？',
   },
   generate: {
     title: 'プロンプト生成器',
@@ -264,6 +300,10 @@ const translation = {
     waitForBatchResponse: 'バッチタスクへの応答が完了するまでお待ちください。',
     notSelectModel: 'モデルを選択してください',
     waitForImgUpload: '画像のアップロードが完了するまでお待ちください',
+    waitForFileUpload: 'ファイルのアップロードが完了するまでお待ちください',
+  },
+  warningMessage: {
+    timeoutExceeded: 'タイムアウトのため結果が表示されません。完全な結果を手にいれるためには、ログを参照してください。',
   },
   chatSubTitle: '手順',
   completionSubTitle: '接頭辞プロンプト',
@@ -305,6 +345,8 @@ const translation = {
     'paragraph': '段落',
     'select': '選択',
     'number': '数値',
+    'single-file': '単一ファイル',
+    'multi-files': 'ファイルリスト',
     'notSet': '設定されていません。プレフィックスのプロンプトで {{input}} を入力してみてください。',
     'stringTitle': 'フォームテキストボックスオプション',
     'maxLength': '最大長',
@@ -316,6 +358,31 @@ const translation = {
     'inputPlaceholder': '入力してください',
     'content': 'コンテンツ',
     'required': '必須',
+    'file': {
+      supportFileTypes: 'サッポトされたファイルタイプ',
+      image: {
+        name: '画像',
+      },
+      audio: {
+        name: '音声',
+      },
+      document: {
+        name: 'ドキュメント',
+      },
+      video: {
+        name: '映像',
+      },
+      custom: {
+        name: '他のファイルタイプ',
+        description: '他のファイルタイプを指定する。',
+        createPlaceholder: '+ 拡張子, 例：.doc',
+      },
+    },
+    'uploadFileTypes': 'アップロードされたファイルのタイプ',
+    'localUpload': 'ローカル アップロード',
+    'both': '両方',
+    'maxNumberOfUploads': 'アップロードの最大数',
+    'maxNumberTip': 'ドキュメント < {{docLimit}}, 画像 < {{imgLimit}}, 音声 < {{audioLimit}}, 映像 < {{videoLimit}}',
     'errorMsg': {
       varNameRequired: '変数名は必須です',
       labelNameRequired: 'ラベル名は必須です',
@@ -327,6 +394,7 @@ const translation = {
   vision: {
     name: 'ビジョン',
     description: 'ビジョンを有効にすると、モデルが画像を受け取り、それに関する質問に答えることができます。',
+    onlySupportVisionModelTip: 'ビジョンモデルのみをサポート',
     settings: '設定',
     visionSettings: {
       title: 'ビジョン設定',
@@ -355,7 +423,7 @@ const translation = {
       voice: '音声',
       autoPlay: '自動再生',
       autoPlayEnabled: '開ける',
-      autoPlayDisabled: '關閉',
+      autoPlayDisabled: '閉じる',
     },
   },
   openingStatement: {
@@ -394,6 +462,7 @@ const translation = {
     run: '実行',
   },
   result: '出力テキスト',
+  noResult: '出力はここに表示されます。',
   datasetConfig: {
     settingTitle: 'リトリーバル設定',
     knowledgeTip: 'ナレッジを追加するには「+」ボタンをクリックしてください',

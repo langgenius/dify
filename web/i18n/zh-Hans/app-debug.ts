@@ -68,17 +68,17 @@ const translation = {
     },
     speechToText: {
       title: '语音转文字',
-      description: '启用后，您可以使用语音输入。',
+      description: '您可以使用语音输入。',
       resDes: '语音输入已启用',
     },
     textToSpeech: {
       title: '文字转语音',
-      description: '启用后，文本可以转换成语音。',
+      description: '文本可以转换成语音。',
       resDes: '文本转音频已启用',
     },
     citation: {
       title: '引用和归属',
-      description: '启用后，显示源文档和生成内容的归属部分。',
+      description: '显示源文档和生成内容的归属部分。',
       resDes: '引用和归属已启用',
     },
     annotation: {
@@ -163,9 +163,10 @@ const translation = {
     moderation: {
       title: '内容审查',
       description: '您可以调用审查 API 或者维护敏感词库来使模型更安全地输出。',
-      allEnabled: '审查输入/审查输出 内容已启用',
-      inputEnabled: '审查输入内容已启用',
-      outputEnabled: '审查输出内容已启用',
+      contentEnableLabel: '启用审查内容',
+      allEnabled: '输入内容和输出内容',
+      inputEnabled: '输入内容',
+      outputEnabled: '输出内容',
       modal: {
         title: '内容审查设置',
         provider: {
@@ -198,6 +199,41 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: '文件上传',
+      description: '聊天输入框支持上传文件。类型包括图片、文档以及其它类型',
+      supportedTypes: '支持的文件类型',
+      numberLimit: '最大上传数',
+      modalTitle: '文件上传设置',
+    },
+    imageUpload: {
+      title: '图片上传',
+      description: '支持上传图片',
+      supportedTypes: '支持的文件类型',
+      numberLimit: '最大上传数',
+      modalTitle: '图片上传设置',
+    },
+    bar: {
+      empty: '开启功能增强 webapp 用户体验',
+      enableText: '功能已开启',
+      manage: '管理',
+    },
+  },
+  codegen: {
+    title: '代码生成器',
+    description: '代码生成器使用配置的模型根据您的指令生成高质量的代码。请提供清晰详细的说明。',
+    instruction: '指令',
+    instructionPlaceholder: '请输入您想要生成的代码的详细描述。',
+    noDataLine1: '在左侧描述您的用例，',
+    noDataLine2: '代码预览将在此处显示。',
+    generate: '生成',
+    generatedCodeTitle: '生成的代码',
+    loading: '正在生成代码...',
+    apply: '应用',
+    applyChanges: '应用更改',
+    resTitle: '生成的代码',
+    overwriteConfirmTitle: '是否覆盖现有代码？',
+    overwriteConfirmMessage: '此操作将覆盖现有代码。您确定要继续吗？',
   },
   generate: {
     title: '提示词生成器',
@@ -265,6 +301,7 @@ const translation = {
     waitForBatchResponse: '请等待批量任务完成',
     notSelectModel: '请选择模型',
     waitForImgUpload: '请等待图片上传完成',
+    waitForFileUpload: '请等待文件上传完成',
   },
   chatSubTitle: '提示词',
   completionSubTitle: '前缀提示词',
@@ -308,6 +345,8 @@ const translation = {
     'paragraph': '段落',
     'select': '下拉选项',
     'number': '数字',
+    'single-file': '单文件',
+    'multi-files': '文件列表',
     'notSet': '未设置，在 Prompt 中输入 {{input}} 试试',
     'stringTitle': '文本框设置',
     'maxLength': '最大长度',
@@ -318,6 +357,31 @@ const translation = {
     'inputPlaceholder': '请输入',
     'labelName': '显示名称',
     'required': '必填',
+    'file': {
+      supportFileTypes: '支持的文件类型',
+      image: {
+        name: '图片',
+      },
+      audio: {
+        name: '音频',
+      },
+      document: {
+        name: '文档',
+      },
+      video: {
+        name: '视频',
+      },
+      custom: {
+        name: '其他文件类型',
+        description: '指定其他文件类型',
+        createPlaceholder: '+ 文件扩展名，例如 .doc',
+      },
+    },
+    'uploadFileTypes': '上传文件类型',
+    'localUpload': '本地上传',
+    'both': '两者',
+    'maxNumberOfUploads': '最大上传数',
+    'maxNumberTip': '文档 < {{docLimit}}, 图片 < {{imgLimit}}, 音频 < {{audioLimit}}, 视频 < {{videoLimit}}',
     'content': '内容',
     'errorMsg': {
       labelNameRequired: '显示名称必填',
@@ -329,6 +393,7 @@ const translation = {
   vision: {
     name: '视觉',
     description: '开启视觉功能将允许模型输入图片，并根据图像内容的理解回答用户问题',
+    onlySupportVisionModelTip: '只有视觉模型配置视觉功能',
     settings: '设置',
     visionSettings: {
       title: '视觉设置',
@@ -394,6 +459,7 @@ const translation = {
     run: '运行',
   },
   result: '结果',
+  noResult: '输出结果展示在这',
   datasetConfig: {
     settingTitle: '召回设置',
     knowledgeTip: '点击 “+” 按钮添加知识库',

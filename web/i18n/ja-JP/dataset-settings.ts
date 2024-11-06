@@ -24,7 +24,7 @@ const translation = {
     embeddingModelTipLink: '設定',
     retrievalSetting: {
       title: '検索設定',
-      learnMore: '詳細を学ぶ',
+      learnMore: '詳細を見る',
       description: ' 検索方法についての詳細',
       longDescription: ' 検索方法についての詳細については、いつでもナレッジの設定で変更できます。',
     },

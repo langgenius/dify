@@ -11,11 +11,11 @@ import services
 from controllers.console import api
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import InvalidActionError, NoFileUploadedError, TooManyFilesError
-from controllers.console.setup import setup_required
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_knowledge_limit_check,
     cloud_edition_billing_resource_check,
+    setup_required,
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -24,7 +24,7 @@ from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from fields.segment_fields import segment_fields
 from libs.login import login_required
-from models.dataset import DocumentSegment
+from models import DocumentSegment
 from services.dataset_service import DatasetService, DocumentService, SegmentService
 from tasks.batch_create_segment_to_index_task import batch_create_segment_to_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task

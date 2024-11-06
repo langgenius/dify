@@ -1,6 +1,8 @@
 import { addFileInfos, sortAgentSorts } from '../../tools/utils'
 import { UUID_NIL } from './constants'
-import type { ChatItem } from './types'
+import type { IChatItem } from './chat/type'
+import type { ChatItem, ChatItemInTree } from './types'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 
 async function decodeBase64AndDecompress(base64String: string) {
   const binaryString = atob(base64String)
@@ -22,7 +24,7 @@ function getProcessedInputsFromUrlParams(): Record<string, any> {
 function getLastAnswer(chatList: ChatItem[]) {
   for (let i = chatList.length - 1; i >= 0; i--) {
     const item = chatList[i]
-    if (item.isAnswer && !item.isOpeningStatement)
+    if (item.isAnswer && !item.id.startsWith('answer-placeholder-') && !item.isOpeningStatement)
       return item
   }
   return null
@@ -30,6 +32,7 @@ function getLastAnswer(chatList: ChatItem[]) {
 
 function appendQAToChatList(chatList: ChatItem[], item: any) {
   // we append answer first and then question since will reverse the whole chatList later
+  const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
   chatList.push({
     id: item.id,
     content: item.answer,
@@ -37,13 +40,14 @@ function appendQAToChatList(chatList: ChatItem[], item: any) {
     feedback: item.feedback,
     isAnswer: true,
     citation: item.retriever_resources,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+    message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
   })
+  const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
   chatList.push({
     id: `question-${item.id}`,
     content: item.query,
     isAnswer: false,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
+    message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
   })
 }
 
@@ -78,8 +82,137 @@ function getPrevChatList(fetchedMessages: any[]) {
   return ret.reverse()
 }
 
+function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
+  const map: Record<string, ChatItemInTree> = {}
+  const rootNodes: ChatItemInTree[] = []
+  const childrenCount: Record<string, number> = {}
+
+  let lastAppendedLegacyAnswer: ChatItemInTree | null = null
+  for (let i = 0; i < allMessages.length; i += 2) {
+    const question = allMessages[i]!
+    const answer = allMessages[i + 1]!
+
+    const isLegacy = question.parentMessageId === UUID_NIL
+    const parentMessageId = isLegacy
+      ? (lastAppendedLegacyAnswer?.id || '')
+      : (question.parentMessageId || '')
+
+    // Process question
+    childrenCount[parentMessageId] = (childrenCount[parentMessageId] || 0) + 1
+    const questionNode: ChatItemInTree = {
+      ...question,
+      children: [],
+    }
+    map[question.id] = questionNode
+
+    // Process answer
+    childrenCount[question.id] = 1
+    const answerNode: ChatItemInTree = {
+      ...answer,
+      children: [],
+      siblingIndex: isLegacy ? 0 : childrenCount[parentMessageId] - 1,
+    }
+    map[answer.id] = answerNode
+
+    // Connect question and answer
+    questionNode.children!.push(answerNode)
+
+    // Append to parent or add to root
+    if (isLegacy) {
+      if (!lastAppendedLegacyAnswer)
+        rootNodes.push(questionNode)
+      else
+        lastAppendedLegacyAnswer.children!.push(questionNode)
+
+      lastAppendedLegacyAnswer = answerNode
+    }
+    else {
+      if (!parentMessageId)
+        rootNodes.push(questionNode)
+      else
+        map[parentMessageId]?.children!.push(questionNode)
+    }
+  }
+
+  // If no messages have parentMessageId=null (indicating a root node),
+  // then we likely have a partial chat history. In this case,
+  // use the first available message as the root node.
+  if (rootNodes.length === 0 && allMessages.length > 0)
+    rootNodes.push(map[allMessages[0]!.id]!)
+
+  return rootNodes
+}
+
+function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): ChatItemInTree[] {
+  let ret: ChatItemInTree[] = []
+  let targetNode: ChatItemInTree | undefined
+
+  // find path to the target message
+  const stack = tree.toReversed().map(rootNode => ({
+    node: rootNode,
+    path: [rootNode],
+  }))
+  while (stack.length > 0) {
+    const { node, path } = stack.pop()!
+    if (
+      node.id === targetMessageId
+      || (!targetMessageId && !node.children?.length && !stack.length) // if targetMessageId is not provided, we use the last message in the tree as the target
+    ) {
+      targetNode = node
+      ret = path.map((item, index) => {
+        if (!item.isAnswer)
+          return item
+
+        const parentAnswer = path[index - 2]
+        const siblingCount = !parentAnswer ? tree.length : parentAnswer.children!.length
+        const prevSibling = !parentAnswer ? tree[item.siblingIndex! - 1]?.children?.[0]?.id : parentAnswer.children![item.siblingIndex! - 1]?.children?.[0].id
+        const nextSibling = !parentAnswer ? tree[item.siblingIndex! + 1]?.children?.[0]?.id : parentAnswer.children![item.siblingIndex! + 1]?.children?.[0].id
+
+        return { ...item, siblingCount, prevSibling, nextSibling }
+      })
+      break
+    }
+    if (node.children) {
+      for (let i = node.children.length - 1; i >= 0; i--) {
+        stack.push({
+          node: node.children[i],
+          path: [...path, node.children[i]],
+        })
+      }
+    }
+  }
+
+  // append all descendant messages to the path
+  if (targetNode) {
+    const stack = [targetNode]
+    while (stack.length > 0) {
+      const node = stack.pop()!
+      if (node !== targetNode)
+        ret.push(node)
+      if (node.children?.length) {
+        const lastChild = node.children.at(-1)!
+
+        if (!lastChild.isAnswer) {
+          stack.push(lastChild)
+          continue
+        }
+
+        const parentAnswer = ret.at(-2)
+        const siblingCount = parentAnswer?.children?.length
+        const prevSibling = parentAnswer?.children?.at(-2)?.children?.[0]?.id
+
+        stack.push({ ...lastChild, siblingCount, prevSibling })
+      }
+    }
+  }
+
+  return ret
+}
+
 export {
   getProcessedInputsFromUrlParams,
-  getLastAnswer,
   getPrevChatList,
+  getLastAnswer,
+  buildChatItemTree,
+  getThreadMessages,
 }

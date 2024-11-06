@@ -6,6 +6,7 @@ import type {
   EnvironmentVariable,
   Node,
 } from '@/app/components/workflow/types'
+import type { TransferMethod } from '@/types/app'
 
 export type NodeTracing = {
   id: string
@@ -18,6 +19,7 @@ export type NodeTracing = {
   process_data: any
   outputs?: any
   status: string
+  parallel_run_id?: string
   error?: string
   elapsed_time: number
   execution_metadata: {
@@ -30,6 +32,7 @@ export type NodeTracing = {
     parallel_start_node_id?: string
     parent_parallel_id?: string
     parent_parallel_start_node_id?: string
+    parallel_mode_run_id?: string
   }
   metadata: {
     iterator_length: number
@@ -108,6 +111,7 @@ export type WorkflowFinishedResponse = {
       email: string
     }
     finished_at: number
+    files?: FileResponse[]
   }
 }
 
@@ -119,6 +123,7 @@ export type NodeStartedResponse = {
     id: string
     node_id: string
     iteration_id?: string
+    parallel_run_id?: string
     node_type: string
     index: number
     predecessor_node_id?: string
@@ -126,6 +131,17 @@ export type NodeStartedResponse = {
     created_at: number
     extras?: any
   }
+}
+
+export type FileResponse = {
+  related_id: string
+  extension: string
+  filename: string
+  size: number
+  mime_type: string
+  transfer_method: TransferMethod
+  type: string
+  url: string
 }
 
 export type NodeFinishedResponse = {
@@ -153,8 +169,10 @@ export type NodeFinishedResponse = {
       parallel_start_node_id?: string
       iteration_index?: number
       iteration_id?: string
+      parallel_mode_run_id: string
     }
     created_at: number
+    files?: FileResponse[]
   }
 }
 
@@ -186,6 +204,7 @@ export type IterationNextResponse = {
     output: any
     extras?: any
     created_at: number
+    parallel_mode_run_id: string
     execution_metadata: {
       parallel_id?: string
     }

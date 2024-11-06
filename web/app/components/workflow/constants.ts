@@ -15,6 +15,8 @@ import VariableAssignerDefault from './nodes/variable-assigner/default'
 import AssignerDefault from './nodes/assigner/default'
 import EndNodeDefault from './nodes/end/default'
 import IterationDefault from './nodes/iteration/default'
+import DocExtractorDefault from './nodes/document-extractor/default'
+import ListFilterDefault from './nodes/list-operator/default'
 import IterationStartDefault from './nodes/iteration-start/default'
 
 type NodesExtraData = {
@@ -180,6 +182,25 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailableNextNodes: ToolDefault.getAvailableNextNodes,
     checkValid: ToolDefault.checkValid,
   },
+  [BlockEnum.DocExtractor]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: DocExtractorDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: DocExtractorDefault.getAvailableNextNodes,
+    checkValid: DocExtractorDefault.checkValid,
+  },
+  [BlockEnum.ListFilter]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: ListFilterDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: ListFilterDefault.getAvailableNextNodes,
+    checkValid: ListFilterDefault.checkValid,
+  },
+
 }
 
 export const ALL_CHAT_AVAILABLE_BLOCKS = Object.keys(NODES_EXTRA_DATA).filter(key => key !== BlockEnum.End && key !== BlockEnum.Start) as BlockEnum[]
@@ -306,8 +327,22 @@ export const NODES_INITIAL_DATA = {
     desc: '',
     ...ToolDefault.defaultValue,
   },
+  [BlockEnum.DocExtractor]: {
+    type: BlockEnum.DocExtractor,
+    title: '',
+    desc: '',
+    ...DocExtractorDefault.defaultValue,
+  },
+  [BlockEnum.ListFilter]: {
+    type: BlockEnum.ListFilter,
+    title: '',
+    desc: '',
+    ...ListFilterDefault.defaultValue,
+  },
 }
-
+export const MAX_ITERATION_PARALLEL_NUM = 10
+export const MIN_ITERATION_PARALLEL_NUM = 1
+export const DEFAULT_ITER_TIMES = 1
 export const NODE_WIDTH = 240
 export const X_OFFSET = 60
 export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET
@@ -353,6 +388,7 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.Start, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.Code, BlockEnum.TemplateTransform,
   BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner, BlockEnum.VariableAggregator, BlockEnum.QuestionClassifier,
   BlockEnum.ParameterExtractor, BlockEnum.Iteration,
+  BlockEnum.DocExtractor, BlockEnum.ListFilter,
 ]
 
 export const LLM_OUTPUT_STRUCT: Var[] = [
@@ -427,6 +463,44 @@ export const PARAMETER_EXTRACTOR_COMMON_STRUCT: Var[] = [
     type: VarType.string,
   },
 ]
+
+export const FILE_STRUCT: Var[] = [
+  {
+    variable: 'name',
+    type: VarType.string,
+  },
+  {
+    variable: 'size',
+    type: VarType.number,
+  },
+  {
+    variable: 'type',
+    type: VarType.string,
+  },
+  {
+    variable: 'extension',
+    type: VarType.string,
+  },
+  {
+    variable: 'mime_type',
+    type: VarType.string,
+  },
+  {
+    variable: 'transfer_method',
+    type: VarType.string,
+  },
+  {
+    variable: 'url',
+    type: VarType.string,
+  },
+]
+
+export const DEFAULT_FILE_UPLOAD_SETTING = {
+  allowed_file_upload_methods: ['local_file', 'remote_url'],
+  max_length: 5,
+  allowed_file_types: ['image'],
+  allowed_file_extensions: [],
+}
 
 export const WORKFLOW_DATA_UPDATE = 'WORKFLOW_DATA_UPDATE'
 export const CUSTOM_NODE = 'custom'

@@ -3,9 +3,9 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field
 
-from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.node_entities import NodeType
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
+from core.workflow.nodes import NodeType
+from core.workflow.nodes.base import BaseNodeData
 
 
 class GraphEngineEvent(BaseModel):
@@ -59,6 +59,7 @@ class BaseNodeEvent(GraphEngineEvent):
 
 class NodeRunStartedEvent(BaseNodeEvent):
     predecessor_node_id: Optional[str] = None
+    parallel_mode_run_id: Optional[str] = None
     """predecessor node id"""
 
 
@@ -78,6 +79,10 @@ class NodeRunSucceededEvent(BaseNodeEvent):
 
 
 class NodeRunFailedEvent(BaseNodeEvent):
+    error: str = Field(..., description="error")
+
+
+class NodeInIterationFailedEvent(BaseNodeEvent):
     error: str = Field(..., description="error")
 
 
@@ -129,6 +134,8 @@ class BaseIterationEvent(GraphEngineEvent):
     """parent parallel id if node is in parallel"""
     parent_parallel_start_node_id: Optional[str] = None
     """parent parallel start node id if node is in parallel"""
+    parallel_mode_run_id: Optional[str] = None
+    """iteratoin run in parallel mode run id"""
 
 
 class IterationRunStartedEvent(BaseIterationEvent):
