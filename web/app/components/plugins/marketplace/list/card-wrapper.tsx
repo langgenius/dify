@@ -19,7 +19,13 @@ const CardWrapper = ({
 }: CardWrapperProps) => {
   const { t } = useMixedTranslation(locale)
   return (
-    <div className='group relative rounded-xl cursor-pointer'>
+    <div
+      className='group relative rounded-xl cursor-pointer'
+      onClick={() => {
+        if (!showInstallButton)
+          window.open(`${MARKETPLACE_URL_PREFIX}/plugin/${plugin.org}/${plugin.name}`)
+      }}
+    >
       <Card
         key={plugin.name}
         payload={plugin}
