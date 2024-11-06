@@ -1,12 +1,16 @@
-import { useTranslation as translate } from '@/i18n/server'
+import {
+  getLocaleOnServer,
+  useTranslation as translate,
+} from '@/i18n/server'
 
 type DescriptionProps = {
   locale?: string
 }
 const Description = async ({
-  locale = 'en-US',
+  locale: localeFromProps,
 }: DescriptionProps) => {
-  const { t } = await translate(locale, 'plugin')
+  const localeDefault = getLocaleOnServer()
+  const { t } = await translate(localeFromProps || localeDefault, 'plugin')
 
   return (
     <>

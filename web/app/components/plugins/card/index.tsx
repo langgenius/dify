@@ -10,6 +10,7 @@ import Description from './base/description'
 import Placeholder from './base/placeholder'
 import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
+import { getLanguage } from '@/i18n/language'
 
 export type Props = {
   className?: string
@@ -39,7 +40,7 @@ const Card = ({
   locale: localeFromProps,
 }: Props) => {
   const defaultLocale = useGetLanguage()
-  const locale = localeFromProps || defaultLocale
+  const locale = localeFromProps ? getLanguage(localeFromProps) : defaultLocale
 
   const { type, name, org, label, brief, icon, verified } = payload
 
