@@ -17,7 +17,7 @@ language_timezone_mapping = {
     "hi-IN": "Asia/Kolkata",
     "tr-TR": "Europe/Istanbul",
     "fa-IR": "Asia/Tehran",
-    "sl-SI": "Europe/Ljubljana"
+    "sl-SI": "Europe/Ljubljana",
 }
 
 languages = list(language_timezone_mapping.keys())
