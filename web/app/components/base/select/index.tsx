@@ -316,7 +316,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const localPlaceholder = placeholder || t('common.placeholder.select')
-  const selectedItem = items.find(item => item.value === value)
+  const selectedItem = value ? items.find(item => item.value === value) : undefined
 
   return (
     <PortalToFollowElem
@@ -343,6 +343,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
               >
                 {selectedItem?.name ?? localPlaceholder}
               </span>
+              <div className='mx-0.5'>{installedValue && selectedItem && selectedItem.value !== installedValue && <Badge>{installedValue} {'->'} {selectedItem.value} </Badge>}</div>
               <ChevronDownIcon className='shrink-0 h-4 w-4 text-gray-400' />
             </div>
           )}
@@ -356,8 +357,8 @@ const PortalSelect: FC<PortalSelectProps> = ({
             <div
               key={item.value}
               className={`
-                flex items-center justify-between px-2.5 h-9 cursor-pointer rounded-lg hover:bg-gray-100 text-gray-700
-                ${item.value === value && 'bg-gray-100'}
+                flex items-center justify-between px-2.5 h-9 cursor-pointer rounded-lg hover:bg-state-base-hover text-text-secondary
+                ${item.value === value && 'bg-state-base-hover'}
               `}
               title={item.name}
               onClick={() => {

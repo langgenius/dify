@@ -51,3 +51,7 @@ export const parseGitHubUrl = (url: string): GitHubUrlInfo => {
   const match = url.match(/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/?$/)
   return match ? { isValid: true, owner: match[1], repo: match[2] } : { isValid: false }
 }
+
+export const convertRepoToUrl = (repo: string) => {
+  return repo ? `https://github.com/${repo}` : ''
+}

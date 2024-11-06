@@ -93,7 +93,10 @@ const translation = {
   },
   installFromGitHub: {
     installPlugin: '从 GitHub 安装插件',
-    updateVersion: '更新 GitHub 插件',
+    updatePlugin: '更新来自 GitHub 的插件',
+    installedSuccessfully: '安装成功',
+    installFailed: '安装失败',
+    uploadFailed: '上传失败',
     gitHubRepo: 'GitHub 仓库',
     selectVersion: '选择版本',
     selectVersionPlaceholder: '请选择一个版本',

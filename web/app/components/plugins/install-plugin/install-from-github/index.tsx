@@ -5,7 +5,7 @@ import Modal from '@/app/components/base/modal'
 import type { Item } from '@/app/components/base/select'
 import type { InstallState } from '@/app/components/plugins/types'
 import { useGitHubReleases } from '../hooks'
-import { parseGitHubUrl } from '../utils'
+import { convertRepoToUrl, parseGitHubUrl } from '../utils'
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
 import { InstallStepFromGitHub } from '../../types'
 import Toast from '@/app/components/base/toast'
@@ -16,7 +16,7 @@ import Loaded from './steps/loaded'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useTranslation } from 'react-i18next'
 
-const i18nPrefix = 'plugin.installModal'
+const i18nPrefix = 'plugin.installFromGitHub'
 
 type InstallFromGitHubProps = {
   updatePayload?: UpdateFromGitHubPayload
@@ -26,14 +26,25 @@ type InstallFromGitHubProps = {
 
 const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, onClose, onSuccess }) => {
   const { t } = useTranslation()
+  // const updatePayloadTest = {
+  //   originalPackageInfo: {
+  //     id: '0299ff5e-40cc-4690-9308-6687cf344a21',
+  //     repo: 'YIXIAO0/test',
+  //     version: '1.10.1',
+  //     package: 'openai.difypkg',
+  //   }
+  // }
   const [state, setState] = useState<InstallState>({
     step: updatePayload ? InstallStepFromGitHub.selectPackage : InstallStepFromGitHub.setUrl,
-    repoUrl: updatePayload?.originalPackageInfo.repo || '',
-    selectedVersion: updatePayload?.originalPackageInfo.version || '',
-    selectedPackage: updatePayload?.originalPackageInfo.package || '',
+    repoUrl: updatePayload?.originalPackageInfo?.repo
+      ? convertRepoToUrl(updatePayload.originalPackageInfo.repo)
+      : '',
+    selectedVersion: '',
+    selectedPackage: '',
     releases: [],
   })
   const { getIconUrl } = useGetIcon()
+  const { fetchReleases } = useGitHubReleases()
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
   const [manifest, setManifest] = useState<PluginDeclaration | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
@@ -53,15 +64,13 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
       })) || [])
     : []
 
-  const { fetchReleases } = useGitHubReleases()
-
   const getTitle = useCallback(() => {
     if (state.step === InstallStepFromGitHub.installed)
       return t(`${i18nPrefix}.installedSuccessfully`)
     if (state.step === InstallStepFromGitHub.installFailed)
       return t(`${i18nPrefix}.installFailed`)
 
-    return t(`${i18nPrefix}.installPlugin`)
+    return updatePayload ? t(`${i18nPrefix}.updatePlugin`) : t(`${i18nPrefix}.installPlugin`)
   }, [state.step])
 
   const handleUrlSubmit = async () => {
@@ -188,6 +197,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
           )}
           {state.step === InstallStepFromGitHub.readyToInstall && (
             <Loaded
+              updatePayload={updatePayload!}
               uniqueIdentifier={uniqueIdentifier!}
               payload={manifest as any}
               repoUrl={state.repoUrl}
