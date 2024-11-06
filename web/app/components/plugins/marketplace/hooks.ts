@@ -2,7 +2,6 @@ import {
   useCallback,
   useState,
 } from 'react'
-import i18n from 'i18next'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
 import type { Plugin } from '../types'
@@ -15,6 +14,7 @@ import {
   getMarketplaceCollectionsAndPlugins,
   getMarketplacePlugins,
 } from './utils'
+import i18n from '@/i18n/i18next-config'
 
 export const useMarketplaceCollectionsAndPlugins = () => {
   const [isLoading, setIsLoading] = useState(false)
