@@ -89,7 +89,7 @@ class CacheEmbedding(Embeddings):
                     db.session.rollback()
             except Exception as ex:
                 db.session.rollback()
-                logger.error("Failed to embed documents: %s", ex)
+                logger.exception("Failed to embed documents: %s", ex)
                 raise ex
 
         return text_embeddings
