@@ -1,7 +1,7 @@
 import urllib.parse
-import requests
 from typing import Any, Union
-from datetime import datetime
+
+import requests
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -34,14 +34,7 @@ class GitlabMergeRequestsTool(BuiltinTool):
         return [self.create_json_message(item) for item in result]
 
     def get_merge_requests(
-        self,
-        site_url: str,
-        access_token: str,
-        repository: str,
-        branch: str,
-        start_time: str,
-        end_time: str,
-        state: str
+        self, site_url: str, access_token: str, repository: str, branch: str, start_time: str, end_time: str, state: str
     ) -> list[dict[str, Any]]:
         domain = site_url
         headers = {"PRIVATE-TOKEN": access_token}
@@ -68,15 +61,17 @@ class GitlabMergeRequestsTool(BuiltinTool):
                 if branch and mr["target_branch"] != branch:
                     continue
 
-                results.append({
-                    "id": mr["id"],
-                    "title": mr["title"],
-                    "author": mr["author"]["name"],
-                    "web_url": mr["web_url"],
-                    "target_branch": mr["target_branch"],
-                    "created_at": mr["created_at"],
-                    "state": mr["state"]
-                })
+                results.append(
+                    {
+                        "id": mr["id"],
+                        "title": mr["title"],
+                        "author": mr["author"]["name"],
+                        "web_url": mr["web_url"],
+                        "target_branch": mr["target_branch"],
+                        "created_at": mr["created_at"],
+                        "state": mr["state"],
+                    }
+                )
         except requests.RequestException as e:
             print(f"Error fetching merge requests from GitLab: {e}")
 

@@ -100,7 +100,14 @@ class GitlabCommitsTool(BuiltinTool):
                                     if line.startswith("+") and not line.startswith("+++")
                                 ]
                             )
-                            results.append({"diff_url":diff_url, "commit_sha": commit_sha, "author_name": author_name, "diff": final_code})
+                            results.append(
+                                {
+                                    "diff_url": diff_url,
+                                    "commit_sha": commit_sha,
+                                    "author_name": author_name,
+                                    "diff": final_code,
+                                }
+                            )
                     else:
                         if total_changes > 1:
                             final_code = "".join(
@@ -114,7 +121,12 @@ class GitlabCommitsTool(BuiltinTool):
                             )
                             final_code_escaped = json.dumps(final_code)[1:-1]  # Escape the final code
                             results.append(
-                                {"diff_url":diff_url, "commit_sha": commit_sha, "author_name": author_name, "diff": final_code_escaped}
+                                {
+                                    "diff_url": diff_url,
+                                    "commit_sha": commit_sha,
+                                    "author_name": author_name,
+                                    "diff": final_code_escaped,
+                                }
                             )
         except requests.RequestException as e:
             print(f"Error fetching data from GitLab: {e}")
