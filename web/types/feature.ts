@@ -6,9 +6,16 @@ export enum SSOProtocol {
 
 export enum LicenseStatus {
   NONE = 'none',
-  ACTIVE = 'active',
   INACTIVE = 'inactive',
+  ACTIVE = 'active',
+  EXPIRING = 'expiring',
   EXPIRED = 'expired',
+  LOST = 'lost',
+}
+
+type License = {
+  status: LicenseStatus
+  expired_at: string | null
 }
 
 export type SystemFeatures = {
@@ -22,7 +29,7 @@ export type SystemFeatures = {
   enable_social_oauth_login: boolean
   is_allow_create_workspace: boolean
   is_allow_register: boolean
-  license_status: LicenseStatus
+  license: License
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
@@ -36,5 +43,8 @@ export const defaultSystemFeatures: SystemFeatures = {
   enable_social_oauth_login: false,
   is_allow_create_workspace: false,
   is_allow_register: false,
-  license_status: LicenseStatus.NONE,
+  license: {
+    status: LicenseStatus.NONE,
+    expired_at: '',
+  },
 }

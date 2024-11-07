@@ -102,7 +102,7 @@ const translation = {
   licenseExpired: '许可证已过期',
   licenseExpiredTip: '您所在空间的 Dify Enterprise 许可证已过期，请联系管理员以继续使用 Dify。',
   licenseInactive: '许可证未激活',
-  licenseInactiveTip: '您的组织的 Dify 企业许可证未激活。请联系您的管理员激活后继续使用 Dify。',
+  licenseInactiveTip: '您所在空间的 Dify Enterprise 许可证尚未激活，请联系管理员以继续使用 Dify。',
 }
 
 export default translation

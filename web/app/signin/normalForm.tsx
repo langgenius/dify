@@ -83,7 +83,7 @@ const NormalForm = () => {
       <Loading type='area' />
     </div>
   }
-  if (systemFeatures.license_status === LicenseStatus.EXPIRED) {
+  if (systemFeatures.license?.status === LicenseStatus.EXPIRED) {
     return <div className='w-full mx-auto mt-8'>
       <div className='bg-white'>
         <div className="p-4 rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2">
@@ -97,7 +97,7 @@ const NormalForm = () => {
       </div>
     </div>
   }
-  if (systemFeatures.license_status === LicenseStatus.NONE) {
+  if (systemFeatures.license?.status === LicenseStatus.INACTIVE) {
     return <div className='w-full mx-auto mt-8'>
       <div className='bg-white'>
         <div className="p-4 rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2">

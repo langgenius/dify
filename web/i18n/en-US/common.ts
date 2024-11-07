@@ -591,6 +591,10 @@ const translation = {
     created: 'Tag created successfully',
     failed: 'Tag creation failed',
   },
+  license: {
+    expiring: 'Expiring in one day',
+    expiring_plural: 'Expiring in {{count}} days',
+  },
 }
 
 export default translation

@@ -101,7 +101,7 @@ const translation = {
   licenseExpired: 'License Expired',
   licenseExpiredTip: 'The Dify Enterprise license for your workspace has expired. Please contact your administrator to continue using Dify.',
   licenseInactive: 'License Inactive',
-  licenseInactiveTip: 'Your organization\'s Dify Enterprise license Inactive.Please contact your administrator to continue using Dify.',
+  licenseInactiveTip: 'The Dify Enterprise license for your workspace is inactive. Please contact your administrator to continue using Dify.',
 }
 
 export default translation

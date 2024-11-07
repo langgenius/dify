@@ -144,7 +144,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       theme,
       setTheme: handleSetTheme,
       apps: appList.data,
-      systemFeatures,
+      systemFeatures: { ...systemFeatures, ...defaultSystemFeatures },
       mutateApps,
       userProfile,
       mutateUserProfile,
