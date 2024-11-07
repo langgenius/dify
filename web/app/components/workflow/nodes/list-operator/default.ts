@@ -12,6 +12,10 @@ const nodeDefault: NodeDefault<ListFilterNodeType> = {
       enabled: false,
       conditions: [],
     },
+    extract_by: {
+      enabled: false,
+      serial: '1',
+    },
     order_by: {
       enabled: false,
       key: '',

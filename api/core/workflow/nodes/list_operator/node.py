@@ -58,6 +58,10 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
             if self.node_data.filter_by.enabled:
                 variable = self._apply_filter(variable)
 
+            # Extract
+            if self.node_data.extract_by.enabled:
+                variable = self._extract_slice(variable)
+
             # Order
             if self.node_data.order_by.enabled:
                 variable = self._apply_order(variable)
@@ -139,6 +143,16 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
     ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
         result = variable.value[: self.node_data.limit.size]
         return variable.model_copy(update={"value": result})
+
+    def _extract_slice(
+        self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
+    ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
+        value = int(self.graph_runtime_state.variable_pool.convert_template(self.node_data.extract_by.serial).text) - 1
+        if len(variable.value) > int(value):
+            result = variable.value[value]
+        else:
+            result = ""
+        return variable.model_copy(update={"value": [result]})
 
 
 def _get_file_extract_number_func(*, key: str) -> Callable[[File], int]:
