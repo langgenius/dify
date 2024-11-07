@@ -24,7 +24,7 @@ jobs:
         with:
           files: api/**
 
-      - name: Setup Poetry
+      - name: Setup Poetry and Python
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-poetry
 

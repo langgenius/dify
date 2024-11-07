@@ -1,10 +1,34 @@
 name: Setup Poetry
 
+inputs:
+  python-version:
+    required: true
+    default: '3.10'
+  poetry-version:
+    required: true
+    default: '1.8.3'
+  poetry-lockfile:
+    required: true
+    default: ''
+
 runs:
   using: composite
   steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
     - name: Install Poetry
       shell: bash
       env:
         POETRY_VERSION: 1.8.3
-      run: pipx install poetry==${{ env.POETRY_VERSION }}
+      run: pipx install poetry==${{ inputs.poetry-version }}
+
+    - name: Poetry cache
+      if: ${{ inputs.poetry-lockfile != '' }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: poetry
+        cache-dependency-path: ${{ inputs.poetry-lockfile }}
