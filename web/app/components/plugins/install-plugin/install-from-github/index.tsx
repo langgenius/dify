@@ -26,14 +26,8 @@ type InstallFromGitHubProps = {
 
 const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, onClose, onSuccess }) => {
   const { t } = useTranslation()
-  // const updatePayloadTest = {
-  //   originalPackageInfo: {
-  //     id: '0299ff5e-40cc-4690-9308-6687cf344a21',
-  //     repo: 'YIXIAO0/test',
-  //     version: '1.10.1',
-  //     package: 'openai.difypkg',
-  //   }
-  // }
+  const { getIconUrl } = useGetIcon()
+  const { fetchReleases } = useGitHubReleases()
   const [state, setState] = useState<InstallState>({
     step: updatePayload ? InstallStepFromGitHub.selectPackage : InstallStepFromGitHub.setUrl,
     repoUrl: updatePayload?.originalPackageInfo?.repo
@@ -43,8 +37,6 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
     selectedPackage: '',
     releases: [],
   })
-  const { getIconUrl } = useGetIcon()
-  const { fetchReleases } = useGitHubReleases()
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
   const [manifest, setManifest] = useState<PluginDeclaration | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
