@@ -44,11 +44,12 @@ import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
+import { correctProvider } from '@/utils'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
 
-interface IConversationList {
+type IConversationList = {
   logs?: ChatConversationsResponse | CompletionConversationsResponse
   appDetail: App
   onRefresh: () => void
@@ -56,7 +57,7 @@ interface IConversationList {
 
 const defaultValue = 'N/A'
 
-interface IDrawerContext {
+type IDrawerContext = {
   onClose: () => void
   appDetail?: App
 }
@@ -159,7 +160,7 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
 // const displayedParams = CompletionParams.slice(0, -2)
 const validatedParams = ['temperature', 'top_p', 'presence_penalty', 'frequency_penalty']
 
-interface IDetailPanel {
+type IDetailPanel = {
   detail: any
   onFeedback: FeedbackFunc
   onSubmitAnnotation: SubmitAnnotationFunc
@@ -324,7 +325,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   })?.name ?? 'custom'
 
   const modelName = (detail.model_config as any).model?.name
-  const provideName = (detail.model_config as any).model?.provider as any
+  const provideName = correctProvider((detail.model_config as any).model?.provider as any)
   const {
     currentModel,
     currentProvider,
