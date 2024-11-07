@@ -34,10 +34,10 @@ select = [
     "RUF101", # redirected-noqa
     "S506", # unsafe-yaml-load
     "SIM", # flake8-simplify rules
+    "TRY400", # error-instead-of-exception
     "UP", # pyupgrade rules
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
-    "TRY400", #
 ]
 ignore = [
     "E402", # module-import-not-at-top-of-file
