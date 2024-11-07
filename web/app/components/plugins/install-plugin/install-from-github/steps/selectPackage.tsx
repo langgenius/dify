@@ -8,6 +8,8 @@ import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import { useTranslation } from 'react-i18next'
 import { useGitHubUpload } from '../../hooks'
 
+const i18nPrefix = 'plugin.installFromGitHub'
+
 type SelectPackageProps = {
   updatePayload: UpdateFromGitHubPayload
   repoUrl: string
@@ -60,7 +62,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
       if (e.response?.message)
         onFailed(e.response?.message)
       else
-        onFailed(t('plugin.error.uploadFailed'))
+        onFailed(t(`${i18nPrefix}.uploadFailed`))
     }
     finally {
       setIsUploading(false)
@@ -73,28 +75,28 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         htmlFor='version'
         className='flex flex-col justify-center items-start self-stretch text-text-secondary'
       >
-        <span className='system-sm-semibold'>{t('plugin.installFromGitHub.selectVersion')}</span>
+        <span className='system-sm-semibold'>{t(`${i18nPrefix}.selectVersion`)}</span>
       </label>
       <PortalSelect
         value={selectedVersion}
         onSelect={onSelectVersion}
         items={versions}
         installedValue={updatePayload?.originalPackageInfo.version}
-        placeholder={t('plugin.installFromGitHub.selectVersionPlaceholder') || ''}
+        placeholder={t(`${i18nPrefix}.selectVersionPlaceholder`) || ''}
         popupClassName='w-[512px] z-[1001]'
       />
       <label
         htmlFor='package'
         className='flex flex-col justify-center items-start self-stretch text-text-secondary'
       >
-        <span className='system-sm-semibold'>{t('plugin.installFromGitHub.selectPackage')}</span>
+        <span className='system-sm-semibold'>{t(`${i18nPrefix}.selectPackage`)}</span>
       </label>
       <PortalSelect
         value={selectedPackage}
         onSelect={onSelectPackage}
         items={packages}
         readonly={!selectedVersion}
-        placeholder={t('plugin.installFromGitHub.selectPackagePlaceholder') || ''}
+        placeholder={t(`${i18nPrefix}.selectPackagePlaceholder`) || ''}
         popupClassName='w-[512px] z-[1001]'
       />
       <div className='flex justify-end items-center gap-2 self-stretch mt-4'>
