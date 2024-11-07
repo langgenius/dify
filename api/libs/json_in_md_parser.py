@@ -9,6 +9,7 @@ def parse_json_markdown(json_string: str) -> dict:
     starts = ["```json", "```", "``", "`", "{"]
     ends = ["```", "``", "`", "}"]
     end_index = -1
+    start_index = 0
     for s in starts:
         start_index = json_string.find(s)
         if start_index != -1:
@@ -24,7 +25,6 @@ def parse_json_markdown(json_string: str) -> dict:
                 break
     if start_index != -1 and end_index != -1 and start_index < end_index:
         extracted_content = json_string[start_index:end_index].strip()
-        print("content:", extracted_content, start_index, end_index)
         parsed = json.loads(extracted_content)
     else:
         raise Exception("Could not find JSON block in the output.")
