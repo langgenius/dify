@@ -30,13 +30,11 @@ export const useAllCustomTools = () => {
 
 export const useInvalidateAllCustomTools = () => {
   const queryClient = useQueryClient()
-  return {
-    invalidate: () => {
-      queryClient.invalidateQueries(
-        {
-          queryKey: useAllCustomToolsKey,
-        })
-    },
+  return () => {
+    queryClient.invalidateQueries(
+      {
+        queryKey: useAllCustomToolsKey,
+      })
   }
 }
 
