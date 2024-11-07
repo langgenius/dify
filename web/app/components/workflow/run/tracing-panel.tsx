@@ -16,11 +16,11 @@ import NodePanel from './node'
 import {
   BlockEnum,
 } from '@/app/components/workflow/types'
-import type { NodeTracing } from '@/types/workflow'
+import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 
 type TracingPanelProps = {
   list: NodeTracing[]
-  onShowIterationDetail?: (detail: NodeTracing[][]) => void
+  onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean

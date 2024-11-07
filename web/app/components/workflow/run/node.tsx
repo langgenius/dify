@@ -18,7 +18,7 @@ import StatusContainer from '@/app/components/workflow/run/status-container'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import Button from '@/app/components/base/button'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import type { NodeTracing } from '@/types/workflow'
+import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 
 type Props = {
   className?: string
@@ -26,7 +26,7 @@ type Props = {
   inMessage?: boolean
   hideInfo?: boolean
   hideProcessDetail?: boolean
-  onShowIterationDetail?: (detail: NodeTracing[][]) => void
+  onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
   notShowIterationNav?: boolean
   justShowIterationNavArrow?: boolean
 }
@@ -90,7 +90,7 @@ const NodePanel: FC<Props> = ({
   const handleOnShowIterationDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
-    onShowIterationDetail?.(nodeInfo.details || [])
+    onShowIterationDetail?.(nodeInfo.details || [], nodeInfo?.iterDurationMap || nodeInfo.execution_metadata?.iteration_duration_map || {})
   }
   return (
     <div className={cn('px-2 py-1', className)}>

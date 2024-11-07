@@ -148,6 +148,7 @@ class IterationRunStartedEvent(BaseIterationEvent):
 class IterationRunNextEvent(BaseIterationEvent):
     index: int = Field(..., description="index")
     pre_iteration_output: Optional[Any] = Field(None, description="pre iteration output")
+    duration: Optional[float] = Field(None, description="duration")
 
 
 class IterationRunSucceededEvent(BaseIterationEvent):
@@ -156,6 +157,7 @@ class IterationRunSucceededEvent(BaseIterationEvent):
     outputs: Optional[dict[str, Any]] = None
     metadata: Optional[dict[str, Any]] = None
     steps: int = 0
+    iteration_duration_map: Optional[dict[str, float]] = None
 
 
 class IterationRunFailedEvent(BaseIterationEvent):

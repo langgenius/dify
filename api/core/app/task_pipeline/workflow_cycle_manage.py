@@ -624,6 +624,7 @@ class WorkflowCycleManage:
                 parallel_id=event.parallel_id,
                 parallel_start_node_id=event.parallel_start_node_id,
                 parallel_mode_run_id=event.parallel_mode_run_id,
+                duration=event.duration,
             ),
         )
 
