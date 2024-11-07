@@ -97,6 +97,20 @@ const NormalForm = () => {
       </div>
     </div>
   }
+  if (systemFeatures.license_status === LicenseStatus.NONE) {
+    return <div className='w-full mx-auto mt-8'>
+      <div className='bg-white'>
+        <div className="p-4 rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2">
+          <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-components-card-bg shadow shadows-shadow-lg mb-2 relative'>
+            <RiContractLine className='w-5 h-5' />
+            <RiErrorWarningFill className='absolute w-4 h-4 text-text-warning-secondary -top-1 -right-1' />
+          </div>
+          <p className='system-sm-medium text-text-primary'>{t('login.licenseInactive')}</p>
+          <p className='system-xs-regular text-text-tertiary mt-1'>{t('login.licenseInactiveTip')}</p>
+        </div>
+      </div>
+    </div>
+  }
 
   return (
     <>

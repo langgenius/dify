@@ -7,6 +7,7 @@ export enum SSOProtocol {
 export enum LicenseStatus {
   NONE = 'none',
   ACTIVE = 'active',
+  INACTIVE = 'inactive',
   EXPIRED = 'expired',
 }
 

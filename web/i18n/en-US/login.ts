@@ -99,7 +99,9 @@ const translation = {
   noLoginMethod: 'Authentication method not configured',
   noLoginMethodTip: 'Please contact the system admin to add an authentication method.',
   licenseExpired: 'License Expired',
-  licenseExpiredTip: 'Your organization\'s Dify Enterprise license has expired.Please contact your administrator to continue using Dify.',
+  licenseExpiredTip: 'The Dify Enterprise license for your workspace has expired. Please contact your administrator to continue using Dify.',
+  licenseInactive: 'License Inactive',
+  licenseInactiveTip: 'Your organization\'s Dify Enterprise license Inactive.Please contact your administrator to continue using Dify.',
 }
 
 export default translation

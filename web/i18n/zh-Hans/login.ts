@@ -100,7 +100,9 @@ const translation = {
   noLoginMethod: '未配置身份认证方式',
   noLoginMethodTip: '请联系系统管理员添加身份认证方式',
   licenseExpired: '许可证已过期',
-  licenseExpiredTip: '您的组织的 Dify 企业许可证已过期。请联系您的管理员续订继续使用 Dify。',
+  licenseExpiredTip: '您所在空间的 Dify Enterprise 许可证已过期，请联系管理员以继续使用 Dify。',
+  licenseInactive: '许可证未激活',
+  licenseInactiveTip: '您的组织的 Dify 企业许可证未激活。请联系您的管理员激活后继续使用 Dify。',
 }
 
 export default translation
