@@ -1,0 +1,36 @@
+identity:
+  author: Doug Lea
+  name: lark_calendar
+  label:
+    en_US: Lark Calendar
+    zh_Hans: Lark 日历
+  description:
+    en_US: |
+      Lark calendar, requires the following permissions: calendar:calendar:read、calendar:calendar、contact:user.id:readonly.
+    zh_Hans: |
+      Lark 日历，需要开通以下权限: calendar:calendar:read、calendar:calendar、contact:user.id:readonly。
+  icon: icon.png
+  tags:
+    - social
+    - productivity
+credentials_for_provider:
+  app_id:
+    type: text-input
+    required: true
+    label:
+      en_US: APP ID
+    placeholder:
+      en_US: Please input your Lark app id
+      zh_Hans: 请输入你的 Lark app id
+    help:
+      en_US: Get your app_id and app_secret from Lark
+      zh_Hans: 从 Lark 获取您的 app_id 和 app_secret
+    url: https://open.larksuite.com/app
+  app_secret:
+    type: secret-input
+    required: true
+    label:
+      en_US: APP Secret
+    placeholder:
+      en_US: Please input your app secret
+      zh_Hans: 请输入你的 Lark app secret
