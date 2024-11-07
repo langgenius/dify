@@ -9,7 +9,6 @@ import tempfile
 import uuid
 from urllib.parse import urlparse
 from xml.etree import ElementTree
-import tempfile
 
 import requests
 from docx import Document as DocxDocument
@@ -28,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 class WordExtractor(BaseExtractor):
     """Load docx files.
-
 
     Args:
         file_path: Path to the file to load.
