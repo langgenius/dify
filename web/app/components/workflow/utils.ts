@@ -35,6 +35,7 @@ import type { ToolNodeType } from './nodes/tool/types'
 import type { IterationNodeType } from './nodes/iteration/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { correctProvider } from '@/utils'
 
 const WHITE = 'WHITE'
 const GRAY = 'GRAY'
@@ -210,13 +211,6 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
     nodes: [...nodes, ...newIterationStartNodes],
     edges: [...edges, ...newEdges],
   }
-}
-
-export const correctProvider = (provider: string) => {
-  if (provider.includes('/'))
-    return provider
-
-  return `langgenius/${provider}/${provider}`
 }
 
 export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {

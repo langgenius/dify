@@ -57,3 +57,10 @@ export async function fetchWithRetry<T = any>(fn: Promise<T>, retries = 3): Prom
     return [null, res]
   }
 }
+
+export const correctProvider = (provider: string) => {
+  if (provider.includes('/'))
+    return provider
+
+  return `langgenius/${provider}/${provider}`
+}
