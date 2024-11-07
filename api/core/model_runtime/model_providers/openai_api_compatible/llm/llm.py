@@ -117,6 +117,9 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
 
+                if "gateway.mpi.test.shopee.io" in credentials["endpoint_url"]:
+                    headers["Authorization"] = f"Basic {api_key}"
+
             endpoint_url = credentials["endpoint_url"]
             if not endpoint_url.endswith("/"):
                 endpoint_url += "/"
@@ -142,7 +145,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
 
             if response.status_code != 200:
                 raise CredentialsValidateFailedError(
-                    f"Credentials validation failed with status code {response.status_code}"
+                    f"Credentials validation failed with status code {response.status_code} {endpoint_url}, {data}"
                 )
 
             try:
@@ -327,6 +330,9 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
         api_key = credentials.get("api_key")
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
+
+            if "gateway.mpi.test.shopee.io" in credentials["endpoint_url"]:
+                headers["Authorization"] = f"Basic {api_key}"
 
         endpoint_url = credentials["endpoint_url"]
         if not endpoint_url.endswith("/"):
