@@ -1,6 +1,5 @@
 import {
   useCallback,
-  useRef,
   useState,
 } from 'react'
 import Textarea from 'rc-textarea'
@@ -63,7 +62,6 @@ const ChatInputArea = ({
     isMultipleLine,
   } = useTextAreaHeight()
   const [query, setQuery] = useState('')
-  const isUseInputMethod = useRef(false)
   const [showVoiceInput, setShowVoiceInput] = useState(false)
   const filesStore = useFileStore()
   const {
@@ -95,20 +93,11 @@ const ChatInputArea = ({
     }
   }
 
-  const handleKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter') {
-      e.preventDefault()
-      // prevent send message when using input method enter
-      if (!e.shiftKey && !isUseInputMethod.current)
-        handleSend()
-    }
-  }
-
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    isUseInputMethod.current = e.nativeEvent.isComposing
-    if (e.key === 'Enter' && !e.shiftKey) {
-      setQuery(query.replace(/\n$/, ''))
+    if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       e.preventDefault()
+      setQuery(query.replace(/\n$/, ''))
+      handleSend()
     }
   }
 
@@ -165,7 +154,6 @@ const ChatInputArea = ({
                   setQuery(e.target.value)
                   handleTextareaResize()
                 }}
-                onKeyUp={handleKeyUp}
                 onKeyDown={handleKeyDown}
                 onPaste={handleClipboardPasteFile}
                 onDragEnter={handleDragFileEnter}
