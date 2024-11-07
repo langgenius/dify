@@ -212,6 +212,13 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
   }
 }
 
+export const correctProvider = (provider: string) => {
+  if (provider.includes('/'))
+    return provider
+
+  return `langgenius/${provider}/${provider}`
+}
+
 export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
   const { nodes, edges } = preprocessNodesAndEdges(cloneDeep(originNodes), cloneDeep(originEdges))
   const firstNode = nodes[0]
@@ -274,6 +281,19 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       iterationNodeData.parallel_nums = iterationNodeData.parallel_nums || 10
       iterationNodeData.error_handle_mode = iterationNodeData.error_handle_mode || ErrorHandleMode.Terminated
     }
+
+    // legacy provider handle
+    if (node.data.type === BlockEnum.LLM)
+      (node as any).data.model.provider = correctProvider((node as any).data.model.provider)
+
+    if (node.data.type === BlockEnum.KnowledgeRetrieval && (node as any).data.multiple_retrieval_config.reranking_model)
+      (node as any).data.multiple_retrieval_config.reranking_model.provider = correctProvider((node as any).data.multiple_retrieval_config.reranking_model.provider)
+
+    if (node.data.type === BlockEnum.QuestionClassifier)
+      (node as any).data.model.provider = correctProvider((node as any).data.model.provider)
+
+    if (node.data.type === BlockEnum.ParameterExtractor)
+      (node as any).data.model.provider = correctProvider((node as any).data.model.provider)
 
     return node
   })
@@ -428,7 +448,7 @@ export const genNewNodeTitleFromOld = (oldTitle: string) => {
 
   if (match) {
     const title = match[1]
-    const num = parseInt(match[2], 10)
+    const num = Number.parseInt(match[2], 10)
     return `${title} (${num + 1})`
   }
   else {
