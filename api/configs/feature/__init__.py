@@ -109,7 +109,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
     )
 
     CODE_MAX_PRECISION: PositiveInt = Field(
-        description="mMaximum number of decimal places for floating-point numbers in code execution",
+        description="Maximum number of decimal places for floating-point numbers in code execution",
         default=20,
     )
 
@@ -284,6 +284,26 @@ class HttpConfig(BaseSettings):
     SSRF_PROXY_HTTPS_URL: Optional[str] = Field(
         description="Proxy URL for HTTPS requests to prevent Server-Side Request Forgery (SSRF)",
         default=None,
+    )
+
+    SSRF_DEFAULT_TIME_OUT: PositiveFloat = Field(
+        description="The default timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
+    SSRF_DEFAULT_CONNECT_TIME_OUT: PositiveFloat = Field(
+        description="The default connect timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
+    SSRF_DEFAULT_READ_TIME_OUT: PositiveFloat = Field(
+        description="The default read timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
+    SSRF_DEFAULT_WRITE_TIME_OUT: PositiveFloat = Field(
+        description="The default write timeout period used for network requests (SSRF)",
+        default=5,
     )
 
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
