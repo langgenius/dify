@@ -945,7 +945,7 @@ class DocumentRetryApi(DocumentResource):
                     raise DocumentAlreadyFinishedError()
                 retry_documents.append(document)
             except Exception as e:
-                logging.error(f"Document {document_id} retry failed: {str(e)}")
+                logging.exception(f"Document {document_id} retry failed: {str(e)}")
                 continue
         # retry document
         DocumentService.retry_document(dataset_id, retry_documents)
