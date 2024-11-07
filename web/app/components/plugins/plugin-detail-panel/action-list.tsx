@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
@@ -10,6 +10,7 @@ import ToolItem from '@/app/components/tools/provider/tool-item'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import {
   fetchBuiltInToolList,
+  fetchCollectionDetail,
   removeBuiltInToolCredential,
   updateBuiltInToolCredential,
 } from '@/service/tools'
@@ -18,12 +19,10 @@ const ActionList = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
-  const providerDeclaration = useMemo(() => {
-    return {
-      ...currentPluginDetail.declaration.tool.identity,
-      name: `${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`,
-    }
-  }, [currentPluginDetail.declaration.tool.identity, currentPluginDetail.name, currentPluginDetail.plugin_id])
+  const { data: provider } = useSWR(
+    `builtin/${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`,
+    fetchCollectionDetail,
+  )
   const { data } = useSWR(
     `${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`,
     fetchBuiltInToolList,
@@ -33,7 +32,7 @@ const ActionList = () => {
 
   const handleCredentialSettingUpdate = () => {}
 
-  if (!data)
+  if (!data || !provider)
     return null
 
   return (
@@ -41,7 +40,7 @@ const ActionList = () => {
       <div className='mb-1 py-1'>
         <div className='mb-1 h-6 flex items-center justify-between text-text-secondary system-sm-semibold-uppercase'>
           {t('plugin.detailPanel.actionNum', { num: data.length })}
-          {providerDeclaration.is_team_authorization && providerDeclaration.allow_delete && (
+          {provider.is_team_authorization && provider.allow_delete && (
             <Button
               variant='secondary'
               size='small'
@@ -53,7 +52,7 @@ const ActionList = () => {
             </Button>
           )}
         </div>
-        {!providerDeclaration.is_team_authorization && providerDeclaration.allow_delete && (
+        {!provider.is_team_authorization && provider.allow_delete && (
           <Button
             variant='primary'
             className='w-full'
@@ -67,7 +66,7 @@ const ActionList = () => {
           <ToolItem
             key={`${currentPluginDetail.plugin_id}${tool.name}`}
             disabled={false}
-            collection={providerDeclaration}
+            collection={provider}
             tool={tool}
             isBuiltIn={true}
             isModel={false}
@@ -76,10 +75,10 @@ const ActionList = () => {
       </div>
       {showSettingAuth && (
         <ConfigCredential
-          collection={providerDeclaration}
+          collection={provider}
           onCancel={() => setShowSettingAuth(false)}
           onSaved={async (value) => {
-            await updateBuiltInToolCredential(providerDeclaration.name, value)
+            await updateBuiltInToolCredential(provider.name, value)
             Toast.notify({
               type: 'success',
               message: t('common.api.actionSuccess'),
@@ -88,7 +87,7 @@ const ActionList = () => {
             setShowSettingAuth(false)
           }}
           onRemove={async () => {
-            await removeBuiltInToolCredential(providerDeclaration.name)
+            await removeBuiltInToolCredential(provider.name)
             Toast.notify({
               type: 'success',
               message: t('common.api.actionSuccess'),
