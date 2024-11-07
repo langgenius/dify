@@ -127,7 +127,7 @@ class QuestionClassifierNode(LLMNode):
                     category_id = category_id_result
 
         except OutputParserError:
-            logging.error(f"Failed to parse result text: {result_text}")
+            logging.exception(f"Failed to parse result text: {result_text}")
         try:
             process_data = {
                 "model_mode": model_config.mode,
