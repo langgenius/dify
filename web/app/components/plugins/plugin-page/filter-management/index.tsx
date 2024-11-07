@@ -2,6 +2,7 @@ import React, { useState } from 'react'
 import CategoriesFilter from './category-filter'
 import TagFilter from './tag-filter'
 import SearchBox from './search-box'
+import { usePluginPageContext } from '../context'
 
 export type FilterState = {
   categories: string[]
@@ -14,11 +15,8 @@ type FilterManagementProps = {
 }
 
 const FilterManagement: React.FC<FilterManagementProps> = ({ onFilterChange }) => {
-  const [filters, setFilters] = useState<FilterState>({
-    categories: [],
-    tags: [],
-    searchQuery: '',
-  })
+  const initFilters = usePluginPageContext(v => v.filters) as FilterState
+  const [filters, setFilters] = useState<FilterState>(initFilters)
 
   const updateFilters = (newFilters: Partial<FilterState>) => {
     const updatedFilters = { ...filters, ...newFilters }

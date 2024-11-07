@@ -57,6 +57,8 @@ const Action: FC<Props> = ({
   const handleFetchNewVersion = async () => {
     try {
       const fetchedReleases = await fetchReleases(author, pluginName)
+      if (fetchedReleases.length === 0)
+        return
       const versions = fetchedReleases.map(release => release.tag_name)
       const latestVersion = getLatestVersion(versions)
       if (compareVersion(latestVersion, version) === 1) {

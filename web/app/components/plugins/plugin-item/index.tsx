@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useMemo } from 'react'
-import { useContext } from 'use-context-selector'
 import {
   RiArrowRightUpLine,
   RiBugLine,
@@ -20,8 +19,8 @@ import OrgInfo from '../card/base/org-info'
 import Title from '../card/base/title'
 import Action from './action'
 import cn from '@/utils/classnames'
-import I18n from '@/context/i18n'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
+import { useLanguage } from '../../header/account-setting/model-provider-page/hooks'
 
 type Props = {
   className?: string
@@ -32,7 +31,7 @@ const PluginItem: FC<Props> = ({
   className,
   plugin,
 }) => {
-  const { locale } = useContext(I18n)
+  const locale = useLanguage()
   const { t } = useTranslation()
   const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
   const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
@@ -52,10 +51,6 @@ const PluginItem: FC<Props> = ({
   const orgName = useMemo(() => {
     return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
   }, [source, author])
-
-  const tLocale = useMemo(() => {
-    return locale.replace('-', '_')
-  }, [locale])
   return (
     <div
       className={cn(
@@ -80,12 +75,12 @@ const PluginItem: FC<Props> = ({
           </div>
           <div className="ml-3 w-0 grow">
             <div className="flex items-center h-5">
-              <Title title={label[tLocale]} />
+              <Title title={label[locale]} />
               {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
               <Badge className='ml-1' text={plugin.version} />
             </div>
             <div className='flex items-center justify-between'>
-              <Description text={description[tLocale]} descriptionLineRows={1}></Description>
+              <Description text={description[locale]} descriptionLineRows={1}></Description>
               <div onClick={e => e.stopPropagation()}>
                 <Action
                   installationId={installation_id}
