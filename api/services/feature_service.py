@@ -20,6 +20,11 @@ class LimitationModel(BaseModel):
     limit: int = 0
 
 
+class LicenseModel(BaseModel):
+    status: str = "none"
+    expired_at: str = ""
+
+
 class FeatureModel(BaseModel):
     billing: BillingModel = BillingModel()
     members: LimitationModel = LimitationModel(size=0, limit=1)
@@ -47,6 +52,7 @@ class SystemFeatureModel(BaseModel):
     enable_social_oauth_login: bool = False
     is_allow_register: bool = False
     is_allow_create_workspace: bool = False
+    license: LicenseModel = LicenseModel()
 
 
 class FeatureService:
@@ -131,17 +137,31 @@ class FeatureService:
 
         if "sso_enforced_for_signin" in enterprise_info:
             features.sso_enforced_for_signin = enterprise_info["sso_enforced_for_signin"]
+
         if "sso_enforced_for_signin_protocol" in enterprise_info:
             features.sso_enforced_for_signin_protocol = enterprise_info["sso_enforced_for_signin_protocol"]
+
         if "sso_enforced_for_web" in enterprise_info:
             features.sso_enforced_for_web = enterprise_info["sso_enforced_for_web"]
+
         if "sso_enforced_for_web_protocol" in enterprise_info:
             features.sso_enforced_for_web_protocol = enterprise_info["sso_enforced_for_web_protocol"]
+
         if "enable_email_code_login" in enterprise_info:
             features.enable_email_code_login = enterprise_info["enable_email_code_login"]
+
         if "enable_email_password_login" in enterprise_info:
             features.enable_email_password_login = enterprise_info["enable_email_password_login"]
+
         if "is_allow_register" in enterprise_info:
             features.is_allow_register = enterprise_info["is_allow_register"]
+
         if "is_allow_create_workspace" in enterprise_info:
             features.is_allow_create_workspace = enterprise_info["is_allow_create_workspace"]
+
+        if "license" in enterprise_info:
+            if "status" in enterprise_info["license"]:
+                features.license.status = enterprise_info["license"]["status"]
+
+            if "expired_at" in enterprise_info["license"]:
+                features.license.expired_at = enterprise_info["license"]["expired_at"]
