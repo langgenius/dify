@@ -9,6 +9,7 @@ import tempfile
 import uuid
 from urllib.parse import urlparse
 from xml.etree import ElementTree
+import tempfile
 
 import requests
 from docx import Document as DocxDocument
@@ -51,9 +52,9 @@ class WordExtractor(BaseExtractor):
 
             self.web_path = self.file_path
             # TODO: use a better way to handle the file
-            self.temp_file = tempfile.NamedTemporaryFile()
-            self.temp_file.write(r.content)
-            self.file_path = self.temp_file.name
+            with tempfile.NamedTemporaryFile(delete=False) as self.temp_file:
+                self.temp_file.write(r.content)
+                self.file_path = self.temp_file.name
         elif not os.path.isfile(self.file_path):
             raise ValueError(f"File path {self.file_path} is not a valid file or url")
 
