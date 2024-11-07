@@ -3,16 +3,15 @@ Proxy requests to avoid SSRF
 """
 
 import logging
-import os
 import time
 
 import httpx
 
 from configs import dify_config
 
-SSRF_PROXY_ALL_URL = os.getenv("SSRF_PROXY_ALL_URL", "")
-SSRF_PROXY_HTTP_URL = os.getenv("SSRF_PROXY_HTTP_URL", "")
-SSRF_PROXY_HTTPS_URL = os.getenv("SSRF_PROXY_HTTPS_URL", "")
+SSRF_PROXY_ALL_URL = dify_config.SSRF_PROXY_ALL_URL
+SSRF_PROXY_HTTP_URL = dify_config.SSRF_PROXY_HTTP_URL
+SSRF_PROXY_HTTPS_URL = dify_config.SSRF_PROXY_HTTPS_URL
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
 proxy_mounts = (
