@@ -24,9 +24,9 @@ jobs:
         with:
           files: api/**
 
-      - name: Install Poetry
+      - name: Setup Poetry
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: abatilo/actions-poetry@v3
+        uses: ./.github/actions/setup-poetry
 
       - name: Set up Python
         uses: actions/setup-python@v5

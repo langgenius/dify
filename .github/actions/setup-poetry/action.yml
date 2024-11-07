@@ -1,0 +1,9 @@
+name: Setup Poetry
+env:
+  POETRY_VERSION: 1.8.3
+runs:
+  using: composite
+  steps:
+    - name: Install Poetry
+      shell: bash
+      run: pipx install poetry==${{ env.POETRY_VERSION }}

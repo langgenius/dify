@@ -31,8 +31,8 @@ jobs:
             api/pyproject.toml
             api/poetry.lock
 
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v3
+      - name: Setup Poetry
+        uses: ./.github/actions/setup-poetry
 
       - name: Install dependencies
         run: poetry install -C api
