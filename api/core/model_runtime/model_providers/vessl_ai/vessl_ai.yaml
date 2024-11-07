@@ -1,6 +1,6 @@
 provider: vessl_ai
 label:
-  en_US: vessl_ai
+  en_US: VESSL AI
 icon_small:
   en_US: icon_s_en.svg
 icon_large:
@@ -20,28 +20,28 @@ model_credential_schema:
     label:
       en_US: Model Name
     placeholder:
-      en_US: Enter your model name
+      en_US: Enter model name
   credential_form_schemas:
     - variable: endpoint_url
       label:
-        en_US: endpoint url
+        en_US: Endpoint Url
       type: text-input
       required: true
       placeholder:
-        en_US: Enter the url of your endpoint url
+        en_US: Enter VESSL AI service endpoint url
     - variable: api_key
       required: true
       label:
         en_US: API Key
       type: secret-input
       placeholder:
-        en_US: Enter your VESSL AI secret key
+        en_US: Enter VESSL AI secret key
     - variable: mode
       show_on:
         - variable: __model_type
           value: llm
       label:
-        en_US: Completion mode
+        en_US: Completion Mode
       type: select
       required: false
       default: chat
