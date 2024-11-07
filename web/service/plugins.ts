@@ -6,7 +6,6 @@ import type {
   EndpointsRequest,
   EndpointsResponse,
   InstallPackageResponse,
-  InstalledPluginListResponse,
   Permissions,
   PluginDeclaration,
   PluginManifestInMarket,
@@ -138,10 +137,6 @@ export const fetchPermission = async () => {
 
 export const updatePermission = async (permissions: Permissions) => {
   return post('/workspaces/current/plugin/permission/change', { body: permissions })
-}
-
-export const fetchInstalledPluginList: Fetcher<InstalledPluginListResponse, { url: string }> = ({ url }) => {
-  return get<InstalledPluginListResponse>(url)
 }
 
 export const uninstallPlugin = async (pluginId: string) => {

@@ -21,6 +21,7 @@ import Action from './action'
 import cn from '@/utils/classnames'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import { useLanguage } from '../../header/account-setting/model-provider-page/hooks'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 
 type Props = {
   className?: string
@@ -35,7 +36,7 @@ const PluginItem: FC<Props> = ({
   const { t } = useTranslation()
   const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
   const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
-  const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const {
     source,
@@ -93,7 +94,7 @@ const PluginItem: FC<Props> = ({
                   isShowDelete
                   meta={meta}
                   onDelete={() => {
-                    mutateInstalledPluginList()
+                    invalidateInstalledPluginList()
                   }}
                 />
               </div>

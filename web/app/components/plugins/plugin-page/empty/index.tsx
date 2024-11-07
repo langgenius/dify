@@ -5,10 +5,10 @@ import { Github } from '@/app/components/base/icons/src/vender/solid/general'
 import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
 import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { usePluginPageContext } from '../context'
-import type { PluginDetail } from '../../types'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import Line from '../../marketplace/empty/line'
+import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 
 const Empty = () => {
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -25,14 +25,15 @@ const Empty = () => {
     }
   }
   const filters = usePluginPageContext(v => v.filters)
-  const pluginList = usePluginPageContext(v => v.installedPluginList) as PluginDetail[]
+  const { data: pluginList } = useInstalledPluginList()
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const text = useMemo(() => {
-    if (pluginList.length === 0)
+    if (pluginList?.plugins.length === 0)
       return 'No plugins installed'
     if (filters.categories.length > 0 || filters.tags.length > 0 || filters.searchQuery)
       return 'No plugins found'
-  }, [pluginList.length, filters])
+  }, [pluginList, filters])
 
   return (
     <div className='grow w-full relative z-0'>
@@ -95,7 +96,10 @@ const Empty = () => {
             </div>
           </div>
         </div>
-        {selectedAction === 'github' && <InstallFromGitHub onClose={() => setSelectedAction(null)} />}
+        {selectedAction === 'github' && <InstallFromGitHub
+          onSuccess={() => { invalidateInstalledPluginList() }}
+          onClose={() => setSelectedAction(null)}
+        />}
         {selectedAction === 'local' && selectedFile
           && (<InstallFromLocalPackage
             file={selectedFile}

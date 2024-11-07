@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import cn from '@/utils/classnames'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import { usePluginPageContext } from '../../plugins/plugin-page/context'
+import { useInstalledPluginList } from '@/service/use-plugins'
 type Option = {
   value: string
   text: string
@@ -23,7 +23,7 @@ const TabSlider: FC<TabSliderProps> = ({
 }) => {
   const [activeIndex, setActiveIndex] = useState(options.findIndex(option => option.value === value))
   const [sliderStyle, setSliderStyle] = useState({})
-  const pluginList = usePluginPageContext(v => v.installedPluginList)
+  const { data: pluginList } = useInstalledPluginList()
 
   const updateSliderStyle = (index: number) => {
     const tabElement = document.getElementById(`tab-${index}`)
@@ -69,13 +69,13 @@ const TabSlider: FC<TabSliderProps> = ({
           {option.text}
           {/* if no plugin installed, the badge won't show */}
           {option.value === 'plugins'
-            && pluginList.length > 0
+            && (pluginList?.plugins.length ?? 0) > 0
             && <Badge
               size='s'
               uppercase={true}
               state={BadgeState.Default}
             >
-              {pluginList.length}
+              {pluginList?.plugins.length}
             </Badge>
           }
         </div>
