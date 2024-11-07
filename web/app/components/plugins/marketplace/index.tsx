@@ -28,6 +28,60 @@ const Marketplace = async ({
         marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
         showInstallButton={showInstallButton}
       />
+      <ListWrapper
+        locale={locale}
+        marketplaceCollections={marketplaceCollections}
+        marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+        showInstallButton={showInstallButton}
+      />
+      <ListWrapper
+        locale={locale}
+        marketplaceCollections={marketplaceCollections}
+        marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+        showInstallButton={showInstallButton}
+      />
+      <ListWrapper
+        locale={locale}
+        marketplaceCollections={marketplaceCollections}
+        marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+        showInstallButton={showInstallButton}
+      />
+      <ListWrapper
+        locale={locale}
+        marketplaceCollections={marketplaceCollections}
+        marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+        showInstallButton={showInstallButton}
+      />
+      <ListWrapper
+        locale={locale}
+        marketplaceCollections={marketplaceCollections}
+        marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+        showInstallButton={showInstallButton}
+      />
+      <ListWrapper
+        locale={locale}
+        marketplaceCollections={marketplaceCollections}
+        marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+        showInstallButton={showInstallButton}
+      />
+      <ListWrapper
+        locale={locale}
+        marketplaceCollections={marketplaceCollections}
+        marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+        showInstallButton={showInstallButton}
+      />
+      <ListWrapper
+        locale={locale}
+        marketplaceCollections={marketplaceCollections}
+        marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+        showInstallButton={showInstallButton}
+      />
+      <ListWrapper
+        locale={locale}
+        marketplaceCollections={marketplaceCollections}
+        marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+        showInstallButton={showInstallButton}
+      />
     </MarketplaceContextProvider>
   )
 }
