@@ -22,7 +22,7 @@ const ListWrapper = ({
   const marketplaceCollectionPluginsMapFromClient = useMarketplaceContext(v => v.marketplaceCollectionPluginsMapFromClient)
 
   return (
-    <div className='px-12 py-2 bg-background-default-subtle'>
+    <div className='flex flex-col grow px-12 py-2 bg-background-default-subtle'>
       {
         plugins && (
           <div className='flex items-center mb-4 pt-3'>

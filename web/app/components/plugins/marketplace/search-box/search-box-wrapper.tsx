@@ -20,7 +20,7 @@ const SearchBoxWrapper = ({
   return (
     <SearchBox
       inputClassName={cn(
-        'sticky top-3 mx-auto w-[640px]',
+        'sticky top-3 mx-auto w-[640px] shrink-0',
         !intersected && 'w-[508px] transition-[width] duration-300',
       )}
       search={searchPluginText}

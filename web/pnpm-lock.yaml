@@ -35,7 +35,7 @@ importers:
         specifier: ^2.0.16
         version: 2.1.5(react@18.2.0)
       '@hookform/resolvers':
-        specifier: ^3.3.4
+        specifier: ^3.9.0
         version: 3.9.0(react-hook-form@7.53.1(react@18.2.0))
       '@lexical/react':
         specifier: ^0.18.0
@@ -188,7 +188,7 @@ importers:
         specifier: ^1.1.6
         version: 1.1.6(react@18.2.0)
       react-hook-form:
-        specifier: ^7.51.4
+        specifier: ^7.53.1
         version: 7.53.1(react@18.2.0)
       react-i18next:
         specifier: ^15.1.0
@@ -272,7 +272,7 @@ importers:
         specifier: ^10.0.0
         version: 10.0.0
       zod:
-        specifier: ^3.23.6
+        specifier: ^3.23.8
         version: 3.23.8
       zundo:
         specifier: ^2.1.0
