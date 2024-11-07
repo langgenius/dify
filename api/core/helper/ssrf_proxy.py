@@ -8,14 +8,12 @@ import time
 
 import httpx
 
+from configs import dify_config
+
 SSRF_PROXY_ALL_URL = os.getenv("SSRF_PROXY_ALL_URL", "")
 SSRF_PROXY_HTTP_URL = os.getenv("SSRF_PROXY_HTTP_URL", "")
 SSRF_PROXY_HTTPS_URL = os.getenv("SSRF_PROXY_HTTPS_URL", "")
-SSRF_DEFAULT_MAX_RETRIES = int(os.getenv("SSRF_DEFAULT_MAX_RETRIES", "3"))
-SSRF_DEFAULT_TIME_OUT = float(os.getenv("SSRF_DEFAULT_TIME_OUT", "5"))
-SSRF_DEFAULT_CONNECT_TIME_OUT = float(os.getenv("SSRF_DEFAULT_CONNECT_TIME_OUT", "5"))
-SSRF_DEFAULT_READ_TIME_OUT = float(os.getenv("SSRF_DEFAULT_READ_TIME_OUT", "5"))
-SSRF_DEFAULT_WRITE_TIME_OUT = float(os.getenv("SSRF_DEFAULT_WRITE_TIME_OUT", "5"))
+SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
 
 proxy_mounts = (
     {
@@ -38,10 +36,10 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
 
     if "timeout" not in kwargs:
         kwargs["timeout"] = httpx.Timeout(
-            SSRF_DEFAULT_TIME_OUT,
-            connect=SSRF_DEFAULT_CONNECT_TIME_OUT,
-            read=SSRF_DEFAULT_READ_TIME_OUT,
-            write=SSRF_DEFAULT_WRITE_TIME_OUT,
+            timeout=dify_config.SSRF_DEFAULT_TIME_OUT,
+            connect=dify_config.SSRF_DEFAULT_CONNECT_TIME_OUT,
+            read=dify_config.SSRF_DEFAULT_READ_TIME_OUT,
+            write=dify_config.SSRF_DEFAULT_WRITE_TIME_OUT,
         )
 
     retries = 0
