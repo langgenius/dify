@@ -67,11 +67,8 @@ importers:
       '@svgdotjs/svg.js':
         specifier: ^3.2.4
         version: 3.2.4
-      '@tailwindcss/line-clamp':
-        specifier: ^0.4.4
-        version: 0.4.4(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@18.15.0)(typescript@4.9.5)))
       '@tailwindcss/typography':
-        specifier: ^0.5.9
+        specifier: ^0.5.15
         version: 0.5.15(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@18.15.0)(typescript@4.9.5)))
       '@tanstack/react-query':
         specifier: ^5.59.20
@@ -263,7 +260,7 @@ importers:
         specifier: ^2.1.0
         version: 2.2.5(react@18.2.0)
       tailwind-merge:
-        specifier: ^2.4.0
+        specifier: ^2.5.4
         version: 2.5.4
       use-context-selector:
         specifier: ^2.0.0
@@ -393,7 +390,7 @@ importers:
         specifier: ^10.0.0
         version: 10.0.0
       autoprefixer:
-        specifier: ^10.4.14
+        specifier: ^10.4.20
         version: 10.4.20(postcss@8.4.47)
       bing-translate-api:
         specifier: ^4.0.2
@@ -435,7 +432,7 @@ importers:
         specifier: ^0.3.4
         version: 0.3.5
       postcss:
-        specifier: ^8.4.31
+        specifier: ^8.4.47
         version: 8.4.47
       sass:
         specifier: ^1.80.3
@@ -444,7 +441,7 @@ importers:
         specifier: ^8.3.6
         version: 8.3.6
       tailwindcss:
-        specifier: ^3.4.4
+        specifier: ^3.4.14
         version: 3.4.14(ts-node@10.9.2(@types/node@18.15.0)(typescript@4.9.5))
       ts-node:
         specifier: ^10.9.2
@@ -2370,11 +2367,6 @@ packages:
   '@szmarczak/http-timer@4.0.6':
     resolution: {integrity: sha512-4BAffykYOgO+5nzBWYwE3W90sBgLJoUPRWWcL8wlyiM8IB8ipJz3UMJ9KXQd1RKQXpKp8Tutn80HZtWsu2u76w==}
     engines: {node: '>=10'}
-
-  '@tailwindcss/line-clamp@0.4.4':
-    resolution: {integrity: sha512-5U6SY5z8N42VtrCrKlsTAA35gy2VSyYtHWCsg1H87NU1SXnEfekTVlrga9fzUDrrHcGi2Lb5KenUWb4lRQT5/g==}
-    peerDependencies:
-      tailwindcss: '>=2.0.0 || >=3.0.0 || >=3.0.0-alpha.1'
 
   '@tailwindcss/typography@0.5.15':
     resolution: {integrity: sha512-AqhlCXl+8grUz8uqExv5OTtgpjuVIwFTSXTrh8y9/pw6q2ek7fJ+Y8ZEVw7EB2DCcuCOtEjf9w3+J3rzts01uA==}
@@ -10648,10 +10640,6 @@ snapshots:
   '@szmarczak/http-timer@4.0.6':
     dependencies:
       defer-to-connect: 2.0.1
-
-  '@tailwindcss/line-clamp@0.4.4(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@18.15.0)(typescript@4.9.5)))':
-    dependencies:
-      tailwindcss: 3.4.14(ts-node@10.9.2(@types/node@18.15.0)(typescript@4.9.5))
 
   '@tailwindcss/typography@0.5.15(tailwindcss@3.4.14(ts-node@10.9.2(@types/node@18.15.0)(typescript@4.9.5)))':
     dependencies:
