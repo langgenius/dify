@@ -1,0 +1,70 @@
+identity:
+  name: get_document_content
+  author: Doug Lea
+  label:
+    en_US: Get Lark Cloud Document Content
+    zh_Hans: 获取 Lark 云文档的内容
+description:
+  human:
+    en_US: Get lark cloud document content
+    zh_Hans: 获取 Lark 云文档的内容
+  llm: A tool for retrieving content from Lark cloud documents.
+parameters:
+  - name: document_id
+    type: string
+    required: true
+    label:
+      en_US: document_id
+      zh_Hans: Lark 文档的唯一标识
+    human_description:
+      en_US: Unique identifier for a Lark document. You can also input the document's URL.
+      zh_Hans: Lark 文档的唯一标识，支持输入文档的 URL。
+    llm_description: Lark 文档的唯一标识，支持输入文档的 URL。
+    form: llm
+
+  - name: mode
+    type: select
+    required: false
+    options:
+      - value: text
+        label:
+          en_US: text
+          zh_Hans: text
+      - value: markdown
+        label:
+          en_US: markdown
+          zh_Hans: markdown
+    default: "markdown"
+    label:
+      en_US: mode
+      zh_Hans: 文档返回格式
+    human_description:
+      en_US: Format of the document return, optional values are text, markdown, can be empty, default is markdown.
+      zh_Hans: 文档返回格式，可选值有 text、markdown，可以为空，默认值为 markdown。
+    llm_description: 文档返回格式，可选值有 text、markdown，可以为空，默认值为 markdown。
+    form: form
+
+  - name: lang
+    type: select
+    required: false
+    options:
+      - value: "0"
+        label:
+          en_US: User's default name
+          zh_Hans: 用户的默认名称
+      - value: "1"
+        label:
+          en_US: User's English name
+          zh_Hans: 用户的英文名称
+    default: "0"
+    label:
+      en_US: lang
+      zh_Hans: 指定@用户的语言
+    human_description:
+      en_US: |
+        Specifies the language for MentionUser, optional values are [0, 1]. 0: User's default name, 1: User's English name, default is 0.
+      zh_Hans: |
+        指定返回的 MentionUser，即@用户的语言，可选值有 [0,1]。0: 该用户的默认名称，1: 该用户的英文名称，默认值为 0。
+    llm_description: |
+      指定返回的 MentionUser，即@用户的语言，可选值有 [0,1]。0: 该用户的默认名称，1: 该用户的英文名称，默认值为 0。
+    form: form
