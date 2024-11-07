@@ -1,9 +1,5 @@
-<<<<<<< HEAD
 import { API_PREFIX, IS_CE_EDITION, MARKETPLACE_API_PREFIX, PUBLIC_API_PREFIX } from '@/config'
-=======
 import { refreshAccessTokenOrRelogin } from './refresh-token'
-import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
->>>>>>> 302f4407f (refactor the logic of refreshing access_token (#10068))
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
