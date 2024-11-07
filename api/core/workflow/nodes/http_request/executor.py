@@ -146,7 +146,7 @@ class Executor:
                         if v.related_id is not None
                     }
                     self.data = form_data
-                    self.files = files
+                    self.files = files or None
 
     def _assembling_headers(self) -> dict[str, Any]:
         authorization = deepcopy(self.auth)
@@ -268,7 +268,6 @@ class Executor:
             elif self.data and self.node_data.body.type == "x-www-form-urlencoded":
                 body = urlencode(self.data)
             elif self.data and self.node_data.body.type == "form-data":
-                boundary = self.boundary
                 for key, value in self.data.items():
                     body += f"--{boundary}\r\n"
                     body += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
