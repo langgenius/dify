@@ -8,10 +8,12 @@ import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { usePluginPageContext } from './context'
 import { useDebounceFn } from 'ahooks'
 import Empty from './empty'
+import Loading from '../../base/loading'
 
 const PluginsPanel = () => {
   const [filters, setFilters] = usePluginPageContext(v => [v.filters, v.setFilters]) as [FilterState, (filter: FilterState) => void]
   const pluginList = usePluginPageContext(v => v.installedPluginList) as PluginDetail[]
+  const isPluginListLoading = usePluginPageContext(v => v.isPluginListLoading)
   const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
 
   const { run: handleFilterChange } = useDebounceFn((filters: FilterState) => {
@@ -38,7 +40,7 @@ const PluginsPanel = () => {
           onFilterChange={handleFilterChange}
         />
       </div>
-      {filteredList.length > 0 ? (
+      {isPluginListLoading ? <Loading type='app' /> : filteredList.length > 0 ? (
         <div className='flex px-12 items-start content-start gap-2 flex-grow self-stretch flex-wrap'>
           <div className='w-full'>
             <List pluginList={filteredList} />

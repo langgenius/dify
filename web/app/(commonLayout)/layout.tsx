@@ -8,6 +8,7 @@ import Header from '@/app/components/header'
 import { EventEmitterContextProvider } from '@/context/event-emitter'
 import { ProviderContextProvider } from '@/context/provider-context'
 import { ModalContextProvider } from '@/context/modal-context'
+import { TanstackQueryIniter } from '@/context/query-client'
 
 const Layout = ({ children }: { children: ReactNode }) => {
   return (
@@ -21,7 +22,9 @@ const Layout = ({ children }: { children: ReactNode }) => {
                 <HeaderWrapper>
                   <Header />
                 </HeaderWrapper>
-                {children}
+                <TanstackQueryIniter>
+                  {children}
+                </TanstackQueryIniter>
               </ModalContextProvider>
             </ProviderContextProvider>
           </EventEmitterContextProvider>
