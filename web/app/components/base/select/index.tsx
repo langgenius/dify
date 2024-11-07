@@ -331,20 +331,20 @@ const PortalSelect: FC<PortalSelectProps> = ({
           : (
             <div
               className={classNames(`
-            flex items-center justify-between px-2.5 h-9 rounded-lg border-0 bg-gray-100 text-sm ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'} 
+            group flex items-center justify-between px-2.5 h-9 rounded-lg border-0 bg-components-input-bg-normal hover:bg-state-base-hover-alt text-sm ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'} 
           `, triggerClassName, triggerClassNameFn?.(open))}
               title={selectedItem?.name}
             >
               <span
                 className={`
               grow truncate
-              ${!selectedItem?.name && 'text-gray-400'}
+              ${!selectedItem?.name && 'text-components-input-text-placeholder'}
             `}
               >
                 {selectedItem?.name ?? localPlaceholder}
               </span>
               <div className='mx-0.5'>{installedValue && selectedItem && selectedItem.value !== installedValue && <Badge>{installedValue} {'->'} {selectedItem.value} </Badge>}</div>
-              <ChevronDownIcon className='shrink-0 h-4 w-4 text-gray-400' />
+              <ChevronDownIcon className='shrink-0 h-4 w-4 text-text-quaternary group-hover:text-text-secondary' />
             </div>
           )}
 

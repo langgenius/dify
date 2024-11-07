@@ -93,6 +93,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         value={selectedPackage}
         onSelect={onSelectPackage}
         items={packages}
+        readonly={!selectedVersion}
         placeholder={t('plugin.installFromGitHub.selectPackagePlaceholder') || ''}
         popupClassName='w-[512px] z-[1001]'
       />
