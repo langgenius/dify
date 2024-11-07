@@ -1,0 +1,49 @@
+identity:
+  name: get_spreadsheet
+  author: Doug Lea
+  label:
+    en_US: Get Spreadsheet
+    zh_Hans: 获取电子表格信息
+description:
+  human:
+    en_US: Get Spreadsheet
+    zh_Hans: 获取电子表格信息
+  llm: A tool for getting information from spreadsheets. (获取电子表格信息)
+parameters:
+  - name: spreadsheet_token
+    type: string
+    required: true
+    label:
+      en_US: Spreadsheet Token
+      zh_Hans: 电子表格 token
+    human_description:
+      en_US: Spreadsheet token, supports input of spreadsheet URL.
+      zh_Hans: 电子表格 token，支持输入电子表格 URL。
+    llm_description: 电子表格 token，支持输入电子表格 URL。
+    form: llm
+
+  - name: user_id_type
+    type: select
+    required: false
+    options:
+      - value: open_id
+        label:
+          en_US: open_id
+          zh_Hans: open_id
+      - value: union_id
+        label:
+          en_US: union_id
+          zh_Hans: union_id
+      - value: user_id
+        label:
+          en_US: user_id
+          zh_Hans: user_id
+    default: "open_id"
+    label:
+      en_US: user_id_type
+      zh_Hans: 用户 ID 类型
+    human_description:
+      en_US: User ID type, optional values are open_id, union_id, user_id, with a default value of open_id.
+      zh_Hans: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    llm_description: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    form: form
