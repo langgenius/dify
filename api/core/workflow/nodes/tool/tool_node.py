@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.file.models import File, FileTransferMethod, FileType
+from core.file import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
@@ -19,11 +19,17 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import RunCompletedEvent, RunStreamChunkEvent
-from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
 from models.tools import ToolFile
 from models.workflow import WorkflowNodeExecutionStatus
+
+from .entities import ToolNodeData
+from .exc import (
+    ToolFileError,
+    ToolNodeError,
+    ToolParameterError,
+)
 
 
 class ToolNode(BaseNode[ToolNodeData]):
@@ -49,7 +55,7 @@ class ToolNode(BaseNode[ToolNodeData]):
             tool_runtime = ToolManager.get_workflow_tool_runtime(
                 self.tenant_id, self.app_id, self.node_id, self.node_data, self.invoke_from
             )
-        except Exception as e:
+        except ToolNodeError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -58,7 +64,6 @@ class ToolNode(BaseNode[ToolNodeData]):
                     error=f"Failed to get tool runtime: {str(e)}",
                 )
             )
-            return
 
         # get parameters
         tool_parameters = tool_runtime.get_merged_runtime_parameters() or []
@@ -85,7 +90,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                 app_id=self.app_id,
                 # TODO: conversation id and message id
             )
-        except Exception as e:
+        except ToolNodeError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
@@ -94,7 +99,6 @@ class ToolNode(BaseNode[ToolNodeData]):
                     error=f"Failed to invoke tool: {str(e)}",
                 )
             )
-            return
 
         # convert tool messages
         yield from self._transform_message(message_stream, tool_info, parameters_for_log)
@@ -131,14 +135,13 @@ class ToolNode(BaseNode[ToolNodeData]):
             if tool_input.type == "variable":
                 variable = variable_pool.get(tool_input.value)
                 if variable is None:
-                    raise ValueError(f"variable {tool_input.value} not exists")
+                    raise ToolParameterError(f"Variable {tool_input.value} does not exist")
                 parameter_value = variable.value
             elif tool_input.type in {"mixed", "constant"}:
                 segment_group = variable_pool.convert_template(str(tool_input.value))
                 parameter_value = segment_group.log if for_log else segment_group.text
             else:
-                raise ValueError(f"unknown tool input type '{tool_input.type}'")
-
+                raise ToolParameterError(f"Unknown tool input type '{tool_input.type}'")
             result[parameter_name] = parameter_value
 
         return result
@@ -187,7 +190,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
-                        raise ValueError(f"tool file {tool_file_id} not exists")
+                        raise ToolFileError(f"Tool file {tool_file_id} does not exist")
 
                 files.append(
                     File(
@@ -212,8 +215,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
-                        raise ValueError(f"tool file {tool_file_id} not exists")
-
+                        raise ToolFileError(f"tool file {tool_file_id} not exists")
                 files.append(
                     File(
                         tenant_id=self.tenant_id,

@@ -1,7 +1,7 @@
 import json
 import re
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
@@ -14,7 +14,6 @@ from typing import Any, Literal
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
-from pydantic import BaseModel, Field
 from sqlalchemy import Float, Index, PrimaryKeyConstraint, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -29,14 +28,6 @@ from models.enums import CreatedByRole
 
 from .account import Account, Tenant
 from .types import StringUUID
-
-
-class FileUploadConfig(BaseModel):
-    enabled: bool = Field(default=False)
-    allowed_file_types: Sequence[FileType] = Field(default_factory=list)
-    allowed_extensions: Sequence[str] = Field(default_factory=list)
-    allowed_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
-    number_limits: int = Field(default=0, gt=0, le=10)
 
 
 class DifySetup(Base):
