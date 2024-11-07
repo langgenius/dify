@@ -18,6 +18,12 @@ from .entities import (
     HttpRequestNodeTimeout,
     Response,
 )
+from .exc import (
+    AuthorizationConfigError,
+    FileFetchError,
+    InvalidHttpMethodError,
+    ResponseSizeError,
+)
 
 BODY_TYPE_TO_CONTENT_TYPE = {
     "json": "application/json",
@@ -51,7 +57,7 @@ class Executor:
         # If authorization API key is present, convert the API key using the variable pool
         if node_data.authorization.type == "api-key":
             if node_data.authorization.config is None:
-                raise ValueError("authorization config is required")
+                raise AuthorizationConfigError("authorization config is required")
             node_data.authorization.config.api_key = variable_pool.convert_template(
                 node_data.authorization.config.api_key
             ).text
@@ -82,8 +88,10 @@ class Executor:
         self.url = self.variable_pool.convert_template(self.node_data.url).text
 
     def _init_params(self):
-        params = self.variable_pool.convert_template(self.node_data.params).text
-        self.params = _plain_text_to_dict(params)
+        params = _plain_text_to_dict(self.node_data.params)
+        for key in params:
+            params[key] = self.variable_pool.convert_template(params[key]).text
+        self.params = params
 
     def _init_headers(self):
         headers = self.variable_pool.convert_template(self.node_data.headers).text
@@ -116,7 +124,7 @@ class Executor:
                     file_selector = data[0].file
                     file_variable = self.variable_pool.get_file(file_selector)
                     if file_variable is None:
-                        raise ValueError(f"cannot fetch file with selector {file_selector}")
+                        raise FileFetchError(f"cannot fetch file with selector {file_selector}")
                     file = file_variable.value
                     self.content = file_manager.download(file)
                 case "x-www-form-urlencoded":
@@ -155,12 +163,12 @@ class Executor:
         headers = deepcopy(self.headers) or {}
         if self.auth.type == "api-key":
             if self.auth.config is None:
-                raise ValueError("self.authorization config is required")
+                raise AuthorizationConfigError("self.authorization config is required")
             if authorization.config is None:
-                raise ValueError("authorization config is required")
+                raise AuthorizationConfigError("authorization config is required")
 
             if self.auth.config.api_key is None:
-                raise ValueError("api_key is required")
+                raise AuthorizationConfigError("api_key is required")
 
             if not authorization.config.header:
                 authorization.config.header = "Authorization"
@@ -183,7 +191,7 @@ class Executor:
             else dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE
         )
         if executor_response.size > threshold_size:
-            raise ValueError(
+            raise ResponseSizeError(
                 f'{"File" if executor_response.is_file else "Text"} size is too large,'
                 f' max size is {threshold_size / 1024 / 1024:.2f} MB,'
                 f' but current size is {executor_response.readable_size}.'
@@ -196,7 +204,7 @@ class Executor:
         do http request depending on api bundle
         """
         if self.method not in {"get", "head", "post", "put", "delete", "patch"}:
-            raise ValueError(f"Invalid http method {self.method}")
+            raise InvalidHttpMethodError(f"Invalid http method {self.method}")
 
         request_args = {
             "url": self.url,

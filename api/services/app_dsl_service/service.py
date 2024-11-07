@@ -16,7 +16,6 @@ from services.workflow_service import WorkflowService
 
 from .exc import (
     ContentDecodingError,
-    DSLVersionNotSupportedError,
     EmptyContentError,
     FileSizeLimitExceededError,
     InvalidAppModeError,
@@ -28,11 +27,7 @@ from .exc import (
 
 logger = logging.getLogger(__name__)
 
-current_dsl_version = "0.1.2"
-dsl_to_dify_version_mapping: dict[str, str] = {
-    "0.1.2": "0.8.0",
-    "0.1.1": "0.6.0",  # dsl version -> from dify version
-}
+current_dsl_version = "0.1.3"
 
 
 class AppDslService:
@@ -472,11 +467,13 @@ def _check_or_fix_dsl(import_data: dict[str, Any]) -> Mapping[str, Any]:
     imported_version = import_data.get("version")
     if imported_version != current_dsl_version:
         if imported_version and version.parse(imported_version) > version.parse(current_dsl_version):
-            raise DSLVersionNotSupportedError(
+            errmsg = (
                 f"The imported DSL version {imported_version} is newer than "
                 f"the current supported version {current_dsl_version}. "
                 f"Please upgrade your Dify instance to import this configuration."
             )
+            logger.warning(errmsg)
+            # raise DSLVersionNotSupportedError(errmsg)
         else:
             logger.warning(
                 f"DSL version {imported_version} is older than "

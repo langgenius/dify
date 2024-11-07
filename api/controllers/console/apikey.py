@@ -12,8 +12,7 @@ from models.model import ApiToken, App
 
 from ..service_api.wraps import get_api_token_from_db
 from . import api
-from .setup import setup_required
-from .wraps import account_initialization_required
+from .wraps import account_initialization_required, setup_required
 
 api_key_fields = {
     "id": fields.String,

@@ -1,4 +1,4 @@
-class DocumentExtractorError(Exception):
+class DocumentExtractorError(ValueError):
     """Base exception for errors related to the DocumentExtractorNode."""
 
 
