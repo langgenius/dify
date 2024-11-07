@@ -81,7 +81,7 @@ const InstallPluginDropdown = ({
               onChange={handleFileChange}
               accept='.difypkg'
             />
-            <div className='p-1 w-full'>
+            <div className='w-full'>
               {[
                 ...(
                   (enable_marketplace || true)
@@ -93,7 +93,7 @@ const InstallPluginDropdown = ({
               ].map(({ icon: Icon, text, action }) => (
                 <div
                   key={action}
-                  className='flex items-center w-full px-2 py-1.5 gap-1 rounded-lg hover:bg-state-base-hover cursor-pointer'
+                  className='flex items-center w-full px-2 py-1.5 gap-1 rounded-lg hover:bg-state-base-hover !cursor-pointer'
                   onClick={() => {
                     if (action === 'local') {
                       fileInputRef.current?.click()
