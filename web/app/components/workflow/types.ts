@@ -37,7 +37,12 @@ export enum ControlMode {
   Hand = 'hand',
 }
 
-export interface Branch {
+export enum ErrorHandleMode {
+  Terminated = 'terminated',
+  ContinueOnError = 'continue-on-error',
+  RemoveAbnormalOutput = 'remove-abnormal-output',
+}
+export type Branch = {
   id: string
   name: string
 }

@@ -57,7 +57,7 @@ const PluginTypeSwitch = ({
 
   return (
     <div className={cn(
-      'sticky top-[60px] flex items-center justify-center py-3 bg-background-body space-x-2 z-10',
+      'sticky top-[60px] shrink-0 flex items-center justify-center py-3 bg-background-body space-x-2 z-10',
     )}>
       {
         options.map(option => (

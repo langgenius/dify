@@ -51,7 +51,7 @@ const ToolPicker: FC<Props> = ({
 
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
-  const { invalidate: invalidateCustomTools } = useInvalidateAllCustomTools()
+  const invalidateCustomTools = useInvalidateAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
 
   const handleAddedCustomTool = invalidateCustomTools
