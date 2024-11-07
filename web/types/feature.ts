@@ -4,6 +4,12 @@ export enum SSOProtocol {
   OAuth2 = 'oauth2',
 }
 
+export enum LicenseStatus {
+  NONE = 'none',
+  ACTIVE = 'active',
+  EXPIRED = 'expired',
+}
+
 export type SystemFeatures = {
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: SSOProtocol | ''
@@ -15,6 +21,7 @@ export type SystemFeatures = {
   enable_social_oauth_login: boolean
   is_allow_create_workspace: boolean
   is_allow_register: boolean
+  license_status: LicenseStatus
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
@@ -28,4 +35,5 @@ export const defaultSystemFeatures: SystemFeatures = {
   enable_social_oauth_login: false,
   is_allow_create_workspace: false,
   is_allow_register: false,
+  license_status: LicenseStatus.NONE,
 }
