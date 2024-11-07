@@ -1,0 +1,9 @@
+# pytest.ini
+[pytest]
+env =
+    # DOMAIN=
+    APP_KEY=<your-app-key>
+    CHAT_KEY=<your-chat-key>
+    COMPLETION_KEY=<your-completion-key>
+    WORKFLOW_KEY=<your-workflow-key>
+    DATASET_KEY=<your-dataset-key>
