@@ -70,7 +70,7 @@ const GetSchema: FC<Props> = ({
             <div className='relative'>
               <input
                 type='text'
-                className='w-[244px] h-8 pl-1.5 pr-[44px] overflow-x-auto border border-gray-200 rounded-lg text-[13px]'
+                className='w-[244px] h-8 pl-1.5 pr-[44px] overflow-x-auto border border-gray-200 rounded-lg text-[13px] focus:outline-none focus:border-components-input-border-active'
                 placeholder={t('tools.createTool.importFromUrlPlaceHolder')!}
                 value={importUrl}
                 onChange={e => setImportUrl(e.target.value)}
@@ -89,7 +89,7 @@ const GetSchema: FC<Props> = ({
           </div>
         )}
       </div>
-      <div className='relative' ref={showExamplesRef}>
+      <div className='relative -mt-0.5' ref={showExamplesRef}>
         <Button
           size='small'
           className='space-x-1'
