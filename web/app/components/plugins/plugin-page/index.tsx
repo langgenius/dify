@@ -121,6 +121,7 @@ const PluginPage = ({
 
   return (
     <div
+      id='marketplace-container'
       ref={containerRef}
       className={cn('grow relative flex flex-col overflow-y-auto border-t border-divider-subtle', activeTab === 'plugins'
         ? 'rounded-t-xl bg-components-panel-bg'

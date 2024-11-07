@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -13,12 +13,7 @@ import type {
 } from '@floating-ui/react'
 import AllTools from '@/app/components/workflow/block-selector/all-tools'
 import type { ToolDefaultValue } from './types'
-import {
-  fetchAllBuiltInTools,
-  fetchAllCustomTools,
-  fetchAllWorkflowTools,
-} from '@/service/tools'
-import type { BlockEnum, ToolWithProvider } from '@/app/components/workflow/types'
+import type { BlockEnum } from '@/app/components/workflow/types'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
@@ -28,6 +23,7 @@ import {
 } from '@/service/tools'
 import type { CustomCollectionBackend } from '@/app/components/tools/types'
 import Toast from '@/app/components/base/toast'
+import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools, useInvalidateAllCustomTools } from '@/service/use-tools'
 
 type Props = {
   disabled: boolean
@@ -53,25 +49,12 @@ const ToolPicker: FC<Props> = ({
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
 
-  const [buildInTools, setBuildInTools] = useState<ToolWithProvider[]>([])
-  const [customTools, setCustomTools] = useState<ToolWithProvider[]>([])
-  const [workflowTools, setWorkflowTools] = useState<ToolWithProvider[]>([])
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { invalidate: invalidateCustomTools } = useInvalidateAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
 
-  useEffect(() => {
-    (async () => {
-      const buildInTools = await fetchAllBuiltInTools()
-      const customTools = await fetchAllCustomTools()
-      const workflowTools = await fetchAllWorkflowTools()
-      setBuildInTools(buildInTools)
-      setCustomTools(customTools)
-      setWorkflowTools(workflowTools)
-    })()
-  }, [])
-
-  const handleAddedCustomTool = async () => {
-    const customTools = await fetchAllCustomTools()
-    setCustomTools(customTools)
-  }
+  const handleAddedCustomTool = invalidateCustomTools
 
   const handleTriggerClick = () => {
     if (disabled) return
@@ -138,9 +121,9 @@ const ToolPicker: FC<Props> = ({
             className='mt-1'
             searchText={searchText}
             onSelect={handleSelect}
-            buildInTools={buildInTools}
-            customTools={customTools}
-            workflowTools={workflowTools}
+            buildInTools={buildInTools || []}
+            customTools={customTools || []}
+            workflowTools={workflowTools || []}
             supportAddCustomTool={supportAddCustomTool}
             onAddedCustomTool={handleAddedCustomTool}
             onShowAddCustomCollectionModal={showEditCustomCollectionModal}

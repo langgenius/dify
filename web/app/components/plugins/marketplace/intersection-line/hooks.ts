@@ -1,17 +1,16 @@
 import { useEffect } from 'react'
-import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
 import { useMarketplaceContext } from '@/app/components/plugins/marketplace/context'
 
 export const useScrollIntersection = (
   anchorRef: React.RefObject<HTMLDivElement>,
 ) => {
-  const containerRef = usePluginPageContext(v => v.containerRef)
   const intersected = useMarketplaceContext(v => v.intersected)
   const setIntersected = useMarketplaceContext(v => v.setIntersected)
 
   useEffect(() => {
+    const container = document.getElementById('marketplace-container')
     let observer: IntersectionObserver | undefined
-    if (containerRef?.current && anchorRef.current) {
+    if (container && anchorRef.current) {
       observer = new IntersectionObserver((entries) => {
         const isIntersecting = entries[0].isIntersecting
 
@@ -21,10 +20,10 @@ export const useScrollIntersection = (
         if (!isIntersecting && intersected)
           setIntersected(false)
       }, {
-        root: containerRef.current,
+        root: container,
       })
       observer.observe(anchorRef.current)
     }
     return () => observer?.disconnect()
-  }, [containerRef, anchorRef, intersected, setIntersected])
+  }, [anchorRef, intersected, setIntersected])
 }
