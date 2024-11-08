@@ -14,8 +14,6 @@ from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.rag.datasource.keyword.keyword_factory import Keyword
-from core.rag.models.document import Document as RAGDocument
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
@@ -37,6 +35,7 @@ from models.dataset import (
 )
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
+from services.entities.knowledge_entities.knowledge_entities import SegmentUpdateEntity
 from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
@@ -1515,12 +1514,13 @@ class SegmentService:
 
     @classmethod
     def update_segment(cls, args: dict, segment: DocumentSegment, document: Document, dataset: Dataset):
+        segment_update_entity = SegmentUpdateEntity(**args)
         indexing_cache_key = "segment_{}_indexing".format(segment.id)
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
             raise ValueError("Segment is indexing, please try again later")
-        if "enabled" in args and args["enabled"] is not None:
-            action = args["enabled"]
+        if segment_update_entity.enabled is not None:
+            action = segment_update_entity.enabled
             if segment.enabled != action:
                 if not action:
                     segment.enabled = action
@@ -1533,22 +1533,22 @@ class SegmentService:
                     disable_segment_from_index_task.delay(segment.id)
                     return segment
         if not segment.enabled:
-            if "enabled" in args and args["enabled"] is not None:
-                if not args["enabled"]:
+            if segment_update_entity.enabled is not None:
+                if not segment_update_entity.enabled:
                     raise ValueError("Can't update disabled segment")
             else:
                 raise ValueError("Can't update disabled segment")
         try:
             word_count_change = segment.word_count
-            content = args["content"]
+            content = segment_update_entity.content
             if segment.content == content:
-                if args.get("keywords"):
-                    segment.keywords = args["keywords"]
                 segment.word_count = len(content)
                 if document.doc_form == "qa_model":
-                    segment.answer = args["answer"]
-                    segment.word_count += len(args["answer"])
+                    segment.answer = segment_update_entity.answer
+                    segment.word_count += len(segment_update_entity.answer)
                 word_count_change = segment.word_count - word_count_change
+                if segment_update_entity.keywords:
+                    segment.keywords = segment_update_entity.keywords
                 segment.enabled = True
                 segment.disabled_at = None
                 segment.disabled_by = None
@@ -1559,19 +1559,8 @@ class SegmentService:
                     document.word_count = max(0, document.word_count + word_count_change)
                     db.session.add(document)
                 # update segment index task
-                if "keywords" in args:
-                    keyword = Keyword(dataset)
-                    keyword.delete_by_ids([segment.index_node_id])
-                    document = RAGDocument(
-                        page_content=segment.content,
-                        metadata={
-                            "doc_id": segment.index_node_id,
-                            "doc_hash": segment.index_node_hash,
-                            "document_id": segment.document_id,
-                            "dataset_id": segment.dataset_id,
-                        },
-                    )
-                    keyword.add_texts([document], keywords_list=[args["keywords"]])
+                if segment_update_entity.enabled:
+                    VectorService.create_segments_vector([segment_update_entity.keywords], [segment], dataset)
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
@@ -1602,8 +1591,8 @@ class SegmentService:
                 segment.disabled_at = None
                 segment.disabled_by = None
                 if document.doc_form == "qa_model":
-                    segment.answer = args["answer"]
-                    segment.word_count += len(args["answer"])
+                    segment.answer = segment_update_entity.answer
+                    segment.word_count += len(segment_update_entity.answer)
                 word_count_change = segment.word_count - word_count_change
                 # update document word count
                 if word_count_change != 0:
@@ -1612,7 +1601,7 @@ class SegmentService:
                 db.session.add(segment)
                 db.session.commit()
                 # update segment vector index
-                VectorService.update_segment_vector(args["keywords"], segment, dataset)
+                VectorService.update_segment_vector(segment_update_entity.keywords, segment, dataset)
 
         except Exception as e:
             logging.exception("update segment index failed")

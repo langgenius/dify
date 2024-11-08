@@ -1,0 +1,32 @@
+identity:
+  name: cogvideo
+  author: hjlarry
+  label:
+    en_US: CogVideo
+    zh_Hans: CogVideo 视频生成
+description:
+  human:
+    en_US: Use the CogVideox model provided by ZhipuAI to generate videos based on user prompts and images.
+    zh_Hans: 使用智谱cogvideox模型，根据用户输入的提示词和图片，生成视频。
+  llm: A tool for generating videos. The input is user's prompt or image url or both of them, the output is a task id. You can use another tool with this task id to check the status and get the video.
+parameters:
+  - name: prompt
+    type: string
+    label:
+      en_US: prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: The prompt text used to generate video.
+      zh_Hans: 用于生成视频的提示词。
+    llm_description: The prompt text used to generate video. Optional.
+    form: llm
+  - name: image_url
+    type: string
+    label:
+      en_US: image url
+      zh_Hans: 图片链接
+    human_description:
+      en_US: The image url used to generate video.
+      zh_Hans: 输入一个图片链接，生成的视频将基于该图片和提示词。
+    llm_description: The image url used to generate video. Optional.
+    form: llm

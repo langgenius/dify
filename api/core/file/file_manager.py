@@ -3,7 +3,7 @@ import base64
 from configs import dify_config
 from core.file import file_repository
 from core.helper import ssrf_proxy
-from core.model_runtime.entities import AudioPromptMessageContent, ImagePromptMessageContent
+from core.model_runtime.entities import AudioPromptMessageContent, ImagePromptMessageContent, VideoPromptMessageContent
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 
@@ -71,6 +71,12 @@ def to_prompt_message_content(f: File, /):
             if f.extension is None:
                 raise ValueError("Missing file extension")
             return AudioPromptMessageContent(data=encoded_string, format=f.extension.lstrip("."))
+        case FileType.VIDEO:
+            if dify_config.MULTIMODAL_SEND_VIDEO_FORMAT == "url":
+                data = _to_url(f)
+            else:
+                data = _to_base64_data_string(f)
+            return VideoPromptMessageContent(data=data, format=f.extension.lstrip("."))
         case _:
             raise ValueError(f"file type {f.type} is not supported")
 
@@ -112,7 +118,7 @@ def _download_file_content(path: str, /):
 def _get_encoded_string(f: File, /):
     match f.transfer_method:
         case FileTransferMethod.REMOTE_URL:
-            response = ssrf_proxy.get(f.remote_url)
+            response = ssrf_proxy.get(f.remote_url, follow_redirects=True)
             response.raise_for_status()
             content = response.content
             encoded_string = base64.b64encode(content).decode("utf-8")
@@ -139,6 +145,8 @@ def _to_base64_data_string(f: File, /):
 def _file_to_encoded_string(f: File, /):
     match f.type:
         case FileType.IMAGE:
+            return _to_base64_data_string(f)
+        case FileType.VIDEO:
             return _to_base64_data_string(f)
         case FileType.AUDIO:
             return _get_encoded_string(f)
