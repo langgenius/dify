@@ -320,7 +320,7 @@ const baseFetch = <T>(
   }
 
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  let urlWithPrefix = url.startsWith('http://') || url.startsWith('https://')
+  let urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
     ? url
     : `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
 
@@ -528,7 +528,7 @@ export const ssePost = (
   getAbortController?.(abortController)
 
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const urlWithPrefix = url.startsWith('http://') || url.startsWith('https://')
+  const urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
     ? url
     : `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
 
