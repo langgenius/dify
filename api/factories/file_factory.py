@@ -184,6 +184,8 @@ def _build_from_remote_url(
     filename = url.split("/")[-1].split("?")[0] or "unknown_file"
 
     resp = ssrf_proxy.head(url, follow_redirects=True)
+    if resp.status_code != httpx.codes.OK:
+        resp = ssrf_proxy.get(url, follow_redirects=True, timeout=3)
     if resp.status_code == httpx.codes.OK:
         if content_disposition := resp.headers.get("Content-Disposition"):
             filename = content_disposition.split("filename=")[-1].strip('"')

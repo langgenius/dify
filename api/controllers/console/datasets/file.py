@@ -89,14 +89,13 @@ class RemoteFileInfoApi(Resource):
     @marshal_with(remote_file_info_fields)
     def get(self, url):
         decoded_url = urllib.parse.unquote(url)
-        try:
-            response = ssrf_proxy.head(decoded_url)
-            return {
-                "file_type": response.headers.get("Content-Type", "application/octet-stream"),
-                "file_length": int(response.headers.get("Content-Length", 0)),
-            }
-        except Exception as e:
-            return {"error": str(e)}, 400
+        resp = ssrf_proxy.head(decoded_url)
+        if resp.status_code != 200:
+            resp = ssrf_proxy.get(decoded_url, timeout=3)
+        return {
+            "file_type": resp.headers.get("Content-Type", "application/octet-stream"),
+            "file_length": int(resp.headers.get("Content-Length", 0)),
+        }
 
 
 api.add_resource(FileApi, "/files/upload")
