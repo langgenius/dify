@@ -71,7 +71,7 @@ const Action: FC<Props> = ({
             github: {
               originalPackageInfo: {
                 id: installationId,
-                repo: `https://github.com/${meta!.repo}`,
+                repo: meta!.repo,
                 version: meta!.version,
                 package: meta!.package,
               },
