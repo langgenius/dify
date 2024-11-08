@@ -4,6 +4,10 @@ x-shared-env: &shared-api-worker-env
   LOG_FILE: ${LOG_FILE:-}
   LOG_FILE_MAX_SIZE: ${LOG_FILE_MAX_SIZE:-20}
   LOG_FILE_BACKUP_COUNT: ${LOG_FILE_BACKUP_COUNT:-5}
+  # Log dateformat
+  LOG_DATEFORMAT: ${LOG_DATEFORMAT:-%Y-%m-%d %H:%M:%S}
+  # Log Timezone
+  LOG_TZ: ${LOG_TZ:-UTC}
   DEBUG: ${DEBUG:-false}
   FLASK_DEBUG: ${FLASK_DEBUG:-false}
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
