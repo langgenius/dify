@@ -28,7 +28,7 @@ const Category: FC<ICategoryProps> = ({
   allCategoriesEn,
 }) => {
   const { t } = useTranslation()
-  const isAllCategories = !list.includes(value as AppCategory)
+  const isAllCategories = !list.includes(value as AppCategory) || value === allCategoriesEn
 
   const itemClassName = (isSelected: boolean) => cn(
     'flex items-center px-3 py-[7px] h-[32px] rounded-lg border-[0.5px] border-transparent text-gray-700 font-medium leading-[18px] cursor-pointer hover:bg-gray-200',
@@ -44,7 +44,7 @@ const Category: FC<ICategoryProps> = ({
         <ThumbsUp className='mr-1 w-3.5 h-3.5' />
         {t('explore.apps.allCategories')}
       </div>
-      {list.map(name => (
+      {list.filter(name => name !== allCategoriesEn).map(name => (
         <div
           key={name}
           className={itemClassName(name === value)}

@@ -6,7 +6,6 @@ from .model import (
     AppMode,
     Conversation,
     EndUser,
-    FileUploadConfig,
     InstalledApp,
     Message,
     MessageAnnotation,
@@ -50,6 +49,5 @@ __all__ = [
     "Tenant",
     "Conversation",
     "MessageAnnotation",
-    "FileUploadConfig",
     "ToolFile",
 ]

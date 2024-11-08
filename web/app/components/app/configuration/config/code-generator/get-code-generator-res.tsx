@@ -105,6 +105,15 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       <div className='text-[13px] text-gray-400'>{t('appDebug.codegen.loading')}</div>
     </div>
   )
+  const renderNoData = (
+    <div className='w-0 grow flex flex-col items-center px-8 justify-center h-full space-y-3'>
+      <Generator className='w-14 h-14 text-gray-300' />
+      <div className='leading-5 text-center text-[13px] font-normal text-gray-400'>
+        <div>{t('appDebug.codegen.noDataLine1')}</div>
+        <div>{t('appDebug.codegen.noDataLine2')}</div>
+      </div>
+    </div>
+  )
 
   return (
     <Modal
@@ -157,6 +166,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
         </div>
         {isLoading && renderLoading}
+        {!isLoading && !res && renderNoData}
         {(!isLoading && res) && (
           <div className='w-0 grow p-6 pb-0 h-full'>
             <div className='shrink-0 mb-3 leading-[160%] text-base font-semibold text-gray-800'>{t('appDebug.codegen.resTitle')}</div>

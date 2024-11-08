@@ -10,7 +10,6 @@ from pydantic import (
     PositiveInt,
     computed_field,
 )
-from pydantic_extra_types.timezone_name import TimeZoneName
 from pydantic_settings import BaseSettings
 
 from configs.feature.hosted_service import HostedServiceConfig
@@ -110,7 +109,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
     )
 
     CODE_MAX_PRECISION: PositiveInt = Field(
-        description="mMaximum number of decimal places for floating-point numbers in code execution",
+        description="Maximum number of decimal places for floating-point numbers in code execution",
         default=20,
     )
 
@@ -217,6 +216,11 @@ class FileUploadConfig(BaseSettings):
         default=20,
     )
 
+    WORKFLOW_FILE_UPLOAD_LIMIT: PositiveInt = Field(
+        description="Maximum number of files allowed in a workflow upload operation",
+        default=10,
+    )
+
 
 class HttpConfig(BaseSettings):
     """
@@ -282,6 +286,26 @@ class HttpConfig(BaseSettings):
         default=None,
     )
 
+    SSRF_DEFAULT_TIME_OUT: PositiveFloat = Field(
+        description="The default timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
+    SSRF_DEFAULT_CONNECT_TIME_OUT: PositiveFloat = Field(
+        description="The default connect timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
+    SSRF_DEFAULT_READ_TIME_OUT: PositiveFloat = Field(
+        description="The default read timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
+    SSRF_DEFAULT_WRITE_TIME_OUT: PositiveFloat = Field(
+        description="The default write timeout period used for network requests (SSRF)",
+        default=5,
+    )
+
     RESPECT_XFORWARD_HEADERS_ENABLED: bool = Field(
         description="Enable or disable the X-Forwarded-For Proxy Fix middleware from Werkzeug"
         " to respect X-* headers to redirect clients",
@@ -340,9 +364,8 @@ class LoggingConfig(BaseSettings):
         default=None,
     )
 
-    LOG_TZ: Optional[TimeZoneName] = Field(
-        description="Timezone for log timestamps. Allowed timezone values can be referred to IANA Time Zone Database,"
-        " e.g., 'America/New_York')",
+    LOG_TZ: Optional[str] = Field(
+        description="Timezone for log timestamps (e.g., 'America/New_York')",
         default=None,
     )
 

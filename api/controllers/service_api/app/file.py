@@ -2,6 +2,7 @@ from flask import request
 from flask_restful import Resource, marshal_with
 
 import services
+from controllers.common.errors import FilenameNotExistsError
 from controllers.service_api import api
 from controllers.service_api.app.error import (
     FileTooLargeError,
@@ -31,8 +32,16 @@ class FileApi(Resource):
         if len(request.files) > 1:
             raise TooManyFilesError()
 
+        if not file.filename:
+            raise FilenameNotExistsError
+
         try:
-            upload_file = FileService.upload_file(file, end_user)
+            upload_file = FileService.upload_file(
+                filename=file.filename,
+                content=file.read(),
+                mimetype=file.mimetype,
+                user=end_user,
+            )
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:

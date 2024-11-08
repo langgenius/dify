@@ -127,7 +127,9 @@ class FeishuRequest:
             "folder_token": folder_token,
         }
         res = self._send_request(url, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def write_document(self, document_id: str, content: str, position: str = "end") -> dict:
         url = f"{self.API_BASE_URL}/document/write_document"
@@ -135,7 +137,7 @@ class FeishuRequest:
         res = self._send_request(url, payload=payload)
         return res
 
-    def get_document_content(self, document_id: str, mode: str = "markdown", lang: str = "0") -> dict:
+    def get_document_content(self, document_id: str, mode: str = "markdown", lang: str = "0") -> str:
         """
         API url: https://open.larkoffice.com/document/server-docs/docs/docs/docx-v1/document/raw_content
         Example Response:
@@ -154,7 +156,9 @@ class FeishuRequest:
         }
         url = f"{self.API_BASE_URL}/document/get_document_content"
         res = self._send_request(url, method="GET", params=params)
-        return res.get("data").get("content")
+        if "data" in res:
+            return res.get("data").get("content")
+        return ""
 
     def list_document_blocks(
         self, document_id: str, page_token: str, user_id_type: str = "open_id", page_size: int = 500
@@ -170,7 +174,9 @@ class FeishuRequest:
         }
         url = f"{self.API_BASE_URL}/document/list_document_blocks"
         res = self._send_request(url, method="GET", params=params)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def send_bot_message(self, receive_id_type: str, receive_id: str, msg_type: str, content: str) -> dict:
         """
@@ -186,7 +192,9 @@ class FeishuRequest:
             "content": content.strip('"').replace(r"\"", '"').replace(r"\\", "\\"),
         }
         res = self._send_request(url, params=params, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def send_webhook_message(self, webhook: str, msg_type: str, content: str) -> dict:
         url = f"{self.API_BASE_URL}/message/send_webhook_message"
@@ -220,7 +228,9 @@ class FeishuRequest:
             "page_size": page_size,
         }
         res = self._send_request(url, method="GET", params=params)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def get_thread_messages(
         self, container_id: str, page_token: str, sort_type: str = "ByCreateTimeAsc", page_size: int = 20
@@ -236,7 +246,9 @@ class FeishuRequest:
             "page_size": page_size,
         }
         res = self._send_request(url, method="GET", params=params)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def create_task(self, summary: str, start_time: str, end_time: str, completed_time: str, description: str) -> dict:
         # 创建任务
@@ -249,7 +261,9 @@ class FeishuRequest:
             "description": description,
         }
         res = self._send_request(url, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def update_task(
         self, task_guid: str, summary: str, start_time: str, end_time: str, completed_time: str, description: str
@@ -265,7 +279,9 @@ class FeishuRequest:
             "description": description,
         }
         res = self._send_request(url, method="PATCH", payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def delete_task(self, task_guid: str) -> dict:
         # 删除任务
@@ -297,7 +313,9 @@ class FeishuRequest:
             "page_size": page_size,
         }
         res = self._send_request(url, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def get_primary_calendar(self, user_id_type: str = "open_id") -> dict:
         url = f"{self.API_BASE_URL}/calendar/get_primary_calendar"
@@ -305,7 +323,9 @@ class FeishuRequest:
             "user_id_type": user_id_type,
         }
         res = self._send_request(url, method="GET", params=params)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def create_event(
         self,
@@ -328,7 +348,9 @@ class FeishuRequest:
             "attendee_ability": attendee_ability,
         }
         res = self._send_request(url, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def update_event(
         self,
@@ -374,7 +396,9 @@ class FeishuRequest:
             "page_size": page_size,
         }
         res = self._send_request(url, method="GET", params=params)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def search_events(
         self,
@@ -395,7 +419,9 @@ class FeishuRequest:
             "page_size": page_size,
         }
         res = self._send_request(url, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def add_event_attendees(self, event_id: str, attendee_phone_or_email: str, need_notification: bool = True) -> dict:
         # 参加日程参会人
@@ -406,7 +432,9 @@ class FeishuRequest:
             "need_notification": need_notification,
         }
         res = self._send_request(url, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def create_spreadsheet(
         self,
@@ -420,7 +448,9 @@ class FeishuRequest:
             "folder_token": folder_token,
         }
         res = self._send_request(url, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def get_spreadsheet(
         self,
@@ -434,7 +464,9 @@ class FeishuRequest:
             "user_id_type": user_id_type,
         }
         res = self._send_request(url, method="GET", params=params)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def list_spreadsheet_sheets(
         self,
@@ -446,7 +478,9 @@ class FeishuRequest:
             "spreadsheet_token": spreadsheet_token,
         }
         res = self._send_request(url, method="GET", params=params)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def add_rows(
         self,
@@ -466,7 +500,9 @@ class FeishuRequest:
             "values": values,
         }
         res = self._send_request(url, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def add_cols(
         self,
@@ -486,7 +522,9 @@ class FeishuRequest:
             "values": values,
         }
         res = self._send_request(url, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def read_rows(
         self,
@@ -508,7 +546,9 @@ class FeishuRequest:
             "user_id_type": user_id_type,
         }
         res = self._send_request(url, method="GET", params=params)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def read_cols(
         self,
@@ -530,7 +570,9 @@ class FeishuRequest:
             "user_id_type": user_id_type,
         }
         res = self._send_request(url, method="GET", params=params)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def read_table(
         self,
@@ -552,7 +594,9 @@ class FeishuRequest:
             "user_id_type": user_id_type,
         }
         res = self._send_request(url, method="GET", params=params)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def create_base(
         self,
@@ -566,7 +610,9 @@ class FeishuRequest:
             "folder_token": folder_token,
         }
         res = self._send_request(url, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def add_records(
         self,
@@ -588,7 +634,9 @@ class FeishuRequest:
             "records": convert_add_records(records),
         }
         res = self._send_request(url, params=params, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def update_records(
         self,
@@ -610,7 +658,9 @@ class FeishuRequest:
             "records": convert_update_records(records),
         }
         res = self._send_request(url, params=params, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def delete_records(
         self,
@@ -637,7 +687,9 @@ class FeishuRequest:
             "records": record_id_list,
         }
         res = self._send_request(url, params=params, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def search_record(
         self,
@@ -701,7 +753,10 @@ class FeishuRequest:
         if automatic_fields:
             payload["automatic_fields"] = automatic_fields
         res = self._send_request(url, params=params, payload=payload)
-        return res.get("data")
+
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def get_base_info(
         self,
@@ -713,7 +768,9 @@ class FeishuRequest:
             "app_token": app_token,
         }
         res = self._send_request(url, method="GET", params=params)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def create_table(
         self,
@@ -741,7 +798,9 @@ class FeishuRequest:
         if default_view_name:
             payload["default_view_name"] = default_view_name
         res = self._send_request(url, params=params, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def delete_tables(
         self,
@@ -774,8 +833,11 @@ class FeishuRequest:
             "table_ids": table_id_list,
             "table_names": table_name_list,
         }
+
         res = self._send_request(url, params=params, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def list_tables(
         self,
@@ -791,7 +853,9 @@ class FeishuRequest:
             "page_size": page_size,
         }
         res = self._send_request(url, method="GET", params=params)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res
 
     def read_records(
         self,
@@ -819,4 +883,6 @@ class FeishuRequest:
             "user_id_type": user_id_type,
         }
         res = self._send_request(url, method="GET", params=params, payload=payload)
-        return res.get("data")
+        if "data" in res:
+            return res.get("data")
+        return res

@@ -8,12 +8,16 @@ import {
   useNodesInitialized,
   useViewport,
 } from 'reactflow'
+import { useTranslation } from 'react-i18next'
 import { IterationStartNodeDumb } from '../iteration-start'
 import { useNodeIterationInteractions } from './use-interactions'
 import type { IterationNodeType } from './types'
 import AddBlock from './add-block'
 import cn from '@/utils/classnames'
 import type { NodeProps } from '@/app/components/workflow/types'
+import Toast from '@/app/components/base/toast'
+
+const i18nPrefix = 'workflow.nodes.iteration'
 
 const Node: FC<NodeProps<IterationNodeType>> = ({
   id,
@@ -22,11 +26,20 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
   const { zoom } = useViewport()
   const nodesInitialized = useNodesInitialized()
   const { handleNodeIterationRerender } = useNodeIterationInteractions()
+  const { t } = useTranslation()
 
   useEffect(() => {
     if (nodesInitialized)
       handleNodeIterationRerender(id)
-  }, [nodesInitialized, id, handleNodeIterationRerender])
+    if (data.is_parallel && data._isShowTips) {
+      Toast.notify({
+        type: 'warning',
+        message: t(`${i18nPrefix}.answerNodeWarningDesc`),
+        duration: 5000,
+      })
+      data._isShowTips = false
+    }
+  }, [nodesInitialized, id, handleNodeIterationRerender, data, t])
 
   return (
     <div className={cn(
