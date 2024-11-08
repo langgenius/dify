@@ -30,7 +30,7 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: ./.github/actions/setup-poetry
 
-      - name: Install Python dependencies
+      - name: Install dependencies
         if: steps.changed-files.outputs.any_changed == 'true'
         run: poetry install -C api --only lint
 
