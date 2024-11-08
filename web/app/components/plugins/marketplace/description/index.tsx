@@ -15,10 +15,10 @@ const Description = async ({
   return (
     <>
       <h1 className='shrink-0 mb-2 text-center title-4xl-semi-bold text-text-primary'>
-        Empower your AI development
+        {t('marketplace.empower')}
       </h1>
       <h2 className='shrink-0 flex justify-center items-center text-center body-md-regular text-text-tertiary'>
-        Discover
+        {t('marketplace.discover')}
         <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
           {t('category.models')}
         </span>
@@ -30,11 +30,11 @@ const Description = async ({
         <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
           {t('category.extensions')}
         </span>
-        and
+        {t('marketplace.and')}
         <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
           {t('category.bundles')}
         </span>
-        in Dify Marketplace
+        {t('marketplace.inDifyMarketplace')}
       </h2>
     </>
   )

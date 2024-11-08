@@ -30,7 +30,7 @@ const PluginTypeSwitch = ({
   const options = [
     {
       value: PLUGIN_TYPE_SEARCH_MAP.all,
-      text: 'All',
+      text: t('plugin.category.all'),
       icon: null,
     },
     {
