@@ -23,13 +23,14 @@ from core.ops.entities.trace_entity import (
     MessageTraceInfo,
     ModerationTraceInfo,
     SuggestedQuestionTraceInfo,
+    TaskData,
     ToolTraceInfo,
     TraceTaskName,
     WorkflowTraceInfo,
 )
 from core.ops.langfuse_trace.langfuse_trace import LangFuseDataTrace
 from core.ops.langsmith_trace.langsmith_trace import LangSmithDataTrace
-from core.ops.utils import convert_datetime_to_str, get_message_data
+from core.ops.utils import get_message_data
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import App, AppModelConfig, Conversation, Message, MessageAgentThought, MessageFile, TraceAppConfig
@@ -744,15 +745,13 @@ class TraceQueueManager:
             for task in tasks:
                 file_id = uuid4().hex
                 trace_info = task.execute()
-                task_data = {
-                    "app_id": task.app_id,
-                    "trace_info_type": type(trace_info).__name__,
-                    "trace_info": trace_info.model_dump() if trace_info else {},
-                }
-                task_data = convert_datetime_to_str(task_data)
-                json_data = json.dumps(task_data, ensure_ascii=False).encode("utf-8")
+                task_data = TaskData(
+                    app_id=task.app_id,
+                    trace_info_type=type(trace_info).__name__,
+                    trace_info=trace_info.model_dump() if trace_info else None,
+                )
                 file_path = f"{OPS_FILE_PATH}{task.app_id}/{file_id}.json"
-                storage.save(file_path, json_data)
+                storage.save(file_path, task_data.model_dump_json().encode("utf-8"))
                 file_info = {
                     "file_id": file_id,
                     "app_id": task.app_id,

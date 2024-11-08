@@ -57,3 +57,4 @@ class LangSmithConfig(BaseTracingConfig):
 
 
 OPS_FILE_PATH = "ops_trace/"
+OPS_TRACE_FAILED_KEY = "FAILED_OPS_TRACE"
