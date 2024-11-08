@@ -1,7 +1,7 @@
 from typing import Any, Union
 
-from zhipuai import ZhipuAI
 import httpx
+from zhipuai import ZhipuAI
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
