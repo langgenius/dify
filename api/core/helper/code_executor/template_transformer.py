@@ -2,6 +2,8 @@ import json
 import re
 from abc import ABC, abstractmethod
 from base64 import b64encode
+from collections.abc import Mapping
+from typing import Any
 
 
 class TemplateTransformer(ABC):
@@ -10,7 +12,7 @@ class TemplateTransformer(ABC):
     _result_tag: str = "<<RESULT>>"
 
     @classmethod
-    def transform_caller(cls, code: str, inputs: dict) -> tuple[str, str]:
+    def transform_caller(cls, code: str, inputs: Mapping[str, Any]) -> tuple[str, str]:
         """
         Transform code to python runner
         :param code: code
@@ -48,13 +50,13 @@ class TemplateTransformer(ABC):
         pass
 
     @classmethod
-    def serialize_inputs(cls, inputs: dict) -> str:
+    def serialize_inputs(cls, inputs: Mapping[str, Any]) -> str:
         inputs_json_str = json.dumps(inputs, ensure_ascii=False).encode()
         input_base64_encoded = b64encode(inputs_json_str).decode("utf-8")
         return input_base64_encoded
 
     @classmethod
-    def assemble_runner_script(cls, code: str, inputs: dict) -> str:
+    def assemble_runner_script(cls, code: str, inputs: Mapping[str, Any]) -> str:
         # assemble runner script
         script = cls.get_runner_script()
         script = script.replace(cls._code_placeholder, code)

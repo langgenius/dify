@@ -1,7 +1,8 @@
 import logging
+from collections.abc import Mapping
 from enum import Enum
 from threading import Lock
-from typing import Optional
+from typing import Any, Optional
 
 from httpx import Timeout, post
 from pydantic import BaseModel
@@ -117,7 +118,7 @@ class CodeExecutor:
         return response.data.stdout or ""
 
     @classmethod
-    def execute_workflow_code_template(cls, language: CodeLanguage, code: str, inputs: dict) -> dict:
+    def execute_workflow_code_template(cls, language: CodeLanguage, code: str, inputs: Mapping[str, Any]) -> dict:
         """
         Execute code
         :param language: code language
