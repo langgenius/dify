@@ -55,6 +55,7 @@ class JinaRerankModel(RerankModel):
                 base_url + "/rerank",
                 json={"model": model, "query": query, "documents": docs, "top_n": top_n},
                 headers={"Authorization": f"Bearer {credentials.get('api_key')}"},
+                timeout=20,
             )
             response.raise_for_status()
             results = response.json()
