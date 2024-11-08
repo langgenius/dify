@@ -76,9 +76,9 @@ class ComfyUiClient:
         if seed_id not in prompt:
             raise Exception("Not a valid seed node")
         if "seed" in prompt[seed_id]["inputs"]:
-            prompt[seed_id]["inputs"]["seed"] = random.randint(10 ** 14, 10 ** 15 - 1)
+            prompt[seed_id]["inputs"]["seed"] = random.randint(10**14, 10**15 - 1)
         elif "noise_seed" in prompt[seed_id]["inputs"]:
-            prompt[seed_id]["inputs"]["noise_seed"] = random.randint(10 ** 14, 10 ** 15 - 1)
+            prompt[seed_id]["inputs"]["noise_seed"] = random.randint(10**14, 10**15 - 1)
         else:
             raise Exception("Not a valid seed node")
         return prompt
