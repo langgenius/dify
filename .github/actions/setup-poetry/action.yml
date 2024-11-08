@@ -1,13 +1,16 @@
-name: Setup Poetry
+name: Setup Poetry and Python
 
 inputs:
   python-version:
+    description: Python version to use and the Poetry installed with
     required: true
     default: '3.10'
   poetry-version:
+    description: Poetry version to set up
     required: true
     default: '1.8.3'
   poetry-lockfile:
+    description: Path to the Poetry lockfile to restore cache from
     required: true
     default: ''
 
@@ -21,11 +24,9 @@ runs:
 
     - name: Install Poetry
       shell: bash
-      env:
-        POETRY_VERSION: 1.8.3
       run: pipx install poetry==${{ inputs.poetry-version }}
 
-    - name: Poetry cache
+    - name: Restore Poetry cache
       if: ${{ inputs.poetry-lockfile != '' }}
       uses: actions/setup-python@v5
       with:
