@@ -25,7 +25,6 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, EndUser, Workflow
-from models.enums import CreatedByRole
 
 logger = logging.getLogger(__name__)
 
@@ -70,15 +69,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
     ):
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
-        role = CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER
-
         # parse files
         file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
         system_files = file_factory.build_from_mappings(
             mappings=files,
             tenant_id=app_model.tenant_id,
-            user_id=user.id,
-            role=role,
             config=file_extra_config,
         )
 
@@ -100,7 +95,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         application_generate_entity = WorkflowAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
-            inputs=self._prepare_user_inputs(user_inputs=inputs, app_config=app_config, user_id=user.id, role=role),
+            file_upload_config=file_extra_config,
+            inputs=self._prepare_user_inputs(user_inputs=inputs, app_config=app_config),
             files=system_files,
             user_id=user.id,
             stream=stream,
