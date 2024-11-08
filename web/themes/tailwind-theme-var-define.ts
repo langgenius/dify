@@ -244,6 +244,8 @@ const vars = {
 
   'components-Avatar-default-avatar-bg': 'var(--color-components-Avatar-default-avatar-bg)',
 
+  'components-label-gray': 'var(--color-components-label-gray)',
+
   'text-primary': 'var(--color-text-primary)',
   'text-secondary': 'var(--color-text-secondary)',
   'text-tertiary': 'var(--color-text-tertiary)',

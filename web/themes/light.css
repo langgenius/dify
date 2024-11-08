@@ -244,6 +244,8 @@ html[data-theme="light"] {
 
   --color-components-Avatar-default-avatar-bg: #D0D5DC;
 
+  --color-components-label-gray: #F2F4F7;
+
   --color-text-primary: #101828;
   --color-text-secondary: #354052;
   --color-text-tertiary: #676F83;
