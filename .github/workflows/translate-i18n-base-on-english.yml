@@ -30,15 +30,12 @@ jobs:
             echo "FILES_CHANGED=false" >> $GITHUB_ENV
           fi
 
-      - name: Set up Node.js
+      - name: Setup NodeJS and Install Yarn dependencies
+        uses: .github/actions/setup-yarn
         if: env.FILES_CHANGED == 'true'
-        uses: actions/setup-node@v2
         with:
-          node-version: 'lts/*'
+          yarn-lockfile: web/yarn.lock
 
-      - name: Install dependencies
-        if: env.FILES_CHANGED == 'true'
-        run: yarn install --frozen-lockfile
 
       - name: Run npm script
         if: env.FILES_CHANGED == 'true'

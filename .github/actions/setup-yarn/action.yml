@@ -1,0 +1,26 @@
+name: Setup Yarn and NodeJS
+
+inputs:
+  node-version:
+    description: NodeJS version to use and the Yarn installed with
+    required: true
+    default: 20
+  yarn-lockfile:
+    description: Path to the Yarn lockfile to restore cache from
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python ${{ inputs.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: yarn
+        cache-dependency-path: ${{ inputs.yarn-lockfile }}
+
+    - name: Install Yarn packages
+      shell: bash
+      run:  |
+        cd "$(dirname "${{ inputs.yarn-lockfile }}")"
+        yarn install --frozen-lockfile

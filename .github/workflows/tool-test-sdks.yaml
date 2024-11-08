@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - sdks/**
+      - .github/workflows/tool-test-sdks.yaml
 
 concurrency:
   group: sdk-tests-${{ github.head_ref || github.run_id }}
@@ -27,15 +28,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
+      - name: Setup NodeJS ${{ matrix.node-version }} and Install Yarn dependencies
+        uses: .github/actions/setup-yarn
         with:
           node-version: ${{ matrix.node-version }}
-          cache: ''
-          cache-dependency-path: 'yarn.lock'
-
-      - name: Install Dependencies
-        run: yarn install
+          yarn-lockfile: sdks/nodejs-client/yarn.lock
 
       - name: Test
         run: yarn test
