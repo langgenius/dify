@@ -4,7 +4,7 @@ import logging
 import random
 import time
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 from flask_login import current_user
 from sqlalchemy import func
@@ -675,7 +675,7 @@ class DocumentService:
     def save_document_with_dataset_id(
         dataset: Dataset,
         document_data: dict,
-        account: Account,
+        account: Account | Any,
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
     ):
@@ -736,11 +736,12 @@ class DocumentService:
                     dataset.retrieval_model = document_data.get("retrieval_model") or default_retrieval_model
 
         documents = []
-        batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
         if document_data.get("original_document_id"):
             document = DocumentService.update_document_with_dataset_id(dataset, document_data, account)
             documents.append(document)
+            batch = document.batch
         else:
+            batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
             # save process rule
             if not dataset_process_rule:
                 process_rule = document_data["process_rule"]
@@ -921,7 +922,7 @@ class DocumentService:
                 if duplicate_document_ids:
                     duplicate_document_indexing_task.delay(dataset.id, duplicate_document_ids)
 
-            return documents, batch
+        return documents, batch
 
     @staticmethod
     def check_documents_upload_quota(count: int, features: FeatureModel):
@@ -985,9 +986,6 @@ class DocumentService:
             raise NotFound("Document not found")
         if document.display_status != "available":
             raise ValueError("Document is not available")
-        # update document name
-        if document_data.get("name"):
-            document.name = document_data["name"]
         # save process rule
         if document_data.get("process_rule"):
             process_rule = document_data["process_rule"]
@@ -1064,6 +1062,10 @@ class DocumentService:
             document.data_source_type = document_data["data_source"]["type"]
             document.data_source_info = json.dumps(data_source_info)
             document.name = file_name
+
+        # update document name
+        if document_data.get("name"):
+            document.name = document_data["name"]
         # update document to be waiting
         document.indexing_status = "waiting"
         document.completed_at = None

@@ -41,7 +41,7 @@ const SearchBox = ({
       />
       <div className='mx-1 w-[1px] h-3.5 bg-divider-regular'></div>
       <div className='grow flex items-center p-1 pl-2'>
-        <div className='flex items-center mr-2 py-0.5 w-full'>
+        <div className='flex items-center mr-2 w-full'>
           <input
             className={cn(
               'grow block outline-none appearance-none body-md-medium text-text-secondary bg-transparent',

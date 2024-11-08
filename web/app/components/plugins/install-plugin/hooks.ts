@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import Toast from '@/app/components/base/toast'
 import { uploadGitHub } from '@/service/plugins'
 import { Octokit } from '@octokit/core'
@@ -42,18 +41,12 @@ export const useGitHubReleases = () => {
 }
 
 export const useGitHubUpload = () => {
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   const handleUpload = async (
     repoUrl: string,
     selectedVersion: string,
     selectedPackage: string,
     onSuccess?: (GitHubPackage: { manifest: any; unique_identifier: string }) => void,
   ) => {
-    setIsLoading(true)
-    setError(null)
-
     try {
       const response = await uploadGitHub(repoUrl, selectedVersion, selectedPackage)
       const GitHubPackage = {
@@ -64,16 +57,13 @@ export const useGitHubUpload = () => {
       return GitHubPackage
     }
     catch (error) {
-      setError('Error uploading package')
       Toast.notify({
         type: 'error',
         message: 'Error uploading package',
       })
-    }
-    finally {
-      setIsLoading(false)
+      throw error
     }
   }
 
-  return { handleUpload, isLoading, error }
+  return { handleUpload }
 }

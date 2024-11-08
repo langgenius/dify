@@ -87,7 +87,12 @@ const CategoriesFilter = ({
             !!selectedTagsLength && (
               <RiCloseCircleFill
                 className='w-4 h-4 text-text-quaternary cursor-pointer'
-                onClick={() => onChange([])}
+                onClick={
+                  (e) => {
+                    e.stopPropagation()
+                    onChange([])
+                  }
+                }
               />
             )
           }

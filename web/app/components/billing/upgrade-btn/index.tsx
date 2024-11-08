@@ -74,7 +74,7 @@ const UpgradeBtn: FC<Props> = ({
       onClick={onClick}
     >
       <GoldCoin className='mr-1 w-3.5 h-3.5' />
-      <div className='text-xs font-normal'>{t(`billing.upgradeBtn.${isShort ? 'encourageShort' : 'encourage'}`)}</div>
+      <div className='text-xs font-normal text-nowrap'>{t(`billing.upgradeBtn.${isShort ? 'encourageShort' : 'encourage'}`)}</div>
       <Sparkles
         className='absolute -right-1 -top-2  w-4 h-5 bg-cover'
       />

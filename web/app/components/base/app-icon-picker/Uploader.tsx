@@ -8,18 +8,22 @@ import classNames from 'classnames'
 
 import { ImagePlus } from '../icons/src/vender/line/images'
 import { useDraggableUploader } from './hooks'
+import { checkIsAnimatedImage } from './utils'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
 type UploaderProps = {
   className?: string
   onImageCropped?: (tempUrl: string, croppedAreaPixels: Area, fileName: string) => void
+  onUpload?: (file?: File) => void
 }
 
 const Uploader: FC<UploaderProps> = ({
   className,
   onImageCropped,
+  onUpload,
 }) => {
   const [inputImage, setInputImage] = useState<{ file: File; url: string }>()
+  const [isAnimatedImage, setIsAnimatedImage] = useState<boolean>(false)
   useEffect(() => {
     return () => {
       if (inputImage)
@@ -34,12 +38,19 @@ const Uploader: FC<UploaderProps> = ({
     if (!inputImage)
       return
     onImageCropped?.(inputImage.url, croppedAreaPixels, inputImage.file.name)
+    onUpload?.(undefined)
   }
 
   const handleLocalFileInput = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file)
+    if (file) {
       setInputImage({ file, url: URL.createObjectURL(file) })
+      checkIsAnimatedImage(file).then((isAnimatedImage) => {
+        setIsAnimatedImage(!!isAnimatedImage)
+        if (isAnimatedImage)
+          onUpload?.(file)
+      })
+    }
   }
 
   const {
@@ -51,6 +62,26 @@ const Uploader: FC<UploaderProps> = ({
   } = useDraggableUploader((file: File) => setInputImage({ file, url: URL.createObjectURL(file) }))
 
   const inputRef = createRef<HTMLInputElement>()
+
+  const handleShowImage = () => {
+    if (isAnimatedImage) {
+      return (
+        <img src={inputImage?.url} alt='' />
+      )
+    }
+
+    return (
+      <Cropper
+        image={inputImage?.url}
+        crop={crop}
+        zoom={zoom}
+        aspect={1}
+        onCropChange={setCrop}
+        onCropComplete={onCropComplete}
+        onZoomChange={setZoom}
+      />
+    )
+  }
 
   return (
     <div className={classNames(className, 'w-full px-3 py-1.5')}>
@@ -79,15 +110,7 @@ const Uploader: FC<UploaderProps> = ({
               </div>
               <div className="text-xs pointer-events-none">Supports PNG, JPG, JPEG, WEBP and GIF</div>
             </>
-            : <Cropper
-              image={inputImage.url}
-              crop={crop}
-              zoom={zoom}
-              aspect={1}
-              onCropChange={setCrop}
-              onCropComplete={onCropComplete}
-              onZoomChange={setZoom}
-            />
+            : handleShowImage()
         }
       </div>
     </div>

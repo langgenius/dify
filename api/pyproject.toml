@@ -168,7 +168,7 @@ readabilipy = "0.2.0"
 redis = { version = "~5.0.3", extras = ["hiredis"] }
 replicate = "~0.22.0"
 resend = "~0.7.0"
-sagemaker = "2.231.0"
+sagemaker = "~2.231.0"
 scikit-learn = "~1.5.1"
 sentry-sdk = { version = "~1.44.1", extras = ["flask"] }
 sqlalchemy = "~2.0.29"
@@ -206,13 +206,14 @@ cloudscraper = "1.2.71"
 duckduckgo-search = "~6.3.0"
 jsonpath-ng = "1.6.1"
 matplotlib = "~3.8.2"
+mplfonts = "~0.0.8"
 newspaper3k = "0.2.8"
 nltk = "3.9.1"
 numexpr = "~2.9.0"
 pydub = "~0.25.1"
 qrcode = "~7.4.2"
 twilio = "~9.0.4"
-vanna = { version = "0.7.3", extras = ["postgres", "mysql", "clickhouse", "duckdb"] }
+vanna = { version = "0.7.5", extras = ["postgres", "mysql", "clickhouse", "duckdb", "oracle"] }
 wikipedia = "1.4.0"
 yfinance = "~0.2.40"
 

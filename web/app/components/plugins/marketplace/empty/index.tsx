@@ -4,7 +4,7 @@ import Line from './line'
 const Empty = () => {
   return (
     <div
-      className='relative grid grid-cols-4 grid-rows-4 gap-3 p-2'
+      className='grow relative h-0 grid grid-cols-4 grid-rows-4 gap-3 p-2 overflow-hidden'
     >
       {
         Array.from({ length: 16 }).map((_, index) => (

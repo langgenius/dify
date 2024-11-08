@@ -39,6 +39,7 @@ export const Heading = function H2({
   }
   return (
     <>
+      <span id={name?.replace(/^#/, '')} className='relative -top-28' />
       <div className="flex items-center gap-x-3" >
         <span className={`font-mono text-[0.625rem] font-semibold leading-6 rounded-lg px-1.5 ring-1 ring-inset ${style}`}>{method}</span>
         {/* <span className="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span> */}
@@ -54,7 +55,7 @@ export const Heading = function H2({
 
 export function Row({ children }: IChildrenProps) {
   return (
-    <div className="grid items-start grid-cols-1 gap-x-16 gap-y-10 xl:max-w-none xl:grid-cols-2">
+    <div className="grid items-start grid-cols-1 gap-x-16 gap-y-10 xl:!max-w-none xl:grid-cols-2">
       {children}
     </div>
   )
