@@ -74,7 +74,8 @@ def clean_dataset_task(
                     try:
                         storage.delete(image_file.key)
                     except Exception:
-                        logging.exception("Delete image_files failed when storage deleted, image_upload_file_is: {}".format(upload_file_id))
+                        logging.exception("Delete image_files failed when storage deleted, \
+                                          image_upload_file_is: {}".format(upload_file_id))
                 db.session.delete(segment)
 
         db.session.query(DatasetProcessRule).filter(DatasetProcessRule.dataset_id == dataset_id).delete()

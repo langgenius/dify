@@ -47,7 +47,8 @@ def clean_document_task(document_id: str, dataset_id: str, doc_form: str, file_i
                     try:
                         storage.delete(image_file.key)
                     except Exception:
-                        logging.exception("Delete image_files failed when storage deleted, image_upload_file_is: {}".format(upload_file_id))
+                        logging.exception("Delete image_files failed when storage deleted, \
+                                          image_upload_file_is: {}".format(upload_file_id))
                 db.session.delete(segment)
 
             db.session.commit()
