@@ -409,7 +409,7 @@ class ModelManager:
 
         return ModelInstance(provider_model_bundle, model)
 
-    def get_default_provider_model_name(self, tenant_id: str, model_type: ModelType) -> tuple[str, str]:
+    def get_default_provider_model_name(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:
         """
         Return first provider and the first model in the provider
         :param tenant_id: tenant id

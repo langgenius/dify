@@ -270,7 +270,7 @@ class ProviderManager:
             ),
         )
 
-    def get_first_provider_first_model(self, tenant_id: str, model_type: ModelType) -> tuple[str, str]:
+    def get_first_provider_first_model(self, tenant_id: str, model_type: ModelType) -> tuple[str | None, str | None]:
         """
         Get names of first model and its provider
 
@@ -282,6 +282,9 @@ class ProviderManager:
 
         # get available models from provider_configurations
         all_models = provider_configurations.get_models(model_type=model_type, only_active=False)
+
+        if not all_models:
+            return None, None
 
         return all_models[0].provider.provider, all_models[0].model
 
