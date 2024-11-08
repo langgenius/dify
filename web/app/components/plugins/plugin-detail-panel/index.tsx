@@ -42,8 +42,8 @@ const PluginDetailPanel: FC<Props> = ({
             onDelete={onDelete}
           />
           <div className='grow overflow-y-auto'>
-            {!!pluginDetail.declaration.endpoint && <EndpointList />}
             {!!pluginDetail.declaration.tool && <ActionList />}
+            {!!pluginDetail.declaration.endpoint && <EndpointList showTopBorder={!!pluginDetail.declaration.tool} />}
             {!!pluginDetail.declaration.model && <ModelList />}
           </div>
         </>

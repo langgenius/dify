@@ -1,5 +1,5 @@
 import type { Fetcher } from 'swr'
-import { del, get, getMarketplace, post, upload } from './base'
+import { get, getMarketplace, post, upload } from './base'
 import type {
   CreateEndpointRequest,
   EndpointOperationResponse,
@@ -32,7 +32,7 @@ export const fetchEndpointList: Fetcher<EndpointsResponse, { url: string; params
 
 export const deleteEndpoint: Fetcher<EndpointOperationResponse, { url: string; endpointID: string }> = ({ url, endpointID }) => {
   // url = /workspaces/current/endpoints/delete
-  return del<EndpointOperationResponse>(url, { body: { endpoint_id: endpointID } })
+  return post<EndpointOperationResponse>(url, { body: { endpoint_id: endpointID } })
 }
 
 export const updateEndpoint: Fetcher<EndpointOperationResponse, { url: string; body: UpdateEndpointRequest }> = ({ url, body }) => {

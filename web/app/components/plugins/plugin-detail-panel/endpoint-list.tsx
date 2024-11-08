@@ -5,21 +5,27 @@ import { useBoolean } from 'ahooks'
 import { RiAddLine } from '@remixicon/react'
 import EndpointModal from './endpoint-modal'
 import EndpointCard from './endpoint-card'
+import { NAME_FIELD } from './utils'
 import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
+import Toast from '@/app/components/base/toast'
 import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
 import {
   createEndpoint,
   fetchEndpointList,
 } from '@/service/plugins'
+import cn from '@/utils/classnames'
 
-const EndpointList = () => {
+type Props = {
+  showTopBorder?: boolean
+}
+const EndpointList = ({ showTopBorder }: Props) => {
   const { t } = useTranslation()
   const pluginDetail = usePluginPageContext(v => v.currentPluginDetail)
   const pluginUniqueID = pluginDetail.plugin_unique_identifier
   const declaration = pluginDetail.declaration.endpoint
-  const { data } = useSWR(
+  const { data, mutate } = useSWR(
     {
       url: '/workspaces/current/endpoints/list/plugin',
       params: {
@@ -36,22 +42,27 @@ const EndpointList = () => {
   }] = useBoolean(false)
 
   const formSchemas = useMemo(() => {
-    return toolCredentialToFormSchemas(declaration.settings)
+    return toolCredentialToFormSchemas([NAME_FIELD, ...declaration.settings])
   }, [declaration.settings])
 
-  const handleCreate = (state: any) => {
+  const handleCreate = async (state: any) => {
+    const newName = state.name
+    delete state.name
     try {
-      createEndpoint({
-        url: '/workspaces/current/endpoints',
+      await createEndpoint({
+        url: '/workspaces/current/endpoints/create',
         body: {
           plugin_unique_identifier: pluginUniqueID,
           settings: state,
-          name: state.name,
+          name: newName,
         },
       })
+      await mutate()
+      hideEndpointModal()
     }
     catch (error) {
       console.error(error)
+      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
   }
 
@@ -59,7 +70,7 @@ const EndpointList = () => {
     return null
 
   return (
-    <div className='px-4 py-2 border-t border-divider-subtle'>
+    <div className={cn('px-4 py-2 border-divider-subtle', showTopBorder && 'border-t')}>
       <div className='mb-1 h-6 flex items-center justify-between text-text-secondary system-sm-semibold-uppercase'>
         <div className='flex items-center gap-0.5'>
           {t('plugin.detailPanel.endpoints')}
@@ -81,6 +92,7 @@ const EndpointList = () => {
           <EndpointCard
             key={index}
             data={item}
+            handleChange={mutate}
           />
         ))}
       </div>
