@@ -24,6 +24,6 @@ def batch_fetch_plugin_manifests(plugin_ids: list[str]) -> Sequence[MarketplaceP
         return []
 
     url = str(URL(str(dify_config.MARKETPLACE_API_URL)) / "api/v1/plugins/batch")
-    response = requests.get(url, json={"plugin_ids": plugin_ids})
+    response = requests.post(url, json={"plugin_ids": plugin_ids})
     response.raise_for_status()
     return [MarketplacePluginDeclaration(**plugin) for plugin in response.json()["plugins"]]

@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Sequence
 from mimetypes import guess_type
 
@@ -10,6 +11,8 @@ from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginUploadRe
 from core.plugin.manager.asset import PluginAssetManager
 from core.plugin.manager.debugging import PluginDebuggingManager
 from core.plugin.manager.plugin import PluginInstallationManager
+
+logger = logging.getLogger(__name__)
 
 
 class PluginService:
@@ -29,7 +32,14 @@ class PluginService:
         manager = PluginInstallationManager()
         plugins = manager.list_plugins(tenant_id)
         plugin_ids = [plugin.plugin_id for plugin in plugins if plugin.source == PluginInstallationSource.Marketplace]
-        manifests = {manifest.plugin_id: manifest for manifest in marketplace.batch_fetch_plugin_manifests(plugin_ids)}
+        try:
+            manifests = {
+                manifest.plugin_id: manifest for manifest in marketplace.batch_fetch_plugin_manifests(plugin_ids)
+            }
+        except Exception as e:
+            manifests = {}
+            logger.exception(f"failed to fetch plugin manifests: {e}")
+
         for plugin in plugins:
             if plugin.source == PluginInstallationSource.Marketplace:
                 if plugin.plugin_id in manifests:
