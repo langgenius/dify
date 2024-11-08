@@ -1,29 +1,18 @@
 identity:
-  name: gitlab_commits
+  name: gitlab_mergerequests
   author: Leo.Wang
   label:
-    en_US: GitLab Commits
-    zh_Hans: GitLab 提交内容查询
+    en_US: GitLab Merge Requests
+    zh_Hans: GitLab 合并请求查询
 description:
   human:
-    en_US: A tool for query GitLab commits, Input should be a exists username or project.
-    zh_Hans: 一个用于查询 GitLab 代码提交内容的工具，输入的内容应该是一个已存在的用户名或者项目名。
-  llm: A tool for query GitLab commits, Input should be a exists username or project.
+    en_US: A tool for query GitLab merge requests, Input should be a exists reposity or branch.
+    zh_Hans: 一个用于查询 GitLab 代码合并请求的工具，输入的内容应该是一个已存在的仓库名或者分支。
+  llm: A tool for query GitLab merge requests, Input should be a exists reposity or branch.
 parameters:
-  - name: username
-    type: string
-    required: false
-    label:
-      en_US: username
-      zh_Hans: 员工用户名
-    human_description:
-      en_US: username
-      zh_Hans: 员工用户名
-    llm_description: User name for GitLab
-    form: llm
   - name: repository
     type: string
-    required: true
+    required: false
     label:
       en_US: repository
       zh_Hans: 仓库路径
@@ -65,24 +54,24 @@ parameters:
       zh_Hans: 结束时间
     llm_description: End time for GitLab
     form: llm
-  - name: change_type
+  - name: state
     type: select
     required: false
     options:
-      - value: all
+      - value: opened
         label:
-          en_US: all
-          zh_Hans: 所有
-      - value: new
+          en_US: opened
+          zh_Hans: 打开
+      - value: closed
         label:
-          en_US: new
-          zh_Hans: 新增
-    default: all
+          en_US: closed
+          zh_Hans: 关闭
+    default: opened
     label:
-      en_US: change_type
-      zh_Hans: 变更类型
+      en_US: state
+      zh_Hans: 变更状态
     human_description:
-      en_US: change_type
-      zh_Hans: 变更类型
-    llm_description: Content change type for GitLab
+      en_US: state
+      zh_Hans: 变更状态
+    llm_description: Merge request state type for GitLab
     form: llm
