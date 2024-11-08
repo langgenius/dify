@@ -1,19 +1,23 @@
 from typing import Any
 
-from core.file import File
-from core.file.enums import FileTransferMethod, FileType
+from core.file import FileTransferMethod, FileType
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin.vectorizer.tools.vectorizer import VectorizerTool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
+from factories import file_factory
 
 
 class VectorizerProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
-        test_img = File(
+        mapping = {
+            "transfer_method": FileTransferMethod.TOOL_FILE,
+            "type": FileType.IMAGE,
+            "id": "test_id",
+            "url": "https://cloud.dify.ai/logo/logo-site.png",
+        }
+        test_img = file_factory.build_from_mapping(
+            mapping=mapping,
             tenant_id="__test_123",
-            remote_url="https://cloud.dify.ai/logo/logo-site.png",
-            type=FileType.IMAGE,
-            transfer_method=FileTransferMethod.REMOTE_URL,
         )
         try:
             VectorizerTool().fork_tool_runtime(
