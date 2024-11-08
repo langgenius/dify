@@ -569,8 +569,8 @@ const translation = {
       errorResponseMethod: 'Error response method',
       ErrorMethod: {
         operationTerminated: 'terminated',
-        continueOnError: 'continue-on-error',
-        removeAbnormalOutput: 'remove-abnormal-output',
+        continueOnError: 'continue on error',
+        removeAbnormalOutput: 'remove abnormal output',
       },
       answerNodeWarningDesc: 'Parallel mode warning: Answer nodes, conversation variable assignments, and persistent read/write operations within iterations may cause exceptions.',
     },
