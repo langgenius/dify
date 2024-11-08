@@ -139,9 +139,7 @@ def segment_to_variable(
 ) -> Variable:
     if isinstance(segment, Variable):
         return segment
-    if len(selector) != 2:
-        raise InvalidSelectorError("invalid selector")
-    name = name or selector[1]
+    name = name or selector[-1]
     id = id or str(uuid4())
 
     segment_type = type(segment)
