@@ -24,7 +24,7 @@ runs:
 
     - name: Install Poetry
       shell: bash
-      run: pipx install poetry==${{ inputs.poetry-version }}
+      run: pip install poetry==${{ inputs.poetry-version }}
 
     - name: Restore Poetry cache
       if: ${{ inputs.poetry-lockfile != '' }}
