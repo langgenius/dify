@@ -9,7 +9,7 @@ import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import { installPackageFromMarketPlace } from '@/service/plugins'
+import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
 import checkTaskStatus from '../../base/check-task-status'
 
 const i18nPrefix = 'plugin.installModal'
@@ -32,6 +32,7 @@ const Installed: FC<Props> = ({
   onFailed,
 }) => {
   const { t } = useTranslation()
+  const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
   const [isInstalling, setIsInstalling] = React.useState(false)
   const {
     check,

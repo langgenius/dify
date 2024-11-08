@@ -104,12 +104,6 @@ export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => 
   return getMarketplace<{ data: { plugin: PluginManifestInMarket } }>(`/plugins/identifier?unique_identifier=${uniqueIdentifier}`)
 }
 
-export const installPackageFromMarketPlace = async (uniqueIdentifier: string) => {
-  return post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
-    body: { plugin_unique_identifiers: [uniqueIdentifier] },
-  })
-}
-
 export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse, { url: string; }> = ({ url }) => {
   return get<MarketplaceCollectionsResponse>(url)
 }

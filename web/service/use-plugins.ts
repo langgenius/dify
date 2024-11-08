@@ -1,5 +1,6 @@
 import type {
   DebugInfo as DebugInfoTypes,
+  InstallPackageResponse,
   InstalledPluginListResponse,
   Permissions,
   PluginsFromMarketplaceResponse,
@@ -32,6 +33,14 @@ export const useInvalidateInstalledPluginList = () => {
         queryKey: useInstalledPluginListKey,
       })
   }
+}
+
+export const useInstallPackageFromMarketPlace = () => {
+  return useMutation({
+    mutationFn: (uniqueIdentifier: string) => {
+      return post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', { body: { plugin_unique_identifiers: [uniqueIdentifier] } })
+    },
+  })
 }
 
 export const useDebugKey = () => {
