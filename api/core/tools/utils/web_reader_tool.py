@@ -359,9 +359,9 @@ def content_digest(element):
 
 
 def get_image_upload_file_ids(content):
-    pattern = r'!\[image\]\((.*?file-preview)\)'
+    pattern = r"!\[image\]\((.*?file-preview)\)"
     matches = re.findall(pattern, content)
-    content_pattern = r'files/([^/]+)/file-preview'
+    content_pattern = r"files/([^/]+)/file-preview"
     image_upload_file_ids = []
     for match in matches:
         content_match = re.search(content_pattern, match)
