@@ -66,7 +66,8 @@ class ConversationDetailApi(Resource):
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         return {"result": "success"}, 200
-    
+
+
 class ConversationRenameApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     @marshal_with(simple_conversation_fields)
