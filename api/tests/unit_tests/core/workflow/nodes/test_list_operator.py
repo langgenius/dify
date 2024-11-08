@@ -29,7 +29,7 @@ def list_operator_node():
         ),
         "order_by": OrderBy(enabled=False, value="asc"),
         "limit": Limit(enabled=False, size=0),
-        "extract_by": ExtractConfig(enabled=False, serial='1'),
+        "extract_by": ExtractConfig(enabled=False, serial="1"),
         "title": "Test Title",
     }
     node_data = ListOperatorNodeData(**config)
