@@ -67,7 +67,6 @@ const AllTools = ({
     })
   }, [activeTab, buildInTools, customTools, workflowTools, searchText, language])
 
-  console.log(activeTab, customTools, tools)
   const {
     queryPluginsWithDebounced: fetchPlugins,
     plugins: notInstalledPlugins = [],
