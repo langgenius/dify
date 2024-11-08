@@ -13,15 +13,15 @@ class GitlabCommitsTool(BuiltinTool):
     def _invoke(
         self, user_id: str, tool_parameters: dict[str, Any]
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
-        project = tool_parameters.get("project", "")
+        branch = tool_parameters.get("branch", "")
         repository = tool_parameters.get("repository", "")
         employee = tool_parameters.get("employee", "")
         start_time = tool_parameters.get("start_time", "")
         end_time = tool_parameters.get("end_time", "")
         change_type = tool_parameters.get("change_type", "all")
 
-        if not project and not repository:
-            return self.create_text_message("Either project or repository is required")
+        if not repository:
+            return self.create_text_message("Either repository is required")
 
         if not start_time:
             start_time = (datetime.utcnow() - timedelta(days=1)).isoformat()
@@ -37,14 +37,9 @@ class GitlabCommitsTool(BuiltinTool):
             site_url = "https://gitlab.com"
 
         # Get commit content
-        if repository:
-            result = self.fetch_commits(
-                site_url, access_token, repository, employee, start_time, end_time, change_type, is_repository=True
-            )
-        else:
-            result = self.fetch_commits(
-                site_url, access_token, project, employee, start_time, end_time, change_type, is_repository=False
-            )
+        result = self.fetch_commits(
+            site_url, access_token, repository, branch, employee, start_time, end_time, change_type, is_repository=True
+        )
 
         return [self.create_json_message(item) for item in result]
 
@@ -52,7 +47,8 @@ class GitlabCommitsTool(BuiltinTool):
         self,
         site_url: str,
         access_token: str,
-        identifier: str,
+        repository: str,
+        branch: str,
         employee: str,
         start_time: str,
         end_time: str,
@@ -64,27 +60,14 @@ class GitlabCommitsTool(BuiltinTool):
         results = []
 
         try:
-            if is_repository:
-                # URL encode the repository path
-                encoded_identifier = urllib.parse.quote(identifier, safe="")
-                commits_url = f"{domain}/api/v4/projects/{encoded_identifier}/repository/commits"
-            else:
-                # Get all projects
-                url = f"{domain}/api/v4/projects"
-                response = requests.get(url, headers=headers)
-                response.raise_for_status()
-                projects = response.json()
+            # URL encode the repository path
+            encoded_repository = urllib.parse.quote(repository, safe="")
+            commits_url = f"{domain}/api/v4/projects/{encoded_repository}/repository/commits"
 
-                filtered_projects = [p for p in projects if identifier == "*" or p["name"] == identifier]
-
-                for project in filtered_projects:
-                    project_id = project["id"]
-                    project_name = project["name"]
-                    print(f"Project: {project_name}")
-
-                    commits_url = f"{domain}/api/v4/projects/{project_id}/repository/commits"
-
+            # Fetch commits for the repository
             params = {"since": start_time, "until": end_time}
+            if branch:
+                params["ref_name"] = branch
             if employee:
                 params["author"] = employee
 
@@ -96,10 +79,7 @@ class GitlabCommitsTool(BuiltinTool):
                 commit_sha = commit["id"]
                 author_name = commit["author_name"]
 
-                if is_repository:
-                    diff_url = f"{domain}/api/v4/projects/{encoded_identifier}/repository/commits/{commit_sha}/diff"
-                else:
-                    diff_url = f"{domain}/api/v4/projects/{project_id}/repository/commits/{commit_sha}/diff"
+                diff_url = f"{domain}/api/v4/projects/{encoded_repository}/repository/commits/{commit_sha}/diff"
 
                 diff_response = requests.get(diff_url, headers=headers)
                 diff_response.raise_for_status()
@@ -120,7 +100,14 @@ class GitlabCommitsTool(BuiltinTool):
                                     if line.startswith("+") and not line.startswith("+++")
                                 ]
                             )
-                            results.append({"commit_sha": commit_sha, "author_name": author_name, "diff": final_code})
+                            results.append(
+                                {
+                                    "diff_url": diff_url,
+                                    "commit_sha": commit_sha,
+                                    "author_name": author_name,
+                                    "diff": final_code,
+                                }
+                            )
                     else:
                         if total_changes > 1:
                             final_code = "".join(
@@ -134,7 +121,12 @@ class GitlabCommitsTool(BuiltinTool):
                             )
                             final_code_escaped = json.dumps(final_code)[1:-1]  # Escape the final code
                             results.append(
-                                {"commit_sha": commit_sha, "author_name": author_name, "diff": final_code_escaped}
+                                {
+                                    "diff_url": diff_url,
+                                    "commit_sha": commit_sha,
+                                    "author_name": author_name,
+                                    "diff": final_code_escaped,
+                                }
                             )
         except requests.RequestException as e:
             print(f"Error fetching data from GitLab: {e}")

@@ -1,0 +1,74 @@
+identity:
+  name: create_task
+  author: Doug Lea
+  label:
+    en_US: Create Lark Task
+    zh_Hans: 创建 Lark 任务
+description:
+  human:
+    en_US: Create Lark Task
+    zh_Hans: 创建 Lark 任务
+  llm: A tool for creating tasks in Lark.(创建 Lark 任务)
+parameters:
+  - name: summary
+    type: string
+    required: true
+    label:
+      en_US: Task Title
+      zh_Hans: 任务标题
+    human_description:
+      en_US: The title of the task.
+      zh_Hans: 任务标题
+    llm_description: 任务标题
+    form: llm
+
+  - name: description
+    type: string
+    required: false
+    label:
+      en_US: Task Description
+      zh_Hans: 任务备注
+    human_description:
+      en_US: The description or notes for the task.
+      zh_Hans: 任务备注
+    llm_description: 任务备注
+    form: llm
+
+  - name: start_time
+    type: string
+    required: false
+    label:
+      en_US: Start Time
+      zh_Hans: 任务开始时间
+    human_description:
+      en_US: |
+        The start time of the task, in the format: 2006-01-02 15:04:05
+      zh_Hans: 任务开始时间，格式为：2006-01-02 15:04:05
+    llm_description: 任务开始时间，格式为：2006-01-02 15:04:05
+    form: llm
+
+  - name: end_time
+    type: string
+    required: false
+    label:
+      en_US: End Time
+      zh_Hans: 任务结束时间
+    human_description:
+      en_US: |
+        The end time of the task, in the format: 2006-01-02 15:04:05
+      zh_Hans: 任务结束时间，格式为：2006-01-02 15:04:05
+    llm_description: 任务结束时间，格式为：2006-01-02 15:04:05
+    form: llm
+
+  - name: completed_time
+    type: string
+    required: false
+    label:
+      en_US: Completed Time
+      zh_Hans: 任务完成时间
+    human_description:
+      en_US: |
+        The completion time of the task, in the format: 2006-01-02 15:04:05. Leave empty to create an incomplete task; fill in a specific time to create a completed task.
+      zh_Hans: 任务完成时间，格式为：2006-01-02 15:04:05，不填写表示创建一个未完成任务；填写一个具体的时间表示创建一个已完成任务。
+    llm_description: 任务完成时间，格式为：2006-01-02 15:04:05，不填写表示创建一个未完成任务；填写一个具体的时间表示创建一个已完成任务。
+    form: llm

@@ -22,7 +22,7 @@ import LabelSelector from '@/app/components/tools/labels/selector'
 import Toast from '@/app/components/base/toast'
 
 const fieldNameClassNames = 'py-2 leading-5 text-sm font-medium text-gray-900'
-interface Props {
+type Props = {
   positionLeft?: boolean
   payload: any
   onHide: () => void
@@ -186,8 +186,8 @@ const EditCustomCollectionModal: FC<Props> = ({
         positionCenter={isAdd && !positionLeft}
         onHide={onHide}
         title={t(`tools.createTool.${isAdd ? 'title' : 'editTitle'}`)!}
-        panelClassName='mt-2 !w-[630px]'
-        maxWidthClassName='!max-w-[630px]'
+        panelClassName='mt-2 !w-[640px]'
+        maxWidthClassName='!max-w-[640px]'
         height='calc(100vh - 16px)'
         headerClassName='!border-b-black/5'
         body={

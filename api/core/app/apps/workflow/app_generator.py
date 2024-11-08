@@ -1,6 +1,5 @@
 import contextvars
 import logging
-import os
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
@@ -10,6 +9,7 @@ from flask import Flask, current_app
 from pydantic import ValidationError
 
 import contexts
+from configs import dify_config
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError, PublishFrom
@@ -261,7 +261,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except (ValueError, InvokeError) as e:
-                if os.environ.get("DEBUG") and os.environ.get("DEBUG", "false").lower() == "true":
+                if dify_config.DEBUG:
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:

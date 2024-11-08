@@ -86,7 +86,7 @@ class MilvusVector(BaseVector):
                 ids = self._client.insert(collection_name=self._collection_name, data=batch_insert_list)
                 pks.extend(ids)
             except MilvusException as e:
-                logger.error("Failed to insert batch starting at entity: %s/%s", i, total_count)
+                logger.exception("Failed to insert batch starting at entity: %s/%s", i, total_count)
                 raise e
         return pks
 
