@@ -4,6 +4,7 @@ from flask import Flask
 from pydantic import BaseModel
 
 from configs import dify_config
+from core.entities import DEFAULT_PLUGIN_ID
 from core.entities.provider_entities import ProviderQuotaType, QuotaUnit, RestrictModel
 from core.model_runtime.entities.model_entities import ModelType
 
@@ -41,18 +42,18 @@ class HostedModerationConfig(BaseModel):
 
 class HostingConfiguration:
     provider_map: dict[str, HostingProvider] = {}
-    moderation_config: HostedModerationConfig = None
+    moderation_config: Optional[HostedModerationConfig] = None
 
     def init_app(self, app: Flask) -> None:
         if dify_config.EDITION != "CLOUD":
             return
 
-        self.provider_map["azure_openai"] = self.init_azure_openai()
-        self.provider_map["openai"] = self.init_openai()
-        self.provider_map["anthropic"] = self.init_anthropic()
-        self.provider_map["minimax"] = self.init_minimax()
-        self.provider_map["spark"] = self.init_spark()
-        self.provider_map["zhipuai"] = self.init_zhipuai()
+        self.provider_map[f"{DEFAULT_PLUGIN_ID}/azure_openai/azure_openai"] = self.init_azure_openai()
+        self.provider_map[f"{DEFAULT_PLUGIN_ID}/openai/openai"] = self.init_openai()
+        self.provider_map[f"{DEFAULT_PLUGIN_ID}/anthropic/anthropic"] = self.init_anthropic()
+        self.provider_map[f"{DEFAULT_PLUGIN_ID}/minimax/minimax"] = self.init_minimax()
+        self.provider_map[f"{DEFAULT_PLUGIN_ID}/spark/spark"] = self.init_spark()
+        self.provider_map[f"{DEFAULT_PLUGIN_ID}/zhipuai/zhipuai"] = self.init_zhipuai()
 
         self.moderation_config = self.init_moderation_config()
 
@@ -239,7 +240,14 @@ class HostingConfiguration:
     @staticmethod
     def init_moderation_config() -> HostedModerationConfig:
         if dify_config.HOSTED_MODERATION_ENABLED and dify_config.HOSTED_MODERATION_PROVIDERS:
-            return HostedModerationConfig(enabled=True, providers=dify_config.HOSTED_MODERATION_PROVIDERS.split(","))
+            providers = dify_config.HOSTED_MODERATION_PROVIDERS.split(",")
+            hosted_providers = []
+            for provider in providers:
+                if "/" not in provider:
+                    provider = f"{DEFAULT_PLUGIN_ID}/{provider}/{provider}"
+                hosted_providers.append(provider)
+
+            return HostedModerationConfig(enabled=True, providers=hosted_providers)
 
         return HostedModerationConfig(enabled=False)
 
