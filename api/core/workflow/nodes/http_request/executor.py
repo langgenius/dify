@@ -97,15 +97,6 @@ class Executor:
         headers = self.variable_pool.convert_template(self.node_data.headers).text
         self.headers = _plain_text_to_dict(headers)
 
-        body = self.node_data.body
-        if body is None:
-            return
-        if "content-type" not in (k.lower() for k in self.headers) and body.type in BODY_TYPE_TO_CONTENT_TYPE:
-            self.headers["Content-Type"] = BODY_TYPE_TO_CONTENT_TYPE[body.type]
-        if body.type == "form-data":
-            self.boundary = f"----WebKitFormBoundary{_generate_random_string(16)}"
-            self.headers["Content-Type"] = f"multipart/form-data; boundary={self.boundary}"
-
     def _init_body(self):
         body = self.node_data.body
         if body is not None:
@@ -154,9 +145,8 @@ class Executor:
                         for k, v in files.items()
                         if v.related_id is not None
                     }
-
                     self.data = form_data
-                    self.files = files
+                    self.files = files or None
 
     def _assembling_headers(self) -> dict[str, Any]:
         authorization = deepcopy(self.auth)
@@ -217,6 +207,7 @@ class Executor:
             "timeout": (self.timeout.connect, self.timeout.read, self.timeout.write),
             "follow_redirects": True,
         }
+        # request_args = {k: v for k, v in request_args.items() if v is not None}
 
         response = getattr(ssrf_proxy, self.method)(**request_args)
         return response
@@ -244,6 +235,13 @@ class Executor:
         raw += f"Host: {url_parts.netloc}\r\n"
 
         headers = self._assembling_headers()
+        body = self.node_data.body
+        boundary = f"----WebKitFormBoundary{_generate_random_string(16)}"
+        if body:
+            if "content-type" not in (k.lower() for k in self.headers) and body.type in BODY_TYPE_TO_CONTENT_TYPE:
+                headers["Content-Type"] = BODY_TYPE_TO_CONTENT_TYPE[body.type]
+            if body.type == "form-data":
+                headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
         for k, v in headers.items():
             if self.auth.type == "api-key":
                 authorization_header = "Authorization"
@@ -256,7 +254,6 @@ class Executor:
 
         body = ""
         if self.files:
-            boundary = self.boundary
             for k, v in self.files.items():
                 body += f"--{boundary}\r\n"
                 body += f'Content-Disposition: form-data; name="{k}"\r\n\r\n'
@@ -271,7 +268,6 @@ class Executor:
             elif self.data and self.node_data.body.type == "x-www-form-urlencoded":
                 body = urlencode(self.data)
             elif self.data and self.node_data.body.type == "form-data":
-                boundary = self.boundary
                 for key, value in self.data.items():
                     body += f"--{boundary}\r\n"
                     body += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'

@@ -22,6 +22,7 @@ from core.model_runtime.entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
@@ -397,8 +398,24 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         if self.files:
             prompt_message_contents: list[PromptMessageContent] = []
             prompt_message_contents.append(TextPromptMessageContent(data=query))
-            for file_obj in self.files:
-                prompt_message_contents.append(file_manager.to_prompt_message_content(file_obj))
+
+            # get image detail config
+            image_detail_config = (
+                self.application_generate_entity.file_upload_config.image_config.detail
+                if (
+                    self.application_generate_entity.file_upload_config
+                    and self.application_generate_entity.file_upload_config.image_config
+                )
+                else None
+            )
+            image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
+            for file in self.files:
+                prompt_message_contents.append(
+                    file_manager.to_prompt_message_content(
+                        file,
+                        image_detail_config=image_detail_config,
+                    )
+                )
 
             prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         else:

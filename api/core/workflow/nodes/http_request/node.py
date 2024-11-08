@@ -13,6 +13,7 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.http_request.executor import Executor
 from core.workflow.utils import variable_template_parser
+from factories import file_factory
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import (
@@ -161,16 +162,15 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                 mimetype=content_type,
             )
 
-            files.append(
-                File(
-                    tenant_id=self.tenant_id,
-                    type=FileType.IMAGE,
-                    transfer_method=FileTransferMethod.TOOL_FILE,
-                    related_id=tool_file.id,
-                    filename=filename,
-                    extension=extension,
-                    mime_type=content_type,
-                )
+            mapping = {
+                "tool_file_id": tool_file.id,
+                "type": FileType.IMAGE.value,
+                "transfer_method": FileTransferMethod.TOOL_FILE.value,
+            }
+            file = file_factory.build_from_mapping(
+                mapping=mapping,
+                tenant_id=self.tenant_id,
             )
+            files.append(file)
 
         return files

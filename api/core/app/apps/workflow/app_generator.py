@@ -1,6 +1,5 @@
 import contextvars
 import logging
-import os
 import threading
 import uuid
 from collections.abc import Generator, Mapping, Sequence
@@ -10,6 +9,7 @@ from flask import Flask, current_app
 from pydantic import ValidationError
 
 import contexts
+from configs import dify_config
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError, PublishFrom
@@ -25,7 +25,6 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
 from models import Account, App, EndUser, Workflow
-from models.enums import CreatedByRole
 
 logger = logging.getLogger(__name__)
 
@@ -70,15 +69,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
     ):
         files: Sequence[Mapping[str, Any]] = args.get("files") or []
 
-        role = CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER
-
         # parse files
         file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
         system_files = file_factory.build_from_mappings(
             mappings=files,
             tenant_id=app_model.tenant_id,
-            user_id=user.id,
-            role=role,
             config=file_extra_config,
         )
 
@@ -100,7 +95,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         application_generate_entity = WorkflowAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
-            inputs=self._prepare_user_inputs(user_inputs=inputs, app_config=app_config, user_id=user.id, role=role),
+            file_upload_config=file_extra_config,
+            inputs=self._prepare_user_inputs(user_inputs=inputs, app_config=app_config),
             files=system_files,
             user_id=user.id,
             stream=stream,
@@ -261,7 +257,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except (ValueError, InvokeError) as e:
-                if os.environ.get("DEBUG") and os.environ.get("DEBUG", "false").lower() == "true":
+                if dify_config.DEBUG:
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:

@@ -1,0 +1,45 @@
+identity:
+  name: gitlab_projects
+  author: Leo.Wang
+  label:
+    en_US: GitLab Projects
+    zh_Hans: GitLab 项目列表查询
+description:
+  human:
+    en_US: A tool for query GitLab projects, Input should be a project name.
+    zh_Hans: 一个用于查询 GitLab 项目列表的工具，输入的内容应该是一个项目名称。
+  llm: A tool for query GitLab projects, Input should be a project name.
+parameters:
+  - name: project_name
+    type: string
+    required: false
+    label:
+      en_US: project_name
+      zh_Hans: 项目名称
+    human_description:
+      en_US: project_name
+      zh_Hans: 项目名称
+    llm_description: Project name for GitLab
+    form: llm
+  - name: page
+    type: string
+    required: false
+    label:
+      en_US: page
+      zh_Hans: 页码
+    human_description:
+      en_US: page
+      zh_Hans: 页码
+    llm_description: Page index for GitLab
+    form: llm
+  - name: page_size
+    type: string
+    required: false
+    label:
+      en_US: page_size
+      zh_Hans: 每页数量
+    human_description:
+      en_US: page_size
+      zh_Hans: 每页数量
+    llm_description: Page size for GitLab
+    form: llm

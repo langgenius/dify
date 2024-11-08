@@ -13,7 +13,7 @@ from core.app.app_config.entities import (
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
-from core.file.models import FileExtraConfig
+from core.file.models import FileUploadConfig
 from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -381,7 +381,7 @@ class WorkflowConverter:
         graph: dict,
         model_config: ModelConfigEntity,
         prompt_template: PromptTemplateEntity,
-        file_upload: Optional[FileExtraConfig] = None,
+        file_upload: Optional[FileUploadConfig] = None,
         external_data_variable_node_mapping: dict[str, str] | None = None,
     ) -> dict:
         """

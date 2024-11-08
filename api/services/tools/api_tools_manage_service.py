@@ -193,7 +193,7 @@ class ApiToolManageService:
             # try to parse schema, avoid SSRF attack
             ApiToolManageService.parser_api_schema(schema)
         except Exception as e:
-            logger.error(f"parse api schema error: {str(e)}")
+            logger.exception(f"parse api schema error: {str(e)}")
             raise ValueError("invalid schema, please check the url you provided")
 
         return {"schema": schema}
