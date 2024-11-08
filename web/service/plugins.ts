@@ -1,5 +1,5 @@
 import type { Fetcher } from 'swr'
-import { del, get, getMarketplace, post, upload } from './base'
+import { get, getMarketplace, post, upload } from './base'
 import type {
   CreateEndpointRequest,
   EndpointOperationResponse,
@@ -15,7 +15,6 @@ import type {
   UpdateEndpointRequest,
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
-import type { DebugInfo as DebugInfoTypes } from '@/app/components/plugins/types'
 import type {
   MarketplaceCollectionPluginsResponse,
   MarketplaceCollectionsResponse,
@@ -33,7 +32,7 @@ export const fetchEndpointList: Fetcher<EndpointsResponse, { url: string; params
 
 export const deleteEndpoint: Fetcher<EndpointOperationResponse, { url: string; endpointID: string }> = ({ url, endpointID }) => {
   // url = /workspaces/current/endpoints/delete
-  return del<EndpointOperationResponse>(url, { body: { endpoint_id: endpointID } })
+  return post<EndpointOperationResponse>(url, { body: { endpoint_id: endpointID } })
 }
 
 export const updateEndpoint: Fetcher<EndpointOperationResponse, { url: string; body: UpdateEndpointRequest }> = ({ url, body }) => {
@@ -49,10 +48,6 @@ export const enableEndpoint: Fetcher<EndpointOperationResponse, { url: string; e
 export const disableEndpoint: Fetcher<EndpointOperationResponse, { url: string; endpointID: string }> = ({ url, endpointID }) => {
   // url = /workspaces/current/endpoints/disable
   return post<EndpointOperationResponse>(url, { body: { endpoint_id: endpointID } })
-}
-
-export const fetchDebugKey = async () => {
-  return get<DebugInfoTypes>('/workspaces/current/plugin/debugging-key')
 }
 
 export const uploadPackageFile = async (file: File) => {
@@ -109,12 +104,6 @@ export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => 
   return getMarketplace<{ data: { plugin: PluginManifestInMarket } }>(`/plugins/identifier?unique_identifier=${uniqueIdentifier}`)
 }
 
-export const installPackageFromMarketPlace = async (uniqueIdentifier: string) => {
-  return post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
-    body: { plugin_unique_identifiers: [uniqueIdentifier] },
-  })
-}
-
 export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse, { url: string; }> = ({ url }) => {
   return get<MarketplaceCollectionsResponse>(url)
 }
@@ -129,10 +118,6 @@ export const fetchPluginTasks = async () => {
 
 export const checkTaskStatus = async (taskId: string) => {
   return get<TaskStatusResponse>(`/workspaces/current/plugin/tasks/${taskId}`)
-}
-
-export const fetchPermission = async () => {
-  return get<Permissions>('/workspaces/current/plugin/permission/fetch')
 }
 
 export const updatePermission = async (permissions: Permissions) => {

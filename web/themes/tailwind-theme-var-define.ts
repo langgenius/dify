@@ -95,6 +95,7 @@ const vars = {
   'components-checkbox-border-disabled': 'var(--color-components-checkbox-border-disabled)',
   'components-checkbox-bg-unchecked': 'var(--color-components-checkbox-bg-unchecked)',
   'components-checkbox-bg-unchecked-hover': 'var(--color-components-checkbox-bg-unchecked-hover)',
+  'components-checkbox-bg-disabled-checked': 'var(--color-components-checkbox-bg-disabled-checked)',
 
   'components-radio-border-checked': 'var(--color-components-radio-border-checked)',
   'components-radio-border-checked-hover': 'var(--color-components-radio-border-checked-hover)',
@@ -135,6 +136,9 @@ const vars = {
   'components-panel-on-panel-item-bg': 'var(--color-components-panel-on-panel-item-bg)',
   'components-panel-on-panel-item-bg-hover': 'var(--color-components-panel-on-panel-item-bg-hover)',
   'components-panel-on-panel-item-bg-alt': 'var(--color-components-panel-on-panel-item-bg-alt)',
+  'components-panel-on-panel-item-bg-transparent': 'var(--color-components-panel-on-panel-item-bg-transparent)',
+  'components-panel-on-panel-item-bg-hover-transparent': 'var(--color-components-panel-on-panel-item-bg-hover-transparent)',
+  'components-panel-on-panel-item-bg-destructive-hover-transparent': 'var(--color-components-panel-on-panel-item-bg-destructive-hover-transparent)',
 
   'components-panel-bg-transparent': 'var(--color-components-panel-bg-transparent)',
 
@@ -208,6 +212,8 @@ const vars = {
 
   'components-actionbar-bg': 'var(--color-components-actionbar-bg)',
   'components-actionbar-border': 'var(--color-components-actionbar-border)',
+  'components-actionbar-bg-accent': 'var(--color-components-actionbar-bg-accent)',
+  'components-actionbar-border-accent': 'var(--color-components-actionbar-border-accent)',
 
   'components-dropzone-bg-alt': 'var(--color-components-dropzone-bg-alt)',
   'components-dropzone-bg': 'var(--color-components-dropzone-bg)',
@@ -228,6 +234,14 @@ const vars = {
   'components-progress-gray-border': 'var(--color-components-progress-gray-border)',
   'components-progress-gray-bg': 'var(--color-components-progress-gray-bg)',
 
+  'components-progress-warning-progress': 'var(--color-components-progress-warning-progress)',
+  'components-progress-warning-border': 'var(--color-components-progress-warning-border)',
+  'components-progress-warning-bg': 'var(--color-components-progress-warning-bg)',
+
+  'components-progress-error-progress': 'var(--color-components-progress-error-progress)',
+  'components-progress-error-border': 'var(--color-components-progress-error-border)',
+  'components-progress-error-bg': 'var(--color-components-progress-error-bg)',
+
   'components-chat-input-audio-bg': 'var(--color-components-chat-input-audio-bg)',
   'components-chat-input-audio-wave-default': 'var(--color-components-chat-input-audio-wave-default)',
   'components-chat-input-bg-mask-1': 'var(--color-components-chat-input-bg-mask-1)',
@@ -236,13 +250,70 @@ const vars = {
   'components-chat-input-audio-wave-active': 'var(--color-components-chat-input-audio-wave-active)',
   'components-chat-input-audio-bg-alt': 'var(--color-components-chat-input-audio-bg-alt)',
 
-  'components-Avatar-shape-fill-stop-0': 'var(--color-components-Avatar-shape-fill-stop-0)',
-  'components-Avatar-shape-fill-stop-100': 'var(--color-components-Avatar-shape-fill-stop-100)',
+  'components-avatar-shape-fill-stop-0': 'var(--color-components-avatar-shape-fill-stop-0)',
+  'components-avatar-shape-fill-stop-100': 'var(--color-components-avatar-shape-fill-stop-100)',
 
-  'components-Avatar-bg-mask-stop-0': 'var(--color-components-Avatar-bg-mask-stop-0)',
-  'components-Avatar-bg-mask-stop-100': 'var(--color-components-Avatar-bg-mask-stop-100)',
+  'components-avatar-bg-mask-stop-0': 'var(--color-components-avatar-bg-mask-stop-0)',
+  'components-avatar-bg-mask-stop-100': 'var(--color-components-avatar-bg-mask-stop-100)',
 
-  'components-Avatar-default-avatar-bg': 'var(--color-components-Avatar-default-avatar-bg)',
+  'components-avatar-default-avatar-bg': 'var(--color-components-avatar-default-avatar-bg)',
+  'components-avatar-mask-darkmode-dimmed': 'var(--color-components-avatar-mask-darkmode-dimmed)',
+
+  'components-label-gray': 'var(--color-components-label-gray)',
+
+  'components-premium-badge-blue-bg-stop-0': 'var(--color-components-premium-badge-blue-bg-stop-0)',
+  'components-premium-badge-blue-bg-stop-100': 'var(--color-components-premium-badge-blue-bg-stop-100)',
+  'components-premium-badge-blue-stroke-stop-0': 'var(--color-components-premium-badge-blue-stroke-stop-0)',
+  'components-premium-badge-blue-stroke-stop-100': 'var(--color-components-premium-badge-blue-stroke-stop-100)',
+  'components-premium-badge-blue-text-stop-0': 'var(--color-components-premium-badge-blue-text-stop-0)',
+  'components-premium-badge-blue-text-stop-100': 'var(--color-components-premium-badge-blue-text-stop-100)',
+  'components-premium-badge-blue-glow': 'var(--color-components-premium-badge-blue-glow)',
+  'components-premium-badge-blue-bg-stop-0-hover': 'var(--color-components-premium-badge-blue-bg-stop-0-hover)',
+  'components-premium-badge-blue-bg-stop-100-hover': 'var(--color-components-premium-badge-blue-bg-stop-100-hover)',
+  'components-premium-badge-blue-glow-hover': 'var(--color-components-premium-badge-blue-glow-hover)',
+  'components-premium-badge-blue-stroke-stop-0-hover': 'var(--color-components-premium-badge-blue-stroke-stop-0-hover)',
+  'components-premium-badge-blue-stroke-stop-100-hover': 'var(--color-components-premium-badge-blue-stroke-stop-100-hover)',
+
+  'components-premium-badge-highlight-stop-0': 'var(--color-components-premium-badge-highlight-stop-0)',
+  'components-premium-badge-highlight-stop-100': 'var(--color-components-premium-badge-highlight-stop-100)',
+  'components-premium-badge-indigo-bg-stop-0': 'var(--color-components-premium-badge-indigo-bg-stop-0)',
+  'components-premium-badge-indigo-bg-stop-100': 'var(--color-components-premium-badge-indigo-bg-stop-100)',
+  'components-premium-badge-indigo-stroke-stop-0': 'var(--color-components-premium-badge-indigo-stroke-stop-0)',
+  'components-premium-badge-indigo-stroke-stop-100': 'var(--color-components-premium-badge-indigo-stroke-stop-100)',
+  'components-premium-badge-indigo-text-stop-0': 'var(--color-components-premium-badge-indigo-text-stop-0)',
+  'components-premium-badge-indigo-text-stop-100': 'var(--color-components-premium-badge-indigo-text-stop-100)',
+  'components-premium-badge-indigo-glow': 'var(--color-components-premium-badge-indigo-glow)',
+  'components-premium-badge-indigo-glow-hover': 'var(--color-components-premium-badge-indigo-glow-hover)',
+  'components-premium-badge-indigo-bg-stop-0-hover': 'var(--color-components-premium-badge-indigo-bg-stop-0-hover)',
+  'components-premium-badge-indigo-bg-stop-100-hover': 'var(--color-components-premium-badge-indigo-bg-stop-100-hover)',
+  'components-premium-badge-indigo-stroke-stop-0-hover': 'var(--color-components-premium-badge-indigo-stroke-stop-0-hover)',
+  'components-premium-badge-indigo-stroke-stop-100-hover': 'var(--color-components-premium-badge-indigo-stroke-stop-100-hover)',
+
+  'components-premium-badge-grey-bg-stop-0': 'var(--color-components-premium-badge-grey-bg-stop-0)',
+  'components-premium-badge-grey-bg-stop-100': 'var(--color-components-premium-badge-grey-bg-stop-100)',
+  'components-premium-badge-grey-stroke-stop-0': 'var(--color-components-premium-badge-grey-stroke-stop-0)',
+  'components-premium-badge-grey-stroke-stop-100': 'var(--color-components-premium-badge-grey-stroke-stop-100)',
+  'components-premium-badge-grey-text-stop-0': 'var(--color-components-premium-badge-grey-text-stop-0)',
+  'components-premium-badge-grey-text-stop-100': 'var(--color-components-premium-badge-grey-text-stop-100)',
+  'components-premium-badge-grey-glow': 'var(--color-components-premium-badge-grey-glow)',
+  'components-premium-badge-grey-glow-hover': 'var(--color-components-premium-badge-grey-glow-hover)',
+  'components-premium-badge-grey-bg-stop-0-hover': 'var(--color-components-premium-badge-grey-bg-stop-0-hover)',
+  'components-premium-badge-grey-bg-stop-100-hover': 'var(--color-components-premium-badge-grey-bg-stop-100-hover)',
+  'components-premium-badge-grey-stroke-stop-0-hover': 'var(--color-components-premium-badge-grey-stroke-stop-0-hover)',
+  'components-premium-badge-grey-stroke-stop-100-hover': 'var(--color-components-premium-badge-grey-stroke-stop-100-hover)',
+
+  'components-premium-badge-orange-bg-stop-0': 'var(--color-components-premium-badge-orange-bg-stop-0)',
+  'components-premium-badge-orange-bg-stop-100': 'var(--color-components-premium-badge-orange-bg-stop-100)',
+  'components-premium-badge-orange-stroke-stop-0': 'var(--color-components-premium-badge-orange-stroke-stop-0)',
+  'components-premium-badge-orange-stroke-stop-100': 'var(--color-components-premium-badge-orange-stroke-stop-100)',
+  'components-premium-badge-orange-text-stop-0': 'var(--color-components-premium-badge-orange-text-stop-0)',
+  'components-premium-badge-orange-text-stop-100': 'var(--color-components-premium-badge-orange-text-stop-100)',
+  'components-premium-badge-orange-glow': 'var(--color-components-premium-badge-orange-glow)',
+  'components-premium-badge-orange-glow-hover': 'var(--color-components-premium-badge-orange-glow-hover)',
+  'components-premium-badge-orange-bg-stop-0-hover': 'var(--color-components-premium-badge-orange-bg-stop-0-hover)',
+  'components-premium-badge-orange-bg-stop-100-hover': 'var(--color-components-premium-badge-orange-bg-stop-100-hover)',
+  'components-premium-badge-orange-stroke-stop-0-hover': 'var(--color-components-premium-badge-orange-stroke-stop-0-hover)',
+  'components-premium-badge-orange-stroke-stop-100-hover': 'var(--color-components-premium-badge-orange-stroke-stop-100-hover)',
 
   'text-primary': 'var(--color-text-primary)',
   'text-secondary': 'var(--color-text-secondary)',
@@ -265,6 +336,7 @@ const vars = {
   'text-logo-text': 'var(--color-text-logo-text)',
   'text-empty-state-icon': 'var(--color-text-empty-state-icon)',
   'text-inverted': 'var(--color-text-inverted)',
+  'text-inverted-dimm': 'var(--color-text-inverted-dimm)',
 
   'background-body': 'var(--color-background-body)',
   'background-default-subtle': 'var(--color-background-default-subtle)',
@@ -301,6 +373,7 @@ const vars = {
   'background-overlay-alt': 'var(--color-background-overlay-alt)',
   'background-surface-white': 'var(--color-background-surface-white)',
   'background-overlay-destructive': 'var(--color-background-overlay-destructive)',
+  'background-overlay-backdrop': 'var(--color-background-overlay-backdrop)',
 
   'shadow-shadow-1': 'var(--color-shadow-shadow-1)',
   'shadow-shadow-3': 'var(--color-shadow-shadow-3)',
@@ -316,6 +389,7 @@ const vars = {
   'workflow-block-border': 'var(--color-workflow-block-border)',
   'workflow-block-parma-bg': 'var(--color-workflow-block-parma-bg)',
   'workflow-block-bg': 'var(--color-workflow-block-bg)',
+  'workflow-block-bg-transparent': 'var(--color-workflow-block-bg-transparent)',
   'workflow-block-border-highlight': 'var(--color-workflow-block-border-highlight)',
 
   'workflow-canvas-workflow-dot-color': 'var(--color-workflow-canvas-workflow-dot-color)',
@@ -324,6 +398,17 @@ const vars = {
   'workflow-link-line-active': 'var(--color-workflow-link-line-active)',
   'workflow-link-line-normal': 'var(--color-workflow-link-line-normal)',
   'workflow-link-line-handle': 'var(--color-workflow-link-line-handle)',
+  'workflow-link-line-normal-transparent': 'var(--color-workflow-link-line-normal-transparent)',
+  'workflow-link-line-failure-active': 'var(--color-workflow-link-line-failure-active)',
+  'workflow-link-line-failure-handle': 'var(--color-workflow-link-line-failure-handle)',
+  'workflow-link-line-failure-button-bg': 'var(--color-workflow-link-line-failure-button-bg)',
+  'workflow-link-line-failure-button-hover': 'var(--color-workflow-link-line-failure-button-hover)',
+
+  'workflow-link-line-success-active': 'var(--color-workflow-link-line-success-active)',
+  'workflow-link-line-success-handle': 'var(--color-workflow-link-line-success-handle)',
+
+  'workflow-link-line-error-active': 'var(--color-workflow-link-line-error-active)',
+  'workflow-link-line-error-handle': 'var(--color-workflow-link-line-error-handle)',
 
   'workflow-minimap-bg': 'var(--color-workflow-minimap-bg)',
   'workflow-minimap-block': 'var(--color-workflow-minimap-block)',
@@ -424,6 +509,7 @@ const vars = {
   'util-colors-orange-orange-500': 'var(--color-util-colors-orange-orange-500)',
   'util-colors-orange-orange-600': 'var(--color-util-colors-orange-orange-600)',
   'util-colors-orange-orange-700': 'var(--color-util-colors-orange-orange-700)',
+  'util-colors-orange-orange-100-transparent': 'var(--color-util-colors-orange-orange-100-transparent)',
 
   'util-colors-pink-pink-50': 'var(--color-util-colors-pink-pink-50)',
   'util-colors-pink-pink-100': 'var(--color-util-colors-pink-pink-100)',
@@ -599,6 +685,11 @@ const vars = {
   'third-party-LangChain': 'var(--color-third-party-LangChain)',
   'third-party-Langfuse': 'var(--color-third-party-Langfuse)',
   'third-party-Github': 'var(--color-third-party-Github)',
+  'third-party-Github-tertiary': 'var(--color-third-party-Github-tertiary)',
+  'third-party-Github-secondary': 'var(--color-third-party-Github-secondary)',
+  'third-party-model-bg-openai': 'var(--color-third-party-model-bg-openai)',
+  'third-party-model-bg-anthropic': 'var(--color-third-party-model-bg-anthropic)',
+  'third-party-model-bg-default': 'var(--color-third-party-model-bg-default)',
 }
 
 export default vars

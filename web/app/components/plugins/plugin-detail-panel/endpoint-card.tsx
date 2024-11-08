@@ -4,12 +4,14 @@ import { useBoolean } from 'ahooks'
 import { RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
 import type { EndpointListItem } from '../types'
 import EndpointModal from './endpoint-modal'
+import { NAME_FIELD } from './utils'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ActionButton from '@/app/components/base/action-button'
 import CopyBtn from '@/app/components/base/copy-btn'
 import Confirm from '@/app/components/base/confirm'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
+import Toast from '@/app/components/base/toast'
 import {
   deleteEndpoint,
   disableEndpoint,
@@ -19,10 +21,12 @@ import {
 
 type Props = {
   data: EndpointListItem
+  handleChange: () => void
 }
 
 const EndpointCard = ({
   data,
+  handleChange,
 }: Props) => {
   const { t } = useTranslation()
   const [active, setActive] = useState(data.enabled)
@@ -38,9 +42,11 @@ const EndpointCard = ({
         url: '/workspaces/current/endpoints/enable',
         endpointID,
       })
+      await handleChange()
     }
-    catch (error) {
+    catch (error: any) {
       console.error(error)
+      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       setActive(false)
     }
   }
@@ -50,9 +56,12 @@ const EndpointCard = ({
         url: '/workspaces/current/endpoints/disable',
         endpointID,
       })
+      await handleChange()
+      hideDisableConfirm()
     }
     catch (error) {
       console.error(error)
+      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       setActive(true)
     }
   }
@@ -77,9 +86,12 @@ const EndpointCard = ({
         url: '/workspaces/current/endpoints/delete',
         endpointID,
       })
+      await handleChange()
+      hideDeleteConfirm()
     }
     catch (error) {
       console.error(error)
+      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
   }
 
@@ -89,25 +101,34 @@ const EndpointCard = ({
   }] = useBoolean(false)
 
   const formSchemas = useMemo(() => {
-    return toolCredentialToFormSchemas(data.declaration.settings)
+    return toolCredentialToFormSchemas([NAME_FIELD, ...data.declaration.settings])
   }, [data.declaration.settings])
   const formValue = useMemo(() => {
-    return addDefaultValue(data.settings, formSchemas)
-  }, [data.settings, formSchemas])
+    const formValue = {
+      name: data.name,
+      ...data.settings,
+    }
+    return addDefaultValue(formValue, formSchemas)
+  }, [data.name, data.settings, formSchemas])
 
-  const handleUpdate = (state: any) => {
+  const handleUpdate = async (state: any) => {
+    const newName = state.name
+    delete state.name
     try {
-      updateEndpoint({
-        url: '/workspaces/current/endpoints',
+      await updateEndpoint({
+        url: '/workspaces/current/endpoints/update',
         body: {
           endpoint_id: data.id,
           settings: state,
-          name: state.name,
+          name: newName,
         },
       })
+      await handleChange()
+      hideEndpointModalConfirm()
     }
     catch (error) {
       console.error(error)
+      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
   }
 

@@ -222,7 +222,7 @@ const ModelProviderPage = ({ searchText }: Props) => {
         {!collapse && !isPluginsLoading && (
           <div className='grid grid-cols-2 gap-2'>
             {plugins.map(plugin => (
-              <ProviderCard key={plugin.plugin_id} payload={plugin} />
+              <ProviderCard key={plugin.plugin_id} payload={plugin} onSuccess={updateModelProviders} />
             ))}
           </div>
         )}

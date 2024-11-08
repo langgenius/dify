@@ -15,20 +15,20 @@ const Layout = ({ children }: { children: ReactNode }) => {
     <>
       <GA gaType={GaType.admin} />
       <SwrInitor>
-        <AppContextProvider>
-          <EventEmitterContextProvider>
-            <ProviderContextProvider>
-              <ModalContextProvider>
-                <HeaderWrapper>
-                  <Header />
-                </HeaderWrapper>
-                <TanstackQueryIniter>
+        <TanstackQueryIniter>
+          <AppContextProvider>
+            <EventEmitterContextProvider>
+              <ProviderContextProvider>
+                <ModalContextProvider>
+                  <HeaderWrapper>
+                    <Header />
+                  </HeaderWrapper>
                   {children}
-                </TanstackQueryIniter>
-              </ModalContextProvider>
-            </ProviderContextProvider>
-          </EventEmitterContextProvider>
-        </AppContextProvider>
+                </ModalContextProvider>
+              </ProviderContextProvider>
+            </EventEmitterContextProvider>
+          </AppContextProvider>
+        </TanstackQueryIniter>
       </SwrInitor>
     </>
   )

@@ -19,11 +19,13 @@ import { useBoolean } from 'ahooks'
 type Props = {
   className?: string
   payload: Plugin
+  onSuccess: () => void
 }
 
 const ProviderCard: FC<Props> = ({
   className,
   payload,
+  onSuccess,
 }) => {
   const { t } = useTranslation()
   const [isShowInstallFromMarketplace, {
@@ -84,7 +86,10 @@ const ProviderCard: FC<Props> = ({
             manifest={payload as any}
             uniqueIdentifier={payload.latest_package_identifier}
             onClose={hideInstallFromMarketplace}
-            onSuccess={hideInstallFromMarketplace}
+            onSuccess={() => {
+              onSuccess()
+              hideInstallFromMarketplace()
+            }}
           />
         )
       }

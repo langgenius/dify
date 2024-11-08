@@ -1,5 +1,6 @@
 const translation = {
   category: {
+    all: '全部',
     models: '模型',
     tools: '工具',
     extensions: '扩展',
@@ -115,6 +116,13 @@ const translation = {
   },
   error: {
     inValidGitHubUrl: '无效的 GitHub URL。请输入格式为 https://github.com/owner/repo 的有效 URL',
+  },
+  marketplace: {
+    empower: '助力您的 AI 开发',
+    discover: '探索',
+    and: '和',
+    inDifyMarketplace: '在 Dify 市场中',
+    moreFrom: '更多来自市场',
   },
 }
 

@@ -48,7 +48,7 @@ const PluginsPanel = () => {
       ) : (
         <Empty />
       )}
-      <PluginDetailPanel onDelete={() => invalidateInstalledPluginList()}/>
+      <PluginDetailPanel onUpdate={() => invalidateInstalledPluginList()}/>
     </>
   )
 }
