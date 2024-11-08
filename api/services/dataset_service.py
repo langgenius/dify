@@ -1415,9 +1415,13 @@ class SegmentService:
                 created_by=current_user.id,
             )
             if document.doc_form == "qa_model":
+                segment_document.word_count += len(args["answer"])
                 segment_document.answer = args["answer"]
-
+            
             db.session.add(segment_document)
+            # update document word count
+            document.word_count += segment_document.word_count
+            db.session.add(document)
             db.session.commit()
 
             # save vector index
@@ -1436,6 +1440,7 @@ class SegmentService:
     @classmethod
     def multi_create_segment(cls, segments: list, document: Document, dataset: Dataset):
         lock_name = "multi_add_segment_lock_document_id_{}".format(document.id)
+        increment_word_count = 0
         with redis_client.lock(lock_name, timeout=600):
             embedding_model = None
             if dataset.indexing_technique == "high_quality":
@@ -1461,7 +1466,10 @@ class SegmentService:
                 tokens = 0
                 if dataset.indexing_technique == "high_quality" and embedding_model:
                     # calc embedding use tokens
-                    tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+                    if document.doc_form == "qa_model":
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment_item["answer"]])
+                    else:
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
                 segment_document = DocumentSegment(
                     tenant_id=current_user.current_tenant_id,
                     dataset_id=document.dataset_id,
@@ -1479,6 +1487,8 @@ class SegmentService:
                 )
                 if document.doc_form == "qa_model":
                     segment_document.answer = segment_item["answer"]
+                    segment_document.word_count += len(segment_item["answer"])
+                increment_word_count += segment_document.word_count
                 db.session.add(segment_document)
                 segment_data_list.append(segment_document)
 
@@ -1487,7 +1497,9 @@ class SegmentService:
                     keywords_list.append(segment_item["keywords"])
                 else:
                     keywords_list.append(None)
-
+            # update document word count
+            document.word_count += increment_word_count
+            db.session.add(document)
             try:
                 # save vector index
                 VectorService.create_segments_vector(keywords_list, pre_segment_data_list, dataset)
@@ -1527,17 +1539,25 @@ class SegmentService:
             else:
                 raise ValueError("Can't update disabled segment")
         try:
+            word_count_change = segment.word_count
             content = args["content"]
             if segment.content == content:
-                if document.doc_form == "qa_model":
-                    segment.answer = args["answer"]
                 if args.get("keywords"):
                     segment.keywords = args["keywords"]
+                segment.word_count = len(content)
+                if document.doc_form == "qa_model":
+                    segment.answer = args["answer"]
+                    segment.word_count += len(args["answer"])
+                word_count_change = segment.word_count - word_count_change
                 segment.enabled = True
                 segment.disabled_at = None
                 segment.disabled_by = None
                 db.session.add(segment)
                 db.session.commit()
+                # update document word count
+                if word_count_change != 0:
+                    document.word_count = max(0, document.word_count + word_count_change)
+                    db.session.add(document)
                 # update segment index task
                 if "keywords" in args:
                     keyword = Keyword(dataset)
@@ -1565,7 +1585,10 @@ class SegmentService:
                     )
 
                     # calc embedding use tokens
-                    tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+                    if document.doc_form == "qa_model":
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])
+                    else:
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
                 segment.content = content
                 segment.index_node_hash = segment_hash
                 segment.word_count = len(content)
@@ -1580,6 +1603,12 @@ class SegmentService:
                 segment.disabled_by = None
                 if document.doc_form == "qa_model":
                     segment.answer = args["answer"]
+                    segment.word_count += len(args["answer"])
+                word_count_change = segment.word_count - word_count_change
+                # update document word count
+                if word_count_change != 0:
+                    document.word_count = max(0, document.word_count + word_count_change)
+                    db.session.add(document)
                 db.session.add(segment)
                 db.session.commit()
                 # update segment vector index
@@ -1608,6 +1637,9 @@ class SegmentService:
             redis_client.setex(indexing_cache_key, 600, 1)
             delete_segment_from_index_task.delay(segment.id, segment.index_node_id, dataset.id, document.id)
         db.session.delete(segment)
+        # update document word count
+        document.word_count -= segment.word_count
+        db.session.add(document)
         db.session.commit()
 
 
