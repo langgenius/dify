@@ -15,7 +15,6 @@ import type {
   UpdateEndpointRequest,
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
-import type { DebugInfo as DebugInfoTypes } from '@/app/components/plugins/types'
 import type {
   MarketplaceCollectionPluginsResponse,
   MarketplaceCollectionsResponse,
@@ -49,10 +48,6 @@ export const enableEndpoint: Fetcher<EndpointOperationResponse, { url: string; e
 export const disableEndpoint: Fetcher<EndpointOperationResponse, { url: string; endpointID: string }> = ({ url, endpointID }) => {
   // url = /workspaces/current/endpoints/disable
   return post<EndpointOperationResponse>(url, { body: { endpoint_id: endpointID } })
-}
-
-export const fetchDebugKey = async () => {
-  return get<DebugInfoTypes>('/workspaces/current/plugin/debugging-key')
 }
 
 export const uploadPackageFile = async (file: File) => {
@@ -129,10 +124,6 @@ export const fetchPluginTasks = async () => {
 
 export const checkTaskStatus = async (taskId: string) => {
   return get<TaskStatusResponse>(`/workspaces/current/plugin/tasks/${taskId}`)
-}
-
-export const fetchPermission = async () => {
-  return get<Permissions>('/workspaces/current/plugin/permission/fetch')
 }
 
 export const updatePermission = async (permissions: Permissions) => {

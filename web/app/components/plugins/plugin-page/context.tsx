@@ -11,16 +11,13 @@ import {
   useContextSelector,
 } from 'use-context-selector'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
-import type { Permissions, PluginDetail } from '../types'
+import type { PluginDetail } from '../types'
 import type { FilterState } from './filter-management'
-import { PermissionType } from '../types'
 import { useTranslation } from 'react-i18next'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 
 export type PluginPageContextValue = {
   containerRef: React.RefObject<HTMLDivElement>
-  permissions: Permissions
-  setPermissions: (permissions: PluginPageContextValue['permissions']) => void
   currentPluginDetail: PluginDetail | undefined
   setCurrentPluginDetail: (plugin: PluginDetail) => void
   filters: FilterState
@@ -32,21 +29,16 @@ export type PluginPageContextValue = {
 
 export const PluginPageContext = createContext<PluginPageContextValue>({
   containerRef: { current: null },
-  permissions: {
-    install_permission: PermissionType.noOne,
-    debug_permission: PermissionType.noOne,
-  },
-  setPermissions: () => {},
   currentPluginDetail: undefined,
-  setCurrentPluginDetail: () => {},
+  setCurrentPluginDetail: () => { },
   filters: {
     categories: [],
     tags: [],
     searchQuery: '',
   },
-  setFilters: () => {},
+  setFilters: () => { },
   activeTab: '',
-  setActiveTab: () => {},
+  setActiveTab: () => { },
   options: [],
 })
 
@@ -63,10 +55,6 @@ export const PluginPageContextProvider = ({
 }: PluginPageContextProviderProps) => {
   const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
-  const [permissions, setPermissions] = useState<PluginPageContextValue['permissions']>({
-    install_permission: PermissionType.noOne,
-    debug_permission: PermissionType.noOne,
-  })
   const [filters, setFilters] = useState<FilterState>({
     categories: [],
     tags: [],
@@ -93,8 +81,6 @@ export const PluginPageContextProvider = ({
     <PluginPageContext.Provider
       value={{
         containerRef,
-        permissions,
-        setPermissions,
         currentPluginDetail,
         setCurrentPluginDetail,
         filters,
