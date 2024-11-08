@@ -70,6 +70,9 @@ class ComfyUIWorkflowTool(BuiltinTool):
             else:
                 prompt = comfyui.set_prompt_images_by_default(prompt, image_names)
 
+        if seed_id := tool_parameters.get("seed_id"):
+            prompt = comfyui.set_prompt_seed_by_id(prompt, seed_id)
+
         images = comfyui.generate_image_by_prompt(prompt)
         result = []
         for img in images:
