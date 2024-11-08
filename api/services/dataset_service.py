@@ -1417,7 +1417,7 @@ class SegmentService:
             if document.doc_form == "qa_model":
                 segment_document.word_count += len(args["answer"])
                 segment_document.answer = args["answer"]
-            
+
             db.session.add(segment_document)
             # update document word count
             document.word_count += segment_document.word_count
