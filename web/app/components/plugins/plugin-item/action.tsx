@@ -74,6 +74,7 @@ const Action: FC<Props> = ({
                 repo: meta!.repo,
                 version: meta!.version,
                 package: meta!.package,
+                releases: fetchedReleases,
               },
             },
           },

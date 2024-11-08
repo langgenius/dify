@@ -155,6 +155,7 @@ export type UpdateFromGitHubPayload = {
     repo: string
     version: string
     package: string
+    releases: GitHubRepoReleaseResponse[]
   }
 }
 

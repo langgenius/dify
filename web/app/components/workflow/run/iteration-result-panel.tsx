@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import {
   RiArrowRightSLine,
   RiCloseLine,
+  RiErrorWarningLine,
 } from '@remixicon/react'
 import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
 import TracingPanel from './tracing-panel'
@@ -27,7 +28,7 @@ const IterationResultPanel: FC<Props> = ({
   noWrap,
 }) => {
   const { t } = useTranslation()
-  const [expandedIterations, setExpandedIterations] = useState<Record<number, boolean>>([])
+  const [expandedIterations, setExpandedIterations] = useState<Record<number, boolean>>({})
 
   const toggleIteration = useCallback((index: number) => {
     setExpandedIterations(prev => ({
@@ -71,10 +72,19 @@ const IterationResultPanel: FC<Props> = ({
                 <span className='system-sm-semibold-uppercase text-text-primary flex-grow'>
                   {t(`${i18nPrefix}.iteration`)} {index + 1}
                 </span>
-                <RiArrowRightSLine className={cn(
-                  'w-4 h-4 text-text-tertiary transition-transform duration-200 flex-shrink-0',
-                  expandedIterations[index] && 'transform rotate-90',
-                )} />
+                {
+                  iteration.some(item => item.status === 'failed')
+                    ? (
+                      <RiErrorWarningLine className='w-4 h-4 text-text-destructive' />
+                    )
+                    : (< RiArrowRightSLine className={
+                      cn(
+                        'w-4 h-4 text-text-tertiary transition-transform duration-200 flex-shrink-0',
+                        expandedIterations[index] && 'transform rotate-90',
+                      )} />
+                    )
+                }
+
               </div>
             </div>
             {expandedIterations[index] && <div
