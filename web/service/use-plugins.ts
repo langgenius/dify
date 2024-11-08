@@ -1,12 +1,17 @@
-import type { DebugInfo as DebugInfoTypes, InstalledPluginListResponse, Permissions } from '@/app/components/plugins/types'
-import { get, post } from './base'
+import type {
+  DebugInfo as DebugInfoTypes,
+  InstalledPluginListResponse,
+  Permissions,
+  PluginsFromMarketplaceResponse,
+} from '@/app/components/plugins/types'
+import type {
+  PluginsSearchParams,
+} from '@/app/components/plugins/marketplace/types'
+import { get, post, postMarketplace } from './base'
 import {
   useMutation,
-  useQueryClient,
-} from '@tanstack/react-query'
-
-import {
   useQuery,
+  useQueryClient,
 } from '@tanstack/react-query'
 
 const NAME_SPACE = 'plugins'
@@ -64,5 +69,30 @@ export const useMutationPermissions = ({
       return post('/workspaces/current/plugin/permission/change', { body: payload })
     },
     onSuccess,
+  })
+}
+
+export const useMutationPluginsFromMarketplace = () => {
+  return useMutation({
+    mutationFn: (pluginsSearchParams: PluginsSearchParams) => {
+      const {
+        query,
+        sortBy,
+        sortOrder,
+        category,
+        tags,
+      } = pluginsSearchParams
+      return postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/search/basic', {
+        body: {
+          page: 1,
+          page_size: 10,
+          query,
+          sort_by: sortBy,
+          sort_order: sortOrder,
+          category: category !== 'all' ? category : '',
+          tags,
+        },
+      })
+    },
   })
 }

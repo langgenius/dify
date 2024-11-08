@@ -4,7 +4,9 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
-import type { Plugin } from '../types'
+import type {
+  Plugin,
+} from '../types'
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
@@ -12,9 +14,9 @@ import type {
 } from './types'
 import {
   getMarketplaceCollectionsAndPlugins,
-  getMarketplacePlugins,
 } from './utils'
 import i18n from '@/i18n/i18next-config'
+import { useMutationPluginsFromMarketplace } from '@/service/use-plugins'
 
 export const useMarketplaceCollectionsAndPlugins = () => {
   const [isLoading, setIsLoading] = useState(false)
@@ -41,28 +43,29 @@ export const useMarketplaceCollectionsAndPlugins = () => {
 }
 
 export const useMarketplacePlugins = () => {
-  const [isLoading, setIsLoading] = useState(false)
-  const [plugins, setPlugins] = useState<Plugin[]>()
+  const {
+    data,
+    mutate,
+    reset,
+    isPending,
+  } = useMutationPluginsFromMarketplace()
 
-  const queryPlugins = useCallback(async (query: PluginsSearchParams) => {
-    setIsLoading(true)
-    const { marketplacePlugins } = await getMarketplacePlugins(query)
-    setIsLoading(false)
+  const queryPlugins = useCallback((pluginsSearchParams: PluginsSearchParams) => {
+    mutate(pluginsSearchParams)
+  }, [mutate])
 
-    setPlugins(marketplacePlugins)
-  }, [])
-
-  const { run: queryPluginsWithDebounced } = useDebounceFn(queryPlugins, {
+  const { run: queryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams) => {
+    mutate(pluginsSearchParams)
+  }, {
     wait: 500,
   })
 
   return {
-    plugins,
-    setPlugins,
+    plugins: data?.data?.plugins,
+    resetPlugins: reset,
     queryPlugins,
     queryPluginsWithDebounced,
-    isLoading,
-    setIsLoading,
+    isLoading: isPending,
   }
 }
 

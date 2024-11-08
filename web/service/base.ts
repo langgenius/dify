@@ -460,6 +460,11 @@ export const post = <T>(url: string, options = {}, otherOptions?: IOtherOptions)
   return request<T>(url, Object.assign({}, options, { method: 'POST' }), otherOptions)
 }
 
+// For Marketplace API
+export const postMarketplace = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  return post<T>(url, options, { ...otherOptions, isMarketplaceAPI: true })
+}
+
 export const postPublic = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
   return post<T>(url, options, { ...otherOptions, isPublicAPI: true })
 }

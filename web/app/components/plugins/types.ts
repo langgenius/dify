@@ -301,3 +301,7 @@ export type InstalledPluginListResponse = {
 export type UninstallPluginResponse = {
   success: boolean
 }
+
+export type PluginsFromMarketplaceResponse = {
+  plugins: Plugin[]
+}
