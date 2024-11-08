@@ -1,0 +1,23 @@
+identity:
+  name: get_base_info
+  author: Doug Lea
+  label:
+    en_US: Get Base Info
+    zh_Hans: 获取多维表格元数据
+description:
+  human:
+    en_US: Get Metadata Information of Specified Multidimensional Table
+    zh_Hans: 获取指定多维表格的元数据信息
+  llm: A tool for getting metadata information of a specified multidimensional table. (获取指定多维表格的元数据信息)
+parameters:
+  - name: app_token
+    type: string
+    required: true
+    label:
+      en_US: app_token
+      zh_Hans: app_token
+    human_description:
+      en_US: Unique identifier for the multidimensional table, supports inputting document URL.
+      zh_Hans: 多维表格的唯一标识符，支持输入文档 URL。
+    llm_description: 多维表格的唯一标识符，支持输入文档 URL。
+    form: llm

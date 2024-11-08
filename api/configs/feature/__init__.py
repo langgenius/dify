@@ -109,7 +109,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
     )
 
     CODE_MAX_PRECISION: PositiveInt = Field(
-        description="mMaximum number of decimal places for floating-point numbers in code execution",
+        description="Maximum number of decimal places for floating-point numbers in code execution",
         default=20,
     )
 
@@ -274,6 +274,16 @@ class HttpConfig(BaseSettings):
     HTTP_REQUEST_NODE_MAX_TEXT_SIZE: PositiveInt = Field(
         description="Maximum allowed size in bytes for text data in HTTP requests",
         default=1 * 1024 * 1024,
+    )
+
+    SSRF_DEFAULT_MAX_RETRIES: PositiveInt = Field(
+        description="Maximum number of retries for network requests (SSRF)",
+        default=3,
+    )
+
+    SSRF_PROXY_ALL_URL: Optional[str] = Field(
+        description="Proxy URL for HTTP or HTTPS requests to prevent Server-Side Request Forgery (SSRF)",
+        default=None,
     )
 
     SSRF_PROXY_HTTP_URL: Optional[str] = Field(
@@ -624,9 +634,14 @@ class IndexingConfig(BaseSettings):
     )
 
 
-class ImageFormatConfig(BaseSettings):
+class VisionFormatConfig(BaseSettings):
     MULTIMODAL_SEND_IMAGE_FORMAT: Literal["base64", "url"] = Field(
         description="Format for sending images in multimodal contexts ('base64' or 'url'), default is base64",
+        default="base64",
+    )
+
+    MULTIMODAL_SEND_VIDEO_FORMAT: Literal["base64", "url"] = Field(
+        description="Format for sending videos in multimodal contexts ('base64' or 'url'), default is base64",
         default="base64",
     )
 
@@ -732,7 +747,7 @@ class FeatureConfig(
     FileAccessConfig,
     FileUploadConfig,
     HttpConfig,
-    ImageFormatConfig,
+    VisionFormatConfig,
     InnerAPIConfig,
     IndexingConfig,
     LoggingConfig,

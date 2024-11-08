@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - api/migrations/**
+      - .github/workflows/db-migration-test.yml
 
 concurrency:
   group: db-migration-test-${{ github.ref }}
