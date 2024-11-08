@@ -43,4 +43,3 @@ parameters:
       zh_Hans: 每页数量
     llm_description: Page size for GitLab
     form: llm
-    
