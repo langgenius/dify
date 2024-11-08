@@ -50,15 +50,15 @@ const ModelList: FC<ModelListProps> = ({
 
   return (
     <div className='px-2 pb-2 rounded-b-xl'>
-      <div className='py-1 bg-white rounded-lg'>
+      <div className='py-1 bg-components-panel-bg rounded-lg'>
         <div className='flex items-center pl-1 pr-[3px]'>
           <span className='group shrink-0 flex items-center mr-2'>
-            <span className='group-hover:hidden inline-flex pl-1 pr-1.5 h-6 leading-6 text-xs font-medium text-gray-500'>
+            <span className='group-hover:hidden inline-flex items-center pl-1 pr-1.5 h-6 system-xs-medium text-text-tertiary'>
               {t('common.modelProvider.modelsNum', { num: models.length })}
               <RiArrowRightSLine className='mr-0.5 w-4 h-4 rotate-90' />
             </span>
             <span
-              className='hidden group-hover:inline-flex items-center pl-1 pr-1.5 h-6 text-xs font-medium text-gray-500 bg-gray-50 cursor-pointer rounded-lg'
+              className='hidden group-hover:inline-flex items-center pl-1 pr-1.5 h-6 system-xs-medium text-text-tertiary bg-state-base-hover cursor-pointer rounded-lg'
               onClick={() => onCollapse()}
             >
               {t('common.modelProvider.modelsNum', { num: models.length })}
