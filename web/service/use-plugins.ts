@@ -1,4 +1,4 @@
-import type { InstalledPluginListResponse } from '@/app/components/plugins/types'
+import type { DebugInfo as DebugInfoTypes, InstalledPluginListResponse } from '@/app/components/plugins/types'
 import { get } from './base'
 import {
   useQueryClient,
@@ -26,4 +26,11 @@ export const useInvalidateInstalledPluginList = () => {
         queryKey: useInstalledPluginListKey,
       })
   }
+}
+
+export const useDebugKey = () => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'debugKey'],
+    queryFn: () => get<DebugInfoTypes>('/workspaces/current/plugin/debugging-key'),
+  })
 }
