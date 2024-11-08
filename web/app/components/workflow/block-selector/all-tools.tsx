@@ -57,6 +57,9 @@ const AllTools = ({
     if (activeTab === ToolTypeEnum.Workflow)
       mergedTools = workflowTools
 
+    if (!searchText)
+      return mergedTools.filter(toolWithProvider => toolWithProvider.tools.length > 0)
+
     return mergedTools.filter((toolWithProvider) => {
       return toolWithProvider.tools.some((tool) => {
         return tool.label[language].toLowerCase().includes(searchText.toLowerCase())
@@ -64,6 +67,7 @@ const AllTools = ({
     })
   }, [activeTab, buildInTools, customTools, workflowTools, searchText, language])
 
+  console.log(activeTab, customTools, tools)
   const {
     queryPluginsWithDebounced: fetchPlugins,
     plugins: notInstalledPlugins = [],
