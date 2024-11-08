@@ -45,7 +45,7 @@ const IterationResultPanel: FC<Props> = ({
     const iterRunId = iteration[0].execution_metadata.parallel_mode_run_id
     const iterItem = iterDurationMap[iterRunId || IterRunIndex]
     const duration = iterItem
-    return `${(duration && duration > 0.1) ? duration.toFixed(2) : 0.1}s`
+    return `${(duration && duration > 0.01) ? duration.toFixed(2) : 0.01}s`
   }
   const iterationStatusShow = (index: number, iteration: NodeTracing[], iterDurationMap?: IterationDurationMap) => {
     const hasFailed = iteration.some(item => item.status === NodeRunningStatus.Failed)
