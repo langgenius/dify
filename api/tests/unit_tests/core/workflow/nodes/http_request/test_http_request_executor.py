@@ -196,3 +196,72 @@ def test_extract_selectors_from_template_with_newline():
     )
 
     assert executor.params == {"test": "line1\nline2"}
+
+
+def test_executor_with_form_data():
+    # Prepare the variable pool
+    variable_pool = VariablePool(
+        system_variables={},
+        user_inputs={},
+    )
+    variable_pool.add(["pre_node_id", "text_field"], "Hello, World!")
+    variable_pool.add(["pre_node_id", "number_field"], 42)
+
+    # Prepare the node data
+    node_data = HttpRequestNodeData(
+        title="Test Form Data",
+        method="post",
+        url="https://api.example.com/upload",
+        authorization=HttpRequestNodeAuthorization(type="no-auth"),
+        headers="Content-Type: multipart/form-data",
+        params="",
+        body=HttpRequestNodeBody(
+            type="form-data",
+            data=[
+                BodyData(
+                    key="text_field",
+                    type="text",
+                    value="{{#pre_node_id.text_field#}}",
+                ),
+                BodyData(
+                    key="number_field",
+                    type="text",
+                    value="{{#pre_node_id.number_field#}}",
+                ),
+            ],
+        ),
+    )
+
+    # Initialize the Executor
+    executor = Executor(
+        node_data=node_data,
+        timeout=HttpRequestNodeTimeout(connect=10, read=30, write=30),
+        variable_pool=variable_pool,
+    )
+
+    # Check the executor's data
+    assert executor.method == "post"
+    assert executor.url == "https://api.example.com/upload"
+    assert "Content-Type" in executor.headers
+    assert "multipart/form-data" in executor.headers["Content-Type"]
+    assert executor.params == {}
+    assert executor.json is None
+    assert executor.files is None
+    assert executor.content is None
+
+    # Check that the form data is correctly loaded in executor.data
+    assert isinstance(executor.data, dict)
+    assert "text_field" in executor.data
+    assert executor.data["text_field"] == "Hello, World!"
+    assert "number_field" in executor.data
+    assert executor.data["number_field"] == "42"
+
+    # Check the raw request (to_log method)
+    raw_request = executor.to_log()
+    assert "POST /upload HTTP/1.1" in raw_request
+    assert "Host: api.example.com" in raw_request
+    assert "Content-Type: multipart/form-data" in raw_request
+    assert "text_field" in raw_request
+    assert "Hello, World!" in raw_request
+    assert "number_field" in raw_request
+    assert "42" in raw_request
