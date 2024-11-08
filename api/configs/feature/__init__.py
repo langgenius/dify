@@ -276,6 +276,16 @@ class HttpConfig(BaseSettings):
         default=1 * 1024 * 1024,
     )
 
+    SSRF_DEFAULT_MAX_RETRIES: PositiveInt = Field(
+        description="Maximum number of retries for network requests (SSRF)",
+        default=3,
+    )
+
+    SSRF_PROXY_ALL_URL: Optional[str] = Field(
+        description="Proxy URL for HTTP or HTTPS requests to prevent Server-Side Request Forgery (SSRF)",
+        default=None,
+    )
+
     SSRF_PROXY_HTTP_URL: Optional[str] = Field(
         description="Proxy URL for HTTP requests to prevent Server-Side Request Forgery (SSRF)",
         default=None,
