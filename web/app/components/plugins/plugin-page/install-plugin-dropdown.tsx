@@ -15,6 +15,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 
 type Props = {
   onSwitchToMarketplaceTab: () => void
@@ -27,6 +28,7 @@ const InstallPluginDropdown = ({
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
@@ -79,7 +81,7 @@ const InstallPluginDropdown = ({
               onChange={handleFileChange}
               accept='.difypkg'
             />
-            <div className='p-1 w-full'>
+            <div className='w-full'>
               {[
                 ...(
                   (enable_marketplace || true)
@@ -91,7 +93,7 @@ const InstallPluginDropdown = ({
               ].map(({ icon: Icon, text, action }) => (
                 <div
                   key={action}
-                  className='flex items-center w-full px-2 py-1.5 gap-1 rounded-lg hover:bg-state-base-hover cursor-pointer'
+                  className='flex items-center w-full px-2 py-1.5 gap-1 rounded-lg hover:bg-state-base-hover !cursor-pointer'
                   onClick={() => {
                     if (action === 'local') {
                       fileInputRef.current?.click()
@@ -114,12 +116,15 @@ const InstallPluginDropdown = ({
           </div>
         </PortalToFollowElemContent>
       </div>
-      {selectedAction === 'github' && <InstallFromGitHub onClose={() => setSelectedAction(null)} />}
+      {selectedAction === 'github' && <InstallFromGitHub
+        onSuccess={() => { invalidateInstalledPluginList() }}
+        onClose={() => setSelectedAction(null)}
+      />}
       {selectedAction === 'local' && selectedFile
         && (<InstallFromLocalPackage
           file={selectedFile}
           onClose={() => setSelectedAction(null)}
-          onSuccess={() => { }}
+          onSuccess={() => {}}
         />
         )
       }

@@ -1,9 +1,17 @@
 const translation = {
+  category: {
+    models: '模型',
+    tools: '工具',
+    extensions: '扩展',
+    bundles: '捆绑包',
+  },
+  searchPlugins: '搜索插件',
   from: '来自',
   findMoreInMarketplace: '在 Marketplace 中查找更多',
   searchInMarketplace: '在 Marketplace 中搜索',
   fromMarketplace: '来自市场',
   endpointsEnabled: '{{num}} 组端点已启用',
+  searchTools: '搜索工具...',
   detailPanel: {
     categoryTip: {
       marketplace: '从 Marketplace 安装',
@@ -85,6 +93,10 @@ const translation = {
   },
   installFromGitHub: {
     installPlugin: '从 GitHub 安装插件',
+    updatePlugin: '更新来自 GitHub 的插件',
+    installedSuccessfully: '安装成功',
+    installFailed: '安装失败',
+    uploadFailed: '上传失败',
     gitHubRepo: 'GitHub 仓库',
     selectVersion: '选择版本',
     selectVersionPlaceholder: '请选择一个版本',

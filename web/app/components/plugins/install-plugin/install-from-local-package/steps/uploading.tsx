@@ -30,7 +30,7 @@ const Uploading: FC<Props> = ({
   const handleUpload = async () => {
     try {
       const res = await uploadPackageFile(file)
-      // onUploaded(res)
+      onUploaded(res)
     }
     catch (e: any) {
       if (e.response?.message) {

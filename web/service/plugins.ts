@@ -6,7 +6,6 @@ import type {
   EndpointsRequest,
   EndpointsResponse,
   InstallPackageResponse,
-  InstalledPluginListResponse,
   Permissions,
   PluginDeclaration,
   PluginManifestInMarket,
@@ -14,6 +13,7 @@ import type {
   TaskStatusResponse,
   UninstallPluginResponse,
   UpdateEndpointRequest,
+  uploadGitHubResponse,
 } from '@/app/components/plugins/types'
 import type { DebugInfo as DebugInfoTypes } from '@/app/components/plugins/types'
 import type {
@@ -51,12 +51,6 @@ export const disableEndpoint: Fetcher<EndpointOperationResponse, { url: string; 
   return post<EndpointOperationResponse>(url, { body: { endpoint_id: endpointID } })
 }
 
-export const installPackageFromGitHub: Fetcher<InstallPackageResponse, { repo: string; version: string; package: string }> = ({ repo, version, package: packageName }) => {
-  return post<InstallPackageResponse>('/workspaces/current/plugin/upload/github', {
-    body: { repo, version, package: packageName },
-  })
-}
-
 export const fetchDebugKey = async () => {
   return get<DebugInfoTypes>('/workspaces/current/plugin/debugging-key')
 }
@@ -73,6 +67,33 @@ export const uploadPackageFile = async (file: File) => {
 export const installPackageFromLocal = async (uniqueIdentifier: string) => {
   return post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
     body: { plugin_unique_identifiers: [uniqueIdentifier] },
+  })
+}
+
+export const updateFromMarketPlace = async (body: Record<string, string>) => {
+  return post<InstallPackageResponse>('/workspaces/current/plugin/upgrade/marketplace', {
+    body,
+  })
+}
+
+export const uploadGitHub = async (repoUrl: string, selectedVersion: string, selectedPackage: string) => {
+  return post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
+    body: {
+      repo: repoUrl,
+      version: selectedVersion,
+      package: selectedPackage,
+    },
+  })
+}
+
+export const installPackageFromGitHub = async (repoUrl: string, selectedVersion: string, selectedPackage: string, uniqueIdentifier: string) => {
+  return post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
+    body: {
+      repo: repoUrl,
+      version: selectedVersion,
+      package: selectedPackage,
+      plugin_unique_identifier: uniqueIdentifier,
+    },
   })
 }
 
@@ -116,10 +137,6 @@ export const fetchPermission = async () => {
 
 export const updatePermission = async (permissions: Permissions) => {
   return post('/workspaces/current/plugin/permission/change', { body: permissions })
-}
-
-export const fetchInstalledPluginList: Fetcher<InstalledPluginListResponse, { url: string }> = ({ url }) => {
-  return get<InstalledPluginListResponse>(url)
 }
 
 export const uninstallPlugin = async (pluginId: string) => {

@@ -54,6 +54,7 @@ export type EndpointListItem = {
 
 // Plugin manifest
 export type PluginDeclaration = {
+  plugin_unique_identifier: string
   version: string
   author: string
   icon: string
@@ -68,9 +69,11 @@ export type PluginDeclaration = {
   endpoint: PluginEndpointDeclaration
   tool: PluginToolDeclaration
   model: any // TODO
+  tags: string[]
 }
 
 export type PluginManifestInMarket = {
+  plugin_unique_identifier: string
   name: string
   org: string
   icon: string
@@ -80,6 +83,7 @@ export type PluginManifestInMarket = {
   brief: Record<Locale, string>
   introduction: string
   verified: boolean
+  install_count: number
 }
 
 export type PluginDetail = {
@@ -95,8 +99,9 @@ export type PluginDetail = {
   endpoints_setups: number
   endpoints_active: number
   version: string
+  latest_version: string
   source: PluginSource
-  meta?: any
+  meta?: MetaData
 }
 
 export type Plugin = {
@@ -106,6 +111,7 @@ export type Plugin = {
   plugin_id: string
   version: string
   latest_version: string
+  latest_package_identifier: string
   icon: string
   verified: boolean
   label: Record<Locale, string>
@@ -132,11 +138,45 @@ export type Permissions = {
   debug_permission: PermissionType
 }
 
+export type UpdateFromMarketPlacePayload = {
+  originalPackageInfo: {
+    id: string
+    payload: PluginDeclaration
+  },
+  targetPackageInfo: {
+    id: string
+    version: string
+  }
+}
+
+export type UpdateFromGitHubPayload = {
+  originalPackageInfo: {
+    id: string
+    repo: string
+    version: string
+    package: string
+    releases: GitHubRepoReleaseResponse[]
+  }
+}
+
+export type UpdatePluginPayload = {
+  type: PluginSource
+  marketPlace?: UpdateFromMarketPlacePayload
+  github?: UpdateFromGitHubPayload
+}
+
+export type UpdatePluginModalType = UpdatePluginPayload & {
+  onCancel: () => void
+  onSave: () => void
+}
+
 export enum InstallStepFromGitHub {
   setUrl = 'url',
-  setVersion = 'version',
-  setPackage = 'package',
+  selectPackage = 'selecting',
+  readyToInstall = 'readyToInstall',
+  uploadFailed = 'uploadFailed',
   installed = 'installed',
+  installFailed = 'failed',
 }
 
 export type InstallState = {
@@ -163,7 +203,7 @@ export type EndpointOperationResponse = {
   result: 'success' | 'error'
 }
 export type EndpointsRequest = {
-  limit: number
+  page_size: number
   page: number
   plugin_id: string
 }
@@ -204,6 +244,11 @@ export type InstallPackageResponse = {
   plugin_unique_identifier: string
   all_installed: boolean
   task_id: string
+}
+
+export type uploadGitHubResponse = {
+  unique_identifier: string
+  manifest: PluginDeclaration
 }
 
 export type DebugInfo = {
@@ -249,20 +294,8 @@ export type MetaData = {
   package: string
 }
 
-export type InstalledPlugin = {
-  plugin_id: string
-  installation_id: string
-  declaration: PluginDeclaration
-  source: PluginSource
-  tenant_id: string
-  version: string
-  latest_version: string
-  endpoints_active: number
-  meta: MetaData
-}
-
 export type InstalledPluginListResponse = {
-  plugins: InstalledPlugin[]
+  plugins: PluginDetail[]
 }
 
 export type UninstallPluginResponse = {

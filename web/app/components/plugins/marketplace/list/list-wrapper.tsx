@@ -9,18 +9,20 @@ type ListWrapperProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   showInstallButton?: boolean
+  locale?: string
 }
 const ListWrapper = ({
   marketplaceCollections,
   marketplaceCollectionPluginsMap,
   showInstallButton,
+  locale,
 }: ListWrapperProps) => {
   const plugins = useMarketplaceContext(v => v.plugins)
   const marketplaceCollectionsFromClient = useMarketplaceContext(v => v.marketplaceCollectionsFromClient)
   const marketplaceCollectionPluginsMapFromClient = useMarketplaceContext(v => v.marketplaceCollectionPluginsMapFromClient)
 
   return (
-    <div className='px-12 py-2 bg-background-default-subtle'>
+    <div className='flex flex-col grow px-12 py-2 bg-background-default-subtle'>
       {
         plugins && (
           <div className='flex items-center mb-4 pt-3'>
@@ -35,6 +37,7 @@ const ListWrapper = ({
         marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMapFromClient || marketplaceCollectionPluginsMap}
         plugins={plugins}
         showInstallButton={showInstallButton}
+        locale={locale}
       />
     </div>
   )

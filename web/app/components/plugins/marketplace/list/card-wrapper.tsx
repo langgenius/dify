@@ -1,26 +1,42 @@
 'use client'
 import { RiArrowRightUpLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import type { Plugin } from '@/app/components/plugins/types'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import Button from '@/app/components/base/button'
+import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
+import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
+import { useBoolean } from 'ahooks'
 
 type CardWrapperProps = {
   plugin: Plugin
   showInstallButton?: boolean
+  locale?: string
 }
 const CardWrapper = ({
   plugin,
   showInstallButton,
+  locale,
 }: CardWrapperProps) => {
-  const { t } = useTranslation()
+  const { t } = useMixedTranslation(locale)
+  const [isShowInstallFromMarketplace, {
+    setTrue: showInstallFromMarketplace,
+    setFalse: hideInstallFromMarketplace,
+  }] = useBoolean(false)
+
   return (
-    <div className='group relative rounded-xl cursor-pointer'>
+    <div
+      className='group relative rounded-xl cursor-pointer'
+      onClick={() => {
+        if (!showInstallButton)
+          window.open(`${MARKETPLACE_URL_PREFIX}/plugin/${plugin.org}/${plugin.name}`)
+      }}
+    >
       <Card
         key={plugin.name}
         payload={plugin}
+        locale={locale}
         footer={
           <CardMoreInfo
             downloadCount={plugin.install_count}
@@ -34,6 +50,7 @@ const CardWrapper = ({
             <Button
               variant='primary'
               className='flex-1'
+              onClick={showInstallFromMarketplace}
             >
               {t('plugin.detailPanel.operation.install')}
             </Button>
@@ -46,6 +63,16 @@ const CardWrapper = ({
               </a>
             </Button>
           </div>
+        )
+      }
+      {
+        isShowInstallFromMarketplace && (
+          <InstallFromMarketplace
+            manifest={plugin as any}
+            uniqueIdentifier={plugin.latest_package_identifier}
+            onClose={hideInstallFromMarketplace}
+            onSuccess={hideInstallFromMarketplace}
+          />
         )
       }
     </div>

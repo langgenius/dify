@@ -14,30 +14,26 @@ import {
 import Checkbox from '@/app/components/base/checkbox'
 import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
+import { useTags } from '@/app/components/plugins/hooks'
+import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 
 type TagsFilterProps = {
   tags: string[]
   onTagsChange: (tags: string[]) => void
   size: 'small' | 'large'
+  locale?: string
 }
 const TagsFilter = ({
   tags,
   onTagsChange,
   size,
+  locale,
 }: TagsFilterProps) => {
+  const { t } = useMixedTranslation(locale)
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const options = [
-    {
-      value: 'search',
-      text: 'Search',
-    },
-    {
-      value: 'image',
-      text: 'Image',
-    },
-  ]
-  const filteredOptions = options.filter(option => option.text.toLowerCase().includes(searchText.toLowerCase()))
+  const { tags: options, tagsMap } = useTags(t)
+  const filteredOptions = options.filter(option => option.label.toLowerCase().includes(searchText.toLowerCase()))
   const handleCheck = (id: string) => {
     if (tags.includes(id))
       onTagsChange(tags.filter((tag: string) => tag !== id))
@@ -73,10 +69,10 @@ const TagsFilter = ({
             size === 'small' && 'px-0.5 py-1',
           )}>
             {
-              !selectedTagsLength && 'All Tags'
+              !selectedTagsLength && t('pluginTags.allTags')
             }
             {
-              !!selectedTagsLength && tags.slice(0, 2).join(',')
+              !!selectedTagsLength && tags.map(tag => tagsMap[tag].label).slice(0, 2).join(',')
             }
             {
               selectedTagsLength > 2 && (
@@ -108,23 +104,23 @@ const TagsFilter = ({
               showLeftIcon
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder='Search tags'
+              placeholder={t('pluginTags.searchTags') || ''}
             />
           </div>
           <div className='p-1 max-h-[448px] overflow-y-auto'>
             {
               filteredOptions.map(option => (
                 <div
-                  key={option.value}
+                  key={option.name}
                   className='flex items-center px-2 py-1.5 h-7 rounded-lg cursor-pointer hover:bg-state-base-hover'
-                  onClick={() => handleCheck(option.value)}
+                  onClick={() => handleCheck(option.name)}
                 >
                   <Checkbox
                     className='mr-1'
-                    checked={tags.includes(option.value)}
+                    checked={tags.includes(option.name)}
                   />
                   <div className='px-1 system-sm-medium text-text-secondary'>
-                    {option.text}
+                    {option.label}
                   </div>
                 </div>
               ))

@@ -1,7 +1,9 @@
 import { RiArrowUpDoubleLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import { useMarketplace } from './hooks'
 import List from '@/app/components/plugins/marketplace/list'
 import Loading from '@/app/components/base/loading'
+import { getLocaleOnClient } from '@/i18n'
 
 type MarketplaceProps = {
   searchPluginText: string
@@ -13,6 +15,8 @@ const Marketplace = ({
   filterPluginTags,
   onMarketplaceScroll,
 }: MarketplaceProps) => {
+  const locale = getLocaleOnClient()
+  const { t } = useTranslation()
   const {
     isLoading,
     marketplaceCollections,
@@ -31,19 +35,19 @@ const Marketplace = ({
         <div className='flex items-center text-center body-md-regular text-text-tertiary'>
           Discover
           <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
-            models
+            {t('plugin.category.models')}
           </span>
           ,
           <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
-            tools
+            {t('plugin.category.tools')}
           </span>
           ,
           <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
-            extensions
+            {t('plugin.category.extensions')}
           </span>
           and
           <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
-            bundles
+            {t('plugin.category.bundles')}
           </span>
           in Dify Marketplace
         </div>
@@ -62,6 +66,7 @@ const Marketplace = ({
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
             plugins={plugins}
             showInstallButton
+            locale={locale}
           />
         )
       }

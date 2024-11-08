@@ -293,21 +293,23 @@ const ProviderDetail = ({
         <div className='pt-3'>
           {isDetailLoading && <div className='flex h-[200px]'><Loading type='app' /></div>}
           {/* Builtin type */}
-          {!isDetailLoading && (collection.type === CollectionType.builtIn) && needAuth && isAuthed && (
+          {!isDetailLoading && (collection.type === CollectionType.builtIn) && isAuthed && (
             <div className='mb-1 h-6 flex items-center justify-between text-text-secondary system-sm-semibold-uppercase'>
               {t('plugin.detailPanel.actionNum', { num: 3 })}
-              <Button
-                variant='secondary'
-                size='small'
-                onClick={() => {
-                  if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
-                    showSettingAuthModal()
-                }}
-                disabled={!isCurrentWorkspaceManager}
-              >
-                <Indicator className='mr-2' color={'green'} />
-                {t('tools.auth.authorized')}
-              </Button>
+              {needAuth && (
+                <Button
+                  variant='secondary'
+                  size='small'
+                  onClick={() => {
+                    if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
+                      showSettingAuthModal()
+                  }}
+                  disabled={!isCurrentWorkspaceManager}
+                >
+                  <Indicator className='mr-2' color={'green'} />
+                  {t('tools.auth.authorized')}
+                </Button>
+              )}
             </div>
           )}
           {!isDetailLoading && (collection.type === CollectionType.builtIn) && needAuth && !isAuthed && (

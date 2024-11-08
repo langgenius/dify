@@ -271,3 +271,5 @@ else if (globalThis.document?.body?.getAttribute('data-public-text-generation-ti
 export const TEXT_GENERATION_TIMEOUT_MS = textGenerationTimeoutMs
 
 export const DISABLE_UPLOAD_IMAGE_AS_ICON = process.env.NEXT_PUBLIC_DISABLE_UPLOAD_IMAGE_AS_ICON === 'true'
+
+export const GITHUB_ACCESS_TOKEN = process.env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN || globalThis.document?.body?.getAttribute('data-public-github-access-token') || ''

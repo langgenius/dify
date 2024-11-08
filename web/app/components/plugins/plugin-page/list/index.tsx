@@ -1,9 +1,9 @@
 import type { FC } from 'react'
 import PluginItem from '../../plugin-item'
-import type { InstalledPlugin } from '../../types'
+import type { PluginDetail } from '../../types'
 
 type IPluginListProps = {
-  pluginList: InstalledPlugin[]
+  pluginList: PluginDetail[]
 }
 
 const PluginList: FC<IPluginListProps> = ({ pluginList }) => {

@@ -25,4 +25,5 @@ export type ToolDefaultValue = {
   tool_name: string
   tool_label: string
   title: string
+  params: Record<string, any>
 }

@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
-import type { MetaData } from '../types'
+import { type MetaData, PluginSource } from '../types'
 import { RiDeleteBinLine, RiInformation2Line, RiLoopLeftLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
@@ -10,23 +10,31 @@ import ActionButton from '../../base/action-button'
 import Tooltip from '../../base/tooltip'
 import Confirm from '../../base/confirm'
 import { uninstallPlugin } from '@/service/plugins'
-import { usePluginPageContext } from '../plugin-page/context'
+import { useGitHubReleases } from '../install-plugin/hooks'
+import { compareVersion, getLatestVersion } from '@/utils/semver'
+import Toast from '@/app/components/base/toast'
+import { useModalContext } from '@/context/modal-context'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 
 const i18nPrefix = 'plugin.action'
 
 type Props = {
-  pluginId: string
+  author: string
+  installationId: string
   pluginName: string
+  version: string
   usedInApps: number
   isShowFetchNewVersion: boolean
   isShowInfo: boolean
   isShowDelete: boolean
   onDelete: () => void
-  meta: MetaData
+  meta?: MetaData
 }
 const Action: FC<Props> = ({
-  pluginId,
+  author,
+  installationId,
   pluginName,
+  version,
   isShowFetchNewVersion,
   isShowInfo,
   isShowDelete,
@@ -38,13 +46,54 @@ const Action: FC<Props> = ({
     setTrue: showPluginInfo,
     setFalse: hidePluginInfo,
   }] = useBoolean(false)
-  const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
   const [deleting, {
     setTrue: showDeleting,
     setFalse: hideDeleting,
   }] = useBoolean(false)
+  const { fetchReleases } = useGitHubReleases()
+  const { setShowUpdatePluginModal } = useModalContext()
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
-  const handleFetchNewVersion = () => { }
+  const handleFetchNewVersion = async () => {
+    try {
+      const fetchedReleases = await fetchReleases(author, pluginName)
+      if (fetchedReleases.length === 0)
+        return
+      const versions = fetchedReleases.map(release => release.tag_name)
+      const latestVersion = getLatestVersion(versions)
+      if (compareVersion(latestVersion, version) === 1) {
+        setShowUpdatePluginModal({
+          onSaveCallback: () => {
+            invalidateInstalledPluginList()
+          },
+          payload: {
+            type: PluginSource.github,
+            github: {
+              originalPackageInfo: {
+                id: installationId,
+                repo: meta!.repo,
+                version: meta!.version,
+                package: meta!.package,
+                releases: fetchedReleases,
+              },
+            },
+          },
+        })
+      }
+      else {
+        Toast.notify({
+          type: 'info',
+          message: 'No new version available',
+        })
+      }
+    }
+    catch {
+      Toast.notify({
+        type: 'error',
+        message: 'Failed to compare versions',
+      })
+    }
+  }
 
   const [isShowDeleteConfirm, {
     setTrue: showDeleteConfirm,
@@ -53,14 +102,13 @@ const Action: FC<Props> = ({
 
   const handleDelete = useCallback(async () => {
     showDeleting()
-    const res = await uninstallPlugin(pluginId)
+    const res = await uninstallPlugin(installationId)
     hideDeleting()
     if (res.success) {
       hideDeleteConfirm()
-      mutateInstalledPluginList()
       onDelete()
     }
-  }, [pluginId, onDelete])
+  }, [installationId, onDelete])
   return (
     <div className='flex space-x-1'>
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
@@ -99,9 +147,9 @@ const Action: FC<Props> = ({
 
       {isShowPluginInfo && (
         <PluginInfo
-          repository={meta.repo}
-          release={meta.version}
-          packageName={meta.package}
+          repository={meta!.repo}
+          release={meta!.version}
+          packageName={meta!.package}
           onHide={hidePluginInfo}
         />
       )}

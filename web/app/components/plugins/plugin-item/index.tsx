@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useMemo } from 'react'
-import { useContext } from 'use-context-selector'
 import {
   RiArrowRightUpLine,
   RiBugLine,
@@ -10,29 +9,34 @@ import {
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { usePluginPageContext } from '../plugin-page/context'
 import { Github } from '../../base/icons/src/public/common'
 import Badge from '../../base/badge'
-import { type InstalledPlugin, PluginSource } from '../types'
+import { type PluginDetail, PluginSource } from '../types'
 import CornerMark from '../card/base/corner-mark'
 import Description from '../card/base/description'
 import OrgInfo from '../card/base/org-info'
 import Title from '../card/base/title'
 import Action from './action'
 import cn from '@/utils/classnames'
-import I18n from '@/context/i18n'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
+import { useLanguage } from '../../header/account-setting/model-provider-page/hooks'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 
 type Props = {
   className?: string
-  plugin: InstalledPlugin
+  plugin: PluginDetail
 }
 
 const PluginItem: FC<Props> = ({
   className,
   plugin,
 }) => {
-  const { locale } = useContext(I18n)
+  const locale = useLanguage()
   const { t } = useTranslation()
+  const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
+  const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const {
     source,
@@ -40,27 +44,24 @@ const PluginItem: FC<Props> = ({
     installation_id,
     endpoints_active,
     meta,
+    plugin_id,
     version,
-    latest_version,
   } = plugin
   const { category, author, name, label, description, icon, verified } = plugin.declaration
-  // Only plugin installed from GitHub need to check if it's the new version
-  const hasNewVersion = useMemo(() => {
-    return source === PluginSource.github && latest_version !== version
-  }, [source, latest_version, version])
 
   const orgName = useMemo(() => {
     return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
   }, [source, author])
-
-  const tLocale = useMemo(() => {
-    return locale.replace('-', '_')
-  }, [locale])
   return (
-    <div className={`p-1 ${source === PluginSource.debugging
-      ? 'bg-[repeating-linear-gradient(-45deg,rgba(16,24,40,0.04),rgba(16,24,40,0.04)_5px,rgba(0,0,0,0.02)_5px,rgba(0,0,0,0.02)_10px)]'
-      : 'bg-background-section-burn'} 
-      rounded-xl`}
+    <div
+      className={cn(
+        'p-1 rounded-xl border-[1.5px] border-background-section-burn',
+        currentPluginDetail?.plugin_id === plugin_id && 'border-components-option-card-option-selected-border',
+        source === PluginSource.debugging
+          ? 'bg-[repeating-linear-gradient(-45deg,rgba(16,24,40,0.04),rgba(16,24,40,0.04)_5px,rgba(0,0,0,0.02)_5px,rgba(0,0,0,0.02)_10px)]'
+          : 'bg-background-section-burn',
+      )}
+      onClick={() => setCurrentPluginDetail(plugin)}
     >
       <div className={cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
         <CornerMark text={category} />
@@ -68,28 +69,35 @@ const PluginItem: FC<Props> = ({
         <div className="flex">
           <div className='flex items-center justify-center w-10 h-10 overflow-hidden border-components-panel-border-subtle border-[1px] rounded-xl'>
             <img
+              className='w-full h-full'
               src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${icon}`}
               alt={`plugin-${installation_id}-logo`}
             />
           </div>
           <div className="ml-3 w-0 grow">
             <div className="flex items-center h-5">
-              <Title title={label[tLocale]} />
+              <Title title={label[locale]} />
               {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
-              <Badge className='ml-1' text={plugin.version} hasRedCornerMark={hasNewVersion} />
+              <Badge className='ml-1' text={plugin.version} />
             </div>
             <div className='flex items-center justify-between'>
-              <Description text={description[tLocale]} descriptionLineRows={1}></Description>
-              <Action
-                pluginId={installation_id}
-                pluginName={label[tLocale]}
-                usedInApps={5}
-                isShowFetchNewVersion={hasNewVersion}
-                isShowInfo={source === PluginSource.github}
-                isShowDelete
-                meta={meta}
-                onDelete={() => {}}
-              />
+              <Description text={description[locale]} descriptionLineRows={1}></Description>
+              <div onClick={e => e.stopPropagation()}>
+                <Action
+                  installationId={installation_id}
+                  author={author}
+                  pluginName={name}
+                  version={version}
+                  usedInApps={5}
+                  isShowFetchNewVersion={source === PluginSource.github}
+                  isShowInfo={source === PluginSource.github}
+                  isShowDelete
+                  meta={meta}
+                  onDelete={() => {
+                    invalidateInstalledPluginList()
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>
@@ -112,7 +120,7 @@ const PluginItem: FC<Props> = ({
         <div className='flex items-center'>
           {source === PluginSource.github
             && <>
-              <a href={meta.repo} target='_blank' className='flex items-center gap-1'>
+              <a href={`https://github.com/${meta!.repo}`} target='_blank' className='flex items-center gap-1'>
                 <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('plugin.from')}</div>
                 <div className='flex items-center space-x-0.5 text-text-secondary'>
                   <Github className='w-3 h-3' />

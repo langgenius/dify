@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react'
 import {
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -9,20 +10,24 @@ import {
   createContext,
   useContextSelector,
 } from 'use-context-selector'
-import type { InstalledPlugin, Permissions } from '../types'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
+import type { Permissions, PluginDetail } from '../types'
 import type { FilterState } from './filter-management'
 import { PermissionType } from '../types'
-import { fetchInstalledPluginList } from '@/service/plugins'
-import useSWR from 'swr'
+import { useTranslation } from 'react-i18next'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 
 export type PluginPageContextValue = {
   containerRef: React.RefObject<HTMLDivElement>
   permissions: Permissions
   setPermissions: (permissions: PluginPageContextValue['permissions']) => void
-  installedPluginList: InstalledPlugin[]
-  mutateInstalledPluginList: () => void
+  currentPluginDetail: PluginDetail | undefined
+  setCurrentPluginDetail: (plugin: PluginDetail) => void
   filters: FilterState
   setFilters: (filter: FilterState) => void
+  activeTab: string
+  setActiveTab: (tab: string) => void
+  options: Array<{ value: string, text: string }>
 }
 
 export const PluginPageContext = createContext<PluginPageContextValue>({
@@ -31,15 +36,18 @@ export const PluginPageContext = createContext<PluginPageContextValue>({
     install_permission: PermissionType.noOne,
     debug_permission: PermissionType.noOne,
   },
-  setPermissions: () => { },
-  installedPluginList: [],
-  mutateInstalledPluginList: () => {},
+  setPermissions: () => {},
+  currentPluginDetail: undefined,
+  setCurrentPluginDetail: () => {},
   filters: {
     categories: [],
     tags: [],
     searchQuery: '',
   },
   setFilters: () => {},
+  activeTab: '',
+  setActiveTab: () => {},
+  options: [],
 })
 
 type PluginPageContextProviderProps = {
@@ -53,6 +61,7 @@ export function usePluginPageContext(selector: (value: PluginPageContextValue) =
 export const PluginPageContextProvider = ({
   children,
 }: PluginPageContextProviderProps) => {
+  const { t } = useTranslation()
   const containerRef = useRef<HTMLDivElement>(null)
   const [permissions, setPermissions] = useState<PluginPageContextValue['permissions']>({
     install_permission: PermissionType.noOne,
@@ -63,7 +72,22 @@ export const PluginPageContextProvider = ({
     tags: [],
     searchQuery: '',
   })
-  const { data, mutate: mutateInstalledPluginList } = useSWR({ url: '/workspaces/current/plugin/list' }, fetchInstalledPluginList)
+  const [currentPluginDetail, setCurrentPluginDetail] = useState<PluginDetail | undefined>()
+
+  const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
+  const options = useMemo(() => {
+    return [
+      { value: 'plugins', text: t('common.menus.plugins') },
+      ...(
+        enable_marketplace
+          ? [{ value: 'discover', text: 'Explore Marketplace' }]
+          : []
+      ),
+    ]
+  }, [t, enable_marketplace])
+  const [activeTab, setActiveTab] = useTabSearchParams({
+    defaultTab: options[0].value,
+  })
 
   return (
     <PluginPageContext.Provider
@@ -71,10 +95,13 @@ export const PluginPageContextProvider = ({
         containerRef,
         permissions,
         setPermissions,
-        installedPluginList: data?.plugins || [],
-        mutateInstalledPluginList,
+        currentPluginDetail,
+        setCurrentPluginDetail,
         filters,
         setFilters,
+        activeTab,
+        setActiveTab,
+        options,
       }}
     >
       {children}

@@ -2,7 +2,7 @@
 import React from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowRightUpLine, RiVerifiedBadgeLine } from '@remixicon/react'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import Badge from '../base/badge'
 import type { Plugin } from './types'
 import Description from './card/base/description'
@@ -12,7 +12,9 @@ import DownloadCount from './card/base/download-count'
 import Button from '@/app/components/base/button'
 import { useGetLanguage } from '@/context/i18n'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
+import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import cn from '@/utils/classnames'
+import { useBoolean } from 'ahooks'
 
 type Props = {
   className?: string
@@ -24,6 +26,10 @@ const ProviderCard: FC<Props> = ({
   payload,
 }) => {
   const { t } = useTranslation()
+  const [isShowInstallFromMarketplace, {
+    setTrue: showInstallFromMarketplace,
+    setFalse: hideInstallFromMarketplace,
+  }] = useBoolean(false)
   const language = useGetLanguage()
   const { org, label } = payload
 
@@ -35,7 +41,7 @@ const ProviderCard: FC<Props> = ({
         <div className="ml-3 w-0 grow">
           <div className="flex items-center h-5">
             <Title title={label[language]} />
-            <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />
+            {/* <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" /> */}
           </div>
           <div className='mb-1 flex justify-between items-center h-4'>
             <div className='flex items-center'>
@@ -58,6 +64,7 @@ const ProviderCard: FC<Props> = ({
         <Button
           className='flex-grow'
           variant='primary'
+          onClick={showInstallFromMarketplace}
         >
           {t('plugin.detailPanel.operation.install')}
         </Button>
@@ -71,6 +78,16 @@ const ProviderCard: FC<Props> = ({
           </a>
         </Button>
       </div>
+      {
+        isShowInstallFromMarketplace && (
+          <InstallFromMarketplace
+            manifest={payload as any}
+            uniqueIdentifier={payload.latest_package_identifier}
+            onClose={hideInstallFromMarketplace}
+            onSuccess={hideInstallFromMarketplace}
+          />
+        )
+      }
     </div>
   )
 }

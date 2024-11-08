@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import {
   RiDragDropLine,
   RiEqualizer2Line,
-  RiInstallFill,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
@@ -17,8 +16,8 @@ import InstallPluginDropdown from './install-plugin-dropdown'
 import { useUploader } from './use-uploader'
 import usePermission from './use-permission'
 import DebugInfo from './debug-info'
-import { usePluginTasks } from './hooks'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
+import { usePluginTasksStore } from './store'
+import InstallInfo from './install-info'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
@@ -100,22 +99,11 @@ const PluginPage = ({
   }] = useBoolean()
   const [currentFile, setCurrentFile] = useState<File | null>(null)
   const containerRef = usePluginPageContext(v => v.containerRef)
+  const options = usePluginPageContext(v => v.options)
+  const [activeTab, setActiveTab] = usePluginPageContext(v => [v.activeTab, v.setActiveTab])
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
   const [installed, total] = [2, 3] // Replace this with the actual progress
   const progressPercentage = (installed / total) * 100
-  const options = useMemo(() => {
-    return [
-      { value: 'plugins', text: t('common.menus.plugins') },
-      ...(
-        enable_marketplace
-          ? [{ value: 'discover', text: 'Explore Marketplace' }]
-          : []
-      ),
-    ]
-  }, [t, enable_marketplace])
-  const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: options[0].value,
-  })
 
   const uploaderProps = useUploader({
     onFileChange: setCurrentFile,
@@ -125,10 +113,15 @@ const PluginPage = ({
 
   const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
 
-  const { pluginTasks } = usePluginTasks()
+  const setPluginTasksWithPolling = usePluginTasksStore(s => s.setPluginTasksWithPolling)
+
+  useEffect(() => {
+    setPluginTasksWithPolling()
+  }, [setPluginTasksWithPolling])
 
   return (
     <div
+      id='marketplace-container'
       ref={containerRef}
       className={cn('grow relative flex flex-col overflow-y-auto border-t border-divider-subtle', activeTab === 'plugins'
         ? 'rounded-t-xl bg-components-panel-bg'
@@ -149,22 +142,7 @@ const PluginPage = ({
             />
           </div>
           <div className='flex flex-shrink-0 items-center gap-1'>
-            <div className='relative'>
-              <Button
-                className='relative overflow-hidden border !border-[rgba(178,202,255,1)] !bg-[rgba(255,255,255,0.95)] cursor-default'
-              >
-                <div
-                  className='absolute left-0 top-0 h-full bg-state-accent-active'
-                  style={{ width: `${progressPercentage}%` }}
-                ></div>
-                <div className='relative z-10 flex items-center'>
-                  <RiInstallFill className='w-4 h-4 text-text-accent' />
-                  <div className='flex px-0.5 justify-center items-center gap-1'>
-                    <span className='text-text-accent system-sm-medium'>{activeTab === 'plugins' ? `Installing ${installed}/${total} plugins` : `${installed}/${total}`}</span>
-                  </div>
-                </div>
-              </Button>
-            </div>
+            <InstallInfo />
             {canManagement && (
               <InstallPluginDropdown
                 onSwitchToMarketplaceTab={() => setActiveTab('discover')}

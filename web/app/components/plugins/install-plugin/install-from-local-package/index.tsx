@@ -9,7 +9,7 @@ import Install from './steps/install'
 import Installed from '../base/installed'
 import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
-import { usePluginPageContext } from '../../plugin-page/context'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -29,7 +29,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
   const [manifest, setManifest] = useState<PluginDeclaration | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const mutateInstalledPluginList = usePluginPageContext(v => v.mutateInstalledPluginList)
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
@@ -40,7 +40,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       return t(`${i18nPrefix}.installFailed`)
 
     return t(`${i18nPrefix}.installPlugin`)
-  }, [step])
+  }, [step, t])
 
   const { getIconUrl } = useGetIcon()
 
@@ -59,7 +59,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       icon,
     })
     setStep(InstallStep.readyToInstall)
-  }, [])
+  }, [getIconUrl])
 
   const handleUploadFail = useCallback((errorMsg: string) => {
     setErrorMsg(errorMsg)
@@ -67,9 +67,9 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   }, [])
 
   const handleInstalled = useCallback(() => {
-    mutateInstalledPluginList()
+    invalidateInstalledPluginList()
     setStep(InstallStep.installed)
-  }, [mutateInstalledPluginList])
+  }, [invalidateInstalledPluginList])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     setStep(InstallStep.installFailed)

@@ -44,6 +44,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
+import { correctProvider } from '@/utils'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -324,7 +325,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   })?.name ?? 'custom'
 
   const modelName = (detail.model_config as any).model?.name
-  const provideName = (detail.model_config as any).model?.provider as any
+  const provideName = correctProvider((detail.model_config as any).model?.provider as any)
   const {
     currentModel,
     currentProvider,

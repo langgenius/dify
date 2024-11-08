@@ -10,6 +10,7 @@ import { RiLoader2Line } from '@remixicon/react'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { installPackageFromLocal } from '@/service/plugins'
 import checkTaskStatus from '../../base/check-task-status'
+import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/store'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -17,6 +18,7 @@ type Props = {
   uniqueIdentifier: string
   payload: PluginDeclaration
   onCancel: () => void
+  onStartToInstall?: () => void
   onInstalled: () => void
   onFailed: (message?: string) => void
 }
@@ -25,6 +27,7 @@ const Installed: FC<Props> = ({
   uniqueIdentifier,
   payload,
   onCancel,
+  onStartToInstall,
   onInstalled,
   onFailed,
 }) => {
@@ -40,9 +43,12 @@ const Installed: FC<Props> = ({
     onCancel()
   }
 
+  const setPluginTasksWithPolling = usePluginTasksStore(s => s.setPluginTasksWithPolling)
   const handleInstall = async () => {
     if (isInstalling) return
     setIsInstalling(true)
+    onStartToInstall?.()
+
     try {
       const {
         all_installed: isInstalled,
@@ -52,6 +58,7 @@ const Installed: FC<Props> = ({
         onInstalled()
         return
       }
+      setPluginTasksWithPolling()
       await check({
         taskId,
         pluginUniqueIdentifier: uniqueIdentifier,

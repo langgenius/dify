@@ -1,4 +1,5 @@
 import {
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -14,9 +15,10 @@ import ViewTypeSelect, { ViewType } from './view-type-select'
 import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
 import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
-import { extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/card/card-mock'
 import ActionButton from '../../base/action-button'
 import { RiAddLine } from '@remixicon/react'
+import { PluginType } from '../../plugins/types'
+import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 
 type AllToolsProps = {
   className?: string
@@ -26,6 +28,8 @@ type AllToolsProps = {
   workflowTools: ToolWithProvider[]
   onSelect: OnSelectBlock
   supportAddCustomTool?: boolean
+  onAddedCustomTool?: () => void
+  onShowAddCustomCollectionModal?: () => void
 }
 const AllTools = ({
   className,
@@ -35,6 +39,7 @@ const AllTools = ({
   workflowTools,
   customTools,
   supportAddCustomTool,
+  onShowAddCustomCollectionModal,
 }: AllToolsProps) => {
   const language = useGetLanguage()
   const tabs = useToolTabs()
@@ -58,6 +63,21 @@ const AllTools = ({
       })
     })
   }, [activeTab, buildInTools, customTools, workflowTools, searchText, language])
+
+  const {
+    queryPluginsWithDebounced: fetchPlugins,
+    plugins: notInstalledPlugins = [],
+  } = useMarketplacePlugins()
+
+  useEffect(() => {
+    if (searchText) {
+      fetchPlugins({
+        query: searchText,
+        category: PluginType.tool,
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchText])
 
   const pluginRef = useRef(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
@@ -84,9 +104,15 @@ const AllTools = ({
         </div>
         <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
         {supportAddCustomTool && (
-          <ActionButton>
-            <RiAddLine className='w-4 h-4' />
-          </ActionButton>
+          <div className='flex items-center'>
+            <div className='mr-1.5 w-px h-3.5  bg-divider-regular'></div>
+            <ActionButton
+              className='bg-components-button-primary-bg hover:bg-components-button-primary-bg text-components-button-primary-text hover:text-components-button-primary-text'
+              onClick={onShowAddCustomCollectionModal}
+            >
+              <RiAddLine className='w-4 h-4' />
+            </ActionButton>
+          </div>
         )}
       </div>
       <div
@@ -103,7 +129,7 @@ const AllTools = ({
         {/* Plugins from marketplace */}
         <PluginList
           wrapElemRef={wrapElemRef}
-          list={[toolNotion, extensionDallE, modelGPT4] as any} ref={pluginRef}
+          list={notInstalledPlugins as any} ref={pluginRef}
           searchText={searchText}
         />
       </div>

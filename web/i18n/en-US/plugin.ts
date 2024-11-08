@@ -1,9 +1,17 @@
 const translation = {
+  category: {
+    models: 'models',
+    tools: 'tools',
+    extensions: 'extensions',
+    bundles: 'bundles',
+  },
+  searchPlugins: 'Search plugins',
   from: 'From',
   findMoreInMarketplace: 'Find more in Marketplace',
   searchInMarketplace: 'Search in Marketplace',
   fromMarketplace: 'From Marketplace',
   endpointsEnabled: '{{num}} sets of endpoints enabled',
+  searchTools: 'Search tools...',
   detailPanel: {
     categoryTip: {
       marketplace: 'Installed from Marketplace',
@@ -85,6 +93,10 @@ const translation = {
   },
   installFromGitHub: {
     installPlugin: 'Install plugin from GitHub',
+    updatePlugin: 'Update plugin from GitHub',
+    installedSuccessfully: 'Installation successful',
+    installFailed: 'Installation failed',
+    uploadFailed: 'Upload failed',
     gitHubRepo: 'GitHub repository',
     selectVersion: 'Select version',
     selectVersionPlaceholder: 'Please select a version',

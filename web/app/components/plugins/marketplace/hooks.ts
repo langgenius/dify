@@ -2,6 +2,7 @@ import {
   useCallback,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
 import type { Plugin } from '../types'
 import type {
@@ -13,6 +14,7 @@ import {
   getMarketplaceCollectionsAndPlugins,
   getMarketplacePlugins,
 } from './utils'
+import i18n from '@/i18n/i18next-config'
 
 export const useMarketplaceCollectionsAndPlugins = () => {
   const [isLoading, setIsLoading] = useState(false)
@@ -40,7 +42,7 @@ export const useMarketplaceCollectionsAndPlugins = () => {
 
 export const useMarketplacePlugins = () => {
   const [isLoading, setIsLoading] = useState(false)
-  const [plugins, setPlugins] = useState<Plugin[]>([])
+  const [plugins, setPlugins] = useState<Plugin[]>()
 
   const queryPlugins = useCallback(async (query: PluginsSearchParams) => {
     setIsLoading(true)
@@ -61,5 +63,16 @@ export const useMarketplacePlugins = () => {
     queryPluginsWithDebounced,
     isLoading,
     setIsLoading,
+  }
+}
+
+export const useMixedTranslation = (localeFromOuter?: string) => {
+  let t = useTranslation().t
+
+  if (localeFromOuter)
+    t = i18n.getFixedT(localeFromOuter)
+
+  return {
+    t,
   }
 }

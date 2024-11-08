@@ -20,7 +20,8 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
-logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
+logging.basicConfig(level=logging.INFO,
+                    format="%(asctime)s - %(levelname)s - %(message)s")
 logging.getLogger("lindorm").setLevel(logging.WARN)
 
 
@@ -76,7 +77,8 @@ class LindormVectorStore(BaseVector):
         @retry(stop=stop_after_attempt(3), wait=wait_fixed(60))
         def __fetch_existing_ids(batch_ids: list[str]) -> set[str]:
             try:
-                existing_docs = self._client.mget(index=self._collection_name, body={"ids": batch_ids}, _source=False)
+                existing_docs = self._client.mget(index=self._collection_name, body={
+                                                  "ids": batch_ids}, _source=False)
                 return {doc["_id"] for doc in existing_docs["docs"] if doc["found"]}
             except Exception as e:
                 logger.exception(f"Error fetching batch {batch_ids}: {e}")
@@ -88,7 +90,8 @@ class LindormVectorStore(BaseVector):
                 existing_docs = self._client.mget(
                     body={
                         "docs": [
-                            {"_index": self._collection_name, "_id": id, "routing": routing}
+                            {"_index": self._collection_name,
+                                "_id": id, "routing": routing}
                             for id, routing in zip(batch_ids, route_ids)
                         ]
                     },
@@ -112,12 +115,13 @@ class LindormVectorStore(BaseVector):
         def batch(iterable, n):
             length = len(iterable)
             for idx in range(0, length, n):
-                yield iterable[idx : min(idx + n, length)]
+                yield iterable[idx: min(idx + n, length)]
 
         for ids_batch, texts_batch, metadatas_batch in zip(
             batch(ids, bulk_size),
             batch(texts, bulk_size),
-            batch(metadatas, bulk_size) if metadatas is not None else batch([None] * len(ids), bulk_size),
+            batch(metadatas, bulk_size) if metadatas is not None else batch(
+                [None] * len(ids), bulk_size),
         ):
             existing_ids_set = __fetch_existing_ids(ids_batch)
             for text, metadata, doc_id in zip(texts_batch, metadatas_batch, ids_batch):
@@ -139,7 +143,8 @@ class LindormVectorStore(BaseVector):
                 "_id": uuids[i],
                 "_source": {
                     Field.CONTENT_KEY.value: documents[i].page_content,
-                    Field.VECTOR.value: embeddings[i],  # Make sure you pass an array here
+                    # Make sure you pass an array here
+                    Field.VECTOR.value: embeddings[i],
                     Field.METADATA_KEY.value: documents[i].metadata,
                 },
             }
@@ -148,7 +153,8 @@ class LindormVectorStore(BaseVector):
         self.refresh()
 
     def get_ids_by_metadata_field(self, key: str, value: str):
-        query = {"query": {"term": {f"{Field.METADATA_KEY.value}.{key}.keyword": value}}}
+        query = {
+            "query": {"term": {f"{Field.METADATA_KEY.value}.{key}.keyword": value}}}
         response = self._client.search(index=self._collection_name, body=query)
         if response["hits"]["hits"]:
             return [hit["_id"] for hit in response["hits"]["hits"]]
@@ -157,7 +163,8 @@ class LindormVectorStore(BaseVector):
 
     def delete_by_metadata_field(self, key: str, value: str):
         query_str = {"query": {"match": {f"metadata.{key}": f"{value}"}}}
-        results = self._client.search(index=self._collection_name, body=query_str)
+        results = self._client.search(
+            index=self._collection_name, body=query_str)
         ids = [hit["_id"] for hit in results["hits"]["hits"]]
         if ids:
             self.delete_by_ids(ids)
@@ -167,15 +174,18 @@ class LindormVectorStore(BaseVector):
             if self._client.exists(index=self._collection_name, id=id):
                 self._client.delete(index=self._collection_name, id=id)
             else:
-                logger.warning(f"DELETE BY ID: ID {id} does not exist in the index.")
+                logger.warning(
+                    f"DELETE BY ID: ID {id} does not exist in the index.")
 
     def delete(self) -> None:
         try:
             if self._client.indices.exists(index=self._collection_name):
-                self._client.indices.delete(index=self._collection_name, params={"timeout": 60})
+                self._client.indices.delete(
+                    index=self._collection_name, params={"timeout": 60})
                 logger.info("Delete index success")
             else:
-                logger.warning(f"Index '{self._collection_name}' does not exist. No deletion performed.")
+                logger.warning(
+                    f"Index '{self._collection_name}' does not exist. No deletion performed.")
         except Exception as e:
             logger.exception(f"Error occurred while deleting the index: {e}")
             raise e
@@ -197,9 +207,11 @@ class LindormVectorStore(BaseVector):
             raise ValueError("All elements in query_vector should be floats")
 
         top_k = kwargs.get("top_k", 10)
-        query = default_vector_search_query(query_vector=query_vector, k=top_k, **kwargs)
+        query = default_vector_search_query(
+            query_vector=query_vector, k=top_k, **kwargs)
         try:
-            response = self._client.search(index=self._collection_name, body=query)
+            response = self._client.search(
+                index=self._collection_name, body=query)
         except Exception as e:
             logger.exception(f"Error executing search: {e}")
             raise
@@ -244,7 +256,8 @@ class LindormVectorStore(BaseVector):
             filters=filters,
             routing=routing,
         )
-        response = self._client.search(index=self._collection_name, body=full_text_query)
+        response = self._client.search(
+            index=self._collection_name, body=full_text_query)
         docs = []
         for hit in response["hits"]["hits"]:
             docs.append(
@@ -262,7 +275,8 @@ class LindormVectorStore(BaseVector):
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
             if redis_client.get(collection_exist_cache_key):
-                logger.info(f"Collection {self._collection_name} already exists.")
+                logger.info(
+                    f"Collection {self._collection_name} already exists.")
                 return
             if self._client.indices.exists(index=self._collection_name):
                 logger.info("{self._collection_name.lower()} already exists.")
@@ -281,10 +295,13 @@ class LindormVectorStore(BaseVector):
             hnsw_ef_construction = kwargs.pop("hnsw_ef_construction", 500)
             ivfpq_m = kwargs.pop("ivfpq_m", dimension)
             nlist = kwargs.pop("nlist", 1000)
-            centroids_use_hnsw = kwargs.pop("centroids_use_hnsw", True if nlist >= 5000 else False)
+            centroids_use_hnsw = kwargs.pop(
+                "centroids_use_hnsw", True if nlist >= 5000 else False)
             centroids_hnsw_m = kwargs.pop("centroids_hnsw_m", 24)
-            centroids_hnsw_ef_construct = kwargs.pop("centroids_hnsw_ef_construct", 500)
-            centroids_hnsw_ef_search = kwargs.pop("centroids_hnsw_ef_search", 100)
+            centroids_hnsw_ef_construct = kwargs.pop(
+                "centroids_hnsw_ef_construct", 500)
+            centroids_hnsw_ef_search = kwargs.pop(
+                "centroids_hnsw_ef_search", 100)
             mapping = default_text_mapping(
                 dimension,
                 method_name,
@@ -303,7 +320,8 @@ class LindormVectorStore(BaseVector):
                 centroids_hnsw_ef_search=centroids_hnsw_ef_search,
                 **kwargs,
             )
-            self._client.indices.create(index=self._collection_name.lower(), body=mapping)
+            self._client.indices.create(
+                index=self._collection_name.lower(), body=mapping)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
             # logger.info(f"create index success: {self._collection_name}")
 
@@ -364,7 +382,8 @@ def default_text_mapping(dimension: int, method_name: str, **kwargs: Any) -> dic
     }
 
     if excludes_from_source:
-        mapping["mappings"]["_source"] = {"excludes": excludes_from_source}  # e.g. {"excludes": ["vector_field"]}
+        # e.g. {"excludes": ["vector_field"]}
+        mapping["mappings"]["_source"] = {"excludes": excludes_from_source}
 
     if method_name == "ivfpq" and routing_field is not None:
         mapping["settings"]["index"]["knn_routing"] = True
@@ -405,7 +424,8 @@ def default_text_search_query(
     # build complex search_query when either of must/must_not/should/filter is specified
     if must:
         if not isinstance(must, list):
-            raise RuntimeError(f"unexpected [must] clause with {type(filters)}")
+            raise RuntimeError(
+                f"unexpected [must] clause with {type(filters)}")
         if query_clause not in must:
             must.append(query_clause)
     else:
@@ -415,19 +435,22 @@ def default_text_search_query(
 
     if must_not:
         if not isinstance(must_not, list):
-            raise RuntimeError(f"unexpected [must_not] clause with {type(filters)}")
+            raise RuntimeError(
+                f"unexpected [must_not] clause with {type(filters)}")
         boolean_query["must_not"] = must_not
 
     if should:
         if not isinstance(should, list):
-            raise RuntimeError(f"unexpected [should] clause with {type(filters)}")
+            raise RuntimeError(
+                f"unexpected [should] clause with {type(filters)}")
         boolean_query["should"] = should
         if minimum_should_match != 0:
             boolean_query["minimum_should_match"] = minimum_should_match
 
     if filters:
         if not isinstance(filters, list):
-            raise RuntimeError(f"unexpected [filter] clause with {type(filters)}")
+            raise RuntimeError(
+                f"unexpected [filter] clause with {type(filters)}")
         boolean_query["filter"] = filters
 
     search_query = {"size": k, "query": {"bool": boolean_query}}
@@ -471,8 +494,10 @@ def default_vector_search_query(
 
     if filters is not None:
         # when using filter, transform filter from List[Dict] to Dict as valid format
-        filters = {"bool": {"must": filters}} if len(filters) > 1 else filters[0]
-        search_query["query"]["knn"][vector_field]["filter"] = filters  # filter should be Dict
+        filters = {"bool": {"must": filters}} if len(
+            filters) > 1 else filters[0]
+        # filter should be Dict
+        search_query["query"]["knn"][vector_field]["filter"] = filters
         if filter_type:
             final_ext["lvector"]["filter_type"] = filter_type
 
@@ -489,7 +514,8 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.LINDORM, collection_name))
+            dataset.index_struct = json.dumps(
+                self.gen_index_struct_dict(VectorType.LINDORM, collection_name))
         lindorm_config = LindormVectorStoreConfig(
             hosts=dify_config.LINDORM_URL,
             username=dify_config.LINDORM_USERNAME,

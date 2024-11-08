@@ -369,42 +369,8 @@ const baseFetch = <T>(
           if (!/^(2|3)\d{2}$/.test(String(res.status))) {
             const bodyJson = res.json()
             switch (res.status) {
-              case 401: {
-                if (isMarketplaceAPI)
-                  return
-
-                if (isPublicAPI) {
-                  return bodyJson.then((data: ResponseError) => {
-                    if (data.code === 'web_sso_auth_required')
-                      requiredWebSSOLogin()
-
-                    if (data.code === 'unauthorized') {
-                      removeAccessToken()
-                      globalThis.location.reload()
-                    }
-
-                    return Promise.reject(data)
-                  })
-                }
-                const loginUrl = `${globalThis.location.origin}/signin`
-                bodyJson.then((data: ResponseError) => {
-                  if (data.code === 'init_validate_failed' && IS_CE_EDITION && !silent)
-                    Toast.notify({ type: 'error', message: data.message, duration: 4000 })
-                  else if (data.code === 'not_init_validated' && IS_CE_EDITION)
-                    globalThis.location.href = `${globalThis.location.origin}/init`
-                  else if (data.code === 'not_setup' && IS_CE_EDITION)
-                    globalThis.location.href = `${globalThis.location.origin}/install`
-                  else if (location.pathname !== '/signin' || !IS_CE_EDITION)
-                    globalThis.location.href = loginUrl
-                  else if (!silent)
-                    Toast.notify({ type: 'error', message: data.message })
-                }).catch(() => {
-                  // Handle any other errors
-                  globalThis.location.href = loginUrl
-                })
-
-                break
-              }
+              case 401:
+                return Promise.reject(resClone)
               case 403:
                 bodyJson.then((data: ResponseError) => {
                   if (!silent)

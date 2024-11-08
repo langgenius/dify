@@ -17,7 +17,7 @@ const PluginsNav = ({
     <Link href="/plugins" className={classNames(
       className, 'group',
     )}>
-      <div className='flex flex-row p-1.5 gap-0.5 items-center justify-center rounded-xl system-xs-medium-uppercase hover:bg-state-base-hover text-text-tertiary hover:text-text-secondary'>
+      <div className='flex flex-row h-8 p-1.5 gap-0.5 items-center justify-center rounded-xl system-sm-medium-uppercase hover:bg-state-base-hover text-text-tertiary hover:text-text-secondary'>
         <div className='flex w-4 h-4 justify-center items-center'>
           <Group />
         </div>

@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { Fragment, useEffect, useState } from 'react'
 import { Combobox, Listbox, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import Badge from '../badge/index'
 import { useTranslation } from 'react-i18next'
 import classNames from '@/utils/classnames'
 import {
@@ -289,6 +290,7 @@ type PortalSelectProps = {
   onSelect: (value: Item) => void
   items: Item[]
   placeholder?: string
+  installedValue?: string | number
   renderTrigger?: (value?: Item) => JSX.Element | null
   triggerClassName?: string
   triggerClassNameFn?: (open: boolean) => string
@@ -302,6 +304,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
   onSelect,
   items,
   placeholder,
+  installedValue,
   renderTrigger,
   triggerClassName,
   triggerClassNameFn,
@@ -313,7 +316,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const localPlaceholder = placeholder || t('common.placeholder.select')
-  const selectedItem = items.find(item => item.value === value)
+  const selectedItem = value ? items.find(item => item.value === value) : undefined
 
   return (
     <PortalToFollowElem
@@ -328,19 +331,20 @@ const PortalSelect: FC<PortalSelectProps> = ({
           : (
             <div
               className={classNames(`
-            flex items-center justify-between px-2.5 h-9 rounded-lg border-0 bg-gray-100 text-sm ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'} 
+            group flex items-center justify-between px-2.5 h-9 rounded-lg border-0 bg-components-input-bg-normal hover:bg-state-base-hover-alt text-sm ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'} 
           `, triggerClassName, triggerClassNameFn?.(open))}
               title={selectedItem?.name}
             >
               <span
                 className={`
               grow truncate
-              ${!selectedItem?.name && 'text-gray-400'}
+              ${!selectedItem?.name && 'text-components-input-text-placeholder'}
             `}
               >
                 {selectedItem?.name ?? localPlaceholder}
               </span>
-              <ChevronDownIcon className='shrink-0 h-4 w-4 text-gray-400' />
+              <div className='mx-0.5'>{installedValue && selectedItem && selectedItem.value !== installedValue && <Badge>{installedValue} {'->'} {selectedItem.value} </Badge>}</div>
+              <ChevronDownIcon className='shrink-0 h-4 w-4 text-text-quaternary group-hover:text-text-secondary' />
             </div>
           )}
 
@@ -353,8 +357,8 @@ const PortalSelect: FC<PortalSelectProps> = ({
             <div
               key={item.value}
               className={`
-                flex items-center justify-between px-2.5 h-9 cursor-pointer rounded-lg hover:bg-gray-100 text-gray-700
-                ${item.value === value && 'bg-gray-100'}
+                flex items-center justify-between px-2.5 h-9 cursor-pointer rounded-lg hover:bg-state-base-hover text-text-secondary
+                ${item.value === value && 'bg-state-base-hover'}
               `}
               title={item.name}
               onClick={() => {
@@ -366,7 +370,10 @@ const PortalSelect: FC<PortalSelectProps> = ({
                 className='w-0 grow truncate'
                 title={item.name}
               >
-                {item.name}
+                <span className='truncate'>{item.name}</span>
+                {item.value === installedValue && (
+                  <Badge uppercase={true} className='shrink-0 ml-1'>INSTALLED</Badge>
+                )}
               </span>
               {!hideChecked && item.value === value && (
                 <CheckIcon className='shrink-0 h-4 w-4 text-text-accent' />
