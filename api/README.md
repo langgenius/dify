@@ -37,7 +37,7 @@
 5. Install dependencies
 
    ```bash
-   poetry env use 3.10
+   poetry env use 3.12
    poetry install
    ```
 
@@ -84,5 +84,3 @@
    ```bash
    poetry run -C api bash dev/pytest/pytest_all_tests.sh
    ```
-
-
