@@ -12,11 +12,13 @@ from .message_entities import (
     TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
+    VideoPromptMessageContent,
 )
 from .model_entities import ModelPropertyKey
 
 __all__ = [
     "ImagePromptMessageContent",
+    "VideoPromptMessageContent",
     "PromptMessage",
     "PromptMessageRole",
     "LLMUsage",
