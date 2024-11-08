@@ -62,11 +62,11 @@ class ConversationDetailApi(Resource):
         conversation_id = str(c_id)
 
         try:
-            return ConversationService.delete(app_model, conversation_id, end_user)
+            ConversationService.delete(app_model, conversation_id, end_user)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-
-
+        return {"result": "success"}, 200
+    
 class ConversationRenameApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     @marshal_with(simple_conversation_fields)
