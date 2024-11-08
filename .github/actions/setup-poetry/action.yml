@@ -19,9 +19,9 @@ runs:
   steps:
     - name: Set up Python ${{ inputs.python-version }}
       uses: actions/setup-python@v5
-      cache: pip
       with:
         python-version: ${{ inputs.python-version }}
+        cache: pip
 
     - name: Install Poetry
       shell: bash
