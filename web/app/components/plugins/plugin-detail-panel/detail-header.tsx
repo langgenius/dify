@@ -13,6 +13,8 @@ import Description from '../card/base/description'
 import Icon from '../card/base/card-icon'
 import Title from '../card/base/title'
 import OrgInfo from '../card/base/org-info'
+import { useGitHubReleases } from '../install-plugin/hooks'
+import { compareVersion, getLatestVersion } from '@/utils/semver'
 import OperationDropdown from './operation-dropdown'
 import PluginInfo from '@/app/components/plugins/plugin-page/plugin-info'
 import ActionButton from '@/app/components/base/action-button'
@@ -20,10 +22,13 @@ import Button from '@/app/components/base/button'
 import Badge from '@/app/components/base/badge'
 import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
+import Toast from '@/app/components/base/toast'
 import { BoxSparkleFill } from '@/app/components/base/icons/src/vender/plugin'
 import { Github } from '@/app/components/base/icons/src/public/common'
 import { uninstallPlugin } from '@/service/plugins'
 import { useGetLanguage } from '@/context/i18n'
+import { useModalContext } from '@/context/modal-context'
+
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 
@@ -32,16 +37,18 @@ const i18nPrefix = 'plugin.action'
 type Props = {
   detail: PluginDetail
   onHide: () => void
-  onDelete: () => void
+  onUpdate: () => void
 }
 
 const DetailHeader = ({
   detail,
   onHide,
-  onDelete,
+  onUpdate,
 }: Props) => {
   const { t } = useTranslation()
   const locale = useGetLanguage()
+  const { fetchReleases } = useGitHubReleases()
+  const { setShowUpdatePluginModal } = useModalContext()
 
   const {
     installation_id,
@@ -53,13 +60,51 @@ const DetailHeader = ({
   } = detail
   const { author, name, label, description, icon, verified } = detail.declaration
   const isFromGitHub = source === PluginSource.github
-  // Only plugin installed from GitHub need to check if it's the new version
+
   const hasNewVersion = useMemo(() => {
     return source === PluginSource.github && latest_version !== version
   }, [source, latest_version, version])
 
-  // #plugin TODO# update plugin
-  const handleUpdate = () => { }
+  const handleUpdate = async () => {
+    try {
+      const fetchedReleases = await fetchReleases(author, name)
+      if (fetchedReleases.length === 0)
+        return
+      const versions = fetchedReleases.map(release => release.tag_name)
+      const latestVersion = getLatestVersion(versions)
+      if (compareVersion(latestVersion, version) === 1) {
+        setShowUpdatePluginModal({
+          onSaveCallback: () => {
+            onUpdate()
+          },
+          payload: {
+            type: PluginSource.github,
+            github: {
+              originalPackageInfo: {
+                id: installation_id,
+                repo: meta!.repo,
+                version: meta!.version,
+                package: meta!.package,
+                releases: fetchedReleases,
+              },
+            },
+          },
+        })
+      }
+      else {
+        Toast.notify({
+          type: 'info',
+          message: 'No new version available',
+        })
+      }
+    }
+    catch {
+      Toast.notify({
+        type: 'error',
+        message: 'Failed to compare versions',
+      })
+    }
+  }
 
   const [isShowPluginInfo, {
     setTrue: showPluginInfo,
@@ -82,9 +127,9 @@ const DetailHeader = ({
     hideDeleting()
     if (res.success) {
       hideDeleteConfirm()
-      onDelete()
+      onUpdate()
     }
-  }, [hideDeleteConfirm, hideDeleting, installation_id, showDeleting, onDelete])
+  }, [hideDeleteConfirm, hideDeleting, installation_id, showDeleting, onUpdate])
 
   // #plugin TODO# used in apps
   // const usedInApps = 3
@@ -141,6 +186,7 @@ const DetailHeader = ({
         </div>
         <div className='flex gap-1'>
           <OperationDropdown
+            source={detail.source}
             onInfo={showPluginInfo}
             onCheckVersion={handleUpdate}
             onRemove={showDeleteConfirm}
