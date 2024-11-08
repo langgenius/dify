@@ -1533,6 +1533,7 @@ class SegmentService:
                     segment.answer = args["answer"]
                 if args.get("keywords"):
                     segment.keywords = args["keywords"]
+                oldState = segment.enabled
                 segment.enabled = True
                 segment.disabled_at = None
                 segment.disabled_by = None
@@ -1552,6 +1553,8 @@ class SegmentService:
                         },
                     )
                     keyword.add_texts([document], keywords_list=[args["keywords"]])
+                if not oldState:
+                    VectorService.update_segment_vector(args["keywords"], segment, dataset)
             else:
                 segment_hash = helper.generate_text_hash(content)
                 tokens = 0
