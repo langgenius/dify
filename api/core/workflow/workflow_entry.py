@@ -5,10 +5,10 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 
 from configs import dify_config
-from core.app.app_config.entities import FileExtraConfig
+from core.app.app_config.entities import FileUploadConfig
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.models import File, FileTransferMethod, FileType, ImageConfig
+from core.file.models import File, FileTransferMethod, ImageConfig
 from core.workflow.callbacks import WorkflowCallback
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -22,6 +22,7 @@ from core.workflow.nodes.base import BaseNode, BaseNodeData
 from core.workflow.nodes.event import NodeEvent
 from core.workflow.nodes.llm import LLMNodeData
 from core.workflow.nodes.node_mapping import node_type_classes_mapping
+from factories import file_factory
 from models.enums import UserFrom
 from models.workflow import (
     Workflow,
@@ -271,19 +272,17 @@ class WorkflowEntry:
                     for item in input_value:
                         if isinstance(item, dict) and "type" in item and item["type"] == "image":
                             transfer_method = FileTransferMethod.value_of(item.get("transfer_method"))
-                            file = File(
+                            mapping = {
+                                "id": item.get("id"),
+                                "transfer_method": transfer_method,
+                                "upload_file_id": item.get("upload_file_id"),
+                                "url": item.get("url"),
+                            }
+                            config = FileUploadConfig(image_config=ImageConfig(detail=detail) if detail else None)
+                            file = file_factory.build_from_mapping(
+                                mapping=mapping,
                                 tenant_id=tenant_id,
-                                type=FileType.IMAGE,
-                                transfer_method=transfer_method,
-                                remote_url=item.get("url")
-                                if transfer_method == FileTransferMethod.REMOTE_URL
-                                else None,
-                                related_id=item.get("upload_file_id")
-                                if transfer_method == FileTransferMethod.LOCAL_FILE
-                                else None,
-                                _extra_config=FileExtraConfig(
-                                    image_config=ImageConfig(detail=detail) if detail else None
-                                ),
+                                config=config,
                             )
                             new_value.append(file)
 
