@@ -7,67 +7,67 @@ from core.tools.errors import ToolProviderCredentialValidationError
 from extensions.ext_redis import redis_client
 
 
-def auth(credentials):
+def lark_auth(credentials):
     app_id = credentials.get("app_id")
     app_secret = credentials.get("app_secret")
     if not app_id or not app_secret:
         raise ToolProviderCredentialValidationError("app_id and app_secret is required")
     try:
-        assert FeishuRequest(app_id, app_secret).tenant_access_token is not None
+        assert LarkRequest(app_id, app_secret).tenant_access_token is not None
     except Exception as e:
         raise ToolProviderCredentialValidationError(str(e))
 
 
-def convert_add_records(json_str):
-    try:
-        data = json.loads(json_str)
-        if not isinstance(data, list):
-            raise ValueError("Parsed data must be a list")
-        converted_data = [{"fields": json.dumps(item, ensure_ascii=False)} for item in data]
-        return converted_data
-    except json.JSONDecodeError:
-        raise ValueError("The input string is not valid JSON")
-    except Exception as e:
-        raise ValueError(f"An error occurred while processing the data: {e}")
-
-
-def convert_update_records(json_str):
-    try:
-        data = json.loads(json_str)
-        if not isinstance(data, list):
-            raise ValueError("Parsed data must be a list")
-
-        converted_data = [
-            {"fields": json.dumps(record["fields"], ensure_ascii=False), "record_id": record["record_id"]}
-            for record in data
-            if "fields" in record and "record_id" in record
-        ]
-
-        if len(converted_data) != len(data):
-            raise ValueError("Each record must contain 'fields' and 'record_id'")
-
-        return converted_data
-    except json.JSONDecodeError:
-        raise ValueError("The input string is not valid JSON")
-    except Exception as e:
-        raise ValueError(f"An error occurred while processing the data: {e}")
-
-
-class FeishuRequest:
-    API_BASE_URL = "https://lark-plugin-api.solutionsuite.cn/lark-plugin"
+class LarkRequest:
+    API_BASE_URL = "https://lark-plugin-api.solutionsuite.ai/lark-plugin"
 
     def __init__(self, app_id: str, app_secret: str):
         self.app_id = app_id
         self.app_secret = app_secret
 
+    def convert_add_records(self, json_str):
+        try:
+            data = json.loads(json_str)
+            if not isinstance(data, list):
+                raise ValueError("Parsed data must be a list")
+            converted_data = [{"fields": json.dumps(item, ensure_ascii=False)} for item in data]
+            return converted_data
+        except json.JSONDecodeError:
+            raise ValueError("The input string is not valid JSON")
+        except Exception as e:
+            raise ValueError(f"An error occurred while processing the data: {e}")
+
+    def convert_update_records(self, json_str):
+        try:
+            data = json.loads(json_str)
+            if not isinstance(data, list):
+                raise ValueError("Parsed data must be a list")
+
+            converted_data = [
+                {"fields": json.dumps(record["fields"], ensure_ascii=False), "record_id": record["record_id"]}
+                for record in data
+                if "fields" in record and "record_id" in record
+            ]
+
+            if len(converted_data) != len(data):
+                raise ValueError("Each record must contain 'fields' and 'record_id'")
+
+            return converted_data
+        except json.JSONDecodeError:
+            raise ValueError("The input string is not valid JSON")
+        except Exception as e:
+            raise ValueError(f"An error occurred while processing the data: {e}")
+
     @property
-    def tenant_access_token(self):
+    def tenant_access_token(self) -> str:
         feishu_tenant_access_token = f"tools:{self.app_id}:feishu_tenant_access_token"
         if redis_client.exists(feishu_tenant_access_token):
             return redis_client.get(feishu_tenant_access_token).decode()
         res = self.get_tenant_access_token(self.app_id, self.app_secret)
         redis_client.setex(feishu_tenant_access_token, res.get("expire"), res.get("tenant_access_token"))
-        return res.get("tenant_access_token")
+        if "tenant_access_token" in res:
+            return res.get("tenant_access_token")
+        return ""
 
     def _send_request(
         self,
@@ -89,37 +89,12 @@ class FeishuRequest:
         return res
 
     def get_tenant_access_token(self, app_id: str, app_secret: str) -> dict:
-        """
-        API url: https://open.feishu.cn/document/server-docs/authentication-management/access-token/tenant_access_token_internal
-        Example Response:
-        {
-            "code": 0,
-            "msg": "ok",
-            "tenant_access_token": "t-caecc734c2e3328a62489fe0648c4b98779515d3",
-            "expire": 7200
-        }
-        """
         url = f"{self.API_BASE_URL}/access_token/get_tenant_access_token"
         payload = {"app_id": app_id, "app_secret": app_secret}
         res = self._send_request(url, require_token=False, payload=payload)
         return res
 
     def create_document(self, title: str, content: str, folder_token: str) -> dict:
-        """
-        API url: https://open.larkoffice.com/document/server-docs/docs/docs/docx-v1/document/create
-        Example Response:
-        {
-            "data": {
-                "title": "title",
-                "url": "https://svi136aogf123.feishu.cn/docx/VWbvd4fEdoW0WSxaY1McQTz8n7d",
-                "type": "docx",
-                "token": "VWbvd4fEdoW0WSxaY1McQTz8n7d"
-            },
-            "log_id": "021721281231575fdbddc0200ff00060a9258ec0000103df61b5d",
-            "code": 0,
-            "msg": "创建飞书文档成功，请查看"
-        }
-        """
         url = f"{self.API_BASE_URL}/document/create_document"
         payload = {
             "title": title,
@@ -137,18 +112,7 @@ class FeishuRequest:
         res = self._send_request(url, payload=payload)
         return res
 
-    def get_document_content(self, document_id: str, mode: str = "markdown", lang: str = "0") -> str:
-        """
-        API url: https://open.larkoffice.com/document/server-docs/docs/docs/docx-v1/document/raw_content
-        Example Response:
-        {
-            "code": 0,
-            "msg": "success",
-            "data": {
-                "content": "云文档\n多人实时协同，插入一切元素。不仅是在线文档，更是强大的创作和互动工具\n云文档：专为协作而生\n"
-            }
-        }
-        """  # noqa: E501
+    def get_document_content(self, document_id: str, mode: str = "markdown", lang: str = "0") -> str | dict:
         params = {
             "document_id": document_id,
             "mode": mode,
@@ -163,9 +127,6 @@ class FeishuRequest:
     def list_document_blocks(
         self, document_id: str, page_token: str, user_id_type: str = "open_id", page_size: int = 500
     ) -> dict:
-        """
-        API url: https://open.larkoffice.com/document/server-docs/docs/docs/docx-v1/document/list
-        """
         params = {
             "user_id_type": user_id_type,
             "document_id": document_id,
@@ -179,9 +140,6 @@ class FeishuRequest:
         return res
 
     def send_bot_message(self, receive_id_type: str, receive_id: str, msg_type: str, content: str) -> dict:
-        """
-        API url: https://open.larkoffice.com/document/server-docs/im-v1/message/create
-        """
         url = f"{self.API_BASE_URL}/message/send_bot_message"
         params = {
             "receive_id_type": receive_id_type,
@@ -215,9 +173,6 @@ class FeishuRequest:
         sort_type: str = "ByCreateTimeAsc",
         page_size: int = 20,
     ) -> dict:
-        """
-        API url: https://open.larkoffice.com/document/server-docs/im-v1/message/list
-        """
         url = f"{self.API_BASE_URL}/message/get_chat_messages"
         params = {
             "container_id": container_id,
@@ -235,9 +190,6 @@ class FeishuRequest:
     def get_thread_messages(
         self, container_id: str, page_token: str, sort_type: str = "ByCreateTimeAsc", page_size: int = 20
     ) -> dict:
-        """
-        API url: https://open.larkoffice.com/document/server-docs/im-v1/message/list
-        """
         url = f"{self.API_BASE_URL}/message/get_thread_messages"
         params = {
             "container_id": container_id,
@@ -251,7 +203,6 @@ class FeishuRequest:
         return res
 
     def create_task(self, summary: str, start_time: str, end_time: str, completed_time: str, description: str) -> dict:
-        # 创建任务
         url = f"{self.API_BASE_URL}/task/create_task"
         payload = {
             "summary": summary,
@@ -268,7 +219,6 @@ class FeishuRequest:
     def update_task(
         self, task_guid: str, summary: str, start_time: str, end_time: str, completed_time: str, description: str
     ) -> dict:
-        # 更新任务
         url = f"{self.API_BASE_URL}/task/update_task"
         payload = {
             "task_guid": task_guid,
@@ -284,16 +234,16 @@ class FeishuRequest:
         return res
 
     def delete_task(self, task_guid: str) -> dict:
-        # 删除任务
         url = f"{self.API_BASE_URL}/task/delete_task"
         payload = {
             "task_guid": task_guid,
         }
         res = self._send_request(url, method="DELETE", payload=payload)
+        if "data" in res:
+            return res.get("data")
         return res
 
     def add_members(self, task_guid: str, member_phone_or_email: str, member_role: str) -> dict:
-        # 删除任务
         url = f"{self.API_BASE_URL}/task/add_members"
         payload = {
             "task_guid": task_guid,
@@ -301,10 +251,11 @@ class FeishuRequest:
             "member_role": member_role,
         }
         res = self._send_request(url, payload=payload)
+        if "data" in res:
+            return res.get("data")
         return res
 
     def get_wiki_nodes(self, space_id: str, parent_node_token: str, page_token: str, page_size: int = 20) -> dict:
-        # 获取知识库全部子节点列表
         url = f"{self.API_BASE_URL}/wiki/get_wiki_nodes"
         payload = {
             "space_id": space_id,
@@ -424,7 +375,6 @@ class FeishuRequest:
         return res
 
     def add_event_attendees(self, event_id: str, attendee_phone_or_email: str, need_notification: bool = True) -> dict:
-        # 参加日程参会人
         url = f"{self.API_BASE_URL}/calendar/add_event_attendees"
         payload = {
             "event_id": event_id,
@@ -441,7 +391,6 @@ class FeishuRequest:
         title: str,
         folder_token: str,
     ) -> dict:
-        # 创建电子表格
         url = f"{self.API_BASE_URL}/spreadsheet/create_spreadsheet"
         payload = {
             "title": title,
@@ -457,7 +406,6 @@ class FeishuRequest:
         spreadsheet_token: str,
         user_id_type: str = "open_id",
     ) -> dict:
-        # 获取电子表格信息
         url = f"{self.API_BASE_URL}/spreadsheet/get_spreadsheet"
         params = {
             "spreadsheet_token": spreadsheet_token,
@@ -472,7 +420,6 @@ class FeishuRequest:
         self,
         spreadsheet_token: str,
     ) -> dict:
-        # 列出电子表格的所有工作表
         url = f"{self.API_BASE_URL}/spreadsheet/list_spreadsheet_sheets"
         params = {
             "spreadsheet_token": spreadsheet_token,
@@ -490,7 +437,6 @@ class FeishuRequest:
         length: int,
         values: str,
     ) -> dict:
-        # 增加行,在工作表最后添加
         url = f"{self.API_BASE_URL}/spreadsheet/add_rows"
         payload = {
             "spreadsheet_token": spreadsheet_token,
@@ -512,7 +458,6 @@ class FeishuRequest:
         length: int,
         values: str,
     ) -> dict:
-        #  增加列,在工作表最后添加
         url = f"{self.API_BASE_URL}/spreadsheet/add_cols"
         payload = {
             "spreadsheet_token": spreadsheet_token,
@@ -535,7 +480,6 @@ class FeishuRequest:
         num_rows: int,
         user_id_type: str = "open_id",
     ) -> dict:
-        # 读取工作表行数据
         url = f"{self.API_BASE_URL}/spreadsheet/read_rows"
         params = {
             "spreadsheet_token": spreadsheet_token,
@@ -559,7 +503,6 @@ class FeishuRequest:
         num_cols: int,
         user_id_type: str = "open_id",
     ) -> dict:
-        # 读取工作表列数据
         url = f"{self.API_BASE_URL}/spreadsheet/read_cols"
         params = {
             "spreadsheet_token": spreadsheet_token,
@@ -583,7 +526,6 @@ class FeishuRequest:
         query: str,
         user_id_type: str = "open_id",
     ) -> dict:
-        # 自定义读取行列数据
         url = f"{self.API_BASE_URL}/spreadsheet/read_table"
         params = {
             "spreadsheet_token": spreadsheet_token,
@@ -603,7 +545,6 @@ class FeishuRequest:
         name: str,
         folder_token: str,
     ) -> dict:
-        # 创建多维表格
         url = f"{self.API_BASE_URL}/base/create_base"
         payload = {
             "name": name,
@@ -622,7 +563,6 @@ class FeishuRequest:
         records: str,
         user_id_type: str = "open_id",
     ) -> dict:
-        # 新增多条记录
         url = f"{self.API_BASE_URL}/base/add_records"
         params = {
             "app_token": app_token,
@@ -631,7 +571,7 @@ class FeishuRequest:
             "user_id_type": user_id_type,
         }
         payload = {
-            "records": convert_add_records(records),
+            "records": self.convert_add_records(records),
         }
         res = self._send_request(url, params=params, payload=payload)
         if "data" in res:
@@ -646,7 +586,6 @@ class FeishuRequest:
         records: str,
         user_id_type: str,
     ) -> dict:
-        # 更新多条记录
         url = f"{self.API_BASE_URL}/base/update_records"
         params = {
             "app_token": app_token,
@@ -655,7 +594,7 @@ class FeishuRequest:
             "user_id_type": user_id_type,
         }
         payload = {
-            "records": convert_update_records(records),
+            "records": self.convert_update_records(records),
         }
         res = self._send_request(url, params=params, payload=payload)
         if "data" in res:
@@ -669,7 +608,6 @@ class FeishuRequest:
         table_name: str,
         record_ids: str,
     ) -> dict:
-        # 删除多条记录
         url = f"{self.API_BASE_URL}/base/delete_records"
         params = {
             "app_token": app_token,
@@ -705,8 +643,8 @@ class FeishuRequest:
         user_id_type: str = "open_id",
         page_size: int = 20,
     ) -> dict:
-        # 查询记录，单次最多查询 500 行记录。
         url = f"{self.API_BASE_URL}/base/search_record"
+
         params = {
             "app_token": app_token,
             "table_id": table_id,
@@ -753,7 +691,6 @@ class FeishuRequest:
         if automatic_fields:
             payload["automatic_fields"] = automatic_fields
         res = self._send_request(url, params=params, payload=payload)
-
         if "data" in res:
             return res.get("data")
         return res
@@ -762,7 +699,6 @@ class FeishuRequest:
         self,
         app_token: str,
     ) -> dict:
-        # 获取多维表格元数据
         url = f"{self.API_BASE_URL}/base/get_base_info"
         params = {
             "app_token": app_token,
@@ -779,7 +715,6 @@ class FeishuRequest:
         default_view_name: str,
         fields: str,
     ) -> dict:
-        # 新增一个数据表
         url = f"{self.API_BASE_URL}/base/create_table"
         params = {
             "app_token": app_token,
@@ -808,7 +743,6 @@ class FeishuRequest:
         table_ids: str,
         table_names: str,
     ) -> dict:
-        # 删除多个数据表
         url = f"{self.API_BASE_URL}/base/delete_tables"
         params = {
             "app_token": app_token,
@@ -833,7 +767,6 @@ class FeishuRequest:
             "table_ids": table_id_list,
             "table_names": table_name_list,
         }
-
         res = self._send_request(url, params=params, payload=payload)
         if "data" in res:
             return res.get("data")
@@ -845,7 +778,6 @@ class FeishuRequest:
         page_token: str,
         page_size: int = 20,
     ) -> dict:
-        # 列出多维表格下的全部数据表
         url = f"{self.API_BASE_URL}/base/list_tables"
         params = {
             "app_token": app_token,
@@ -882,7 +814,7 @@ class FeishuRequest:
             "record_ids": record_id_list,
             "user_id_type": user_id_type,
         }
-        res = self._send_request(url, method="GET", params=params, payload=payload)
+        res = self._send_request(url, method="POST", params=params, payload=payload)
         if "data" in res:
             return res.get("data")
         return res
