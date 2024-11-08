@@ -611,6 +611,11 @@ class DataSetConfig(BaseSettings):
         default=500,
     )
 
+    CREATE_TIDB_SERVICE_JOB_ENABLED: bool = Field(
+        description="Enable or disable create tidb service job",
+        default=False,
+    )
+
 
 class WorkspaceConfig(BaseSettings):
     """
