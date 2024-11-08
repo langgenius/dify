@@ -156,7 +156,7 @@ class IterationNode(BaseNode[IterationNodeData]):
             index=0,
             pre_iteration_output=None,
         )
-        outputs: list[Any] = []
+        outputs: list[Any] = [None] * len(iterator_list_value)
         try:
             if self.node_data.is_parallel:
                 futures: list[Future] = []
@@ -214,6 +214,8 @@ class IterationNode(BaseNode[IterationNodeData]):
                         graph_engine,
                         iteration_graph,
                     )
+            if self.node_data.error_handle_mode == ErrorHandleMode.REMOVE_ABNORMAL_OUTPUT:
+                outputs = [output for output in outputs if output is not None]
             yield IterationRunSucceededEvent(
                 iteration_id=self.id,
                 iteration_node_id=self.node_id,
@@ -425,7 +427,7 @@ class IterationNode(BaseNode[IterationNodeData]):
                             yield NodeInIterationFailedEvent(
                                 **metadata_event.model_dump(),
                             )
-                            outputs.insert(current_index, None)
+                            outputs[current_index] = None
                             variable_pool.add([self.node_id, "index"], next_index)
                             if next_index < len(iterator_list_value):
                                 variable_pool.add([self.node_id, "item"], iterator_list_value[next_index])
@@ -473,7 +475,7 @@ class IterationNode(BaseNode[IterationNodeData]):
                     yield metadata_event
 
             current_iteration_output = variable_pool.get(self.node_data.output_selector).value
-            outputs.insert(current_index, current_iteration_output)
+            outputs[current_index] = current_iteration_output
             # remove all nodes outputs from variable pool
             for node_id in iteration_graph.node_ids:
                 variable_pool.remove([node_id])
