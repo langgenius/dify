@@ -13,11 +13,11 @@ import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 import {
-  deleteEndpoint,
-  disableEndpoint,
-  enableEndpoint,
-  updateEndpoint,
-} from '@/service/plugins'
+  useDeleteEndpoint,
+  useDisableEndpoint,
+  useEnableEndpoint,
+  useUpdateEndpoint,
+} from '@/service/use-endpoints'
 
 type Props = {
   data: EndpointListItem
@@ -32,43 +32,34 @@ const EndpointCard = ({
   const [active, setActive] = useState(data.enabled)
   const endpointID = data.id
 
+  // switch
   const [isShowDisableConfirm, {
     setTrue: showDisableConfirm,
     setFalse: hideDisableConfirm,
   }] = useBoolean(false)
-  const activeEndpoint = async () => {
-    try {
-      await enableEndpoint({
-        url: '/workspaces/current/endpoints/enable',
-        endpointID,
-      })
+  const { mutate: enableEndpoint } = useEnableEndpoint({
+    onSuccess: async () => {
       await handleChange()
-    }
-    catch (error: any) {
-      console.error(error)
+    },
+    onError: () => {
       Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       setActive(false)
-    }
-  }
-  const inactiveEndpoint = async () => {
-    try {
-      await disableEndpoint({
-        url: '/workspaces/current/endpoints/disable',
-        endpointID,
-      })
+    },
+  })
+  const { mutate: disableEndpoint } = useDisableEndpoint({
+    onSuccess: async () => {
       await handleChange()
       hideDisableConfirm()
-    }
-    catch (error) {
-      console.error(error)
+    },
+    onError: () => {
       Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
-      setActive(true)
-    }
-  }
+      setActive(false)
+    },
+  })
   const handleSwitch = (state: boolean) => {
     if (state) {
       setActive(true)
-      activeEndpoint()
+      enableEndpoint(endpointID)
     }
     else {
       setActive(false)
@@ -76,30 +67,26 @@ const EndpointCard = ({
     }
   }
 
+  // delete
   const [isShowDeleteConfirm, {
     setTrue: showDeleteConfirm,
     setFalse: hideDeleteConfirm,
   }] = useBoolean(false)
-  const handleDelete = async () => {
-    try {
-      await deleteEndpoint({
-        url: '/workspaces/current/endpoints/delete',
-        endpointID,
-      })
+  const { mutate: deleteEndpoint } = useDeleteEndpoint({
+    onSuccess: async () => {
       await handleChange()
       hideDeleteConfirm()
-    }
-    catch (error) {
-      console.error(error)
+    },
+    onError: () => {
       Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
-    }
-  }
+    },
+  })
 
+  // update
   const [isShowEndpointModal, {
     setTrue: showEndpointModalConfirm,
     setFalse: hideEndpointModalConfirm,
   }] = useBoolean(false)
-
   const formSchemas = useMemo(() => {
     return toolCredentialToFormSchemas([NAME_FIELD, ...data.declaration.settings])
   }, [data.declaration.settings])
@@ -110,27 +97,19 @@ const EndpointCard = ({
     }
     return addDefaultValue(formValue, formSchemas)
   }, [data.name, data.settings, formSchemas])
-
-  const handleUpdate = async (state: any) => {
-    const newName = state.name
-    delete state.name
-    try {
-      await updateEndpoint({
-        url: '/workspaces/current/endpoints/update',
-        body: {
-          endpoint_id: data.id,
-          settings: state,
-          name: newName,
-        },
-      })
+  const { mutate: updateEndpoint } = useUpdateEndpoint({
+    onSuccess: async () => {
       await handleChange()
       hideEndpointModalConfirm()
-    }
-    catch (error) {
-      console.error(error)
+    },
+    onError: () => {
       Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
-    }
-  }
+    },
+  })
+  const handleUpdate = (state: any) => updateEndpoint({
+    endpointID,
+    state,
+  })
 
   return (
     <div className='p-0.5 bg-background-section-burn rounded-xl'>
@@ -192,7 +171,7 @@ const EndpointCard = ({
             hideDisableConfirm()
             setActive(true)
           }}
-          onConfirm={inactiveEndpoint}
+          onConfirm={() => disableEndpoint(endpointID)}
         />
       )}
       {isShowDeleteConfirm && (
@@ -201,7 +180,7 @@ const EndpointCard = ({
           title={t('plugin.detailPanel.endpointDeleteTip')}
           content={<div>{t('plugin.detailPanel.endpointDeleteContent', { name: data.name })}</div>}
           onCancel={hideDeleteConfirm}
-          onConfirm={handleDelete}
+          onConfirm={() => deleteEndpoint(endpointID)}
         />
       )}
       {isShowEndpointModal && (

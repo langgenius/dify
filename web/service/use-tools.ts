@@ -74,6 +74,7 @@ export const useUpdateProviderCredentials = ({
   onSuccess?: () => void
 }) => {
   return useMutation({
+    mutationKey: [NAME_SPACE, 'update-provider-credentials'],
     mutationFn: (payload: { providerName: string, credentials: Record<string, any> }) => {
       const { providerName, credentials } = payload
       return post(`/workspaces/current/tool-provider/builtin/${providerName}/update`, {
@@ -92,6 +93,7 @@ export const useRemoveProviderCredentials = ({
   onSuccess?: () => void
 }) => {
   return useMutation({
+    mutationKey: [NAME_SPACE, 'remove-provider-credentials'],
     mutationFn: (providerName: string) => {
       return post(`/workspaces/current/tool-provider/builtin/${providerName}/delete`, {
         body: {},

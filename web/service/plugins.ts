@@ -1,10 +1,6 @@
 import type { Fetcher } from 'swr'
 import { get, getMarketplace, post, upload } from './base'
 import type {
-  CreateEndpointRequest,
-  EndpointOperationResponse,
-  EndpointsRequest,
-  EndpointsResponse,
   InstallPackageResponse,
   Permissions,
   PluginDeclaration,
@@ -12,43 +8,12 @@ import type {
   PluginTasksResponse,
   TaskStatusResponse,
   UninstallPluginResponse,
-  UpdateEndpointRequest,
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
 import type {
   MarketplaceCollectionPluginsResponse,
   MarketplaceCollectionsResponse,
 } from '@/app/components/plugins/marketplace/types'
-
-export const createEndpoint: Fetcher<EndpointOperationResponse, { url: string; body: CreateEndpointRequest }> = ({ url, body }) => {
-  // url = /workspaces/current/endpoints/create
-  return post<EndpointOperationResponse>(url, { body })
-}
-
-export const fetchEndpointList: Fetcher<EndpointsResponse, { url: string; params?: EndpointsRequest }> = ({ url, params }) => {
-  // url = /workspaces/current/endpoints/list/plugin?plugin_id=xxx
-  return get<EndpointsResponse>(url, { params })
-}
-
-export const deleteEndpoint: Fetcher<EndpointOperationResponse, { url: string; endpointID: string }> = ({ url, endpointID }) => {
-  // url = /workspaces/current/endpoints/delete
-  return post<EndpointOperationResponse>(url, { body: { endpoint_id: endpointID } })
-}
-
-export const updateEndpoint: Fetcher<EndpointOperationResponse, { url: string; body: UpdateEndpointRequest }> = ({ url, body }) => {
-  // url = /workspaces/current/endpoints/update
-  return post<EndpointOperationResponse>(url, { body })
-}
-
-export const enableEndpoint: Fetcher<EndpointOperationResponse, { url: string; endpointID: string }> = ({ url, endpointID }) => {
-  // url = /workspaces/current/endpoints/enable
-  return post<EndpointOperationResponse>(url, { body: { endpoint_id: endpointID } })
-}
-
-export const disableEndpoint: Fetcher<EndpointOperationResponse, { url: string; endpointID: string }> = ({ url, endpointID }) => {
-  // url = /workspaces/current/endpoints/disable
-  return post<EndpointOperationResponse>(url, { body: { endpoint_id: endpointID } })
-}
 
 export const uploadPackageFile = async (file: File) => {
   const formData = new FormData()

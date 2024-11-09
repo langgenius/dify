@@ -1,6 +1,5 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { useBoolean } from 'ahooks'
 import { RiAddLine } from '@remixicon/react'
 import EndpointModal from './endpoint-modal'
@@ -12,9 +11,10 @@ import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
 import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
 import {
-  createEndpoint,
-  fetchEndpointList,
-} from '@/service/plugins'
+  useCreateEndpoint,
+  useEndpointList,
+  useInvalidateEndpointList,
+} from '@/service/use-endpoints'
 import cn from '@/utils/classnames'
 
 type Props = {
@@ -25,17 +25,9 @@ const EndpointList = ({ showTopBorder }: Props) => {
   const pluginDetail = usePluginPageContext(v => v.currentPluginDetail)
   const pluginUniqueID = pluginDetail.plugin_unique_identifier
   const declaration = pluginDetail.declaration.endpoint
-  const { data, mutate } = useSWR(
-    {
-      url: '/workspaces/current/endpoints/list/plugin',
-      params: {
-        plugin_id: pluginDetail.plugin_id,
-        page: 1,
-        page_size: 100,
-      },
-    },
-    fetchEndpointList,
-  )
+  const { data } = useEndpointList(pluginDetail.plugin_id)
+  const invalidateEndpointList = useInvalidateEndpointList()
+
   const [isShowEndpointModal, {
     setTrue: showEndpointModal,
     setFalse: hideEndpointModal,
@@ -45,26 +37,20 @@ const EndpointList = ({ showTopBorder }: Props) => {
     return toolCredentialToFormSchemas([NAME_FIELD, ...declaration.settings])
   }, [declaration.settings])
 
-  const handleCreate = async (state: any) => {
-    const newName = state.name
-    delete state.name
-    try {
-      await createEndpoint({
-        url: '/workspaces/current/endpoints/create',
-        body: {
-          plugin_unique_identifier: pluginUniqueID,
-          settings: state,
-          name: newName,
-        },
-      })
-      await mutate()
+  const { mutate: createEndpoint } = useCreateEndpoint({
+    onSuccess: async () => {
+      await invalidateEndpointList(pluginDetail.plugin_id)
       hideEndpointModal()
-    }
-    catch (error) {
-      console.error(error)
+    },
+    onError: () => {
       Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
-    }
-  }
+    },
+  })
+
+  const handleCreate = (state: any) => createEndpoint({
+    pluginUniqueID,
+    state,
+  })
 
   if (!data)
     return null
@@ -92,7 +78,7 @@ const EndpointList = ({ showTopBorder }: Props) => {
           <EndpointCard
             key={index}
             data={item}
-            handleChange={mutate}
+            handleChange={() => invalidateEndpointList(pluginDetail.plugin_id)}
           />
         ))}
       </div>
