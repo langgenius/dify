@@ -1,19 +1,14 @@
 import React from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
-import { fetchModelProviderModelList } from '@/service/common'
+import { useModelProviderModelList } from '@/service/use-models'
 
 const ModelList = () => {
   const { t } = useTranslation()
   const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
-
-  const { data: res } = useSWR(
-    `/workspaces/current/model-providers/${currentPluginDetail.plugin_id}/${currentPluginDetail.name}/models`,
-    fetchModelProviderModelList,
-  )
+  const { data: res } = useModelProviderModelList(`${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`)
 
   if (!res)
     return null
