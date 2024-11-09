@@ -8,8 +8,8 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 # 定义标签映射
 LABEL_MAPPING = {
-    'LABEL_0': 'SAFE',
-    'LABEL_1': 'NO_SAFE'
+    0: 'SAFE',
+    1: 'NO_SAFE'
 }
 class ContentModerationTool(BuiltinTool):
     sagemaker_client: Any = None
@@ -29,12 +29,12 @@ class ContentModerationTool(BuiltinTool):
         # Handle nested JSON if present
         if isinstance(json_obj, dict) and 'body' in json_obj:
             body_content = json.loads(json_obj['body'])
-            raw_label = body_content.get('label')
+            prediction_result = body_content.get('prediction')
         else:
-            raw_label = json_obj.get('label')
+            prediction_result = json_obj.get('prediction')
 
         # 映射标签并返回
-        result = LABEL_MAPPING.get(raw_label, 'NO_SAFE')  # 如果映射中没有找到，默认返回NO_SAFE
+        result = LABEL_MAPPING.get(prediction_result, 'NO_SAFE')  # 如果映射中没有找到，默认返回NO_SAFE
         return result
 
     def _invoke(self,

@@ -1,5 +1,5 @@
 identity:
-  name: content_moderation
+  name: chinese_toxicity_detector
   author: AWS
   label:
     en_US: Chinese Toxicity Detector
