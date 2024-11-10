@@ -113,6 +113,8 @@ class ApiToolManageService:
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema}")
 
+        provider_name = provider_name.strip()
+
         # check if the provider exists
         provider: ApiToolProvider = (
             db.session.query(ApiToolProvider)
@@ -246,6 +248,8 @@ class ApiToolManageService:
         """
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema}")
+
+        provider_name = provider_name.strip()
 
         # check if the provider exists
         provider: ApiToolProvider = (
