@@ -1,0 +1,20 @@
+[
+    {
+        "name": "Positive Number Check",
+        "inputs": {
+            "x": 10
+        },
+        "instruction": "if x > 0: return 'positive'",
+        "code_language": "python",
+        "ground_truth": "{\"result\": \"positive\"}"
+    },
+    {
+        "name": "Negative Number Check", 
+        "inputs": {
+            "x": -5
+        },
+        "instruction": "if x > 0: return 'positive' else: return 'negative'",
+        "code_language": "python",
+        "ground_truth": "{\"result\": \"negative\"}"
+    }
+]
