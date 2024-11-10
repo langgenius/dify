@@ -4,7 +4,7 @@ identity:
   label:
     en_US: send email to multiple recipients
     zh_Hans: 发送邮件给多个收件人
-  icon: icon.ico
+  icon: icon.svg
 description:
   human:
     en_US: A tool for sending email to multiple recipients

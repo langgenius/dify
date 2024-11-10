@@ -7,62 +7,62 @@ identity:
   description:
     en_US: send email through smtp protocol
     zh_Hans: 通过smtp协议发送电子邮件
-  icon: icon.ico
+  icon: icon.svg
   tags:
     - utilities
 credentials_for_provider:
-  email_account: # 凭据字段名称
-    type: text-input # 凭据字段类型
-    required: true # 是否必填
-    label: # 凭据字段标签
-      en_US: email account # 英文标签
-      zh_Hans: 邮件账号 # 中文标签
-    placeholder: # 凭据字段占位符
-      en_US: input you email account # 英文占位符
-      zh_Hans: 输入你的邮箱账号 # 中文占位符
-    help: # 凭据字段帮助文本
-      en_US: email account # 英文标签
+  email_account:
+    type: text-input
+    required: true
+    label:
+      en_US: email account
       zh_Hans: 邮件账号
-  email_password: # 凭据字段名称
-    type: secret-input # 凭据字段类型
-    required: true # 是否必填
-    label: # 凭据字段标签
-      en_US: email password # 英文标签
-      zh_Hans: 邮件密码 # 中文标签
-    placeholder: # 凭据字段占位符
-      en_US: email password # 英文占位符
-      zh_Hans: 邮件密码 # 中文占位符
-    help: # 凭据字段帮助文本
-      en_US: email password # 英文标签
+    placeholder:
+      en_US: input you email account
+      zh_Hans: 输入你的邮箱账号
+    help:
+      en_US: email account
+      zh_Hans: 邮件账号
+  email_password:
+    type: secret-input
+    required: true
+    label:
+      en_US: email password
       zh_Hans: 邮件密码
-  smtp_server: # 凭据字段名称
-    type: text-input # 凭据字段类型
-    required: true # 是否必填
-    label: # 凭据字段标签
-      en_US: smtp server # 英文标签
-      zh_Hans: 发信smtp服务器地址 # 中文标签
-    placeholder: # 凭据字段占位符
-      en_US: smtp server # 英文占位符
-      zh_Hans: 发信smtp服务器地址 # 中文占位符
-    help: # 凭据字段帮助文本
+    placeholder:
+      en_US: email password
+      zh_Hans: 邮件密码
+    help:
+      en_US: email password
+      zh_Hans: 邮件密码
+  smtp_server:
+    type: text-input
+    required: true
+    label:
       en_US: smtp server
       zh_Hans: 发信smtp服务器地址
-  smtp_port: # 凭据字段名称
-    type: text-input # 凭据字段类型
-    required: true # 是否必填
-    label: # 凭据字段标签
-      en_US: smtp server port # 英文标签
-      zh_Hans: 发信smtp服务器端口 # 中文标签
-    placeholder: # 凭据字段占位符
-      en_US: smtp server port # 英文占位符
-      zh_Hans: 发信smtp服务器端口 # 中文占位符
-    help: # 凭据字段帮助文本
+    placeholder:
+      en_US: smtp server
+      zh_Hans: 发信smtp服务器地址
+    help:
+      en_US: smtp server
+      zh_Hans: 发信smtp服务器地址
+  smtp_port:
+    type: text-input
+    required: true
+    label:
       en_US: smtp server port
       zh_Hans: 发信smtp服务器端口
-  encrypt_method: # 凭据字段名称
-    type: select # 凭据字段类型
-    required: true # 是否必填
-    options: # 下拉框选项
+    placeholder:
+      en_US: smtp server port
+      zh_Hans: 发信smtp服务器端口
+    help:
+      en_US: smtp server port
+      zh_Hans: 发信smtp服务器端口
+  encrypt_method:
+    type: select
+    required: true
+    options:
       - value: NONE
         label:
           en_US: NONE
@@ -75,9 +75,9 @@ credentials_for_provider:
         label:
           en_US: START TLS
           zh_Hans: START TLS加密
-    label: # 凭据字段标签
-      en_US: encrypt method # 英文标签
-      zh_Hans: 加密方式 # 中文标签
-    help: # 凭据字段帮助文本
+    label:
+      en_US: encrypt method
+      zh_Hans: 加密方式
+    help:
       en_US: smtp server encrypt method
       zh_Hans: 发信smtp服务器加密方式
