@@ -203,6 +203,7 @@ class ApiToolManageService:
         """
         list api tool provider tools
         """
+        provider_name = provider
         provider: ApiToolProvider = (
             db.session.query(ApiToolProvider)
             .filter(
@@ -213,7 +214,7 @@ class ApiToolManageService:
         )
 
         if provider is None:
-            raise ValueError(f"you have not added provider {provider}")
+            raise ValueError(f"you have not added provider {provider_name}")
 
         controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
         labels = ToolLabelManager.get_tool_labels(controller)
