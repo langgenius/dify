@@ -158,10 +158,10 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
       ],
     },
   })(fetchPathname, {
-    credentials: isMarketplaceAPI
-      ? 'omit'
-      : (options.credentials || 'include'),
     ...init,
+    credentials: isMarketplaceAPI
+      ? undefined
+      : (options.credentials || 'include'),
     retry: {
       methods: [],
     },
