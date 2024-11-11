@@ -46,7 +46,6 @@ def init_app(app: Flask) -> Celery:
         broker_connection_retry_on_startup=True,
         worker_log_format=dify_config.LOG_FORMAT,
         worker_task_log_format=dify_config.LOG_FORMAT,
-        worker_logfile=dify_config.LOG_FILE,
         worker_hijack_root_logger=False,
         timezone=pytz.timezone(dify_config.LOG_TZ),
     )
@@ -54,6 +53,11 @@ def init_app(app: Flask) -> Celery:
     if dify_config.BROKER_USE_SSL:
         celery_app.conf.update(
             broker_use_ssl=ssl_options,  # Add the SSL options to the broker configuration
+        )
+
+    if dify_config.LOG_FILE:
+        celery_app.conf.update(
+            worker_logfile=dify_config.LOG_FILE,
         )
 
     celery_app.set_default()
