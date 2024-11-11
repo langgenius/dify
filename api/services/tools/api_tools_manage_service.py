@@ -113,6 +113,8 @@ class ApiToolManageService:
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema}")
 
+        provider_name = provider_name.strip()
+
         # check if the provider exists
         provider: ApiToolProvider = (
             db.session.query(ApiToolProvider)
@@ -203,6 +205,7 @@ class ApiToolManageService:
         """
         list api tool provider tools
         """
+        provider_name = provider
         provider: ApiToolProvider = (
             db.session.query(ApiToolProvider)
             .filter(
@@ -213,7 +216,7 @@ class ApiToolManageService:
         )
 
         if provider is None:
-            raise ValueError(f"you have not added provider {provider}")
+            raise ValueError(f"you have not added provider {provider_name}")
 
         controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
         labels = ToolLabelManager.get_tool_labels(controller)
@@ -245,6 +248,8 @@ class ApiToolManageService:
         """
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema}")
+
+        provider_name = provider_name.strip()
 
         # check if the provider exists
         provider: ApiToolProvider = (
