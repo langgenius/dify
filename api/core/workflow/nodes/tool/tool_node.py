@@ -21,7 +21,8 @@ from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.event import RunCompletedEvent, RunStreamChunkEvent
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
-from models.tools import ToolFile
+from factories import file_factory
+from models import ToolFile
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import ToolNodeData
@@ -192,19 +193,17 @@ class ToolNode(BaseNode[ToolNodeData]):
                     if tool_file is None:
                         raise ToolFileError(f"Tool file {tool_file_id} does not exist")
 
-                files.append(
-                    File(
-                        tenant_id=self.tenant_id,
-                        type=FileType.IMAGE,
-                        transfer_method=transfer_method,
-                        remote_url=url,
-                        related_id=tool_file_id,
-                        filename=filename,
-                        extension=ext,
-                        mime_type=mimetype,
-                        size=tool_file.size,
-                    )
+                mapping = {
+                    "tool_file_id": tool_file_id,
+                    "type": FileType.IMAGE,
+                    "transfer_method": transfer_method,
+                    "url": url,
+                }
+                file = file_factory.build_from_mapping(
+                    mapping=mapping,
+                    tenant_id=self.tenant_id,
                 )
+                files.append(file)
             elif message.type == ToolInvokeMessage.MessageType.BLOB:
                 # get tool file id
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)

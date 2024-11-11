@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from 'react'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
@@ -32,20 +33,31 @@ const MarkdownForm = ({ node }: any) => {
   //   </form>
   const { onSend } = useChatContext()
 
-  const getFormValues = (children: any) => {
-    const formValues: { [key: string]: any } = {}
-    children.forEach((child: any) => {
-      if (child.tagName === SUPPORTED_TAGS.INPUT)
-        formValues[child.properties.name] = child.properties.value
-      if (child.tagName === SUPPORTED_TAGS.TEXTAREA)
-        formValues[child.properties.name] = child.properties.value
+  const [formValues, setFormValues] = useState<{ [key: string]: any }>({})
+
+  useEffect(() => {
+    const initialValues: { [key: string]: any } = {}
+    node.children.forEach((child: any) => {
+      if ([SUPPORTED_TAGS.INPUT, SUPPORTED_TAGS.TEXTAREA].includes(child.tagName))
+        initialValues[child.properties.name] = child.properties.value
     })
-    return formValues
+    setFormValues(initialValues)
+  }, [node.children])
+
+  const getFormValues = (children: any) => {
+    const values: { [key: string]: any } = {}
+    children.forEach((child: any) => {
+      if ([SUPPORTED_TAGS.INPUT, SUPPORTED_TAGS.TEXTAREA].includes(child.tagName))
+        values[child.properties.name] = formValues[child.properties.name]
+    })
+    return values
   }
+
   const onSubmit = (e: any) => {
     e.preventDefault()
     const format = node.properties.dataFormat || DATA_FORMAT.TEXT
     const result = getFormValues(node.children)
+
     if (format === DATA_FORMAT.JSON) {
       onSend?.(JSON.stringify(result))
     }
@@ -77,25 +89,22 @@ const MarkdownForm = ({ node }: any) => {
             </label>
           )
         }
-        if (child.tagName === SUPPORTED_TAGS.INPUT) {
-          if (Object.values(SUPPORTED_TYPES).includes(child.properties.type)) {
-            return (
-              <Input
-                key={index}
-                type={child.properties.type}
-                name={child.properties.name}
-                placeholder={child.properties.placeholder}
-                value={child.properties.value}
-                onChange={(e) => {
-                  e.preventDefault()
-                  child.properties.value = e.target.value
-                }}
-              />
-            )
-          }
-          else {
-            return <p key={index}>Unsupported input type: {child.properties.type}</p>
-          }
+        if (child.tagName === SUPPORTED_TAGS.INPUT && Object.values(SUPPORTED_TYPES).includes(child.properties.type)) {
+          return (
+            <Input
+              key={index}
+              type={child.properties.type}
+              name={child.properties.name}
+              placeholder={child.properties.placeholder}
+              value={formValues[child.properties.name]}
+              onChange={(e) => {
+                setFormValues(prevValues => ({
+                  ...prevValues,
+                  [child.properties.name]: e.target.value,
+                }))
+              }}
+            />
+          )
         }
         if (child.tagName === SUPPORTED_TAGS.TEXTAREA) {
           return (
@@ -103,10 +112,12 @@ const MarkdownForm = ({ node }: any) => {
               key={index}
               name={child.properties.name}
               placeholder={child.properties.placeholder}
-              value={child.properties.value}
+              value={formValues[child.properties.name]}
               onChange={(e) => {
-                e.preventDefault()
-                child.properties.value = e.target.value
+                setFormValues(prevValues => ({
+                  ...prevValues,
+                  [child.properties.name]: e.target.value,
+                }))
               }}
             />
           )

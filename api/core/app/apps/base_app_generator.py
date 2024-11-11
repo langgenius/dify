@@ -3,12 +3,11 @@ from collections.abc import Generator, Mapping
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from core.app.app_config.entities import VariableEntityType
-from core.file import File, FileExtraConfig
+from core.file import File, FileUploadConfig
 from factories import file_factory
 
 if TYPE_CHECKING:
     from core.app.app_config.entities import AppConfig, VariableEntity
-    from models.enums import CreatedByRole
 
 
 class BaseAppGenerator:
@@ -17,8 +16,6 @@ class BaseAppGenerator:
         *,
         user_inputs: Optional[Mapping[str, Any]],
         app_config: "AppConfig",
-        user_id: str,
-        role: "CreatedByRole",
     ) -> Mapping[str, Any]:
         user_inputs = user_inputs or {}
         # Filter input variables from form configuration, handle required fields, default values, and option values
@@ -35,9 +32,7 @@ class BaseAppGenerator:
             k: file_factory.build_from_mapping(
                 mapping=v,
                 tenant_id=app_config.tenant_id,
-                user_id=user_id,
-                role=role,
-                config=FileExtraConfig(
+                config=FileUploadConfig(
                     allowed_file_types=entity_dictionary[k].allowed_file_types,
                     allowed_extensions=entity_dictionary[k].allowed_file_extensions,
                     allowed_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
@@ -51,9 +46,7 @@ class BaseAppGenerator:
             k: file_factory.build_from_mappings(
                 mappings=v,
                 tenant_id=app_config.tenant_id,
-                user_id=user_id,
-                role=role,
-                config=FileExtraConfig(
+                config=FileUploadConfig(
                     allowed_file_types=entity_dictionary[k].allowed_file_types,
                     allowed_extensions=entity_dictionary[k].allowed_file_extensions,
                     allowed_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
