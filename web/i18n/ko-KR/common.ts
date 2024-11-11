@@ -169,7 +169,7 @@ const translation = {
     deleteConfirmTip: '확인하려면 등록된 이메일에서 다음 내용을 로 보내주세요 ',
     myAccount: '내 계정',
     studio: '디파이 스튜디오',
-    account: '계좌',
+    account: '계정',
   },
   members: {
     team: '팀',

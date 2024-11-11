@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - api/migrations/**
+      - .github/workflows/db-migration-test.yml
 
 concurrency:
   group: db-migration-test-${{ github.ref }}
@@ -14,25 +15,15 @@ concurrency:
 jobs:
   db-migration-test:
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        python-version:
-          - "3.10"
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Setup Poetry and Python
+        uses: ./.github/actions/setup-poetry
         with:
-          python-version: ${{ matrix.python-version }}
-          cache-dependency-path: |
-            api/pyproject.toml
-            api/poetry.lock
-
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v3
+          poetry-lockfile: api/poetry.lock
 
       - name: Install dependencies
         run: poetry install -C api
@@ -43,7 +34,7 @@ jobs:
           cp middleware.env.example middleware.env
 
       - name: Set up Middlewares
-        uses: hoverkraft-tech/compose-action@v2.0.0
+        uses: hoverkraft-tech/compose-action@v2.0.2
         with:
           compose-file: |
             docker/docker-compose.middleware.yaml

@@ -13,7 +13,7 @@ from sqlalchemy import Float, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
-from core.file import FILE_MODEL_IDENTITY, File, FileExtraConfig, FileTransferMethod, FileType
+from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
 from extensions.ext_database import db
@@ -949,9 +949,6 @@ class Message(db.Model):
                         "type": message_file.type,
                     },
                     tenant_id=current_app.tenant_id,
-                    user_id=self.from_account_id or self.from_end_user_id or "",
-                    role=CreatedByRole(message_file.created_by_role),
-                    config=FileExtraConfig(),
                 )
             elif message_file.transfer_method == "remote_url":
                 if message_file.url is None:
@@ -964,9 +961,6 @@ class Message(db.Model):
                         "url": message_file.url,
                     },
                     tenant_id=current_app.tenant_id,
-                    user_id=self.from_account_id or self.from_end_user_id or "",
-                    role=CreatedByRole(message_file.created_by_role),
-                    config=FileExtraConfig(),
                 )
             elif message_file.transfer_method == "tool_file":
                 if message_file.upload_file_id is None:
@@ -981,9 +975,6 @@ class Message(db.Model):
                 file = file_factory.build_from_mapping(
                     mapping=mapping,
                     tenant_id=current_app.tenant_id,
-                    user_id=self.from_account_id or self.from_end_user_id or "",
-                    role=CreatedByRole(message_file.created_by_role),
-                    config=FileExtraConfig(),
                 )
             else:
                 raise ValueError(
@@ -1298,7 +1289,7 @@ class Site(db.Model):
     privacy_policy = db.Column(db.String(255))
     show_workflow_steps = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
     use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
+    _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", sa.TEXT, default="")
     customize_domain = db.Column(db.String(255))
     customize_token_strategy = db.Column(db.String(255), nullable=False)
     prompt_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
@@ -1308,6 +1299,16 @@ class Site(db.Model):
     updated_by = db.Column(StringUUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     code = db.Column(db.String(255))
+
+    @property
+    def custom_disclaimer(self):
+        return self._custom_disclaimer
+
+    @custom_disclaimer.setter
+    def custom_disclaimer(self, value: str):
+        if len(value) > 512:
+            raise ValueError("Custom disclaimer cannot exceed 512 characters.")
+        self._custom_disclaimer = value
 
     @staticmethod
     def generate_code(n):

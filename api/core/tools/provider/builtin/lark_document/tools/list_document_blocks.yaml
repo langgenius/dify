@@ -1,0 +1,74 @@
+identity:
+  name: list_document_blocks
+  author: Doug Lea
+  label:
+    en_US: List Lark Document Blocks
+    zh_Hans: 获取 Lark 文档所有块
+description:
+  human:
+    en_US: List lark document blocks
+    zh_Hans: 获取 Lark 文档所有块的富文本内容并分页返回
+  llm: A tool to get all blocks of Lark documents
+parameters:
+  - name: document_id
+    type: string
+    required: true
+    label:
+      en_US: document_id
+      zh_Hans: Lark 文档的唯一标识
+    human_description:
+      en_US: Unique identifier for a Lark document. You can also input the document's URL.
+      zh_Hans: Lark 文档的唯一标识，支持输入文档的 URL。
+    llm_description: Lark 文档的唯一标识，支持输入文档的 URL。
+    form: llm
+
+  - name: user_id_type
+    type: select
+    required: false
+    options:
+      - value: open_id
+        label:
+          en_US: open_id
+          zh_Hans: open_id
+      - value: union_id
+        label:
+          en_US: union_id
+          zh_Hans: union_id
+      - value: user_id
+        label:
+          en_US: user_id
+          zh_Hans: user_id
+    default: "open_id"
+    label:
+      en_US: user_id_type
+      zh_Hans: 用户 ID 类型
+    human_description:
+      en_US: User ID type, optional values are open_id, union_id, user_id, with a default value of open_id.
+      zh_Hans: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    llm_description: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    form: form
+
+  - name: page_size
+    type: number
+    required: false
+    default: 500
+    label:
+      en_US: page_size
+      zh_Hans: 分页大小
+    human_description:
+      en_US: Paging size, the default and maximum value is 500.
+      zh_Hans: 分页大小, 默认值和最大值为 500。
+    llm_description: 分页大小, 表示一次请求最多返回多少条数据，默认值和最大值为 500。
+    form: form
+
+  - name: page_token
+    type: string
+    required: false
+    label:
+      en_US: page_token
+      zh_Hans: 分页标记
+    human_description:
+      en_US: Pagination token used to navigate through query results, allowing retrieval of additional items in subsequent requests.
+      zh_Hans: 分页标记，用于分页查询结果，以便下次遍历时获取更多项。
+    llm_description: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。
+    form: llm

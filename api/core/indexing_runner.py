@@ -598,7 +598,7 @@ class IndexingRunner:
             rules = DatasetProcessRule.AUTOMATIC_RULES
         else:
             rules = json.loads(processing_rule.rules) if processing_rule.rules else {}
-        document_text = CleanProcessor.clean(text, rules)
+        document_text = CleanProcessor.clean(text, {"rules": rules})
 
         return document_text
 

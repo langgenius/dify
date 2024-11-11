@@ -557,6 +557,23 @@ const translation = {
       iteration_one: '{{count}} Iterație',
       iteration_other: '{{count}} Iterații',
       currentIteration: 'Iterație curentă',
+      ErrorMethod: {
+        operationTerminated: 'Încheiată',
+        continueOnError: 'continuare-la-eroare',
+        removeAbnormalOutput: 'elimină-ieșire-anormală',
+      },
+      parallelModeEnableTitle: 'Modul paralel activat',
+      errorResponseMethod: 'Metoda de răspuns la eroare',
+      comma: ',',
+      parallelModeEnableDesc: 'În modul paralel, sarcinile din iterații acceptă execuția paralelă. Puteți configura acest lucru în panoul de proprietăți din dreapta.',
+      parallelModeUpper: 'MOD PARALEL',
+      MaxParallelismTitle: 'Paralelism maxim',
+      parallelMode: 'Mod paralel',
+      error_other: '{{număr}} Erori',
+      error_one: '{{număr}} Eroare',
+      parallelPanelDesc: 'În modul paralel, activitățile din iterație acceptă execuția paralelă.',
+      MaxParallelismDesc: 'Paralelismul maxim este utilizat pentru a controla numărul de sarcini executate simultan într-o singură iterație.',
+      answerNodeWarningDesc: 'Avertisment modul paralel: Nodurile de răspuns, atribuirea variabilelor de conversație și operațiunile persistente de citire/scriere în iterații pot cauza excepții.',
     },
     note: {
       editor: {

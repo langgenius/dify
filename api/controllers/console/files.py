@@ -15,7 +15,7 @@ from fields.file_fields import file_fields, upload_config_fields
 from libs.login import login_required
 from services.file_service import FileService
 
-from .errors import (
+from .error import (
     FileTooLargeError,
     NoFileUploadedError,
     TooManyFilesError,

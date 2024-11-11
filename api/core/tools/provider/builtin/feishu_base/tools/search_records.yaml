@@ -147,7 +147,7 @@ parameters:
         Page size, default value: 20, maximum value: 500.
       zh_Hans: 分页大小，默认值：20，最大值：500。
     llm_description: 分页大小，默认值：20，最大值：500。
-    form: llm
+    form: form
 
   - name: page_token
     type: string

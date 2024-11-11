@@ -557,6 +557,23 @@ const translation = {
       iteration_one: '{{count}} Ітерація',
       iteration_other: '{{count}} Ітерацій',
       currentIteration: 'Поточна ітерація',
+      ErrorMethod: {
+        operationTerminated: 'Припинено',
+        continueOnError: 'Продовжити після помилки',
+        removeAbnormalOutput: 'видалити-ненормальний-вивід',
+      },
+      error_one: '{{count}} Помилка',
+      comma: ',',
+      MaxParallelismTitle: 'Максимальна паралельність',
+      parallelModeUpper: 'ПАРАЛЕЛЬНИЙ РЕЖИМ',
+      error_other: '{{count}} Помилки',
+      parallelMode: 'Паралельний режим',
+      parallelModeEnableTitle: 'Увімкнено паралельний режим',
+      errorResponseMethod: 'Метод реагування на помилку',
+      parallelPanelDesc: 'У паралельному режимі завдання в ітерації підтримують паралельне виконання.',
+      parallelModeEnableDesc: 'У паралельному режимі завдання всередині ітерацій підтримують паралельне виконання. Ви можете налаштувати це на панелі властивостей праворуч.',
+      MaxParallelismDesc: 'Максимальний паралелізм використовується для контролю числа завдань, що виконуються одночасно за одну ітерацію.',
+      answerNodeWarningDesc: 'Попередження в паралельному режимі: вузли відповідей, призначення змінних розмови та постійні операції читання/запису в межах ітерацій можуть спричинити винятки.',
     },
     note: {
       editor: {
