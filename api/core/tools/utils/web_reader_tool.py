@@ -20,7 +20,6 @@ from regex import regex
 from core.helper import ssrf_proxy
 from core.rag.extractor import extract_processor
 from core.rag.extractor.extract_processor import ExtractProcessor
-import logging
 
 FULL_TEMPLATE = """
 TITLE: {title}
