@@ -11,4 +11,4 @@ logs
 .idea
 
 # venv
-.venv
+.venv/poetry.lock
