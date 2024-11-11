@@ -489,7 +489,10 @@ class IterationNode(BaseNode[IterationNodeData]):
                             )
                     yield metadata_event
 
-            current_iteration_output = variable_pool.get(self.node_data.output_selector).value
+            current_output_segment = variable_pool.get(self.node_data.output_selector)
+            if current_output_segment is None:
+                raise IterationNodeError("iteration output selector not found")
+            current_iteration_output = current_output_segment.value
             outputs[current_index] = current_iteration_output
             # remove all nodes outputs from variable pool
             for node_id in iteration_graph.node_ids:
