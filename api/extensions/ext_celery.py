@@ -43,10 +43,6 @@ def init_app(app: Flask) -> Celery:
         result_backend=dify_config.CELERY_RESULT_BACKEND,
         broker_transport_options=broker_transport_options,
         broker_connection_retry_on_startup=True,
-        worker_log_format=dify_config.LOG_FORMAT,
-        worker_task_log_format=dify_config.LOG_FORMAT,
-        worker_logfile=dify_config.LOG_FILE,
-        worker_hijack_root_logger=False,
     )
 
     if dify_config.BROKER_USE_SSL:
