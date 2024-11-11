@@ -363,7 +363,7 @@ def get_image_upload_file_ids(content):
     matches = re.findall(pattern, content)
     image_upload_file_ids = []
     for match in matches:
-        if match[1] == 'file-preview':
+        if match[1] == "file-preview":
             content_pattern = r"files/([^/]+)/file-preview"
         else:
             content_pattern = r"files/([^/]+)/image-preview"
