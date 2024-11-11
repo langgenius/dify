@@ -261,6 +261,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             onChange={onChange('chatColorTheme')}
             placeholder='E.g #A020F0'
           />
+          <div className="mt-1 flex justify-between items-center">
+            <p className={`ml-2 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.chatColorThemeInverted`)}</p>
+            <Switch defaultValue={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
+          </div>
         </>}
         {systemFeatures.enable_web_sso_switch_component && <div className='w-full mt-8'>
           <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.sso.label`)}</p>
