@@ -43,6 +43,16 @@ export const useInstallPackageFromMarketPlace = () => {
   })
 }
 
+export const useInstallPackageFromLocal = () => {
+  return useMutation({
+    mutationFn: (uniqueIdentifier: string) => {
+      return post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
+        body: { plugin_unique_identifiers: [uniqueIdentifier] },
+      })
+    },
+  })
+}
+
 export const useDebugKey = () => {
   return useQuery({
     queryKey: [NAME_SPACE, 'debugKey'],
