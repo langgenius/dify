@@ -1,9 +1,9 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 import redis
-from extensions.ext_redis import RedisClientWrapper
 
+from extensions.ext_redis import redis_client
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.model_manager import LBModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -39,12 +39,10 @@ def lb_model_manager():
     return lb_model_manager
 
 
-class FakeRedisClient:
-    def __init__(self, host='localhost', port=6379, db=0):
-        self.client = redis.Redis(host=host, port=port, db=db)
-
-
 def test_lb_model_manager_fetch_next(mocker, lb_model_manager):
+    # initialize redis client
+    redis_client.initialize(redis.Redis())
+
     assert len(lb_model_manager._load_balancing_configs) == 3
 
     config1 = lb_model_manager._load_balancing_configs[0]
@@ -62,16 +60,13 @@ def test_lb_model_manager_fetch_next(mocker, lb_model_manager):
         start_index += 1
         return start_index
 
-    fake_redis_client = FakeRedisClient()
-    redis_client = RedisClientWrapper()
-    redis_client.initialize(fake_redis_client)
-    
-    mocker.patch("redis.Redis.incr", side_effect=incr)
-    mocker.patch("redis.Redis.set", return_value=None)
-    mocker.patch("redis.Redis.expire", return_value=None)
+    with (
+        patch.object(redis_client, "incr", side_effect=incr),
+        patch.object(redis_client, "set", return_value=None),
+        patch.object(redis_client, "expire", return_value=None),
+    ):
+        config = lb_model_manager.fetch_next()
+        assert config == config2
 
-    config = lb_model_manager.fetch_next()
-    assert config == config2
-
-    config = lb_model_manager.fetch_next()
-    assert config == config3
+        config = lb_model_manager.fetch_next()
+        assert config == config3
