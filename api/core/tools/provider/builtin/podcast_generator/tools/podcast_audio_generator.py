@@ -5,7 +5,6 @@ import warnings
 from typing import Any, Literal, Optional, Union
 
 import openai
-from yarl import URL
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolParameterValidationError, ToolProviderCredentialValidationError
@@ -61,18 +60,8 @@ class PodcastAudioGeneratorTool(BuiltinTool):
         if not api_key:
             raise ToolProviderCredentialValidationError("OpenAI API key is missing")
 
-        # Get OpenAI base URL
-        openai_base_url = self.runtime.credentials.get("openai_base_url", None)
-        if not openai_base_url:
-            openai_base_url = None
-        else:
-            openai_base_url = str(URL(openai_base_url) / "v1")
-
         # Initialize OpenAI client
-        client = openai.OpenAI(
-            api_key=api_key,
-            base_url=openai_base_url,
-        )
+        client = openai.OpenAI(api_key=api_key)
 
         # Create a thread pool
         max_workers = 5
