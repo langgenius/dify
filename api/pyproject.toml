@@ -118,7 +118,7 @@ beautifulsoup4 = "4.12.2"
 boto3 = "1.35.17"
 bs4 = "~0.0.1"
 cachetools = "~5.3.0"
-celery = "~5.3.6"
+celery = "~5.4.0"
 chardet = "~5.1.0"
 cohere = "~5.2.4"
 dashscope = { version = "~1.17.0", extras = ["tokenizer"] }

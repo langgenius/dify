@@ -12,6 +12,8 @@ from models.dataset import TidbAuthBinding
 @app.celery.task(queue="dataset")
 def create_tidb_serverless_task():
     click.echo(click.style("Start create tidb serverless task.", fg="green"))
+    if not dify_config.CREATE_TIDB_SERVICE_JOB_ENABLED:
+        return
     tidb_serverless_number = dify_config.TIDB_SERVERLESS_NUMBER
     start_at = time.perf_counter()
     while True:

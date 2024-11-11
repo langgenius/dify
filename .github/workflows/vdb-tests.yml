@@ -28,15 +28,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Install Poetry
-        uses: abatilo/actions-poetry@v3
-
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+      - name: Setup Poetry and Python ${{ matrix.python-version }}
+        uses: ./.github/actions/setup-poetry
         with:
           python-version: ${{ matrix.python-version }}
-          cache: poetry
-          cache-dependency-path: api/poetry.lock
+          poetry-lockfile: api/poetry.lock
 
       - name: Check Poetry lockfile
         run: |

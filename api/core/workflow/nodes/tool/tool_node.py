@@ -17,6 +17,7 @@ from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
+from factories import file_factory
 from models import ToolFile
 from models.workflow import WorkflowNodeExecutionStatus
 
@@ -189,19 +190,17 @@ class ToolNode(BaseNode[ToolNodeData]):
                     if tool_file is None:
                         raise ToolFileError(f"Tool file {tool_file_id} does not exist")
 
-                result.append(
-                    File(
-                        tenant_id=self.tenant_id,
-                        type=FileType.IMAGE,
-                        transfer_method=transfer_method,
-                        remote_url=url,
-                        related_id=tool_file.id,
-                        filename=tool_file.name,
-                        extension=ext,
-                        mime_type=tool_file.mimetype,
-                        size=tool_file.size,
-                    )
+                mapping = {
+                    "tool_file_id": tool_file_id,
+                    "type": FileType.IMAGE,
+                    "transfer_method": transfer_method,
+                    "url": url,
+                }
+                file = file_factory.build_from_mapping(
+                    mapping=mapping,
+                    tenant_id=self.tenant_id,
                 )
+                result.append(file)
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 # get tool file id
                 tool_file_id = str(response.message).split("/")[-1].split(".")[0]
@@ -209,19 +208,17 @@ class ToolNode(BaseNode[ToolNodeData]):
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
-                        raise ToolFileError(f"Tool file {tool_file_id} does not exist")
-                result.append(
-                    File(
-                        tenant_id=self.tenant_id,
-                        type=FileType.IMAGE,
-                        transfer_method=FileTransferMethod.TOOL_FILE,
-                        related_id=tool_file.id,
-                        filename=tool_file.name,
-                        extension=path.splitext(response.save_as)[1],
-                        mime_type=tool_file.mimetype,
-                        size=tool_file.size,
-                    )
+                        raise ValueError(f"tool file {tool_file_id} not exists")
+                mapping = {
+                    "tool_file_id": tool_file_id,
+                    "type": FileType.IMAGE,
+                    "transfer_method": FileTransferMethod.TOOL_FILE,
+                }
+                file = file_factory.build_from_mapping(
+                    mapping=mapping,
+                    tenant_id=self.tenant_id,
                 )
+                result.append(file)
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 url = str(response.message)
                 transfer_method = FileTransferMethod.TOOL_FILE
@@ -235,16 +232,15 @@ class ToolNode(BaseNode[ToolNodeData]):
                     extension = "." + url.split("/")[-1].split(".")[1]
                 else:
                     extension = ".bin"
-                file = File(
+                mapping = {
+                    "tool_file_id": tool_file_id,
+                    "type": FileType.IMAGE,
+                    "transfer_method": transfer_method,
+                    "url": url,
+                }
+                file = file_factory.build_from_mapping(
+                    mapping=mapping,
                     tenant_id=self.tenant_id,
-                    type=FileType(response.save_as),
-                    transfer_method=transfer_method,
-                    remote_url=url,
-                    filename=tool_file.name,
-                    related_id=tool_file.id,
-                    extension=extension,
-                    mime_type=tool_file.mimetype,
-                    size=tool_file.size,
                 )
                 result.append(file)
 
