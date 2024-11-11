@@ -33,9 +33,7 @@ def send_mail(parmas: SendEmailToolParameters):
 
     if parmas.encrypt_method.upper() == "SSL":
         try:
-            with smtplib.SMTP_SSL(
-                parmas.smtp_server, parmas.smtp_port, context=ctx, timeout=timeout
-            ) as server:
+            with smtplib.SMTP_SSL(parmas.smtp_server, parmas.smtp_port, context=ctx, timeout=timeout) as server:
                 server.login(parmas.email_account, parmas.email_password)
                 server.sendmail(parmas.email_account, parmas.sender_to, msg.as_string())
                 return True
@@ -44,9 +42,7 @@ def send_mail(parmas: SendEmailToolParameters):
             return False
     else:  # NONE or TLS
         try:
-            with smtplib.SMTP(
-                parmas.smtp_server, parmas.smtp_port, timeout=timeout
-            ) as server:
+            with smtplib.SMTP(parmas.smtp_server, parmas.smtp_port, timeout=timeout) as server:
                 if parmas.encrypt_method.upper() == "TLS":
                     server.starttls(context=ctx)
                 server.login(parmas.email_account, parmas.email_password)

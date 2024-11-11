@@ -27,16 +27,12 @@ class SendMailTool(BuiltinTool):
         try:
             smtp_port = int(smtp_port)
         except ValueError:
-            return self.create_text_message(
-                "Invalid parameter smtp_port(should be int)"
-            )
+            return self.create_text_message("Invalid parameter smtp_port(should be int)")
 
         if not sender:
             return self.create_text_message("please input sender")
         if not email_rgx.match(sender):
-            return self.create_text_message(
-                "Invalid parameter userid, the sender is not a mailbox"
-            )
+            return self.create_text_message("Invalid parameter userid, the sender is not a mailbox")
 
         receivers_email = tool_parameters["send_to"]
         if not receivers_email:
