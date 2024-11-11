@@ -124,6 +124,12 @@ const translation = {
     inDifyMarketplace: '在 Dify 市场中',
     moreFrom: '更多来自市场',
   },
+  task: {
+    installing: '{{installingLength}}/{{totalLength}} 插件安装中...',
+    installingWithError: '{{installingLength}}/{{totalLength}} 插件安装中，{{errorLength}} 安装失败。点击查看',
+    installError: '{{errorLength}} 个插件安装失败，点击查看',
+    installedError: '{{errorLength}} 个插件安装失败',
+  },
 }
 
 export default translation

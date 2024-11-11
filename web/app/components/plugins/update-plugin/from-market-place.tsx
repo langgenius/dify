@@ -12,7 +12,7 @@ import { pluginManifestToCardPluginProps } from '@/app/components/plugins/instal
 import useGetIcon from '../install-plugin/base/use-get-icon'
 import { updateFromMarketPlace } from '@/service/plugins'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
-import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/store'
+import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/plugin-tasks/store'
 
 const i18nPrefix = 'plugin.upgrade'
 

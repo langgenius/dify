@@ -124,6 +124,12 @@ const translation = {
     inDifyMarketplace: 'in Dify Marketplace',
     moreFrom: 'More from Marketplace',
   },
+  task: {
+    installing: 'Installing {{installingLength}}/{{totalLength}} plugins...',
+    installingWithError: 'Installing {{installingLength}} of {{totalLength}} plugins, {{errorLength}} failed, click to view',
+    installError: '{{errorLength}} plugins failed to install, click to view',
+    installedError: '{{errorLength}} plugins failed to install',
+  },
 }
 
 export default translation

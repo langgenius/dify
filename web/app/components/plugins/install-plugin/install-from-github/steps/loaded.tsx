@@ -9,7 +9,7 @@ import { pluginManifestToCardPluginProps } from '../../utils'
 import { useTranslation } from 'react-i18next'
 import { installPackageFromGitHub, uninstallPlugin } from '@/service/plugins'
 import { RiLoader2Line } from '@remixicon/react'
-import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/store'
+import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/plugin-tasks/store'
 import checkTaskStatus from '../../base/check-task-status'
 import { parseGitHubUrl } from '../../utils'
 
