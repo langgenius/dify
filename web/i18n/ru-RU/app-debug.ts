@@ -301,7 +301,7 @@ const translation = {
     historyNoBeEmpty: 'История разговоров должна быть установлена в промпте',
     queryNoBeEmpty: 'Запрос должен быть установлен в промпте',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Добавить поле ввода',
     'editModalTitle': 'Редактировать поле ввода',
     'description': 'Настройка для переменной {{varName}}',

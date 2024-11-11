@@ -1,0 +1,63 @@
+identity:
+  name: get_wiki_nodes
+  author: Doug Lea
+  label:
+    en_US: Get Wiki Nodes
+    zh_Hans: 获取知识空间子节点列表
+description:
+  human:
+    en_US: |
+      Get the list of child nodes in Wiki, make sure the app/bot is a member of the wiki space. See How to add an app as a wiki base administrator (member). https://open.larksuite.com/document/server-docs/docs/wiki-v2/wiki-qa
+    zh_Hans: |
+      获取知识库全部子节点列表，请确保应用/机器人为知识空间成员。参阅如何将应用添加为知识库管理员（成员）。https://open.larksuite.com/document/server-docs/docs/wiki-v2/wiki-qa
+  llm: A tool for getting all sub-nodes of a knowledge base.(获取知识空间子节点列表)
+parameters:
+  - name: space_id
+    type: string
+    required: true
+    label:
+      en_US: Space Id
+      zh_Hans: 知识空间 ID
+    human_description:
+      en_US: |
+        The ID of the knowledge space. Supports space link URL, for example: https://lark-japan.jp.larksuite.com/wiki/settings/7431084851517718561
+      zh_Hans: 知识空间 ID，支持空间链接 URL，例如：https://lark-japan.jp.larksuite.com/wiki/settings/7431084851517718561
+    llm_description: 知识空间 ID，支持空间链接 URL，例如：https://lark-japan.jp.larksuite.com/wiki/settings/7431084851517718561
+    form: llm
+
+  - name: page_size
+    type: number
+    required: false
+    default: 10
+    label:
+      en_US: Page Size
+      zh_Hans: 分页大小
+    human_description:
+      en_US: The size of each page, with a maximum value of 50.
+      zh_Hans: 分页大小，最大值 50。
+    llm_description: 分页大小，最大值 50。
+    form: form
+
+  - name: page_token
+    type: string
+    required: false
+    label:
+      en_US: Page Token
+      zh_Hans: 分页标记
+    human_description:
+      en_US: The pagination token. Leave empty for the first request to start from the beginning; if the paginated query result has more items, a new page_token will be returned, which can be used to get the next set of results.
+      zh_Hans: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。
+    llm_description: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。
+    form: llm
+
+  - name: parent_node_token
+    type: string
+    required: false
+    label:
+      en_US: Parent Node Token
+      zh_Hans: 父节点 token
+    human_description:
+      en_US: The token of the parent node.
+      zh_Hans: 父节点 token
+    llm_description: 父节点 token
+    form: llm

@@ -9,15 +9,15 @@ from extensions.ext_redis import redis_client
 class ToolParameterCacheType(Enum):
     PARAMETER = "tool_parameter"
 
+
 class ToolParameterCache:
-    def __init__(self, 
-            tenant_id: str, 
-            provider: str, 
-            tool_name: str, 
-            cache_type: ToolParameterCacheType,
-            identity_id: str
-        ):
-        self.cache_key = f"{cache_type.value}_secret:tenant_id:{tenant_id}:provider:{provider}:tool_name:{tool_name}:identity_id:{identity_id}"
+    def __init__(
+        self, tenant_id: str, provider: str, tool_name: str, cache_type: ToolParameterCacheType, identity_id: str
+    ):
+        self.cache_key = (
+            f"{cache_type.value}_secret:tenant_id:{tenant_id}:provider:{provider}:tool_name:{tool_name}"
+            f":identity_id:{identity_id}"
+        )
 
     def get(self) -> Optional[dict]:
         """
@@ -28,7 +28,7 @@ class ToolParameterCache:
         cached_tool_parameter = redis_client.get(self.cache_key)
         if cached_tool_parameter:
             try:
-                cached_tool_parameter = cached_tool_parameter.decode('utf-8')
+                cached_tool_parameter = cached_tool_parameter.decode("utf-8")
                 cached_tool_parameter = json.loads(cached_tool_parameter)
             except JSONDecodeError:
                 return None

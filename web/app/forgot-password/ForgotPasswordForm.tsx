@@ -8,6 +8,7 @@ import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
 import Loading from '../components/base/loading'
+import Input from '../components/base/input'
 import Button from '@/app/components/base/button'
 
 import {
@@ -78,7 +79,7 @@ const ForgotPasswordForm = () => {
 
   return (
     loading
-      ? <Loading/>
+      ? <Loading />
       : <>
         <div className="sm:mx-auto sm:w-full sm:max-w-md">
           <h2 className="text-[32px] font-bold text-gray-900">
@@ -98,10 +99,9 @@ const ForgotPasswordForm = () => {
                     {t('login.email')}
                   </label>
                   <div className="mt-1">
-                    <input
+                    <Input
                       {...register('email')}
                       placeholder={t('login.emailPlaceholder') || ''}
-                      className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
                     />
                     {errors.email && <span className='text-red-400 text-sm'>{t(`${errors.email?.message}`)}</span>}
                   </div>

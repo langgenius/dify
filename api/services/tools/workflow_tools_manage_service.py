@@ -1,5 +1,7 @@
 import json
+from collections.abc import Mapping
 from datetime import datetime
+from typing import Any, Optional
 
 from sqlalchemy import or_
 
@@ -20,9 +22,9 @@ class WorkflowToolManageService:
     Service class for managing workflow tools.
     """
 
-    @classmethod
+    @staticmethod
     def create_workflow_tool(
-        cls,
+        *,
         user_id: str,
         tenant_id: str,
         workflow_app_id: str,
@@ -30,22 +32,10 @@ class WorkflowToolManageService:
         label: str,
         icon: dict,
         description: str,
-        parameters: list[dict],
+        parameters: Mapping[str, Any],
         privacy_policy: str = "",
-        labels: list[str] = None,
+        labels: Optional[list[str]] = None,
     ) -> dict:
-        """
-        Create a workflow tool.
-        :param user_id: the user id
-        :param tenant_id: the tenant id
-        :param name: the name
-        :param icon: the icon
-        :param description: the description
-        :param parameters: the parameters
-        :param privacy_policy: the privacy policy
-        :param labels: labels
-        :return: the created tool
-        """
         WorkflowToolConfigurationUtils.check_parameter_configurations(parameters)
 
         # check if the name is unique
@@ -62,12 +52,11 @@ class WorkflowToolManageService:
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} or app_id {workflow_app_id} already exists")
 
-        app: App = db.session.query(App).filter(App.id == workflow_app_id, App.tenant_id == tenant_id).first()
-
+        app = db.session.query(App).filter(App.id == workflow_app_id, App.tenant_id == tenant_id).first()
         if app is None:
             raise ValueError(f"App {workflow_app_id} not found")
 
-        workflow: Workflow = app.workflow
+        workflow = app.workflow
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_app_id}")
 
@@ -106,7 +95,7 @@ class WorkflowToolManageService:
         description: str,
         parameters: list[dict],
         privacy_policy: str = "",
-        labels: list[str] = None,
+        labels: Optional[list[str]] = None,
     ) -> dict:
         """
         Update a workflow tool.

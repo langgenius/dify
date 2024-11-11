@@ -37,8 +37,9 @@ def get_subclasses_from_module(mod: ModuleType, parent_type: type) -> list[type]
     """
     Get all the subclasses of the parent type from the module
     """
-    classes = [x for _, x in vars(mod).items()
-               if isinstance(x, type) and x != parent_type and issubclass(x, parent_type)]
+    classes = [
+        x for _, x in vars(mod).items() if isinstance(x, type) and x != parent_type and issubclass(x, parent_type)
+    ]
     return classes
 
 
@@ -56,6 +57,6 @@ def load_single_subclass_from_source(
         case 1:
             return subclasses[0]
         case 0:
-            raise Exception(f'Missing subclass of {parent_type.__name__} in {script_path}')
+            raise Exception(f"Missing subclass of {parent_type.__name__} in {script_path}")
         case _:
-            raise Exception(f'Multiple subclasses of {parent_type.__name__} in {script_path}')
+            raise Exception(f"Multiple subclasses of {parent_type.__name__} in {script_path}")

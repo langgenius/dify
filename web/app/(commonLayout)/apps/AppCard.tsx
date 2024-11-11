@@ -21,7 +21,7 @@ import Divider from '@/app/components/base/divider'
 import { getRedirection } from '@/utils/app-redirection'
 import { useProviderContext } from '@/context/provider-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import EditAppModal from '@/app/components/explore/create-app-modal'
@@ -273,7 +273,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                 <ChatBot className='w-3 h-3 text-[#1570EF]' />
               )}
               {app.mode === 'agent-chat' && (
-                <CuteRobote className='w-3 h-3 text-indigo-600' />
+                <CuteRobot className='w-3 h-3 text-indigo-600' />
               )}
               {app.mode === 'chat' && (
                 <ChatBot className='w-3 h-3 text-[#1570EF]' />

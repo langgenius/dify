@@ -1,7 +1,8 @@
 from typing import cast
 
-from core.model_runtime.entities.message_entities import (
+from core.model_runtime.entities import (
     AssistantPromptMessage,
+    AudioPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
@@ -21,59 +22,66 @@ class PromptMessageUtil:
         :return:
         """
         prompts = []
-        if model_mode == ModelMode.CHAT.value:
+        if model_mode == ModelMode.CHAT:
             tool_calls = []
             for prompt_message in prompt_messages:
                 if prompt_message.role == PromptMessageRole.USER:
-                    role = 'user'
+                    role = "user"
                 elif prompt_message.role == PromptMessageRole.ASSISTANT:
-                    role = 'assistant'
+                    role = "assistant"
                     if isinstance(prompt_message, AssistantPromptMessage):
-                        tool_calls = [{
-                            'id': tool_call.id,
-                            'type': 'function',
-                            'function': {
-                                'name': tool_call.function.name,
-                                'arguments': tool_call.function.arguments,
+                        tool_calls = [
+                            {
+                                "id": tool_call.id,
+                                "type": "function",
+                                "function": {
+                                    "name": tool_call.function.name,
+                                    "arguments": tool_call.function.arguments,
+                                },
                             }
-                        } for tool_call in prompt_message.tool_calls]
+                            for tool_call in prompt_message.tool_calls
+                        ]
                 elif prompt_message.role == PromptMessageRole.SYSTEM:
-                    role = 'system'
+                    role = "system"
                 elif prompt_message.role == PromptMessageRole.TOOL:
-                    role = 'tool'
+                    role = "tool"
                 else:
                     continue
 
-                text = ''
+                text = ""
                 files = []
                 if isinstance(prompt_message.content, list):
                     for content in prompt_message.content:
-                        if content.type == PromptMessageContentType.TEXT:
-                            content = cast(TextPromptMessageContent, content)
+                        if isinstance(content, TextPromptMessageContent):
                             text += content.data
-                        else:
-                            content = cast(ImagePromptMessageContent, content)
-                            files.append({
-                                "type": 'image',
-                                "data": content.data[:10] + '...[TRUNCATED]...' + content.data[-10:],
-                                "detail": content.detail.value
-                            })
+                        elif isinstance(content, ImagePromptMessageContent):
+                            files.append(
+                                {
+                                    "type": "image",
+                                    "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
+                                    "detail": content.detail.value,
+                                }
+                            )
+                        elif isinstance(content, AudioPromptMessageContent):
+                            files.append(
+                                {
+                                    "type": "audio",
+                                    "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
+                                    "format": content.format,
+                                }
+                            )
                 else:
                     text = prompt_message.content
 
-                prompt = {
-                    "role": role,
-                    "text": text,
-                    "files": files
-                }
-                
+                prompt = {"role": role, "text": text, "files": files}
+
                 if tool_calls:
-                    prompt['tool_calls'] = tool_calls
+                    prompt["tool_calls"] = tool_calls
 
                 prompts.append(prompt)
         else:
             prompt_message = prompt_messages[0]
-            text = ''
+            text = ""
             files = []
             if isinstance(prompt_message.content, list):
                 for content in prompt_message.content:
@@ -82,21 +90,23 @@ class PromptMessageUtil:
                         text += content.data
                     else:
                         content = cast(ImagePromptMessageContent, content)
-                        files.append({
-                            "type": 'image',
-                            "data": content.data[:10] + '...[TRUNCATED]...' + content.data[-10:],
-                            "detail": content.detail.value
-                        })
+                        files.append(
+                            {
+                                "type": "image",
+                                "data": content.data[:10] + "...[TRUNCATED]..." + content.data[-10:],
+                                "detail": content.detail.value,
+                            }
+                        )
             else:
                 text = prompt_message.content
 
             params = {
-                "role": 'user',
+                "role": "user",
                 "text": text,
             }
 
             if files:
-                params['files'] = files
+                params["files"] = files
 
             prompts.append(params)
 

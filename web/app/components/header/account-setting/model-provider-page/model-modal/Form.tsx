@@ -1,6 +1,5 @@
-import { Fragment, useState } from 'react'
+import { useState } from 'react'
 import type { FC } from 'react'
-import { RiQuestionLine } from '@remixicon/react'
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import type {
   CredentialFormSchema,
@@ -68,29 +67,18 @@ const Form: FC<FormProps> = ({
     onChange({ ...value, [key]: val, ...shouldClearVariable })
   }
 
-  // convert tooltip '\n' to <br />
-  const renderTooltipContent = (content: string) => {
-    return content.split('\n').map((line, index, array) => (
-      <Fragment key={index}>
-        {line}
-        {index < array.length - 1 && <br />}
-      </Fragment>
-    ))
-  }
-
   const renderField = (formSchema: CredentialFormSchema) => {
     const tooltip = formSchema.tooltip
     const tooltipContent = (tooltip && (
-      <span className='ml-1 pt-1.5'>
-        <Tooltip popupContent={
-          // w-[100px] caused problem
-          <div className=''>
-            {renderTooltipContent(tooltip[language] || tooltip.en_US)}
-          </div>
-        } >
-          <RiQuestionLine className='w-3 h-3  text-gray-500' />
-        </Tooltip>
-      </span>))
+      <Tooltip
+        popupContent={
+          <div className='w-[200px]'>
+            {tooltip[language] || tooltip.en_US}
+          </div>}
+        triggerClassName='ml-1 w-4 h-4'
+        asChild={false}
+      />
+    ))
     if (formSchema.type === FormTypeEnum.textInput || formSchema.type === FormTypeEnum.secretInput || formSchema.type === FormTypeEnum.textNumber) {
       const {
         variable,
@@ -103,10 +91,10 @@ const Form: FC<FormProps> = ({
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
         return null
 
-      const disabed = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
+      const disabled = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'py-2 text-sm text-gray-900')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-sm text-gray-900')}>
             {label[language] || label.en_US}
             {
               required && (
@@ -116,12 +104,12 @@ const Form: FC<FormProps> = ({
             {tooltipContent}
           </div>
           <Input
-            className={cn(inputClassName, `${disabed && 'cursor-not-allowed opacity-60'}`)}
+            className={cn(inputClassName, `${disabled && 'cursor-not-allowed opacity-60'}`)}
             value={(isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]}
             onChange={val => handleFormChange(variable, val)}
             validated={validatedSuccess}
             placeholder={placeholder?.[language] || placeholder?.en_US}
-            disabled={disabed}
+            disabled={disabled}
             type={formSchema.type === FormTypeEnum.textNumber ? 'number' : 'text'}
             {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})}
           />
@@ -143,11 +131,11 @@ const Form: FC<FormProps> = ({
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
         return null
 
-      const disabed = isEditMode && (variable === '__model_type' || variable === '__model_name')
+      const disabled = isEditMode && (variable === '__model_type' || variable === '__model_name')
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'py-2 text-sm text-gray-900')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-sm text-gray-900')}>
             {label[language] || label.en_US}
             {
               required && (
@@ -168,7 +156,7 @@ const Form: FC<FormProps> = ({
                   className={`
                     flex items-center px-3 py-2 rounded-lg border border-gray-100 bg-gray-25 cursor-pointer
                     ${value[variable] === option.value && 'bg-white border-[1.5px] border-primary-400 shadow-sm'}
-                    ${disabed && '!cursor-not-allowed opacity-60'}
+                    ${disabled && '!cursor-not-allowed opacity-60'}
                   `}
                   onClick={() => handleFormChange(variable, option.value)}
                   key={`${variable}-${option.value}`}
@@ -203,7 +191,7 @@ const Form: FC<FormProps> = ({
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'py-2 text-sm text-gray-900')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-sm text-gray-900')}>
             {label[language] || label.en_US}
 
             {
@@ -247,7 +235,7 @@ const Form: FC<FormProps> = ({
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div className='flex items-center justify-between py-2 text-sm text-gray-900'>
             <div className='flex items-center space-x-2'>
-              <span className={cn(fieldLabelClassName, 'py-2 text-sm text-gray-900')}>{label[language] || label.en_US}</span>
+              <span className={cn(fieldLabelClassName, 'flex items-center py-2 text-sm text-gray-900')}>{label[language] || label.en_US}</span>
               {
                 required && (
                   <span className='ml-1 text-red-500'>*</span>

@@ -10,7 +10,7 @@ const translation = {
   pause: 'مکث',
   playing: 'در حال پخش',
   loading: 'در حال بارگذاری',
-  merMaind: {
+  merMaid: {
     rerender: 'بازسازی مجدد',
   },
   never: 'هرگز',
@@ -78,6 +78,7 @@ const translation = {
     pathParams: 'پارامترهای مسیر',
     query: 'پرس‌وجو',
   },
+  regenerate: 'بازسازی',
 }
 
 export default translation

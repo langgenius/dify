@@ -301,7 +301,7 @@ const translation = {
     historyNoBeEmpty: 'Konuşma geçmişi prompt\'ta ayarlanmalıdır',
     queryNoBeEmpty: 'Sorgu prompt\'ta ayarlanmalıdır',
   },
-  variableConig: {
+  variableConfig: {
     addModalTitle: 'Giriş Alanı Ekle',
     editModalTitle: 'Giriş Alanı Düzenle',
     description: 'Değişken ayarı {{varName}}',

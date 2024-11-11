@@ -22,11 +22,18 @@ class NvidiaRerankModel(RerankModel):
     """
 
     def _sigmoid(self, logit: float) -> float:
-        return 1/(1+exp(-logit))
+        return 1 / (1 + exp(-logit))
 
-    def _invoke(self, model: str, credentials: dict,
-                query: str, docs: list[str], score_threshold: Optional[float] = None, top_n: Optional[int] = None,
-                user: Optional[str] = None) -> RerankResult:
+    def _invoke(
+        self,
+        model: str,
+        credentials: dict,
+        query: str,
+        docs: list[str],
+        score_threshold: Optional[float] = None,
+        top_n: Optional[int] = None,
+        user: Optional[str] = None,
+    ) -> RerankResult:
         """
         Invoke rerank model
 
@@ -54,16 +61,15 @@ class NvidiaRerankModel(RerankModel):
                 "query": {"text": query},
                 "passages": [{"text": doc} for doc in docs],
             }
-
             session = requests.Session()
             response = session.post(invoke_url, headers=headers, json=payload)
             response.raise_for_status()
             results = response.json()
 
             rerank_documents = []
-            for result in results['rankings']:
-                index = result['index']
-                logit = result['logit']
+            for result in results["rankings"]:
+                index = result["index"]
+                logit = result["logit"]
                 rerank_document = RerankDocument(
                     index=index,
                     text=docs[index],
@@ -71,7 +77,10 @@ class NvidiaRerankModel(RerankModel):
                 )
 
                 rerank_documents.append(rerank_document)
-
+            if rerank_documents:
+                rerank_documents = sorted(rerank_documents, key=lambda x: x.score, reverse=True)
+                if top_n:
+                    rerank_documents = rerank_documents[:top_n]
             return RerankResult(model=model, docs=rerank_documents)
         except requests.HTTPError as e:
             raise InvokeServerUnavailableError(str(e))
@@ -108,5 +117,5 @@ class NvidiaRerankModel(RerankModel):
             InvokeServerUnavailableError: [requests.HTTPError],
             InvokeRateLimitError: [],
             InvokeAuthorizationError: [requests.HTTPError],
-            InvokeBadRequestError: [requests.RequestException]
+            InvokeBadRequestError: [requests.RequestException],
         }

@@ -1,0 +1,37 @@
+identity:
+  name: get_primary_calendar
+  author: Doug Lea
+  label:
+    en_US: Get Primary Calendar
+    zh_Hans: 查询主日历信息
+description:
+  human:
+    en_US: Get Primary Calendar
+    zh_Hans: 查询主日历信息
+  llm: A tool for querying primary calendar information in Feishu.(在飞书中查询主日历信息)
+parameters:
+  - name: user_id_type
+    type: select
+    required: false
+    options:
+      - value: open_id
+        label:
+          en_US: open_id
+          zh_Hans: open_id
+      - value: union_id
+        label:
+          en_US: union_id
+          zh_Hans: union_id
+      - value: user_id
+        label:
+          en_US: user_id
+          zh_Hans: user_id
+    default: "open_id"
+    label:
+      en_US: user_id_type
+      zh_Hans: 用户 ID 类型
+    human_description:
+      en_US: User ID type, optional values are open_id, union_id, user_id, with a default value of open_id.
+      zh_Hans: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    llm_description: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    form: form

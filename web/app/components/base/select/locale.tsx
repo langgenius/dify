@@ -77,7 +77,7 @@ export function InputSelect({
     <div className="w-full">
       <Menu as="div" className="w-full">
         <div>
-          <Menu.Button className="iappearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 sm:text-sm h-[38px] text-left">
+          <Menu.Button className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 sm:text-sm h-[38px] text-left">
             {item?.name}
           </Menu.Button>
         </div>

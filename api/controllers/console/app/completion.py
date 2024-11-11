@@ -15,8 +15,7 @@ from controllers.console.app.error import (
     ProviderQuotaExceededError,
 )
 from controllers.console.app.wraps import get_app_model
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -109,6 +108,7 @@ class ChatMessageApi(Resource):
         parser.add_argument("files", type=list, required=False, location="json")
         parser.add_argument("model_config", type=dict, required=True, location="json")
         parser.add_argument("conversation_id", type=uuid_value, location="json")
+        parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
         parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
         parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
         args = parser.parse_args()

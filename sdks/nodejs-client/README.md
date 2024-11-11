@@ -18,7 +18,7 @@ const query = 'Please tell me a short story in 10 words or less.'
 const remote_url_files = [{
     type: 'image',
     transfer_method: 'remote_url',
-    url: 'your_url_addresss'
+    url: 'your_url_address'
 }]
 
 // Create a completion client

@@ -1,65 +1,82 @@
 import base64
-import logging
 import secrets
 
+from flask import request
 from flask_restful import Resource, reqparse
 
+from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
+    EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
     PasswordMismatchError,
-    PasswordResetRateLimitExceededError,
 )
-from controllers.console.setup import setup_required
+from controllers.console.error import EmailSendIpLimitError, NotAllowedRegister
+from controllers.console.wraps import setup_required
+from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
-from libs.helper import email as email_validate
+from libs.helper import email, extract_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account
-from services.account_service import AccountService
-from services.errors.account import RateLimitExceededError
+from services.account_service import AccountService, TenantService
+from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.feature_service import FeatureService
 
 
 class ForgotPasswordSendEmailApi(Resource):
     @setup_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("email", type=str, required=True, location="json")
+        parser.add_argument("email", type=email, required=True, location="json")
+        parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
 
-        email = args["email"]
+        ip_address = extract_remote_ip(request)
+        if AccountService.is_email_send_ip_limit(ip_address):
+            raise EmailSendIpLimitError()
 
-        if not email_validate(email):
-            raise InvalidEmailError()
-
-        account = Account.query.filter_by(email=email).first()
-
-        if account:
-            try:
-                AccountService.send_reset_password_email(account=account)
-            except RateLimitExceededError:
-                logging.warning(f"Rate limit exceeded for email: {account.email}")
-                raise PasswordResetRateLimitExceededError()
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
         else:
-            # Return success to avoid revealing email registration status
-            logging.warning(f"Attempt to reset password for unregistered email: {email}")
+            language = "en-US"
 
-        return {"result": "success"}
+        account = Account.query.filter_by(email=args["email"]).first()
+        token = None
+        if account is None:
+            if FeatureService.get_system_features().is_allow_register:
+                token = AccountService.send_reset_password_email(email=args["email"], language=language)
+                return {"result": "fail", "data": token, "code": "account_not_found"}
+            else:
+                raise NotAllowedRegister()
+        else:
+            token = AccountService.send_reset_password_email(account=account, email=args["email"], language=language)
+
+        return {"result": "success", "data": token}
 
 
 class ForgotPasswordCheckApi(Resource):
     @setup_required
     def post(self):
         parser = reqparse.RequestParser()
+        parser.add_argument("email", type=str, required=True, location="json")
+        parser.add_argument("code", type=str, required=True, location="json")
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
-        token = args["token"]
 
-        reset_data = AccountService.get_reset_password_data(token)
+        user_email = args["email"]
 
-        if reset_data is None:
-            return {"is_valid": False, "email": None}
-        return {"is_valid": True, "email": reset_data.get("email")}
+        token_data = AccountService.get_reset_password_data(args["token"])
+        if token_data is None:
+            raise InvalidTokenError()
+
+        if user_email != token_data.get("email"):
+            raise InvalidEmailError()
+
+        if args["code"] != token_data.get("code"):
+            raise EmailCodeError()
+
+        return {"is_valid": True, "email": token_data.get("email")}
 
 
 class ForgotPasswordResetApi(Resource):
@@ -92,9 +109,26 @@ class ForgotPasswordResetApi(Resource):
         base64_password_hashed = base64.b64encode(password_hashed).decode()
 
         account = Account.query.filter_by(email=reset_data.get("email")).first()
-        account.password = base64_password_hashed
-        account.password_salt = base64_salt
-        db.session.commit()
+        if account:
+            account.password = base64_password_hashed
+            account.password_salt = base64_salt
+            db.session.commit()
+            tenant = TenantService.get_join_tenants(account)
+            if not tenant and not FeatureService.get_system_features().is_allow_create_workspace:
+                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                TenantService.create_tenant_member(tenant, account, role="owner")
+                account.current_tenant = tenant
+                tenant_was_created.send(tenant)
+        else:
+            try:
+                account = AccountService.create_account_and_tenant(
+                    email=reset_data.get("email"),
+                    name=reset_data.get("email"),
+                    password=password_confirm,
+                    interface_language=languages[0],
+                )
+            except WorkSpaceNotAllowedCreateError:
+                pass
 
         return {"result": "success"}
 

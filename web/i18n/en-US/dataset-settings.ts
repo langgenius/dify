@@ -1,13 +1,13 @@
 const translation = {
   title: 'Knowledge settings',
-  desc: 'Here you can modify the properties and working methods of the Knowledge.',
+  desc: 'Here you can modify the properties and retrieval settings of this Knowledge.',
   form: {
     name: 'Knowledge Name',
     namePlaceholder: 'Please enter the Knowledge name',
     nameError: 'Name cannot be empty',
-    desc: 'Knowledge description',
+    desc: 'Knowledge Description',
     descInfo: 'Please write a clear textual description to outline the content of the Knowledge. This description will be used as a basis for matching when selecting from multiple Knowledge for inference.',
-    descPlaceholder: 'Describe what is in this Knowledge. A detailed description allows AI to access the content of the Knowledge in a timely manner. If empty, Dify will use the default hit strategy.',
+    descPlaceholder: 'Describe what\'s in this Knowledge (optional)',
     descWrite: 'Learn how to write a good Knowledge description.',
     permissions: 'Permissions',
     permissionsOnlyMe: 'Only me',
@@ -23,11 +23,14 @@ const translation = {
     embeddingModelTip: 'Change the embedded model, please go to ',
     embeddingModelTipLink: 'Settings',
     retrievalSetting: {
-      title: 'Retrieval setting',
+      title: 'Retrieval Setting',
       learnMore: 'Learn more',
       description: ' about retrieval method.',
       longDescription: ' about retrieval method, you can change this at any time in the Knowledge settings.',
     },
+    externalKnowledgeAPI: 'External Knowledge API',
+    externalKnowledgeID: 'External Knowledge ID',
+    retrievalSettings: 'Retrieval Settings',
     save: 'Save',
   },
 }

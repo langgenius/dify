@@ -7,6 +7,7 @@ class I18nObject(BaseModel):
     """
     Model class for i18n object.
     """
+
     zh_Hans: Optional[str] = None
     en_US: str
 

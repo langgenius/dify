@@ -39,10 +39,10 @@ const translation = {
     workflowWarning: '現在ベータ版です',
     chatbotType: 'チャットボットのオーケストレーション方法',
     basic: '基本',
-    basicTip: '初心者向け。後で Chatflow に切り替えることができます',
+    basicTip: '初心者向け。後で「チャットフロー」に切り替えることができます',
     basicFor: '初心者向け',
     basicDescription: '基本オーケストレートは、組み込みのプロンプトを変更する機能がなく、簡単な設定を使用してチャットボット アプリをオーケストレートします。初心者向けです。',
-    advanced: 'Chatflow',
+    advanced: 'チャットフロー',
     advancedFor: '上級ユーザー向け',
     advancedDescription: 'ワークフロー オーケストレートは、ワークフロー形式でチャットボットをオーケストレートし、組み込みのプロンプトを編集する機能を含む高度なカスタマイズを提供します。経験豊富なユーザー向けです。',
     captionName: 'アプリのアイコンと名前',
@@ -127,6 +127,12 @@ const translation = {
       removeConfirmTitle: '{{key}}の設定を削除しますか？',
       removeConfirmContent: '現在の設定は使用中です。これを削除すると、トレース機能が無効になります。',
     },
+    view: '見る',
+  },
+  answerIcon: {
+    title: 'Webアプリアイコンを使用して🤖を置き換える',
+    description: '共有アプリケーションの中で Webアプリアイコンを使用して🤖を置き換えるかどうか',
+    descriptionInExplore: 'ExploreでWebアプリアイコンを使用して🤖を置き換えるかどうか',
   },
 }
 

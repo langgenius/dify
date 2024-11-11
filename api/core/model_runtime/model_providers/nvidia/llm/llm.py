@@ -21,31 +21,36 @@ from core.model_runtime.utils import helper
 
 class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
     MODEL_SUFFIX_MAP = {
-        'fuyu-8b': 'vlm/adept/fuyu-8b',
-        'mistralai/mistral-large': '',
-        'mistralai/mixtral-8x7b-instruct-v0.1': '',
-        'mistralai/mixtral-8x22b-instruct-v0.1': '',
-        'google/gemma-7b': '',
-        'google/codegemma-7b': '',
-        'snowflake/arctic':'',
-        'meta/llama2-70b': '',
-        'meta/llama3-8b-instruct': '',
-        'meta/llama3-70b-instruct': '',
-        'meta/llama-3.1-8b-instruct': '',
-        'meta/llama-3.1-70b-instruct': '',
-        'meta/llama-3.1-405b-instruct': '',
-        'google/recurrentgemma-2b': '',
-        'nvidia/nemotron-4-340b-instruct': '',
-        'microsoft/phi-3-medium-128k-instruct':'',
-        'microsoft/phi-3-mini-128k-instruct':''
+        "fuyu-8b": "vlm/adept/fuyu-8b",
+        "mistralai/mistral-large": "",
+        "mistralai/mixtral-8x7b-instruct-v0.1": "",
+        "mistralai/mixtral-8x22b-instruct-v0.1": "",
+        "google/gemma-7b": "",
+        "google/codegemma-7b": "",
+        "snowflake/arctic": "",
+        "meta/llama2-70b": "",
+        "meta/llama3-8b-instruct": "",
+        "meta/llama3-70b-instruct": "",
+        "meta/llama-3.1-8b-instruct": "",
+        "meta/llama-3.1-70b-instruct": "",
+        "meta/llama-3.1-405b-instruct": "",
+        "google/recurrentgemma-2b": "",
+        "nvidia/nemotron-4-340b-instruct": "",
+        "microsoft/phi-3-medium-128k-instruct": "",
+        "microsoft/phi-3-mini-128k-instruct": "",
     }
 
-    def _invoke(self, model: str, credentials: dict,
-                prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-                stream: bool = True, user: Optional[str] = None) \
-            -> Union[LLMResult, Generator]:
-        
+    def _invoke(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        tools: Optional[list[PromptMessageTool]] = None,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+    ) -> Union[LLMResult, Generator]:
         self._add_custom_parameters(credentials, model)
         prompt_messages = self._transform_prompt_messages(prompt_messages)
         stop = []
@@ -60,16 +65,14 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
         for i, p in enumerate(prompt_messages):
             if isinstance(p, UserPromptMessage) and isinstance(p.content, list):
                 content = p.content
-                content_text = ''
+                content_text = ""
                 for prompt_content in content:
                     if prompt_content.type == PromptMessageContentType.TEXT:
                         content_text += prompt_content.data
                     else:
                         content_text += f' <img src="{prompt_content.data}" />'
 
-                prompt_message = UserPromptMessage(
-                    content=content_text
-                )
+                prompt_message = UserPromptMessage(content=content_text)
                 prompt_messages[i] = prompt_message
         return prompt_messages
 
@@ -78,91 +81,87 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
         self._validate_credentials(model, credentials)
 
     def _add_custom_parameters(self, credentials: dict, model: str) -> None:
-        credentials['mode'] = 'chat'
-        
-        if self.MODEL_SUFFIX_MAP[model]:
-            credentials['server_url'] = f'https://ai.api.nvidia.com/v1/{self.MODEL_SUFFIX_MAP[model]}'
-            credentials.pop('endpoint_url')
-        else:
-            credentials['endpoint_url'] = 'https://integrate.api.nvidia.com/v1'
+        credentials["mode"] = "chat"
 
-        credentials['stream_mode_delimiter'] = '\n'
+        if self.MODEL_SUFFIX_MAP[model]:
+            credentials["server_url"] = f"https://ai.api.nvidia.com/v1/{self.MODEL_SUFFIX_MAP[model]}"
+            credentials.pop("endpoint_url")
+        else:
+            credentials["endpoint_url"] = "https://integrate.api.nvidia.com/v1"
+
+        credentials["stream_mode_delimiter"] = "\n"
 
     def _validate_credentials(self, model: str, credentials: dict) -> None:
         """
-        Validate model credentials using requests to ensure compatibility with all providers following OpenAI's API standard.
+        Validate model credentials using requests to ensure compatibility with all providers following
+        OpenAI's API standard.
 
         :param model: model name
         :param credentials: model credentials
         :return:
         """
         try:
-            headers = {
-                'Content-Type': 'application/json'
-            }
+            headers = {"Content-Type": "application/json"}
 
-            api_key = credentials.get('api_key')
+            api_key = credentials.get("api_key")
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
 
-            endpoint_url = credentials.get('endpoint_url')
-            if endpoint_url and not endpoint_url.endswith('/'):
-                endpoint_url += '/'
-            server_url = credentials.get('server_url')
+            endpoint_url = credentials.get("endpoint_url")
+            if endpoint_url and not endpoint_url.endswith("/"):
+                endpoint_url += "/"
+            server_url = credentials.get("server_url")
 
             # prepare the payload for a simple ping to the model
-            data = {
-                'model': model,
-                'max_tokens': 5
-            }
+            data = {"model": model, "max_tokens": 5}
 
-            completion_type = LLMMode.value_of(credentials['mode'])
+            completion_type = LLMMode.value_of(credentials["mode"])
 
             if completion_type is LLMMode.CHAT:
-                data['messages'] = [
-                    {
-                        "role": "user",
-                        "content": "ping"
-                    },
+                data["messages"] = [
+                    {"role": "user", "content": "ping"},
                 ]
-                if 'endpoint_url' in credentials:
-                    endpoint_url = str(URL(endpoint_url) / 'chat' / 'completions')
-                elif 'server_url' in credentials:
+                if "endpoint_url" in credentials:
+                    endpoint_url = str(URL(endpoint_url) / "chat" / "completions")
+                elif "server_url" in credentials:
                     endpoint_url = server_url
             elif completion_type is LLMMode.COMPLETION:
-                data['prompt'] = 'ping'
-                if 'endpoint_url' in credentials:
-                    endpoint_url = str(URL(endpoint_url) / 'completions')
-                elif 'server_url' in credentials:
+                data["prompt"] = "ping"
+                if "endpoint_url" in credentials:
+                    endpoint_url = str(URL(endpoint_url) / "completions")
+                elif "server_url" in credentials:
                     endpoint_url = server_url
             else:
                 raise ValueError("Unsupported completion type for model configuration.")
 
             # send a post request to validate the credentials
-            response = requests.post(
-                endpoint_url,
-                headers=headers,
-                json=data,
-                timeout=(10, 300)
-            )
+            response = requests.post(endpoint_url, headers=headers, json=data, timeout=(10, 300))
 
             if response.status_code != 200:
                 raise CredentialsValidateFailedError(
-                    f'Credentials validation failed with status code {response.status_code}')
+                    f"Credentials validation failed with status code {response.status_code}"
+                )
 
             try:
                 json_result = response.json()
             except json.JSONDecodeError as e:
-                raise CredentialsValidateFailedError('Credentials validation failed: JSON decode error')
+                raise CredentialsValidateFailedError("Credentials validation failed: JSON decode error")
         except CredentialsValidateFailedError:
             raise
         except Exception as ex:
-            raise CredentialsValidateFailedError(f'An error occurred during credentials validation: {str(ex)}')
+            raise CredentialsValidateFailedError(f"An error occurred during credentials validation: {str(ex)}")
 
-    def _generate(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
-                  tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-                  stream: bool = True, \
-                  user: Optional[str] = None) -> Union[LLMResult, Generator]:
+    def _generate(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        tools: Optional[list[PromptMessageTool]] = None,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+    ) -> Union[LLMResult, Generator]:
         """
         Invoke llm completion model
 
@@ -176,57 +175,51 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         headers = {
-            'Content-Type': 'application/json',
-            'Accept-Charset': 'utf-8',
+            "Content-Type": "application/json",
+            "Accept-Charset": "utf-8",
         }
 
-        api_key = credentials.get('api_key')
+        api_key = credentials.get("api_key")
         if api_key:
-            headers['Authorization'] = f'Bearer {api_key}'
+            headers["Authorization"] = f"Bearer {api_key}"
 
         if stream:
-            headers['Accept'] = 'text/event-stream'
+            headers["Accept"] = "text/event-stream"
 
-        endpoint_url = credentials.get('endpoint_url')
-        if endpoint_url and not endpoint_url.endswith('/'):
-            endpoint_url += '/'
-        server_url = credentials.get('server_url')
+        endpoint_url = credentials.get("endpoint_url")
+        if endpoint_url and not endpoint_url.endswith("/"):
+            endpoint_url += "/"
+        server_url = credentials.get("server_url")
 
-        data = {
-            "model": model,
-            "stream": stream,
-            **model_parameters
-        }
+        data = {"model": model, "stream": stream, **model_parameters}
 
-        completion_type = LLMMode.value_of(credentials['mode'])
+        completion_type = LLMMode.value_of(credentials["mode"])
 
         if completion_type is LLMMode.CHAT:
-            if 'endpoint_url' in credentials:
-                endpoint_url = str(URL(endpoint_url) / 'chat' / 'completions')
-            elif 'server_url' in credentials:
+            if "endpoint_url" in credentials:
+                endpoint_url = str(URL(endpoint_url) / "chat" / "completions")
+            elif "server_url" in credentials:
                 endpoint_url = server_url
-            data['messages'] = [self._convert_prompt_message_to_dict(m, credentials) for m in prompt_messages]
+            data["messages"] = [self._convert_prompt_message_to_dict(m, credentials) for m in prompt_messages]
         elif completion_type is LLMMode.COMPLETION:
-            data['prompt'] = 'ping'
-            if 'endpoint_url' in credentials:
-                endpoint_url = str(URL(endpoint_url) / 'completions')
-            elif 'server_url' in credentials:
+            data["prompt"] = "ping"
+            if "endpoint_url" in credentials:
+                endpoint_url = str(URL(endpoint_url) / "completions")
+            elif "server_url" in credentials:
                 endpoint_url = server_url
         else:
             raise ValueError("Unsupported completion type for model configuration.")
 
-
         # annotate tools with names, descriptions, etc.
-        function_calling_type = credentials.get('function_calling_type', 'no_call')
+        function_calling_type = credentials.get("function_calling_type", "no_call")
         formatted_tools = []
         if tools:
-            if function_calling_type == 'function_call':
-                data['functions'] = [{
-                    "name": tool.name,
-                    "description": tool.description,
-                    "parameters": tool.parameters
-                } for tool in tools]
-            elif function_calling_type == 'tool_call':
+            if function_calling_type == "function_call":
+                data["functions"] = [
+                    {"name": tool.name, "description": tool.description, "parameters": tool.parameters}
+                    for tool in tools
+                ]
+            elif function_calling_type == "tool_call":
                 data["tool_choice"] = "auto"
 
                 for tool in tools:
@@ -240,16 +233,10 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
         if user:
             data["user"] = user
 
-        response = requests.post(
-            endpoint_url,
-            headers=headers,
-            json=data,
-            timeout=(10, 300),
-            stream=stream
-        )
+        response = requests.post(endpoint_url, headers=headers, json=data, timeout=(10, 300), stream=stream)
 
-        if response.encoding is None or response.encoding == 'ISO-8859-1':
-            response.encoding = 'utf-8'
+        if response.encoding is None or response.encoding == "ISO-8859-1":
+            response.encoding = "utf-8"
 
         if not response.ok:
             raise InvokeError(f"API request failed with status code {response.status_code}: {response.text}")

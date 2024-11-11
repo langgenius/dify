@@ -54,3 +54,14 @@ parameters:
       zh_Hans: 用于请求护栏审查的内容，可以是用户输入或 LLM 输出。
     llm_description: The content used for requesting guardrail review, which can be either user input or LLM output.
     form: llm
+  - name: aws_region
+    type: string
+    required: true
+    label:
+      en_US: AWS Region
+      zh_Hans: AWS 区域
+    human_description:
+      en_US: Please enter the AWS region for the Bedrock client, for example 'us-east-1'.
+      zh_Hans: 请输入 Bedrock 客户端的 AWS 区域，例如 'us-east-1'。
+    llm_description: Please enter the AWS region for the Bedrock client, for example 'us-east-1'.
+    form: form

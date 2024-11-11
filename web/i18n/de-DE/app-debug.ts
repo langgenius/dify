@@ -248,7 +248,7 @@ const translation = {
     historyNoBeEmpty: 'Konversationsverlauf muss im Prompt gesetzt sein',
     queryNoBeEmpty: 'Anfrage muss im Prompt gesetzt sein',
   },
-  variableConig: {
+  variableConfig: {
     modalTitle: 'Feldeinstellungen',
     description: 'Einstellung für Variable {{varName}}',
     fieldType: 'Feldtyp',

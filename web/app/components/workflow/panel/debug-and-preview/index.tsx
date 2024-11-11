@@ -54,11 +54,8 @@ const DebugAndPreview = () => {
   return (
     <div
       className={cn(
-        'flex flex-col w-[420px] rounded-l-2xl h-full border border-black/2',
+        'flex flex-col w-[420px] bg-chatbot-bg rounded-l-2xl h-full border border-components-panel-border border-r-0 shadow-xl',
       )}
-      style={{
-        background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',
-      }}
     >
       <div className='shrink-0 flex items-center justify-between px-4 pt-3 pb-2 text-text-primary system-xl-semibold'>
         <div className='h-8'>{t('workflow.common.debugAndPreview').toLocaleUpperCase()}</div>
@@ -106,6 +103,7 @@ const DebugAndPreview = () => {
           showConversationVariableModal={showConversationVariableModal}
           onConversationModalHide={() => setShowConversationVariableModal(false)}
           showInputsFieldsPanel={expanded}
+          onHide={() => setExpanded(false)}
         />
       </div>
     </div>

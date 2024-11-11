@@ -3,7 +3,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import FormGeneration from '../toolbox/moderation/form-generation'
+import FormGeneration from '@/app/components/base/features/new-feature-panel/moderation/form-generation'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
@@ -172,12 +172,12 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       }
     }
 
-    const formatedData = formatData(localeData)
+    const formattedData = formatData(localeData)
 
-    if (onValidateBeforeSave && !onValidateBeforeSave(formatedData))
+    if (onValidateBeforeSave && !onValidateBeforeSave(formattedData))
       return
 
-    onSave(formatData(formatedData))
+    onSave(formatData(formattedData))
   }
 
   const action = data.type ? t('common.operation.edit') : t('common.operation.add')
@@ -189,7 +189,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       className='!p-8 !pb-6 !max-w-none !w-[640px]'
     >
       <div className='mb-2 text-xl font-semibold text-gray-900'>
-        {`${action} ${t('appDebug.variableConig.apiBasedVar')}`}
+        {`${action} ${t('appDebug.variableConfig.apiBasedVar')}`}
       </div>
       <div className='py-2'>
         <div className='leading-9 text-sm font-medium text-gray-900'>

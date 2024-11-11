@@ -38,8 +38,19 @@ dataset_retrieval_model_fields = {
     "score_threshold_enabled": fields.Boolean,
     "score_threshold": fields.Float,
 }
+external_retrieval_model_fields = {
+    "top_k": fields.Integer,
+    "score_threshold": fields.Float,
+}
 
 tag_fields = {"id": fields.String, "name": fields.String, "type": fields.String}
+
+external_knowledge_info_fields = {
+    "external_knowledge_id": fields.String,
+    "external_knowledge_api_id": fields.String,
+    "external_knowledge_api_name": fields.String,
+    "external_knowledge_api_endpoint": fields.String,
+}
 
 dataset_detail_fields = {
     "id": fields.String,
@@ -61,6 +72,8 @@ dataset_detail_fields = {
     "embedding_available": fields.Boolean,
     "retrieval_model_dict": fields.Nested(dataset_retrieval_model_fields),
     "tags": fields.List(fields.Nested(tag_fields)),
+    "external_knowledge_info": fields.Nested(external_knowledge_info_fields),
+    "external_retrieval_model": fields.Nested(external_retrieval_model_fields, allow_null=True),
 }
 
 dataset_query_detail_fields = {

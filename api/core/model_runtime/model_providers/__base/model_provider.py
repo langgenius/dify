@@ -29,32 +29,32 @@ class ModelProvider(ABC):
     def get_provider_schema(self) -> ProviderEntity:
         """
         Get provider schema
-    
+
         :return: provider schema
         """
         if self.provider_schema:
             return self.provider_schema
-    
+
         # get dirname of the current path
-        provider_name = self.__class__.__module__.split('.')[-1]
+        provider_name = self.__class__.__module__.split(".")[-1]
 
         # get the path of the model_provider classes
         base_path = os.path.abspath(__file__)
         current_path = os.path.join(os.path.dirname(os.path.dirname(base_path)), provider_name)
-    
+
         # read provider schema from yaml file
-        yaml_path = os.path.join(current_path, f'{provider_name}.yaml')
+        yaml_path = os.path.join(current_path, f"{provider_name}.yaml")
         yaml_data = load_yaml_file(yaml_path)
-    
+
         try:
             # yaml_data to entity
             provider_schema = ProviderEntity(**yaml_data)
         except Exception as e:
-            raise Exception(f'Invalid provider schema for {provider_name}: {str(e)}')
+            raise Exception(f"Invalid provider schema for {provider_name}: {str(e)}")
 
         # cache schema
         self.provider_schema = provider_schema
-    
+
         return provider_schema
 
     def models(self, model_type: ModelType) -> list[AIModelEntity]:
@@ -92,15 +92,15 @@ class ModelProvider(ABC):
 
         # get the path of the model type classes
         base_path = os.path.abspath(__file__)
-        model_type_name = model_type.value.replace('-', '_')
+        model_type_name = model_type.value.replace("-", "_")
         model_type_path = os.path.join(os.path.dirname(os.path.dirname(base_path)), provider_name, model_type_name)
-        model_type_py_path = os.path.join(model_type_path, f'{model_type_name}.py')
+        model_type_py_path = os.path.join(model_type_path, f"{model_type_name}.py")
 
         if not os.path.isdir(model_type_path) or not os.path.exists(model_type_py_path):
-            raise Exception(f'Invalid model type {model_type} for provider {provider_name}')
+            raise Exception(f"Invalid model type {model_type} for provider {provider_name}")
 
         # Dynamic loading {model_type_name}.py file and find the subclass of AIModel
-        parent_module = '.'.join(self.__class__.__module__.split('.')[:-1])
+        parent_module = ".".join(self.__class__.__module__.split(".")[:-1])
         mod = import_module_from_source(
             module_name=f"{parent_module}.{model_type_name}.{model_type_name}", py_file_path=model_type_py_path
         )

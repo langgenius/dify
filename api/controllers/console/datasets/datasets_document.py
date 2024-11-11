@@ -24,8 +24,11 @@ from controllers.console.datasets.error import (
     InvalidActionError,
     InvalidMetadataError,
 )
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from controllers.console.wraps import (
+    account_initialization_required,
+    cloud_edition_billing_resource_check,
+    setup_required,
+)
 from core.errors.error import (
     LLMBadRequestError,
     ModelCurrentlyNotSupportError,
@@ -46,8 +49,7 @@ from fields.document_fields import (
     document_with_segments_fields,
 )
 from libs.login import login_required
-from models.dataset import Dataset, DatasetProcessRule, Document, DocumentSegment
-from models.model import UploadFile
+from models import Dataset, DatasetProcessRule, Document, DocumentSegment, UploadFile
 from services.dataset_service import DatasetService, DocumentService
 from tasks.add_document_to_index_task import add_document_to_index_task
 from tasks.remove_document_from_index_task import remove_document_from_index_task
@@ -302,6 +304,8 @@ class DatasetInitApi(Resource):
             "doc_language", type=str, default="English", required=False, nullable=False, location="json"
         )
         parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
+        parser.add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
         args = parser.parse_args()
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
@@ -309,10 +313,15 @@ class DatasetInitApi(Resource):
             raise Forbidden()
 
         if args["indexing_technique"] == "high_quality":
+            if args["embedding_model"] is None or args["embedding_model_provider"] is None:
+                raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
             try:
                 model_manager = ModelManager()
-                model_manager.get_default_model_instance(
-                    tenant_id=current_user.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
+                model_manager.get_model_instance(
+                    tenant_id=current_user.current_tenant_id,
+                    provider=args["embedding_model_provider"],
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=args["embedding_model"],
                 )
             except InvokeAuthorizationError:
                 raise ProviderNotInitializeError(
@@ -350,7 +359,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
 
-        if document.indexing_status in ["completed", "error"]:
+        if document.indexing_status in {"completed", "error"}:
             raise DocumentAlreadyFinishedError()
 
         data_process_rule = document.dataset_process_rule
@@ -417,7 +426,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         info_list = []
         extract_settings = []
         for document in documents:
-            if document.indexing_status in ["completed", "error"]:
+            if document.indexing_status in {"completed", "error"}:
                 raise DocumentAlreadyFinishedError()
             data_source_info = document.data_source_info_dict
             # format document files info
@@ -661,7 +670,7 @@ class DocumentProcessingApi(DocumentResource):
             db.session.commit()
 
         elif action == "resume":
-            if document.indexing_status not in ["paused", "error"]:
+            if document.indexing_status not in {"paused", "error"}:
                 raise InvalidActionError("Document not in paused or error state.")
 
             document.paused_by = None
@@ -939,7 +948,7 @@ class DocumentRetryApi(DocumentResource):
                     raise DocumentAlreadyFinishedError()
                 retry_documents.append(document)
             except Exception as e:
-                logging.error(f"Document {document_id} retry failed: {str(e)}")
+                logging.exception(f"Document {document_id} retry failed: {str(e)}")
                 continue
         # retry document
         DocumentService.retry_document(dataset_id, retry_documents)

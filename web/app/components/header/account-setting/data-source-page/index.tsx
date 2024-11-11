@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import DataSourceNotion from './data-source-notion'
 import DataSourceWebsite from './data-source-website'
 import { fetchDataSource } from '@/service/common'
+import { DataSourceProvider } from '@/models/common'
 
 export default function DataSourcePage() {
   const { t } = useTranslation()
@@ -13,7 +14,8 @@ export default function DataSourcePage() {
     <div className='mb-8'>
       <div className='mb-2 text-sm font-medium text-gray-900'>{t('common.dataSource.add')}</div>
       <DataSourceNotion workspaces={notionWorkspaces} />
-      <DataSourceWebsite />
+      <DataSourceWebsite provider={DataSourceProvider.jinaReader} />
+      <DataSourceWebsite provider={DataSourceProvider.fireCrawl} />
     </div>
   )
 }

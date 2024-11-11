@@ -12,7 +12,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { BubbleText } from '@/app/components/base/icons/src/vender/solid/education'
 import Radio from '@/app/components/base/radio/ui'
-import { CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import type { AgentConfig } from '@/models/debug'
@@ -117,7 +117,7 @@ const AssistantTypePicker: FC<Props> = ({
       >
         <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
           <div className={cn(open && 'bg-gray-50', 'flex items-center h-8 px-3 border border-black/5 rounded-lg cursor-pointer select-none space-x-1 text-indigo-600')}>
-            {isAgent ? <BubbleText className='w-3 h-3' /> : <CuteRobote className='w-3 h-3' />}
+            {isAgent ? <BubbleText className='w-3 h-3' /> : <CuteRobot className='w-3 h-3' />}
             <div className='text-xs font-medium'>{t(`appDebug.assistantType.${isAgent ? 'agentAssistant' : 'chatAssistant'}.name`)}</div>
             <RiArrowDownSLine className='w-3 h-3' />
           </div>
@@ -135,7 +135,7 @@ const AssistantTypePicker: FC<Props> = ({
               onClick={handleChange}
             />
             <SelectItem
-              Icon={CuteRobote}
+              Icon={CuteRobot}
               value='agent'
               disabled={disabled}
               text={t('appDebug.assistantType.agentAssistant.name')}

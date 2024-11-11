@@ -6,7 +6,6 @@ logger = logging.getLogger(__name__)
 
 
 class OpenAIProvider(ModelProvider):
-
     def validate_provider_credentials(self, credentials: dict) -> None:
         """
         Validate provider credentials

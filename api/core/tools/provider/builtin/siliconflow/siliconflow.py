@@ -14,6 +14,4 @@ class SiliconflowProvider(BuiltinToolProviderController):
 
         response = requests.get(url, headers=headers)
         if response.status_code != 200:
-            raise ToolProviderCredentialValidationError(
-                "SiliconFlow API key is invalid"
-            )
+            raise ToolProviderCredentialValidationError("SiliconFlow API key is invalid")

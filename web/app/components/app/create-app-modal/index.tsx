@@ -19,9 +19,11 @@ import type { AppMode } from '@/types/app'
 import { createApp } from '@/service/apps'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import Tooltip from '@/app/components/base/tooltip'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -158,7 +160,7 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
                 setShowChatBotType(false)
               }}
             >
-              <CuteRobote className='w-6 h-6 text-indigo-600' />
+              <CuteRobot className='w-6 h-6 text-indigo-600' />
               <div className='h-5 text-[13px] font-medium leading-[18px]'>{t('app.types.agent')}</div>
             </div>
           </Tooltip>
@@ -275,11 +277,11 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
             size='large' className='cursor-pointer'
             onClick={() => { setShowAppIconPicker(true) }}
           />
-          <input
+          <Input
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder={t('app.newApp.appNamePlaceholder') || ''}
-            className='grow h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs'
+            className='grow h-10'
           />
         </div>
         {showAppIconPicker && <AppIconPicker
@@ -295,8 +297,8 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
       {/* description */}
       <div className='pt-2 px-8'>
         <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.newApp.captionDescription')}</div>
-        <textarea
-          className='w-full px-3 py-2 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs h-[80px] resize-none'
+        <Textarea
+          className='resize-none'
           placeholder={t('app.newApp.appDescriptionPlaceholder') || ''}
           value={description}
           onChange={e => setDescription(e.target.value)}

@@ -17,7 +17,9 @@ class FetchAnsByStackExQuesIDInput(BaseModel):
 
 
 class FetchAnsByStackExQuesIDTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(
+        self, user_id: str, tool_parameters: dict[str, Any]
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         input = FetchAnsByStackExQuesIDInput(**tool_parameters)
 
         params = {
@@ -26,7 +28,7 @@ class FetchAnsByStackExQuesIDTool(BuiltinTool):
             "order": input.order,
             "sort": input.sort,
             "pagesize": input.pagesize,
-            "page": input.page
+            "page": input.page,
         }
 
         response = requests.get(f"https://api.stackexchange.com/2.3/questions/{input.id}/answers", params=params)

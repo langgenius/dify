@@ -20,7 +20,7 @@ def sync_website_document_indexing_task(dataset_id: str, document_id: str):
     :param dataset_id:
     :param document_id:
 
-    Usage: sunc_website_document_indexing_task.delay(dataset_id, document_id)
+    Usage: sync_website_document_indexing_task.delay(dataset_id, document_id)
     """
     start_at = time.perf_counter()
 

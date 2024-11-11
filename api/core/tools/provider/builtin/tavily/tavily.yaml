@@ -28,4 +28,4 @@ credentials_for_provider:
       en_US: Get your Tavily API key from Tavily
       zh_Hans: 从 TavilyApi 获取您的 Tavily API key
       pt_BR: Get your Tavily API key from Tavily
-    url: https://docs.tavily.com/docs/tavily-api/introduction
+    url: https://docs.tavily.com/docs/welcome

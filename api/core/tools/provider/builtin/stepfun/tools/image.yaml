@@ -29,42 +29,13 @@ parameters:
       pt_BR: Image prompt, you can check the official documentation of step-1x
     llm_description: Image prompt of step-1x you should describe the image you want to generate as a list of words as possible as detailed
     form: llm
-  - name: model
-    type: select
-    required: false
-    human_description:
-      en_US: used for selecting the model name
-      zh_Hans: 用于选择模型的名字
-      pt_BR: used for selecting the model name
-    label:
-      en_US: Model Name
-      zh_Hans: 模型名字
-      pt_BR: Model Name
-    form: form
-    options:
-      - value: step-1x-turbo
-        label:
-          en_US: turbo
-          zh_Hans: turbo
-          pt_BR: turbo
-      - value: step-1x-medium
-        label:
-          en_US: medium
-          zh_Hans: medium
-          pt_BR: medium
-      - value: step-1x-large
-        label:
-          en_US: large
-          zh_Hans: large
-          pt_BR: large
-    default: step-1x-medium
   - name: size
     type: select
     required: false
     human_description:
-      en_US: used for selecting the image size
-      zh_Hans: 用于选择图像大小
-      pt_BR: used for selecting the image size
+      en_US: The size of the generated image
+      zh_Hans: 生成的图片大小
+      pt_BR: The size of the generated image
     label:
       en_US: Image size
       zh_Hans: 图像大小
@@ -106,17 +77,17 @@ parameters:
     type: number
     required: true
     human_description:
-      en_US: used for selecting the number of images
-      zh_Hans: 用于选择图像数量
-      pt_BR: used for selecting the number of images
+      en_US: Number of generated images, now only one image can be generated at a time
+      zh_Hans: 生成的图像数量，当前仅支持每次生成一张图片
+      pt_BR: Number of generated images, now only one image can be generated at a time
     label:
-      en_US: Number of images
-      zh_Hans: 图像数量
-      pt_BR: Number of images
+      en_US: Number of generated images
+      zh_Hans: 生成的图像数量
+      pt_BR: Number of generated images
     form: form
     default: 1
     min: 1
-    max: 10
+    max: 1
   - name: seed
     type: number
     required: false
@@ -138,21 +109,25 @@ parameters:
       zh_Hans: Steps
       pt_BR: Steps
     human_description:
-      en_US: Steps
-      zh_Hans: Steps
-      pt_BR: Steps
+      en_US: Steps, now support integers between 1 and 100
+      zh_Hans: Steps, 当前支持 1～100 之间整数
+      pt_BR: Steps, now support integers between 1 and 100
     form: form
-    default: 10
-  - name: negative_prompt
-    type: string
+    default: 50
+    min: 1
+    max: 100
+  - name: cfg_scale
+    type: number
     required: false
     label:
-      en_US: Negative prompt
-      zh_Hans: Negative prompt
-      pt_BR: Negative prompt
+      en_US: classifier-free guidance scale
+      zh_Hans: classifier-free guidance scale
+      pt_BR: classifier-free guidance scale
     human_description:
-      en_US: Negative prompt
-      zh_Hans: Negative prompt
-      pt_BR: Negative prompt
+      en_US: classifier-free guidance scale
+      zh_Hans: classifier-free guidance scale
+      pt_BR: classifier-free guidance scale
     form: form
-    default: (worst quality:1.3), (nsfw), low quality
+    default: 7.5
+    min: 1
+    max: 10

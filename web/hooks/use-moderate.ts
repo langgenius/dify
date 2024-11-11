@@ -13,14 +13,14 @@ export const useModerate = (
   content: string,
   stop: boolean,
   moderationService: (text: string) => ReturnType<ModerationService>,
-  seperateLength = 50,
+  separateLength = 50,
 ) => {
   const moderatedContentMap = useRef<Map<number, string>>(new Map())
   const moderatingIndex = useRef<number[]>([])
   const [contentArr, setContentArr] = useState<string[]>([])
 
   const handleModerate = () => {
-    const stringArr = splitStringByLength(content, seperateLength)
+    const stringArr = splitStringByLength(content, separateLength)
 
     const lastIndex = stringArr.length - 1
     stringArr.forEach((item, index) => {

@@ -4,8 +4,7 @@ from flask_restful import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from fields.tag_fields import tag_fields
 from libs.login import login_required
 from models.model import Tag
@@ -13,7 +12,7 @@ from services.tag_service import TagService
 
 
 def _validate_name(name):
-    if not name or len(name) < 1 or len(name) > 40:
+    if not name or len(name) < 1 or len(name) > 50:
         raise ValueError("Name must be between 1 to 50 characters.")
     return name
 

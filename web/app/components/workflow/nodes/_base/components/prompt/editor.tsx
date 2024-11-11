@@ -58,6 +58,7 @@ type Props = {
   }
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+  isSupportFileVar?: boolean
   isSupportPromptGenerator?: boolean
   onGenerated?: (prompt: string) => void
   modelConfig?: ModelConfig
@@ -86,6 +87,7 @@ const Editor: FC<Props> = ({
   hasSetBlockStatus,
   nodesOutputVars,
   availableNodes = [],
+  isSupportFileVar,
   isSupportPromptGenerator,
   isSupportJinja,
   editionType,
@@ -245,6 +247,7 @@ const Editor: FC<Props> = ({
                     onBlur={setBlur}
                     onFocus={setFocus}
                     editable={!readOnly}
+                    isSupportFileVar={isSupportFileVar}
                   />
                   {/* to patch Editor not support dynamic change editable status */}
                   {readOnly && <div className='absolute inset-0 z-10'></div>}

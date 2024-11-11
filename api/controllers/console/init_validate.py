@@ -4,7 +4,7 @@ from flask import session
 from flask_restful import Resource, reqparse
 
 from configs import dify_config
-from libs.helper import str_len
+from libs.helper import StrLen
 from models.model import DifySetup
 from services.account_service import TenantService
 
@@ -28,7 +28,7 @@ class InitValidateAPI(Resource):
             raise AlreadySetupError()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("password", type=str_len(30), required=True, location="json")
+        parser.add_argument("password", type=StrLen(30), required=True, location="json")
         input_password = parser.parse_args()["password"]
 
         if input_password != os.environ.get("INIT_PASSWORD"):

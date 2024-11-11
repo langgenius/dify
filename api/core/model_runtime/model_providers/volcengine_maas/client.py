@@ -69,31 +69,26 @@ class ArkClientV3:
     def from_credentials(cls, credentials):
         """Initialize the client using the credentials provided."""
         args = {
-            "base_url": credentials['api_endpoint_host'],
-            "region": credentials['volc_region'],
+            "base_url": credentials["api_endpoint_host"],
+            "region": credentials["volc_region"],
         }
         if credentials.get("auth_method") == "api_key":
             args = {
                 **args,
-                "api_key": credentials['volc_api_key'],
+                "api_key": credentials["volc_api_key"],
             }
         else:
             args = {
                 **args,
-                "ak": credentials['volc_access_key_id'],
-                "sk": credentials['volc_secret_access_key'],
+                "ak": credentials["volc_access_key_id"],
+                "sk": credentials["volc_secret_access_key"],
             }
 
         if cls.is_compatible_with_legacy(credentials):
-            args = {
-                **args,
-                "base_url": DEFAULT_V3_ENDPOINT
-            }
+            args = {**args, "base_url": DEFAULT_V3_ENDPOINT}
 
-        client = ArkClientV3(
-            **args
-        )
-        client.endpoint_id = credentials['endpoint_id']
+        client = ArkClientV3(**args)
+        client.endpoint_id = credentials["endpoint_id"]
         return client
 
     @staticmethod
@@ -107,54 +102,48 @@ class ArkClientV3:
                 content = []
                 for message_content in message.content:
                     if message_content.type == PromptMessageContentType.TEXT:
-                        content.append(ChatCompletionContentPartTextParam(
-                            text=message_content.text,
-                            type='text',
-                        ))
+                        content.append(
+                            ChatCompletionContentPartTextParam(
+                                text=message_content.text,
+                                type="text",
+                            )
+                        )
                     elif message_content.type == PromptMessageContentType.IMAGE:
-                        message_content = cast(
-                            ImagePromptMessageContent, message_content)
-                        image_data = re.sub(
-                            r'^data:image\/[a-zA-Z]+;base64,', '', message_content.data)
-                        content.append(ChatCompletionContentPartImageParam(
-                            image_url=ImageURL(
-                                url=image_data,
-                                detail=message_content.detail.value,
-                            ),
-                            type='image_url',
-                        ))
-            message_dict = ChatCompletionUserMessageParam(
-                role='user',
-                content=content
-            )
+                        message_content = cast(ImagePromptMessageContent, message_content)
+                        image_data = re.sub(r"^data:image\/[a-zA-Z]+;base64,", "", message_content.data)
+                        content.append(
+                            ChatCompletionContentPartImageParam(
+                                image_url=ImageURL(
+                                    url=image_data,
+                                    detail=message_content.detail.value,
+                                ),
+                                type="image_url",
+                            )
+                        )
+            message_dict = ChatCompletionUserMessageParam(role="user", content=content)
         elif isinstance(message, AssistantPromptMessage):
             message = cast(AssistantPromptMessage, message)
             message_dict = ChatCompletionAssistantMessageParam(
                 content=message.content,
-                role='assistant',
-                tool_calls=None if not message.tool_calls else [
+                role="assistant",
+                tool_calls=None
+                if not message.tool_calls
+                else [
                     ChatCompletionMessageToolCallParam(
                         id=call.id,
-                        function=Function(
-                            name=call.function.name,
-                            arguments=call.function.arguments
-                        ),
-                        type='function'
-                    ) for call in message.tool_calls
-                ]
+                        function=Function(name=call.function.name, arguments=call.function.arguments),
+                        type="function",
+                    )
+                    for call in message.tool_calls
+                ],
             )
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
-            message_dict = ChatCompletionSystemMessageParam(
-                content=message.content,
-                role='system'
-            )
+            message_dict = ChatCompletionSystemMessageParam(content=message.content, role="system")
         elif isinstance(message, ToolPromptMessage):
             message = cast(ToolPromptMessage, message)
             message_dict = ChatCompletionToolMessageParam(
-                content=message.content,
-                role='tool',
-                tool_call_id=message.tool_call_id
+                content=message.content, role="tool", tool_call_id=message.tool_call_id
             )
         else:
             raise ValueError(f"Got unknown PromptMessage type {message}")
@@ -164,23 +153,25 @@ class ArkClientV3:
     @staticmethod
     def _convert_tool_prompt(message: PromptMessageTool) -> ChatCompletionToolParam:
         return ChatCompletionToolParam(
-            type='function',
+            type="function",
             function=FunctionDefinition(
                 name=message.name,
                 description=message.description,
                 parameters=message.parameters,
-            )
+            ),
         )
 
-    def chat(self, messages: list[PromptMessage],
-             tools: Optional[list[PromptMessageTool]] = None,
-             stop: Optional[list[str]] = None,
-             frequency_penalty: Optional[float] = None,
-             max_tokens: Optional[int] = None,
-             presence_penalty: Optional[float] = None,
-             top_p: Optional[float] = None,
-             temperature: Optional[float] = None,
-             ) -> ChatCompletion:
+    def chat(
+        self,
+        messages: list[PromptMessage],
+        tools: Optional[list[PromptMessageTool]] = None,
+        stop: Optional[list[str]] = None,
+        frequency_penalty: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        presence_penalty: Optional[float] = None,
+        top_p: Optional[float] = None,
+        temperature: Optional[float] = None,
+    ) -> ChatCompletion:
         """Block chat"""
         return self.ark.chat.completions.create(
             model=self.endpoint_id,
@@ -194,15 +185,17 @@ class ArkClientV3:
             temperature=temperature,
         )
 
-    def stream_chat(self, messages: list[PromptMessage],
-                    tools: Optional[list[PromptMessageTool]] = None,
-                    stop: Optional[list[str]] = None,
-                    frequency_penalty: Optional[float] = None,
-                    max_tokens: Optional[int] = None,
-                    presence_penalty: Optional[float] = None,
-                    top_p: Optional[float] = None,
-                    temperature: Optional[float] = None,
-                    ) -> Generator[ChatCompletionChunk]:
+    def stream_chat(
+        self,
+        messages: list[PromptMessage],
+        tools: Optional[list[PromptMessageTool]] = None,
+        stop: Optional[list[str]] = None,
+        frequency_penalty: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+        presence_penalty: Optional[float] = None,
+        top_p: Optional[float] = None,
+        temperature: Optional[float] = None,
+    ) -> Generator[ChatCompletionChunk]:
         """Stream chat"""
         chunks = self.ark.chat.completions.create(
             stream=True,
@@ -215,11 +208,9 @@ class ArkClientV3:
             presence_penalty=presence_penalty,
             top_p=top_p,
             temperature=temperature,
+            stream_options={"include_usage": True},
         )
-        for chunk in chunks:
-            if not chunk.choices:
-                continue
-            yield chunk
+        yield from chunks
 
     def embeddings(self, texts: list[str]) -> CreateEmbeddingResponse:
         return self.ark.embeddings.create(model=self.endpoint_id, input=texts)

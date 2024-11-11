@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import cn from '@/utils/classnames'
@@ -11,7 +11,7 @@ import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import type { RetrievalConfig } from '@/types/app'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useCurrentProviderAndModel, useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   DEFAULT_WEIGHTED_SCORE,
@@ -19,6 +19,7 @@ import {
   WeightedScoreEnum,
 } from '@/models/datasets'
 import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
+import Toast from '@/app/components/base/toast'
 
 type Props = {
   type: RETRIEVE_METHOD
@@ -38,6 +39,24 @@ const RetrievalParamConfig: FC<Props> = ({
     defaultModel: rerankDefaultModel,
     modelList: rerankModelList,
   } = useModelListAndDefaultModel(ModelTypeEnum.rerank)
+
+  const {
+    currentModel,
+  } = useCurrentProviderAndModel(
+    rerankModelList,
+    rerankDefaultModel
+      ? {
+        ...rerankDefaultModel,
+        provider: rerankDefaultModel.provider.provider,
+      }
+      : undefined,
+  )
+
+  const handleDisabledSwitchClick = useCallback(() => {
+    if (!currentModel)
+      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
+  }, [currentModel, rerankDefaultModel, t])
+
   const isHybridSearch = type === RETRIEVE_METHOD.hybrid
 
   const rerankModel = (() => {
@@ -99,16 +118,22 @@ const RetrievalParamConfig: FC<Props> = ({
         <div>
           <div className='flex h-8 items-center text-[13px] font-medium text-gray-900 space-x-2'>
             {canToggleRerankModalEnable && (
-              <Switch
-                size='md'
-                defaultValue={value.reranking_enable}
-                onChange={(v) => {
-                  onChange({
-                    ...value,
-                    reranking_enable: v,
-                  })
-                }}
-              />
+              <div
+                className='flex items-center'
+                onClick={handleDisabledSwitchClick}
+              >
+                <Switch
+                  size='md'
+                  defaultValue={currentModel ? value.reranking_enable : false}
+                  onChange={(v) => {
+                    onChange({
+                      ...value,
+                      reranking_enable: v,
+                    })
+                  }}
+                  disabled={!currentModel}
+                />
+              </div>
             )}
             <div className='flex items-center'>
               <span className='mr-0.5'>{t('common.modelProvider.rerankModel.key')}</span>

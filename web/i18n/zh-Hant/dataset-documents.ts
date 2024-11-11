@@ -13,6 +13,8 @@ const translation = {
         status: '狀態',
         action: '操作',
       },
+      name: '名字',
+      rename: '重新命名',
     },
     action: {
       uploadFile: '上傳新檔案',
@@ -74,6 +76,7 @@ const translation = {
       error: '匯入出錯',
       ok: '確定',
     },
+    addUrl: '添加 URL',
   },
   metadata: {
     title: '元資料',

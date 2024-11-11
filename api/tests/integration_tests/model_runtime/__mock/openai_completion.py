@@ -112,7 +112,7 @@ class MockCompletionsClass:
         ]
         azure_openai_models = ["gpt-35-turbo-instruct"]
 
-        if not re.match(r"^(https?):\/\/[^\s\/$.?#].[^\s]*$", self._client.base_url.__str__()):
+        if not re.match(r"^(https?):\/\/[^\s\/$.?#].[^\s]*$", str(self._client.base_url)):
             raise InvokeAuthorizationError("Invalid base url")
         if model in openai_models + azure_openai_models:
             if not re.match(r"sk-[a-zA-Z0-9]{24,}$", self._client.api_key) and type(self._client) == OpenAI:

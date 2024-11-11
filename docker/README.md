@@ -83,7 +83,7 @@ The `.env.example` file provided in the Docker setup is extensive and covers a w
 
 7. **Vector Database Configuration**:
     - `VECTOR_STORE`: Type of vector database (e.g., `weaviate`, `milvus`).
-    - Specific settings for each vector store like `WEAVIATE_ENDPOINT`, `MILVUS_HOST`.
+    - Specific settings for each vector store like `WEAVIATE_ENDPOINT`, `MILVUS_URI`.
 
 8. **CORS Configuration**:
     - `WEB_API_CORS_ALLOW_ORIGINS`, `CONSOLE_CORS_ALLOW_ORIGINS`: Settings for cross-origin resource sharing.

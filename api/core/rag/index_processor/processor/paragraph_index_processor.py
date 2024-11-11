@@ -1,4 +1,5 @@
 """Paragraph index processor."""
+
 import uuid
 from typing import Optional
 
@@ -15,34 +16,33 @@ from models.dataset import Dataset
 
 
 class ParagraphIndexProcessor(BaseIndexProcessor):
-
     def extract(self, extract_setting: ExtractSetting, **kwargs) -> list[Document]:
-
-        text_docs = ExtractProcessor.extract(extract_setting=extract_setting,
-                                             is_automatic=kwargs.get('process_rule_mode') == "automatic")
+        text_docs = ExtractProcessor.extract(
+            extract_setting=extract_setting, is_automatic=kwargs.get("process_rule_mode") == "automatic"
+        )
 
         return text_docs
 
     def transform(self, documents: list[Document], **kwargs) -> list[Document]:
         # Split the text documents into nodes.
-        splitter = self._get_splitter(processing_rule=kwargs.get('process_rule'),
-                                      embedding_model_instance=kwargs.get('embedding_model_instance'))
+        splitter = self._get_splitter(
+            processing_rule=kwargs.get("process_rule"), embedding_model_instance=kwargs.get("embedding_model_instance")
+        )
         all_documents = []
         for document in documents:
             # document clean
-            document_text = CleanProcessor.clean(document.page_content, kwargs.get('process_rule'))
+            document_text = CleanProcessor.clean(document.page_content, kwargs.get("process_rule"))
             document.page_content = document_text
             # parse document to nodes
             document_nodes = splitter.split_documents([document])
             split_documents = []
             for document_node in document_nodes:
-
                 if document_node.page_content.strip():
                     doc_id = str(uuid.uuid4())
                     hash = helper.generate_text_hash(document_node.page_content)
-                    document_node.metadata['doc_id'] = doc_id
-                    document_node.metadata['doc_hash'] = hash
-                    # delete Spliter character
+                    document_node.metadata["doc_id"] = doc_id
+                    document_node.metadata["doc_hash"] = hash
+                    # delete Splitter character
                     page_content = document_node.page_content
                     if page_content.startswith(".") or page_content.startswith("。"):
                         page_content = page_content[1:].strip()
@@ -55,7 +55,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
         return all_documents
 
     def load(self, dataset: Dataset, documents: list[Document], with_keywords: bool = True):
-        if dataset.indexing_technique == 'high_quality':
+        if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             vector.create(documents)
         if with_keywords:
@@ -63,7 +63,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             keyword.create(documents)
 
     def clean(self, dataset: Dataset, node_ids: Optional[list[str]], with_keywords: bool = True):
-        if dataset.indexing_technique == 'high_quality':
+        if dataset.indexing_technique == "high_quality":
             vector = Vector(dataset)
             if node_ids:
                 vector.delete_by_ids(node_ids)
@@ -76,17 +76,29 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             else:
                 keyword.delete()
 
-    def retrieve(self, retrival_method: str, query: str, dataset: Dataset, top_k: int,
-                 score_threshold: float, reranking_model: dict) -> list[Document]:
+    def retrieve(
+        self,
+        retrieval_method: str,
+        query: str,
+        dataset: Dataset,
+        top_k: int,
+        score_threshold: float,
+        reranking_model: dict,
+    ) -> list[Document]:
         # Set search parameters.
-        results = RetrievalService.retrieve(retrival_method=retrival_method, dataset_id=dataset.id, query=query,
-                                            top_k=top_k, score_threshold=score_threshold,
-                                            reranking_model=reranking_model)
+        results = RetrievalService.retrieve(
+            retrieval_method=retrieval_method,
+            dataset_id=dataset.id,
+            query=query,
+            top_k=top_k,
+            score_threshold=score_threshold,
+            reranking_model=reranking_model,
+        )
         # Organize results.
         docs = []
         for result in results:
             metadata = result.metadata
-            metadata['score'] = result.score
+            metadata["score"] = result.score
             if result.score > score_threshold:
                 doc = Document(page_content=result.page_content, metadata=metadata)
                 docs.append(doc)

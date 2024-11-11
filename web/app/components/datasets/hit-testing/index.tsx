@@ -13,7 +13,7 @@ import s from './style.module.css'
 import HitDetail from './hit-detail'
 import ModifyRetrievalModal from './modify-retrieval-modal'
 import cn from '@/utils/classnames'
-import type { HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
+import type { ExternalKnowledgeBaseHitTestingResponse, ExternalKnowledgeBaseHitTesting as ExternalKnowledgeBaseHitTestingType, HitTestingResponse, HitTesting as HitTestingType } from '@/models/datasets'
 import Loading from '@/app/components/base/loading'
 import Modal from '@/app/components/base/modal'
 import Drawer from '@/app/components/base/drawer'
@@ -49,8 +49,10 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
   const isMobile = media === MediaType.mobile
 
   const [hitResult, setHitResult] = useState<HitTestingResponse | undefined>() // 初始化记录为空数组
+  const [externalHitResult, setExternalHitResult] = useState<ExternalKnowledgeBaseHitTestingResponse | undefined>()
   const [submitLoading, setSubmitLoading] = useState(false)
   const [currParagraph, setCurrParagraph] = useState<{ paraInfo?: HitTestingType; showModal: boolean }>({ showModal: false })
+  const [externalCurrParagraph, setExternalCurrParagraph] = useState<{ paraInfo?: ExternalKnowledgeBaseHitTestingType; showModal: boolean }>({ showModal: false })
   const [text, setText] = useState('')
 
   const [currPage, setCurrPage] = React.useState<number>(0)
@@ -66,11 +68,51 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
     setCurrParagraph({ paraInfo: detail, showModal: true })
   }
 
+  const onClickExternalCard = (detail: ExternalKnowledgeBaseHitTestingType) => {
+    setExternalCurrParagraph({ paraInfo: detail, showModal: true })
+  }
   const { dataset: currentDataset } = useContext(DatasetDetailContext)
+  const isExternal = currentDataset?.provider === 'external'
 
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict as RetrievalConfig)
   const [isShowModifyRetrievalModal, setIsShowModifyRetrievalModal] = useState(false)
   const [isShowRightPanel, { setTrue: showRightPanel, setFalse: hideRightPanel, set: setShowRightPanel }] = useBoolean(!isMobile)
+
+  const renderHitResults = (results: any[], onClickCard: (record: any) => void) => (
+    <>
+      <div className='text-gray-600 font-semibold mb-4'>{t('datasetHitTesting.hit.title')}</div>
+      <div className='overflow-auto flex-1'>
+        <div className={s.cardWrapper}>
+          {results.map((record, idx) => (
+            <SegmentCard
+              key={idx}
+              loading={false}
+              refSource= {{
+                title: record.title,
+                uri: record.metadata ? record.metadata['x-amz-bedrock-kb-source-uri'] : '',
+              }}
+              isExternal={isExternal}
+              detail={record.segment}
+              contentExternal={record.content}
+              score={record.score}
+              scene='hitTesting'
+              className='h-[216px] mb-4'
+              onClick={() => onClickCard(record)}
+            />
+          ))}
+        </div>
+      </div>
+    </>
+  )
+
+  const renderEmptyState = () => (
+    <div className='h-full flex flex-col justify-center items-center'>
+      <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!bg-gray-200 !h-14 !w-14')} />
+      <div className='text-gray-300 text-[13px] mt-3'>
+        {t('datasetHitTesting.hit.emptyTip')}
+      </div>
+    </div>
+  )
 
   useEffect(() => {
     setShowRightPanel(!isMobile)
@@ -86,12 +128,14 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
         <Textarea
           datasetId={datasetId}
           setHitResult={setHitResult}
+          setExternalHitResult={setExternalHitResult}
           onSubmit={showRightPanel}
           onUpdateList={recordsMutate}
           loading={submitLoading}
           setLoading={setSubmitLoading}
           setText={setText}
           text={text}
+          isExternal={isExternal}
           onClickRetrievalMethod={() => setIsShowModifyRetrievalModal(true)}
           retrievalConfig={retrievalConfig}
           isEconomy={currentDataset?.indexing_technique === 'economy'}
@@ -159,47 +203,42 @@ const HitTesting: FC<Props> = ({ datasetId }: Props) => {
                 className='h-[216px]'
               />
             </div>
-            : !hitResult?.records.length
-              ? (
-                <div className='h-full flex flex-col justify-center items-center'>
-                  <div className={cn(docStyle.commonIcon, docStyle.targetIcon, '!bg-gray-200 !h-14 !w-14')} />
-                  <div className='text-gray-300 text-[13px] mt-3'>
-                    {t('datasetHitTesting.hit.emptyTip')}
-                  </div>
-                </div>
-              )
-              : (
-                <>
-                  <div className='text-gray-600 font-semibold mb-4'>{t('datasetHitTesting.hit.title')}</div>
-                  <div className='overflow-auto flex-1'>
-                    <div className={s.cardWrapper}>
-                      {hitResult?.records.map((record, idx) => {
-                        return <SegmentCard
-                          key={idx}
-                          loading={false}
-                          detail={record.segment as any}
-                          score={record.score}
-                          scene='hitTesting'
-                          className='h-[216px] mb-4'
-                          onClick={() => onClickCard(record as any)}
-                        />
-                      })}
-                    </div>
-                  </div>
-                </>
-              )
+            : (
+              (() => {
+                if (!hitResult?.records.length && !externalHitResult?.records.length)
+                  return renderEmptyState()
+
+                if (hitResult?.records.length)
+                  return renderHitResults(hitResult.records, onClickCard)
+
+                return renderHitResults(externalHitResult?.records || [], onClickExternalCard)
+              })()
+            )
           }
         </div>
       </FloatRightContainer>
       <Modal
-        className='w-[520px] p-0'
+        className={isExternal ? 'py-10 px-8' : 'w-full'}
         closable
-        onClose={() => setCurrParagraph({ showModal: false })}
-        isShow={currParagraph.showModal}
+        onClose={() => {
+          setCurrParagraph({ showModal: false })
+          setExternalCurrParagraph({ showModal: false })
+        }}
+        isShow={currParagraph.showModal || externalCurrParagraph.showModal}
       >
-        {currParagraph.showModal && <HitDetail
-          segInfo={currParagraph.paraInfo?.segment}
-        />}
+        {currParagraph.showModal && (
+          <HitDetail
+            segInfo={currParagraph.paraInfo?.segment}
+          />
+        )}
+        {externalCurrParagraph.showModal && (
+          <HitDetail
+            segInfo={{
+              id: 'external',
+              content: externalCurrParagraph.paraInfo?.content,
+            }}
+          />
+        )}
       </Modal>
       <Drawer isOpen={isShowModifyRetrievalModal} onClose={() => setIsShowModifyRetrievalModal(false)} footer={null} mask={isMobile} panelClassname='mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[640px] rounded-xl'>
         <ModifyRetrievalModal

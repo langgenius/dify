@@ -5,12 +5,29 @@ from flask import request
 from flask_restful import Resource, reqparse
 
 import services
+from constants.languages import languages
 from controllers.console import api
-from controllers.console.setup import setup_required
-from libs.helper import email, get_remote_ip
+from controllers.console.auth.error import (
+    EmailCodeError,
+    EmailOrPasswordMismatchError,
+    EmailPasswordLoginLimitError,
+    InvalidEmailError,
+    InvalidTokenError,
+)
+from controllers.console.error import (
+    AccountBannedError,
+    EmailSendIpLimitError,
+    NotAllowedCreateWorkspace,
+    NotAllowedRegister,
+)
+from controllers.console.wraps import setup_required
+from events.tenant_event import tenant_was_created
+from libs.helper import email, extract_remote_ip
 from libs.password import valid_password
 from models.account import Account
-from services.account_service import AccountService, TenantService
+from services.account_service import AccountService, RegisterService, TenantService
+from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.feature_service import FeatureService
 
 
 class LoginApi(Resource):
@@ -23,15 +40,43 @@ class LoginApi(Resource):
         parser.add_argument("email", type=email, required=True, location="json")
         parser.add_argument("password", type=valid_password, required=True, location="json")
         parser.add_argument("remember_me", type=bool, required=False, default=False, location="json")
+        parser.add_argument("invite_token", type=str, required=False, default=None, location="json")
+        parser.add_argument("language", type=str, required=False, default="en-US", location="json")
         args = parser.parse_args()
 
-        # todo: Verify the recaptcha
+        is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args["email"])
+        if is_login_error_rate_limit:
+            raise EmailPasswordLoginLimitError()
+
+        invitation = args["invite_token"]
+        if invitation:
+            invitation = RegisterService.get_invitation_if_token_valid(None, args["email"], invitation)
+
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
+        else:
+            language = "en-US"
 
         try:
-            account = AccountService.authenticate(args["email"], args["password"])
-        except services.errors.account.AccountLoginError as e:
-            return {"code": "unauthorized", "message": str(e)}, 401
-
+            if invitation:
+                data = invitation.get("data", {})
+                invitee_email = data.get("email") if data else None
+                if invitee_email != args["email"]:
+                    raise InvalidEmailError()
+                account = AccountService.authenticate(args["email"], args["password"], args["invite_token"])
+            else:
+                account = AccountService.authenticate(args["email"], args["password"])
+        except services.errors.account.AccountLoginError:
+            raise AccountBannedError()
+        except services.errors.account.AccountPasswordError:
+            AccountService.add_login_error_rate_limit(args["email"])
+            raise EmailOrPasswordMismatchError()
+        except services.errors.account.AccountNotFoundError:
+            if FeatureService.get_system_features().is_allow_register:
+                token = AccountService.send_reset_password_email(email=args["email"], language=language)
+                return {"result": "fail", "data": token, "code": "account_not_found"}
+            else:
+                raise NotAllowedRegister()
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
         if len(tenants) == 0:
@@ -40,71 +85,138 @@ class LoginApi(Resource):
                 "data": "workspace not found, please contact system admin to invite you to join in a workspace",
             }
 
-        token = AccountService.login(account, ip_address=get_remote_ip(request))
-
-        return {"result": "success", "data": token}
+        token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
+        AccountService.reset_login_error_rate_limit(args["email"])
+        return {"result": "success", "data": token_pair.model_dump()}
 
 
 class LogoutApi(Resource):
     @setup_required
     def get(self):
         account = cast(Account, flask_login.current_user)
-        token = request.headers.get("Authorization", "").split(" ")[1]
-        AccountService.logout(account=account, token=token)
+        if isinstance(account, flask_login.AnonymousUserMixin):
+            return {"result": "success"}
+        AccountService.logout(account=account)
         flask_login.logout_user()
         return {"result": "success"}
 
 
-class ResetPasswordApi(Resource):
+class ResetPasswordSendEmailApi(Resource):
     @setup_required
-    def get(self):
-        # parser = reqparse.RequestParser()
-        # parser.add_argument('email', type=email, required=True, location='json')
-        # args = parser.parse_args()
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=email, required=True, location="json")
+        parser.add_argument("language", type=str, required=False, location="json")
+        args = parser.parse_args()
 
-        # import mailchimp_transactional as MailchimpTransactional
-        # from mailchimp_transactional.api_client import ApiClientError
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
+        else:
+            language = "en-US"
 
-        # account = {'email': args['email']}
-        # account = AccountService.get_by_email(args['email'])
-        # if account is None:
-        #     raise ValueError('Email not found')
-        # new_password = AccountService.generate_password()
-        # AccountService.update_password(account, new_password)
+        account = AccountService.get_user_through_email(args["email"])
+        if account is None:
+            if FeatureService.get_system_features().is_allow_register:
+                token = AccountService.send_reset_password_email(email=args["email"], language=language)
+            else:
+                raise NotAllowedRegister()
+        else:
+            token = AccountService.send_reset_password_email(account=account, language=language)
 
-        # todo: Send email
-        # MAILCHIMP_API_KEY = dify_config.MAILCHIMP_TRANSACTIONAL_API_KEY
-        # mailchimp = MailchimpTransactional(MAILCHIMP_API_KEY)
+        return {"result": "success", "data": token}
 
-        # message = {
-        #     'from_email': 'noreply@example.com',
-        #     'to': [{'email': account['email']}],
-        #     'subject': 'Reset your Dify password',
-        #     'html': """
-        #         <p>Dear User,</p>
-        #         <p>The Dify team has generated a new password for you, details as follows:</p>
-        #         <p><strong>{new_password}</strong></p>
-        #         <p>Please change your password to log in as soon as possible.</p>
-        #         <p>Regards,</p>
-        #         <p>The Dify Team</p>
-        #     """
-        # }
 
-        # response = mailchimp.messages.send({
-        #     'message': message,
-        #     # required for transactional email
-        #     ' settings': {
-        #         'sandbox_mode': dify_config.MAILCHIMP_SANDBOX_MODE,
-        #     },
-        # })
+class EmailCodeLoginSendEmailApi(Resource):
+    @setup_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=email, required=True, location="json")
+        parser.add_argument("language", type=str, required=False, location="json")
+        args = parser.parse_args()
 
-        # Check if MSG was sent
-        # if response.status_code != 200:
-        #     # handle error
-        #     pass
+        ip_address = extract_remote_ip(request)
+        if AccountService.is_email_send_ip_limit(ip_address):
+            raise EmailSendIpLimitError()
 
-        return {"result": "success"}
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
+        else:
+            language = "en-US"
+
+        account = AccountService.get_user_through_email(args["email"])
+        if account is None:
+            if FeatureService.get_system_features().is_allow_register:
+                token = AccountService.send_email_code_login_email(email=args["email"], language=language)
+            else:
+                raise NotAllowedRegister()
+        else:
+            token = AccountService.send_email_code_login_email(account=account, language=language)
+
+        return {"result": "success", "data": token}
+
+
+class EmailCodeLoginApi(Resource):
+    @setup_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=str, required=True, location="json")
+        parser.add_argument("code", type=str, required=True, location="json")
+        parser.add_argument("token", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        user_email = args["email"]
+
+        token_data = AccountService.get_email_code_login_data(args["token"])
+        if token_data is None:
+            raise InvalidTokenError()
+
+        if token_data["email"] != args["email"]:
+            raise InvalidEmailError()
+
+        if token_data["code"] != args["code"]:
+            raise EmailCodeError()
+
+        AccountService.revoke_email_code_login_token(args["token"])
+        account = AccountService.get_user_through_email(user_email)
+        if account:
+            tenant = TenantService.get_join_tenants(account)
+            if not tenant:
+                if not FeatureService.get_system_features().is_allow_create_workspace:
+                    raise NotAllowedCreateWorkspace()
+                else:
+                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                    TenantService.create_tenant_member(tenant, account, role="owner")
+                    account.current_tenant = tenant
+                    tenant_was_created.send(tenant)
+
+        if account is None:
+            try:
+                account = AccountService.create_account_and_tenant(
+                    email=user_email, name=user_email, interface_language=languages[0]
+                )
+            except WorkSpaceNotAllowedCreateError:
+                return NotAllowedCreateWorkspace()
+        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
+        AccountService.reset_login_error_rate_limit(args["email"])
+        return {"result": "success", "data": token_pair.model_dump()}
+
+
+class RefreshTokenApi(Resource):
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("refresh_token", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        try:
+            new_token_pair = AccountService.refresh_token(args["refresh_token"])
+            return {"result": "success", "data": new_token_pair.model_dump()}
+        except Exception as e:
+            return {"result": "fail", "data": str(e)}, 401
 
 
 api.add_resource(LoginApi, "/login")
 api.add_resource(LogoutApi, "/logout")
+api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
+api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
+api.add_resource(ResetPasswordSendEmailApi, "/reset-password")
+api.add_resource(RefreshTokenApi, "/refresh-token")

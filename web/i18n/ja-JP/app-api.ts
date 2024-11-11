@@ -10,7 +10,7 @@ const translation = {
   pause: '一時停止',
   playing: '再生中',
   loading: '読み込み中',
-  merMaind: {
+  merMaid: {
     rerender: '再レンダリング',
   },
   never: 'なし',
@@ -78,6 +78,7 @@ const translation = {
     pathParams: 'パスパラメータ',
     query: 'クエリ',
   },
+  regenerate: '再生',
 }
 
 export default translation

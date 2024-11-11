@@ -16,39 +16,38 @@ from core.model_runtime.model_providers.__base.rerank_model import RerankModel
 
 
 class SiliconflowRerankModel(RerankModel):
-
-    def _invoke(self, model: str, credentials: dict, query: str, docs: list[str],
-                score_threshold: Optional[float] = None, top_n: Optional[int] = None,
-                user: Optional[str] = None) -> RerankResult:
+    def _invoke(
+        self,
+        model: str,
+        credentials: dict,
+        query: str,
+        docs: list[str],
+        score_threshold: Optional[float] = None,
+        top_n: Optional[int] = None,
+        user: Optional[str] = None,
+    ) -> RerankResult:
         if len(docs) == 0:
             return RerankResult(model=model, docs=[])
 
-        base_url = credentials.get('base_url', 'https://api.siliconflow.cn/v1')
-        if base_url.endswith('/'):
-            base_url = base_url[:-1]
+        base_url = credentials.get("base_url", "https://api.siliconflow.cn/v1")
+        base_url = base_url.removesuffix("/")
         try:
             response = httpx.post(
-                base_url + '/rerank',
-                json={
-                    "model": model,
-                    "query": query,
-                    "documents": docs,
-                    "top_n": top_n,
-                    "return_documents": True
-                },
-                headers={"Authorization": f"Bearer {credentials.get('api_key')}"}
+                base_url + "/rerank",
+                json={"model": model, "query": query, "documents": docs, "top_n": top_n, "return_documents": True},
+                headers={"Authorization": f"Bearer {credentials.get('api_key')}"},
             )
             response.raise_for_status()
             results = response.json()
 
             rerank_documents = []
-            for result in results['results']:
+            for result in results["results"]:
                 rerank_document = RerankDocument(
-                    index=result['index'],
-                    text=result['document']['text'],
-                    score=result['relevance_score'],
+                    index=result["index"],
+                    text=result["document"]["text"],
+                    score=result["relevance_score"],
                 )
-                if score_threshold is None or result['relevance_score'] >= score_threshold:
+                if score_threshold is None or result["relevance_score"] >= score_threshold:
                     rerank_documents.append(rerank_document)
 
             return RerankResult(model=model, docs=rerank_documents)
@@ -57,7 +56,6 @@ class SiliconflowRerankModel(RerankModel):
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         try:
-
             self._invoke(
                 model=model,
                 credentials=credentials,
@@ -68,7 +66,7 @@ class SiliconflowRerankModel(RerankModel):
                     "The Commonwealth of the Northern Mariana Islands is a group of islands in the Pacific Ocean that "
                     "are a political division controlled by the United States. Its capital is Saipan.",
                 ],
-                score_threshold=0.8
+                score_threshold=0.8,
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
@@ -83,5 +81,5 @@ class SiliconflowRerankModel(RerankModel):
             InvokeServerUnavailableError: [httpx.RemoteProtocolError],
             InvokeRateLimitError: [],
             InvokeAuthorizationError: [httpx.HTTPStatusError],
-            InvokeBadRequestError: [httpx.RequestError]
+            InvokeBadRequestError: [httpx.RequestError],
         }

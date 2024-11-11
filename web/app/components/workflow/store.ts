@@ -21,6 +21,7 @@ import type {
   WorkflowRunningData,
 } from './types'
 import { WorkflowContext } from './context'
+import type { NodeTracing } from '@/types/workflow'
 
 // #TODO chatVar#
 // const MOCK_DATA = [
@@ -109,6 +110,8 @@ type Shape = {
   setEnvSecrets: (envSecrets: Record<string, string>) => void
   showChatVariablePanel: boolean
   setShowChatVariablePanel: (showChatVariablePanel: boolean) => void
+  showGlobalVariablePanel: boolean
+  setShowGlobalVariablePanel: (showGlobalVariablePanel: boolean) => void
   conversationVariables: ConversationVariable[]
   setConversationVariables: (conversationVariables: ConversationVariable[]) => void
   selection: null | { x1: number; y1: number; x2: number; y2: number }
@@ -162,9 +165,21 @@ type Shape = {
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
   showImportDSLModal: boolean
   setShowImportDSLModal: (showImportDSLModal: boolean) => void
+  showTips: string
+  setShowTips: (showTips: string) => void
+  iterTimes: number
+  setIterTimes: (iterTimes: number) => void
+  iterParallelLogMap: Map<string, NodeTracing[]>
+  setIterParallelLogMap: (iterParallelLogMap: Map<string, NodeTracing[]>) => void
 }
 
 export const createWorkflowStore = () => {
+  const hideAllPanel = {
+    showDebugAndPreviewPanel: false,
+    showEnvPanel: false,
+    showChatVariablePanel: false,
+    showGlobalVariablePanel: false,
+  }
   return createStore<Shape>(set => ({
     appId: '',
     panelWidth: localStorage.getItem('workflow-node-panel-width') ? parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420,
@@ -225,6 +240,13 @@ export const createWorkflowStore = () => {
     setEnvSecrets: envSecrets => set(() => ({ envSecrets })),
     showChatVariablePanel: false,
     setShowChatVariablePanel: showChatVariablePanel => set(() => ({ showChatVariablePanel })),
+    showGlobalVariablePanel: false,
+    setShowGlobalVariablePanel: showGlobalVariablePanel => set(() => {
+      if (showGlobalVariablePanel)
+        return { ...hideAllPanel, showGlobalVariablePanel: true }
+      else
+        return { showGlobalVariablePanel: false }
+    }),
     conversationVariables: [],
     setConversationVariables: conversationVariables => set(() => ({ conversationVariables })),
     selection: null,
@@ -262,6 +284,13 @@ export const createWorkflowStore = () => {
     setControlPromptEditorRerenderKey: controlPromptEditorRerenderKey => set(() => ({ controlPromptEditorRerenderKey })),
     showImportDSLModal: false,
     setShowImportDSLModal: showImportDSLModal => set(() => ({ showImportDSLModal })),
+    showTips: '',
+    setShowTips: showTips => set(() => ({ showTips })),
+    iterTimes: 1,
+    setIterTimes: iterTimes => set(() => ({ iterTimes })),
+    iterParallelLogMap: new Map<string, NodeTracing[]>(),
+    setIterParallelLogMap: iterParallelLogMap => set(() => ({ iterParallelLogMap })),
+
   }))
 }
 

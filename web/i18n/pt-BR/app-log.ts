@@ -90,6 +90,13 @@ const translation = {
     iteração: 'Iteração',
     finalProcessing: 'Processamento Final',
   },
+  agentLogDetail: {
+    iterations: 'Iterações',
+    agentMode: 'Modo Agente',
+    finalProcessing: 'Processamento final',
+    iteration: 'Iteração',
+    toolUsed: 'Ferramenta usada',
+  },
 }
 
 export default translation

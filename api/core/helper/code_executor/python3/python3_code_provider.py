@@ -17,4 +17,5 @@ class Python3CodeProvider(CodeNodeProvider):
                 return {
                     "result": arg1 + arg2,
                 }
-            """)
+            """
+        )

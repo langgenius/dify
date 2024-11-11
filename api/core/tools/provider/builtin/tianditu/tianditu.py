@@ -12,10 +12,12 @@ class TiandituProvider(BuiltinToolProviderController):
                 runtime={
                     "credentials": credentials,
                 }
-            ).invoke(user_id='',
-                        tool_parameters={
-                        'content': '北京',
-                        'specify': '156110000',
-                    })
+            ).invoke(
+                user_id="",
+                tool_parameters={
+                    "content": "北京",
+                    "specify": "156110000",
+                },
+            )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

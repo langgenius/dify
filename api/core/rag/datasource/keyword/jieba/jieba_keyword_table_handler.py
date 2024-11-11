@@ -8,7 +8,6 @@ from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
 
 
 class JiebaKeywordTableHandler:
-
     def __init__(self):
         default_tfidf.stop_words = STOPWORDS
 

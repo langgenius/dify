@@ -1,6 +1,7 @@
 import logging
 
 from flask_restful import Resource, fields, marshal_with, reqparse
+from flask_restful.inputs import int_range
 from werkzeug.exceptions import InternalServerError
 
 from controllers.service_api import api
@@ -22,10 +23,12 @@ from core.errors.error import (
 )
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
+from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun
 from services.app_generate_service import AppGenerateService
+from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +116,30 @@ class WorkflowTaskStopApi(Resource):
         return {"result": "success"}
 
 
+class WorkflowAppLogApi(Resource):
+    @validate_app_token
+    @marshal_with(workflow_app_log_pagination_fields)
+    def get(self, app_model: App):
+        """
+        Get workflow app logs
+        """
+        parser = reqparse.RequestParser()
+        parser.add_argument("keyword", type=str, location="args")
+        parser.add_argument("status", type=str, choices=["succeeded", "failed", "stopped"], location="args")
+        parser.add_argument("page", type=int_range(1, 99999), default=1, location="args")
+        parser.add_argument("limit", type=int_range(1, 100), default=20, location="args")
+        args = parser.parse_args()
+
+        # get paginate workflow app logs
+        workflow_app_service = WorkflowAppService()
+        workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
+            app_model=app_model, args=args
+        )
+
+        return workflow_app_log_pagination
+
+
 api.add_resource(WorkflowRunApi, "/workflows/run")
 api.add_resource(WorkflowRunDetailApi, "/workflows/run/<string:workflow_id>")
 api.add_resource(WorkflowTaskStopApi, "/workflows/tasks/<string:task_id>/stop")
+api.add_resource(WorkflowAppLogApi, "/workflows/logs")

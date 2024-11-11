@@ -4,9 +4,9 @@ from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 
-import libs.gmpy2_pkcs10aep_cipher as gmpy2_pkcs10aep_cipher
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from libs import gmpy2_pkcs10aep_cipher
 
 
 def generate_key_pair(tenant_id):

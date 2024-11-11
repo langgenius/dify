@@ -294,7 +294,7 @@ const translation = {
       historyNoBeEmpty: 'تاریخچه مکالمه باید در پرس و جو تنظیم شود',
       queryNoBeEmpty: 'پرس و جو باید در پرس و جو تنظیم شود',
     },
-    variableConig: {
+    variableConfig: {
       'addModalTitle': 'افزودن فیلد ورودی',
       'editModalTitle': 'ویرایش فیلد ورودی',
       'description': 'تنظیم برای متغیر {{varName}}',

@@ -289,7 +289,7 @@ const translation = {
     historyNoBeEmpty: 'Historia konwersacji musi być ustawiona w monicie',
     queryNoBeEmpty: 'Zapytanie musi być ustawione w monicie',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Dodaj Pole Wejściowe',
     'editModalTitle': 'Edytuj Pole Wejściowe',
     'description': 'Ustawienia dla zmiennej {{varName}}',
@@ -355,7 +355,7 @@ const translation = {
   openingStatement: {
     title: 'Wstęp do rozmowy',
     add: 'Dodaj',
-    writeOpner: 'Napisz wstęp',
+    writeOpener: 'Napisz wstęp',
     placeholder:
       'Tutaj napisz swoją wiadomość wprowadzającą, możesz użyć zmiennych, spróbuj wpisać {{variable}}.',
     openingQuestion: 'Pytania otwierające',

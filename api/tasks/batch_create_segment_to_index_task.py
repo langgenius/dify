@@ -57,7 +57,7 @@ def batch_create_segment_to_index_task(
                 model_type=ModelType.TEXT_EMBEDDING,
                 model=dataset.embedding_model,
             )
-
+        word_count_change = 0
         for segment in content:
             content = segment["content"]
             doc_id = str(uuid.uuid4())
@@ -86,8 +86,13 @@ def batch_create_segment_to_index_task(
             )
             if dataset_document.doc_form == "qa_model":
                 segment_document.answer = segment["answer"]
+                segment_document.word_count += len(segment["answer"])
+            word_count_change += segment_document.word_count
             db.session.add(segment_document)
             document_segments.append(segment_document)
+        # update document word count
+        dataset_document.word_count += word_count_change
+        db.session.add(dataset_document)
         # add index to db
         indexing_runner = IndexingRunner()
         indexing_runner.batch_add_segments(document_segments, dataset)

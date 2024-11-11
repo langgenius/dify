@@ -1,6 +1,13 @@
 x-shared-env: &shared-api-worker-env
+  WORKFLOW_FILE_UPLOAD_LIMIT: ${WORKFLOW_FILE_UPLOAD_LIMIT:-10}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   LOG_FILE: ${LOG_FILE:-}
+  LOG_FILE_MAX_SIZE: ${LOG_FILE_MAX_SIZE:-20}
+  LOG_FILE_BACKUP_COUNT: ${LOG_FILE_BACKUP_COUNT:-5}
+  # Log dateformat
+  LOG_DATEFORMAT: ${LOG_DATEFORMAT:-%Y-%m-%d %H:%M:%S}
+  # Log Timezone
+  LOG_TZ: ${LOG_TZ:-UTC}
   DEBUG: ${DEBUG:-false}
   FLASK_DEBUG: ${FLASK_DEBUG:-false}
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
@@ -41,13 +48,23 @@ x-shared-env: &shared-api-worker-env
   REDIS_USERNAME: ${REDIS_USERNAME:-}
   REDIS_PASSWORD: ${REDIS_PASSWORD:-difyai123456}
   REDIS_USE_SSL: ${REDIS_USE_SSL:-false}
-  REDIS_DB: 0
+  REDIS_DB: ${REDIS_DB:-0}
+  REDIS_USE_SENTINEL: ${REDIS_USE_SENTINEL:-false}
+  REDIS_SENTINELS: ${REDIS_SENTINELS:-}
+  REDIS_SENTINEL_SERVICE_NAME: ${REDIS_SENTINEL_SERVICE_NAME:-}
+  REDIS_SENTINEL_USERNAME: ${REDIS_SENTINEL_USERNAME:-}
+  REDIS_SENTINEL_PASSWORD: ${REDIS_SENTINEL_PASSWORD:-}
+  REDIS_SENTINEL_SOCKET_TIMEOUT: ${REDIS_SENTINEL_SOCKET_TIMEOUT:-0.1}
+  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
   CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://:difyai123456@redis:6379/1}
   BROKER_USE_SSL: ${BROKER_USE_SSL:-false}
+  CELERY_USE_SENTINEL: ${CELERY_USE_SENTINEL:-false}
+  CELERY_SENTINEL_MASTER_NAME: ${CELERY_SENTINEL_MASTER_NAME:-}
+  CELERY_SENTINEL_SOCKET_TIMEOUT: ${CELERY_SENTINEL_SOCKET_TIMEOUT:-0.1}
   WEB_API_CORS_ALLOW_ORIGINS: ${WEB_API_CORS_ALLOW_ORIGINS:-*}
   CONSOLE_CORS_ALLOW_ORIGINS: ${CONSOLE_CORS_ALLOW_ORIGINS:-*}
   STORAGE_TYPE: ${STORAGE_TYPE:-local}
-  STORAGE_LOCAL_PATH: storage
+  STORAGE_LOCAL_PATH: ${STORAGE_LOCAL_PATH:-storage}
   S3_USE_AWS_MANAGED_IAM: ${S3_USE_AWS_MANAGED_IAM:-false}
   S3_ENDPOINT: ${S3_ENDPOINT:-}
   S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
@@ -66,17 +83,30 @@ x-shared-env: &shared-api-worker-env
   ALIYUN_OSS_ENDPOINT: ${ALIYUN_OSS_ENDPOINT:-}
   ALIYUN_OSS_REGION: ${ALIYUN_OSS_REGION:-}
   ALIYUN_OSS_AUTH_VERSION: ${ALIYUN_OSS_AUTH_VERSION:-v4}
-  ALIYUN_OSS_PATHS: ${ALIYUN_OSS_PATH:-}
+  ALIYUN_OSS_PATH: ${ALIYUN_OSS_PATH:-}
   TENCENT_COS_BUCKET_NAME: ${TENCENT_COS_BUCKET_NAME:-}
   TENCENT_COS_SECRET_KEY: ${TENCENT_COS_SECRET_KEY:-}
   TENCENT_COS_SECRET_ID: ${TENCENT_COS_SECRET_ID:-}
   TENCENT_COS_REGION: ${TENCENT_COS_REGION:-}
   TENCENT_COS_SCHEME: ${TENCENT_COS_SCHEME:-}
+  HUAWEI_OBS_BUCKET_NAME: ${HUAWEI_OBS_BUCKET_NAME:-}
+  HUAWEI_OBS_SECRET_KEY: ${HUAWEI_OBS_SECRET_KEY:-}
+  HUAWEI_OBS_ACCESS_KEY: ${HUAWEI_OBS_ACCESS_KEY:-}
+  HUAWEI_OBS_SERVER: ${HUAWEI_OBS_SERVER:-}
   OCI_ENDPOINT: ${OCI_ENDPOINT:-}
   OCI_BUCKET_NAME: ${OCI_BUCKET_NAME:-}
   OCI_ACCESS_KEY: ${OCI_ACCESS_KEY:-}
   OCI_SECRET_KEY: ${OCI_SECRET_KEY:-}
   OCI_REGION: ${OCI_REGION:-}
+  VOLCENGINE_TOS_BUCKET_NAME: ${VOLCENGINE_TOS_BUCKET_NAME:-}
+  VOLCENGINE_TOS_SECRET_KEY: ${VOLCENGINE_TOS_SECRET_KEY:-}
+  VOLCENGINE_TOS_ACCESS_KEY: ${VOLCENGINE_TOS_ACCESS_KEY:-}
+  VOLCENGINE_TOS_ENDPOINT: ${VOLCENGINE_TOS_ENDPOINT:-}
+  VOLCENGINE_TOS_REGION: ${VOLCENGINE_TOS_REGION:-}
+  BAIDU_OBS_BUCKET_NAME: ${BAIDU_OBS_BUCKET_NAME:-}
+  BAIDU_OBS_SECRET_KEY: ${BAIDU_OBS_SECRET_KEY:-}
+  BAIDU_OBS_ACCESS_KEY: ${BAIDU_OBS_ACCESS_KEY:-}
+  BAIDU_OBS_ENDPOINT: ${BAIDU_OBS_ENDPOINT:-}
   VECTOR_STORE: ${VECTOR_STORE:-weaviate}
   WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
   WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
@@ -85,11 +115,15 @@ x-shared-env: &shared-api-worker-env
   QDRANT_CLIENT_TIMEOUT: ${QDRANT_CLIENT_TIMEOUT:-20}
   QDRANT_GRPC_ENABLED: ${QDRANT_GRPC_ENABLED:-false}
   QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
-  MILVUS_HOST: ${MILVUS_HOST:-127.0.0.1}
-  MILVUS_PORT: ${MILVUS_PORT:-19530}
+  COUCHBASE_CONNECTION_STRING: ${COUCHBASE_CONNECTION_STRING:-'couchbase-server'}
+  COUCHBASE_USER: ${COUCHBASE_USER:-Administrator}
+  COUCHBASE_PASSWORD: ${COUCHBASE_PASSWORD:-password}
+  COUCHBASE_BUCKET_NAME: ${COUCHBASE_BUCKET_NAME:-Embeddings}
+  COUCHBASE_SCOPE_NAME: ${COUCHBASE_SCOPE_NAME:-_default}
+  MILVUS_URI: ${MILVUS_URI:-http://127.0.0.1:19530}
+  MILVUS_TOKEN: ${MILVUS_TOKEN:-}
   MILVUS_USER: ${MILVUS_USER:-root}
   MILVUS_PASSWORD: ${MILVUS_PASSWORD:-Milvus}
-  MILVUS_SECURE: ${MILVUS_SECURE:-false}
   MYSCALE_HOST: ${MYSCALE_HOST:-myscale}
   MYSCALE_PORT: ${MYSCALE_PORT:-8123}
   MYSCALE_USER: ${MYSCALE_USER:-default}
@@ -111,6 +145,18 @@ x-shared-env: &shared-api-worker-env
   TIDB_VECTOR_USER: ${TIDB_VECTOR_USER:-}
   TIDB_VECTOR_PASSWORD: ${TIDB_VECTOR_PASSWORD:-}
   TIDB_VECTOR_DATABASE: ${TIDB_VECTOR_DATABASE:-dify}
+  TIDB_ON_QDRANT_URL: ${TIDB_ON_QDRANT_URL:-http://127.0.0.1}
+  TIDB_ON_QDRANT_API_KEY: ${TIDB_ON_QDRANT_API_KEY:-dify}
+  TIDB_ON_QDRANT_CLIENT_TIMEOUT: ${TIDB_ON_QDRANT_CLIENT_TIMEOUT:-20}
+  TIDB_ON_QDRANT_GRPC_ENABLED: ${TIDB_ON_QDRANT_GRPC_ENABLED:-false}
+  TIDB_ON_QDRANT_GRPC_PORT: ${TIDB_ON_QDRANT_GRPC_PORT:-6334}
+  TIDB_PUBLIC_KEY: ${TIDB_PUBLIC_KEY:-dify}
+  TIDB_PRIVATE_KEY: ${TIDB_PRIVATE_KEY:-dify}
+  TIDB_API_URL: ${TIDB_API_URL:-http://127.0.0.1}
+  TIDB_IAM_API_URL: ${TIDB_IAM_API_URL:-http://127.0.0.1}
+  TIDB_REGION: ${TIDB_REGION:-regions/aws-us-east-1}
+  TIDB_PROJECT_ID: ${TIDB_PROJECT_ID:-dify}
+  TIDB_SPEND_LIMIT: ${TIDB_SPEND_LIMIT:-100}
   ORACLE_HOST: ${ORACLE_HOST:-oracle}
   ORACLE_PORT: ${ORACLE_PORT:-1521}
   ORACLE_USER: ${ORACLE_USER:-dify}
@@ -126,6 +172,9 @@ x-shared-env: &shared-api-worker-env
   ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
   ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
   ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
+  LINDORM_URL: ${LINDORM_URL:-http://lindorm:30070}
+  LINDORM_USERNAME: ${LINDORM_USERNAME:-lindorm}
+  LINDORM_PASSWORD: ${LINDORM_USERNAME:-lindorm }
   KIBANA_PORT: ${KIBANA_PORT:-5601}
   # AnalyticDB configuration
   ANALYTICDB_KEY_ID: ${ANALYTICDB_KEY_ID:-}
@@ -148,12 +197,31 @@ x-shared-env: &shared-api-worker-env
   TENCENT_VECTOR_DB_DATABASE: ${TENCENT_VECTOR_DB_DATABASE:-dify}
   TENCENT_VECTOR_DB_SHARD: ${TENCENT_VECTOR_DB_SHARD:-1}
   TENCENT_VECTOR_DB_REPLICAS: ${TENCENT_VECTOR_DB_REPLICAS:-2}
+  BAIDU_VECTOR_DB_ENDPOINT: ${BAIDU_VECTOR_DB_ENDPOINT:-http://127.0.0.1:5287}
+  BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS: ${BAIDU_VECTOR_DB_CONNECTION_TIMEOUT_MS:-30000}
+  BAIDU_VECTOR_DB_ACCOUNT: ${BAIDU_VECTOR_DB_ACCOUNT:-root}
+  BAIDU_VECTOR_DB_API_KEY: ${BAIDU_VECTOR_DB_API_KEY:-dify}
+  BAIDU_VECTOR_DB_DATABASE: ${BAIDU_VECTOR_DB_DATABASE:-dify}
+  BAIDU_VECTOR_DB_SHARD: ${BAIDU_VECTOR_DB_SHARD:-1}
+  BAIDU_VECTOR_DB_REPLICAS: ${BAIDU_VECTOR_DB_REPLICAS:-3}
+  VIKINGDB_ACCESS_KEY: ${VIKINGDB_ACCESS_KEY:-dify}
+  VIKINGDB_SECRET_KEY: ${VIKINGDB_SECRET_KEY:-dify}
+  VIKINGDB_REGION: ${VIKINGDB_REGION:-cn-shanghai}
+  VIKINGDB_HOST: ${VIKINGDB_HOST:-api-vikingdb.xxx.volces.com}
+  VIKINGDB_SCHEMA: ${VIKINGDB_SCHEMA:-http}
+  UPSTASH_VECTOR_URL: ${UPSTASH_VECTOR_URL:-https://xxx-vector.upstash.io}
+  UPSTASH_VECTOR_TOKEN: ${UPSTASH_VECTOR_TOKEN:-dify}
   UPLOAD_FILE_SIZE_LIMIT: ${UPLOAD_FILE_SIZE_LIMIT:-15}
   UPLOAD_FILE_BATCH_LIMIT: ${UPLOAD_FILE_BATCH_LIMIT:-5}
   ETL_TYPE: ${ETL_TYPE:-dify}
   UNSTRUCTURED_API_URL: ${UNSTRUCTURED_API_URL:-}
+  PROMPT_GENERATION_MAX_TOKENS: ${PROMPT_GENERATION_MAX_TOKENS:-512}
+  CODE_GENERATION_MAX_TOKENS: ${CODE_GENERATION_MAX_TOKENS:-1024}
   MULTIMODAL_SEND_IMAGE_FORMAT: ${MULTIMODAL_SEND_IMAGE_FORMAT:-base64}
+  MULTIMODAL_SEND_VIDEO_FORMAT: ${MULTIMODAL_SEND_VIDEO_FORMAT:-base64}
   UPLOAD_IMAGE_FILE_SIZE_LIMIT: ${UPLOAD_IMAGE_FILE_SIZE_LIMIT:-10}
+  UPLOAD_VIDEO_FILE_SIZE_LIMIT: ${UPLOAD_VIDEO_FILE_SIZE_LIMIT:-100}
+  UPLOAD_AUDIO_FILE_SIZE_LIMIT: ${UPLOAD_AUDIO_FILE_SIZE_LIMIT:-50}
   SENTRY_DSN: ${API_SENTRY_DSN:-}
   SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
   SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
@@ -170,10 +238,10 @@ x-shared-env: &shared-api-worker-env
   SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
   SMTP_OPPORTUNISTIC_TLS: ${SMTP_OPPORTUNISTIC_TLS:-false}
   RESEND_API_KEY: ${RESEND_API_KEY:-your-resend-api-key}
-  RESEND_API_URL: https://api.resend.com
+  RESEND_API_URL: ${RESEND_API_URL:-https://api.resend.com}
   INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-1000}
   INVITE_EXPIRY_HOURS: ${INVITE_EXPIRY_HOURS:-72}
-  RESET_PASSWORD_TOKEN_EXPIRY_HOURS: ${RESET_PASSWORD_TOKEN_EXPIRY_HOURS:-24}
+  RESET_PASSWORD_TOKEN_EXPIRY_MINUTES: ${RESET_PASSWORD_TOKEN_EXPIRY_MINUTES:-5}
   CODE_EXECUTION_ENDPOINT: ${CODE_EXECUTION_ENDPOINT:-http://sandbox:8194}
   CODE_EXECUTION_API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
   CODE_MAX_NUMBER: ${CODE_MAX_NUMBER:-9223372036854775807}
@@ -185,13 +253,34 @@ x-shared-env: &shared-api-worker-env
   CODE_MAX_STRING_ARRAY_LENGTH: ${CODE_MAX_STRING_ARRAY_LENGTH:-30}
   CODE_MAX_OBJECT_ARRAY_LENGTH: ${CODE_MAX_OBJECT_ARRAY_LENGTH:-30}
   CODE_MAX_NUMBER_ARRAY_LENGTH: ${CODE_MAX_NUMBER_ARRAY_LENGTH:-1000}
+  WORKFLOW_MAX_EXECUTION_STEPS: ${WORKFLOW_MAX_EXECUTION_STEPS:-500}
+  WORKFLOW_MAX_EXECUTION_TIME: ${WORKFLOW_MAX_EXECUTION_TIME:-1200}
+  WORKFLOW_CALL_MAX_DEPTH: ${WORKFLOW_CALL_MAX_DEPTH:-5}
   SSRF_PROXY_HTTP_URL: ${SSRF_PROXY_HTTP_URL:-http://ssrf_proxy:3128}
   SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-http://ssrf_proxy:3128}
+  HTTP_REQUEST_NODE_MAX_BINARY_SIZE: ${HTTP_REQUEST_NODE_MAX_BINARY_SIZE:-10485760}
+  HTTP_REQUEST_NODE_MAX_TEXT_SIZE: ${HTTP_REQUEST_NODE_MAX_TEXT_SIZE:-1048576}
+  APP_MAX_EXECUTION_TIME: ${APP_MAX_EXECUTION_TIME:-12000}
+  POSITION_TOOL_PINS: ${POSITION_TOOL_PINS:-}
+  POSITION_TOOL_INCLUDES: ${POSITION_TOOL_INCLUDES:-}
+  POSITION_TOOL_EXCLUDES: ${POSITION_TOOL_EXCLUDES:-}
+  POSITION_PROVIDER_PINS: ${POSITION_PROVIDER_PINS:-}
+  POSITION_PROVIDER_INCLUDES: ${POSITION_PROVIDER_INCLUDES:-}
+  POSITION_PROVIDER_EXCLUDES: ${POSITION_PROVIDER_EXCLUDES:-}
+  MAX_VARIABLE_SIZE: ${MAX_VARIABLE_SIZE:-204800}
+  OCEANBASE_VECTOR_HOST: ${OCEANBASE_VECTOR_HOST:-http://oceanbase-vector}
+  OCEANBASE_VECTOR_PORT: ${OCEANBASE_VECTOR_PORT:-2881}
+  OCEANBASE_VECTOR_USER: ${OCEANBASE_VECTOR_USER:-root@test}
+  OCEANBASE_VECTOR_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+  OCEANBASE_VECTOR_DATABASE: ${OCEANBASE_VECTOR_DATABASE:-test}
+  OCEANBASE_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
+  OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
+  CREATE_TIDB_SERVICE_JOB_ENABLED: ${CREATE_TIDB_SERVICE_JOB_ENABLED:-false}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.7.3
+    image: langgenius/dify-api:0.11.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -211,7 +300,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.7.3
+    image: langgenius/dify-api:0.11.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -230,13 +319,15 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.7.3
+    image: langgenius/dify-web:0.11.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
+      TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
+      CSP_WHITELIST: ${CSP_WHITELIST:-}
 
   # The postgres database.
   db:
@@ -256,7 +347,7 @@ services:
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD", "pg_isready" ]
+      test: ['CMD', 'pg_isready']
       interval: 1s
       timeout: 3s
       retries: 30
@@ -271,11 +362,11 @@ services:
     # Set the redis password when startup redis server.
     command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
     healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
+      test: ['CMD', 'redis-cli', 'ping']
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.6
+    image: langgenius/dify-sandbox:0.2.10
     restart: always
     environment:
       # The DifySandbox configurations
@@ -290,6 +381,8 @@ services:
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:8194/health']
     networks:
       - ssrf_proxy_network
 
@@ -302,7 +395,12 @@ services:
     volumes:
       - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
       - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-    entrypoint: [ "sh", "-c", "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
+    entrypoint:
+      [
+        'sh',
+        '-c',
+        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
+      ]
     environment:
       # pls clearly modify the squid env vars to fit your network environment.
       HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
@@ -331,8 +429,8 @@ services:
       - CERTBOT_EMAIL=${CERTBOT_EMAIL}
       - CERTBOT_DOMAIN=${CERTBOT_DOMAIN}
       - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
-    entrypoint: [ "/docker-entrypoint.sh" ]
-    command: ["tail", "-f", "/dev/null"]
+    entrypoint: ['/docker-entrypoint.sh']
+    command: ['tail', '-f', '/dev/null']
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
@@ -349,7 +447,12 @@ services:
       - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
       - ./volumes/certbot/conf:/etc/letsencrypt
       - ./volumes/certbot/www:/var/www/html
-    entrypoint: [ "sh", "-c", "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
+    entrypoint:
+      [
+        'sh',
+        '-c',
+        "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
+      ]
     environment:
       NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
       NGINX_HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
@@ -371,8 +474,8 @@ services:
       - api
       - web
     ports:
-      - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
-      - "${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}"
+      - '${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}'
+      - '${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}'
 
   # The Weaviate vector store.
   weaviate:
@@ -410,6 +513,39 @@ services:
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
 
+  # The Couchbase vector store.
+  couchbase-server:
+    build: ./couchbase-server
+    profiles:
+      - couchbase
+    restart: always
+    environment:
+      - CLUSTER_NAME=dify_search
+      - COUCHBASE_ADMINISTRATOR_USERNAME=${COUCHBASE_USER:-Administrator}
+      - COUCHBASE_ADMINISTRATOR_PASSWORD=${COUCHBASE_PASSWORD:-password}
+      - COUCHBASE_BUCKET=${COUCHBASE_BUCKET_NAME:-Embeddings}
+      - COUCHBASE_BUCKET_RAMSIZE=512
+      - COUCHBASE_RAM_SIZE=2048
+      - COUCHBASE_EVENTING_RAM_SIZE=512
+      - COUCHBASE_INDEX_RAM_SIZE=512
+      - COUCHBASE_FTS_RAM_SIZE=1024
+    hostname: couchbase-server
+    container_name: couchbase-server
+    working_dir: /opt/couchbase
+    stdin_open: true
+    tty: true
+    entrypoint: [""]
+    command: sh -c "/opt/couchbase/init/init-cbserver.sh"
+    volumes:
+      - ./volumes/couchbase/data:/opt/couchbase/var/lib/couchbase/data
+    healthcheck:
+      # ensure bucket was created before proceeding
+      test: [ "CMD-SHELL", "curl -s -f -u Administrator:password http://localhost:8091/pools/default/buckets | grep -q '\\[{' || exit 1" ]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+      timeout: 10s
+
   # The pgvector vector database.
   pgvector:
     image: pgvector/pgvector:pg16
@@ -427,7 +563,7 @@ services:
     volumes:
       - ./volumes/pgvector/data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD", "pg_isready" ]
+      test: ['CMD', 'pg_isready']
       interval: 1s
       timeout: 3s
       retries: 30
@@ -449,7 +585,7 @@ services:
     volumes:
       - ./volumes/pgvecto_rs/data:/var/lib/postgresql/data
     healthcheck:
-      test: [ "CMD", "pg_isready" ]
+      test: ['CMD', 'pg_isready']
       interval: 1s
       timeout: 3s
       retries: 30
@@ -467,6 +603,23 @@ services:
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
 
+  # OceanBase vector database
+  oceanbase:
+    image: quay.io/oceanbase/oceanbase-ce:4.3.3.0-100000142024101215
+    profiles:
+      - oceanbase
+    restart: always
+    volumes:
+      - ./volumes/oceanbase/data:/root/ob
+      - ./volumes/oceanbase/conf:/root/.obd/cluster
+      - ./volumes/oceanbase/init.d:/root/boot/init.d
+    environment:
+      OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
+      OB_SYS_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
+      OB_SERVER_IP: '127.0.0.1'
+
   # Oracle vector database
   oracle:
     image: container-registry.oracle.com/database/free:latest
@@ -474,13 +627,13 @@ services:
       - oracle
     restart: always
     volumes:
-      - type: volume
-        source: oradata
+      - source: oradata
+        type: volume
         target: /opt/oracle/oradata
       - ./startupscripts:/opt/oracle/scripts/startup
     environment:
-      - ORACLE_PWD=${ORACLE_PWD:-Dify123456}
-      - ORACLE_CHARACTERSET=${ORACLE_CHARACTERSET:-AL32UTF8}
+      ORACLE_PWD: ${ORACLE_PWD:-Dify123456}
+      ORACLE_CHARACTERSET: ${ORACLE_CHARACTERSET:-AL32UTF8}
 
   # Milvus vector database services
   etcd:
@@ -489,15 +642,15 @@ services:
     profiles:
       - milvus
     environment:
-      - ETCD_AUTO_COMPACTION_MODE=${ETCD_AUTO_COMPACTION_MODE:-revision}
-      - ETCD_AUTO_COMPACTION_RETENTION=${ETCD_AUTO_COMPACTION_RETENTION:-1000}
-      - ETCD_QUOTA_BACKEND_BYTES=${ETCD_QUOTA_BACKEND_BYTES:-4294967296}
-      - ETCD_SNAPSHOT_COUNT=${ETCD_SNAPSHOT_COUNT:-50000}
+      ETCD_AUTO_COMPACTION_MODE: ${ETCD_AUTO_COMPACTION_MODE:-revision}
+      ETCD_AUTO_COMPACTION_RETENTION: ${ETCD_AUTO_COMPACTION_RETENTION:-1000}
+      ETCD_QUOTA_BACKEND_BYTES: ${ETCD_QUOTA_BACKEND_BYTES:-4294967296}
+      ETCD_SNAPSHOT_COUNT: ${ETCD_SNAPSHOT_COUNT:-50000}
     volumes:
       - ./volumes/milvus/etcd:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     healthcheck:
-      test: [ "CMD", "etcdctl", "endpoint", "health" ]
+      test: ['CMD', 'etcdctl', 'endpoint', 'health']
       interval: 30s
       timeout: 20s
       retries: 3
@@ -516,7 +669,7 @@ services:
       - ./volumes/milvus/minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
       interval: 30s
       timeout: 20s
       retries: 3
@@ -528,7 +681,7 @@ services:
     image: milvusdb/milvus:v2.3.1
     profiles:
       - milvus
-    command: [ "milvus", "run", "standalone" ]
+    command: ['milvus', 'run', 'standalone']
     environment:
       ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-etcd:2379}
       MINIO_ADDRESS: ${MINIO_ADDRESS:-minio:9000}
@@ -536,14 +689,17 @@ services:
     volumes:
       - ./volumes/milvus/milvus:/var/lib/milvus
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9091/healthz" ]
+      test: ['CMD', 'curl', '-f', 'http://localhost:9091/healthz']
       interval: 30s
       start_period: 90s
       timeout: 20s
       retries: 3
     depends_on:
-      - "etcd"
-      - "minio"
+      - etcd
+      - minio
+    ports:
+      - 19530:19530
+      - 9091:9091
     networks:
       - milvus
 
@@ -554,10 +710,10 @@ services:
     profiles:
       - opensearch
     environment:
-      - discovery.type=${OPENSEARCH_DISCOVERY_TYPE:-single-node}
-      - bootstrap.memory_lock=${OPENSEARCH_BOOTSTRAP_MEMORY_LOCK:-true}
-      - OPENSEARCH_JAVA_OPTS=-Xms${OPENSEARCH_JAVA_OPTS_MIN:-512m} -Xmx${OPENSEARCH_JAVA_OPTS_MAX:-1024m}
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-Qazwsxedc!@#123}
+      discovery.type: ${OPENSEARCH_DISCOVERY_TYPE:-single-node}
+      bootstrap.memory_lock: ${OPENSEARCH_BOOTSTRAP_MEMORY_LOCK:-true}
+      OPENSEARCH_JAVA_OPTS: -Xms${OPENSEARCH_JAVA_OPTS_MIN:-512m} -Xmx${OPENSEARCH_JAVA_OPTS_MAX:-1024m}
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-Qazwsxedc!@#123}
     ulimits:
       memlock:
         soft: ${OPENSEARCH_MEMLOCK_SOFT:--1}
@@ -597,7 +753,7 @@ services:
       - ./volumes/myscale/log:/var/log/clickhouse-server
       - ./volumes/myscale/config/users.d/custom_users_config.xml:/etc/clickhouse-server/users.d/custom_users_config.xml
     ports:
-      - "${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}"
+      - ${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}
 
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites
@@ -610,18 +766,18 @@ services:
     volumes:
       - dify_es01_data:/usr/share/elasticsearch/data
     environment:
-      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD:-elastic}
-      - cluster.name=dify-es-cluster
-      - node.name=dify-es0
-      - discovery.type=single-node
-      - xpack.license.self_generated.type=trial
-      - xpack.security.enabled=true
-      - xpack.security.enrollment.enabled=false
-      - xpack.security.http.ssl.enabled=false
+      ELASTIC_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
+      cluster.name: dify-es-cluster
+      node.name: dify-es0
+      discovery.type: single-node
+      xpack.license.self_generated.type: trial
+      xpack.security.enabled: 'true'
+      xpack.security.enrollment.enabled: 'false'
+      xpack.security.http.ssl.enabled: 'false'
     ports:
       - ${ELASTICSEARCH_PORT:-9200}:9200
     healthcheck:
-      test: ["CMD", "curl", "-s", "http://localhost:9200/_cluster/health?pretty"]
+      test: ['CMD', 'curl', '-s', 'http://localhost:9200/_cluster/health?pretty']
       interval: 30s
       timeout: 10s
       retries: 50
@@ -637,19 +793,19 @@ services:
       - elasticsearch
     restart: always
     environment:
-      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=d1a66dfd-c4d3-4a0a-8290-2abcb83ab3aa
-      - NO_PROXY=localhost,127.0.0.1,elasticsearch,kibana
-      - XPACK_SECURITY_ENABLED=true
-      - XPACK_SECURITY_ENROLLMENT_ENABLED=false
-      - XPACK_SECURITY_HTTP_SSL_ENABLED=false
-      - XPACK_FLEET_ISAIRGAPPED=true
-      - I18N_LOCALE=zh-CN
-      - SERVER_PORT=5601
-      - ELASTICSEARCH_HOSTS="http://elasticsearch:9200"
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: d1a66dfd-c4d3-4a0a-8290-2abcb83ab3aa
+      NO_PROXY: localhost,127.0.0.1,elasticsearch,kibana
+      XPACK_SECURITY_ENABLED: 'true'
+      XPACK_SECURITY_ENROLLMENT_ENABLED: 'false'
+      XPACK_SECURITY_HTTP_SSL_ENABLED: 'false'
+      XPACK_FLEET_ISAIRGAPPED: 'true'
+      I18N_LOCALE: zh-CN
+      SERVER_PORT: '5601'
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
     ports:
       - ${KIBANA_PORT:-5601}:5601
     healthcheck:
-      test: [ "CMD-SHELL", "curl -s http://localhost:5601 >/dev/null || exit 1" ]
+      test: ['CMD-SHELL', 'curl -s http://localhost:5601 >/dev/null || exit 1']
       interval: 30s
       timeout: 10s
       retries: 3

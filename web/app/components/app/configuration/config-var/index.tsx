@@ -88,7 +88,6 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     } as InputVar
   })()
   const updatePromptVariableItem = (payload: InputVar) => {
-    console.log(payload)
     const newPromptVariables = produce(promptVariables, (draft) => {
       const { variable, label, type, ...rest } = payload
       draft[currIndex] = {
@@ -273,7 +272,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   }
   return (
     <Panel
-      className="mt-4"
+      className="mt-2"
       headerIcon={
         <VarIcon className='w-4 h-4 text-primary-500' />
       }

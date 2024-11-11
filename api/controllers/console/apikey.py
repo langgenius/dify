@@ -10,8 +10,7 @@ from models.dataset import Dataset
 from models.model import ApiToken, App
 
 from . import api
-from .setup import setup_required
-from .wraps import account_initialization_required
+from .wraps import account_initialization_required, setup_required
 
 api_key_fields = {
     "id": fields.String,
@@ -57,7 +56,7 @@ class BaseApiKeyListResource(Resource):
     def post(self, resource_id):
         resource_id = str(resource_id)
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
-        if not current_user.is_admin_or_owner:
+        if not current_user.is_editor:
             raise Forbidden()
 
         current_key_count = (

@@ -3,11 +3,12 @@ from typing import Optional
 from pydantic import BaseModel
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.base_node_data_entities import BaseIterationState
-from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.nodes.base_node import BaseNode, UserFrom
+from core.workflow.nodes.base import BaseIterationState, BaseNode
+from models.enums import UserFrom
 from models.workflow import Workflow, WorkflowType
+
+from .node_entities import NodeRunResult
+from .variable_pool import VariablePool
 
 
 class WorkflowNodeAndResult:
@@ -46,13 +47,16 @@ class WorkflowRunState:
 
     current_iteration_state: Optional[BaseIterationState]
 
-    def __init__(self, workflow: Workflow,
-                 start_at: float,
-                 variable_pool: VariablePool,
-                 user_id: str,
-                 user_from: UserFrom,
-                 invoke_from: InvokeFrom,
-                 workflow_call_depth: int):
+    def __init__(
+        self,
+        workflow: Workflow,
+        start_at: float,
+        variable_pool: VariablePool,
+        user_id: str,
+        user_from: UserFrom,
+        invoke_from: InvokeFrom,
+        workflow_call_depth: int,
+    ):
         self.workflow_id = workflow.id
         self.tenant_id = workflow.tenant_id
         self.app_id = workflow.app_id
@@ -66,8 +70,7 @@ class WorkflowRunState:
         self.variable_pool = variable_pool
 
         self.total_tokens = 0
-        self.workflow_nodes_and_results = []
 
-        self.current_iteration_state = None
         self.workflow_node_steps = 1
         self.workflow_node_runs = []
+        self.current_iteration_state = None

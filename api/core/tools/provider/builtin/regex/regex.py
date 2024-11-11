@@ -9,10 +9,10 @@ class RegexProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             RegexExpressionTool().invoke(
-                user_id='',
+                user_id="",
                 tool_parameters={
-                    'content': '1+(2+3)*4',
-                    'expression': r'(\d+)',
+                    "content": "1+(2+3)*4",
+                    "expression": r"(\d+)",
                 },
             )
         except Exception as e:

@@ -72,7 +72,7 @@ const NotionPageSelector = ({
   const handleSelectWorkspace = useCallback((workspaceId: string) => {
     setCurrentWorkspaceId(workspaceId)
   }, [])
-  const handleSelecPages = (newSelectedPagesId: Set<string>) => {
+  const handleSelectPages = (newSelectedPagesId: Set<string>) => {
     const selectedPages = Array.from(newSelectedPagesId).map(pageId => getPagesMapAndSelectedPagesId[0][pageId])
 
     setSelectedPagesId(new Set(Array.from(newSelectedPagesId)))
@@ -117,7 +117,7 @@ const NotionPageSelector = ({
                   searchValue={searchValue}
                   list={currentWorkspace?.pages || []}
                   pagesMap={getPagesMapAndSelectedPagesId[0]}
-                  onSelect={handleSelecPages}
+                  onSelect={handleSelectPages}
                   canPreview={canPreview}
                   previewPageId={previewPageId}
                   onPreview={handlePreviewPage}

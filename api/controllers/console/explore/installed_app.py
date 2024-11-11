@@ -11,7 +11,7 @@ from controllers.console.wraps import account_initialization_required, cloud_edi
 from extensions.ext_database import db
 from fields.installed_app_fields import installed_app_list_fields
 from libs.login import login_required
-from models.model import App, InstalledApp, RecommendedApp
+from models import App, InstalledApp, RecommendedApp
 from services.account_service import TenantService
 
 
@@ -31,7 +31,7 @@ class InstalledAppsListApi(Resource):
                 "app_owner_tenant_id": installed_app.app_owner_tenant_id,
                 "is_pinned": installed_app.is_pinned,
                 "last_used_at": installed_app.last_used_at,
-                "editable": current_user.role in ["owner", "admin"],
+                "editable": current_user.role in {"owner", "admin"},
                 "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id,
             }
             for installed_app in installed_apps

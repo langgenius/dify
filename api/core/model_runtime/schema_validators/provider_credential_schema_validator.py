@@ -3,7 +3,6 @@ from core.model_runtime.schema_validators.common_validator import CommonValidato
 
 
 class ProviderCredentialSchemaValidator(CommonValidator):
-
     def __init__(self, provider_credential_schema: ProviderCredentialSchema):
         self.provider_credential_schema = provider_credential_schema
 

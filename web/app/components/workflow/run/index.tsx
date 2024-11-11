@@ -22,10 +22,9 @@ export type RunProps = {
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   runID: string
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
-  onShowIterationDetail: (detail: NodeTracing[][]) => void
 }
 
-const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getResultCallback, onShowIterationDetail }) => {
+const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getResultCallback }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [currentTab, setCurrentTab] = useState<string>(activeTab)
@@ -61,41 +60,67 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
   }, [notify, getResultCallback])
 
   const formatNodeList = useCallback((list: NodeTracing[]) => {
-    const allItems = list.reverse()
+    const allItems = [...list].reverse()
     const result: NodeTracing[] = []
-    let iterationIndex = 0
-    allItems.forEach((item) => {
-      const { node_type, execution_metadata } = item
-      if (node_type !== BlockEnum.Iteration) {
-        const isInIteration = !!execution_metadata?.iteration_id
+    const groupMap = new Map<string, NodeTracing[]>()
 
-        if (isInIteration) {
-          const iterationDetails = result[result.length - 1].details!
-          const currentIterationIndex = execution_metadata?.iteration_index
-          const isIterationFirstNode = iterationIndex !== currentIterationIndex || iterationDetails.length === 0
-
-          if (isIterationFirstNode) {
-            iterationDetails!.push([item])
-            iterationIndex = currentIterationIndex!
-          }
-
-          else {
-            iterationDetails[iterationDetails.length - 1].push(item)
-          }
-
-          return
-        }
-        // not in iteration
-        result.push(item)
-
-        return
-      }
-
+    const processIterationNode = (item: NodeTracing) => {
       result.push({
         ...item,
         details: [],
       })
+    }
+    const updateParallelModeGroup = (runId: string, item: NodeTracing, iterationNode: NodeTracing) => {
+      if (!groupMap.has(runId))
+        groupMap.set(runId, [item])
+      else
+        groupMap.get(runId)!.push(item)
+      if (item.status === 'failed') {
+        iterationNode.status = 'failed'
+        iterationNode.error = item.error
+      }
+
+      iterationNode.details = Array.from(groupMap.values())
+    }
+    const updateSequentialModeGroup = (index: number, item: NodeTracing, iterationNode: NodeTracing) => {
+      const { details } = iterationNode
+      if (details) {
+        if (!details[index])
+          details[index] = [item]
+        else
+          details[index].push(item)
+      }
+
+      if (item.status === 'failed') {
+        iterationNode.status = 'failed'
+        iterationNode.error = item.error
+      }
+    }
+    const processNonIterationNode = (item: NodeTracing) => {
+      const { execution_metadata } = item
+      if (!execution_metadata?.iteration_id) {
+        result.push(item)
+        return
+      }
+
+      const iterationNode = result.find(node => node.node_id === execution_metadata.iteration_id)
+      if (!iterationNode || !Array.isArray(iterationNode.details))
+        return
+
+      const { parallel_mode_run_id, iteration_index = 0 } = execution_metadata
+
+      if (parallel_mode_run_id)
+        updateParallelModeGroup(parallel_mode_run_id, item, iterationNode)
+      else
+        updateSequentialModeGroup(iteration_index, item, iterationNode)
+    }
+
+    allItems.forEach((item) => {
+      item.node_type === BlockEnum.Iteration
+        ? processIterationNode(item)
+        : processNonIterationNode(item)
     })
+
     return result
   }, [])
 
@@ -134,12 +159,12 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
       getData(appDetail.id, runID)
   }, [appDetail, runID])
 
-  const [height, setHieght] = useState(0)
+  const [height, setHeight] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
 
   const adjustResultHeight = () => {
     if (ref.current)
-      setHieght(ref.current?.clientHeight - 16 - 16 - 2 - 1)
+      setHeight(ref.current?.clientHeight - 16 - 16 - 2 - 1)
   }
 
   useEffect(() => {
@@ -172,35 +197,35 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
   return (
     <div className='grow relative flex flex-col'>
       {/* tab */}
-      <div className='shrink-0 flex items-center px-4 border-b-[0.5px] border-[rgba(0,0,0,0.05)]'>
+      <div className='shrink-0 flex items-center px-4 border-b-[0.5px] border-divider-subtle'>
         {!hideResult && (
           <div
             className={cn(
-              'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
-              currentTab === 'RESULT' && '!border-[rgb(21,94,239)] text-gray-700',
+              'mr-6 py-3 border-b-2 border-transparent system-sm-semibold-uppercase text-text-tertiary cursor-pointer',
+              currentTab === 'RESULT' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
             )}
             onClick={() => switchTab('RESULT')}
           >{t('runLog.result')}</div>
         )}
         <div
           className={cn(
-            'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
-            currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-gray-700',
+            'mr-6 py-3 border-b-2 border-transparent system-sm-semibold-uppercase text-text-tertiary cursor-pointer',
+            currentTab === 'DETAIL' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
           )}
           onClick={() => switchTab('DETAIL')}
         >{t('runLog.detail')}</div>
         <div
           className={cn(
-            'mr-6 py-3 border-b-2 border-transparent text-[13px] font-semibold leading-[18px] text-gray-400 cursor-pointer',
-            currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-gray-700',
+            'mr-6 py-3 border-b-2 border-transparent system-sm-semibold-uppercase text-text-tertiary cursor-pointer',
+            currentTab === 'TRACING' && '!border-util-colors-blue-brand-blue-brand-600 text-text-primary',
           )}
           onClick={() => switchTab('TRACING')}
         >{t('runLog.tracing')}</div>
       </div>
-      {/* panel detal */}
-      <div ref={ref} className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-gray-50')}>
+      {/* panel detail */}
+      <div ref={ref} className={cn('grow bg-components-panel-bg h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-background-section-burn')}>
         {loading && (
-          <div className='flex h-full items-center justify-center bg-white'>
+          <div className='flex h-full items-center justify-center bg-components-panel-bg'>
             <Loading />
           </div>
         )}
@@ -226,6 +251,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
         )}
         {!loading && currentTab === 'TRACING' && (
           <TracingPanel
+            className='bg-background-section-burn'
             list={list}
             onShowIterationDetail={handleShowIterationDetail}
           />

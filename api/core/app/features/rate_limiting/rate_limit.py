@@ -19,7 +19,7 @@ class RateLimit:
     _ACTIVE_REQUESTS_COUNT_FLUSH_INTERVAL = 5 * 60  # recalculate request_count from request_detail every 5 minutes
     _instance_dict = {}
 
-    def __new__(cls: type['RateLimit'], client_id: str, max_active_requests: int):
+    def __new__(cls: type["RateLimit"], client_id: str, max_active_requests: int):
         if client_id not in cls._instance_dict:
             instance = super().__new__(cls)
             cls._instance_dict[client_id] = instance
@@ -27,13 +27,13 @@ class RateLimit:
 
     def __init__(self, client_id: str, max_active_requests: int):
         self.max_active_requests = max_active_requests
-        if hasattr(self, 'initialized'):
+        if hasattr(self, "initialized"):
             return
         self.initialized = True
         self.client_id = client_id
         self.active_requests_key = self._ACTIVE_REQUESTS_KEY.format(client_id)
         self.max_active_requests_key = self._MAX_ACTIVE_REQUESTS_KEY.format(client_id)
-        self.last_recalculate_time = float('-inf')
+        self.last_recalculate_time = float("-inf")
         self.flush_cache(use_local_value=True)
 
     def flush_cache(self, use_local_value=False):
@@ -46,7 +46,7 @@ class RateLimit:
                 pipe.execute()
         else:
             with redis_client.pipeline() as pipe:
-                self.max_active_requests = int(redis_client.get(self.max_active_requests_key).decode('utf-8'))
+                self.max_active_requests = int(redis_client.get(self.max_active_requests_key).decode("utf-8"))
                 redis_client.expire(self.max_active_requests_key, timedelta(days=1))
 
         # flush max active requests (in-transit request list)
@@ -54,8 +54,11 @@ class RateLimit:
             return
         request_details = redis_client.hgetall(self.active_requests_key)
         redis_client.expire(self.active_requests_key, timedelta(days=1))
-        timeout_requests = [k for k, v in request_details.items() if
-                            time.time() - float(v.decode('utf-8')) > RateLimit._REQUEST_MAX_ALIVE_TIME]
+        timeout_requests = [
+            k
+            for k, v in request_details.items()
+            if time.time() - float(v.decode("utf-8")) > RateLimit._REQUEST_MAX_ALIVE_TIME
+        ]
         if timeout_requests:
             redis_client.hdel(self.active_requests_key, *timeout_requests)
 
@@ -69,8 +72,10 @@ class RateLimit:
 
         active_requests_count = redis_client.hlen(self.active_requests_key)
         if active_requests_count >= self.max_active_requests:
-            raise AppInvokeQuotaExceededError("Too many requests. Please try again later. The current maximum "
-                                              "concurrent requests allowed is {}.".format(self.max_active_requests))
+            raise AppInvokeQuotaExceededError(
+                "Too many requests. Please try again later. The current maximum "
+                "concurrent requests allowed is {}.".format(self.max_active_requests)
+            )
         redis_client.hset(self.active_requests_key, request_id, str(time.time()))
         return request_id
 
@@ -116,5 +121,5 @@ class RateLimitGenerator:
         if not self.closed:
             self.closed = True
             self.rate_limit.exit(self.request_id)
-            if self.generator is not None and hasattr(self.generator, 'close'):
+            if self.generator is not None and hasattr(self.generator, "close"):
                 self.generator.close()

@@ -59,26 +59,95 @@ User Input: yo, 你今天咋样？
 }
 
 User Input: 
-"""
+"""  # noqa: E501
+
+PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE = (
+    "You are an expert programmer. Generate code based on the following instructions:\n\n"
+    "Instructions: {{INSTRUCTION}}\n\n"
+    "Write the code in {{CODE_LANGUAGE}}.\n\n"
+    "Please ensure that you meet the following requirements:\n"
+    "1. Define a function named 'main'.\n"
+    "2. The 'main' function must return a dictionary (dict).\n"
+    "3. You may modify the arguments of the 'main' function, but include appropriate type hints.\n"
+    "4. The returned dictionary should contain at least one key-value pair.\n\n"
+    "5. You may ONLY use the following libraries in your code: \n"
+    "- json\n"
+    "- datetime\n"
+    "- math\n"
+    "- random\n"
+    "- re\n"
+    "- string\n"
+    "- sys\n"
+    "- time\n"
+    "- traceback\n"
+    "- uuid\n"
+    "- os\n"
+    "- base64\n"
+    "- hashlib\n"
+    "- hmac\n"
+    "- binascii\n"
+    "- collections\n"
+    "- functools\n"
+    "- operator\n"
+    "- itertools\n\n"
+    "Example:\n"
+    "def main(arg1: str, arg2: int) -> dict:\n"
+    "    return {\n"
+    '        "result": arg1 * arg2,\n'
+    "    }\n\n"
+    "IMPORTANT:\n"
+    "- Provide ONLY the code without any additional explanations, comments, or markdown formatting.\n"
+    "- DO NOT use markdown code blocks (``` or ``` python). Return the raw code directly.\n"
+    "- The code should start immediately after this instruction, without any preceding newlines or spaces.\n"
+    "- The code should be complete, functional, and follow best practices for {{CODE_LANGUAGE}}.\n\n"
+    "- Always use the format return {'result': ...} for the output.\n\n"
+    "Generated Code:\n"
+)
+JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE = (
+    "You are an expert programmer. Generate code based on the following instructions:\n\n"
+    "Instructions: {{INSTRUCTION}}\n\n"
+    "Write the code in {{CODE_LANGUAGE}}.\n\n"
+    "Please ensure that you meet the following requirements:\n"
+    "1. Define a function named 'main'.\n"
+    "2. The 'main' function must return an object.\n"
+    "3. You may modify the arguments of the 'main' function, but include appropriate JSDoc annotations.\n"
+    "4. The returned object should contain at least one key-value pair.\n\n"
+    "5. The returned object should always be in the format: {result: ...}\n\n"
+    "Example:\n"
+    "function main(arg1, arg2) {\n"
+    "    return {\n"
+    "        result: arg1 * arg2\n"
+    "    };\n"
+    "}\n\n"
+    "IMPORTANT:\n"
+    "- Provide ONLY the code without any additional explanations, comments, or markdown formatting.\n"
+    "- DO NOT use markdown code blocks (``` or ``` javascript). Return the raw code directly.\n"
+    "- The code should start immediately after this instruction, without any preceding newlines or spaces.\n"
+    "- The code should be complete, functional, and follow best practices for {{CODE_LANGUAGE}}.\n\n"
+    "Generated Code:\n"
+)
+
 
 SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
     "Please help me predict the three most likely questions that human would ask, "
     "and keeping each question under 20 characters.\n"
-    "MAKE SURE your output is the SAME language as the Assistant's latest response(if the main response is written in Chinese, then the language of your output must be using Chinese.)!\n"
+    "MAKE SURE your output is the SAME language as the Assistant's latest response"
     "The output must be an array in JSON format following the specified schema:\n"
-    "[\"question1\",\"question2\",\"question3\"]\n"
+    '["question1","question2","question3"]\n'
 )
 
 GENERATOR_QA_PROMPT = (
-    '<Task> The user will send a long text. Generate a Question and Answer pairs only using the knowledge in the long text. Please think step by step.'
-    'Step 1: Understand and summarize the main content of this text.\n'
-    'Step 2: What key information or concepts are mentioned in this text?\n'
-    'Step 3: Decompose or combine multiple pieces of information and concepts.\n'
-    'Step 4: Generate questions and answers based on these key information and concepts.\n'
-    '<Constraints> The questions should be clear and detailed, and the answers should be detailed and complete. '
-    'You must answer in {language}, in a style that is clear and detailed in {language}. No language other than {language} should be used. \n'
-    '<Format> Use the following format: Q1:\nA1:\nQ2:\nA2:...\n'
-    '<QA Pairs>'
+    "<Task> The user will send a long text. Generate a Question and Answer pairs only using the knowledge"
+    " in the long text. Please think step by step."
+    "Step 1: Understand and summarize the main content of this text.\n"
+    "Step 2: What key information or concepts are mentioned in this text?\n"
+    "Step 3: Decompose or combine multiple pieces of information and concepts.\n"
+    "Step 4: Generate questions and answers based on these key information and concepts.\n"
+    "<Constraints> The questions should be clear and detailed, and the answers should be detailed and complete. "
+    "You must answer in {language}, in a style that is clear and detailed in {language}."
+    " No language other than {language} should be used. \n"
+    "<Format> Use the following format: Q1:\nA1:\nQ2:\nA2:...\n"
+    "<QA Pairs>"
 )
 
 WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
@@ -87,14 +156,14 @@ Here is a task description for which I would like you to create a high-quality p
 {{TASK_DESCRIPTION}}
 </task_description>
 Based on task description, please create a well-structured prompt template that another AI could use to consistently complete the task. The prompt template should include:
-- Do not inlcude <input> or <output> section and variables in the prompt, assume user will add them at their own will. 
+- Do not include <input> or <output> section and variables in the prompt, assume user will add them at their own will. 
 - Clear instructions for the AI that will be using this prompt, demarcated with <instructions> tags. The instructions should provide step-by-step directions on how to complete the task using the input variables. Also Specifies in the instructions that the output should not contain any xml tag. 
 - Relevant examples if needed to clarify the task further, demarcated with <example> tags. Do not include variables in the prompt. Give three pairs of input and output examples.   
 - Include other relevant sections demarcated with appropriate XML tags like <examples>, <instructions>.
 - Use the same language as task description. 
 - Output in ``` xml ``` and start with <instruction>
 Please generate the full prompt template with at least 300 words and output only the prompt template.
-"""
+"""  # noqa: E501
 
 RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
 Here is a task description for which I would like you to create a high-quality prompt template for:
@@ -109,7 +178,7 @@ Based on task description, please create a well-structured prompt template that 
 - Use the same language as task description. 
 - Output in ``` xml ``` and start with <instruction>
 Please generate the full prompt template and output only the prompt template.
-"""
+"""  # noqa: E501
 
 RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE = """
 I need to extract the following information from the input text. The <information to be extracted> tag specifies the 'type', 'description' and 'required' of the information to be extracted. 
@@ -134,7 +203,7 @@ Inside <text></text> XML tags, there is a text that I should extract parameters 
 
 ### Answer
 I should always output a valid list. Output nothing other than the list of variable_name. Output an empty list if there is no variable name in input text.
-"""
+"""  # noqa: E501
 
 RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE = """
 <instruction>
@@ -150,4 +219,4 @@ Welcome! I'm here to assist you with any questions or issues you might have with
 Here is the task description: {{INPUT_TEXT}}
 
 You just need to generate the output
-"""
+"""  # noqa: E501

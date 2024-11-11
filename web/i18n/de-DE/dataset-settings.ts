@@ -27,6 +27,11 @@ const translation = {
       longDescription: ' über die Abrufmethode, dies kann jederzeit in den Wissenseinstellungen geändert werden.',
     },
     save: 'Speichern',
+    permissionsInvitedMembers: 'Teilweise Teammitglieder',
+    me: '(Sie)',
+    externalKnowledgeID: 'ID für externes Wissen',
+    externalKnowledgeAPI: 'API für externes Wissen',
+    retrievalSettings: 'Einstellungen für den Abruf',
   },
 }
 

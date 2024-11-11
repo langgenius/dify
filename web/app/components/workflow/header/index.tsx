@@ -168,6 +168,7 @@ const Header: FC = () => {
       {
         normal && (
           <div className='flex items-center gap-2'>
+            {/* <GlobalVariableButton disabled={nodesReadOnly} /> */}
             {isChatMode && <ChatVariableButton disabled={nodesReadOnly} />}
             <EnvButton disabled={nodesReadOnly} />
             <div className='w-[1px] h-3.5 bg-gray-200'></div>

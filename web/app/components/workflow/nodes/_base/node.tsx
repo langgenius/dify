@@ -14,6 +14,7 @@ import {
   RiErrorWarningLine,
   RiLoader2Line,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import type { NodeProps } from '../../types'
 import {
   BlockEnum,
@@ -24,6 +25,7 @@ import {
   useToolIcon,
 } from '../../hooks'
 import { useNodeIterationInteractions } from '../iteration/use-interactions'
+import type { IterationNodeType } from '../iteration/types'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
@@ -33,6 +35,7 @@ import NodeControl from './components/node-control'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import Tooltip from '@/app/components/base/tooltip'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -43,6 +46,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   data,
   children,
 }) => {
+  const { t } = useTranslation()
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
@@ -80,6 +84,7 @@ const BaseNode: FC<BaseNodeProps> = ({
       className={cn(
         'flex border-[2px] rounded-2xl',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
+        !showSelectedBorder && data._inParallelHovering && 'border-workflow-block-border-highlight',
       )}
       ref={nodeRef}
       style={{
@@ -100,6 +105,13 @@ const BaseNode: FC<BaseNodeProps> = ({
           data._isBundled && '!shadow-lg',
         )}
       >
+        {
+          data._inParallelHovering && (
+            <div className='absolute left-2 -top-2.5 top system-2xs-medium-uppercase text-text-tertiary z-10'>
+              {t('workflow.common.parallelRun')}
+            </div>
+          )
+        }
         {
           data._showAddVariablePopup && (
             <AddVariablePopupWithPosition
@@ -156,9 +168,27 @@ const BaseNode: FC<BaseNodeProps> = ({
           />
           <div
             title={data.title}
-            className='grow mr-1 system-sm-semibold-uppercase text-text-primary truncate'
+            className='grow mr-1 system-sm-semibold-uppercase text-text-primary truncate flex items-center'
           >
-            {data.title}
+            <div>
+              {data.title}
+            </div>
+            {
+              data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
+                <Tooltip popupContent={
+                  <div className='w-[180px]'>
+                    <div className='font-extrabold'>
+                      {t('workflow.nodes.iteration.parallelModeEnableTitle')}
+                    </div>
+                    {t('workflow.nodes.iteration.parallelModeEnableDesc')}
+                  </div>}
+                >
+                  <div className='flex justify-center items-center px-[5px] py-[3px] ml-1 border-[1px] border-text-warning rounded-[5px] text-text-warning system-2xs-medium-uppercase '>
+                    {t('workflow.nodes.iteration.parallelModeUpper')}
+                  </div>
+                </Tooltip>
+              )
+            }
           </div>
           {
             data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running && (

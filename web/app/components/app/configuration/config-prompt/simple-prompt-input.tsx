@@ -33,7 +33,7 @@ export type ISimplePromptInput = {
   promptTemplate: string
   promptVariables: PromptVariable[]
   readonly?: boolean
-  onChange?: (promp: string, promptVariables: PromptVariable[]) => void
+  onChange?: (prompt: string, promptVariables: PromptVariable[]) => void
   noTitle?: boolean
   gradientBorder?: boolean
   editorHeight?: number
@@ -239,7 +239,7 @@ const Prompt: FC<ISimplePromptInput> = ({
       {isShowConfirmAddVar && (
         <ConfirmAddVar
           varNameArr={newPromptVariables.map(v => v.name)}
-          onConfrim={handleAutoAdd(true)}
+          onConfirm={handleAutoAdd(true)}
           onCancel={handleAutoAdd(false)}
           onHide={hideConfirmAddVar}
         />

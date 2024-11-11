@@ -93,6 +93,10 @@ const translation = {
     promptTemplate: 'प्रॉम्प्ट टेम्पलेट',
     promptInput: 'प्रॉम्प्ट इनपुट',
     response: 'प्रतिक्रिया',
+    iterations: 'पुनरूक्तियाँ',
+    toolUsed: 'प्रयुक्त उपकरण',
+    finalProcessing: 'अंतिम प्रसंस्करण',
+    iteration: 'चलना',
   },
 }
 

@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Optional
 
 from httpx import get
 
@@ -79,7 +80,9 @@ class ApiToolManageService:
             raise ValueError(f"invalid schema: {str(e)}")
 
     @staticmethod
-    def convert_schema_to_tool_bundles(schema: str, extra_info: dict = None) -> list[ApiToolBundle]:
+    def convert_schema_to_tool_bundles(
+        schema: str, extra_info: Optional[dict] = None
+    ) -> tuple[list[ApiToolBundle], str]:
         """
         convert schema to tool bundles
 
@@ -176,7 +179,8 @@ class ApiToolManageService:
         get api tool provider remote schema
         """
         headers = {
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko)"
+            " Chrome/120.0.0.0 Safari/537.36 Edg/120.0.0.0",
             "Accept": "*/*",
         }
 
@@ -189,7 +193,7 @@ class ApiToolManageService:
             # try to parse schema, avoid SSRF attack
             ApiToolManageService.parser_api_schema(schema)
         except Exception as e:
-            logger.error(f"parse api schema error: {str(e)}")
+            logger.exception(f"parse api schema error: {str(e)}")
             raise ValueError("invalid schema, please check the url you provided")
 
         return {"schema": schema}

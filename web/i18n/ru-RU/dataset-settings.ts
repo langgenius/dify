@@ -29,6 +29,9 @@ const translation = {
       longDescription: ' о методе поиска, вы можете изменить это в любое время в настройках базы знаний.',
     },
     save: 'Сохранить',
+    externalKnowledgeAPI: 'API внешних знаний',
+    retrievalSettings: 'Настройки извлечения',
+    externalKnowledgeID: 'Внешний идентификатор базы знаний',
   },
 }
 

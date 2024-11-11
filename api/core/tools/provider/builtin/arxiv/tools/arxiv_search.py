@@ -8,6 +8,8 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
 logger = logging.getLogger(__name__)
+
+
 class ArxivAPIWrapper(BaseModel):
     """Wrapper around ArxivAPI.
 
@@ -86,11 +88,13 @@ class ArxivAPIWrapper(BaseModel):
 
 class ArxivSearchInput(BaseModel):
     query: str = Field(..., description="Search query.")
-    
+
+
 class ArxivSearchTool(BuiltinTool):
     """
     A tool for searching articles on Arxiv.
     """
+
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
         """
         Invokes the Arxiv search tool with the given user ID and tool parameters.
@@ -100,15 +104,16 @@ class ArxivSearchTool(BuiltinTool):
             tool_parameters (dict[str, Any]): The parameters for the tool, including the 'query' parameter.
 
         Returns:
-            ToolInvokeMessage | list[ToolInvokeMessage]: The result of the tool invocation, which can be a single message or a list of messages.
+            ToolInvokeMessage | list[ToolInvokeMessage]: The result of the tool invocation,
+             which can be a single message or a list of messages.
         """
-        query = tool_parameters.get('query', '')
+        query = tool_parameters.get("query", "")
 
         if not query:
-            return self.create_text_message('Please input query')
-        
+            return self.create_text_message("Please input query")
+
         arxiv = ArxivAPIWrapper()
-        
+
         response = arxiv.run(query)
-        
+
         return self.create_text_message(self.summary(user_id=user_id, content=response))

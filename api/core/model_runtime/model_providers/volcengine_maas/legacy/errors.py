@@ -1,144 +1,144 @@
-from core.model_runtime.model_providers.volcengine_maas.legacy.volc_sdk import MaasException
+from core.model_runtime.model_providers.volcengine_maas.legacy.volc_sdk import MaasError
 
 
-class ClientSDKRequestError(MaasException):
+class ClientSDKRequestError(MaasError):
     pass
 
 
-class SignatureDoesNotMatch(MaasException):
+class SignatureDoesNotMatchError(MaasError):
     pass
 
 
-class RequestTimeout(MaasException):
+class RequestTimeoutError(MaasError):
     pass
 
 
-class ServiceConnectionTimeout(MaasException):
+class ServiceConnectionTimeoutError(MaasError):
     pass
 
 
-class MissingAuthenticationHeader(MaasException):
+class MissingAuthenticationHeaderError(MaasError):
     pass
 
 
-class AuthenticationHeaderIsInvalid(MaasException):
+class AuthenticationHeaderIsInvalidError(MaasError):
     pass
 
 
-class InternalServiceError(MaasException):
+class InternalServiceError(MaasError):
     pass
 
 
-class MissingParameter(MaasException):
+class MissingParameterError(MaasError):
     pass
 
 
-class InvalidParameter(MaasException):
+class InvalidParameterError(MaasError):
     pass
 
 
-class AuthenticationExpire(MaasException):
+class AuthenticationExpireError(MaasError):
     pass
 
 
-class EndpointIsInvalid(MaasException):
+class EndpointIsInvalidError(MaasError):
     pass
 
 
-class EndpointIsNotEnable(MaasException):
+class EndpointIsNotEnableError(MaasError):
     pass
 
 
-class ModelNotSupportStreamMode(MaasException):
+class ModelNotSupportStreamModeError(MaasError):
     pass
 
 
-class ReqTextExistRisk(MaasException):
+class ReqTextExistRiskError(MaasError):
     pass
 
 
-class RespTextExistRisk(MaasException):
+class RespTextExistRiskError(MaasError):
     pass
 
 
-class EndpointRateLimitExceeded(MaasException):
+class EndpointRateLimitExceededError(MaasError):
     pass
 
 
-class ServiceConnectionRefused(MaasException):
+class ServiceConnectionRefusedError(MaasError):
     pass
 
 
-class ServiceConnectionClosed(MaasException):
+class ServiceConnectionClosedError(MaasError):
     pass
 
 
-class UnauthorizedUserForEndpoint(MaasException):
+class UnauthorizedUserForEndpointError(MaasError):
     pass
 
 
-class InvalidEndpointWithNoURL(MaasException):
+class InvalidEndpointWithNoURLError(MaasError):
     pass
 
 
-class EndpointAccountRpmRateLimitExceeded(MaasException):
+class EndpointAccountRpmRateLimitExceededError(MaasError):
     pass
 
 
-class EndpointAccountTpmRateLimitExceeded(MaasException):
+class EndpointAccountTpmRateLimitExceededError(MaasError):
     pass
 
 
-class ServiceResourceWaitQueueFull(MaasException):
+class ServiceResourceWaitQueueFullError(MaasError):
     pass
 
 
-class EndpointIsPending(MaasException):
+class EndpointIsPendingError(MaasError):
     pass
 
 
-class ServiceNotOpen(MaasException):
+class ServiceNotOpenError(MaasError):
     pass
 
 
 AuthErrors = {
-    'SignatureDoesNotMatch': SignatureDoesNotMatch,
-    'MissingAuthenticationHeader': MissingAuthenticationHeader,
-    'AuthenticationHeaderIsInvalid': AuthenticationHeaderIsInvalid,
-    'AuthenticationExpire': AuthenticationExpire,
-    'UnauthorizedUserForEndpoint': UnauthorizedUserForEndpoint,
+    "SignatureDoesNotMatch": SignatureDoesNotMatchError,
+    "MissingAuthenticationHeader": MissingAuthenticationHeaderError,
+    "AuthenticationHeaderIsInvalid": AuthenticationHeaderIsInvalidError,
+    "AuthenticationExpire": AuthenticationExpireError,
+    "UnauthorizedUserForEndpoint": UnauthorizedUserForEndpointError,
 }
 
 BadRequestErrors = {
-    'MissingParameter': MissingParameter,
-    'InvalidParameter': InvalidParameter,
-    'EndpointIsInvalid': EndpointIsInvalid,
-    'EndpointIsNotEnable': EndpointIsNotEnable,
-    'ModelNotSupportStreamMode': ModelNotSupportStreamMode,
-    'ReqTextExistRisk': ReqTextExistRisk,
-    'RespTextExistRisk': RespTextExistRisk,
-    'InvalidEndpointWithNoURL': InvalidEndpointWithNoURL,
-    'ServiceNotOpen': ServiceNotOpen,
+    "MissingParameter": MissingParameterError,
+    "InvalidParameter": InvalidParameterError,
+    "EndpointIsInvalid": EndpointIsInvalidError,
+    "EndpointIsNotEnable": EndpointIsNotEnableError,
+    "ModelNotSupportStreamMode": ModelNotSupportStreamModeError,
+    "ReqTextExistRisk": ReqTextExistRiskError,
+    "RespTextExistRisk": RespTextExistRiskError,
+    "InvalidEndpointWithNoURL": InvalidEndpointWithNoURLError,
+    "ServiceNotOpen": ServiceNotOpenError,
 }
 
 RateLimitErrors = {
-    'EndpointRateLimitExceeded': EndpointRateLimitExceeded,
-    'EndpointAccountRpmRateLimitExceeded': EndpointAccountRpmRateLimitExceeded,
-    'EndpointAccountTpmRateLimitExceeded': EndpointAccountTpmRateLimitExceeded,
+    "EndpointRateLimitExceeded": EndpointRateLimitExceededError,
+    "EndpointAccountRpmRateLimitExceeded": EndpointAccountRpmRateLimitExceededError,
+    "EndpointAccountTpmRateLimitExceeded": EndpointAccountTpmRateLimitExceededError,
 }
 
 ServerUnavailableErrors = {
-    'InternalServiceError': InternalServiceError,
-    'EndpointIsPending': EndpointIsPending,
-    'ServiceResourceWaitQueueFull': ServiceResourceWaitQueueFull,
+    "InternalServiceError": InternalServiceError,
+    "EndpointIsPending": EndpointIsPendingError,
+    "ServiceResourceWaitQueueFull": ServiceResourceWaitQueueFullError,
 }
 
 ConnectionErrors = {
-    'ClientSDKRequestError': ClientSDKRequestError,
-    'RequestTimeout': RequestTimeout,
-    'ServiceConnectionTimeout': ServiceConnectionTimeout,
-    'ServiceConnectionRefused': ServiceConnectionRefused,
-    'ServiceConnectionClosed': ServiceConnectionClosed,
+    "ClientSDKRequestError": ClientSDKRequestError,
+    "RequestTimeout": RequestTimeoutError,
+    "ServiceConnectionTimeout": ServiceConnectionTimeoutError,
+    "ServiceConnectionRefused": ServiceConnectionRefusedError,
+    "ServiceConnectionClosed": ServiceConnectionClosedError,
 }
 
 ErrorCodeMap = {
@@ -150,7 +150,7 @@ ErrorCodeMap = {
 }
 
 
-def wrap_error(e: MaasException) -> Exception:
+def wrap_error(e: MaasError) -> Exception:
     if ErrorCodeMap.get(e.code):
         return ErrorCodeMap.get(e.code)(e.code_n, e.code, e.message, e.req_id)
     return e

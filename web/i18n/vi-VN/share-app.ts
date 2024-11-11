@@ -2,7 +2,7 @@ const translation = {
   common: {
     welcome: '',
     appUnavailable: 'Ứng dụng không khả dụng',
-    appUnkonwError: 'Ứng dụng gặp lỗi không xác định',
+    appUnknownError: 'Ứng dụng gặp lỗi không xác định',
   },
   chat: {
     newChat: 'Cuộc trò chuyện mới',
@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'Trò chuyện',
     newChatDefaultName: 'Cuộc trò chuyện mới',
     resetChat: 'Đặt lại cuộc trò chuyện',
-    powerBy: 'Được cung cấp bởi',
+    poweredBy: 'Được cung cấp bởi',
     prompt: 'Lời nhắc',
     privatePromptConfigTitle: 'Cài đặt cuộc trò chuyện',
     publicPromptConfigTitle: 'Lời nhắc ban đầu',

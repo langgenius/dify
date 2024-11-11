@@ -5,10 +5,10 @@ import type { AppIconType } from '@/types/app'
 
 type UseAppFaviconOptions = {
   enable?: boolean
-  icon_type?: AppIconType
+  icon_type?: AppIconType | null
   icon?: string
-  icon_background?: string
-  icon_url?: string
+  icon_background?: string | null
+  icon_url?: string | null
 }
 
 export function useAppFavicon(options: UseAppFaviconOptions) {
@@ -21,7 +21,7 @@ export function useAppFavicon(options: UseAppFaviconOptions) {
   } = options
 
   useAsyncEffect(async () => {
-    if (!enable)
+    if (!enable || (icon_type === 'image' && !icon_url) || (icon_type === 'emoji' && !icon))
       return
 
     const isValidImageIcon = icon_type === 'image' && icon_url

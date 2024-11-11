@@ -32,6 +32,11 @@ const translation = {
         'प्राप्ति पद्धति के बारे में, आप इसे किसी भी समय ज्ञान सेटिंग्ज में बदल सकते हैं।',
     },
     save: 'सेवना',
+    me: '(आप)',
+    permissionsInvitedMembers: 'आंशिक टीम के सदस्य',
+    externalKnowledgeID: 'बाहरी ज्ञान ID',
+    externalKnowledgeAPI: 'बाहरी ज्ञान एपीआई',
+    retrievalSettings: 'पुनर्प्राप्ति सेटिंग्स',
   },
 }
 

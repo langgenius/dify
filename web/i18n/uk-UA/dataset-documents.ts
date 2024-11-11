@@ -13,6 +13,8 @@ const translation = {
         status: 'СТАТУС',
         action: 'ДІЯ',
       },
+      name: 'Ім\'я',
+      rename: 'Перейменувати',
     },
     action: {
       uploadFile: 'Завантажити новий файл',
@@ -74,6 +76,7 @@ const translation = {
       error: 'Помилка імпорту',
       ok: 'ОК',
     },
+    addUrl: 'Додати URL-адресу',
   },
   metadata: {
     title: 'Метадані',

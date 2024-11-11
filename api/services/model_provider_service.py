@@ -1,6 +1,7 @@
 import logging
 import mimetypes
 import os
+from pathlib import Path
 from typing import Optional, cast
 
 import requests
@@ -453,9 +454,8 @@ class ModelProviderService:
         mimetype = mimetype or "application/octet-stream"
 
         # read binary from file
-        with open(file_path, "rb") as f:
-            byte_data = f.read()
-            return byte_data, mimetype
+        byte_data = Path(file_path).read_bytes()
+        return byte_data, mimetype
 
     def switch_preferred_provider(self, tenant_id: str, provider: str, preferred_provider_type: str) -> None:
         """

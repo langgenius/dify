@@ -26,12 +26,15 @@ const HitDetail: FC<IHitDetailProps> = ({ segInfo }) => {
       )
     }
 
-    return segInfo?.content
+    return <div className='mb-4 text-md text-gray-800 h-full'>{segInfo?.content}</div>
   }
 
   return (
-    <div className='overflow-x-auto'>
-      <div className="bg-gray-25 p-6">
+    segInfo?.id === 'external'
+      ? <div className='w-full overflow-x-auto px-2'>
+        <div className={s.segModalContent}>{renderContent()}</div>
+      </div>
+      : <div className='overflow-x-auto'>
         <div className="flex items-center">
           <SegmentIndexTag
             positionId={segInfo?.position || ''}
@@ -59,7 +62,6 @@ const HitDetail: FC<IHitDetailProps> = ({ segInfo }) => {
             })}
         </div>
       </div>
-    </div>
   )
 }
 

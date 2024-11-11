@@ -8,10 +8,10 @@ import psycopg2.pool
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -23,8 +23,11 @@ class PGVectorConfig(BaseModel):
     user: str
     password: str
     database: str
+    min_connection: int
+    max_connection: int
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["host"]:
             raise ValueError("config PGVECTOR_HOST is required")
@@ -36,6 +39,12 @@ class PGVectorConfig(BaseModel):
             raise ValueError("config PGVECTOR_PASSWORD is required")
         if not values["database"]:
             raise ValueError("config PGVECTOR_DATABASE is required")
+        if not values["min_connection"]:
+            raise ValueError("config PGVECTOR_MIN_CONNECTION is required")
+        if not values["max_connection"]:
+            raise ValueError("config PGVECTOR_MAX_CONNECTION is required")
+        if values["min_connection"] > values["max_connection"]:
+            raise ValueError("config PGVECTOR_MIN_CONNECTION should less than PGVECTOR_MAX_CONNECTION")
         return values
 
 
@@ -60,8 +69,8 @@ class PGVector(BaseVector):
 
     def _create_connection_pool(self, config: PGVectorConfig):
         return psycopg2.pool.SimpleConnectionPool(
-            1,
-            5,
+            config.min_connection,
+            config.max_connection,
             host=config.host,
             port=config.port,
             user=config.user,
@@ -134,15 +143,16 @@ class PGVector(BaseVector):
         :param top_k: The number of nearest neighbors to return, default is 5.
         :return: List of Documents that are nearest to the query vector.
         """
-        top_k = kwargs.get("top_k", 5)
+        top_k = kwargs.get("top_k", 4)
 
         with self._get_cursor() as cur:
             cur.execute(
-                f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name} ORDER BY distance LIMIT {top_k}",
+                f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
+                f" ORDER BY distance LIMIT {top_k}",
                 (json.dumps(query_vector),),
             )
             docs = []
-            score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             for record in cur:
                 metadata, text, distance = record
                 score = 1 - distance
@@ -156,7 +166,7 @@ class PGVector(BaseVector):
 
         with self._get_cursor() as cur:
             cur.execute(
-                f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), to_tsquery(%s)) AS score
+                f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), plainto_tsquery(%s)) AS score
                 FROM {self.table_name}
                 WHERE to_tsvector(text) @@ plainto_tsquery(%s)
                 ORDER BY score DESC
@@ -201,8 +211,7 @@ class PGVectorFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict(VectorType.PGVECTOR, collection_name))
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.PGVECTOR, collection_name))
 
         return PGVector(
             collection_name=collection_name,
@@ -212,5 +221,7 @@ class PGVectorFactory(AbstractVectorFactory):
                 user=dify_config.PGVECTOR_USER,
                 password=dify_config.PGVECTOR_PASSWORD,
                 database=dify_config.PGVECTOR_DATABASE,
+                min_connection=dify_config.PGVECTOR_MIN_CONNECTION,
+                max_connection=dify_config.PGVECTOR_MAX_CONNECTION,
             ),
         )

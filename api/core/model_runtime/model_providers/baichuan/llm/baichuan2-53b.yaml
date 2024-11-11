@@ -43,3 +43,4 @@ parameter_rules:
       zh_Hans: 允许模型自行进行外部搜索，以增强生成结果。
       en_US: Allow the model to perform external search to enhance the generation results.
     required: false
+deprecated: true

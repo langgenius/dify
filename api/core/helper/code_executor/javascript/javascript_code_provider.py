@@ -18,4 +18,5 @@ class JavascriptCodeProvider(CodeNodeProvider):
                     result: arg1 + arg2
                 }
             }
-            """)
+            """
+        )

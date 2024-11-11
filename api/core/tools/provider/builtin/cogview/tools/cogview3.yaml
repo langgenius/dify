@@ -42,21 +42,46 @@ parameters:
       pt_BR: Image size
     form: form
     options:
+      - value: cogview_3
+        label:
+          en_US: Square_cogview_3(1024x1024)
+          zh_Hans: 方_cogview_3(1024x1024)
+          pt_BR: Square_cogview_3(1024x1024)
       - value: square
         label:
-          en_US: Squre(1024x1024)
+          en_US: Square(1024x1024)
           zh_Hans: 方(1024x1024)
-          pt_BR: Squre(1024x1024)
-      - value: vertical
+          pt_BR: Square(1024x1024)
+      - value: vertical_768
         label:
-          en_US: Vertical(1024x1792)
-          zh_Hans: 竖屏(1024x1792)
-          pt_BR: Vertical(1024x1792)
-      - value: horizontal
+          en_US: Vertical(768x1344)
+          zh_Hans: 竖屏(768x1344)
+          pt_BR: Vertical(768x1344)
+      - value: vertical_864
         label:
-          en_US: Horizontal(1792x1024)
-          zh_Hans: 横屏(1792x1024)
-          pt_BR: Horizontal(1792x1024)
+          en_US: Vertical(864x1152)
+          zh_Hans: 竖屏(864x1152)
+          pt_BR: Vertical(864x1152)
+      - value: horizontal_1344
+        label:
+          en_US: Horizontal(1344x768)
+          zh_Hans: 横屏(1344x768)
+          pt_BR: Horizontal(1344x768)
+      - value: horizontal_1152
+        label:
+          en_US: Horizontal(1152x864)
+          zh_Hans: 横屏(1152x864)
+          pt_BR: Horizontal(1152x864)
+      - value: widescreen_1440
+        label:
+          en_US: Widescreen(1440x720)
+          zh_Hans: 宽屏(1440x720)
+          pt_BR: Widescreen(1440x720)
+      - value: tallscreen_720
+        label:
+          en_US: Tallscreen(720x1440)
+          zh_Hans: 高屏(720x1440)
+          pt_BR: Tallscreen(720x1440)
     default: square
   - name: n
     type: number

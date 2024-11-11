@@ -29,7 +29,7 @@ credentials_for_provider:
       en_US: Please input your OpenAI API key
       zh_Hans: 请输入你的 OpenAI API key
       pt_BR: Please input your OpenAI API key
-  openai_organizaion_id:
+  openai_organization_id:
     type: text-input
     required: false
     label:

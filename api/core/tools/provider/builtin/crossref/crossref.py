@@ -11,9 +11,9 @@ class CrossRefProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
+                user_id="",
                 tool_parameters={
-                    "doi": '10.1007/s00894-022-05373-8',
+                    "doi": "10.1007/s00894-022-05373-8",
                 },
             )
         except Exception as e:

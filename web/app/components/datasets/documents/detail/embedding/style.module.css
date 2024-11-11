@@ -31,7 +31,7 @@
   @apply rounded-r-md;
 }
 .progressData {
-  @apply w-full flex justify-between items-center text-xs text-gray-700;
+  @apply w-full flex items-center text-xs text-gray-700;
 }
 .previewTip {
   @apply pb-1 pt-12 text-gray-900 text-sm font-medium;

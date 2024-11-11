@@ -6,23 +6,24 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class WebscraperTool(BuiltinTool):
-    def _invoke(self,
-                user_id: str,
-                tool_parameters: dict[str, Any],
-                ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
-            invoke tools
+        invoke tools
         """
         try:
-            url = tool_parameters.get('url', '')
-            user_agent = tool_parameters.get('user_agent', '')
+            url = tool_parameters.get("url", "")
+            user_agent = tool_parameters.get("user_agent", "")
             if not url:
-                return self.create_text_message('Please input url')
+                return self.create_text_message("Please input url")
 
             # get webpage
             result = self.get_url(url, user_agent=user_agent)
 
-            if tool_parameters.get('generate_summary'):
+            if tool_parameters.get("generate_summary"):
                 # summarize and return
                 return self.create_text_message(self.summary(user_id=user_id, content=result))
             else:

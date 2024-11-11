@@ -20,10 +20,7 @@ class APIBasedExtensionRequestor:
         :param params: the request params
         :return: the response json
         """
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer {}".format(self.api_key)
-        }
+        headers = {"Content-Type": "application/json", "Authorization": "Bearer {}".format(self.api_key)}
 
         url = self.api_endpoint
 
@@ -32,20 +29,17 @@ class APIBasedExtensionRequestor:
             proxies = None
             if dify_config.SSRF_PROXY_HTTP_URL and dify_config.SSRF_PROXY_HTTPS_URL:
                 proxies = {
-                    'http': dify_config.SSRF_PROXY_HTTP_URL,
-                    'https': dify_config.SSRF_PROXY_HTTPS_URL,
+                    "http": dify_config.SSRF_PROXY_HTTP_URL,
+                    "https": dify_config.SSRF_PROXY_HTTPS_URL,
                 }
 
             response = requests.request(
-                method='POST',
+                method="POST",
                 url=url,
-                json={
-                    'point': point.value,
-                    'params': params
-                },
+                json={"point": point.value, "params": params},
                 headers=headers,
                 timeout=self.timeout,
-                proxies=proxies
+                proxies=proxies,
             )
         except requests.exceptions.Timeout:
             raise ValueError("request timeout")
@@ -53,9 +47,8 @@ class APIBasedExtensionRequestor:
             raise ValueError("request connection error")
 
         if response.status_code != 200:
-            raise ValueError("request error, status_code: {}, content: {}".format(
-                response.status_code,
-                response.text[:100]
-            ))
+            raise ValueError(
+                "request error, status_code: {}, content: {}".format(response.status_code, response.text[:100])
+            )
 
         return response.json()

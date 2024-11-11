@@ -90,7 +90,6 @@ const Blocks = ({
                   )}
                 </div>
               )}
-              needsDelay
             >
               <div className='group/item flex items-center w-full pl-3 pr-1 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'>
                 <BlockIcon

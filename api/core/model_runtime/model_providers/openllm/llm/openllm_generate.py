@@ -15,32 +15,38 @@ from core.model_runtime.model_providers.openllm.llm.openllm_generate_errors impo
 
 class OpenLLMGenerateMessage:
     class Role(Enum):
-        USER = 'user'
-        ASSISTANT = 'assistant'
+        USER = "user"
+        ASSISTANT = "assistant"
 
     role: str = Role.USER.value
     content: str
     usage: dict[str, int] = None
-    stop_reason: str = ''
+    stop_reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
         return {
-            'role': self.role,
-            'content': self.content,
+            "role": self.role,
+            "content": self.content,
         }
-    
-    def __init__(self, content: str, role: str = 'user') -> None:
+
+    def __init__(self, content: str, role: str = "user") -> None:
         self.content = content
         self.role = role
 
 
 class OpenLLMGenerate:
     def generate(
-            self, server_url: str, model_name: str, stream: bool, model_parameters: dict[str, Any],
-            stop: list[str], prompt_messages: list[OpenLLMGenerateMessage], user: str,
+        self,
+        server_url: str,
+        model_name: str,
+        stream: bool,
+        model_parameters: dict[str, Any],
+        stop: list[str],
+        prompt_messages: list[OpenLLMGenerateMessage],
+        user: str,
     ) -> Union[Generator[OpenLLMGenerateMessage, None, None], OpenLLMGenerateMessage]:
         if not server_url:
-            raise InvalidAuthenticationError('Invalid server URL')
+            raise InvalidAuthenticationError("Invalid server URL")
 
         default_llm_config = {
             "max_new_tokens": 128,
@@ -72,40 +78,37 @@ class OpenLLMGenerate:
             "frequency_penalty": 0,
             "use_beam_search": False,
             "ignore_eos": False,
-            "skip_special_tokens": True
+            "skip_special_tokens": True,
         }
 
-        if 'max_tokens' in model_parameters and type(model_parameters['max_tokens']) == int:
-            default_llm_config['max_new_tokens'] = model_parameters['max_tokens']
+        if "max_tokens" in model_parameters and type(model_parameters["max_tokens"]) == int:
+            default_llm_config["max_new_tokens"] = model_parameters["max_tokens"]
 
-        if 'temperature' in model_parameters and type(model_parameters['temperature']) == float:
-            default_llm_config['temperature'] = model_parameters['temperature']
+        if "temperature" in model_parameters and type(model_parameters["temperature"]) == float:
+            default_llm_config["temperature"] = model_parameters["temperature"]
 
-        if 'top_p' in model_parameters and type(model_parameters['top_p']) == float:
-            default_llm_config['top_p'] = model_parameters['top_p']
+        if "top_p" in model_parameters and type(model_parameters["top_p"]) == float:
+            default_llm_config["top_p"] = model_parameters["top_p"]
 
-        if 'top_k' in model_parameters and type(model_parameters['top_k']) == int:
-            default_llm_config['top_k'] = model_parameters['top_k']
+        if "top_k" in model_parameters and type(model_parameters["top_k"]) == int:
+            default_llm_config["top_k"] = model_parameters["top_k"]
 
-        if 'use_cache' in model_parameters and type(model_parameters['use_cache']) == bool:
-            default_llm_config['use_cache'] = model_parameters['use_cache']
+        if "use_cache" in model_parameters and type(model_parameters["use_cache"]) == bool:
+            default_llm_config["use_cache"] = model_parameters["use_cache"]
 
-        headers = {
-            'Content-Type': 'application/json',
-            'accept': 'application/json'
-        }
+        headers = {"Content-Type": "application/json", "accept": "application/json"}
 
         if stream:
-            url = f'{server_url}/v1/generate_stream'
+            url = f"{server_url}/v1/generate_stream"
             timeout = 10
         else:
-            url = f'{server_url}/v1/generate'
+            url = f"{server_url}/v1/generate"
             timeout = 120
 
         data = {
-            'stop': stop if stop else [],
-            'prompt': '\n'.join([message.content for message in prompt_messages]),
-            'llm_config': default_llm_config,
+            "stop": stop or [],
+            "prompt": "\n".join([message.content for message in prompt_messages]),
+            "llm_config": default_llm_config,
         }
 
         try:
@@ -113,10 +116,10 @@ class OpenLLMGenerate:
         except (ConnectionError, InvalidSchema, MissingSchema) as e:
             # cloud not connect to the server
             raise InvalidAuthenticationError(f"Invalid server URL: {e}")
-        
+
         if not response.ok:
             resp = response.json()
-            msg = resp['msg']
+            msg = resp["msg"]
             if response.status_code == 400:
                 raise BadRequestError(msg)
             elif response.status_code == 404:
@@ -125,69 +128,71 @@ class OpenLLMGenerate:
                 raise InternalServerError(msg)
             else:
                 raise InternalServerError(msg)
-            
+
         if stream:
             return self._handle_chat_stream_generate_response(response)
         return self._handle_chat_generate_response(response)
-        
+
     def _handle_chat_generate_response(self, response: Response) -> OpenLLMGenerateMessage:
         try:
             data = response.json()
         except Exception as e:
             raise InternalServerError(f"Failed to convert response to json: {e} with text: {response.text}")
 
-        message = data['outputs'][0]
-        text = message['text']
-        token_ids = message['token_ids']
-        prompt_token_ids = data['prompt_token_ids']
-        stop_reason = message['finish_reason']
+        message = data["outputs"][0]
+        text = message["text"]
+        token_ids = message["token_ids"]
+        prompt_token_ids = data["prompt_token_ids"]
+        stop_reason = message["finish_reason"]
 
         message = OpenLLMGenerateMessage(content=text, role=OpenLLMGenerateMessage.Role.ASSISTANT.value)
         message.stop_reason = stop_reason
         message.usage = {
-            'prompt_tokens': len(prompt_token_ids),
-            'completion_tokens': len(token_ids),
-            'total_tokens': len(prompt_token_ids) + len(token_ids),
+            "prompt_tokens": len(prompt_token_ids),
+            "completion_tokens": len(token_ids),
+            "total_tokens": len(prompt_token_ids) + len(token_ids),
         }
 
         return message
 
-    def _handle_chat_stream_generate_response(self, response: Response) -> Generator[OpenLLMGenerateMessage, None, None]:
+    def _handle_chat_stream_generate_response(
+        self, response: Response
+    ) -> Generator[OpenLLMGenerateMessage, None, None]:
         completion_usage = 0
 
         for line in response.iter_lines():
             if not line:
                 continue
 
-            line: str = line.decode('utf-8')
-            if line.startswith('data: '):
+            line: str = line.decode("utf-8")
+            if line.startswith("data: "):
                 line = line[6:].strip()
 
-            if line == '[DONE]':
+            if line == "[DONE]":
                 return
 
             try:
                 data = loads(line)
             except Exception as e:
                 raise InternalServerError(f"Failed to convert response to json: {e} with text: {line}")
-            
-            output = data['outputs']
+
+            output = data["outputs"]
 
             for choice in output:
-                text = choice['text']
-                token_ids = choice['token_ids']
+                text = choice["text"]
+                token_ids = choice["token_ids"]
 
                 completion_usage += len(token_ids)
                 message = OpenLLMGenerateMessage(content=text, role=OpenLLMGenerateMessage.Role.ASSISTANT.value)
 
-                if choice.get('finish_reason'):
-                    finish_reason = choice['finish_reason']
-                    prompt_token_ids = data['prompt_token_ids']
+                if choice.get("finish_reason"):
+                    finish_reason = choice["finish_reason"]
+                    prompt_token_ids = data["prompt_token_ids"]
                     message.stop_reason = finish_reason
                     message.usage = {
-                        'prompt_tokens': len(prompt_token_ids),
-                        'completion_tokens': completion_usage,
-                        'total_tokens': completion_usage + len(prompt_token_ids),
+                        "prompt_tokens": len(prompt_token_ids),
+                        "completion_tokens": completion_usage,
+                        "total_tokens": completion_usage + len(prompt_token_ids),
                     }
-                    
+
                 yield message

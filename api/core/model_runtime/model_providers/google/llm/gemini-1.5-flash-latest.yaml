@@ -1,6 +1,6 @@
 model: gemini-1.5-flash-latest
 label:
-  en_US: Gemini 1.5 Flash
+  en_US: Gemini 1.5 Flash Latest
 model_type: llm
 features:
   - agent-thought

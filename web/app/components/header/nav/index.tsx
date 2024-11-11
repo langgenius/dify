@@ -34,21 +34,21 @@ const Nav = ({
   const setAppDetail = useAppStore(state => state.setAppDetail)
   const [hovered, setHovered] = useState(false)
   const segment = useSelectedLayoutSegment()
-  const isActived = Array.isArray(activeSegment) ? activeSegment.includes(segment!) : segment === activeSegment
+  const isActivated = Array.isArray(activeSegment) ? activeSegment.includes(segment!) : segment === activeSegment
 
   return (
     <div className={`
       flex items-center h-8 mr-0 sm:mr-3 px-0.5 rounded-xl text-sm shrink-0 font-medium
-      ${isActived && 'bg-components-main-nav-nav-button-bg-active shadow-md font-semibold'}
-      ${!curNav && !isActived && 'hover:bg-components-main-nav-nav-button-bg-hover'}
+      ${isActivated && 'bg-components-main-nav-nav-button-bg-active shadow-md font-semibold'}
+      ${!curNav && !isActivated && 'hover:bg-components-main-nav-nav-button-bg-hover'}
     `}>
       <Link href={link}>
         <div
           onClick={() => setAppDetail()}
           className={classNames(`
             flex items-center h-7 px-2.5 cursor-pointer rounded-[10px]
-            ${isActived ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text'}
-            ${curNav && isActived && 'hover:bg-components-main-nav-nav-button-bg-active-hover'}
+            ${isActivated ? 'text-components-main-nav-nav-button-text-active' : 'text-components-main-nav-nav-button-text'}
+            ${curNav && isActivated && 'hover:bg-components-main-nav-nav-button-bg-active-hover'}
           `)}
           onMouseEnter={() => setHovered(true)}
           onMouseLeave={() => setHovered(false)}
@@ -57,7 +57,7 @@ const Nav = ({
             {
               (hovered && curNav)
                 ? <ArrowNarrowLeft className='w-4 h-4' />
-                : isActived
+                : isActivated
                   ? activeIcon
                   : icon
             }
@@ -66,7 +66,7 @@ const Nav = ({
         </div>
       </Link>
       {
-        curNav && isActived && (
+        curNav && isActivated && (
           <>
             <div className='font-light text-gray-300 '>/</div>
             <NavSelector

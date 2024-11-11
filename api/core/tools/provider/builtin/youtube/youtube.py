@@ -11,13 +11,12 @@ class YahooFinanceProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
+                user_id="",
                 tool_parameters={
-                    "channel": "TOKYO GIRLS COLLECTION",
+                    "channel": "UC2JZCsZSOudXA08cMMRCL9g",
                     "start_date": "2020-01-01",
                     "end_date": "2024-12-31",
                 },
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
-        

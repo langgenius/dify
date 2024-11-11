@@ -8,18 +8,19 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class LinearChartTool(BuiltinTool):
-    def _invoke(self, 
-                user_id: str, 
-               tool_parameters: dict[str, Any], 
-        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
-        data = tool_parameters.get('data', '')
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+        data = tool_parameters.get("data", "")
         if not data:
-            return self.create_text_message('Please input data')
-        data = data.split(';')
+            return self.create_text_message("Please input data")
+        data = data.split(";")
 
-        axis = tool_parameters.get('x_axis') or None
+        axis = tool_parameters.get("x_axis") or None
         if axis:
-            axis = axis.split(';')
+            axis = axis.split(";")
             if len(axis) != len(data):
                 axis = None
 
@@ -32,20 +33,18 @@ class LinearChartTool(BuiltinTool):
         flg, ax = plt.subplots(figsize=(10, 8))
 
         if axis:
-            axis = [label[:10] + '...' if len(label) > 10 else label for label in axis]
-            ax.set_xticklabels(axis, rotation=45, ha='right')
+            axis = [label[:10] + "..." if len(label) > 10 else label for label in axis]
+            ax.set_xticklabels(axis, rotation=45, ha="right")
             ax.plot(axis, data)
         else:
             ax.plot(data)
 
         buf = io.BytesIO()
-        flg.savefig(buf, format='png')
+        flg.savefig(buf, format="png")
         buf.seek(0)
         plt.close(flg)
 
         return [
-            self.create_text_message('the linear chart is saved as an image.'),
-            self.create_blob_message(blob=buf.read(),
-                                    meta={'mime_type': 'image/png'})
+            self.create_text_message("the linear chart is saved as an image."),
+            self.create_blob_message(blob=buf.read(), meta={"mime_type": "image/png"}),
         ]
-    

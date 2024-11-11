@@ -138,7 +138,7 @@ export const useChecklistBeforePublish = () => {
       }
 
       if (!validNodes.find(n => n.id === node.id)) {
-        notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.common.needConnecttip')}` })
+        notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.common.needConnectTip')}` })
         return false
       }
     }

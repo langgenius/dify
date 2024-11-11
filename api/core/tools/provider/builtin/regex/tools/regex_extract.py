@@ -6,22 +6,23 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class RegexExpressionTool(BuiltinTool):
-    def _invoke(self,
-                user_id: str,
-               tool_parameters: dict[str, Any],
-        ) ->  Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
-            invoke tools
+        invoke tools
         """
         # get expression
-        content = tool_parameters.get('content', '').strip()
+        content = tool_parameters.get("content", "").strip()
         if not content:
-            return self.create_text_message('Invalid content')
-        expression = tool_parameters.get('expression', '').strip()
+            return self.create_text_message("Invalid content")
+        expression = tool_parameters.get("expression", "").strip()
         if not expression:
-            return self.create_text_message('Invalid expression')
+            return self.create_text_message("Invalid expression")
         try:
             result = re.findall(expression, content)
             return self.create_text_message(str(result))
         except Exception as e:
-            return self.create_text_message(f'Failed to extract result, error: {str(e)}')
+            return self.create_text_message(f"Failed to extract result, error: {str(e)}")

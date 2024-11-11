@@ -2,7 +2,7 @@ const translation = {
   common: {
     welcome: '',
     appUnavailable: 'La aplicación no está disponible',
-    appUnkonwError: 'La aplicación no está disponible',
+    appUnknownError: 'La aplicación no está disponible',
   },
   chat: {
     newChat: 'Nuevo chat',
@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'Chats',
     newChatDefaultName: 'Nueva conversación',
     resetChat: 'Reiniciar conversación',
-    powerBy: 'Desarrollado por',
+    poweredBy: 'Desarrollado por',
     prompt: 'Indicación',
     privatePromptConfigTitle: 'Configuración de la conversación',
     publicPromptConfigTitle: 'Indicación inicial',

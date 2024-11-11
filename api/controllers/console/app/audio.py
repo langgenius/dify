@@ -18,8 +18,7 @@ from controllers.console.app.error import (
     UnsupportedAudioTypeError,
 )
 from controllers.console.app.wraps import get_app_model
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
 from libs.login import login_required
@@ -94,19 +93,15 @@ class ChatMessageTextApi(Resource):
             message_id = args.get("message_id", None)
             text = args.get("text", None)
             if (
-                app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]
+                app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}
                 and app_model.workflow
                 and app_model.workflow.features_dict
             ):
                 text_to_speech = app_model.workflow.features_dict.get("text_to_speech")
-                voice = args.get("voice") if args.get("voice") else text_to_speech.get("voice")
+                voice = args.get("voice") or text_to_speech.get("voice")
             else:
                 try:
-                    voice = (
-                        args.get("voice")
-                        if args.get("voice")
-                        else app_model.app_model_config.text_to_speech_dict.get("voice")
-                    )
+                    voice = args.get("voice") or app_model.app_model_config.text_to_speech_dict.get("voice")
                 except Exception:
                     voice = None
             response = AudioService.transcript_tts(app_model=app_model, text=text, message_id=message_id, voice=voice)

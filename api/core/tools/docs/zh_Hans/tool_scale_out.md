@@ -234,4 +234,4 @@ class GoogleProvider(BuiltinToolProviderController):
 
 当然，因为google_search需要一个凭据，在使用之前，还需要在前端配置它的凭据。
 
-![Alt text](images/index/image-2.png)
+![Alt text](../images/index/image-2.png)

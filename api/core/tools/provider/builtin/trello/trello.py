@@ -9,17 +9,17 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 class TrelloProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         """Validate Trello API credentials by making a test API call.
-        
+
         Args:
             credentials (dict[str, Any]): The Trello API credentials to validate.
-        
+
         Raises:
             ToolProviderCredentialValidationError: If the credentials are invalid.
         """
         api_key = credentials.get("trello_api_key")
         token = credentials.get("trello_api_token")
         url = f"https://api.trello.com/1/members/me?key={api_key}&token={token}"
-        
+
         try:
             response = requests.get(url)
             response.raise_for_status()  # Raises an HTTPError for bad responses
@@ -32,4 +32,3 @@ class TrelloProvider(BuiltinToolProviderController):
         except requests.exceptions.RequestException as e:
             # Handle other exceptions, such as connection errors
             raise ToolProviderCredentialValidationError("Error validating Trello credentials")
-        

@@ -10,7 +10,7 @@ class BuiltinToolProviderSort:
     @classmethod
     def sort(cls, providers: list[UserToolProvider]) -> list[UserToolProvider]:
         if not cls._position:
-            cls._position = get_tool_position_map(os.path.join(os.path.dirname(__file__), '..'))
+            cls._position = get_tool_position_map(os.path.join(os.path.dirname(__file__), ".."))
 
         def name_func(provider: UserToolProvider) -> str:
             return provider.name

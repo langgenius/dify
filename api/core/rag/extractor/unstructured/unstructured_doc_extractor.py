@@ -8,13 +8,12 @@ logger = logging.getLogger(__name__)
 
 
 class UnstructuredWordExtractor(BaseExtractor):
-    """Loader that uses unstructured to load word documents.
-    """
+    """Loader that uses unstructured to load word documents."""
 
     def __init__(
-            self,
-            file_path: str,
-            api_url: str,
+        self,
+        file_path: str,
+        api_url: str,
     ):
         """Initialize with file path."""
         self._file_path = file_path
@@ -24,9 +23,7 @@ class UnstructuredWordExtractor(BaseExtractor):
         from unstructured.__version__ import __version__ as __unstructured_version__
         from unstructured.file_utils.filetype import FileType, detect_filetype
 
-        unstructured_version = tuple(
-            int(x) for x in __unstructured_version__.split(".")
-        )
+        unstructured_version = tuple(int(x) for x in __unstructured_version__.split("."))
         # check the file extension
         try:
             import magic  # noqa: F401
@@ -53,6 +50,7 @@ class UnstructuredWordExtractor(BaseExtractor):
             elements = partition_docx(filename=self._file_path)
 
         from unstructured.chunking.title import chunk_by_title
+
         chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)
         documents = []
         for chunk in chunks:

@@ -2,8 +2,7 @@ import os
 
 import pytest
 
-from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
-from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
+from core.model_runtime.entities.rerank_entities import RerankResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.huggingface_tei.rerank.rerank import (
     HuggingfaceTeiRerankModel,

@@ -37,6 +37,11 @@ const translation = {
     params: 'पैरामीटर',
     duplicate: 'डुप्लिकेट',
     rename: 'नाम बदलें',
+    audioSourceUnavailable: 'ऑडियो स्रोत अनुपलब्ध है',
+    copyImage: 'छवि कॉपी करें',
+    zoomOut: 'ज़ूम आउट करें',
+    openInNewTab: 'नए टैब में खोलें',
+    zoomIn: 'ज़ूम इन करें',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -173,6 +178,12 @@ const translation = {
     langGeniusAccountTip: 'आपका Dify खाता और संबंधित उपयोगकर्ता डेटा।',
     editName: 'नाम संपादित करें',
     showAppLength: '{{length}} ऐप्स दिखाएं',
+    deleteConfirmTip: 'पुष्टि करने के लिए, कृपया अपने पंजीकृत ईमेल से निम्नलिखित भेजें',
+    delete: 'खाता हटाएं',
+    deleteTip: 'अपना खाता हटाने से आपका सारा डेटा स्थायी रूप से मिट जाएगा और इसे पुनर्प्राप्त नहीं किया जा सकता है।',
+    account: 'खाता',
+    studio: 'डिफाई स्टूडियो',
+    myAccount: 'मेरा खाता',
   },
   members: {
     team: 'टीम',
@@ -202,7 +213,7 @@ const translation = {
     invitationSentTip:
       'आमंत्रण भेजा गया, और वे साइन इन करके आपकी टीम डेटा तक पहुंच सकते हैं।',
     invitationLink: 'आमंत्रण लिंक',
-    failedinvitationEmails:
+    failedInvitationEmails:
       'नीचे दिए गए उपयोगकर्ताओं को सफलतापूर्वक आमंत्रित नहीं किया गया',
     ok: 'ठीक है',
     removeFromTeam: 'टीम से हटाएं',
@@ -211,9 +222,11 @@ const translation = {
     setMember: 'सामान्य सदस्य के रूप में सेट करें',
     setBuilder: 'निर्माता के रूप में सेट करें',
     setEditor: 'संपादक के रूप में सेट करें',
-    disinvite: 'आमंत्रण रद्द करें',
+    disInvite: 'आमंत्रण रद्द करें',
     deleteMember: 'सदस्य को हटाएं',
     you: '(आप)',
+    datasetOperator: 'ज्ञान व्यवस्थापक',
+    datasetOperatorTip: 'केवल नॉलेज बेस प्रबंधित कर सकते हैं',
   },
   integrations: {
     connected: 'कनेक्टेड',
@@ -512,6 +525,7 @@ const translation = {
       vectorHash: 'वेक्टर हैश:',
       hitScore: 'पुनः प्राप्ति स्कोर:',
     },
+    inputPlaceholder: 'बॉट से बात करें',
   },
   promptEditor: {
     placeholder:
@@ -588,6 +602,16 @@ const translation = {
     deleteTip: 'टैग का उपयोग किया जा रहा है, क्या इसे हटाना है?',
     created: 'टैग सफलतापूर्वक बनाया गया',
     failed: 'टैग बनाना असफल रहा',
+  },
+  fileUploader: {
+    pasteFileLinkInvalid: 'अमान्य फ़ाइल लिंक',
+    uploadFromComputerLimit: 'अपलोड फ़ाइल {{size}} से ज़्यादा नहीं हो सकती',
+    uploadFromComputerUploadError: 'फ़ाइल अपलोड विफल रही, कृपया फिर से अपलोड करें।',
+    pasteFileLinkInputPlaceholder: 'URL दर्ज करें...',
+    uploadFromComputerReadError: 'फ़ाइल पढ़ना विफल रहा, कृपया पुनः प्रयास करें.',
+    pasteFileLink: 'फ़ाइल लिंक पेस्ट करें',
+    fileExtensionNotSupport: 'फ़ाइल एक्सटेंशन समर्थित नहीं है',
+    uploadFromComputer: 'स्थानीय अपलोड',
   },
 }
 

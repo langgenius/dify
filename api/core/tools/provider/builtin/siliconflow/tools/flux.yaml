@@ -6,8 +6,8 @@ identity:
   icon: icon.svg
 description:
   human:
-    en_US: Generate image via SiliconFlow's flux schnell.
-  llm: This tool is used to generate image from prompt via SiliconFlow's flux schnell model.
+    en_US: Generate image via SiliconFlow's flux model.
+  llm: This tool is used to generate image from prompt via SiliconFlow's flux model.
 parameters:
   - name: prompt
     type: string
@@ -17,9 +17,24 @@ parameters:
       zh_Hans: 提示词
     human_description:
       en_US: The text prompt used to generate the image.
-      zh_Hans: 用于生成图片的文字提示词
+      zh_Hans: 建议用英文的生成图片提示词以获得更好的生成效果。
     llm_description: this prompt text will be used to generate image.
     form: llm
+  - name: model
+    type: select
+    required: true
+    options:
+      - value: schnell
+        label:
+          en_US: Flux.1-schnell
+      - value: dev
+        label:
+          en_US: Flux.1-dev
+    default: schnell
+    label:
+      en_US: Choose Image Model
+      zh_Hans: 选择生成图片的模型
+    form: form
   - name: image_size
     type: select
     required: true

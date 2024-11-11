@@ -5,7 +5,7 @@ from core.rag.datasource.vdb.milvus.milvus_vector import MilvusConfig
 
 
 def test_default_value():
-    valid_config = {"host": "localhost", "port": 19530, "user": "root", "password": "Milvus"}
+    valid_config = {"uri": "http://localhost:19530", "user": "root", "password": "Milvus"}
 
     for key in valid_config:
         config = valid_config.copy()
@@ -15,5 +15,4 @@ def test_default_value():
         assert e.value.errors()[0]["msg"] == f"Value error, config MILVUS_{key.upper()} is required"
 
     config = MilvusConfig(**valid_config)
-    assert config.secure is False
     assert config.database == "default"

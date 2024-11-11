@@ -316,7 +316,7 @@ class AppService:
 
         meta = {"tool_icons": {}}
 
-        if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
+        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             workflow = app_model.workflow
             if workflow is None:
                 return meta

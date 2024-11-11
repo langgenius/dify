@@ -24,6 +24,7 @@ def upgrade():
     with op.batch_alter_table('tool_workflow_providers', schema=None) as batch_op:
         batch_op.add_column(sa.Column('label', sa.String(length=255), server_default='', nullable=False))
 
+
 def downgrade():
     with op.batch_alter_table('tool_workflow_providers', schema=None) as batch_op:
         batch_op.drop_column('label')

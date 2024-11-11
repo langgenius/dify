@@ -1,0 +1,39 @@
+model: gemini-1.5-pro-exp-0801
+label:
+  en_US: Gemini 1.5 Pro 0801
+model_type: llm
+features:
+  - agent-thought
+  - vision
+  - tool-call
+  - stream-tool-call
+model_properties:
+  mode: chat
+  context_size: 2097152
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: top_k
+    label:
+      zh_Hans: 取样数量
+      en_US: Top k
+    type: int
+    help:
+      zh_Hans: 仅从每个后续标记的前 K 个选项中采样。
+      en_US: Only sample from the top K options for each subsequent token.
+    required: false
+  - name: max_tokens_to_sample
+    use_template: max_tokens
+    required: true
+    default: 8192
+    min: 1
+    max: 8192
+  - name: response_format
+    use_template: response_format
+pricing:
+  input: '0.00'
+  output: '0.00'
+  unit: '0.000001'
+  currency: USD

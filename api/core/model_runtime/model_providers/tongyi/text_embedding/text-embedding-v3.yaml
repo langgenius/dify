@@ -1,3 +1,4 @@
+# for more details, please refer to https://help.aliyun.com/zh/model-studio/getting-started/models#3383780daf8hw
 model: text-embedding-v3
 model_type: text-embedding
 model_properties:

@@ -18,40 +18,37 @@ def invoke_error_mapping() -> dict[type[InvokeError], list[type[Exception]]]:
     :return: Invoke error mapping
     """
     return {
-        InvokeConnectionError: [
-        ],
-        InvokeServerUnavailableError: [
-            InternalServerError
-        ],
-        InvokeRateLimitError: [
-            RateLimitReachedError
-        ],
+        InvokeConnectionError: [],
+        InvokeServerUnavailableError: [InternalServerError],
+        InvokeRateLimitError: [RateLimitReachedError],
         InvokeAuthorizationError: [
             InvalidAuthenticationError,
-            InsufficientAccountBalance,
+            InsufficientAccountBalanceError,
             InvalidAPIKeyError,
         ],
-        InvokeBadRequestError: [
-            BadRequestError,
-            KeyError
-        ]
+        InvokeBadRequestError: [BadRequestError, KeyError],
     }
 
 
 class InvalidAuthenticationError(Exception):
     pass
 
+
 class InvalidAPIKeyError(Exception):
     pass
+
 
 class RateLimitReachedError(Exception):
     pass
 
-class InsufficientAccountBalance(Exception):
+
+class InsufficientAccountBalanceError(Exception):
     pass
+
 
 class InternalServerError(Exception):
     pass
+
 
 class BadRequestError(Exception):
     pass

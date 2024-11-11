@@ -60,6 +60,8 @@ const translation = {
       bulkUpload: '批次上傳文件',
       agentMode: '代理模式',
       workflow: '工作流',
+      llmLoadingBalancing: 'LLM 負載均衡',
+      llmLoadingBalancingTooltip: '向模型添加多個 API 金鑰，從而有效地繞過 API 速率限制。',
     },
     comingSoon: '即將推出',
     member: '成員',
@@ -74,6 +76,7 @@ const translation = {
     },
     ragAPIRequestTooltip: '指單獨呼叫 Dify 知識庫資料處理能力的 API。',
     receiptInfo: '只有團隊所有者和團隊管理員才能訂閱和檢視賬單資訊',
+    annotationQuota: '註釋配額',
   },
   plans: {
     sandbox: {

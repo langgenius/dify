@@ -7,9 +7,7 @@ from core.model_runtime.model_providers.__base.model_provider import ModelProvid
 logger = logging.getLogger(__name__)
 
 
-
 class DeepSeekProvider(ModelProvider):
-
     def validate_provider_credentials(self, credentials: dict) -> None:
         """
         Validate provider credentials
@@ -22,12 +20,9 @@ class DeepSeekProvider(ModelProvider):
 
             # Use `deepseek-chat` model for validate,
             # no matter what model you pass in, text completion model or chat model
-            model_instance.validate_credentials(
-                model='deepseek-chat',
-                credentials=credentials
-            )
+            model_instance.validate_credentials(model="deepseek-chat", credentials=credentials)
         except CredentialsValidateFailedError as ex:
             raise ex
         except Exception as ex:
-            logger.exception(f'{self.get_provider_schema().provider} credentials validate failed')
+            logger.exception(f"{self.get_provider_schema().provider} credentials validate failed")
             raise ex

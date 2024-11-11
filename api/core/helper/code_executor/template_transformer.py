@@ -5,9 +5,9 @@ from base64 import b64encode
 
 
 class TemplateTransformer(ABC):
-    _code_placeholder: str = '{{code}}'
-    _inputs_placeholder: str = '{{inputs}}'
-    _result_tag: str = '<<RESULT>>'
+    _code_placeholder: str = "{{code}}"
+    _inputs_placeholder: str = "{{inputs}}"
+    _result_tag: str = "<<RESULT>>"
 
     @classmethod
     def transform_caller(cls, code: str, inputs: dict) -> tuple[str, str]:
@@ -24,9 +24,9 @@ class TemplateTransformer(ABC):
 
     @classmethod
     def extract_result_str_from_response(cls, response: str) -> str:
-        result = re.search(rf'{cls._result_tag}(.*){cls._result_tag}', response, re.DOTALL)
+        result = re.search(rf"{cls._result_tag}(.*){cls._result_tag}", response, re.DOTALL)
         if not result:
-            raise ValueError('Failed to parse result')
+            raise ValueError("Failed to parse result")
         result = result.group(1)
         return result
 
@@ -50,7 +50,7 @@ class TemplateTransformer(ABC):
     @classmethod
     def serialize_inputs(cls, inputs: dict) -> str:
         inputs_json_str = json.dumps(inputs, ensure_ascii=False).encode()
-        input_base64_encoded = b64encode(inputs_json_str).decode('utf-8')
+        input_base64_encoded = b64encode(inputs_json_str).decode("utf-8")
         return input_base64_encoded
 
     @classmethod
@@ -67,4 +67,4 @@ class TemplateTransformer(ABC):
         """
         Get preload script
         """
-        return ''
+        return ""

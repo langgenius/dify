@@ -22,7 +22,7 @@ class _CommonOpenAI:
         :return:
         """
         credentials_kwargs = {
-            "api_key": credentials['openai_api_key'],
+            "api_key": credentials["openai_api_key"],
             "timeout": Timeout(315.0, read=300.0, write=10.0, connect=5.0),
             "max_retries": 1,
         }
@@ -31,8 +31,8 @@ class _CommonOpenAI:
             openai_api_base = credentials["openai_api_base"].rstrip("/")
             credentials_kwargs["base_url"] = openai_api_base + "/v1"
 
-        if 'openai_organization' in credentials:
-            credentials_kwargs['organization'] = credentials['openai_organization']
+        if "openai_organization" in credentials:
+            credentials_kwargs["organization"] = credentials["openai_organization"]
 
         return credentials_kwargs
 

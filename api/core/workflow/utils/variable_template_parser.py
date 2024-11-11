@@ -1,42 +1,21 @@
 import re
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
 
 from core.workflow.entities.variable_entities import VariableSelector
-from core.workflow.entities.variable_pool import VariablePool
 
-REGEX = re.compile(r'\{\{(#[a-zA-Z0-9_]{1,50}(\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10}#)\}\}')
+REGEX = re.compile(r"\{\{(#[a-zA-Z0-9_]{1,50}(\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10}#)\}\}")
+
+SELECTOR_PATTERN = re.compile(r"\{\{(#[a-zA-Z0-9_]{1,50}(?:\.[a-zA-Z_][a-zA-Z0-9_]{0,29}){1,10}#)\}\}")
 
 
-def parse_mixed_template(*, template: str, variable_pool: VariablePool) -> str:
-    """
-    This is an alternative to the VariableTemplateParser class,
-    offering the same functionality but with better readability and ease of use.
-    """
-    variable_keys = [match[0] for match in re.findall(REGEX, template)]
-    variable_keys = list(set(variable_keys))
-
-    # This key_selector is a tuple of (key, selector) where selector is a list of keys
-    # e.g. ('#node_id.query.name#', ['node_id', 'query', 'name'])
-    key_selectors = filter(
-        lambda t: len(t[1]) >= 2,
-        ((key, selector.replace('#', '').split('.')) for key, selector in zip(variable_keys, variable_keys)),
-    )
-    inputs = {key: variable_pool.get_any(selector) for key, selector in key_selectors}
-
-    def replacer(match):
-        key = match.group(1)
-        # return original matched string if key not found
-        value = inputs.get(key, match.group(0))
-        if value is None:
-            value = ''
-        value = str(value)
-        # remove template variables if required
-        return re.sub(REGEX, r'{\1}', value)
-
-    result = re.sub(REGEX, replacer, template)
-    result = re.sub(r'<\|.*?\|>', '', result)
-    return result
+def extract_selectors_from_template(template: str, /) -> Sequence[VariableSelector]:
+    parts = SELECTOR_PATTERN.split(template)
+    selectors = []
+    for part in filter(lambda x: x, parts):
+        if "." in part and part[0] == "#" and part[-1] == "#":
+            selectors.append(VariableSelector(variable=f"{part}", value_selector=part[1:-1].split(".")))
+    return selectors
 
 
 class VariableTemplateParser:
@@ -101,8 +80,8 @@ class VariableTemplateParser:
         """
         variable_selectors = []
         for variable_key in self.variable_keys:
-            remove_hash = variable_key.replace('#', '')
-            split_result = remove_hash.split('.')
+            remove_hash = variable_key.replace("#", "")
+            split_result = remove_hash.split(".")
             if len(split_result) < 2:
                 continue
 
@@ -127,7 +106,7 @@ class VariableTemplateParser:
             value = inputs.get(key, match.group(0))  # return original matched string if key not found
 
             if value is None:
-                value = ''
+                value = ""
             # convert the value to string
             if isinstance(value, list | dict | bool | int | float):
                 value = str(value)
@@ -136,7 +115,7 @@ class VariableTemplateParser:
             return VariableTemplateParser.remove_template_variables(value)
 
         prompt = re.sub(REGEX, replacer, self.template)
-        return re.sub(r'<\|.*?\|>', '', prompt)
+        return re.sub(r"<\|.*?\|>", "", prompt)
 
     @classmethod
     def remove_template_variables(cls, text: str):
@@ -149,4 +128,4 @@ class VariableTemplateParser:
         Returns:
             The text with template variables removed.
         """
-        return re.sub(REGEX, r'{\1}', text)
+        return re.sub(REGEX, r"{\1}", text)

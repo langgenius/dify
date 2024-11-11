@@ -125,7 +125,7 @@ const WorkflowChecklist = ({
                                 <div className='px-3 py-2 bg-gray-25 rounded-b-lg'>
                                   <div className='flex text-xs leading-[18px] text-gray-500'>
                                     <AlertTriangle className='mt-[3px] mr-2 w-3 h-3 text-[#F79009]' />
-                                    {t('workflow.common.needConnecttip')}
+                                    {t('workflow.common.needConnectTip')}
                                   </div>
                                 </div>
                               )

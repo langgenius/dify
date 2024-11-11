@@ -18,12 +18,9 @@ class TencentProvider(ModelProvider):
         """
         try:
             model_instance = self.get_model_instance(ModelType.SPEECH2TEXT)
-            model_instance.validate_credentials(
-                model='tencent',
-                credentials=credentials
-            )
+            model_instance.validate_credentials(model="tencent", credentials=credentials)
         except CredentialsValidateFailedError as ex:
             raise ex
         except Exception as ex:
-            logger.exception(f'{self.get_provider_schema().provider} credentials validate failed')
+            logger.exception(f"{self.get_provider_schema().provider} credentials validate failed")
             raise ex

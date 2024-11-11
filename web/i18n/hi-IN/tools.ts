@@ -103,6 +103,7 @@ const translation = {
       label: 'टैग',
       labelPlaceholder: 'टैग चुनें(वैकल्पिक)',
       description: 'पैरामीटर के अर्थ का विवरण',
+      descriptionPlaceholder: 'पैरामीटर के अर्थ का विवरण',
     },
     customDisclaimer: 'कस्टम अस्वीकरण',
     customDisclaimerPlaceholder: 'कस्टम अस्वीकरण दर्ज करें',

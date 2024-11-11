@@ -9,7 +9,7 @@ const translation = {
   play: 'Chạy',
   pause: 'Tạm dừng',
   playing: 'Đang chạy',
-  merMaind: {
+  merMaid: {
     rerender: 'Vẽ lại',
   },
   never: 'Không bao giờ',
@@ -77,6 +77,8 @@ const translation = {
     pathParams: 'Tham số đường dẫn',
     query: 'Truy vấn',
   },
+  loading: 'Tải',
+  regenerate: 'Tái tạo',
 }
 
 export default translation

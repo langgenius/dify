@@ -321,16 +321,10 @@
 .markdown-body h4,
 .markdown-body h5,
 .markdown-body h6 {
-  margin-top: 24px;
-  margin-bottom: 16px;
+  padding-top: 12px;
+  margin-bottom: 12px;
   font-weight: var(--base-text-weight-semibold, 600);
   line-height: 1.25;
-}
-
-
-.markdown-body p {
-  margin-top: 0;
-  margin-bottom: 10px;
 }
 
 .markdown-body blockquote {
@@ -449,7 +443,7 @@
 .markdown-body pre,
 .markdown-body details {
   margin-top: 0;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 
 .markdown-body blockquote> :first-child {

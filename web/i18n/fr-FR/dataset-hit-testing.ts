@@ -23,6 +23,8 @@ const translation = {
   },
   noRecentTip: 'Aucun résultat de requête récent ici',
   viewChart: 'Voir GRAPHIQUE VECTORIEL',
+  settingTitle: 'Réglage de récupération',
+  viewDetail: 'Voir les détails',
 }
 
 export default translation

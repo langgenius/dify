@@ -14,6 +14,7 @@ type TagInputProps = {
   disableAdd?: boolean
   customizedConfirmKey?: 'Enter' | 'Tab'
   isInWorkflow?: boolean
+  placeholder?: string
 }
 
 const TagInput: FC<TagInputProps> = ({
@@ -23,6 +24,7 @@ const TagInput: FC<TagInputProps> = ({
   disableRemove,
   customizedConfirmKey = 'Enter',
   isInWorkflow,
+  placeholder,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -46,16 +48,16 @@ const TagInput: FC<TagInputProps> = ({
       if (isSpecialMode)
         e.preventDefault()
 
-      const valueTrimed = value.trim()
-      if (!valueTrimed || (items.find(item => item === valueTrimed)))
+      const valueTrimmed = value.trim()
+      if (!valueTrimmed || (items.find(item => item === valueTrimmed)))
         return
 
-      if (valueTrimed.length > 20) {
+      if (valueTrimmed.length > 20) {
         notify({ type: 'error', message: t('datasetDocuments.segment.keywordError') })
         return
       }
 
-      onChange([...items, valueTrimed])
+      onChange([...items, valueTrimmed])
       setTimeout(() => {
         setValue('')
       })
@@ -104,7 +106,7 @@ const TagInput: FC<TagInputProps> = ({
               setValue(e.target.value)
             }}
             onKeyDown={handleKeyDown}
-            placeholder={t(isSpecialMode ? 'common.model.params.stop_sequencesPlaceholder' : 'datasetDocuments.segment.addKeyWord')}
+            placeholder={t(placeholder || (isSpecialMode ? 'common.model.params.stop_sequencesPlaceholder' : 'datasetDocuments.segment.addKeyWord'))}
           />
         )
       }

@@ -47,9 +47,9 @@ class AzureRerankModel(RerankModel):
                 result = response.read()
                 return json.loads(result)
         except urllib.error.HTTPError as error:
-            logger.error(f"The request failed with status code: {error.code}")
-            logger.error(error.info())
-            logger.error(error.read().decode("utf8", "ignore"))
+            logger.exception(f"The request failed with status code: {error.code}")
+            logger.exception(error.info())
+            logger.exception(error.read().decode("utf8", "ignore"))
             raise
 
     def _invoke(
@@ -148,7 +148,7 @@ class AzureRerankModel(RerankModel):
             InvokeBadRequestError: [InvokeBadRequestError, KeyError, ValueError, json.JSONDecodeError],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

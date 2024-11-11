@@ -1,0 +1,149 @@
+identity:
+  name: sagemaker_tts
+  author: AWS
+  label:
+    en_US: SagemakerTTS
+    zh_Hans: Sagemaker语音合成
+    pt_BR: SagemakerTTS
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool for Speech synthesis - https://github.com/aws-samples/dify-aws-tool
+    zh_Hans: Sagemaker语音合成工具, 请参考 Github Repo - https://github.com/aws-samples/dify-aws-tool上的部署脚本
+    pt_BR: A tool for Speech synthesis.
+  llm: A tool for Speech synthesis. You can find deploy notebook on Github Repo - https://github.com/aws-samples/dify-aws-tool
+parameters:
+  - name: sagemaker_endpoint
+    type: string
+    required: true
+    label:
+      en_US: sagemaker endpoint for tts
+      zh_Hans: 语音生成的SageMaker端点
+      pt_BR: sagemaker endpoint for tts
+    human_description:
+      en_US: sagemaker endpoint for tts
+      zh_Hans: 语音生成的SageMaker端点
+      pt_BR: sagemaker endpoint for tts
+    llm_description: sagemaker endpoint for tts
+    form: form
+  - name: tts_text
+    type: string
+    required: true
+    label:
+      en_US: tts text
+      zh_Hans: 语音合成原文
+      pt_BR: tts text
+    human_description:
+      en_US: tts text
+      zh_Hans: 语音合成原文
+      pt_BR: tts text
+    llm_description: tts text
+    form: llm
+  - name: tts_infer_type
+    type: select
+    required: false
+    label:
+      en_US: tts infer type
+      zh_Hans: 合成方式
+      pt_BR: tts infer type
+    human_description:
+      en_US: tts infer type
+      zh_Hans: 合成方式
+      pt_BR: tts infer type
+    llm_description: tts infer type
+    options:
+      - value: PresetVoice
+        label:
+          en_US: preset voice
+          zh_Hans: 预置音色
+      - value: CloneVoice
+        label:
+          en_US: clone voice
+          zh_Hans: 克隆音色
+      - value: CloneVoice_CrossLingual
+        label:
+          en_US: clone crossLingual voice
+          zh_Hans: 克隆音色(跨语言)
+      - value: InstructVoice
+        label:
+          en_US: instruct voice
+          zh_Hans: 指令音色
+    form: form
+  - name: voice
+    type: select
+    required: false
+    label:
+      en_US: preset voice
+      zh_Hans: 预置音色
+      pt_BR: preset voice
+    human_description:
+      en_US: preset voice
+      zh_Hans: 预置音色
+      pt_BR: preset voice
+    llm_description: preset voice
+    options:
+      - value: 中文男
+        label:
+          en_US: zh-cn male
+          zh_Hans: 中文男
+      - value: 中文女
+        label:
+          en_US: zh-cn female
+          zh_Hans: 中文女
+      - value: 粤语女
+        label:
+          en_US: zh-TW female
+          zh_Hans: 粤语女
+    form: form
+  - name: mock_voice_audio
+    type: string
+    required: false
+    label:
+      en_US: clone voice link
+      zh_Hans: 克隆音频链接
+      pt_BR: clone voice link
+    human_description:
+      en_US: clone voice link
+      zh_Hans: 克隆音频链接
+      pt_BR: clone voice link
+    llm_description: clone voice link
+    form: llm
+  - name: mock_voice_text
+    type: string
+    required: false
+    label:
+      en_US: text of clone voice
+      zh_Hans: 克隆音频对应文本
+      pt_BR: text of clone voice
+    human_description:
+      en_US: text of clone voice
+      zh_Hans: 克隆音频对应文本
+      pt_BR: text of clone voice
+    llm_description: text of clone voice
+    form: llm
+  - name: voice_instruct_prompt
+    type: string
+    required: false
+    label:
+      en_US: instruct prompt for voice
+      zh_Hans: 音色指令文本
+      pt_BR: instruct prompt for voice
+    human_description:
+      en_US: instruct prompt for voice
+      zh_Hans: 音色指令文本
+      pt_BR: instruct prompt for voice
+    llm_description: instruct prompt for voice
+    form: llm
+  - name: aws_region
+    type: string
+    required: false
+    label:
+      en_US: region of sagemaker endpoint
+      zh_Hans: SageMaker 端点所在的region
+      pt_BR: region of sagemaker endpoint
+    human_description:
+      en_US: region of sagemaker endpoint
+      zh_Hans: SageMaker 端点所在的region
+      pt_BR: region of sagemaker endpoint
+    llm_description: region of sagemaker endpoint
+    form: form

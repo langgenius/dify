@@ -13,12 +13,12 @@ from core.app.app_config.entities import (
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
-from core.file.file_obj import FileExtraConfig
+from core.file.models import FileUploadConfig
 from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import SimplePromptTransform
-from core.workflow.entities.node_entities import NodeType
+from core.workflow.nodes import NodeType
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from models.account import Account
@@ -63,11 +63,11 @@ class WorkflowConverter:
         # create new app
         new_app = App()
         new_app.tenant_id = app_model.tenant_id
-        new_app.name = name if name else app_model.name + "(workflow)"
+        new_app.name = name or app_model.name + "(workflow)"
         new_app.mode = AppMode.ADVANCED_CHAT.value if app_model.mode == AppMode.CHAT.value else AppMode.WORKFLOW.value
-        new_app.icon_type = icon_type if icon_type else app_model.icon_type
-        new_app.icon = icon if icon else app_model.icon
-        new_app.icon_background = icon_background if icon_background else app_model.icon_background
+        new_app.icon_type = icon_type or app_model.icon_type
+        new_app.icon = icon or app_model.icon
+        new_app.icon_background = icon_background or app_model.icon_background
         new_app.enable_site = app_model.enable_site
         new_app.enable_api = app_model.enable_api
         new_app.api_rpm = app_model.api_rpm
@@ -381,7 +381,7 @@ class WorkflowConverter:
         graph: dict,
         model_config: ModelConfigEntity,
         prompt_template: PromptTemplateEntity,
-        file_upload: Optional[FileExtraConfig] = None,
+        file_upload: Optional[FileUploadConfig] = None,
         external_data_variable_node_mapping: dict[str, str] | None = None,
     ) -> dict:
         """
@@ -522,7 +522,7 @@ class WorkflowConverter:
                 "vision": {
                     "enabled": file_upload is not None,
                     "variable_selector": ["sys", "files"] if file_upload is not None else None,
-                    "configs": {"detail": file_upload.image_config["detail"]}
+                    "configs": {"detail": file_upload.image_config.detail}
                     if file_upload is not None and file_upload.image_config is not None
                     else None,
                 },
