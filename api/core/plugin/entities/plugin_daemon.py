@@ -8,6 +8,7 @@ from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.base import BasePluginEntity
 from core.plugin.entities.plugin import PluginDeclaration
+from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
 
 T = TypeVar("T", bound=(BaseModel | dict | list | bool | str))
@@ -122,6 +123,8 @@ class PluginInstallTaskPluginStatus(BaseModel):
     plugin_id: str = Field(description="The plugin ID of the install task.")
     status: PluginInstallTaskStatus = Field(description="The status of the install task.")
     message: str = Field(description="The message of the install task.")
+    icon: str = Field(description="The icon of the plugin.")
+    labels: I18nObject = Field(description="The labels of the plugin.")
 
 
 class PluginInstallTask(BasePluginEntity):
