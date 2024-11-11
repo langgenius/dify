@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from core.model_runtime.entities.provider_entities import ProviderEntity
 from core.plugin.entities.endpoint import EndpointProviderDeclaration
@@ -32,3 +32,14 @@ class MarketplacePluginDeclaration(BaseModel):
     latest_package_identifier: str = Field(
         ..., description="Unique identifier for the latest package release of the plugin"
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def transform_declaration(cls, data: dict):
+        if "endpoint" in data and not data["endpoint"]:
+            del data["endpoint"]
+        if "model" in data and not data["model"]:
+            del data["model"]
+        if "tool" in data and not data["tool"]:
+            del data["tool"]
+        return data
