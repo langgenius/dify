@@ -9,19 +9,21 @@ from configs import dify_config
 
 
 def init_app(app: Flask):
-    log_handlers = None
+    log_handlers = []
     log_file = dify_config.LOG_FILE
     if log_file:
         log_dir = os.path.dirname(log_file)
         os.makedirs(log_dir, exist_ok=True)
-        log_handlers = [
+        log_handlers.append(
             RotatingFileHandler(
                 filename=log_file,
                 maxBytes=dify_config.LOG_FILE_MAX_SIZE * 1024 * 1024,
                 backupCount=dify_config.LOG_FILE_BACKUP_COUNT,
-            ),
-            logging.StreamHandler(sys.stdout),
-        ]
+            )
+        )
+
+    # Always add StreamHandler to log to console
+    log_handlers.append(logging.StreamHandler(sys.stdout))
 
     logging.basicConfig(
         level=dify_config.LOG_LEVEL,
