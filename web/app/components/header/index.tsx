@@ -4,7 +4,8 @@ import Link from 'next/link'
 import { useBoolean } from 'ahooks'
 import { useSelectedLayoutSegment } from 'next/navigation'
 import { Bars3Icon } from '@heroicons/react/20/solid'
-import HeaderBillingBtn from '../billing/header-billing-btn'
+import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
+import PremiumBadge from '../base/premium-badge'
 import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
 import DatasetNav from './dataset-nav'
@@ -69,7 +70,14 @@ const Header = () => {
             </WorkspaceProvider>
             {enableBilling && (
               <div className='select-none'>
-                <HeaderBillingBtn onClick={handlePlanClick} />
+                <PremiumBadge color='blue' allowHover={true} onClick={handlePlanClick}>
+                  <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
+                  <div className='system-xs-medium'>
+                    <span className='p-1'>
+                      Upgrade
+                    </span>
+                  </div>
+                </PremiumBadge>
               </div>
             )}
           </div>
@@ -84,7 +92,10 @@ const Header = () => {
           <div className='font-light text-divider-deep'>/</div>
           {enableBilling && (
             <div className='select-none'>
-              <HeaderBillingBtn onClick={handlePlanClick} />
+              <PremiumBadge color='blue' allowHover={true} onClick={handlePlanClick}>
+                <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
+                <div className='system-xs-medium !px-1'>Upgrade</div>
+              </PremiumBadge>
             </div>
           )}
           <GithubStar />

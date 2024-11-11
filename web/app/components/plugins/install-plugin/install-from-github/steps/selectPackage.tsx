@@ -48,7 +48,6 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   const handleUploadPackage = async () => {
     if (isUploading) return
     setIsUploading(true)
-
     try {
       const repo = repoUrl.replace('https://github.com/', '')
       await handleUpload(repo, selectedVersion, selectedPackage, (GitHubPackage) => {
