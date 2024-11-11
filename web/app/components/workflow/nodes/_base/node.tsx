@@ -193,7 +193,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           {
             data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running && (
               <div className='mr-1.5 text-xs font-medium text-primary-600'>
-                {data._iterationIndex}/{data._iterationLength}
+                {data._iterationIndex > data._iterationLength ? data._iterationLength : data._iterationIndex}/{data._iterationLength}
               </div>
             )
           }
