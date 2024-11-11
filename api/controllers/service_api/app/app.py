@@ -1,10 +1,13 @@
-from flask_restful import Resource, marshal_with
+from flask_restful import Resource, inputs, marshal, marshal_with, reqparse
 
 from controllers.common import fields
 from controllers.common import helpers as controller_helpers
 from controllers.service_api import api
 from controllers.service_api.app.error import AppUnavailableError
 from controllers.service_api.wraps import validate_app_token
+from fields.app_fields import (
+    app_pagination_fields,
+)
 from models.model import App, AppMode
 from services.app_service import AppService
 
@@ -51,6 +54,33 @@ class AppInfoApi(Resource):
         return {"name": app_model.name, "description": app_model.description}
 
 
+class AppsListApi(Resource):
+    @validate_app_token
+    def get(self, tenant_id: str, modes):
+        """Get apps list"""
+        parser = reqparse.RequestParser()
+        parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")
+        parser.add_argument("limit", type=inputs.int_range(1, 100), required=False, default=100, location="args")
+        parser.add_argument(
+            "mode",
+            type=str,
+            choices=modes,
+            default="all",
+            location="args",
+            required=False,
+        )
+
+        args = parser.parse_args()
+
+        app_service = AppService()
+        app_pagination = app_service.get_paginate_apps(tenant_id, args)
+        if not app_pagination:
+            return {"data": [], "total": 0, "page": 1, "limit": 20, "has_more": False}
+
+        return marshal(app_pagination, app_pagination_fields)
+
+
 api.add_resource(AppParameterApi, "/parameters")
 api.add_resource(AppMetaApi, "/meta")
 api.add_resource(AppInfoApi, "/info")
+api.add_resource(AppsListApi, "/list")
