@@ -3,7 +3,6 @@ from collections.abc import Mapping
 from copy import deepcopy
 from random import randint
 from typing import Any, Literal
-from urllib.parse import urlencode, urlparse
 
 import httpx
 
@@ -22,6 +21,7 @@ from .exc import (
     AuthorizationConfigError,
     FileFetchError,
     InvalidHttpMethodError,
+    ResponseNotSentError,
     ResponseSizeError,
 )
 
@@ -46,6 +46,7 @@ class Executor:
     timeout: HttpRequestNodeTimeout
 
     boundary: str
+    response: Response | None = None
 
     def __init__(
         self,
@@ -218,71 +219,39 @@ class Executor:
         # do http request
         response = self._do_http_request(headers)
         # validate response
-        return self._validate_and_parse_response(response)
+        self.response = self._validate_and_parse_response(response)
+        return self.response
 
     def to_log(self):
-        url_parts = urlparse(self.url)
-        path = url_parts.path or "/"
+        if self.response is None:
+            raise ResponseNotSentError("Response not sent, cannot generate log.")
 
-        # Add query parameters
-        if self.params:
-            query_string = urlencode(self.params)
-            path += f"?{query_string}"
-        elif url_parts.query:
-            path += f"?{url_parts.query}"
+        response = self.response.response
+        request = response.request
+        encoding = response.encoding or "utf-8"
 
-        raw = f"{self.method.upper()} {path} HTTP/1.1\r\n"
-        raw += f"Host: {url_parts.netloc}\r\n"
+        authorization_header = b"authorization"
+        if self.auth.config and self.auth.config.header:
+            authorization_header = self.auth.config.header.encode(encoding)
 
-        headers = self._assembling_headers()
-        body = self.node_data.body
-        boundary = f"----WebKitFormBoundary{_generate_random_string(16)}"
-        if body:
-            if "content-type" not in (k.lower() for k in self.headers) and body.type in BODY_TYPE_TO_CONTENT_TYPE:
-                headers["Content-Type"] = BODY_TYPE_TO_CONTENT_TYPE[body.type]
-            if body.type == "form-data":
-                headers["Content-Type"] = f"multipart/form-data; boundary={boundary}"
-        for k, v in headers.items():
-            if self.auth.type == "api-key":
-                authorization_header = "Authorization"
-                if self.auth.config and self.auth.config.header:
-                    authorization_header = self.auth.config.header
-                if k.lower() == authorization_header.lower():
-                    raw += f'{k}: {"*" * len(v)}\r\n'
-                    continue
-            raw += f"{k}: {v}\r\n"
+        raw = f"{request.method.upper()} {request.url.raw_path.decode(encoding)} {response.http_version}\r\n".encode(
+            encoding
+        )
+        for k, v in request.headers.raw:
+            if k.lower() == authorization_header.lower():
+                raw += k + b": " + b"*" * 16 + b"\r\n"
+                continue
+            raw += k + b": " + v + b"\r\n"
 
-        body = ""
-        if self.files:
-            for k, v in self.files.items():
-                body += f"--{boundary}\r\n"
-                body += f'Content-Disposition: form-data; name="{k}"\r\n\r\n'
-                body += f"{v[1]}\r\n"
-            body += f"--{boundary}--\r\n"
-        elif self.node_data.body:
-            if self.content:
-                if isinstance(self.content, str):
-                    body = self.content
-                elif isinstance(self.content, bytes):
-                    body = self.content.decode("utf-8", errors="replace")
-            elif self.data and self.node_data.body.type == "x-www-form-urlencoded":
-                body = urlencode(self.data)
-            elif self.data and self.node_data.body.type == "form-data":
-                for key, value in self.data.items():
-                    body += f"--{boundary}\r\n"
-                    body += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
-                    body += f"{value}\r\n"
-                body += f"--{boundary}--\r\n"
-            elif self.json:
-                body = json.dumps(self.json)
-            elif self.node_data.body.type == "raw-text":
-                body = self.node_data.body.data[0].value
-        if body:
-            raw += f"Content-Length: {len(body)}\r\n"
-        raw += "\r\n"  # Empty line between headers and body
-        raw += body
+        raw += b"\r\n"
 
-        return raw
+        content = request.read()
+        raw += content
+
+        raw_text = raw.decode(encoding, errors="replace")
+        if len(raw_text) > 1000:
+            raw_text = raw_text[:500] + "(......)" + raw_text[-500:]
+        return raw_text
 
 
 def _plain_text_to_dict(text: str, /) -> dict[str, str]:

@@ -63,9 +63,9 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                 timeout=self._get_request_timeout(self.node_data),
                 variable_pool=self.graph_runtime_state.variable_pool,
             )
-            process_data["request"] = http_executor.to_log()
 
             response = http_executor.invoke()
+            process_data["request"] = http_executor.to_log()
             files = self.extract_files(url=http_executor.url, response=response)
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,

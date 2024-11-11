@@ -16,3 +16,7 @@ class InvalidHttpMethodError(HttpRequestNodeError):
 
 class ResponseSizeError(HttpRequestNodeError):
     """Raised when the response size exceeds the allowed threshold."""
+
+
+class ResponseNotSentError(HttpRequestNodeError):
+    """Raised when the response is not sent and log generation is attempted."""
