@@ -41,10 +41,14 @@ const AllTools = ({
   supportAddCustomTool,
   onShowAddCustomCollectionModal,
 }: AllToolsProps) => {
-  const language = useGetLanguage()
   const tabs = useToolTabs()
+  const language = useGetLanguage()
   const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
   const [activeView, setActiveView] = useState<ViewType>(ViewType.flat)
+
+  const isMatchingKeywords = (text: string, keywords: string) => {
+    return text.toLowerCase().includes(keywords.toLowerCase())
+  }
 
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
@@ -61,9 +65,12 @@ const AllTools = ({
       return mergedTools.filter(toolWithProvider => toolWithProvider.tools.length > 0)
 
     return mergedTools.filter((toolWithProvider) => {
-      return toolWithProvider.tools.some((tool) => {
-        return tool.label[language].toLowerCase().includes(searchText.toLowerCase())
-      })
+      return isMatchingKeywords(toolWithProvider.name, searchText)
+        || toolWithProvider.tools.some((tool) => {
+          return Object.values(tool.label).some((label) => {
+            return isMatchingKeywords(label, searchText)
+          })
+        })
     })
   }, [activeTab, buildInTools, customTools, workflowTools, searchText, language])
 

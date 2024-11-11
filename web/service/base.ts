@@ -338,7 +338,9 @@ export const ssePost = (
   getAbortController?.(abortController)
 
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
+  const urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
+    ? url
+    : `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
 
   const { body } = options
   if (body)

@@ -384,6 +384,7 @@ services:
       NOTION_INTERNAL_SECRET: you-internal-secret
       # Indexing configuration
       INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: 1000
+      CREATE_TIDB_SERVICE_JOB_ENABLED: false
     depends_on:
       - db
       - redis
