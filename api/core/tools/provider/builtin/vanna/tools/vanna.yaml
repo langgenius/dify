@@ -32,7 +32,7 @@ parameters:
       en_US: RAG Model for your database DDL
       zh_Hans: 存储数据库训练数据的RAG模型
     llm_description: RAG Model for generating SQL
-    form: form
+    form: llm
   - name: db_type
     type: select
     required: true
