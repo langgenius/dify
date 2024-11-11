@@ -198,6 +198,11 @@ export const getMultipleRetrievalConfig = (
         setDefaultWeights()
       }
     }
+
+    if (reranking_mode === RerankingModeEnum.RerankingModel && !rerankModelIsValid) {
+      result.reranking_mode = RerankingModeEnum.WeightedScore
+      setDefaultWeights()
+    }
   }
 
   return result
