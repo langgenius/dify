@@ -206,7 +206,7 @@ const PluginPage = ({
 
       {showPluginSettingModal && (
         <PermissionSetModal
-          payload={permissions}
+          payload={permissions!}
           onHide={setHidePluginSettingModal}
           onSave={setPermissions}
         />

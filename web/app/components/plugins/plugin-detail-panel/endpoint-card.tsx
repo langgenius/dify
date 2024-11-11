@@ -4,62 +4,62 @@ import { useBoolean } from 'ahooks'
 import { RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
 import type { EndpointListItem } from '../types'
 import EndpointModal from './endpoint-modal'
+import { NAME_FIELD } from './utils'
 import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ActionButton from '@/app/components/base/action-button'
 import CopyBtn from '@/app/components/base/copy-btn'
 import Confirm from '@/app/components/base/confirm'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
+import Toast from '@/app/components/base/toast'
 import {
-  deleteEndpoint,
-  disableEndpoint,
-  enableEndpoint,
-  updateEndpoint,
-} from '@/service/plugins'
+  useDeleteEndpoint,
+  useDisableEndpoint,
+  useEnableEndpoint,
+  useUpdateEndpoint,
+} from '@/service/use-endpoints'
 
 type Props = {
   data: EndpointListItem
+  handleChange: () => void
 }
 
 const EndpointCard = ({
   data,
+  handleChange,
 }: Props) => {
   const { t } = useTranslation()
   const [active, setActive] = useState(data.enabled)
   const endpointID = data.id
 
+  // switch
   const [isShowDisableConfirm, {
     setTrue: showDisableConfirm,
     setFalse: hideDisableConfirm,
   }] = useBoolean(false)
-  const activeEndpoint = async () => {
-    try {
-      await enableEndpoint({
-        url: '/workspaces/current/endpoints/enable',
-        endpointID,
-      })
-    }
-    catch (error) {
-      console.error(error)
+  const { mutate: enableEndpoint } = useEnableEndpoint({
+    onSuccess: async () => {
+      await handleChange()
+    },
+    onError: () => {
+      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       setActive(false)
-    }
-  }
-  const inactiveEndpoint = async () => {
-    try {
-      await disableEndpoint({
-        url: '/workspaces/current/endpoints/disable',
-        endpointID,
-      })
-    }
-    catch (error) {
-      console.error(error)
-      setActive(true)
-    }
-  }
+    },
+  })
+  const { mutate: disableEndpoint } = useDisableEndpoint({
+    onSuccess: async () => {
+      await handleChange()
+      hideDisableConfirm()
+    },
+    onError: () => {
+      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      setActive(false)
+    },
+  })
   const handleSwitch = (state: boolean) => {
     if (state) {
       setActive(true)
-      activeEndpoint()
+      enableEndpoint(endpointID)
     }
     else {
       setActive(false)
@@ -67,49 +67,49 @@ const EndpointCard = ({
     }
   }
 
+  // delete
   const [isShowDeleteConfirm, {
     setTrue: showDeleteConfirm,
     setFalse: hideDeleteConfirm,
   }] = useBoolean(false)
-  const handleDelete = async () => {
-    try {
-      await deleteEndpoint({
-        url: '/workspaces/current/endpoints/delete',
-        endpointID,
-      })
-    }
-    catch (error) {
-      console.error(error)
-    }
-  }
+  const { mutate: deleteEndpoint } = useDeleteEndpoint({
+    onSuccess: async () => {
+      await handleChange()
+      hideDeleteConfirm()
+    },
+    onError: () => {
+      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+    },
+  })
 
+  // update
   const [isShowEndpointModal, {
     setTrue: showEndpointModalConfirm,
     setFalse: hideEndpointModalConfirm,
   }] = useBoolean(false)
-
   const formSchemas = useMemo(() => {
-    return toolCredentialToFormSchemas(data.declaration.settings)
+    return toolCredentialToFormSchemas([NAME_FIELD, ...data.declaration.settings])
   }, [data.declaration.settings])
   const formValue = useMemo(() => {
-    return addDefaultValue(data.settings, formSchemas)
-  }, [data.settings, formSchemas])
-
-  const handleUpdate = (state: any) => {
-    try {
-      updateEndpoint({
-        url: '/workspaces/current/endpoints',
-        body: {
-          endpoint_id: data.id,
-          settings: state,
-          name: state.name,
-        },
-      })
+    const formValue = {
+      name: data.name,
+      ...data.settings,
     }
-    catch (error) {
-      console.error(error)
-    }
-  }
+    return addDefaultValue(formValue, formSchemas)
+  }, [data.name, data.settings, formSchemas])
+  const { mutate: updateEndpoint } = useUpdateEndpoint({
+    onSuccess: async () => {
+      await handleChange()
+      hideEndpointModalConfirm()
+    },
+    onError: () => {
+      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+    },
+  })
+  const handleUpdate = (state: any) => updateEndpoint({
+    endpointID,
+    state,
+  })
 
   return (
     <div className='p-0.5 bg-background-section-burn rounded-xl'>
@@ -171,7 +171,7 @@ const EndpointCard = ({
             hideDisableConfirm()
             setActive(true)
           }}
-          onConfirm={inactiveEndpoint}
+          onConfirm={() => disableEndpoint(endpointID)}
         />
       )}
       {isShowDeleteConfirm && (
@@ -180,7 +180,7 @@ const EndpointCard = ({
           title={t('plugin.detailPanel.endpointDeleteTip')}
           content={<div>{t('plugin.detailPanel.endpointDeleteContent', { name: data.name })}</div>}
           onCancel={hideDeleteConfirm}
-          onConfirm={handleDelete}
+          onConfirm={() => deleteEndpoint(endpointID)}
         />
       )}
       {isShowEndpointModal && (

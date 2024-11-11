@@ -80,7 +80,7 @@ export type Tool = {
 export type ToolCredential = {
   name: string
   label: TypeWithI18N
-  help: TypeWithI18N
+  help: TypeWithI18N | null
   placeholder: TypeWithI18N
   type: string
   required: boolean

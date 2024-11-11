@@ -8,7 +8,7 @@ import Button from '@/app/components/base/button'
 import { Trans, useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import { installPackageFromLocal } from '@/service/plugins'
+import { useInstallPackageFromLocal } from '@/service/use-plugins'
 import checkTaskStatus from '../../base/check-task-status'
 import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/store'
 
@@ -33,6 +33,8 @@ const Installed: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [isInstalling, setIsInstalling] = React.useState(false)
+  const { mutateAsync: installPackageFromLocal } = useInstallPackageFromLocal()
+
   const {
     check,
     stop,

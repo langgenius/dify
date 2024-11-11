@@ -15,7 +15,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
   } = useMarketplaceCollectionsAndPlugins()
   const {
     plugins,
-    setPlugins,
+    resetPlugins,
     queryPlugins,
     queryPluginsWithDebounced,
     isLoading: isPluginsLoading,
@@ -37,9 +37,9 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
     }
     else {
       queryMarketplaceCollectionsAndPlugins()
-      setPlugins(undefined)
+      resetPlugins()
     }
-  }, [searchPluginText, filterPluginTags, queryPlugins, queryMarketplaceCollectionsAndPlugins, queryPluginsWithDebounced, setPlugins])
+  }, [searchPluginText, filterPluginTags, queryPlugins, queryMarketplaceCollectionsAndPlugins, queryPluginsWithDebounced, resetPlugins])
 
   return {
     isLoading: isLoading || isPluginsLoading,

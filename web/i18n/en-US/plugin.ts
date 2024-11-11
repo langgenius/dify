@@ -1,5 +1,6 @@
 const translation = {
   category: {
+    all: 'All',
     models: 'models',
     tools: 'tools',
     extensions: 'extensions',
@@ -115,6 +116,13 @@ const translation = {
   },
   error: {
     inValidGitHubUrl: 'Invalid GitHub URL. Please enter a valid URL in the format: https://github.com/owner/repo',
+  },
+  marketplace: {
+    empower: 'Empower your AI development',
+    discover: 'Discover',
+    and: 'and',
+    inDifyMarketplace: 'in Dify Marketplace',
+    moreFrom: 'More from Marketplace',
   },
 }
 

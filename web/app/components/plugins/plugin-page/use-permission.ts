@@ -1,15 +1,12 @@
-import { useEffect } from 'react'
-import type { Permissions } from '../types'
 import { PermissionType } from '../types'
-import {
-  usePluginPageContext,
-} from './context'
 import { useAppContext } from '@/context/app-context'
-import { updatePermission as doUpdatePermission, fetchPermission } from '@/service/plugins'
 import Toast from '../../base/toast'
 import { useTranslation } from 'react-i18next'
+import { useInvalidatePermissions, useMutationPermissions, usePermissions } from '@/service/use-plugins'
 
-const hasPermission = (permission: PermissionType, isAdmin: boolean) => {
+const hasPermission = (permission: PermissionType | undefined, isAdmin: boolean) => {
+  if (!permission)
+    return false
   if (permission === PermissionType.noOne)
     return false
 
@@ -22,29 +19,26 @@ const hasPermission = (permission: PermissionType, isAdmin: boolean) => {
 const usePermission = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager, isCurrentWorkspaceOwner } = useAppContext()
-  const [permissions, setPermissions] = usePluginPageContext(v => [v.permissions, v.setPermissions])
+  const { data: permissions } = usePermissions()
+  const invalidatePermissions = useInvalidatePermissions()
+  const { mutate: updatePermission, isPending: isUpdatePending } = useMutationPermissions({
+    onSuccess: () => {
+      invalidatePermissions()
+      Toast.notify({
+        type: 'success',
+        message: t('common.api.actionSuccess'),
+      })
+    },
+  })
   const isAdmin = isCurrentWorkspaceManager || isCurrentWorkspaceOwner
 
-  const updatePermission = async (permission: Permissions) => {
-    await doUpdatePermission(permission)
-    setPermissions(permission)
-    Toast.notify({
-      type: 'success',
-      message: t('common.api.actionSuccess'),
-    })
-  }
-  useEffect(() => {
-    (async () => {
-      const permission = await fetchPermission()
-      setPermissions(permission)
-    })()
-  }, [])
   return {
-    canManagement: hasPermission(permissions.install_permission, isAdmin),
-    canDebugger: hasPermission(permissions.debug_permission, isAdmin),
+    canManagement: hasPermission(permissions?.install_permission, isAdmin),
+    canDebugger: hasPermission(permissions?.debug_permission, isAdmin),
     canSetPermissions: isAdmin,
     permissions,
     setPermissions: updatePermission,
+    isUpdatePending,
   }
 }
 

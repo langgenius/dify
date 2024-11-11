@@ -34,7 +34,7 @@ export type MarketplaceContextValue = {
   activePluginType: string
   handleActivePluginTypeChange: (type: string) => void
   plugins?: Plugin[]
-  setPlugins: (plugins: Plugin[]) => void
+  resetPlugins: () => void
   sort: PluginsSort
   handleSortChange: (sort: PluginsSort) => void
   marketplaceCollectionsFromClient?: MarketplaceCollection[]
@@ -53,7 +53,7 @@ export const MarketplaceContext = createContext<MarketplaceContextValue>({
   activePluginType: PLUGIN_TYPE_SEARCH_MAP.all,
   handleActivePluginTypeChange: () => {},
   plugins: undefined,
-  setPlugins: () => {},
+  resetPlugins: () => {},
   sort: DEFAULT_SORT,
   handleSortChange: () => {},
   marketplaceCollectionsFromClient: [],
@@ -91,7 +91,7 @@ export const MarketplaceContextProvider = ({
   } = useMarketplaceCollectionsAndPlugins()
   const {
     plugins,
-    setPlugins,
+    resetPlugins,
     queryPlugins,
     queryPluginsWithDebounced,
   } = useMarketplacePlugins()
@@ -104,7 +104,7 @@ export const MarketplaceContextProvider = ({
       queryMarketplaceCollectionsAndPlugins({
         category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
       })
-      setPlugins(undefined)
+      resetPlugins()
 
       return
     }
@@ -116,7 +116,7 @@ export const MarketplaceContextProvider = ({
       sortBy: sortRef.current.sortBy,
       sortOrder: sortRef.current.sortOrder,
     })
-  }, [queryPluginsWithDebounced, queryMarketplaceCollectionsAndPlugins, setPlugins])
+  }, [queryPluginsWithDebounced, queryMarketplaceCollectionsAndPlugins, resetPlugins])
 
   const handleFilterPluginTagsChange = useCallback((tags: string[]) => {
     setFilterPluginTags(tags)
@@ -126,7 +126,7 @@ export const MarketplaceContextProvider = ({
       queryMarketplaceCollectionsAndPlugins({
         category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
       })
-      setPlugins(undefined)
+      resetPlugins()
 
       return
     }
@@ -138,7 +138,7 @@ export const MarketplaceContextProvider = ({
       sortBy: sortRef.current.sortBy,
       sortOrder: sortRef.current.sortOrder,
     })
-  }, [queryPlugins, setPlugins, queryMarketplaceCollectionsAndPlugins])
+  }, [queryPlugins, resetPlugins, queryMarketplaceCollectionsAndPlugins])
 
   const handleActivePluginTypeChange = useCallback((type: string) => {
     setActivePluginType(type)
@@ -148,7 +148,7 @@ export const MarketplaceContextProvider = ({
       queryMarketplaceCollectionsAndPlugins({
         category: type === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : type,
       })
-      setPlugins(undefined)
+      resetPlugins()
 
       return
     }
@@ -160,7 +160,7 @@ export const MarketplaceContextProvider = ({
       sortBy: sortRef.current.sortBy,
       sortOrder: sortRef.current.sortOrder,
     })
-  }, [queryPlugins, setPlugins, queryMarketplaceCollectionsAndPlugins])
+  }, [queryPlugins, resetPlugins, queryMarketplaceCollectionsAndPlugins])
 
   const handleSortChange = useCallback((sort: PluginsSort) => {
     setSort(sort)
@@ -187,7 +187,7 @@ export const MarketplaceContextProvider = ({
         activePluginType,
         handleActivePluginTypeChange,
         plugins,
-        setPlugins,
+        resetPlugins,
         sort,
         handleSortChange,
         marketplaceCollectionsFromClient,

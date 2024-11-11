@@ -31,9 +31,11 @@ const Marketplace = ({
         onClick={() => onMarketplaceScroll()}
       />
       <div className='sticky top-0 pt-5 pb-3 bg-background-default-subtle z-10'>
-        <div className='title-2xl-semi-bold bg-gradient-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text text-transparent'>More from Marketplace</div>
+        <div className='title-2xl-semi-bold bg-gradient-to-r from-[rgba(11,165,236,0.95)] to-[rgba(21,90,239,0.95)] bg-clip-text text-transparent'>
+          {t('plugin.marketplace.moreFrom')}
+        </div>
         <div className='flex items-center text-center body-md-regular text-text-tertiary'>
-          Discover
+          {t('plugin.marketplace.discover')}
           <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
             {t('plugin.category.models')}
           </span>
@@ -45,11 +47,11 @@ const Marketplace = ({
           <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
             {t('plugin.category.extensions')}
           </span>
-          and
+          {t('plugin.marketplace.and')}
           <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
             {t('plugin.category.bundles')}
           </span>
-          in Dify Marketplace
+          {t('plugin.marketplace.inDifyMarketplace')}
         </div>
       </div>
       {

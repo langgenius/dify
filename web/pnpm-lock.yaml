@@ -133,6 +133,9 @@ importers:
       katex:
         specifier: ^0.16.11
         version: 0.16.11
+      ky:
+        specifier: ^1.7.2
+        version: 1.7.2
       lamejs:
         specifier: ^1.2.1
         version: 1.2.1
@@ -5611,6 +5614,10 @@ packages:
   kleur@4.1.5:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
+
+  ky@1.7.2:
+    resolution: {integrity: sha512-OzIvbHKKDpi60TnF9t7UUVAF1B4mcqc02z5PIvrm08Wyb+yOcz63GRvEuVxNT18a9E1SrNouhB4W2NNLeD7Ykg==}
+    engines: {node: '>=18'}
 
   lamejs@1.2.1:
     resolution: {integrity: sha512-s7bxvjvYthw6oPLCm5pFxvA84wUROODB8jEO2+CE1adhKgrIvVOlmMgY8zyugxGrvRaDHNJanOiS21/emty6dQ==}
@@ -14743,6 +14750,8 @@ snapshots:
   kleur@3.0.3: {}
 
   kleur@4.1.5: {}
+
+  ky@1.7.2: {}
 
   lamejs@1.2.1:
     dependencies:

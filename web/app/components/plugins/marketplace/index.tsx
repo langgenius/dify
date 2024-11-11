@@ -5,6 +5,7 @@ import SearchBoxWrapper from './search-box/search-box-wrapper'
 import PluginTypeSwitch from './plugin-type-switch'
 import ListWrapper from './list/list-wrapper'
 import { getMarketplaceCollectionsAndPlugins } from './utils'
+import { TanstackQueryIniter } from '@/context/query-client'
 
 type MarketplaceProps = {
   locale?: string
@@ -17,18 +18,20 @@ const Marketplace = async ({
   const { marketplaceCollections, marketplaceCollectionPluginsMap } = await getMarketplaceCollectionsAndPlugins()
 
   return (
-    <MarketplaceContextProvider>
-      <Description locale={locale} />
-      <IntersectionLine />
-      <SearchBoxWrapper locale={locale} />
-      <PluginTypeSwitch locale={locale} />
-      <ListWrapper
-        locale={locale}
-        marketplaceCollections={marketplaceCollections}
-        marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
-        showInstallButton={showInstallButton}
-      />
-    </MarketplaceContextProvider>
+    <TanstackQueryIniter>
+      <MarketplaceContextProvider>
+        <Description locale={locale} />
+        <IntersectionLine />
+        <SearchBoxWrapper locale={locale} />
+        <PluginTypeSwitch locale={locale} />
+        <ListWrapper
+          locale={locale}
+          marketplaceCollections={marketplaceCollections}
+          marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
+          showInstallButton={showInstallButton}
+        />
+      </MarketplaceContextProvider>
+    </TanstackQueryIniter>
   )
 }
 

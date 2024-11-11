@@ -10,11 +10,11 @@ import { usePluginPageContext } from '@/app/components/plugins/plugin-page/conte
 import cn from '@/utils/classnames'
 
 type Props = {
-  onDelete: () => void
+  onUpdate: () => void
 }
 
 const PluginDetailPanel: FC<Props> = ({
-  onDelete,
+  onUpdate,
 }) => {
   const pluginDetail = usePluginPageContext(v => v.currentPluginDetail)
   const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
@@ -39,11 +39,11 @@ const PluginDetailPanel: FC<Props> = ({
           <DetailHeader
             detail={pluginDetail}
             onHide={handleHide}
-            onDelete={onDelete}
+            onUpdate={onUpdate}
           />
           <div className='grow overflow-y-auto'>
-            {!!pluginDetail.declaration.endpoint && <EndpointList />}
             {!!pluginDetail.declaration.tool && <ActionList />}
+            {!!pluginDetail.declaration.endpoint && <EndpointList showTopBorder={!!pluginDetail.declaration.tool} />}
             {!!pluginDetail.declaration.model && <ModelList />}
           </div>
         </>

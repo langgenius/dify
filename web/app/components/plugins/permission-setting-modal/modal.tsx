@@ -34,7 +34,7 @@ const PluginSettingModal: FC<Props> = ({
   const handleSave = useCallback(async () => {
     await onSave(tempPrivilege)
     onHide()
-  }, [tempPrivilege])
+  }, [onHide, onSave, tempPrivilege])
 
   return (
     <Modal
