@@ -41,6 +41,6 @@ class FileUploadConfigManager:
         if not config.get("file_upload"):
             config["file_upload"] = {}
         else:
-            FileExtraConfig.model_validate(config["file_upload"])
+            FileUploadConfig.model_validate(config["file_upload"])
 
         return config, ["file_upload"]
