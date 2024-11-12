@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { FC } from 'react'
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import type {
@@ -17,6 +17,8 @@ import cn from '@/utils/classnames'
 import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip'
 import Radio from '@/app/components/base/radio'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+
 type FormProps = {
   className?: string
   itemClassName?: string
@@ -67,6 +69,24 @@ const Form: FC<FormProps> = ({
     onChange({ ...value, [key]: val, ...shouldClearVariable })
   }
 
+  const handleModelChanged = useCallback((key: string, model: { provider: string; modelId: string; mode?: string }) => {
+    const newValue = {
+      ...value[key],
+      provider: model.provider,
+      name: model.modelId,
+      mode: model.mode,
+    }
+    onChange({ ...value, [key]: newValue })
+  }, [onChange, value])
+
+  const handleCompletionParamsChange = useCallback((key: string, newParams: Record<string, any>) => {
+    const newValue = {
+      ...value[key],
+      completion_params: newParams,
+    }
+    onChange({ ...value, [key]: newValue })
+  }, [onChange, value])
+
   const renderField = (formSchema: CredentialFormSchema) => {
     const tooltip = formSchema.tooltip
     const tooltipContent = (tooltip && (
@@ -94,7 +114,7 @@ const Form: FC<FormProps> = ({
       const disabled = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-sm text-gray-900')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-regular text-text-secondary')}>
             {label[language] || label.en_US}
             {
               required && (
@@ -135,7 +155,7 @@ const Form: FC<FormProps> = ({
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-sm text-gray-900')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-regular text-text-secondary')}>
             {label[language] || label.en_US}
             {
               required && (
@@ -165,7 +185,7 @@ const Form: FC<FormProps> = ({
                     flex justify-center items-center mr-2 w-4 h-4 border border-gray-300 rounded-full
                     ${value[variable] === option.value && 'border-[5px] border-primary-600'}
                   `} />
-                  <div className='text-sm text-gray-900'>{option.label[language] || option.label.en_US}</div>
+                  <div className='system-sm-regular text-text-secondary'>{option.label[language] || option.label.en_US}</div>
                 </div>
               ))
             }
@@ -176,7 +196,7 @@ const Form: FC<FormProps> = ({
       )
     }
 
-    if (formSchema.type === 'select') {
+    if (formSchema.type === FormTypeEnum.select) {
       const {
         options,
         variable,
@@ -191,7 +211,7 @@ const Form: FC<FormProps> = ({
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-sm text-gray-900')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-regular text-text-secondary')}>
             {label[language] || label.en_US}
 
             {
@@ -202,6 +222,7 @@ const Form: FC<FormProps> = ({
             {tooltipContent}
           </div>
           <SimpleSelect
+            wrapperClassName='h-8'
             className={cn(inputClassName)}
             disabled={readonly}
             defaultValue={(isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]}
@@ -220,7 +241,7 @@ const Form: FC<FormProps> = ({
       )
     }
 
-    if (formSchema.type === 'boolean') {
+    if (formSchema.type === FormTypeEnum.boolean) {
       const {
         variable,
         label,
@@ -233,9 +254,9 @@ const Form: FC<FormProps> = ({
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className='flex items-center justify-between py-2 text-sm text-gray-900'>
+          <div className='flex items-center justify-between py-2 system-sm-regular text-text-secondary'>
             <div className='flex items-center space-x-2'>
-              <span className={cn(fieldLabelClassName, 'flex items-center py-2 text-sm text-gray-900')}>{label[language] || label.en_US}</span>
+              <span className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-regular text-text-secondary')}>{label[language] || label.en_US}</span>
               {
                 required && (
                   <span className='ml-1 text-red-500'>*</span>
@@ -255,6 +276,52 @@ const Form: FC<FormProps> = ({
           {fieldMoreInfo?.(formSchema)}
         </div>
       )
+    }
+
+    if (formSchema.type === FormTypeEnum.modelSelector) {
+      const {
+        variable,
+        label,
+        required,
+      } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
+
+      return (
+        <div key={variable} className={cn(itemClassName, 'py-3')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-regular text-text-secondary')}>
+            {label[language] || label.en_US}
+            {
+              required && (
+                <span className='ml-1 text-red-500'>*</span>
+              )
+            }
+            {tooltipContent}
+          </div>
+          <ModelParameterModal
+            popupClassName='!w-[387px]'
+            isAdvancedMode
+            isInWorkflow
+            provider={value[variable]?.provider}
+            modelId={value[variable]?.name}
+            mode={value[variable]?.mode}
+            completionParams={value[variable]?.completion_params}
+            setModel={model => handleModelChanged(variable, model)}
+            onCompletionParamsChange={params => handleCompletionParamsChange(variable, params)}
+            hideDebugWithMultipleModel
+            debugWithMultipleModel={false}
+            readonly={readonly}
+          />
+          {fieldMoreInfo?.(formSchema)}
+          {validating && changeKey === variable && <ValidatingTip />}
+        </div>
+      )
+    }
+
+    if (formSchema.type === FormTypeEnum.toolSelector) {
+      // TODO
+    }
+
+    if (formSchema.type === FormTypeEnum.appSelector) {
+      // TODO
     }
   }
 
