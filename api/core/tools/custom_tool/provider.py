@@ -148,7 +148,7 @@ class ApiToolProviderController(ToolProviderController):
         :param tenant_id: the tenant id
         :return: the tools
         """
-        if self.tools is not None:
+        if len(self.tools) > 0:
             return self.tools
 
         tools: list[ApiTool] = []
