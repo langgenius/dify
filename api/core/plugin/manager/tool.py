@@ -3,26 +3,13 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from core.plugin.entities.plugin import GenericProviderID
 from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, PluginToolProviderEntity
 from core.plugin.manager.base import BasePluginManager
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 
 
 class PluginToolManager(BasePluginManager):
-    def _split_provider(self, provider: str) -> tuple[str, str]:
-        """
-        split the provider to plugin_id and provider_name
-
-        provider follows format: plugin_id/provider_name
-        """
-        if "/" in provider:
-            parts = provider.split("/", -1)
-            if len(parts) >= 2:
-                return "/".join(parts[:-1]), parts[-1]
-            raise ValueError(f"invalid provider format: {provider}")
-
-        raise ValueError(f"invalid provider format: {provider}")
-
     def fetch_tool_providers(self, tenant_id: str) -> list[PluginToolProviderEntity]:
         """
         Fetch tool providers for the given tenant.
@@ -58,11 +45,11 @@ class PluginToolManager(BasePluginManager):
         """
         Fetch tool provider for the given tenant and plugin.
         """
-        plugin_id, provider_name = self._split_provider(provider)
+        tool_provider_id = GenericProviderID(provider)
 
         def transformer(json_response: dict[str, Any]) -> dict:
             for tool in json_response.get("data", {}).get("declaration", {}).get("tools", []):
-                tool["identity"]["provider"] = provider_name
+                tool["identity"]["provider"] = tool_provider_id.provider_name
 
             return json_response
 
@@ -70,7 +57,7 @@ class PluginToolManager(BasePluginManager):
             "GET",
             f"plugin/{tenant_id}/management/tool",
             PluginToolProviderEntity,
-            params={"provider": provider_name, "plugin_id": plugin_id},
+            params={"provider": tool_provider_id.provider_name, "plugin_id": tool_provider_id.plugin_id},
             transformer=transformer,
         )
 
@@ -98,7 +85,7 @@ class PluginToolManager(BasePluginManager):
         Invoke the tool with the given tenant, user, plugin, provider, name, credentials and parameters.
         """
 
-        plugin_id, provider_name = self._split_provider(tool_provider)
+        tool_provider_id = GenericProviderID(tool_provider)
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
@@ -110,14 +97,14 @@ class PluginToolManager(BasePluginManager):
                 "app_id": app_id,
                 "message_id": message_id,
                 "data": {
-                    "provider": provider_name,
+                    "provider": tool_provider_id.provider_name,
                     "tool": tool_name,
                     "credentials": credentials,
                     "tool_parameters": tool_parameters,
                 },
             },
             headers={
-                "X-Plugin-ID": plugin_id,
+                "X-Plugin-ID": tool_provider_id.plugin_id,
                 "Content-Type": "application/json",
             },
         )
@@ -129,7 +116,7 @@ class PluginToolManager(BasePluginManager):
         """
         validate the credentials of the provider
         """
-        plugin_id, provider_name = self._split_provider(provider)
+        tool_provider_id = GenericProviderID(provider)
 
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
@@ -138,12 +125,12 @@ class PluginToolManager(BasePluginManager):
             data={
                 "user_id": user_id,
                 "data": {
-                    "provider": provider_name,
+                    "provider": tool_provider_id.provider_name,
                     "credentials": credentials,
                 },
             },
             headers={
-                "X-Plugin-ID": plugin_id,
+                "X-Plugin-ID": tool_provider_id.plugin_id,
                 "Content-Type": "application/json",
             },
         )
@@ -167,7 +154,7 @@ class PluginToolManager(BasePluginManager):
         """
         get the runtime parameters of the tool
         """
-        plugin_id, provider_name = self._split_provider(provider)
+        tool_provider_id = GenericProviderID(provider)
 
         class RuntimeParametersResponse(BaseModel):
             parameters: list[ToolParameter]
@@ -182,13 +169,13 @@ class PluginToolManager(BasePluginManager):
                 "app_id": app_id,
                 "message_id": message_id,
                 "data": {
-                    "provider": provider_name,
+                    "provider": tool_provider_id.provider_name,
                     "tool": tool,
                     "credentials": credentials,
                 },
             },
             headers={
-                "X-Plugin-ID": plugin_id,
+                "X-Plugin-ID": tool_provider_id.plugin_id,
                 "Content-Type": "application/json",
             },
         )

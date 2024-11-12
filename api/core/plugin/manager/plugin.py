@@ -2,7 +2,12 @@ from collections.abc import Sequence
 
 from pydantic import BaseModel
 
-from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
+from core.plugin.entities.plugin import (
+    PluginDeclaration,
+    PluginEntity,
+    PluginInstallation,
+    PluginInstallationSource,
+)
 from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginInstallTaskStartResponse, PluginUploadResponse
 from core.plugin.manager.base import BasePluginManager
 
@@ -127,6 +132,30 @@ class PluginInstallationManager(BasePluginManager):
             PluginDeclarationResponse,
             params={"plugin_unique_identifier": plugin_unique_identifier},
         ).declaration
+
+    def fetch_plugin_installation_by_ids(self, tenant_id: str, plugin_ids: Sequence[str]) -> list[PluginInstallation]:
+        """
+        Fetch plugin installations by ids.
+        """
+        return self._request_with_plugin_daemon_response(
+            "POST",
+            f"plugin/{tenant_id}/management/installation/fetch/batch",
+            list[PluginInstallation],
+            data={"plugin_ids": plugin_ids},
+            headers={"Content-Type": "application/json"},
+        )
+
+    def fetch_missing_dependencies(self, tenant_id: str, plugin_unique_identifiers: list[str]) -> list[str]:
+        """
+        Fetch missing dependencies
+        """
+        return self._request_with_plugin_daemon_response(
+            "POST",
+            f"plugin/{tenant_id}/management/installation/missing",
+            list[str],
+            data={"plugin_unique_identifiers": plugin_unique_identifiers},
+            headers={"Content-Type": "application/json"},
+        )
 
     def uninstall(self, tenant_id: str, plugin_installation_id: str) -> bool:
         """

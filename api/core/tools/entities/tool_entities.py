@@ -1,5 +1,4 @@
 import base64
-import re
 from enum import Enum
 from typing import Any, Optional, Union
 
@@ -467,19 +466,3 @@ class ToolInvokeFrom(Enum):
     WORKFLOW = "workflow"
     AGENT = "agent"
     PLUGIN = "plugin"
-
-
-class ToolProviderID:
-    organization: str
-    plugin_name: str
-    provider_name: str
-
-    def __str__(self) -> str:
-        return f"{self.organization}/{self.plugin_name}/{self.provider_name}"
-
-    def __init__(self, value: str) -> None:
-        # check if the value is a valid plugin id with format: $organization/$plugin_name/$provider_name
-        if not re.match(r"^[a-z0-9_-]+\/[a-z0-9_-]+\/[a-z0-9_-]+$", value):
-            raise ValueError("Invalid plugin id")
-
-        self.organization, self.plugin_name, self.provider_name = value.split("/")
