@@ -80,7 +80,9 @@ const translation = {
     install: '安装',
     installing: '安装中...',
     uploadingPackage: '上传 {{packageName}} 中...',
-    readyToInstall: '即将安装以下插件。',
+    readyToInstall: '即将安装以下插件',
+    readyToInstallPackage: '即将安装以下插件',
+    readyToInstallPackages: '即将安装以下 {{num}} 个插件',
     fromTrustSource: '请保证仅从<trustSource>可信源</trustSource>安装插件。',
     labels: {
       repository: '仓库',

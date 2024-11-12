@@ -61,7 +61,9 @@ const PluginItem: FC<Props> = ({
           ? 'bg-[repeating-linear-gradient(-45deg,rgba(16,24,40,0.04),rgba(16,24,40,0.04)_5px,rgba(0,0,0,0.02)_5px,rgba(0,0,0,0.02)_10px)]'
           : 'bg-background-section-burn',
       )}
-      onClick={() => setCurrentPluginDetail(plugin)}
+      onClick={() => {
+        setCurrentPluginDetail(plugin)
+      }}
     >
       <div className={cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
         <CornerMark text={category} />

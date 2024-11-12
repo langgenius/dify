@@ -1,19 +1,21 @@
-import { handleDelete } from './actions'
+'use client'
 import Card from '@/app/components/plugins/card'
-import { customTool, extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/card/card-mock'
-import PluginItem from '@/app/components/plugins/plugin-item'
+import { customTool, extensionDallE, modelGPT4, toolNeko, toolNotion } from '@/app/components/plugins/card/card-mock'
+// import PluginItem from '@/app/components/plugins/plugin-item'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
-import ProviderCard from '@/app/components/plugins/provider-card'
+// import ProviderCard from '@/app/components/plugins/provider-card'
 import Badge from '@/app/components/base/badge'
+import InstallBundle from '@/app/components/plugins/install-plugin/install-bundle'
 
-const PluginList = async () => {
+const PluginList = () => {
   const pluginList = [toolNotion, extensionDallE, modelGPT4, customTool]
 
   return (
     <div className='pb-3 bg-white'>
+      <InstallBundle onClose={() => { }} plugins={[toolNeko, { ...toolNeko, plugin_unique_identifier: `${toolNeko.plugin_unique_identifier}xxx` }]} />
       <div className='mx-3 '>
-        <h2 className='my-3'>Dify Plugin list</h2>
-        <div className='grid grid-cols-2 gap-3'>
+        {/* <h2 className='my-3'>Dify Plugin list</h2> */}
+        {/* <div className='grid grid-cols-2 gap-3'>
           {pluginList.map((plugin, index) => (
             <PluginItem
               key={index}
@@ -21,7 +23,7 @@ const PluginList = async () => {
               onDelete={handleDelete}
             />
           ))}
-        </div>
+        </div> */}
 
         <h2 className='my-3'>Install Plugin / Package under bundle</h2>
         <div className='w-[512px] rounded-2xl bg-background-section-burn p-2'>
@@ -33,21 +35,21 @@ const PluginList = async () => {
             }
           />
         </div>
-        <h3 className='my-1'>Installed</h3>
+        {/* <h3 className='my-1'>Installed</h3>
         <div className='w-[512px] rounded-2xl bg-background-section-burn p-2'>
           <Card
             payload={toolNotion as any}
             descriptionLineRows={1}
             installed
           />
-        </div>
+        </div> */}
 
-        <h3 className='my-1'>Install model provide</h3>
+        {/* <h3 className='my-1'>Install model provide</h3>
         <div className='grid grid-cols-2 gap-3'>
           {pluginList.map((plugin, index) => (
             <ProviderCard key={index} payload={plugin as any} />
           ))}
-        </div>
+        </div> */}
 
         <div className='my-3 h-[px] bg-gray-50'></div>
         <h2 className='my-3'>Marketplace Plugin list</h2>
@@ -67,8 +69,8 @@ const PluginList = async () => {
   )
 }
 
-export const metadata = {
-  title: 'Plugins - Card',
-}
+// export const metadata = {
+//   title: 'Plugins - Card',
+// }
 
 export default PluginList
