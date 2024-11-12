@@ -260,6 +260,9 @@ export type PluginStatus = {
   plugin_id: string
   status: TaskStatus
   message: string
+  icon: string
+  labels: Record<Locale, string>
+  taskId: string
 }
 
 export type PluginTask = {

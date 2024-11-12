@@ -9,7 +9,7 @@ import { pluginManifestToCardPluginProps } from '../../utils'
 import { useTranslation } from 'react-i18next'
 import { installPackageFromGitHub, uninstallPlugin } from '@/service/plugins'
 import { RiLoader2Line } from '@remixicon/react'
-import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/plugin-tasks/store'
+import { usePluginTaskList } from '@/service/use-plugins'
 import checkTaskStatus from '../../base/check-task-status'
 import { parseGitHubUrl } from '../../utils'
 
@@ -40,7 +40,7 @@ const Loaded: React.FC<LoadedProps> = ({
 }) => {
   const { t } = useTranslation()
   const [isInstalling, setIsInstalling] = React.useState(false)
-  const setPluginTasksWithPolling = usePluginTasksStore(s => s.setPluginTasksWithPolling)
+  const { handleRefetch } = usePluginTaskList()
   const { check } = checkTaskStatus()
 
   const handleInstall = async () => {
@@ -64,7 +64,7 @@ const Loaded: React.FC<LoadedProps> = ({
         return
       }
 
-      setPluginTasksWithPolling()
+      handleRefetch()
       await check({
         taskId,
         pluginUniqueIdentifier: uniqueIdentifier,

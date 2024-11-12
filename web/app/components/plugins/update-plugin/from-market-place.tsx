@@ -12,7 +12,7 @@ import { pluginManifestToCardPluginProps } from '@/app/components/plugins/instal
 import useGetIcon from '../install-plugin/base/use-get-icon'
 import { updateFromMarketPlace } from '@/service/plugins'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
-import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/plugin-tasks/store'
+import { usePluginTaskList } from '@/service/use-plugins'
 
 const i18nPrefix = 'plugin.upgrade'
 
@@ -56,7 +56,7 @@ const UpdatePluginModal: FC<Props> = ({
   }
 
   const [uploadStep, setUploadStep] = useState<UploadStep>(UploadStep.notStarted)
-  const setPluginTasksWithPolling = usePluginTasksStore(s => s.setPluginTasksWithPolling)
+  const { handleRefetch } = usePluginTaskList()
 
   const configBtnText = useMemo(() => {
     return ({
@@ -82,7 +82,7 @@ const UpdatePluginModal: FC<Props> = ({
           onSave()
           return
         }
-        setPluginTasksWithPolling()
+        handleRefetch()
         await check({
           taskId,
           pluginUniqueIdentifier: targetPackageInfo.id,
@@ -98,7 +98,7 @@ const UpdatePluginModal: FC<Props> = ({
       onSave()
       onCancel()
     }
-  }, [onCancel, onSave, uploadStep, check, originalPackageInfo.id, setPluginTasksWithPolling, targetPackageInfo.id])
+  }, [onCancel, onSave, uploadStep, check, originalPackageInfo.id, handleRefetch, targetPackageInfo.id])
   const usedInAppInfo = useMemo(() => {
     return (
       <div className='flex px-0.5 justify-center items-center gap-0.5'>

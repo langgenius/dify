@@ -17,16 +17,20 @@ import {
 import Tooltip from '@/app/components/base/tooltip'
 import Button from '@/app/components/base/button'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
+import CardIcon from '@/app/components/plugins/card/base/card-icon'
 import cn from '@/utils/classnames'
+import { useGetLanguage } from '@/context/i18n'
 
 const PluginTasks = () => {
   const { t } = useTranslation()
+  const language = useGetLanguage()
   const [open, setOpen] = useState(false)
   const {
     errorPlugins,
     runningPlugins,
     successPlugins,
     totalPluginsLength,
+    handleClearErrorPlugin,
   } = usePluginTaskStatus()
 
   const isInstalling = runningPlugins.length > 0 && errorPlugins.length === 0 && successPlugins.length === 0
@@ -113,20 +117,31 @@ const PluginTasks = () => {
         <PortalToFollowElemContent className='z-10'>
           <div className='p-1 pb-2 w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
             <div className='flex items-center px-2 pt-1 h-7 system-sm-semibold-uppercase'>{t('plugin.task.installedError')}</div>
-            <div className='flex items-center p-1 pl-2 h-8 rounded-lg hover:bg-state-base-hover'>
-              <div className='relative flex items-center justify-center mr-2 w-6 h-6 rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'>
-                <RiErrorWarningFill className='absolute -right-0.5 -bottom-0.5 w-3 h-3 text-text-destructive' />
-              </div>
-              <div className='grow system-md-regular text-text-secondary truncate'>
-                DuckDuckGo Search
-              </div>
-              <Button
-                size='small'
-                variant='ghost-accent'
-              >
-                {t('common.operation.clear')}
-              </Button>
-            </div>
+            {
+              errorPlugins.map(errorPlugin => (
+                <div
+                  key={errorPlugin.plugin_unique_identifier}
+                  className='flex items-center p-1 pl-2 h-8 rounded-lg hover:bg-state-base-hover'
+                >
+                  <div className='relative flex items-center justify-center mr-2 w-6 h-6 rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'>
+                    <RiErrorWarningFill className='absolute -right-0.5 -bottom-0.5 w-3 h-3 text-text-destructive' />
+                    <CardIcon
+                      src={errorPlugin.icon}
+                    />
+                  </div>
+                  <div className='grow system-md-regular text-text-secondary truncate'>
+                    {errorPlugin.labels[language]}
+                  </div>
+                  <Button
+                    size='small'
+                    variant='ghost-accent'
+                    onClick={() => handleClearErrorPlugin(errorPlugin.taskId, errorPlugin.plugin_id)}
+                  >
+                    {t('common.operation.clear')}
+                  </Button>
+                </div>
+              ))
+            }
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>

@@ -1,8 +1,10 @@
+import { useCallback, useState } from 'react'
 import type {
   DebugInfo as DebugInfoTypes,
   InstallPackageResponse,
   InstalledPluginListResponse,
   Permissions,
+  PluginTask,
   PluginsFromMarketplaceResponse,
 } from '@/app/components/plugins/types'
 import type {
@@ -112,6 +114,50 @@ export const useMutationPluginsFromMarketplace = () => {
           tags,
         },
       })
+    },
+  })
+}
+
+const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
+export const usePluginTaskList = () => {
+  const [enabled, setEnabled] = useState(true)
+  const {
+    data,
+    isFetched,
+    refetch,
+    ...rest
+  } = useQuery({
+    queryKey: usePluginTaskListKey,
+    queryFn: async () => {
+      const currentData = await get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100')
+      const taskDone = currentData.tasks.every(task => task.total_plugins === task.completed_plugins)
+
+      if (taskDone)
+        setEnabled(false)
+
+      return currentData
+    },
+    refetchInterval: 5000,
+    enabled,
+  })
+  const handleRefetch = useCallback(() => {
+    setEnabled(true)
+    refetch()
+  }, [refetch])
+
+  return {
+    data,
+    pluginTasks: data?.tasks || [],
+    isFetched,
+    handleRefetch,
+    ...rest,
+  }
+}
+
+export const useMutationClearTaskPlugin = () => {
+  return useMutation({
+    mutationFn: ({ taskId, pluginId }: { taskId: string; pluginId: string }) => {
+      return post<{ success: boolean }>(`/workspaces/current/plugin/task/${taskId}/delete/${pluginId}`)
     },
   })
 }
