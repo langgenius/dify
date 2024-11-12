@@ -54,11 +54,18 @@ class OAICompatEmbeddingModel(_CommonOaiApiCompat, TextEmbeddingModel):
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
 
+            if "gateway.mpi.test.shopee.io" in credentials["endpoint_url"]:
+                headers["Authorization"] = f"Basic {api_key}"
+
         endpoint_url = credentials.get("endpoint_url")
         if not endpoint_url.endswith("/"):
             endpoint_url += "/"
 
-        endpoint_url = urljoin(endpoint_url, "embeddings")
+        # endpoint_url = urljoin(endpoint_url, "embeddings")
+        if 'shopee' in credentials['endpoint_url']:
+            endpoint_url = urljoin(endpoint_url, 'embedding')
+        else:
+            endpoint_url = urljoin(endpoint_url, 'embeddings')
 
         extra_model_kwargs = {}
         if user:
@@ -139,11 +146,18 @@ class OAICompatEmbeddingModel(_CommonOaiApiCompat, TextEmbeddingModel):
             if api_key:
                 headers["Authorization"] = f"Bearer {api_key}"
 
+                if 'gateway.mpi.test.shopee.io' in credentials['endpoint_url']:
+                    headers["Authorization"] = f"Basic {api_key}"
+
             endpoint_url = credentials.get("endpoint_url")
             if not endpoint_url.endswith("/"):
                 endpoint_url += "/"
 
-            endpoint_url = urljoin(endpoint_url, "embeddings")
+            # endpoint_url = urljoin(endpoint_url, "embeddings")
+            if 'shopee' in credentials['endpoint_url']:
+                endpoint_url = urljoin(endpoint_url, 'embedding')
+            else:
+                endpoint_url = urljoin(endpoint_url, 'embeddings')
 
             payload = {"input": "ping", "model": model}
 
@@ -151,7 +165,8 @@ class OAICompatEmbeddingModel(_CommonOaiApiCompat, TextEmbeddingModel):
 
             if response.status_code != 200:
                 raise CredentialsValidateFailedError(
-                    f"Credentials validation failed with status code {response.status_code}"
+                    # f"Credentials validation failed with status code {response.status_code}"
+                    f'Credentials validation failed with status code {response.status_code} {endpoint_url}, {headers}, {payload}'
                 )
 
             try:
