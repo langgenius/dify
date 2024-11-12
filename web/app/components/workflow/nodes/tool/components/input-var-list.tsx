@@ -14,7 +14,7 @@ import VarReferencePicker from '@/app/components/workflow/nodes/_base/components
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { VarType } from '@/app/components/workflow/types'
-interface Props {
+type Props = {
   readOnly: boolean
   nodeId: string
   schema: CredentialFormSchema[]
