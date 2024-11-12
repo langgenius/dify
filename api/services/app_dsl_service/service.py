@@ -6,12 +6,21 @@ import yaml
 from packaging import version
 
 from core.helper import ssrf_proxy
+from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.entities.plugin import PluginDependency
+from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from core.workflow.nodes.llm.entities import LLMNodeData
+from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
+from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
+from core.workflow.nodes.tool.entities import ToolNodeData
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_database import db
 from factories import variable_factory
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig
 from models.workflow import Workflow
+from services.plugin.dependencies_analysis import DependenciesAnalysisService
 from services.workflow_service import WorkflowService
 
 from .exc import (
@@ -57,6 +66,22 @@ class AppDslService:
             raise ContentDecodingError(f"Error decoding content: {e}")
 
         return cls.import_and_create_new_app(tenant_id, data, args, account)
+
+    @classmethod
+    def check_dependencies(cls, tenant_id: str, data: str, account: Account) -> list[PluginDependency]:
+        """
+        Returns the leaked dependencies in current workspace
+        """
+        try:
+            import_data = yaml.safe_load(data) or {}
+        except yaml.YAMLError:
+            raise InvalidYAMLFormatError("Invalid YAML format in data argument.")
+
+        dependencies = [PluginDependency(**dep) for dep in import_data.get("dependencies", [])]
+        if not dependencies:
+            return []
+
+        return DependenciesAnalysisService.check_dependencies(tenant_id=tenant_id, dependencies=dependencies)
 
     @classmethod
     def import_and_create_new_app(cls, tenant_id: str, data: str, args: dict, account: Account) -> App:
@@ -436,6 +461,13 @@ class AppDslService:
             raise ValueError("Missing draft workflow configuration, please check.")
 
         export_data["workflow"] = workflow.to_dict(include_secret=include_secret)
+        dependencies = cls._extract_dependencies_from_workflow(workflow)
+        export_data["dependencies"] = [
+            jsonable_encoder(d.model_dump())
+            for d in DependenciesAnalysisService.generate_dependencies(
+                tenant_id=app_model.tenant_id, dependencies=dependencies
+            )
+        ]
 
     @classmethod
     def _append_model_config_export_data(cls, export_data: dict, app_model: App) -> None:
@@ -449,6 +481,137 @@ class AppDslService:
             raise ValueError("Missing app configuration, please check.")
 
         export_data["model_config"] = app_model_config.to_dict()
+        dependencies = cls._extract_dependencies_from_model_config(app_model_config)
+        export_data["dependencies"] = [
+            jsonable_encoder(d.model_dump())
+            for d in DependenciesAnalysisService.generate_dependencies(
+                tenant_id=app_model.tenant_id, dependencies=dependencies
+            )
+        ]
+
+    @classmethod
+    def _extract_dependencies_from_workflow(cls, workflow: Workflow) -> list[str]:
+        """
+        Extract dependencies from workflow
+        :param workflow: Workflow instance
+        :return: dependencies list format like ["langgenius/google"]
+        """
+        graph = workflow.graph_dict
+        dependencies = []
+        for node in graph.get("nodes", []):
+            try:
+                typ = node.get("data", {}).get("type")
+                match typ:
+                    case NodeType.TOOL.value:
+                        tool_entity = ToolNodeData(**node["data"])
+                        dependencies.append(
+                            DependenciesAnalysisService.analyze_tool_dependency(tool_entity.provider_id),
+                        )
+                    case NodeType.LLM.value:
+                        llm_entity = LLMNodeData(**node["data"])
+                        dependencies.append(
+                            DependenciesAnalysisService.analyze_model_provider_dependency(llm_entity.model.provider),
+                        )
+                    case NodeType.QUESTION_CLASSIFIER.value:
+                        question_classifier_entity = QuestionClassifierNodeData(**node["data"])
+                        dependencies.append(
+                            DependenciesAnalysisService.analyze_model_provider_dependency(
+                                question_classifier_entity.model.provider
+                            ),
+                        )
+                    case NodeType.PARAMETER_EXTRACTOR.value:
+                        parameter_extractor_entity = ParameterExtractorNodeData(**node["data"])
+                        dependencies.append(
+                            DependenciesAnalysisService.analyze_model_provider_dependency(
+                                parameter_extractor_entity.model.provider
+                            ),
+                        )
+                    case NodeType.KNOWLEDGE_RETRIEVAL.value:
+                        knowledge_retrieval_entity = KnowledgeRetrievalNodeData(**node["data"])
+                        if knowledge_retrieval_entity.retrieval_mode == "multiple":
+                            if knowledge_retrieval_entity.multiple_retrieval_config:
+                                if (
+                                    knowledge_retrieval_entity.multiple_retrieval_config.reranking_mode
+                                    == "reranking_model"
+                                ):
+                                    if knowledge_retrieval_entity.multiple_retrieval_config.reranking_model:
+                                        dependencies.append(
+                                            DependenciesAnalysisService.analyze_model_provider_dependency(
+                                                knowledge_retrieval_entity.multiple_retrieval_config.reranking_model.provider
+                                            ),
+                                        )
+                                elif (
+                                    knowledge_retrieval_entity.multiple_retrieval_config.reranking_mode
+                                    == "weighted_score"
+                                ):
+                                    if knowledge_retrieval_entity.multiple_retrieval_config.weights:
+                                        vector_setting = (
+                                            knowledge_retrieval_entity.multiple_retrieval_config.weights.vector_setting
+                                        )
+                                        dependencies.append(
+                                            DependenciesAnalysisService.analyze_model_provider_dependency(
+                                                vector_setting.embedding_provider_name
+                                            ),
+                                        )
+                        elif knowledge_retrieval_entity.retrieval_mode == "single":
+                            model_config = knowledge_retrieval_entity.single_retrieval_config
+                            if model_config:
+                                dependencies.append(
+                                    DependenciesAnalysisService.analyze_model_provider_dependency(
+                                        model_config.model.provider
+                                    ),
+                                )
+                    case _:
+                        # Handle default case or unknown node types
+                        pass
+            except Exception as e:
+                logger.exception("Error extracting node dependency", exc_info=e)
+
+        return dependencies
+
+    @classmethod
+    def _extract_dependencies_from_model_config(cls, model_config: AppModelConfig) -> list[str]:
+        """
+        Extract dependencies from model config
+        :param model_config: AppModelConfig instance
+        :return: dependencies list format like ["langgenius/google:1.0.0@abcdef1234567890"]
+        """
+        dependencies = []
+
+        try:
+            # completion model
+            model_dict = model_config.model_dict
+            if model_dict:
+                dependencies.append(
+                    DependenciesAnalysisService.analyze_model_provider_dependency(model_dict.get("provider"))
+                )
+
+            # reranking model
+            dataset_configs = model_config.dataset_configs_dict
+            if dataset_configs:
+                for dataset_config in dataset_configs:
+                    if dataset_config.get("reranking_model"):
+                        dependencies.append(
+                            DependenciesAnalysisService.analyze_model_provider_dependency(
+                                dataset_config.get("reranking_model", {})
+                                .get("reranking_provider_name", {})
+                                .get("provider")
+                            )
+                        )
+
+            # tools
+            agent_configs = model_config.agent_mode_dict
+            if agent_configs:
+                for agent_config in agent_configs:
+                    if agent_config.get("tools"):
+                        for tool in agent_config.get("tools", []):
+                            dependencies.append(
+                                DependenciesAnalysisService.analyze_tool_dependency(tool.get("provider_id"))
+                            )
+        except Exception as e:
+            logger.exception("Error extracting model config dependency", exc_info=e)
+
+        return dependencies
 
 
 def _check_or_fix_dsl(import_data: dict[str, Any]) -> Mapping[str, Any]:

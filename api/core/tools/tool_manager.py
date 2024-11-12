@@ -6,6 +6,7 @@ from os import listdir, path
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Union, cast
 
+from core.plugin.entities.plugin import GenericProviderID
 from core.plugin.manager.tool import PluginToolManager
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.plugin_tool.provider import PluginToolProviderController
@@ -33,7 +34,6 @@ from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ToolInvokeFrom,
     ToolParameter,
-    ToolProviderID,
     ToolProviderType,
 )
 from core.tools.errors import ToolProviderNotFoundError
@@ -164,7 +164,7 @@ class ToolManager:
                 )
 
             if isinstance(provider_controller, PluginToolProviderController):
-                provider_id_entity = ToolProviderID(provider_id)
+                provider_id_entity = GenericProviderID(provider_id)
                 # get credentials
                 builtin_provider: BuiltinToolProvider | None = (
                     db.session.query(BuiltinToolProvider)
@@ -582,10 +582,8 @@ class ToolManager:
 
             # rewrite db_builtin_providers
             for db_provider in db_builtin_providers:
-                try:
-                    ToolProviderID(db_provider.provider)
-                except Exception:
-                    db_provider.provider = f"langgenius/{db_provider.provider}/{db_provider.provider}"
+                tool_provider_id = GenericProviderID(db_provider.provider)
+                db_provider.provider = tool_provider_id.to_string()
 
             find_db_builtin_provider = lambda provider: next(
                 (x for x in db_builtin_providers if x.provider == provider), None

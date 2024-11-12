@@ -5,9 +5,9 @@ from pathlib import Path
 from configs import dify_config
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.entities.plugin import GenericProviderID
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
-from core.tools.entities.tool_entities import ToolProviderID
 from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
@@ -234,7 +234,7 @@ class BuiltinToolManageService:
         # rewrite db_providers
         for db_provider in db_providers:
             try:
-                ToolProviderID(db_provider.provider)
+                GenericProviderID(db_provider.provider)
             except Exception:
                 db_provider.provider = f"langgenius/{db_provider.provider}/{db_provider.provider}"
 
@@ -287,7 +287,7 @@ class BuiltinToolManageService:
     def _fetch_builtin_provider(provider_name: str, tenant_id: str) -> BuiltinToolProvider | None:
         try:
             full_provider_name = provider_name
-            provider_id_entity = ToolProviderID(provider_name)
+            provider_id_entity = GenericProviderID(provider_name)
             provider_name = provider_id_entity.provider_name
             if provider_id_entity.organization != "langgenius":
                 return None
@@ -305,11 +305,7 @@ class BuiltinToolManageService:
             if provider_obj is None:
                 return None
 
-            try:
-                ToolProviderID(provider_obj.provider)
-            except Exception:
-                provider_obj.provider = f"langgenius/{provider_obj.provider}/{provider_obj.provider}"
-
+            provider_obj.provider = GenericProviderID(provider_obj.provider).to_string()
             return provider_obj
         except Exception:
             # it's an old provider without organization

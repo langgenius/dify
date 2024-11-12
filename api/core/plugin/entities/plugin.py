@@ -1,4 +1,5 @@
 import datetime
+import re
 from collections.abc import Mapping
 from enum import Enum
 from typing import Any, Optional
@@ -95,21 +96,24 @@ class PluginDeclaration(BaseModel):
         return values
 
 
-class PluginEntity(BasePluginEntity):
-    name: str
-    plugin_id: str
-    plugin_unique_identifier: str
-    declaration: PluginDeclaration
-    installation_id: str
+class PluginInstallation(BasePluginEntity):
     tenant_id: str
     endpoints_setups: int
     endpoints_active: int
     runtime_type: str
+    source: PluginInstallationSource
+    meta: Mapping[str, Any]
+    plugin_id: str
+    plugin_unique_identifier: str
+
+
+class PluginEntity(PluginInstallation):
+    name: str
+    declaration: PluginDeclaration
+    installation_id: str
     version: str
     latest_version: Optional[str] = None
     latest_unique_identifier: Optional[str] = None
-    source: PluginInstallationSource
-    meta: Mapping[str, Any]
 
     @model_validator(mode="after")
     def set_plugin_id(self):
@@ -127,3 +131,60 @@ class GithubPackage(BaseModel):
 class GithubVersion(BaseModel):
     repo: str
     version: str
+
+
+class GenericProviderID:
+    organization: str
+    plugin_name: str
+    provider_name: str
+
+    def to_string(self) -> str:
+        return str(self)
+
+    def __str__(self) -> str:
+        return f"{self.organization}/{self.plugin_name}/{self.provider_name}"
+
+    def __init__(self, value: str) -> None:
+        # check if the value is a valid plugin id with format: $organization/$plugin_name/$provider_name
+        if not re.match(r"^[a-z0-9_-]+\/[a-z0-9_-]+\/[a-z0-9_-]+$", value):
+            # check if matches [a-z0-9_-]+, if yes, append with langgenius/$value/$value
+            if re.match(r"^[a-z0-9_-]+$", value):
+                value = f"langgenius/{value}/{value}"
+            else:
+                raise ValueError("Invalid plugin id")
+
+        self.organization, self.plugin_name, self.provider_name = value.split("/")
+
+    @property
+    def plugin_id(self) -> str:
+        return f"{self.organization}/{self.plugin_name}"
+
+
+class PluginDependency(BaseModel):
+    class Type(str, Enum):
+        Github = "github"
+        Marketplace = "marketplace"
+        Package = "package"
+
+    class Github(BaseModel):
+        repo: str
+        version: str
+        package: str
+        github_plugin_unique_identifier: str
+
+        @property
+        def plugin_unique_identifier(self) -> str:
+            return self.github_plugin_unique_identifier
+
+    class Marketplace(BaseModel):
+        marketplace_plugin_unique_identifier: str
+
+        @property
+        def plugin_unique_identifier(self) -> str:
+            return self.marketplace_plugin_unique_identifier
+
+    class Package(BaseModel):
+        plugin_unique_identifier: str
+
+    type: Type
+    value: Github | Marketplace | Package
