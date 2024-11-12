@@ -4,7 +4,7 @@ on:
   workflow_run:
     workflows: ["Build and Push API & Web"]
     branches:
-      - "dev/plugin-deploy"
+      - "deploy/dev"
     types:
       - completed
 
@@ -14,8 +14,11 @@ jobs:
     if: |
       github.event.workflow_run.conclusion == 'success'
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: debug context var
-        run: |
-          echo "Commit ID: ${{ github.sha }}"
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            ${{ vars.SSH_SCRIPT || secrets.SSH_SCRIPT }}
