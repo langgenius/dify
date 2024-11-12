@@ -28,13 +28,17 @@ class JSONParseTool(BuiltinTool):
 
         ensure_ascii = tool_parameters.get("ensure_ascii", True)
         try:
-            result = self._extract(content, json_filter, ensure_ascii)
-            return self.create_text_message(str(result))
-        except Exception:
-            return self.create_text_message("Failed to extract JSON content")
+            json_string, json_objs = self._extract(content, json_filter, ensure_ascii)
+            json_objs_dict = {str(index): item for index, item in enumerate(json_objs)}
+            return [
+                self.create_text_message(str(json_string)),
+                self.create_json_message(json_objs_dict),
+            ]
+        except Exception as e:
+            return self.create_text_message(f"Failed to extract JSON content: {str(e)}")
 
     # Extract data from JSON content
-    def _extract(self, content: str, json_filter: str, ensure_ascii: bool) -> str:
+    def _extract(self, content: str, json_filter: str, ensure_ascii: bool) -> tuple[str, list]:
         try:
             input_data = json.loads(content)
             expr = parse(json_filter)
@@ -47,10 +51,14 @@ class JSONParseTool(BuiltinTool):
                 result = result[0]
 
             if isinstance(result, dict | list):
-                return json.dumps(result, ensure_ascii=ensure_ascii)
+                json_string = json.dumps(result, ensure_ascii=ensure_ascii)
             elif isinstance(result, str | int | float | bool) or result is None:
-                return str(result)
+                json_string = str(result)
             else:
-                return repr(result)
+                json_string = repr(result)
+
+            return json_string, result
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON content: {str(e)}")
         except Exception as e:
-            return str(e)
+            raise ValueError(f"Error processing JSON content: {str(e)}")
