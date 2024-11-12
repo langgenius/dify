@@ -120,7 +120,7 @@ export const useMutationPluginsFromMarketplace = () => {
 
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 export const usePluginTaskList = () => {
-  const [enabled, setEnabled] = useState(true)
+  const [enabled, setEnabled] = useState(false)
   const {
     data,
     isFetched,
