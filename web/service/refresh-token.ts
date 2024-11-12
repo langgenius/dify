@@ -1,7 +1,7 @@
 import { apiPrefix } from '@/config'
 import { fetchWithRetry } from '@/utils'
 
-const LOCAL_STORAGE_KEY = 'is_refreshing'
+const LOCAL_STORAGE_KEY = 'is_other_tab_refreshing'
 
 let isRefreshing = false
 function waitUntilTokenRefreshed() {
