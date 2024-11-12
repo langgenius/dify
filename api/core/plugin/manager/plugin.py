@@ -184,7 +184,7 @@ class PluginInstallationManager(BasePluginManager):
         """
         return self._request_with_plugin_daemon_response(
             "POST",
-            f"plugin/{tenant_id}/management/upgrade",
+            f"plugin/{tenant_id}/management/install/upgrade",
             PluginInstallTaskStartResponse,
             data={
                 "original_plugin_unique_identifier": original_plugin_unique_identifier,
