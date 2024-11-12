@@ -11,9 +11,7 @@ class FalProvider(BuiltinToolProviderController):
             "Authorization": f"Key {credentials.get('fal_api_key')}",
             "Content-Type": "application/json",
         }
-        data = {
-            "prompt": "Cat"
-        }
+        data = {"prompt": "Cat"}
 
         response = requests.post(url, json=data, headers=headers)
         if response.status_code == 401:

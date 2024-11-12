@@ -1,15 +1,15 @@
 identity:
-  name: flux_1_dev
+  name: flux_1_1_pro
   author: Kalo Chin
   label:
-    en_US: FLUX.1 [dev]
-    zh_Hans: FLUX.1 [dev]
+    en_US: FLUX 1.1 [pro]
+    zh_Hans: FLUX 1.1 [pro]
   icon: icon.svg
 description:
   human:
-    en_US: FLUX.1 [dev] is a 12 billion parameter flow transformer that generates high-quality images from text. It is suitable for personal and commercial use.
-    zh_Hans: FLUX.1 [dev] 是一个拥有120亿参数的流动变换模型，可以从文本生成高质量的图像。适用于个人和商业用途。
-  llm: This tool generates images from prompts using FAL's FLUX.1 [dev] model.
+    en_US: FLUX 1.1 [pro] is an enhanced version of FLUX.1 [pro], improved image generation capabilities, delivering superior composition, detail, and artistic fidelity compared to its predecessor.
+    zh_Hans: FLUX 1.1 [pro] 是 FLUX.1 [pro] 的增强版，改进了图像生成能力，与其前身相比，提供了更出色的构图、细节和艺术保真度。
+  llm: This tool generates images from prompts using FAL's FLUX 1.1 [pro] model.
 parameters:
   - name: prompt
     type: string
@@ -63,7 +63,7 @@ parameters:
     required: false
     default: 1
     min: 1
-    max: 4
+    max: 1
     label:
       en_US: Number of Images
       zh_Hans: 图片数量
@@ -71,31 +71,41 @@ parameters:
       en_US: The number of images to generate.
       zh_Hans: 要生成的图片数量。
     form: form
-  - name: num_inference_steps
-    type: number
+  - name: safety_tolerance
+    type: select
     required: false
-    default: 28
-    min: 1
-    max: 50
+    options:
+      - value: "1"
+        label:
+          en_US: "1 (Most strict)"
+          zh_Hans: "1（最严格）"
+      - value: "2"
+        label:
+          en_US: "2"
+          zh_Hans: "2"
+      - value: "3"
+        label:
+          en_US: "3"
+          zh_Hans: "3"
+      - value: "4"
+        label:
+          en_US: "4"
+          zh_Hans: "4"
+      - value: "5"
+        label:
+          en_US: "5"
+          zh_Hans: "5"
+      - value: "6"
+        label:
+          en_US: "6 (Most permissive)"
+          zh_Hans: "6（最宽松）"
+    default: "2"
     label:
-      en_US: Num Inference Steps
-      zh_Hans: 推理步数
+      en_US: Safety Tolerance
+      zh_Hans: 安全容忍度
     human_description:
-      en_US: The number of inference steps to perform. More steps produce higher quality but take longer.
-      zh_Hans: 执行的推理步骤数量。更多的步骤可以产生更高质量的结果，但需要更长的时间。
-    form: form
-  - name: guidance_scale
-    type: number
-    required: false
-    default: 3.5
-    min: 0
-    max: 20
-    label:
-      en_US: Guidance Scale
-      zh_Hans: 指导强度
-    human_description:
-      en_US: How closely the model should follow the prompt.
-      zh_Hans: 模型对提示词的遵循程度。
+      en_US: The safety tolerance level for the generated image. 1 being the most strict and 6 being the most permissive.
+      zh_Hans: 生成图像的安全容忍级别，1 为最严格，6 为最宽松。
     form: form
   - name: seed
     type: number
@@ -107,7 +117,7 @@ parameters:
       zh_Hans: 种子
     human_description:
       en_US: The same seed and prompt can produce similar images.
-      zh_Hans: 相同的种子和提示可以产生相似的图像。
+      zh_Hans: 相同的种子和提示词可以产生相似的图像。
     form: form
   - name: enable_safety_checker
     type: boolean
