@@ -53,7 +53,6 @@ if dify_config.TESTING:
 @app.after_request
 def after_request(response):
     """Add Version headers to the response."""
-    response.set_cookie("remember_token", "", expires=0)
     response.headers.add("X-Version", dify_config.CURRENT_VERSION)
     response.headers.add("X-Env", dify_config.DEPLOY_ENV)
     return response
