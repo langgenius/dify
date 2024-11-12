@@ -288,7 +288,6 @@ services:
       # Startup mode, 'api' starts the API server.
       MODE: api
     depends_on:
-      - db
       - redis
     volumes:
       # Mount the storage directory to the container, for storing user files.
@@ -308,7 +307,6 @@ services:
       # Startup mode, 'worker' starts the Celery worker for processing the queue.
       MODE: worker
     depends_on:
-      - db
       - redis
     volumes:
       # Mount the storage directory to the container, for storing user files.
@@ -329,28 +327,28 @@ services:
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
 
-  # The postgres database.
-  db:
-    image: postgres:15-alpine
-    restart: always
-    environment:
-      PGUSER: ${PGUSER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
-      POSTGRES_DB: ${POSTGRES_DB:-dify}
-      PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
-    command: >
-      postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
-               -c 'shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}'
-               -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
-               -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
-               -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
-    volumes:
-      - ./volumes/db/data:/var/lib/postgresql/data
-    healthcheck:
-      test: ['CMD', 'pg_isready']
-      interval: 1s
-      timeout: 3s
-      retries: 30
+  # # The postgres database.
+  # db:
+  #   image: postgres:15-alpine
+  #   restart: always
+  #   environment:
+  #     PGUSER: ${PGUSER:-postgres}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
+  #     POSTGRES_DB: ${POSTGRES_DB:-dify}
+  #     PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
+  #   command: >
+  #     postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
+  #              -c 'shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}'
+  #              -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
+  #              -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
+  #              -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
+  #   volumes:
+  #     - ./volumes/db/data:/var/lib/postgresql/data
+  #   healthcheck:
+  #     test: ['CMD', 'pg_isready']
+  #     interval: 1s
+  #     timeout: 3s
+  #     retries: 30
 
   # The redis cache.
   redis:
