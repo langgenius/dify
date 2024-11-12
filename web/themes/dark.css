@@ -694,4 +694,5 @@ html[data-theme="dark"] {
   --color-third-party-model-bg-anthropic: #1D1917;
   --color-third-party-model-bg-default: #0B0B0E;
   --color-workflow-process-bg: linear-gradient(90deg, rgba(24, 24, 27, 0.25) 0%, rgba(24, 24, 27, 0.04) 100%);
+  --color-marketplace-divider-bg: linear-gradient(90deg, rgba(200, 206, 218, 0.14) 0%, rgba(0, 0, 0, 0) 100%);
 }
