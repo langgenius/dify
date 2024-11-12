@@ -68,7 +68,7 @@ const stopParameterRule: ModelParameterRule = {
   },
 }
 
-const PROVIDER_WITH_PRESET_TONE = ['openai', 'azure_openai']
+const PROVIDER_WITH_PRESET_TONE = ['langgenius/openai/openai', 'langgenius/azure_openai/azure_openai']
 const ModelParameterModal: FC<ModelParameterModalProps> = ({
   popupClassName,
   portalToFollowElemContentClassName,
