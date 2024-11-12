@@ -19,11 +19,12 @@ const ModelIcon: FC<ModelIconProps> = ({
 }) => {
   const language = useLanguage()
 
-  if (provider?.provider === 'openai' && (modelName?.startsWith('gpt-4') || modelName?.includes('4o')))
+  if (provider?.provider.includes('openai') && (modelName?.startsWith('gpt-4') || modelName?.includes('4o')))
     return <OpenaiViolet className={`w-4 h-4 ${className}`}/>
 
   if (provider?.icon_small) {
     return (
+      // eslint-disable-next-line @next/next/no-img-element
       <img
         alt='model-icon'
         src={`${provider.icon_small[language] || provider.icon_small.en_US}`}
