@@ -1,19 +1,19 @@
 import json
 import re
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from datetime import datetime
 from enum import Enum
 from typing import Any, Literal, Optional
 
+import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
-from pydantic import BaseModel, Field
 from sqlalchemy import Float, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
-from core.file import FILE_MODEL_IDENTITY, File, FileExtraConfig, FileTransferMethod, FileType
+from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
 from extensions.ext_database import db
@@ -22,14 +22,6 @@ from models.enums import CreatedByRole
 
 from .account import Account, Tenant
 from .types import StringUUID
-
-
-class FileUploadConfig(BaseModel):
-    enabled: bool = Field(default=False)
-    allowed_file_types: Sequence[FileType] = Field(default_factory=list)
-    allowed_extensions: Sequence[str] = Field(default_factory=list)
-    allowed_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
-    number_limits: int = Field(default=0, gt=0, le=10)
 
 
 class DifySetup(db.Model):
@@ -114,7 +106,7 @@ class App(db.Model):
         return site
 
     @property
-    def app_model_config(self) -> Optional["AppModelConfig"]:
+    def app_model_config(self):
         if self.app_model_config_id:
             return db.session.query(AppModelConfig).filter(AppModelConfig.id == self.app_model_config_id).first()
 
@@ -396,7 +388,7 @@ class AppModelConfig(db.Model):
             "file_upload": self.file_upload_dict,
         }
 
-    def from_model_config_dict(self, model_config: dict):
+    def from_model_config_dict(self, model_config: Mapping[str, Any]):
         self.opening_statement = model_config.get("opening_statement")
         self.suggested_questions = (
             json.dumps(model_config["suggested_questions"]) if model_config.get("suggested_questions") else None
@@ -483,7 +475,7 @@ class RecommendedApp(db.Model):
     description = db.Column(db.JSON, nullable=False)
     copyright = db.Column(db.String(255), nullable=False)
     privacy_policy = db.Column(db.String(255), nullable=False)
-    custom_disclaimer = db.Column(db.String(255), nullable=True)
+    custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
     category = db.Column(db.String(255), nullable=False)
     position = db.Column(db.Integer, nullable=False, default=0)
     is_listed = db.Column(db.Boolean, nullable=False, default=True)
@@ -957,9 +949,6 @@ class Message(db.Model):
                         "type": message_file.type,
                     },
                     tenant_id=current_app.tenant_id,
-                    user_id=self.from_account_id or self.from_end_user_id or "",
-                    role=CreatedByRole(message_file.created_by_role),
-                    config=FileExtraConfig(),
                 )
             elif message_file.transfer_method == "remote_url":
                 if message_file.url is None:
@@ -972,9 +961,6 @@ class Message(db.Model):
                         "url": message_file.url,
                     },
                     tenant_id=current_app.tenant_id,
-                    user_id=self.from_account_id or self.from_end_user_id or "",
-                    role=CreatedByRole(message_file.created_by_role),
-                    config=FileExtraConfig(),
                 )
             elif message_file.transfer_method == "tool_file":
                 if message_file.upload_file_id is None:
@@ -989,9 +975,6 @@ class Message(db.Model):
                 file = file_factory.build_from_mapping(
                     mapping=mapping,
                     tenant_id=current_app.tenant_id,
-                    user_id=self.from_account_id or self.from_end_user_id or "",
-                    role=CreatedByRole(message_file.created_by_role),
-                    config=FileExtraConfig(),
                 )
             else:
                 raise ValueError(
@@ -1306,7 +1289,7 @@ class Site(db.Model):
     privacy_policy = db.Column(db.String(255))
     show_workflow_steps = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
     use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    custom_disclaimer = db.Column(db.String(255), nullable=True)
+    _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", sa.TEXT, default="")
     customize_domain = db.Column(db.String(255))
     customize_token_strategy = db.Column(db.String(255), nullable=False)
     prompt_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
@@ -1316,6 +1299,16 @@ class Site(db.Model):
     updated_by = db.Column(StringUUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     code = db.Column(db.String(255))
+
+    @property
+    def custom_disclaimer(self):
+        return self._custom_disclaimer
+
+    @custom_disclaimer.setter
+    def custom_disclaimer(self, value: str):
+        if len(value) > 512:
+            raise ValueError("Custom disclaimer cannot exceed 512 characters.")
+        self._custom_disclaimer = value
 
     @staticmethod
     def generate_code(n):
@@ -1384,6 +1377,7 @@ class UploadFile(db.Model):
     used_by: Mapped[str | None] = db.Column(StringUUID, nullable=True)
     used_at: Mapped[datetime | None] = db.Column(db.DateTime, nullable=True)
     hash: Mapped[str | None] = db.Column(db.String(255), nullable=True)
+    source_url: Mapped[str] = mapped_column(sa.TEXT, default="")
 
     def __init__(
         self,
@@ -1402,7 +1396,8 @@ class UploadFile(db.Model):
         used_by: str | None = None,
         used_at: datetime | None = None,
         hash: str | None = None,
-    ) -> None:
+        source_url: str = "",
+    ):
         self.tenant_id = tenant_id
         self.storage_type = storage_type
         self.key = key
@@ -1417,6 +1412,7 @@ class UploadFile(db.Model):
         self.used_by = used_by
         self.used_at = used_at
         self.hash = hash
+        self.source_url = source_url
 
 
 class ApiRequest(db.Model):

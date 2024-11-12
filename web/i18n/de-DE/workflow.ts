@@ -557,6 +557,23 @@ const translation = {
       iteration_one: '{{count}} Iteration',
       iteration_other: '{{count}} Iterationen',
       currentIteration: 'Aktuelle Iteration',
+      ErrorMethod: {
+        operationTerminated: 'beendet',
+        removeAbnormalOutput: 'remove-abnormale_ausgabe',
+        continueOnError: 'Fehler "Fortfahren bei"',
+      },
+      MaxParallelismTitle: 'Maximale Parallelität',
+      parallelMode: 'Paralleler Modus',
+      errorResponseMethod: 'Methode der Fehlerantwort',
+      error_one: '{{Anzahl}} Fehler',
+      error_other: '{{Anzahl}} Irrtümer',
+      MaxParallelismDesc: 'Die maximale Parallelität wird verwendet, um die Anzahl der Aufgaben zu steuern, die gleichzeitig in einer einzigen Iteration ausgeführt werden.',
+      parallelPanelDesc: 'Im parallelen Modus unterstützen Aufgaben in der Iteration die parallele Ausführung.',
+      parallelModeEnableDesc: 'Im parallelen Modus unterstützen Aufgaben innerhalb von Iterationen die parallele Ausführung. Sie können dies im Eigenschaftenbereich auf der rechten Seite konfigurieren.',
+      answerNodeWarningDesc: 'Warnung im parallelen Modus: Antwortknoten, Zuweisungen von Konversationsvariablen und persistente Lese-/Schreibvorgänge innerhalb von Iterationen können Ausnahmen verursachen.',
+      parallelModeEnableTitle: 'Paralleler Modus aktiviert',
+      parallelModeUpper: 'PARALLELER MODUS',
+      comma: ',',
     },
     note: {
       editor: {

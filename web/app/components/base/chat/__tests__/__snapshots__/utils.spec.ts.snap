@@ -1804,6 +1804,280 @@ exports[`build chat item tree and get thread messages should get thread messages
 ]
 `;
 
+exports[`build chat item tree and get thread messages should work with partial messages 1`] = `
+[
+  {
+    "children": [
+      {
+        "agent_thoughts": [
+          {
+            "chain_id": null,
+            "created_at": 1726105809,
+            "files": [],
+            "id": "1019cd79-d141-4f9f-880a-fc1441cfd802",
+            "message_id": "cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
+            "observation": "",
+            "position": 1,
+            "thought": "Sure! My number is 54. Your turn!",
+            "tool": "",
+            "tool_input": "",
+            "tool_labels": {},
+          },
+        ],
+        "children": [
+          {
+            "children": [
+              {
+                "agent_thoughts": [
+                  {
+                    "chain_id": null,
+                    "created_at": 1726105822,
+                    "files": [],
+                    "id": "0773bec7-b992-4a53-92b2-20ebaeae8798",
+                    "message_id": "324bce32-c98c-435d-a66b-bac974ebb5ed",
+                    "observation": "",
+                    "position": 1,
+                    "thought": "My number is 4729. Your turn!",
+                    "tool": "",
+                    "tool_input": "",
+                    "tool_labels": {},
+                  },
+                ],
+                "children": [],
+                "content": "My number is 4729. Your turn!",
+                "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+                "feedbackDisabled": false,
+                "id": "324bce32-c98c-435d-a66b-bac974ebb5ed",
+                "input": {
+                  "inputs": {},
+                  "query": "3306",
+                },
+                "isAnswer": true,
+                "log": [
+                  {
+                    "files": [],
+                    "role": "user",
+                    "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+                  },
+                  {
+                    "files": [],
+                    "role": "assistant",
+                    "text": "Sure! My number is 54. Your turn!",
+                  },
+                  {
+                    "files": [],
+                    "role": "user",
+                    "text": "3306",
+                  },
+                  {
+                    "files": [],
+                    "role": "assistant",
+                    "text": "My number is 4729. Your turn!",
+                  },
+                ],
+                "message_files": [],
+                "more": {
+                  "latency": "1.30",
+                  "time": "09/11/2024 09:50 PM",
+                  "tokens": 66,
+                },
+                "parentMessageId": "question-324bce32-c98c-435d-a66b-bac974ebb5ed",
+                "siblingIndex": 0,
+                "workflow_run_id": null,
+              },
+            ],
+            "content": "3306",
+            "id": "question-324bce32-c98c-435d-a66b-bac974ebb5ed",
+            "isAnswer": false,
+            "message_files": [],
+            "parentMessageId": "cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
+          },
+          {
+            "children": [
+              {
+                "agent_thoughts": [
+                  {
+                    "chain_id": null,
+                    "created_at": 1726107812,
+                    "files": [],
+                    "id": "5ca650f3-982c-4399-8b95-9ea241c76707",
+                    "message_id": "684b5396-4e91-4043-88e9-aabe48b21acc",
+                    "observation": "",
+                    "position": 1,
+                    "thought": "My number is 4821. Your turn!",
+                    "tool": "",
+                    "tool_input": "",
+                    "tool_labels": {},
+                  },
+                ],
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "agent_thoughts": [
+                          {
+                            "chain_id": null,
+                            "created_at": 1726111024,
+                            "files": [],
+                            "id": "095cacab-afad-4387-a41d-1662578b8b13",
+                            "message_id": "19904a7b-7494-4ed8-b72c-1d18668cea8c",
+                            "observation": "",
+                            "position": 1,
+                            "thought": "My number is 1456. Your turn!",
+                            "tool": "",
+                            "tool_input": "",
+                            "tool_labels": {},
+                          },
+                        ],
+                        "children": [],
+                        "content": "My number is 1456. Your turn!",
+                        "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+                        "feedbackDisabled": false,
+                        "id": "19904a7b-7494-4ed8-b72c-1d18668cea8c",
+                        "input": {
+                          "inputs": {},
+                          "query": "1003",
+                        },
+                        "isAnswer": true,
+                        "log": [
+                          {
+                            "files": [],
+                            "role": "user",
+                            "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+                          },
+                          {
+                            "files": [],
+                            "role": "assistant",
+                            "text": "Sure! My number is 54. Your turn!",
+                          },
+                          {
+                            "files": [],
+                            "role": "user",
+                            "text": "3306",
+                          },
+                          {
+                            "files": [],
+                            "role": "assistant",
+                            "text": "My number is 4821. Your turn!",
+                          },
+                          {
+                            "files": [],
+                            "role": "user",
+                            "text": "1003",
+                          },
+                          {
+                            "files": [],
+                            "role": "assistant",
+                            "text": "My number is 1456. Your turn!",
+                          },
+                        ],
+                        "message_files": [],
+                        "more": {
+                          "latency": "1.38",
+                          "time": "09/11/2024 11:17 PM",
+                          "tokens": 86,
+                        },
+                        "parentMessageId": "question-19904a7b-7494-4ed8-b72c-1d18668cea8c",
+                        "siblingIndex": 0,
+                        "workflow_run_id": null,
+                      },
+                    ],
+                    "content": "1003",
+                    "id": "question-19904a7b-7494-4ed8-b72c-1d18668cea8c",
+                    "isAnswer": false,
+                    "message_files": [],
+                    "parentMessageId": "684b5396-4e91-4043-88e9-aabe48b21acc",
+                  },
+                ],
+                "content": "My number is 4821. Your turn!",
+                "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+                "feedbackDisabled": false,
+                "id": "684b5396-4e91-4043-88e9-aabe48b21acc",
+                "input": {
+                  "inputs": {},
+                  "query": "3306",
+                },
+                "isAnswer": true,
+                "log": [
+                  {
+                    "files": [],
+                    "role": "user",
+                    "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+                  },
+                  {
+                    "files": [],
+                    "role": "assistant",
+                    "text": "Sure! My number is 54. Your turn!",
+                  },
+                  {
+                    "files": [],
+                    "role": "user",
+                    "text": "3306",
+                  },
+                  {
+                    "files": [],
+                    "role": "assistant",
+                    "text": "My number is 4821. Your turn!",
+                  },
+                ],
+                "message_files": [],
+                "more": {
+                  "latency": "1.48",
+                  "time": "09/11/2024 10:23 PM",
+                  "tokens": 66,
+                },
+                "parentMessageId": "question-684b5396-4e91-4043-88e9-aabe48b21acc",
+                "siblingIndex": 1,
+                "workflow_run_id": null,
+              },
+            ],
+            "content": "3306",
+            "id": "question-684b5396-4e91-4043-88e9-aabe48b21acc",
+            "isAnswer": false,
+            "message_files": [],
+            "parentMessageId": "cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
+          },
+        ],
+        "content": "Sure! My number is 54. Your turn!",
+        "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+        "feedbackDisabled": false,
+        "id": "cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
+        "input": {
+          "inputs": {},
+          "query": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+        },
+        "isAnswer": true,
+        "log": [
+          {
+            "files": [],
+            "role": "user",
+            "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+          },
+          {
+            "files": [],
+            "role": "assistant",
+            "text": "Sure! My number is 54. Your turn!",
+          },
+        ],
+        "message_files": [],
+        "more": {
+          "latency": "1.52",
+          "time": "09/11/2024 09:50 PM",
+          "tokens": 46,
+        },
+        "parentMessageId": "question-cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
+        "siblingIndex": 0,
+        "workflow_run_id": null,
+      },
+    ],
+    "content": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+    "id": "question-cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
+    "isAnswer": false,
+    "message_files": [],
+  },
+]
+`;
+
 exports[`build chat item tree and get thread messages should work with real world messages 1`] = `
 [
   {

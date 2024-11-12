@@ -1,6 +1,7 @@
-from flask_restful import Resource, fields, marshal_with
+from flask_restful import Resource, marshal_with
 
-from configs import dify_config
+from controllers.common import fields
+from controllers.common import helpers as controller_helpers
 from controllers.service_api import api
 from controllers.service_api.app.error import AppUnavailableError
 from controllers.service_api.wraps import validate_app_token
@@ -11,40 +12,8 @@ from services.app_service import AppService
 class AppParameterApi(Resource):
     """Resource for app variables."""
 
-    variable_fields = {
-        "key": fields.String,
-        "name": fields.String,
-        "description": fields.String,
-        "type": fields.String,
-        "default": fields.String,
-        "max_length": fields.Integer,
-        "options": fields.List(fields.String),
-    }
-
-    system_parameters_fields = {
-        "image_file_size_limit": fields.Integer,
-        "video_file_size_limit": fields.Integer,
-        "audio_file_size_limit": fields.Integer,
-        "file_size_limit": fields.Integer,
-    }
-
-    parameters_fields = {
-        "opening_statement": fields.String,
-        "suggested_questions": fields.Raw,
-        "suggested_questions_after_answer": fields.Raw,
-        "speech_to_text": fields.Raw,
-        "text_to_speech": fields.Raw,
-        "retriever_resource": fields.Raw,
-        "annotation_reply": fields.Raw,
-        "more_like_this": fields.Raw,
-        "user_input_form": fields.Raw,
-        "sensitive_word_avoidance": fields.Raw,
-        "file_upload": fields.Raw,
-        "system_parameters": fields.Nested(system_parameters_fields),
-    }
-
     @validate_app_token
-    @marshal_with(parameters_fields)
+    @marshal_with(fields.parameters_fields)
     def get(self, app_model: App):
         """Retrieve app parameters."""
         if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
@@ -56,43 +25,16 @@ class AppParameterApi(Resource):
             user_input_form = workflow.user_input_form(to_old_structure=True)
         else:
             app_model_config = app_model.app_model_config
+            if app_model_config is None:
+                raise AppUnavailableError()
+
             features_dict = app_model_config.to_dict()
 
             user_input_form = features_dict.get("user_input_form", [])
 
-        return {
-            "opening_statement": features_dict.get("opening_statement"),
-            "suggested_questions": features_dict.get("suggested_questions", []),
-            "suggested_questions_after_answer": features_dict.get(
-                "suggested_questions_after_answer", {"enabled": False}
-            ),
-            "speech_to_text": features_dict.get("speech_to_text", {"enabled": False}),
-            "text_to_speech": features_dict.get("text_to_speech", {"enabled": False}),
-            "retriever_resource": features_dict.get("retriever_resource", {"enabled": False}),
-            "annotation_reply": features_dict.get("annotation_reply", {"enabled": False}),
-            "more_like_this": features_dict.get("more_like_this", {"enabled": False}),
-            "user_input_form": user_input_form,
-            "sensitive_word_avoidance": features_dict.get(
-                "sensitive_word_avoidance", {"enabled": False, "type": "", "configs": []}
-            ),
-            "file_upload": features_dict.get(
-                "file_upload",
-                {
-                    "image": {
-                        "enabled": False,
-                        "number_limits": 3,
-                        "detail": "high",
-                        "transfer_methods": ["remote_url", "local_file"],
-                    }
-                },
-            ),
-            "system_parameters": {
-                "image_file_size_limit": dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT,
-                "video_file_size_limit": dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT,
-                "audio_file_size_limit": dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT,
-                "file_size_limit": dify_config.UPLOAD_FILE_SIZE_LIMIT,
-            },
-        }
+        return controller_helpers.get_parameters_from_feature_dict(
+            features_dict=features_dict, user_input_form=user_input_form
+        )
 
 
 class AppMetaApi(Resource):

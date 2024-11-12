@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.file.models import File, FileTransferMethod, FileType
+from core.file import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
@@ -15,11 +15,18 @@ from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResu
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
-from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
+from factories import file_factory
 from models import ToolFile
 from models.workflow import WorkflowNodeExecutionStatus
+
+from .entities import ToolNodeData
+from .exc import (
+    ToolFileError,
+    ToolNodeError,
+    ToolParameterError,
+)
 
 
 class ToolNode(BaseNode[ToolNodeData]):
@@ -42,7 +49,7 @@ class ToolNode(BaseNode[ToolNodeData]):
             tool_runtime = ToolManager.get_workflow_tool_runtime(
                 self.tenant_id, self.app_id, self.node_id, self.node_data, self.invoke_from
             )
-        except Exception as e:
+        except ToolNodeError as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs={},
@@ -53,7 +60,7 @@ class ToolNode(BaseNode[ToolNodeData]):
             )
 
         # get parameters
-        tool_parameters = tool_runtime.get_runtime_parameters() or []
+        tool_parameters = tool_runtime.parameters or []
         parameters = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
@@ -75,7 +82,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                 workflow_call_depth=self.workflow_call_depth,
                 thread_pool_id=self.thread_pool_id,
             )
-        except Exception as e:
+        except ToolNodeError as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=parameters_for_log,
@@ -133,13 +140,13 @@ class ToolNode(BaseNode[ToolNodeData]):
             if tool_input.type == "variable":
                 variable = variable_pool.get(tool_input.value)
                 if variable is None:
-                    raise ValueError(f"variable {tool_input.value} not exists")
+                    raise ToolParameterError(f"Variable {tool_input.value} does not exist")
                 parameter_value = variable.value
             elif tool_input.type in {"mixed", "constant"}:
                 segment_group = variable_pool.convert_template(str(tool_input.value))
                 parameter_value = segment_group.log if for_log else segment_group.text
             else:
-                raise ValueError(f"unknown tool input type '{tool_input.type}'")
+                raise ToolParameterError(f"Unknown tool input type '{tool_input.type}'")
             result[parameter_name] = parameter_value
 
         return result
@@ -181,21 +188,19 @@ class ToolNode(BaseNode[ToolNodeData]):
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
-                        raise ValueError(f"tool file {tool_file_id} not exists")
+                        raise ToolFileError(f"Tool file {tool_file_id} does not exist")
 
-                result.append(
-                    File(
-                        tenant_id=self.tenant_id,
-                        type=FileType.IMAGE,
-                        transfer_method=transfer_method,
-                        remote_url=url,
-                        related_id=tool_file.id,
-                        filename=tool_file.name,
-                        extension=ext,
-                        mime_type=tool_file.mimetype,
-                        size=tool_file.size,
-                    )
+                mapping = {
+                    "tool_file_id": tool_file_id,
+                    "type": FileType.IMAGE,
+                    "transfer_method": transfer_method,
+                    "url": url,
+                }
+                file = file_factory.build_from_mapping(
+                    mapping=mapping,
+                    tenant_id=self.tenant_id,
                 )
+                result.append(file)
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 # get tool file id
                 tool_file_id = str(response.message).split("/")[-1].split(".")[0]
@@ -204,18 +209,16 @@ class ToolNode(BaseNode[ToolNodeData]):
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
                         raise ValueError(f"tool file {tool_file_id} not exists")
-                result.append(
-                    File(
-                        tenant_id=self.tenant_id,
-                        type=FileType.IMAGE,
-                        transfer_method=FileTransferMethod.TOOL_FILE,
-                        related_id=tool_file.id,
-                        filename=tool_file.name,
-                        extension=path.splitext(response.save_as)[1],
-                        mime_type=tool_file.mimetype,
-                        size=tool_file.size,
-                    )
+                mapping = {
+                    "tool_file_id": tool_file_id,
+                    "type": FileType.IMAGE,
+                    "transfer_method": FileTransferMethod.TOOL_FILE,
+                }
+                file = file_factory.build_from_mapping(
+                    mapping=mapping,
+                    tenant_id=self.tenant_id,
                 )
+                result.append(file)
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 url = str(response.message)
                 transfer_method = FileTransferMethod.TOOL_FILE
@@ -224,21 +227,20 @@ class ToolNode(BaseNode[ToolNodeData]):
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
                     if tool_file is None:
-                        raise ValueError(f"tool file {tool_file_id} not exists")
+                        raise ToolFileError(f"Tool file {tool_file_id} does not exist")
                 if "." in url:
                     extension = "." + url.split("/")[-1].split(".")[1]
                 else:
                     extension = ".bin"
-                file = File(
+                mapping = {
+                    "tool_file_id": tool_file_id,
+                    "type": FileType.IMAGE,
+                    "transfer_method": transfer_method,
+                    "url": url,
+                }
+                file = file_factory.build_from_mapping(
+                    mapping=mapping,
                     tenant_id=self.tenant_id,
-                    type=FileType(response.save_as),
-                    transfer_method=transfer_method,
-                    remote_url=url,
-                    filename=tool_file.name,
-                    related_id=tool_file.id,
-                    extension=extension,
-                    mime_type=tool_file.mimetype,
-                    size=tool_file.size,
                 )
                 result.append(file)
 

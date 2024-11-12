@@ -5,12 +5,15 @@ import json
 import docx
 import pandas as pd
 import pypdfium2
+import yaml
+from unstructured.partition.api import partition_via_api
 from unstructured.partition.email import partition_email
 from unstructured.partition.epub import partition_epub
 from unstructured.partition.msg import partition_msg
 from unstructured.partition.ppt import partition_ppt
 from unstructured.partition.pptx import partition_pptx
 
+from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
 from core.helper import ssrf_proxy
 from core.variables import ArrayFileSegment
@@ -101,6 +104,8 @@ def _extract_text_by_mime_type(*, file_content: bytes, mime_type: str) -> str:
             return _extract_text_from_msg(file_content)
         case "application/json":
             return _extract_text_from_json(file_content)
+        case "application/x-yaml" | "text/yaml":
+            return _extract_text_from_yaml(file_content)
         case _:
             raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
@@ -112,6 +117,8 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
             return _extract_text_from_plain_text(file_content)
         case ".json":
             return _extract_text_from_json(file_content)
+        case ".yaml" | ".yml":
+            return _extract_text_from_yaml(file_content)
         case ".pdf":
             return _extract_text_from_pdf(file_content)
         case ".doc" | ".docx":
@@ -149,6 +156,15 @@ def _extract_text_from_json(file_content: bytes) -> str:
         raise TextExtractionError(f"Failed to decode or parse JSON file: {e}") from e
 
 
+def _extract_text_from_yaml(file_content: bytes) -> str:
+    """Extract the content from yaml file"""
+    try:
+        yaml_data = yaml.safe_load_all(file_content.decode("utf-8"))
+        return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
+    except (UnicodeDecodeError, yaml.YAMLError) as e:
+        raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
+
+
 def _extract_text_from_pdf(file_content: bytes) -> str:
     try:
         pdf_file = io.BytesIO(file_content)
@@ -182,10 +198,8 @@ def _download_file_content(file: File) -> bytes:
             response = ssrf_proxy.get(file.remote_url)
             response.raise_for_status()
             return response.content
-        elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
-            return file_manager.download(file)
         else:
-            raise ValueError(f"Unsupported transfer method: {file.transfer_method}")
+            return file_manager.download(file)
     except Exception as e:
         raise FileDownloadError(f"Error downloading file: {str(e)}") from e
 
@@ -249,7 +263,14 @@ def _extract_text_from_ppt(file_content: bytes) -> str:
 def _extract_text_from_pptx(file_content: bytes) -> str:
     try:
         with io.BytesIO(file_content) as file:
-            elements = partition_pptx(file=file)
+            if dify_config.UNSTRUCTURED_API_URL and dify_config.UNSTRUCTURED_API_KEY:
+                elements = partition_via_api(
+                    file=file,
+                    api_url=dify_config.UNSTRUCTURED_API_URL,
+                    api_key=dify_config.UNSTRUCTURED_API_KEY,
+                )
+            else:
+                elements = partition_pptx(file=file)
         return "\n".join([getattr(element, "text", "") for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from PPTX: {str(e)}") from e

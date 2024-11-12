@@ -7,8 +7,7 @@ from werkzeug.exceptions import Forbidden
 
 from configs import dify_config
 from controllers.console import api
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
 from libs.helper import alphanumeric, uuid_value
 from libs.login import login_required

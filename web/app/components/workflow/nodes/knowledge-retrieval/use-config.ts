@@ -240,7 +240,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     if (
       (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
       || mixtureInternalAndExternal
-      || (allExternal && newDatasets.length > 1)
+      || allExternal
     )
       setRerankModelOpen(true)
   }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel])

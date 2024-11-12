@@ -253,12 +253,18 @@ const Configuration: FC = () => {
     }
     hideSelectDataSet()
     const {
-      allEconomic,
+      allExternal,
+      allInternal,
+      mixtureInternalAndExternal,
       mixtureHighQualityAndEconomic,
       inconsistentEmbeddingModel,
     } = getSelectedDatasetsMode(newDatasets)
 
-    if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)
+    if (
+      (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
+      || mixtureInternalAndExternal
+      || allExternal
+    )
       setRerankSettingModalOpen(true)
 
     const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
@@ -462,8 +468,8 @@ const Configuration: FC = () => {
           transfer_methods: modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
         },
         enabled: !!(modelConfig.file_upload?.enabled || modelConfig.file_upload?.image?.enabled),
-        allowed_file_types: modelConfig.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
-        allowed_file_extensions: modelConfig.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
+        allowed_file_types: modelConfig.file_upload?.allowed_file_types || [SupportUploadFileTypes.image, SupportUploadFileTypes.video],
+        allowed_file_extensions: modelConfig.file_upload?.allowed_file_extensions || [...FILE_EXTS[SupportUploadFileTypes.image], ...FILE_EXTS[SupportUploadFileTypes.video]].map(ext => `.${ext}`),
         allowed_file_upload_methods: modelConfig.file_upload?.allowed_file_upload_methods || modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
         number_limits: modelConfig.file_upload?.number_limits || modelConfig.file_upload?.image?.number_limits || 3,
         fileUploadConfig: fileUploadConfigResponse,

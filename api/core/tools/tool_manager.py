@@ -3,7 +3,7 @@ import logging
 import mimetypes
 from collections.abc import Generator
 from os import listdir, path
-from threading import Lock
+from threading import Lock, Thread
 from typing import Any, Optional, Union
 
 from configs import dify_config
@@ -388,7 +388,7 @@ class ToolManager:
                     yield provider
 
                 except Exception as e:
-                    logger.error(f"load builtin provider {provider} error: {e}")
+                    logger.exception(f"load builtin provider {provider} error: {e}")
                     continue
         # set builtin providers loaded
         cls._builtin_providers_loaded = True
@@ -555,6 +555,7 @@ class ToolManager:
         """
             get tool provider
         """
+        provider_name = provider
         provider: ApiToolProvider = (
             db.session.query(ApiToolProvider)
             .filter(
@@ -565,7 +566,7 @@ class ToolManager:
         )
 
         if provider is None:
-            raise ValueError(f"you have not added provider {provider}")
+            raise ValueError(f"you have not added provider {provider_name}")
 
         try:
             credentials = json.loads(provider.credentials_str) or {}
@@ -647,4 +648,5 @@ class ToolManager:
             raise ValueError(f"provider type {provider_type} not found")
 
 
-ToolManager.load_builtin_providers_cache()
+# preload builtin tool providers
+Thread(target=ToolManager.load_builtin_providers_cache, name="pre_load_builtin_providers_cache", daemon=True).start()

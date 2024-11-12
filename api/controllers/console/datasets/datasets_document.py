@@ -24,8 +24,11 @@ from controllers.console.datasets.error import (
     InvalidActionError,
     InvalidMetadataError,
 )
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from controllers.console.wraps import (
+    account_initialization_required,
+    cloud_edition_billing_resource_check,
+    setup_required,
+)
 from core.errors.error import (
     LLMBadRequestError,
     ModelCurrentlyNotSupportError,
@@ -314,8 +317,11 @@ class DatasetInitApi(Resource):
                 raise ValueError("embedding model and embedding model provider are required for high quality indexing.")
             try:
                 model_manager = ModelManager()
-                model_manager.get_default_model_instance(
-                    tenant_id=current_user.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
+                model_manager.get_model_instance(
+                    tenant_id=current_user.current_tenant_id,
+                    provider=args["embedding_model_provider"],
+                    model_type=ModelType.TEXT_EMBEDDING,
+                    model=args["embedding_model"],
                 )
             except InvokeAuthorizationError:
                 raise ProviderNotInitializeError(
@@ -942,7 +948,7 @@ class DocumentRetryApi(DocumentResource):
                     raise DocumentAlreadyFinishedError()
                 retry_documents.append(document)
             except Exception as e:
-                logging.error(f"Document {document_id} retry failed: {str(e)}")
+                logging.exception(f"Document {document_id} retry failed: {str(e)}")
                 continue
         # retry document
         DocumentService.retry_document(dataset_id, retry_documents)
