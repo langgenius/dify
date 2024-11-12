@@ -159,7 +159,7 @@ class ApiToolManageService:
         # encrypt credentials
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=tenant_id,
-            config=provider_controller.get_credentials_schema(),
+            config=list(provider_controller.get_credentials_schema()),
             provider_type=provider_controller.provider_type.value,
             provider_identity=provider_controller.entity.identity.name,
         )
@@ -291,7 +291,7 @@ class ApiToolManageService:
         # get original credentials if exists
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=tenant_id,
-            config=provider_controller.get_credentials_schema(),
+            config=list(provider_controller.get_credentials_schema()),
             provider_type=provider_controller.provider_type.value,
             provider_identity=provider_controller.entity.identity.name,
         )
@@ -410,7 +410,7 @@ class ApiToolManageService:
         if db_provider.id:
             tool_configuration = ProviderConfigEncrypter(
                 tenant_id=tenant_id,
-                config=provider_controller.get_credentials_schema(),
+                config=list(provider_controller.get_credentials_schema()),
                 provider_type=provider_controller.provider_type.value,
                 provider_identity=provider_controller.entity.identity.name,
             )
