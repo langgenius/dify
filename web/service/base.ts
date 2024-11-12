@@ -326,10 +326,15 @@ export const ssePost = (
   } = otherOptions
   const abortController = new AbortController()
 
+  const token = localStorage.getItem('console_token')
+
   const options = Object.assign({}, baseOptions, {
     method: 'POST',
     signal: abortController.signal,
-  }, fetchOptions)
+    headers: new Headers({
+      Authorization: `Bearer ${token}`,
+    }),
+  } as RequestInit, fetchOptions)
 
   const contentType = (options.headers as Headers).get('Content-Type')
   if (!contentType)
