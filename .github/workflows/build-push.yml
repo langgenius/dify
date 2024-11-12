@@ -44,6 +44,10 @@ jobs:
             platform: linux/arm64
 
     steps:
+      - name: print context var
+      - run: |
+          echo "Commit ID: ${{ github.sha }}" 
+      
       - name: Prepare
         run: |
           platform=${{ matrix.platform }}
