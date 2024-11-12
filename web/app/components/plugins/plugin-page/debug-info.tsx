@@ -17,6 +17,9 @@ const DebugInfo: FC = () => {
   const { t } = useTranslation()
   const { data: info, isLoading } = useDebugKey()
 
+  // info.key likes 4580bdb7-b878-471c-a8a4-bfd760263a53 mask the middle part using *.
+  const maskedKey = info?.key?.replace(/(.{8})(.*)(.{8})/, '$1********$3')
+
   if (isLoading) return null
 
   return (
@@ -40,6 +43,7 @@ const DebugInfo: FC = () => {
             <KeyValueItem
               label={'Key'}
               value={info?.key || ''}
+              maskedValue={maskedKey}
             />
           </div>
         </>
