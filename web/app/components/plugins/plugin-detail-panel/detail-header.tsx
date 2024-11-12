@@ -28,7 +28,7 @@ import { Github } from '@/app/components/base/icons/src/public/common'
 import { uninstallPlugin } from '@/service/plugins'
 import { useGetLanguage } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-
+import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 
@@ -55,17 +55,35 @@ const DetailHeader = ({
     source,
     tenant_id,
     version,
+    latest_unique_identifier,
     latest_version,
     meta,
   } = detail
   const { author, name, label, description, icon, verified } = detail.declaration
   const isFromGitHub = source === PluginSource.github
+  const isFromMarketplace = source === PluginSource.marketplace
 
   const hasNewVersion = useMemo(() => {
-    return source === PluginSource.github && latest_version !== version
-  }, [source, latest_version, version])
+    if (isFromGitHub)
+      return latest_version !== version
+
+    if (isFromMarketplace)
+      return !!latest_version && latest_version !== version
+
+    return false
+  }, [isFromGitHub, isFromMarketplace, latest_version, version])
+
+  const [isShowUpdateModal, {
+    setTrue: showUpdateModal,
+    setFalse: hideUpdateModal,
+  }] = useBoolean(false)
 
   const handleUpdate = async () => {
+    if (isFromMarketplace) {
+      showUpdateModal()
+      return
+    }
+
     try {
       const fetchedReleases = await fetchReleases(author, name)
       if (fetchedReleases.length === 0)
@@ -104,6 +122,11 @@ const DetailHeader = ({
         message: 'Failed to compare versions',
       })
     }
+  }
+
+  const handleUpdatedFromMarketplace = () => {
+    onUpdate()
+    hideUpdateModal()
   }
 
   const [isShowPluginInfo, {
@@ -222,6 +245,24 @@ const DetailHeader = ({
           isDisabled={deleting}
         />
       )}
+      {
+        isShowUpdateModal && (
+          <UpdateFromMarketplace
+            payload={{
+              originalPackageInfo: {
+                id: detail.plugin_unique_identifier,
+                payload: detail.declaration,
+              },
+              targetPackageInfo: {
+                id: latest_unique_identifier,
+                version: latest_version,
+              },
+            }}
+            onCancel={hideUpdateModal}
+            onSave={handleUpdatedFromMarketplace}
+          />
+        )
+      }
     </div>
   )
 }

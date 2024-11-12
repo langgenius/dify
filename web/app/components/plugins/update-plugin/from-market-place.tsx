@@ -69,23 +69,30 @@ const UpdatePluginModal: FC<Props> = ({
   const handleConfirm = useCallback(async () => {
     if (uploadStep === UploadStep.notStarted) {
       setUploadStep(UploadStep.upgrading)
-      const {
-        all_installed: isInstalled,
-        task_id: taskId,
-      } = await updateFromMarketPlace({
-        original_plugin_unique_identifier: originalPackageInfo.id,
-        new_plugin_unique_identifier: targetPackageInfo.id,
-      })
-      if (isInstalled) {
+      try {
+        const {
+          all_installed: isInstalled,
+          task_id: taskId,
+        } = await updateFromMarketPlace({
+          original_plugin_unique_identifier: originalPackageInfo.id,
+          new_plugin_unique_identifier: targetPackageInfo.id,
+        })
+
+        if (isInstalled) {
+          onSave()
+          return
+        }
+        setPluginTasksWithPolling()
+        await check({
+          taskId,
+          pluginUniqueIdentifier: targetPackageInfo.id,
+        })
         onSave()
-        return
       }
-      setPluginTasksWithPolling()
-      await check({
-        taskId,
-        pluginUniqueIdentifier: targetPackageInfo.id,
-      })
-      onSave()
+      catch (e) {
+        setUploadStep(UploadStep.notStarted)
+      }
+      return
     }
     if (uploadStep === UploadStep.installed) {
       onSave()
