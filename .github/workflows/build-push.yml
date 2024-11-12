@@ -45,7 +45,9 @@ jobs:
 
     steps:
       - name: print context var
-      - run: |
+        uses: actions/checkout@v4
+      - name: print
+        run: |
           echo "Commit ID: ${{ github.sha }}" 
       
       - name: Prepare
