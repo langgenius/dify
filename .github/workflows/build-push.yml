@@ -56,11 +56,11 @@ jobs:
           echo "IMAGENAME={\"kind\":\"deployments\",\"namespace\":\"dify\",\"name\":\"dify-api\",\"images\":{\"langgenius/dify-api\":\"langgenius/dify-api:$IMAGEHASH\"}}" >> $GITHUB_ENV
       - name: print three
         run: |
-          printf "name: ${{ env.IMAGENAME }}"
-          printf "CURLCOMMAND=curl -X PUT -H \"content-type: application/json\" -H \"Cookie: KuboardUsername=admin; KuboardAccessKey=pwmfkfbbrxr4.mesxici5nbnfamxkjfe43kn33shba8nj\" -d ${{ env.IMAGENAME }} \"https://plugin-kuboard.dify.dev/kuboard-api/cluster/dify-plugin-1/kind/CICDApi/admin/resource/updateImageTag\"" >> $GITHUB_ENV
+          echo "name: ${{ fromJSON(env.IMAGENAME) }}"
+          echo "CURLCOMMAND=curl -X PUT -H \"content-type: application/json\" -H \"Cookie: KuboardUsername=admin; KuboardAccessKey=pwmfkfbbrxr4.mesxici5nbnfamxkjfe43kn33shba8nj\" -d ${{ fromJSON(env.IMAGENAME) }} \"https://plugin-kuboard.dify.dev/kuboard-api/cluster/dify-plugin-1/kind/CICDApi/admin/resource/updateImageTag\"" >> $GITHUB_ENV
       - name: print four
         run: |
-          printf "cmd: ${{ env.CURLCOMMAND }}"
+          echo "cmd: ${{ fromJSON(env.CURLCOMMAND) }}"
       
       - name: Prepare
         run: |
