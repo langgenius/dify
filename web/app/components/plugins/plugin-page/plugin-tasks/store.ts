@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { PluginTask } from '../types'
+import type { PluginTask } from '@/app/components/plugins/types'
 import { fetchPluginTasks } from '@/service/plugins'
 
 type PluginTasksStore = {

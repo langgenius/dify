@@ -100,6 +100,7 @@ export type PluginDetail = {
   endpoints_active: number
   version: string
   latest_version: string
+  latest_unique_identifier: string
   source: PluginSource
   meta?: MetaData
 }

@@ -16,8 +16,8 @@ import InstallPluginDropdown from './install-plugin-dropdown'
 import { useUploader } from './use-uploader'
 import usePermission from './use-permission'
 import DebugInfo from './debug-info'
-import { usePluginTasksStore } from './store'
-import InstallInfo from './install-info'
+import { usePluginTasksStore } from './plugin-tasks/store'
+import PluginTasks from './plugin-tasks'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
@@ -102,8 +102,6 @@ const PluginPage = ({
   const options = usePluginPageContext(v => v.options)
   const [activeTab, setActiveTab] = usePluginPageContext(v => [v.activeTab, v.setActiveTab])
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
-  const [installed, total] = [2, 3] // Replace this with the actual progress
-  const progressPercentage = (installed / total) * 100
 
   const uploaderProps = useUploader({
     onFileChange: setCurrentFile,
@@ -142,7 +140,7 @@ const PluginPage = ({
             />
           </div>
           <div className='flex flex-shrink-0 items-center gap-1'>
-            <InstallInfo />
+            <PluginTasks />
             {canManagement && (
               <InstallPluginDropdown
                 onSwitchToMarketplaceTab={() => setActiveTab('discover')}

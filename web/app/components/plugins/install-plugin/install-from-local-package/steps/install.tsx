@@ -10,7 +10,7 @@ import { RiLoader2Line } from '@remixicon/react'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { useInstallPackageFromLocal } from '@/service/use-plugins'
 import checkTaskStatus from '../../base/check-task-status'
-import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/store'
+import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/plugin-tasks/store'
 
 const i18nPrefix = 'plugin.installModal'
 
