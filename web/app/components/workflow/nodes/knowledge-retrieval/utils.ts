@@ -199,7 +199,7 @@ export const getMultipleRetrievalConfig = (
       }
     }
 
-    if (reranking_mode === RerankingModeEnum.RerankingModel && !rerankModelIsValid) {
+    if (reranking_mode === RerankingModeEnum.RerankingModel && !rerankModelIsValid && shouldSetWeightDefaultValue) {
       result.reranking_mode = RerankingModeEnum.WeightedScore
       setDefaultWeights()
     }
