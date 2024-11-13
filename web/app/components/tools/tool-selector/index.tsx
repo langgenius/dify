@@ -9,12 +9,18 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import ToolTrigger from '@/app/components/tools/tool-selector/tool-trigger'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
-import Loading from '@/app/components/base/loading'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
+import ToolCredentialForm from '@/app/components/tools/tool-selector/tool-credentials-form'
+import Toast from '@/app/components/base/toast'
 
 import { useAppContext } from '@/context/app-context'
-import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllWorkflowTools,
+  useUpdateProviderCredentials,
+} from '@/service/use-tools'
 import { CollectionType } from '@/app/components/tools/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type {
@@ -28,7 +34,7 @@ type Props = {
     provider: string
     tool_name: string
   }
-  disabled: boolean
+  disabled?: boolean
   placement?: Placement
   offset?: OffsetOptions
   onSelect: (tool: {
@@ -72,18 +78,19 @@ const ToolSelector: FC<Props> = ({
       onShowChange(false)
   }
   const { isCurrentWorkspaceManager } = useAppContext()
-  const [authLoading, setAuthLoading] = useState(false)
+  const [isShowSettingAuth, setShowSettingAuth] = useState(false)
+  const handleCredentialSettingUpdate = () => {
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+    setShowSettingAuth(false)
+    onShowChange(false)
+  }
 
-  // const [isShowSettingAuth, setShowSettingAuth] = useState(false)
-
-  // const handleToolAuthSetting = (value: any) => {
-  //   const newModelConfig = produce(modelConfig, (draft) => {
-  //     const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === value?.collection?.id && item.tool_name === value?.tool_name)
-  //     if (tool)
-  //       (tool as AgentTool).notAuthor = false
-  //   })
-  //   setModelConfig(newModelConfig)
-  // }
+  const { mutate: updatePermission } = useUpdateProviderCredentials({
+    onSuccess: handleCredentialSettingUpdate,
+  })
 
   return (
     <>
@@ -125,10 +132,19 @@ const ToolSelector: FC<Props> = ({
               />
             </div>
             {/* authorization panel */}
-            {authLoading && (
-              <div className='px-4 py-3 flex items-center justify-center'><Loading type='app' /></div>
+            {isShowSettingAuth && currentProvider && (
+              <div className='px-4 pb-4 border-t border-divider-subtle'>
+                <ToolCredentialForm
+                  collection={currentProvider}
+                  onCancel={() => setShowSettingAuth(false)}
+                  onSaved={async value => updatePermission({
+                    providerName: currentProvider.name,
+                    credentials: value,
+                  })}
+                />
+              </div>
             )}
-            {!authLoading && currentProvider && currentProvider.type === CollectionType.builtIn && currentProvider.is_team_authorization && currentProvider.allow_delete && (
+            {!isShowSettingAuth && currentProvider && currentProvider.type === CollectionType.builtIn && currentProvider.is_team_authorization && currentProvider.allow_delete && (
               <div className='px-4 py-3 flex items-center border-t border-divider-subtle'>
                 <div className='grow mr-3 h-6 flex items-center system-sm-semibold text-text-secondary'>{t('tools.toolSelector.auth')}</div>
                 {isCurrentWorkspaceManager && (
@@ -143,12 +159,12 @@ const ToolSelector: FC<Props> = ({
                 )}
               </div>
             )}
-            {!authLoading && currentProvider && currentProvider.type === CollectionType.builtIn && !currentProvider.is_team_authorization && currentProvider.allow_delete && (
+            {!isShowSettingAuth && currentProvider && currentProvider.type === CollectionType.builtIn && !currentProvider.is_team_authorization && currentProvider.allow_delete && (
               <div className='px-4 py-3 flex items-center border-t border-divider-subtle'>
                 <Button
                   variant='primary'
                   className={cn('shrink-0 w-full')}
-                  onClick={() => {}}
+                  onClick={() => setShowSettingAuth(true)}
                   disabled={!isCurrentWorkspaceManager}
                 >
                   {t('tools.auth.unauthorized')}
