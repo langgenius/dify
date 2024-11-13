@@ -21,8 +21,9 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import cn from '@/utils/classnames'
+import { useMutationCheckDependenciesBeforeImportDSL } from '@/service/use-plugins'
 
-interface CreateFromDSLModalProps {
+type CreateFromDSLModalProps = {
   show: boolean
   onSuccess?: () => void
   onClose: () => void
@@ -43,6 +44,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [dslUrlValue, setDslUrlValue] = useState(dslUrl)
+  const { mutateAsync } = useMutationCheckDependenciesBeforeImportDSL()
 
   const readFile = (file: File) => {
     const reader = new FileReader()
@@ -78,11 +80,21 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       let app
 
       if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
+        const leakedData = await mutateAsync({ dslString: fileContent })
+        if (leakedData?.leaked.length) {
+          isCreatingRef.current = false
+          return
+        }
         app = await importApp({
           data: fileContent || '',
         })
       }
       if (currentTab === CreateFromDSLModalTab.FROM_URL) {
+        const leakedData = await mutateAsync({ url: dslUrlValue })
+        if (leakedData?.leaked.length) {
+          isCreatingRef.current = false
+          return
+        }
         app = await importAppFromUrl({
           url: dslUrlValue || '',
         })

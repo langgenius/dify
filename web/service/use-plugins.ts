@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react'
 import type {
   DebugInfo as DebugInfoTypes,
+  Dependency,
   InstallPackageResponse,
   InstalledPluginListResponse,
   Permissions,
@@ -16,6 +17,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+import { useStore as usePluginDependencyStore } from '@/app/components/workflow/plugin-dependency/store'
 
 const NAME_SPACE = 'plugins'
 
@@ -160,4 +162,34 @@ export const useMutationClearTaskPlugin = () => {
       return post<{ success: boolean }>(`/workspaces/current/plugin/tasks/${taskId}/delete/${pluginId}`)
     },
   })
+}
+
+export const useMutationCheckDependenciesBeforeImportDSL = () => {
+  const mutation = useMutation({
+    mutationFn: ({ dslString, url }: { dslString?: string, url?: string }) => {
+      if (url) {
+        return post<{ leaked: Dependency[] }>(
+          '/apps/import/url/dependencies/check',
+          {
+            body: {
+              url,
+            },
+          },
+        )
+      }
+      return post<{ leaked: Dependency[] }>(
+        '/apps/import/dependencies/check',
+        {
+          body: {
+            data: dslString,
+          },
+        })
+    },
+    onSuccess: (data) => {
+      const { setDependencies } = usePluginDependencyStore.getState()
+      setDependencies(data.leaked || [])
+    },
+  })
+
+  return mutation
 }

@@ -29,8 +29,9 @@ import { updateWorkflowDraftFromDSL } from '@/service/workflow'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import { useMutationCheckDependenciesBeforeImportDSL } from '@/service/use-plugins'
 
-interface UpdateDSLModalProps {
+type UpdateDSLModalProps = {
   onCancel: () => void
   onBackup: () => void
   onImport?: () => void
@@ -48,6 +49,7 @@ const UpdateDSLModal = ({
   const [fileContent, setFileContent] = useState<string>()
   const [loading, setLoading] = useState(false)
   const { eventEmitter } = useEventEmitterContextContext()
+  const { mutateAsync, mutate } = useMutationCheckDependenciesBeforeImportDSL()
 
   const readFile = (file: File) => {
     const reader = new FileReader()
@@ -75,6 +77,11 @@ const UpdateDSLModal = ({
       return
     try {
       if (appDetail && fileContent) {
+        const leakedData = await mutateAsync({ dslString: fileContent })
+        if (leakedData?.leaked.length) {
+          isCreatingRef.current = false
+          return
+        }
         setLoading(true)
         const {
           graph,
@@ -128,7 +135,7 @@ const UpdateDSLModal = ({
       notify({ type: 'error', message: t('workflow.common.importFailure') })
     }
     isCreatingRef.current = false
-  }, [currentFile, fileContent, onCancel, notify, t, eventEmitter, appDetail, onImport])
+  }, [currentFile, fileContent, onCancel, notify, t, eventEmitter, appDetail, onImport, mutateAsync])
 
   return (
     <Modal

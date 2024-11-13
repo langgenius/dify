@@ -305,3 +305,15 @@ export type UninstallPluginResponse = {
 export type PluginsFromMarketplaceResponse = {
   plugins: Plugin[]
 }
+
+export type Dependency = {
+  type: 'github' | 'marketplace' | 'package'
+  value: {
+    repo?: string
+    version?: string
+    package?: string
+    github_plugin_unique_identifier?: string
+    marketplace_plugin_unique_identifier?: string
+    plugin_unique_identifier?: string
+  }
+}
