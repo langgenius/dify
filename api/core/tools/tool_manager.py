@@ -136,8 +136,8 @@ class ToolManager:
         """
         get the tool runtime
 
-        :param provider_type: the type of the provider
-        :param provider_name: the name of the provider
+        :param provider_type: the type of  the provider
+        :param provider_name: the name of  the provider
         :param tool_name: the name of the tool
 
         :return: the tool
