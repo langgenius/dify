@@ -1,3 +1,5 @@
+from enum import Enum
+
 from pydantic import BaseModel, ConfigDict
 
 from configs import dify_config
@@ -20,8 +22,17 @@ class LimitationModel(BaseModel):
     limit: int = 0
 
 
+class LicenseStatus(str, Enum):
+    NONE = "none"
+    INACTIVE = "inactive"
+    ACTIVE = "active"
+    EXPIRING = "expiring"
+    EXPIRED = "expired"
+    LOST = "lost"
+
+
 class LicenseModel(BaseModel):
-    status: str = "none"
+    status: LicenseStatus = LicenseStatus.NONE
     expired_at: str = ""
 
 

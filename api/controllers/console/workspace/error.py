@@ -35,3 +35,9 @@ class AccountNotInitializedError(BaseHTTPException):
     error_code = "account_not_initialized"
     description = "The account has not been initialized yet. Please proceed with the initialization process first."
     code = 400
+
+
+class EnterpriseLicenseUnauthorized(BaseHTTPException):
+    error_code = "unauthorized"
+    description = "Your license is invalid. Please contact your administrator."
+    code = 401
