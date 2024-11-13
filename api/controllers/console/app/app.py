@@ -168,6 +168,22 @@ class AppImportFromUrlApi(Resource):
         return app, 201
 
 
+class AppImportFromUrlDependenciesCheckApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("url", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+
+        leaked_dependencies = AppDslService.check_dependencies_from_url(
+            tenant_id=current_user.current_tenant_id, url=args["url"], account=current_user
+        )
+
+        return jsonable_encoder({"leaked": leaked_dependencies}), 200
+
+
 class AppApi(Resource):
     @setup_required
     @login_required
@@ -391,6 +407,7 @@ api.add_resource(AppListApi, "/apps")
 api.add_resource(AppImportDependenciesCheckApi, "/apps/import/dependencies/check")
 api.add_resource(AppImportApi, "/apps/import")
 api.add_resource(AppImportFromUrlApi, "/apps/import/url")
+api.add_resource(AppImportFromUrlDependenciesCheckApi, "/apps/import/url/dependencies/check")
 api.add_resource(AppApi, "/apps/<uuid:app_id>")
 api.add_resource(AppCopyApi, "/apps/<uuid:app_id>/copy")
 api.add_resource(AppExportApi, "/apps/<uuid:app_id>/export")
