@@ -101,6 +101,8 @@ const translation = {
   noLoginMethodTip: '请联系系统管理员添加身份认证方式',
   licenseExpired: '许可证已过期',
   licenseExpiredTip: '您所在空间的 Dify Enterprise 许可证已过期，请联系管理员以继续使用 Dify。',
+  licenseLost: '认证服务器丢失',
+  licenseLostTip: '您所在空间的 Dify Enterprise 认证服务器已丢失，请联系管理员以继续使用 Dify。',
   licenseInactive: '许可证未激活',
   licenseInactiveTip: '您所在空间的 Dify Enterprise 许可证尚未激活，请联系管理员以继续使用 Dify。',
 }
