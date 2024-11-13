@@ -1,0 +1,46 @@
+identity:
+  name: whisper_transcription
+  author: AWS
+  label:
+    en_US: Audio Transcription
+    zh_Hans: 语音转文字
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool to transcribe audio to text using Whisper model
+    zh_Hans: 使用 Whisper 模型将语音转换为文字的工具
+  llm: A tool that transcribes audio content to text using Whisper model
+parameters:
+  - name: sagemaker_endpoint
+    type: string
+    required: true
+    label:
+      en_US: SageMaker endpoint for Whisper model
+      zh_Hans: Whisper模型的SageMaker端点
+    human_description:
+      en_US: SageMaker endpoint for Whisper model transcription
+      zh_Hans: Whisper模型转录服务的SageMaker端点
+    llm_description: SageMaker endpoint for Whisper model transcription
+    form: form
+  - name: audio_file
+    type: file
+    required: true
+    label:
+      en_US: Audio file
+      zh_Hans: 音频文件
+    human_description:
+      en_US: Audio file to be transcribed (supported formats: wav, mp3, flac)
+      zh_Hans: 需要转录的音频文件（支持格式：wav, mp3, flac）
+    llm_description: Audio file to be transcribed
+    form: form
+  - name: aws_region
+    type: string
+    required: false
+    label:
+      en_US: Region of SageMaker endpoint
+      zh_Hans: SageMaker端点所在的region
+    human_description:
+      en_US: Region of SageMaker endpoint
+      zh_Hans: SageMaker端点所在的region
+    llm_description: Region of SageMaker endpoint
+    form: form
