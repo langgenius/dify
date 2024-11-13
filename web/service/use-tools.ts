@@ -12,11 +12,22 @@ import {
 
 const NAME_SPACE = 'tools'
 
+const useAllBuiltInToolsKey = [NAME_SPACE, 'builtIn']
 export const useAllBuiltInTools = () => {
   return useQuery<ToolWithProvider[]>({
-    queryKey: [NAME_SPACE, 'builtIn'],
+    queryKey: useAllBuiltInToolsKey,
     queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/builtin'),
   })
+}
+
+export const useInvalidateAllBuiltInTools = () => {
+  const queryClient = useQueryClient()
+  return () => {
+    queryClient.invalidateQueries(
+      {
+        queryKey: useAllBuiltInToolsKey,
+      })
+  }
 }
 
 const useAllCustomToolsKey = [NAME_SPACE, 'customTools']
