@@ -11,8 +11,6 @@ import type { ToolDefaultValue } from '../types'
 import { ViewType } from '../view-type-select'
 import ActonItem from './action-item'
 import BlockIcon from '../../block-icon'
-
-import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 
 type Props = {
@@ -20,6 +18,8 @@ type Props = {
   payload: ToolWithProvider
   viewType: ViewType
   isShowLetterIndex: boolean
+  isFold: boolean
+  onFoldChange: (fold: boolean) => void
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
 
@@ -28,6 +28,8 @@ const Tool: FC<Props> = ({
   payload,
   viewType,
   isShowLetterIndex,
+  isFold,
+  onFoldChange,
   onSelect,
 }) => {
   const { t } = useTranslation()
@@ -35,10 +37,8 @@ const Tool: FC<Props> = ({
   const isFlatView = viewType === ViewType.flat
   const actions = payload.tools
   const hasAction = true // Now always support actions
-  const [isFold, {
-    toggle: toggleFold,
-  }] = useBoolean(false)
-  const FoldIcon = isFold ? RiArrowDownSLine : RiArrowRightSLine
+
+  const FoldIcon = isFold ? RiArrowRightSLine : RiArrowDownSLine
 
   const groupName = useMemo(() => {
     if (payload.type === CollectionType.builtIn)
@@ -63,7 +63,7 @@ const Tool: FC<Props> = ({
           className='flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-gray-50 cursor-pointer select-none'
           onClick={() => {
             if (hasAction)
-              toggleFold()
+              onFoldChange(!isFold)
 
             // Now always support actions
             // if (payload.parameters) {
@@ -101,7 +101,7 @@ const Tool: FC<Props> = ({
           </div>
         </div>
 
-        {hasAction && isFold && (
+        {hasAction && !isFold && (
           actions.map(action => (
             <ActonItem
               key={action.name}

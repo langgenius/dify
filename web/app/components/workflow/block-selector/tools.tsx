@@ -18,12 +18,14 @@ type ToolsProps = {
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   tools: ToolWithProvider[]
   viewType: ViewType
+  hasSearchText: boolean
 }
 const Blocks = ({
   showWorkflowEmpty,
   onSelect,
   tools,
   viewType,
+  hasSearchText,
 }: ToolsProps) => {
   const { t } = useTranslation()
   const language = useGetLanguage()
@@ -89,11 +91,13 @@ const Blocks = ({
           <ToolListFlatView
             payload={listViewToolData}
             isShowLetterIndex={isShowLetterIndex}
+            hasSearchText={hasSearchText}
             onSelect={onSelect}
           />
         ) : (
           <ToolListTreeView
             payload={treeViewToolsData}
+            hasSearchText={hasSearchText}
             onSelect={onSelect}
           />
         )

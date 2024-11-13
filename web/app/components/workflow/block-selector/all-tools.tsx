@@ -131,6 +131,7 @@ const AllTools = ({
           tools={tools}
           onSelect={onSelect}
           viewType={activeView}
+          hasSearchText={!!searchText}
         />
         {/* Plugins from marketplace */}
         <PluginList
