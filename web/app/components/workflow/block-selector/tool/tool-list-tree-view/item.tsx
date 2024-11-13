@@ -20,7 +20,7 @@ const Item: FC<Props> = ({
 }) => {
   return (
     <div>
-      <div className='flex items-start px-3 h-[22px] text-xs font-medium text-gray-500'>
+      <div className='flex items-center px-3 h-[22px] text-xs font-medium text-gray-500'>
         {groupName}
       </div>
       <div>
@@ -29,7 +29,7 @@ const Item: FC<Props> = ({
             key={tool.id}
             payload={tool}
             viewType={ViewType.tree}
-            isShowLetterIndex
+            isShowLetterIndex={false}
             onSelect={onSelect}
           />
         ))}
