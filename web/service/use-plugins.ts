@@ -18,6 +18,7 @@ import {
   useQueryClient,
 } from '@tanstack/react-query'
 import { useStore as usePluginDependencyStore } from '@/app/components/workflow/plugin-dependency/store'
+import { useInvalidateAllBuiltInTools } from './use-tools'
 
 const NAME_SPACE = 'plugins'
 
@@ -31,11 +32,13 @@ export const useInstalledPluginList = () => {
 
 export const useInvalidateInstalledPluginList = () => {
   const queryClient = useQueryClient()
+  const invalidateAllBuiltInTools = useInvalidateAllBuiltInTools()
   return () => {
     queryClient.invalidateQueries(
       {
         queryKey: useInstalledPluginListKey,
       })
+    invalidateAllBuiltInTools()
   }
 }
 
