@@ -146,7 +146,7 @@ jobs:
       - name: deploy pod in plugin env
         env:
           IMAGEHASH: ${{ github.sha }}
-          UPDATECMD: "curl -X PUT -H \"content-type: application/json\" -H \"Cookie: KuboardUsername=admin; KuboardAccessKey=pwmfkfbbrxr4.mesxici5nbnfamxkjfe43kn33shba8nj\" -d \"{\"kind\":\"deployments\",\"namespace\":\"dify\",\"name\":\"dify-api\",\"images\":{\"langgenius/dify-api\":\"langgenius/dify-api:yourNewVersion\"}}\" \"https://plugin-kuboard.dify.dev/kuboard-api/cluster/dify-plugin-1/kind/CICDApi/admin/resource/updateImageTag\""
+          UPDATECMD: "curl -X PUT -H \"content-type: application/json\" -H \"Cookie: KuboardUsername=admin; KuboardAccessKey=pwmfkfbbrxr4.mesxici5nbnfamxkjfe43kn33shba8nj\" -d '{\"kind\":\"deployments\",\"namespace\":\"dify\",\"name\":\"dify-api\",\"images\":{\"langgenius/dify-api\":\"langgenius/dify-api:yourNewVersion\"}}' \"https://plugin-kuboard.dify.dev/kuboard-api/cluster/dify-plugin-1/kind/CICDApi/admin/resource/updateImageTag\""
         run: |
           echo "Commit ID: $IMAGEHASH" 
           echo "CMD STR: $UPDATECMD"
