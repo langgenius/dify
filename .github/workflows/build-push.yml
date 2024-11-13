@@ -49,18 +49,9 @@ jobs:
       - name: print one
         run: |
           echo "Commit ID: ${{ github.sha }}" 
-          echo "IMAGEHASH=${{ github.sha }}" >> $GITHUB_ENV
-      - name: print two
-        run: |
-          echo "hash: ${{ env.IMAGEHASH }}"
-          echo "IMAGENAME={\"kind\":\"deployments\",\"namespace\":\"dify\",\"name\":\"dify-api\",\"images\":{\"langgenius/dify-api\":\"langgenius/dify-api:$IMAGEHASH\"}}" >> $GITHUB_ENV
-      - name: print three
-        run: |
-          printf '%s\n' ${{ toJson(env.IMAGENAME) }}
-          echo "CURLCOMMAND=curl -X PUT -H \"content-type: application/json\" -H \"Cookie: KuboardUsername=admin; KuboardAccessKey=pwmfkfbbrxr4.mesxici5nbnfamxkjfe43kn33shba8nj\" -d ${{ toJSON(env.IMAGENAME) }} \"https://plugin-kuboard.dify.dev/kuboard-api/cluster/dify-plugin-1/kind/CICDApi/admin/resource/updateImageTag\"" >> $GITHUB_ENV
-      - name: print four
-        run: |
-          printf '%s\n' ${{ toJSON(env.CURLCOMMAND) }}
+          echo "IMAGEHASH=${{ github.sha }}"
+          echo "UPDATECMD=curl -X PUT -H \"content-type: application/json\" -H \"Cookie: KuboardUsername=admin; KuboardAccessKey=pwmfkfbbrxr4.mesxici5nbnfamxkjfe43kn33shba8nj\" -d "{\"kind\":\"deployments\",\"namespace\":\"dify\",\"name\":\"dify-api\",\"images\":{\"langgenius/dify-api\":\"langgenius/dify-api:{0}\"}}" \"https://plugin-kuboard.dify.dev/kuboard-api/cluster/dify-plugin-1/kind/CICDApi/admin/resource/updateImageTag\""
+          echo ${{ format($UPDATECMD,$IMAGEHASH) }}
       
       - name: Prepare
         run: |
