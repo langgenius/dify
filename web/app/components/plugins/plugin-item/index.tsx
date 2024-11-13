@@ -42,6 +42,7 @@ const PluginItem: FC<Props> = ({
     source,
     tenant_id,
     installation_id,
+    plugin_unique_identifier,
     endpoints_active,
     meta,
     plugin_id,
@@ -73,7 +74,7 @@ const PluginItem: FC<Props> = ({
             <img
               className='w-full h-full'
               src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${icon}`}
-              alt={`plugin-${installation_id}-logo`}
+              alt={`plugin-${plugin_unique_identifier}-logo`}
             />
           </div>
           <div className="ml-3 w-0 grow">
@@ -86,6 +87,7 @@ const PluginItem: FC<Props> = ({
               <Description text={description[locale]} descriptionLineRows={1}></Description>
               <div onClick={e => e.stopPropagation()}>
                 <Action
+                  pluginUniqueIdentifier={plugin_unique_identifier}
                   installationId={installation_id}
                   author={author}
                   pluginName={name}

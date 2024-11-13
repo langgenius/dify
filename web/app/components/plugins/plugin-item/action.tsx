@@ -21,6 +21,7 @@ const i18nPrefix = 'plugin.action'
 type Props = {
   author: string
   installationId: string
+  pluginUniqueIdentifier: string
   pluginName: string
   version: string
   usedInApps: number
@@ -33,6 +34,7 @@ type Props = {
 const Action: FC<Props> = ({
   author,
   installationId,
+  pluginUniqueIdentifier,
   pluginName,
   version,
   isShowFetchNewVersion,
@@ -70,7 +72,7 @@ const Action: FC<Props> = ({
             type: PluginSource.github,
             github: {
               originalPackageInfo: {
-                id: installationId,
+                id: pluginUniqueIdentifier,
                 repo: meta!.repo,
                 version: meta!.version,
                 package: meta!.package,

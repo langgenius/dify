@@ -8,6 +8,7 @@ import type {
   PluginTasksResponse,
   TaskStatusResponse,
   UninstallPluginResponse,
+  updatePackageResponse,
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
 import type {
@@ -27,6 +28,19 @@ export const uploadPackageFile = async (file: File) => {
 export const updateFromMarketPlace = async (body: Record<string, string>) => {
   return post<InstallPackageResponse>('/workspaces/current/plugin/upgrade/marketplace', {
     body,
+  })
+}
+
+export const updateFromGitHub = async (repoUrl: string, selectedVersion: string, selectedPackage: string,
+  originalPlugin: string, newPlugin: string) => {
+  return post<updatePackageResponse>('/workspaces/current/plugin/upgrade/github', {
+    body: {
+      repo: repoUrl,
+      version: selectedVersion,
+      package: selectedPackage,
+      original_plugin_unique_identifier: originalPlugin,
+      new_plugin_unique_identifier: newPlugin,
+    },
   })
 }
 
