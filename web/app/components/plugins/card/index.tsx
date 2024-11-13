@@ -11,7 +11,6 @@ import Placeholder from './base/placeholder'
 import cn from '@/utils/classnames'
 import { useGetLanguage } from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
-import { useCategories } from '../hooks'
 
 export type Props = {
   className?: string
@@ -42,7 +41,6 @@ const Card = ({
 }: Props) => {
   const defaultLocale = useGetLanguage()
   const locale = localeFromProps ? getLanguage(localeFromProps) : defaultLocale
-  const { categoriesMap } = useCategories()
 
   const { type, name, org, label, brief, icon, verified } = payload
 
@@ -61,7 +59,7 @@ const Card = ({
 
   return (
     <div className={wrapClassName}>
-      {!hideCornerMark && <CornerMark text={categoriesMap[type].label} />}
+      {!hideCornerMark && <CornerMark text={type} />}
       {/* Header */}
       <div className="flex">
         <Icon src={icon} installed={installed} installFailed={installFailed} />
