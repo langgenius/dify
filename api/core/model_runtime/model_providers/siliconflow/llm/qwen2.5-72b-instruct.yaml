@@ -32,6 +32,8 @@ parameter_rules:
     required: false
   - name: frequency_penalty
     use_template: frequency_penalty
+  - name: response_format
+    use_template: response_format
 pricing:
   input: '4.13'
   output: '4.13'
