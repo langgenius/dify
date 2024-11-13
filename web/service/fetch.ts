@@ -32,11 +32,10 @@ export type ResponseError = {
 
 const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook => {
   return async (_request, _options, response) => {
-    if (!/^(2|3)\d{2}$/.test(String(response.status))) {
-      const bodyJson = response.json() as Promise<ResponseError>
-      switch (response.status) {
-        case 401:
-          return Promise.reject(response)
+    const clonedResponse = response.clone()
+    if (!/^(2|3)\d{2}$/.test(String(clonedResponse.status))) {
+      const bodyJson = clonedResponse.json() as Promise<ResponseError>
+      switch (clonedResponse.status) {
         case 403:
           bodyJson.then((data: ResponseError) => {
             if (!otherOptions.silent)
@@ -51,8 +50,8 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
             if (!otherOptions.silent)
               Toast.notify({ type: 'error', message: data.message })
           })
+          return Promise.reject(response)
       }
-      throw response
     }
   }
 }
@@ -98,7 +97,7 @@ const baseHooks: Hooks = {
   ],
 }
 
-const client = ky.create({
+const baseClient = ky.create({
   hooks: baseHooks,
   timeout: TIME_OUT,
 })
@@ -139,7 +138,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
 
   const fetchPathname = `${base}${url.startsWith('/') ? url : `/${url}`}`
 
-  const res = await client.extend({
+  const client = baseClient.extend({
     hooks: {
       ...baseHooks,
       beforeError: [
@@ -157,7 +156,10 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
         afterResponseErrorCode(otherOptions),
       ],
     },
-  })(fetchPathname, {
+  })
+
+  const res = await client(fetchPathname, {
+    ...init,
     credentials: isMarketplaceAPI
       ? 'omit'
       : (options.credentials || 'include'),
@@ -174,14 +176,11 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   const contentType = res.headers.get('content-type')
   if (
     contentType
-    && [ContentType.download, ContentType.audio].includes(contentType)
+      && [ContentType.download, ContentType.audio].includes(contentType)
   )
     return await res.blob() as T
 
   return await res.json() as T
 }
 
-export {
-  client,
-  base,
-}
+export { base }
