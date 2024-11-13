@@ -6,7 +6,7 @@ from flask import abort, request
 from flask_login import current_user
 
 from configs import dify_config
-from controllers.console.workspace.error import AccountNotInitializedError, EnterpriseLicenseUnauthorized
+from controllers.console.workspace.error import AccountNotInitializedError, UnauthorizedAndForceLogout
 from models.model import DifySetup
 from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
@@ -149,7 +149,7 @@ def enterprise_license_required(view):
     def decorated(*args, **kwargs):
         settings = FeatureService.get_system_features()
         if settings.license.status in [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST]:
-            raise EnterpriseLicenseUnauthorized()
+            raise UnauthorizedAndForceLogout("Your license is invalid. Please contact your administrator.")
 
         return view(*args, **kwargs)
 

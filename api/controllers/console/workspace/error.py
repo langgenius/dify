@@ -37,7 +37,7 @@ class AccountNotInitializedError(BaseHTTPException):
     code = 400
 
 
-class EnterpriseLicenseUnauthorized(BaseHTTPException):
-    error_code = "unauthorized"
-    description = "Your license is invalid. Please contact your administrator."
+class UnauthorizedAndForceLogout(BaseHTTPException):
+    error_code = "unauthorized_and_force_logout"
+    description = "Unauthorized and force logout."
     code = 401
