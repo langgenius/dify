@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import cn from '@/utils/classnames'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useGetLanguage } from '@/context/i18n'
@@ -18,8 +18,7 @@ type Props = {
   payload: ToolWithProvider
   viewType: ViewType
   isShowLetterIndex: boolean
-  isFold: boolean
-  onFoldChange: (fold: boolean) => void
+  hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
 
@@ -28,8 +27,7 @@ const Tool: FC<Props> = ({
   payload,
   viewType,
   isShowLetterIndex,
-  isFold,
-  onFoldChange,
+  hasSearchText,
   onSelect,
 }) => {
   const { t } = useTranslation()
@@ -37,6 +35,16 @@ const Tool: FC<Props> = ({
   const isFlatView = viewType === ViewType.flat
   const actions = payload.tools
   const hasAction = true // Now always support actions
+  const [isFold, setFold] = React.useState<boolean>(true)
+  useEffect(() => {
+    if (hasSearchText && isFold) {
+      setFold(false)
+      return
+    }
+    if (!hasSearchText && !isFold)
+      setFold(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasSearchText])
 
   const FoldIcon = isFold ? RiArrowRightSLine : RiArrowDownSLine
 
@@ -63,7 +71,7 @@ const Tool: FC<Props> = ({
           className='flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-gray-50 cursor-pointer select-none'
           onClick={() => {
             if (hasAction)
-              onFoldChange(!isFold)
+              setFold(!isFold)
 
             // Now always support actions
             // if (payload.parameters) {
