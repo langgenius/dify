@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import cn from '@/utils/classnames'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useGetLanguage } from '@/context/i18n'
@@ -11,8 +11,6 @@ import type { ToolDefaultValue } from '../types'
 import { ViewType } from '../view-type-select'
 import ActonItem from './action-item'
 import BlockIcon from '../../block-icon'
-
-import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 
 type Props = {
@@ -20,6 +18,7 @@ type Props = {
   payload: ToolWithProvider
   viewType: ViewType
   isShowLetterIndex: boolean
+  hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
 
@@ -28,6 +27,7 @@ const Tool: FC<Props> = ({
   payload,
   viewType,
   isShowLetterIndex,
+  hasSearchText,
   onSelect,
 }) => {
   const { t } = useTranslation()
@@ -35,10 +35,18 @@ const Tool: FC<Props> = ({
   const isFlatView = viewType === ViewType.flat
   const actions = payload.tools
   const hasAction = true // Now always support actions
-  const [isFold, {
-    toggle: toggleFold,
-  }] = useBoolean(false)
-  const FoldIcon = isFold ? RiArrowDownSLine : RiArrowRightSLine
+  const [isFold, setFold] = React.useState<boolean>(true)
+  useEffect(() => {
+    if (hasSearchText && isFold) {
+      setFold(false)
+      return
+    }
+    if (!hasSearchText && !isFold)
+      setFold(true)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasSearchText])
+
+  const FoldIcon = isFold ? RiArrowRightSLine : RiArrowDownSLine
 
   const groupName = useMemo(() => {
     if (payload.type === CollectionType.builtIn)
@@ -63,7 +71,7 @@ const Tool: FC<Props> = ({
           className='flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-gray-50 cursor-pointer select-none'
           onClick={() => {
             if (hasAction)
-              toggleFold()
+              setFold(!isFold)
 
             // Now always support actions
             // if (payload.parameters) {
@@ -101,7 +109,7 @@ const Tool: FC<Props> = ({
           </div>
         </div>
 
-        {hasAction && isFold && (
+        {hasAction && !isFold && (
           actions.map(action => (
             <ActonItem
               key={action.name}

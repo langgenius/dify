@@ -4,6 +4,7 @@ import type {
   Tool,
 } from '@/app/components/tools/types'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import { useInvalid } from './use-base'
 import {
   useMutation,
   useQuery,
@@ -12,11 +13,16 @@ import {
 
 const NAME_SPACE = 'tools'
 
+const useAllBuiltInToolsKey = [NAME_SPACE, 'builtIn']
 export const useAllBuiltInTools = () => {
   return useQuery<ToolWithProvider[]>({
-    queryKey: [NAME_SPACE, 'builtIn'],
+    queryKey: useAllBuiltInToolsKey,
     queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/builtin'),
   })
+}
+
+export const useInvalidateAllBuiltInTools = () => {
+  return useInvalid(useAllBuiltInToolsKey)
 }
 
 const useAllCustomToolsKey = [NAME_SPACE, 'customTools']
@@ -28,20 +34,19 @@ export const useAllCustomTools = () => {
 }
 
 export const useInvalidateAllCustomTools = () => {
-  const queryClient = useQueryClient()
-  return () => {
-    queryClient.invalidateQueries(
-      {
-        queryKey: useAllCustomToolsKey,
-      })
-  }
+  return useInvalid(useAllCustomToolsKey)
 }
 
+const useAllWorkflowToolsKey = [NAME_SPACE, 'workflowTools']
 export const useAllWorkflowTools = () => {
   return useQuery<ToolWithProvider[]>({
-    queryKey: [NAME_SPACE, 'workflowTools'],
+    queryKey: useAllWorkflowToolsKey,
     queryFn: () => get<ToolWithProvider[]>('/workspaces/current/tools/workflow'),
   })
+}
+
+export const useInvalidateAllWorkflowTools = () => {
+  return useInvalid(useAllWorkflowToolsKey)
 }
 
 export const useBuiltinProviderInfo = (providerName: string) => {

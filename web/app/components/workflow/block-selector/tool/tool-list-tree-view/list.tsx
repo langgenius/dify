@@ -10,11 +10,13 @@ import { CUSTOM_GROUP_NAME, WORKFLOW_GROUP_NAME } from '../../index-bar'
 
 type Props = {
   payload: Record<string, ToolWithProvider[]>
+  hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
 
 const ToolListTreeView: FC<Props> = ({
   payload,
+  hasSearchText,
   onSelect,
 }) => {
   const { t } = useTranslation()
@@ -37,6 +39,7 @@ const ToolListTreeView: FC<Props> = ({
           key={groupName}
           groupName={getI18nGroupName(groupName)}
           toolList={payload[groupName]}
+          hasSearchText={hasSearchText}
           onSelect={onSelect}
         />
       ))}

@@ -44,6 +44,7 @@ import { useProviderContext } from '@/context/provider-context'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Loading from '@/app/components/base/loading'
 import { useAppContext } from '@/context/app-context'
+import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
 
 type Props = {
   collection: Collection
@@ -65,7 +66,7 @@ const ProviderDetail = ({
   const isBuiltIn = collection.type === CollectionType.builtIn
   const isModel = collection.type === CollectionType.model
   const { isCurrentWorkspaceManager } = useAppContext()
-
+  const invalidateAllWorkflowTools = useInvalidateAllWorkflowTools()
   const [isDetailLoading, setIsDetailLoading] = useState(false)
 
   // built in provider
@@ -164,6 +165,7 @@ const ProviderDetail = ({
     workflow_tool_id: string
   }>) => {
     await saveWorkflowToolProvider(data)
+    invalidateAllWorkflowTools()
     onRefreshData()
     getWorkflowToolProvider()
     Toast.notify({

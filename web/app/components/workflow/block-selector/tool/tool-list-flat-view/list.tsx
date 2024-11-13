@@ -10,12 +10,14 @@ import { ViewType } from '../../view-type-select'
 type Props = {
   payload: ToolWithProvider[]
   isShowLetterIndex: boolean
+  hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
 
 const ToolViewFlatView: FC<Props> = ({
   payload,
   isShowLetterIndex,
+  hasSearchText,
   onSelect,
 }) => {
   return (
@@ -26,6 +28,7 @@ const ToolViewFlatView: FC<Props> = ({
           payload={tool}
           viewType={ViewType.flat}
           isShowLetterIndex={isShowLetterIndex}
+          hasSearchText={hasSearchText}
           onSelect={onSelect}
         />
       ))}

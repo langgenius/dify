@@ -10,12 +10,14 @@ import type { ToolDefaultValue } from '../../types'
 type Props = {
   groupName: string
   toolList: ToolWithProvider[]
+  hasSearchText: boolean
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
 
 const Item: FC<Props> = ({
   groupName,
   toolList,
+  hasSearchText,
   onSelect,
 }) => {
   return (
@@ -30,6 +32,7 @@ const Item: FC<Props> = ({
             payload={tool}
             viewType={ViewType.tree}
             isShowLetterIndex={false}
+            hasSearchText={hasSearchText}
             onSelect={onSelect}
           />
         ))}
