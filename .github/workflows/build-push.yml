@@ -140,14 +140,16 @@ jobs:
       - name: Inspect image
         run: |
           docker buildx imagetools inspect ${{ env[matrix.image_name_env] }}:${{ steps.meta.outputs.version }}
-      
+
       - name: print context var
         uses: actions/checkout@v4
+
       - name: deploy pod in plugin env
+        if: github.ref == 'refs/heads/dev/plugin-deploy'
         env:
           IMAGEHASH: ${{ github.sha }}
-          APICMD: "curl -X PUT -H \"content-type: application/json\" -H \"Cookie: KuboardUsername=admin; KuboardAccessKey=pwmfkfbbrxr4.mesxici5nbnfamxkjfe43kn33shba8nj\" -d '{\"kind\":\"deployments\",\"namespace\":\"dify\",\"name\":\"dify-api\",\"images\":{\"langgenius/dify-api\":\"langgenius/dify-api:yourNewVersion\"}}' \"https://plugin-kuboard.dify.dev/kuboard-api/cluster/dify-plugin-1/kind/CICDApi/admin/resource/updateImageTag\""
-          WEBCMD: "curl -X PUT -H \"content-type: application/json\" -H \"Cookie: KuboardUsername=admin; KuboardAccessKey=pwmfkfbbrxr4.mesxici5nbnfamxkjfe43kn33shba8nj\" -d '{\"kind\":\"deployments\",\"namespace\":\"dify\",\"name\":\"dify-web\",\"images\":{\"langgenius/dify-web\":\"langgenius/dify-web:yourNewVersion\"}}' \"https://plugin-kuboard.dify.dev/kuboard-api/cluster/dify-plugin-1/kind/CICDApi/admin/resource/updateImageTag\""
+          APICMD: "${{ secrets.PLUGIN_CD_API_CURL }}"
+          WEBCMD: "${{ secrets.PLUGIN_CD_WEB_CURL }}"
         run: |
           echo "Commit ID: $IMAGEHASH"
           echo "Commit ID: $GITHUB_SHA"
