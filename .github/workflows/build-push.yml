@@ -151,4 +151,4 @@ jobs:
           echo "Commit ID: $IMAGEHASH" 
           echo "CMD STR: $UPDATECMD"
           echo "RUNCMD STR: ${UPDATECMD/yourNewVersion/$IMAGEHASH}"
-          "${UPDATECMD/yourNewVersion/$IMAGEHASH}"
+          bash -c "${UPDATECMD/yourNewVersion/$IMAGEHASH}"
