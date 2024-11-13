@@ -9,14 +9,19 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import ToolTrigger from '@/app/components/tools/tool-selector/tool-trigger'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
+import Loading from '@/app/components/base/loading'
+import Button from '@/app/components/base/button'
+import Indicator from '@/app/components/header/indicator'
 
+import { useAppContext } from '@/context/app-context'
 import { useAllBuiltInTools, useAllCustomTools, useAllWorkflowTools } from '@/service/use-tools'
-// import AddToolModal from '@/app/components/tools/add-tool-modal'
+import { CollectionType } from '@/app/components/tools/types'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type {
   OffsetOptions,
   Placement,
 } from '@floating-ui/react'
+import cn from '@/utils/classnames'
 
 type Props = {
   value?: {
@@ -36,7 +41,7 @@ const ToolSelector: FC<Props> = ({
   value,
   disabled,
   placement = 'bottom',
-  offset = 0,
+  offset = 4,
   onSelect,
 }) => {
   const { t } = useTranslation()
@@ -45,6 +50,7 @@ const ToolSelector: FC<Props> = ({
     if (disabled) return
     onShowChange(true)
   }
+
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
@@ -55,24 +61,29 @@ const ToolSelector: FC<Props> = ({
     })
   }, [value, buildInTools, customTools, workflowTools])
   const [isShowChooseTool, setIsShowChooseTool] = useState(false)
-  const [isShowSettingAuth, setShowSettingAuth] = useState(false)
-
-  const handleToolAuthSetting = (value: any) => {
-    // const newModelConfig = produce(modelConfig, (draft) => {
-    //   const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === value?.collection?.id && item.tool_name === value?.tool_name)
-    //   if (tool)
-    //     (tool as AgentTool).notAuthor = false
-    // })
-    // setModelConfig(newModelConfig)
-  }
-
   const handleSelectTool = (tool: ToolDefaultValue) => {
     const toolValue = {
       provider: tool.provider_id,
       tool_name: tool.tool_name,
     }
     onSelect(toolValue)
+    setIsShowChooseTool(false)
+    if (tool.provider_type === CollectionType.builtIn && tool.is_team_authorization)
+      onShowChange(false)
   }
+  const { isCurrentWorkspaceManager } = useAppContext()
+  const [authLoading, setAuthLoading] = useState(false)
+
+  // const [isShowSettingAuth, setShowSettingAuth] = useState(false)
+
+  // const handleToolAuthSetting = (value: any) => {
+  //   const newModelConfig = produce(modelConfig, (draft) => {
+  //     const tool = (draft.agentConfig.tools).find((item: any) => item.provider_id === value?.collection?.id && item.tool_name === value?.tool_name)
+  //     if (tool)
+  //       (tool as AgentTool).notAuthor = false
+  //   })
+  //   setModelConfig(newModelConfig)
+  // }
 
   return (
     <>
@@ -86,15 +97,26 @@ const ToolSelector: FC<Props> = ({
           className='w-full'
           onClick={handleTriggerClick}
         >
-          <ToolTrigger open={isShow} provider={currentProvider} />
+          <ToolTrigger
+            open={isShow}
+            value={value}
+            provider={currentProvider}
+          />
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1000]'>
           <div className="relative w-[389px] min-h-20 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
             <div className='px-4 py-3 flex flex-col gap-1'>
-              <div className='h-6 flex items-center system-sm-regular text-text-secondary'>Tool</div>
+              <div className='h-6 flex items-center system-sm-semibold text-text-secondary'>{t('tools.toolSelector.label')}</div>
               <ToolPicker
                 placement='bottom'
-                trigger={<ToolTrigger open={isShowChooseTool} provider={currentProvider} />}
+                offset={offset}
+                trigger={
+                  <ToolTrigger
+                    open={isShowChooseTool}
+                    value={value}
+                    provider={currentProvider}
+                  />
+                }
                 isShow={isShowChooseTool}
                 onShowChange={setIsShowChooseTool}
                 disabled={false}
@@ -102,6 +124,37 @@ const ToolSelector: FC<Props> = ({
                 onSelect={handleSelectTool}
               />
             </div>
+            {/* authorization panel */}
+            {authLoading && (
+              <div className='px-4 py-3 flex items-center justify-center'><Loading type='app' /></div>
+            )}
+            {!authLoading && currentProvider && currentProvider.type === CollectionType.builtIn && currentProvider.is_team_authorization && currentProvider.allow_delete && (
+              <div className='px-4 py-3 flex items-center border-t border-divider-subtle'>
+                <div className='grow mr-3 h-6 flex items-center system-sm-semibold text-text-secondary'>{t('tools.toolSelector.auth')}</div>
+                {isCurrentWorkspaceManager && (
+                  <Button
+                    variant='secondary'
+                    size='small'
+                    onClick={() => {}}
+                  >
+                    <Indicator className='mr-2' color={'green'} />
+                    {t('tools.auth.authorized')}
+                  </Button>
+                )}
+              </div>
+            )}
+            {!authLoading && currentProvider && currentProvider.type === CollectionType.builtIn && !currentProvider.is_team_authorization && currentProvider.allow_delete && (
+              <div className='px-4 py-3 flex items-center border-t border-divider-subtle'>
+                <Button
+                  variant='primary'
+                  className={cn('shrink-0 w-full')}
+                  onClick={() => {}}
+                  disabled={!isCurrentWorkspaceManager}
+                >
+                  {t('tools.auth.unauthorized')}
+                </Button>
+              </div>
+            )}
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>

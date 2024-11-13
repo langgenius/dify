@@ -40,7 +40,10 @@ const EndpointModal: FC<Props> = ({
     onSaved(tempCredential)
   }
 
-  const [mockTool, setTool] = useState<any>()
+  const [mockTool, setTool] = useState<any>({
+    provider: 'langgenius/google/google',
+    tool_name: 'google_search',
+  })
 
   return (
     <Drawer

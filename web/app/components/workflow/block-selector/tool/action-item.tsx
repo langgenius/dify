@@ -12,7 +12,7 @@ import BlockIcon from '../../block-icon'
 type Props = {
   provider: ToolWithProvider
   payload: Tool
-  onSelect: (type: BlockEnum, tool?: ToolDefaultValue & { is_team_authorization: boolean }) => void
+  onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
 }
 
 const ToolItem: FC<Props> = ({

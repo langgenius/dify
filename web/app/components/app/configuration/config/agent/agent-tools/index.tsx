@@ -92,7 +92,7 @@ const AgentTools: FC = () => {
         tool_name: tool.tool_name,
         tool_label: tool.tool_label,
         tool_parameters: tool.params,
-        notAuthor: !(tool as ToolDefaultValue & { is_team_authorization: boolean }).is_team_authorization,
+        notAuthor: !tool.is_team_authorization,
         enabled: true,
       })
     })

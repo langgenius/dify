@@ -114,7 +114,7 @@ const Form: FC<FormProps> = ({
       const disabled = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-regular text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {
               required && (
@@ -155,7 +155,7 @@ const Form: FC<FormProps> = ({
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-regular text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {
               required && (
@@ -211,7 +211,7 @@ const Form: FC<FormProps> = ({
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-regular text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
 
             {
@@ -254,7 +254,7 @@ const Form: FC<FormProps> = ({
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className='flex items-center justify-between py-2 system-sm-regular text-text-secondary'>
+          <div className='flex items-center justify-between py-2 system-sm-semibold text-text-secondary'>
             <div className='flex items-center space-x-2'>
               <span className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-regular text-text-secondary')}>{label[language] || label.en_US}</span>
               {
@@ -287,7 +287,7 @@ const Form: FC<FormProps> = ({
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-regular text-text-secondary')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
             {label[language] || label.en_US}
             {
               required && (
