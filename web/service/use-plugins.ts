@@ -120,7 +120,7 @@ export const useMutationPluginsFromMarketplace = () => {
 
 const usePluginTaskListKey = [NAME_SPACE, 'pluginTaskList']
 export const usePluginTaskList = () => {
-  const [enabled, setEnabled] = useState(false)
+  const [enabled, setEnabled] = useState(true)
   const {
     data,
     isFetched,
@@ -137,7 +137,7 @@ export const usePluginTaskList = () => {
 
       return currentData
     },
-    refetchInterval: 5000,
+    // refetchInterval: 5000,
     enabled,
   })
   const handleRefetch = useCallback(() => {
@@ -157,7 +157,7 @@ export const usePluginTaskList = () => {
 export const useMutationClearTaskPlugin = () => {
   return useMutation({
     mutationFn: ({ taskId, pluginId }: { taskId: string; pluginId: string }) => {
-      return post<{ success: boolean }>(`/workspaces/current/plugin/task/${taskId}/delete/${pluginId}`)
+      return post<{ success: boolean }>(`/workspaces/current/plugin/tasks/${taskId}/delete/${pluginId}`)
     },
   })
 }
