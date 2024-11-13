@@ -41,6 +41,7 @@ export type MarketplaceContextValue = {
   setMarketplaceCollectionsFromClient: (collections: MarketplaceCollection[]) => void
   marketplaceCollectionPluginsMapFromClient?: Record<string, Plugin[]>
   setMarketplaceCollectionPluginsMapFromClient: (map: Record<string, Plugin[]>) => void
+  isLoading: boolean
 }
 
 export const MarketplaceContext = createContext<MarketplaceContextValue>({
@@ -60,6 +61,7 @@ export const MarketplaceContext = createContext<MarketplaceContextValue>({
   setMarketplaceCollectionsFromClient: () => {},
   marketplaceCollectionPluginsMapFromClient: {},
   setMarketplaceCollectionPluginsMapFromClient: () => {},
+  isLoading: false,
 })
 
 type MarketplaceContextProviderProps = {
@@ -88,12 +90,14 @@ export const MarketplaceContextProvider = ({
     marketplaceCollectionPluginsMap: marketplaceCollectionPluginsMapFromClient,
     setMarketplaceCollectionPluginsMap: setMarketplaceCollectionPluginsMapFromClient,
     queryMarketplaceCollectionsAndPlugins,
+    isLoading,
   } = useMarketplaceCollectionsAndPlugins()
   const {
     plugins,
     resetPlugins,
     queryPlugins,
     queryPluginsWithDebounced,
+    isLoading: isPluginsLoading,
   } = useMarketplacePlugins()
 
   const handleSearchPluginTextChange = useCallback((text: string) => {
@@ -194,6 +198,7 @@ export const MarketplaceContextProvider = ({
         setMarketplaceCollectionsFromClient,
         marketplaceCollectionPluginsMapFromClient,
         setMarketplaceCollectionPluginsMapFromClient,
+        isLoading: isLoading || isPluginsLoading,
       }}
     >
       {children}

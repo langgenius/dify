@@ -5,6 +5,7 @@ import {
   useMarketplaceCollectionsAndPlugins,
   useMarketplacePlugins,
 } from '@/app/components/plugins/marketplace/hooks'
+import { PluginType } from '@/app/components/plugins/types'
 
 export const useMarketplace = (searchPluginText: string, filterPluginTags: string[]) => {
   const {
@@ -25,18 +26,20 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
     if (searchPluginText || filterPluginTags.length) {
       if (searchPluginText) {
         queryPluginsWithDebounced({
+          category: PluginType.tool,
           query: searchPluginText,
           tags: filterPluginTags,
         })
         return
       }
       queryPlugins({
+        category: PluginType.tool,
         query: searchPluginText,
         tags: filterPluginTags,
       })
     }
     else {
-      queryMarketplaceCollectionsAndPlugins()
+      queryMarketplaceCollectionsAndPlugins({ category: PluginType.tool })
       resetPlugins()
     }
   }, [searchPluginText, filterPluginTags, queryPlugins, queryMarketplaceCollectionsAndPlugins, queryPluginsWithDebounced, resetPlugins])
