@@ -149,7 +149,8 @@ jobs:
           APICMD: "curl -X PUT -H \"content-type: application/json\" -H \"Cookie: KuboardUsername=admin; KuboardAccessKey=pwmfkfbbrxr4.mesxici5nbnfamxkjfe43kn33shba8nj\" -d '{\"kind\":\"deployments\",\"namespace\":\"dify\",\"name\":\"dify-api\",\"images\":{\"langgenius/dify-api\":\"langgenius/dify-api:yourNewVersion\"}}' \"https://plugin-kuboard.dify.dev/kuboard-api/cluster/dify-plugin-1/kind/CICDApi/admin/resource/updateImageTag\""
           WEBCMD: "curl -X PUT -H \"content-type: application/json\" -H \"Cookie: KuboardUsername=admin; KuboardAccessKey=pwmfkfbbrxr4.mesxici5nbnfamxkjfe43kn33shba8nj\" -d '{\"kind\":\"deployments\",\"namespace\":\"dify\",\"name\":\"dify-web\",\"images\":{\"langgenius/dify-web\":\"langgenius/dify-web:yourNewVersion\"}}' \"https://plugin-kuboard.dify.dev/kuboard-api/cluster/dify-plugin-1/kind/CICDApi/admin/resource/updateImageTag\""
         run: |
-          echo "Commit ID: $IMAGEHASH" 
+          echo "Commit ID: $IMAGEHASH"
+          echo "Commit ID: $GITHUB_SHA"
           echo "APICMD STR: ${APICMD/yourNewVersion/$IMAGEHASH}"
           echo "WEBCMD STR: ${WEBCMD/yourNewVersion/$IMAGEHASH}"
           bash -c "${APICMD/yourNewVersion/$IMAGEHASH}"
