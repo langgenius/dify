@@ -52,7 +52,7 @@ jobs:
           UPDATECMD: "UPDATECMD=curl -X PUT -H \"content-type: application/json\" -H \"Cookie: KuboardUsername=admin; KuboardAccessKey=pwmfkfbbrxr4.mesxici5nbnfamxkjfe43kn33shba8nj\" -d {\"kind\":\"deployments\",\"namespace\":\"dify\",\"name\":\"dify-api\",\"images\":{\"langgenius/dify-api\":\"langgenius/dify-api:{0}\"}} \"https://plugin-kuboard.dify.dev/kuboard-api/cluster/dify-plugin-1/kind/CICDApi/admin/resource/updateImageTag\""
         run: |
           echo "Commit ID: $IMAGEHASH" 
-          echo ${{ format(${UPDATECMD},${IMAGEHASH}) }}
+          echo ${{ format($UPDATECMD,$IMAGEHASH) }}
       
       - name: Prepare
         run: |
