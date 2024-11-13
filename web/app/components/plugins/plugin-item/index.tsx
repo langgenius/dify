@@ -48,7 +48,6 @@ const PluginItem: FC<Props> = ({
     endpoints_active,
     meta,
     plugin_id,
-    version,
   } = plugin
   const { category, author, name, label, description, icon, verified } = plugin.declaration
 
@@ -93,7 +92,6 @@ const PluginItem: FC<Props> = ({
                   installationId={installation_id}
                   author={author}
                   pluginName={name}
-                  version={version}
                   usedInApps={5}
                   isShowFetchNewVersion={source === PluginSource.github}
                   isShowInfo={source === PluginSource.github}
