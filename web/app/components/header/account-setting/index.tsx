@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   RiBrain2Fill,
   RiBrain2Line,
+  RiCloseLine,
   RiColorFilterFill,
   RiColorFilterLine,
   RiDatabase2Fill,
@@ -16,6 +17,7 @@ import {
   RiPuzzle2Line,
   RiTranslate2,
 } from '@remixicon/react'
+import Button from '../../base/button'
 import MembersPage from './members-page'
 import LanguagePage from './language-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
@@ -178,34 +180,47 @@ export default function AccountSetting({
             }
           </div>
         </div>
-        <div ref={scrollRef} className='relative w-[824px] pb-4 bg-components-panel-bg overflow-y-auto'>
-          <div className={cn('sticky top-0 mx-8 pt-[27px] pb-2 mb-[18px] flex items-center bg-components-panel-bg z-20', scrolled && 'border-b')}>
-            <div className='shrink-0 text-text-primary title-2xl-semi-bold'>{activeItem?.name}</div>
-            {
-              activeItem?.description && (
-                <div className='shrink-0 ml-2 text-xs text-gray-600'>{activeItem?.description}</div>
-              )
-            }
-            {activeItem?.key === 'provider' && (
-              <div className='grow flex justify-end'>
-                <Input
-                  showLeftIcon
-                  wrapperClassName='!w-[200px]'
-                  className='!h-8 !text-[13px]'
-                  onChange={e => setSearchValue(e.target.value)}
-                  value={searchValue}
-                />
-              </div>
-            )}
+        <div className='relative flex w-[824px]'>
+          <div className='absolute top-6 -right-11 flex flex-col items-center z-[9999]'>
+            <Button
+              variant='tertiary'
+              size='large'
+              className='px-2'
+              onClick={onCancel}
+            >
+              <RiCloseLine className='w-5 h-5' />
+            </Button>
+            <div className='mt-1 text-text-tertiary system-2xs-medium-uppercase'>ESC</div>
           </div>
-          <div className='px-4 sm:px-8 pt-2'>
-            {activeMenu === 'provider' && <ModelProviderPage searchText={searchValue} />}
-            {activeMenu === 'members' && <MembersPage />}
-            {activeMenu === 'billing' && <BillingPage />}
-            {activeMenu === 'data-source' && <DataSourcePage />}
-            {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
-            {activeMenu === 'custom' && <CustomPage />}
-            {activeMenu === 'language' && <LanguagePage />}
+          <div ref={scrollRef} className='w-full pb-4 bg-components-panel-bg overflow-y-auto'>
+            <div className={cn('sticky top-0 mx-8 pt-[27px] pb-2 mb-[18px] flex items-center bg-components-panel-bg z-20', scrolled && 'border-b')}>
+              <div className='shrink-0 text-text-primary title-2xl-semi-bold'>{activeItem?.name}</div>
+              {
+                activeItem?.description && (
+                  <div className='shrink-0 ml-2 text-xs text-gray-600'>{activeItem?.description}</div>
+                )
+              }
+              {activeItem?.key === 'provider' && (
+                <div className='grow flex justify-end'>
+                  <Input
+                    showLeftIcon
+                    wrapperClassName='!w-[200px]'
+                    className='!h-8 !text-[13px]'
+                    onChange={e => setSearchValue(e.target.value)}
+                    value={searchValue}
+                  />
+                </div>
+              )}
+            </div>
+            <div className='px-4 sm:px-8 pt-2'>
+              {activeMenu === 'provider' && <ModelProviderPage searchText={searchValue} />}
+              {activeMenu === 'members' && <MembersPage />}
+              {activeMenu === 'billing' && <BillingPage />}
+              {activeMenu === 'data-source' && <DataSourcePage />}
+              {activeMenu === 'api-based-extension' && <ApiBasedExtensionPage />}
+              {activeMenu === 'custom' && <CustomPage />}
+              {activeMenu === 'language' && <LanguagePage />}
+            </div>
           </div>
         </div>
       </div>

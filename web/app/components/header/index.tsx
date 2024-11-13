@@ -21,6 +21,7 @@ import WorkplaceSelector from '@/app/components/header/account-dropdown/workplac
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
+import { useTranslation } from 'react-i18next'
 
 const navClassName = `
   flex items-center relative mr-0 sm:mr-3 px-3 h-8 rounded-xl
@@ -30,6 +31,7 @@ const navClassName = `
 
 const Header = () => {
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
+  const { t } = useTranslation()
 
   const selectedSegment = useSelectedLayoutSegment()
   const media = useBreakpoints()
@@ -74,7 +76,7 @@ const Header = () => {
                   <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
                   <div className='system-xs-medium'>
                     <span className='p-1'>
-                      Upgrade
+                      {t('billing.upgradeBtn.encourage')}
                     </span>
                   </div>
                 </PremiumBadge>
@@ -96,7 +98,7 @@ const Header = () => {
                 <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
                 <div className='system-xs-medium'>
                   <span className='p-1'>
-                    Upgrade
+                    {t('billing.upgradeBtn.encourage')}
                   </span>
                 </div>
               </PremiumBadge>

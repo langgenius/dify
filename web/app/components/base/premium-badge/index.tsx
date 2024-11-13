@@ -53,7 +53,7 @@ const PremiumBadge: React.FC<PremiumBadgeProps> = ({
     <div
       className={classNames(
         PremiumBadgeVariants({ size, color, allowHover, className }),
-        'relative',
+        'relative text-nowrap',
       )}
       style={styleCss}
       {...props}
