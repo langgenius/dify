@@ -1,0 +1,12 @@
+[build]
+builder = "nixpacks"
+buildCommand = "cd api && pip install -r requirements.txt"
+
+[deploy]
+startCommand = "cd api && python app.py"
+healthcheckPath = "/"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+
+[phases.setup]
+nixPkgs = ["python310"]
