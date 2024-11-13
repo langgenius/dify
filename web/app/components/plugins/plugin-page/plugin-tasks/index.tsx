@@ -84,9 +84,6 @@ const PluginTasks = () => {
                   isInstalling && (
                     <ProgressCircle
                       percentage={runningPlugins.length / totalPluginsLength * 100}
-                      circleFillColor='fill-components-progress-brand-bg'
-                      sectorFillColor='fill-components-progress-error-bg'
-                      circleStrokeColor='stroke-components-progress-error-bg'
                     />
                   )
                 }
@@ -95,8 +92,8 @@ const PluginTasks = () => {
                     <ProgressCircle
                       percentage={runningPlugins.length / totalPluginsLength * 100}
                       circleFillColor='fill-components-progress-brand-bg'
-                      sectorFillColor='fill-components-progress-error-bg'
-                      circleStrokeColor='stroke-components-progress-error-bg'
+                      sectorFillColor='fill-components-progress-error-border'
+                      circleStrokeColor='stroke-components-progress-error-border'
                     />
                   )
                 }
@@ -135,7 +132,7 @@ const PluginTasks = () => {
                   <Button
                     size='small'
                     variant='ghost-accent'
-                    onClick={() => handleClearErrorPlugin(errorPlugin.taskId, errorPlugin.plugin_id)}
+                    onClick={() => handleClearErrorPlugin(errorPlugin.taskId, errorPlugin.plugin_unique_identifier)}
                   >
                     {t('common.operation.clear')}
                   </Button>
