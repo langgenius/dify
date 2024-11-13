@@ -219,7 +219,7 @@ def _is_file_valid_with_config(*, file: File, config: FileUploadConfig) -> bool:
         return False
 
     if config.allowed_extensions:
-        allowed_extensions = [f".{extension}" for extension in config.allowed_extensions]
+        allowed_extensions = [f".{extension.lower()}" for extension in config.allowed_extensions]
         if file.extension not in allowed_extensions:
             return False
 
