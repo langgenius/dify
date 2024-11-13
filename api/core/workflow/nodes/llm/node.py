@@ -204,7 +204,7 @@ class LLMNode(BaseNode[LLMNodeData]):
         node_data_model: ModelConfig,
         model_instance: ModelInstance,
         prompt_messages: list[PromptMessage],
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
     ) -> Generator[NodeEvent, None, None]:
         db.session.close()
 
