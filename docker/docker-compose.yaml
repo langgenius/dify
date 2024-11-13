@@ -4,6 +4,10 @@ x-shared-env: &shared-api-worker-env
   LOG_FILE: ${LOG_FILE:-}
   LOG_FILE_MAX_SIZE: ${LOG_FILE_MAX_SIZE:-20}
   LOG_FILE_BACKUP_COUNT: ${LOG_FILE_BACKUP_COUNT:-5}
+  # Log dateformat
+  LOG_DATEFORMAT: ${LOG_DATEFORMAT:-%Y-%m-%d %H:%M:%S}
+  # Log Timezone
+  LOG_TZ: ${LOG_TZ:-UTC}
   DEBUG: ${DEBUG:-false}
   FLASK_DEBUG: ${FLASK_DEBUG:-false}
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
@@ -214,6 +218,7 @@ x-shared-env: &shared-api-worker-env
   PROMPT_GENERATION_MAX_TOKENS: ${PROMPT_GENERATION_MAX_TOKENS:-512}
   CODE_GENERATION_MAX_TOKENS: ${CODE_GENERATION_MAX_TOKENS:-1024}
   MULTIMODAL_SEND_IMAGE_FORMAT: ${MULTIMODAL_SEND_IMAGE_FORMAT:-base64}
+  MULTIMODAL_SEND_VIDEO_FORMAT: ${MULTIMODAL_SEND_VIDEO_FORMAT:-base64}
   UPLOAD_IMAGE_FILE_SIZE_LIMIT: ${UPLOAD_IMAGE_FILE_SIZE_LIMIT:-10}
   UPLOAD_VIDEO_FILE_SIZE_LIMIT: ${UPLOAD_VIDEO_FILE_SIZE_LIMIT:-100}
   UPLOAD_AUDIO_FILE_SIZE_LIMIT: ${UPLOAD_AUDIO_FILE_SIZE_LIMIT:-50}
@@ -266,14 +271,16 @@ x-shared-env: &shared-api-worker-env
   OCEANBASE_VECTOR_HOST: ${OCEANBASE_VECTOR_HOST:-http://oceanbase-vector}
   OCEANBASE_VECTOR_PORT: ${OCEANBASE_VECTOR_PORT:-2881}
   OCEANBASE_VECTOR_USER: ${OCEANBASE_VECTOR_USER:-root@test}
-  OCEANBASE_VECTOR_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-""}
+  OCEANBASE_VECTOR_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
   OCEANBASE_VECTOR_DATABASE: ${OCEANBASE_VECTOR_DATABASE:-test}
+  OCEANBASE_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
   OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
+  CREATE_TIDB_SERVICE_JOB_ENABLED: ${CREATE_TIDB_SERVICE_JOB_ENABLED:-false}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.11.0
+    image: langgenius/dify-api:0.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -293,7 +300,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.11.0
+    image: langgenius/dify-api:0.11.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -312,7 +319,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.11.0
+    image: langgenius/dify-web:0.11.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -597,16 +604,21 @@ services:
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
 
   # OceanBase vector database
-  oceanbase-vector:
+  oceanbase:
     image: quay.io/oceanbase/oceanbase-ce:4.3.3.0-100000142024101215
     profiles:
-      - oceanbase-vector
+      - oceanbase
     restart: always
     volumes:
       - ./volumes/oceanbase/data:/root/ob
       - ./volumes/oceanbase/conf:/root/.obd/cluster
+      - ./volumes/oceanbase/init.d:/root/boot/init.d
     environment:
       OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
+      OB_SYS_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
+      OB_SERVER_IP: '127.0.0.1'
 
   # Oracle vector database
   oracle:

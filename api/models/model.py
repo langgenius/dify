@@ -13,7 +13,7 @@ from sqlalchemy import Float, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
-from core.file import FILE_MODEL_IDENTITY, File, FileExtraConfig, FileTransferMethod, FileType
+from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
 from extensions.ext_database import db
@@ -949,9 +949,6 @@ class Message(db.Model):
                         "type": message_file.type,
                     },
                     tenant_id=current_app.tenant_id,
-                    user_id=self.from_account_id or self.from_end_user_id or "",
-                    role=CreatedByRole(message_file.created_by_role),
-                    config=FileExtraConfig(),
                 )
             elif message_file.transfer_method == "remote_url":
                 if message_file.url is None:
@@ -964,9 +961,6 @@ class Message(db.Model):
                         "url": message_file.url,
                     },
                     tenant_id=current_app.tenant_id,
-                    user_id=self.from_account_id or self.from_end_user_id or "",
-                    role=CreatedByRole(message_file.created_by_role),
-                    config=FileExtraConfig(),
                 )
             elif message_file.transfer_method == "tool_file":
                 if message_file.upload_file_id is None:
@@ -981,9 +975,6 @@ class Message(db.Model):
                 file = file_factory.build_from_mapping(
                     mapping=mapping,
                     tenant_id=current_app.tenant_id,
-                    user_id=self.from_account_id or self.from_end_user_id or "",
-                    role=CreatedByRole(message_file.created_by_role),
-                    config=FileExtraConfig(),
                 )
             else:
                 raise ValueError(

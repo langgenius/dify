@@ -33,6 +33,7 @@ export type NodeTracing = {
     parent_parallel_id?: string
     parent_parallel_start_node_id?: string
     parallel_mode_run_id?: string
+    iteration_duration_map?: IterationDurationMap
   }
   metadata: {
     iterator_length: number
@@ -44,6 +45,7 @@ export type NodeTracing = {
     name: string
     email: string
   }
+  iterDurationMap?: IterationDurationMap
   finished_at: number
   extras?: any
   expand?: boolean // for UI
@@ -207,7 +209,10 @@ export type IterationNextResponse = {
     parallel_mode_run_id: string
     execution_metadata: {
       parallel_id?: string
+      iteration_index: number
+      parallel_mode_run_id?: string
     }
+    duration?: number
   }
 }
 
@@ -323,3 +328,5 @@ export type ConversationVariableResponse = {
   total: number
   page: number
 }
+
+export type IterationDurationMap = Record<string, number>
