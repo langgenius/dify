@@ -19,6 +19,7 @@ import {
   useAllBuiltInTools,
   useAllCustomTools,
   useAllWorkflowTools,
+  useInvalidateAllBuiltInTools,
   useUpdateProviderCredentials,
 } from '@/service/use-tools'
 import { CollectionType } from '@/app/components/tools/types'
@@ -60,6 +61,7 @@ const ToolSelector: FC<Props> = ({
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
   const { data: workflowTools } = useAllWorkflowTools()
+  const invalidateAllBuiltinTools = useInvalidateAllBuiltInTools()
   const currentProvider = useMemo(() => {
     const mergedTools = [...(buildInTools || []), ...(customTools || []), ...(workflowTools || [])]
     return mergedTools.find((toolWithProvider) => {
@@ -80,6 +82,7 @@ const ToolSelector: FC<Props> = ({
   const { isCurrentWorkspaceManager } = useAppContext()
   const [isShowSettingAuth, setShowSettingAuth] = useState(false)
   const handleCredentialSettingUpdate = () => {
+    invalidateAllBuiltinTools()
     Toast.notify({
       type: 'success',
       message: t('common.api.actionSuccess'),
