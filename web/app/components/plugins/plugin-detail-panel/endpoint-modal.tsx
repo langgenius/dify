@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiArrowRightUpLine, RiCloseLine } from '@remixicon/react'
 import ActionButton from '@/app/components/base/action-button'
@@ -10,6 +10,8 @@ import Form from '@/app/components/header/account-setting/model-provider-page/mo
 import Toast from '@/app/components/base/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import cn from '@/utils/classnames'
+
+import ToolSelector from '@/app/components/tools/tool-selector'
 
 type Props = {
   formSchemas: any
@@ -37,6 +39,8 @@ const EndpointModal: FC<Props> = ({
     }
     onSaved(tempCredential)
   }
+
+  const [mockTool, setTool] = useState<any>()
 
   return (
     <Drawer
@@ -69,7 +73,7 @@ const EndpointModal: FC<Props> = ({
               isEditMode={true}
               showOnVariableMap={{}}
               validating={false}
-              inputClassName='!bg-gray-50'
+              inputClassName='bg-components-input-bg-normal hover:bg-state-base-hover-alt'
               fieldMoreInfo={item => item.url
                 ? (<a
                   href={item.url}
@@ -81,6 +85,7 @@ const EndpointModal: FC<Props> = ({
                 </a>)
                 : null}
             />
+            <ToolSelector disabled={false} value={mockTool} onSelect={setTool} />
           </div>
           <div className={cn('p-4 pt-0 flex justify-end')} >
             <div className='flex gap-2'>

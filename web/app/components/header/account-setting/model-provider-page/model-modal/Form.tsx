@@ -73,7 +73,7 @@ const Form: FC<FormProps> = ({
     const newValue = {
       ...value[key],
       provider: model.provider,
-      name: model.modelId,
+      model: model.modelId,
       mode: model.mode,
     }
     onChange({ ...value, [key]: newValue })
