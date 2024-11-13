@@ -37,6 +37,7 @@ from .exc import (
 logger = logging.getLogger(__name__)
 
 current_dsl_version = "0.1.3"
+dsl_max_size = 10 * 1024 * 1024  # 10MB
 
 
 class AppDslService:
@@ -49,12 +50,11 @@ class AppDslService:
         :param args: request args
         :param account: Account instance
         """
-        max_size = 10 * 1024 * 1024  # 10MB
         response = ssrf_proxy.get(url.strip(), follow_redirects=True, timeout=(10, 10))
         response.raise_for_status()
         content = response.content
 
-        if len(content) > max_size:
+        if len(content) > dsl_max_size:
             raise FileSizeLimitExceededError("File size exceeds the limit of 10MB")
 
         if not content:
@@ -66,6 +66,25 @@ class AppDslService:
             raise ContentDecodingError(f"Error decoding content: {e}")
 
         return cls.import_and_create_new_app(tenant_id, data, args, account)
+
+    @classmethod
+    def check_dependencies_from_url(cls, tenant_id: str, url: str, account: Account) -> list[PluginDependency]:
+        """
+        Check dependencies from url
+        """
+        response = ssrf_proxy.get(url.strip(), follow_redirects=True, timeout=(10, 10))
+        response.raise_for_status()
+        content = response.content
+
+        if len(content) > dsl_max_size:
+            raise FileSizeLimitExceededError("File size exceeds the limit of 10MB")
+
+        try:
+            data = content.decode("utf-8")
+        except UnicodeDecodeError as e:
+            raise ContentDecodingError(f"Error decoding content: {e}")
+
+        return cls.check_dependencies(tenant_id, data, account)
 
     @classmethod
     def check_dependencies(cls, tenant_id: str, data: str, account: Account) -> list[PluginDependency]:
