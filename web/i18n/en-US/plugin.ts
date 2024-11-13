@@ -1,12 +1,14 @@
 const translation = {
   category: {
     all: 'All',
-    models: 'models',
-    tools: 'tools',
-    extensions: 'extensions',
-    bundles: 'bundles',
+    models: 'Models',
+    tools: 'Tools',
+    extensions: 'Extensions',
+    bundles: 'Bundles',
   },
   search: 'Search',
+  allCategories: 'All Categories',
+  searchCategories: 'Search Categories',
   searchPlugins: 'Search plugins',
   from: 'From',
   findMoreInMarketplace: 'Find more in Marketplace',

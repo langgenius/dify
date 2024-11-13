@@ -22,6 +22,7 @@ import cn from '@/utils/classnames'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import { useLanguage } from '../../header/account-setting/model-provider-page/hooks'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useCategories } from '../hooks'
 
 type Props = {
   className?: string
@@ -34,6 +35,7 @@ const PluginItem: FC<Props> = ({
 }) => {
   const locale = useLanguage()
   const { t } = useTranslation()
+  const { categoriesMap } = useCategories()
   const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
   const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
@@ -67,7 +69,7 @@ const PluginItem: FC<Props> = ({
       }}
     >
       <div className={cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
-        <CornerMark text={t(`pluginCategories.categories.${category}`)} />
+        <CornerMark text={categoriesMap[category].label} />
         {/* Header */}
         <div className="flex">
           <div className='flex items-center justify-center w-10 h-10 overflow-hidden border-components-panel-border-subtle border-[1px] rounded-xl'>
