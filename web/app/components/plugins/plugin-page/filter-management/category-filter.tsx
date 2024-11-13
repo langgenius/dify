@@ -56,7 +56,7 @@ const CategoriesFilter = ({
             'flex items-center p-1 system-sm-medium',
           )}>
             {
-              !selectedTagsLength && t('pluginCategories.allCategories')
+              !selectedTagsLength && t('plugin.allCategories')
             }
             {
               !!selectedTagsLength && value.map(val => categoriesMap[val].label).slice(0, 2).join(',')
@@ -96,7 +96,7 @@ const CategoriesFilter = ({
               showLeftIcon
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder={t('pluginCategories.searchCategories')}
+              placeholder={t('plugin.searchCategories')}
             />
           </div>
           <div className='p-1 max-h-[448px] overflow-y-auto'>

@@ -100,19 +100,19 @@ export const useCategories = (translateFromOut?: TFunction) => {
   const categories = [
     {
       name: 'model',
-      label: t('pluginCategories.categories.model'),
+      label: t('plugin.category.models'),
     },
     {
       name: 'tool',
-      label: t('pluginCategories.categories.tool'),
+      label: t('plugin.category.tools'),
     },
     {
       name: 'extension',
-      label: t('pluginCategories.categories.extension'),
+      label: t('plugin.category.extensions'),
     },
     {
       name: 'bundle',
-      label: t('pluginCategories.categories.bundle'),
+      label: t('plugin.category.bundles'),
     },
   ]
 

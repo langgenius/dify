@@ -7,6 +7,8 @@ const translation = {
     bundles: '捆绑包',
   },
   search: '搜索',
+  allCategories: '所有类别',
+  searchCategories: '搜索类别',
   searchPlugins: '搜索插件',
   from: '来自',
   findMoreInMarketplace: '在 Marketplace 中查找更多',
