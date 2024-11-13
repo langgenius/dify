@@ -30,6 +30,7 @@ const loadLangResources = (lang: string) => ({
     runLog: require(`./${lang}/run-log`).default,
     plugin: require(`./${lang}/plugin`).default,
     pluginTags: require(`./${lang}/plugin-tags`).default,
+    pluginCategories: require(`./${lang}/plugin-categories`).default,
   },
 })
 

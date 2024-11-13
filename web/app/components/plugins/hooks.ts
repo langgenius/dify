@@ -87,3 +87,42 @@ export const useTags = (translateFromOut?: TFunction) => {
     tagsMap,
   }
 }
+
+type Category = {
+  name: string
+  label: string
+}
+
+export const useCategories = (translateFromOut?: TFunction) => {
+  const { t: translation } = useTranslation()
+  const t = translateFromOut || translation
+
+  const categories = [
+    {
+      name: 'model',
+      label: t('pluginCategories.categories.model'),
+    },
+    {
+      name: 'tool',
+      label: t('pluginCategories.categories.tool'),
+    },
+    {
+      name: 'extension',
+      label: t('pluginCategories.categories.extension'),
+    },
+    {
+      name: 'bundle',
+      label: t('pluginCategories.categories.bundle'),
+    },
+  ]
+
+  const categoriesMap = categories.reduce((acc, category) => {
+    acc[category.name] = category
+    return acc
+  }, {} as Record<string, Category>)
+
+  return {
+    categories,
+    categoriesMap,
+  }
+}

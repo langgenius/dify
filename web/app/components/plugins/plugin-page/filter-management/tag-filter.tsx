@@ -13,6 +13,8 @@ import {
 import Checkbox from '@/app/components/base/checkbox'
 import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
+import { useTags } from '../../hooks'
+import { useTranslation } from 'react-i18next'
 
 type TagsFilterProps = {
   value: string[]
@@ -22,19 +24,11 @@ const TagsFilter = ({
   value,
   onChange,
 }: TagsFilterProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const options = [
-    {
-      value: 'search',
-      text: 'Search',
-    },
-    {
-      value: 'image',
-      text: 'Image',
-    },
-  ]
-  const filteredOptions = options.filter(option => option.text.toLowerCase().includes(searchText.toLowerCase()))
+  const { tags: options, tagsMap } = useTags()
+  const filteredOptions = options.filter(option => option.name.toLowerCase().includes(searchText.toLowerCase()))
   const handleCheck = (id: string) => {
     if (value.includes(id))
       onChange(value.filter(tag => tag !== id))
@@ -62,10 +56,10 @@ const TagsFilter = ({
             'flex items-center p-1 system-sm-medium',
           )}>
             {
-              !selectedTagsLength && 'All Tags'
+              !selectedTagsLength && t('pluginTags.allTags')
             }
             {
-              !!selectedTagsLength && value.slice(0, 2).join(',')
+              !!selectedTagsLength && value.map(val => tagsMap[val].label).slice(0, 2).join(',')
             }
             {
               selectedTagsLength > 2 && (
@@ -97,23 +91,23 @@ const TagsFilter = ({
               showLeftIcon
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder='Search tags'
+              placeholder={t('pluginTags.searchTags')}
             />
           </div>
           <div className='p-1 max-h-[448px] overflow-y-auto'>
             {
               filteredOptions.map(option => (
                 <div
-                  key={option.value}
+                  key={option.name}
                   className='flex items-center px-2 py-1.5 h-7 rounded-lg cursor-pointer hover:bg-state-base-hover'
-                  onClick={() => handleCheck(option.value)}
+                  onClick={() => handleCheck(option.name)}
                 >
                   <Checkbox
                     className='mr-1'
-                    checked={value.includes(option.value)}
+                    checked={value.includes(option.name)}
                   />
                   <div className='px-1 system-sm-medium text-text-secondary'>
-                    {option.text}
+                    {option.label}
                   </div>
                 </div>
               ))

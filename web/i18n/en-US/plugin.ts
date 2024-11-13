@@ -6,6 +6,7 @@ const translation = {
     extensions: 'extensions',
     bundles: 'bundles',
   },
+  search: 'Search',
   searchPlugins: 'Search plugins',
   from: 'From',
   findMoreInMarketplace: 'Find more in Marketplace',
