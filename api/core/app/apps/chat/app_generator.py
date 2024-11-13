@@ -1,5 +1,4 @@
 import logging
-import os
 import threading
 import uuid
 from collections.abc import Generator
@@ -8,6 +7,7 @@ from typing import Any, Literal, Union, overload
 from flask import Flask, current_app
 from pydantic import ValidationError
 
+from configs import dify_config
 from constants import UUID_NIL
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -23,7 +23,6 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
 from models.account import Account
-from models.enums import CreatedByRole
 from models.model import App, EndUser
 
 logger = logging.getLogger(__name__)
@@ -101,8 +100,6 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             # always enable retriever resource in debugger mode
             override_model_config_dict["retriever_resource"] = {"enabled": True}
 
-        role = CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER
-
         # parse files
         files = args["files"] if args.get("files") else []
         file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
@@ -110,8 +107,6 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             file_objs = file_factory.build_from_mappings(
                 mappings=files,
                 tenant_id=app_model.tenant_id,
-                user_id=user.id,
-                role=role,
                 config=file_extra_config,
             )
         else:
@@ -133,10 +128,11 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             task_id=str(uuid.uuid4()),
             app_config=app_config,
             model_conf=ModelConfigConverter.convert(app_config),
+            file_upload_config=file_extra_config,
             conversation_id=conversation.id if conversation else None,
             inputs=conversation.inputs
             if conversation
-            else self._prepare_user_inputs(user_inputs=inputs, app_config=app_config, user_id=user.id, role=role),
+            else self._prepare_user_inputs(user_inputs=inputs, app_config=app_config),
             query=query,
             files=file_objs,
             parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
@@ -227,7 +223,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except (ValueError, InvokeError) as e:
-                if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == "true":
+                if dify_config.DEBUG:
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:

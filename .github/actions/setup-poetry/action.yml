@@ -1,0 +1,36 @@
+name: Setup Poetry and Python
+
+inputs:
+  python-version:
+    description: Python version to use and the Poetry installed with
+    required: true
+    default: '3.10'
+  poetry-version:
+    description: Poetry version to set up
+    required: true
+    default: '1.8.4'
+  poetry-lockfile:
+    description: Path to the Poetry lockfile to restore cache from
+    required: true
+    default: ''
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python ${{ inputs.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+
+    - name: Install Poetry
+      shell: bash
+      run: pip install poetry==${{ inputs.poetry-version }}
+
+    - name: Restore Poetry cache
+      if: ${{ inputs.poetry-lockfile != '' }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: poetry
+        cache-dependency-path: ${{ inputs.poetry-lockfile }}

@@ -28,7 +28,7 @@ import IterationResultPanel from '../run/iteration-result-panel'
 import InputsPanel from './inputs-panel'
 import cn from '@/utils/classnames'
 import Loading from '@/app/components/base/loading'
-import type { NodeTracing } from '@/types/workflow'
+import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation()
@@ -53,12 +53,14 @@ const WorkflowPreview = () => {
   }, [workflowRunningData])
 
   const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[][]>([])
+  const [iterDurationMap, setIterDurationMap] = useState<IterationDurationMap>({})
   const [isShowIterationDetail, {
     setTrue: doShowIterationDetail,
     setFalse: doHideIterationDetail,
   }] = useBoolean(false)
 
-  const handleShowIterationDetail = useCallback((detail: NodeTracing[][]) => {
+  const handleShowIterationDetail = useCallback((detail: NodeTracing[][], iterationDurationMap: IterationDurationMap) => {
+    setIterDurationMap(iterationDurationMap)
     setIterationRunResult(detail)
     doShowIterationDetail()
   }, [doShowIterationDetail])
@@ -72,6 +74,7 @@ const WorkflowPreview = () => {
           list={iterationRunResult}
           onHide={doHideIterationDetail}
           onBack={doHideIterationDetail}
+          iterDurationMap={iterDurationMap}
         />
       </div>
     )
@@ -94,6 +97,7 @@ const WorkflowPreview = () => {
               list={iterationRunResult}
               onHide={doHideIterationDetail}
               onBack={doHideIterationDetail}
+              iterDurationMap={iterDurationMap}
             />
           )
           : (

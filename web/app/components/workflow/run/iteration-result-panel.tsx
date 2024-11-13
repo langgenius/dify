@@ -6,12 +6,14 @@ import {
   RiArrowRightSLine,
   RiCloseLine,
   RiErrorWarningLine,
+  RiLoader2Line,
 } from '@remixicon/react'
 import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
+import { NodeRunningStatus } from '../types'
 import TracingPanel from './tracing-panel'
 import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
 import cn from '@/utils/classnames'
-import type { NodeTracing } from '@/types/workflow'
+import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 const i18nPrefix = 'workflow.singleRun'
 
 type Props = {
@@ -19,6 +21,7 @@ type Props = {
   onHide: () => void
   onBack: () => void
   noWrap?: boolean
+  iterDurationMap?: IterationDurationMap
 }
 
 const IterationResultPanel: FC<Props> = ({
@@ -26,6 +29,7 @@ const IterationResultPanel: FC<Props> = ({
   onHide,
   onBack,
   noWrap,
+  iterDurationMap,
 }) => {
   const { t } = useTranslation()
   const [expandedIterations, setExpandedIterations] = useState<Record<number, boolean>>({})
@@ -36,6 +40,40 @@ const IterationResultPanel: FC<Props> = ({
       [index]: !prev[index],
     }))
   }, [])
+  const countIterDuration = (iteration: NodeTracing[], iterDurationMap: IterationDurationMap): string => {
+    const IterRunIndex = iteration[0].execution_metadata.iteration_index as number
+    const iterRunId = iteration[0].execution_metadata.parallel_mode_run_id
+    const iterItem = iterDurationMap[iterRunId || IterRunIndex]
+    const duration = iterItem
+    return `${(duration && duration > 0.01) ? duration.toFixed(2) : 0.01}s`
+  }
+  const iterationStatusShow = (index: number, iteration: NodeTracing[], iterDurationMap?: IterationDurationMap) => {
+    const hasFailed = iteration.some(item => item.status === NodeRunningStatus.Failed)
+    const isRunning = iteration.some(item => item.status === NodeRunningStatus.Running)
+    const hasDurationMap = iterDurationMap && Object.keys(iterDurationMap).length !== 0
+
+    if (hasFailed)
+      return <RiErrorWarningLine className='w-4 h-4 text-text-destructive' />
+
+    if (isRunning)
+      return <RiLoader2Line className='w-3.5 h-3.5 text-primary-600 animate-spin' />
+
+    return (
+      <>
+        {hasDurationMap && (
+          <div className='system-xs-regular text-text-tertiary'>
+            {countIterDuration(iteration, iterDurationMap)}
+          </div>
+        )}
+        <RiArrowRightSLine
+          className={cn(
+            'w-4 h-4 text-text-tertiary transition-transform duration-200 flex-shrink-0',
+            expandedIterations[index] && 'transform rotate-90',
+          )}
+        />
+      </>
+    )
+  }
 
   const main = (
     <>
@@ -72,19 +110,7 @@ const IterationResultPanel: FC<Props> = ({
                 <span className='system-sm-semibold-uppercase text-text-primary flex-grow'>
                   {t(`${i18nPrefix}.iteration`)} {index + 1}
                 </span>
-                {
-                  iteration.some(item => item.status === 'failed')
-                    ? (
-                      <RiErrorWarningLine className='w-4 h-4 text-text-destructive' />
-                    )
-                    : (< RiArrowRightSLine className={
-                      cn(
-                        'w-4 h-4 text-text-tertiary transition-transform duration-200 flex-shrink-0',
-                        expandedIterations[index] && 'transform rotate-90',
-                      )} />
-                    )
-                }
-
+                {iterationStatusShow(index, iteration, iterDurationMap)}
               </div>
             </div>
             {expandedIterations[index] && <div
