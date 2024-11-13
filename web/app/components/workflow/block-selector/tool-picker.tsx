@@ -48,6 +48,7 @@ const ToolPicker: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
+  const [tags, setTags] = useState<string[]>([])
 
   const { data: buildInTools } = useAllBuiltInTools()
   const { data: customTools } = useAllCustomTools()
@@ -111,14 +112,15 @@ const ToolPicker: FC<Props> = ({
             <SearchBox
               search={searchText}
               onSearchChange={setSearchText}
-              tags={[]}
-              onTagsChange={() => { }}
+              tags={tags}
+              onTagsChange={setTags}
               size='small'
               placeholder={t('plugin.searchTools')!}
             />
           </div>
           <AllTools
             className='mt-1'
+            tags={tags}
             searchText={searchText}
             onSelect={handleSelect}
             buildInTools={buildInTools || []}

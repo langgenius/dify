@@ -23,6 +23,7 @@ import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 type AllToolsProps = {
   className?: string
   searchText: string
+  tags: string[]
   buildInTools: ToolWithProvider[]
   customTools: ToolWithProvider[]
   workflowTools: ToolWithProvider[]
@@ -34,6 +35,7 @@ type AllToolsProps = {
 const AllTools = ({
   className,
   searchText,
+  tags = [],
   onSelect,
   buildInTools,
   workflowTools,
@@ -45,7 +47,7 @@ const AllTools = ({
   const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
   const [activeView, setActiveView] = useState<ViewType>(ViewType.flat)
-
+  const hasFilter = searchText || tags.length > 0
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
     if (activeTab === ToolTypeEnum.All)
@@ -57,7 +59,7 @@ const AllTools = ({
     if (activeTab === ToolTypeEnum.Workflow)
       mergedTools = workflowTools
 
-    if (!searchText)
+    if (!hasFilter)
       return mergedTools.filter(toolWithProvider => toolWithProvider.tools.length > 0)
 
     return mergedTools.filter((toolWithProvider) => {
@@ -65,7 +67,7 @@ const AllTools = ({
         return tool.label[language].toLowerCase().includes(searchText.toLowerCase())
       })
     })
-  }, [activeTab, buildInTools, customTools, workflowTools, searchText, language])
+  }, [activeTab, buildInTools, customTools, workflowTools, searchText, language, hasFilter])
 
   const {
     queryPluginsWithDebounced: fetchPlugins,
@@ -73,14 +75,15 @@ const AllTools = ({
   } = useMarketplacePlugins()
 
   useEffect(() => {
-    if (searchText) {
+    if (searchText || tags.length > 0) {
       fetchPlugins({
         query: searchText,
+        tags,
         category: PluginType.tool,
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchText])
+  }, [searchText, tags])
 
   const pluginRef = useRef(null)
   const wrapElemRef = useRef<HTMLDivElement>(null)
@@ -134,6 +137,7 @@ const AllTools = ({
           wrapElemRef={wrapElemRef}
           list={notInstalledPlugins as any} ref={pluginRef}
           searchText={searchText}
+          tags={tags}
         />
       </div>
     </div>
