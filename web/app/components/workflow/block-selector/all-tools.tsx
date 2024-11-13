@@ -64,7 +64,7 @@ const AllTools = ({
 
     return mergedTools.filter((toolWithProvider) => {
       return toolWithProvider.tools.some((tool) => {
-        return tool.label[language].toLowerCase().includes(searchText.toLowerCase())
+        return tool.label[language].toLowerCase().includes(searchText.toLowerCase()) || tool.name.toLowerCase().includes(searchText.toLowerCase())
       })
     })
   }, [activeTab, buildInTools, customTools, workflowTools, searchText, language, hasFilter])
