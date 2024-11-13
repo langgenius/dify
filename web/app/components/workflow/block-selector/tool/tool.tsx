@@ -34,7 +34,7 @@ const Tool: FC<Props> = ({
   const language = useGetLanguage()
   const isFlatView = viewType === ViewType.flat
   const actions = payload.tools
-  const hasAction = payload.type === CollectionType.builtIn
+  const hasAction = true // Now always support actions
   const [isFold, {
     toggle: toggleFold,
   }] = useBoolean(false)
@@ -62,25 +62,24 @@ const Tool: FC<Props> = ({
         <div
           className='flex items-center justify-between pl-3 pr-1 w-full rounded-lg hover:bg-gray-50 cursor-pointer select-none'
           onClick={() => {
-            if (hasAction) {
+            if (hasAction)
               toggleFold()
-              return
-            }
-            // TODO: get workflow and custom tool params
+
+            // Now always support actions
             // if (payload.parameters) {
             //   payload.parameters.forEach((item) => {
             //     params[item.name] = ''
             //   })
             // }
-            onSelect(BlockEnum.Tool, {
-              provider_id: payload.id,
-              provider_type: payload.type,
-              provider_name: payload.name,
-              tool_name: payload.name,
-              tool_label: payload.label[language],
-              title: payload.label[language],
-              params: {},
-            })
+            // onSelect(BlockEnum.Tool, {
+            //   provider_id: payload.id,
+            //   provider_type: payload.type,
+            //   provider_name: payload.name,
+            //   tool_name: payload.name,
+            //   tool_label: payload.label[language],
+            //   title: payload.label[language],
+            //   params: {},
+            // })
           }}
         >
           <div className='flex grow items-center h-8'>
