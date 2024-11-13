@@ -54,7 +54,7 @@ class ToolTransformService:
     @staticmethod
     def repack_provider(tenant_id: str, provider: Union[dict, ToolProviderApiEntity]):
         """
-        repack provider
+        repack  provider
 
         :param provider: the provider dict
         """
