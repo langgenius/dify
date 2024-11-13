@@ -151,9 +151,5 @@ jobs:
           APICMD: "${{ secrets.PLUGIN_CD_API_CURL }}"
           WEBCMD: "${{ secrets.PLUGIN_CD_WEB_CURL }}"
         run: |
-          echo "Commit ID: $IMAGEHASH"
-          echo "Commit ID: $GITHUB_SHA"
-          echo "APICMD STR: ${APICMD/yourNewVersion/$IMAGEHASH}"
-          echo "WEBCMD STR: ${WEBCMD/yourNewVersion/$IMAGEHASH}"
           bash -c "${APICMD/yourNewVersion/$IMAGEHASH}"
           bash -c "${WEBCMD/yourNewVersion/$IMAGEHASH}"
