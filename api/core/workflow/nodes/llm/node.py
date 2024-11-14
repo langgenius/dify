@@ -193,6 +193,17 @@ class LLMNode(BaseNode[LLMNodeData]):
                 )
             )
             return
+        except Exception as e:
+            logger.exception(f"Node {self.node_id} failed to run: {e}")
+            yield RunCompletedEvent(
+                run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    error=str(e),
+                    inputs=node_inputs,
+                    process_data=process_data,
+                )
+            )
+            return
 
         outputs = {"text": result_text, "usage": jsonable_encoder(usage), "finish_reason": finish_reason}
 
@@ -607,11 +618,31 @@ class LLMNode(BaseNode[LLMNodeData]):
             if isinstance(prompt_message.content, list):
                 prompt_message_content = []
                 for content_item in prompt_message.content:
-                    # Skip image if vision is disabled or model doesn't support vision
-                    if content_item.type == PromptMessageContentType.IMAGE and (
-                        not vision_enabled
-                        or not model_config.model_schema.features
-                        or ModelFeature.VISION not in model_config.model_schema.features
+                    # Skip content if features are not defined
+                    if not model_config.model_schema.features:
+                        if content_item.type != PromptMessageContentType.TEXT:
+                            continue
+                        prompt_message_content.append(content_item)
+                        continue
+
+                    # Skip content if corresponding feature is not supported
+                    if (
+                        (
+                            content_item.type == PromptMessageContentType.IMAGE
+                            and (not vision_enabled or ModelFeature.VISION not in model_config.model_schema.features)
+                        )
+                        or (
+                            content_item.type == PromptMessageContentType.DOCUMENT
+                            and ModelFeature.DOCUMENT not in model_config.model_schema.features
+                        )
+                        or (
+                            content_item.type == PromptMessageContentType.VIDEO
+                            and ModelFeature.VIDEO not in model_config.model_schema.features
+                        )
+                        or (
+                            content_item.type == PromptMessageContentType.AUDIO
+                            and ModelFeature.AUDIO not in model_config.model_schema.features
+                        )
                     ):
                         continue
                     prompt_message_content.append(content_item)
@@ -854,22 +885,22 @@ class LLMNode(BaseNode[LLMNodeData]):
                 )
 
                 # Process segments for images
-                image_contents = []
+                file_contents = []
                 for segment in segment_group.value:
                     if isinstance(segment, ArrayFileSegment):
                         for file in segment.value:
-                            if file.type == FileType.IMAGE:
-                                image_content = file_manager.to_prompt_message_content(
+                            if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO}:
+                                file_content = file_manager.to_prompt_message_content(
                                     file, image_detail_config=self.node_data.vision.configs.detail
                                 )
-                                image_contents.append(image_content)
+                                file_contents.append(file_content)
                     if isinstance(segment, FileSegment):
                         file = segment.value
-                        if file.type == FileType.IMAGE:
-                            image_content = file_manager.to_prompt_message_content(
+                        if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO}:
+                            file_content = file_manager.to_prompt_message_content(
                                 file, image_detail_config=self.node_data.vision.configs.detail
                             )
-                            image_contents.append(image_content)
+                            file_contents.append(file_content)
 
                 # Create message with text from all segments
                 plain_text = segment_group.text
@@ -877,9 +908,9 @@ class LLMNode(BaseNode[LLMNodeData]):
                     prompt_message = _combine_text_message_with_role(text=plain_text, role=message.role)
                     prompt_messages.append(prompt_message)
 
-                if image_contents:
+                if file_contents:
                     # Create message with image contents
-                    prompt_message = UserPromptMessage(content=image_contents)
+                    prompt_message = UserPromptMessage(content=file_contents)
                     prompt_messages.append(prompt_message)
 
         return prompt_messages
