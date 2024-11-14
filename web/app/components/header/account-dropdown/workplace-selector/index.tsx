@@ -69,12 +69,12 @@ const WorkplaceSelector = () => {
                     workspaces.map(workspace => (
                       <div className='flex py-1 pl-3 pr-2 items-center gap-2 self-stretch hover:bg-state-base-hover rounded-lg' key={workspace.id} onClick={() => handleSwitchWorkspace(workspace.id)}>
                         <div className='flex items-center justify-center w-7 h-7 bg-[#EFF4FF] rounded-md text-xs font-medium text-primary-600'>{workspace.name[0].toLocaleUpperCase()}</div>
-                        <div className='line-clamp-1 flex-grow overflow-hidden text-text-secondary text-ellipsis system-md-regular cursor-pointer'>{workspace.name}</div>
+                        <div className='line-clamp-1 grow overflow-hidden text-text-secondary text-ellipsis system-md-regular cursor-pointer'>{workspace.name}</div>
                         {
                           <PremiumBadge size='s' color='gray' allowHover={false}>
                             <div className='system-2xs-medium'>
                               <span className='p-[2px]'>
-                                {plan.type.toUpperCase()}
+                                {plan.type === 'professional' ? 'PRO' : plan.type.toUpperCase()}
                               </span>
                             </div>
                           </PremiumBadge>
