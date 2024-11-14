@@ -79,7 +79,7 @@ const CardWrapper = ({
   return (
     <a
       className='group inline-block relative rounded-xl cursor-pointer'
-      href={`${MARKETPLACE_URL_PREFIX}/plugin/${plugin.org}/${plugin.name}`}
+      href={`${MARKETPLACE_URL_PREFIX}/plugins/${plugin.org}/${plugin.name}`}
     >
       <Card
         key={plugin.name}
