@@ -1,15 +1,16 @@
+import io
+import os
+from typing import Any
+
+import fal_client
+
+from core.file.enums import FileAttribute, FileType
+from core.file.file_manager import download, get_attr
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
-from core.file.enums import FileType, FileAttribute
-from core.file.file_manager import download, get_attr
-from typing import Any
-import fal_client
-import os
-import mimetypes
-import io
+
 
 class WizperTool(BuiltinTool):
-
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage:
         # Get parameters
         audio_file = tool_parameters.get("audio_file")
@@ -17,12 +18,12 @@ class WizperTool(BuiltinTool):
         language = tool_parameters.get("language", "en")
         chunk_level = tool_parameters.get("chunk_level", "segment")
         version = tool_parameters.get("version", "3")
-        
+
         if audio_file.type != FileType.AUDIO:
             return [self.create_text_message("Not a valid audio file.")]
 
         # Get the API key from credentials
-        api_key = self.runtime.credentials['fal_api_key']
+        api_key = self.runtime.credentials["fal_api_key"]
         # Set the API key for fal_client
         os.environ["FAL_KEY"] = api_key
 
@@ -31,10 +32,10 @@ class WizperTool(BuiltinTool):
             # Download the audio file content
             audio_binary = io.BytesIO(download(audio_file))
             mime_type = get_attr(file=audio_file, attr=FileAttribute.MIME_TYPE)
-            
+
             # Get the file data
             file_data = audio_binary.getvalue()
-            
+
             # Upload the file using fal_client
             audio_url = fal_client.upload(file_data, mime_type)
 
