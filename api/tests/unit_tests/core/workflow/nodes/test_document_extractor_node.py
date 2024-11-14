@@ -142,7 +142,8 @@ def test_extract_text_from_plain_text():
 
 def tet_extract_text_from_plain_text_non_utf8():
     import tempfile
-    non_utf8_content = b"Hello world\xA9."  # \xA9 represents © in Latin-1
+
+    non_utf8_content = b"Hello world\xa9."  # \xA9 represents © in Latin-1
     with tempfile.NamedTemporaryFile(delete=True) as temp_file:
         temp_file.write(non_utf8_content)
         temp_file.seek(0)
