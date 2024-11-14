@@ -26,6 +26,7 @@ const AppTrigger = ({
     )}>
       {appDetail && (
         <AppIcon
+          className='mr-2'
           size='xs'
           iconType={appDetail.icon_type}
           icon={appDetail.icon}

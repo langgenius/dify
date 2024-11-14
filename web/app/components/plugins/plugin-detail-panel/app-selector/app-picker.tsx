@@ -40,7 +40,7 @@ const AppPicker: FC<Props> = ({
   const [searchText, setSearchText] = useState('')
   const { data: appList } = useAppFullList()
   const filteredAppList = useMemo(() => {
-    return (appList || []).filter(app => app.name.toLowerCase().includes(searchText.toLowerCase()))
+    return (appList?.data || []).filter(app => app.name.toLowerCase().includes(searchText.toLowerCase())).filter(app => (app.mode !== 'advanced-chat' && app.mode !== 'workflow') || !!app.workflow)
   }, [appList, searchText])
   const getAppType = (app: App) => {
     switch (app.mode) {
@@ -81,7 +81,6 @@ const AppPicker: FC<Props> = ({
             <Input
               showLeftIcon
               showClearIcon
-              // wrapperClassName='w-[200px]'
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
               onClear={() => setSearchText('')}

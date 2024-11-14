@@ -48,7 +48,7 @@ export enum RETRIEVE_METHOD {
   keywordSearch = 'keyword_search',
 }
 
-export interface VariableInput {
+export type VariableInput = {
   key: string
   name: string
   value: string
@@ -69,7 +69,7 @@ export type VariableType = typeof VariableTypes[number]
 /**
  * Prompt variable parameter
  */
-export interface PromptVariable {
+export type PromptVariable = {
   /** Variable key */
   key: string
   /** Variable name */
@@ -82,7 +82,7 @@ export interface PromptVariable {
   max_length?: number
 }
 
-export interface TextTypeFormItem {
+export type TextTypeFormItem = {
   default: string
   label: string
   variable: string
@@ -90,7 +90,7 @@ export interface TextTypeFormItem {
   max_length: number
 }
 
-export interface SelectTypeFormItem {
+export type SelectTypeFormItem = {
   default: string
   label: string
   variable: string
@@ -98,7 +98,7 @@ export interface SelectTypeFormItem {
   options: string[]
 }
 
-export interface ParagraphTypeFormItem {
+export type ParagraphTypeFormItem = {
   default: string
   label: string
   variable: string
@@ -115,7 +115,7 @@ export type UserInputFormItem = {
   paragraph: TextTypeFormItem
 }
 
-export interface AgentTool {
+export type AgentTool = {
   provider_id: string
   provider_type: CollectionType
   provider_name: string
@@ -145,7 +145,7 @@ export enum AgentStrategy {
   react = 'react',
 }
 
-export interface CompletionParams {
+export type CompletionParams = {
   /** Maximum number of tokens in the answer message returned by Completion */
   max_tokens: number
   /**
@@ -193,7 +193,7 @@ export interface CompletionParams {
 /**
  * Model configuration. The backend type.
  */
-export interface Model {
+export type Model = {
   /** LLM provider, e.g., OPENAI */
   provider: string
   /** Model name, e.g, gpt-3.5.turbo */
@@ -203,7 +203,7 @@ export interface Model {
   completion_params: CompletionParams
 }
 
-export interface ModelConfig {
+export type ModelConfig = {
   opening_statement: string
   suggested_questions?: string[]
   pre_prompt: string
@@ -254,7 +254,7 @@ export type Language = typeof LanguagesSupported[number]
 /**
  * Web Application Configuration
  */
-export interface SiteConfig {
+export type SiteConfig = {
   /** Application URL Identifier: `http://dify.app/{access_token}` */
   access_token: string
   /** Public Title */
@@ -307,7 +307,7 @@ export type AppIconType = 'image' | 'emoji'
 /**
  * App
  */
-export interface App {
+export type App = {
   /** App ID */
   id: string
   /** Name */
@@ -351,16 +351,23 @@ export interface App {
   /** api site url */
   api_base_url: string
   tags: Tag[]
+  workflow?: {
+    id: string
+    created_at: number
+    created_by?: string
+    updated_at: number
+    updated_by?: string
+  }
 }
 
-export interface AppSSO {
+export type AppSSO = {
   enable_sso: boolean
 }
 
 /**
  * App Template
  */
-export interface AppTemplate {
+export type AppTemplate = {
   /** Name */
   name: string
   /** Description */
@@ -389,7 +396,7 @@ export enum TtsAutoPlay {
 
 export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
 
-export interface VisionSettings {
+export type VisionSettings = {
   enabled: boolean
   number_limits: number
   detail: Resolution
@@ -397,7 +404,7 @@ export interface VisionSettings {
   image_file_size_limit?: number | string
 }
 
-export interface ImageFile {
+export type ImageFile = {
   type: TransferMethod
   _id: string
   fileId: string
@@ -408,7 +415,7 @@ export interface ImageFile {
   deleted?: boolean
 }
 
-export interface VisionFile {
+export type VisionFile = {
   id?: string
   type: string
   transfer_method: TransferMethod
@@ -417,7 +424,7 @@ export interface VisionFile {
   belongs_to?: string
 }
 
-export interface RetrievalConfig {
+export type RetrievalConfig = {
   search_method: RETRIEVE_METHOD
   reranking_enable: boolean
   reranking_model: {

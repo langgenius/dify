@@ -48,7 +48,7 @@ const AppSelector: FC<Props> = ({
     onShowChange(true)
   }
 
-  const { data: currentApp } = useAppDetail(value?.app_id || '')
+  const { data: currentApp } = useAppDetail(value?.app_id || 'empty')
   const [isShowChooseApp, setIsShowChooseApp] = useState(false)
   const handleSelectApp = (app: App) => {
     const appValue = {
@@ -74,7 +74,7 @@ const AppSelector: FC<Props> = ({
         >
           <AppTrigger
             open={isShow}
-            appDetail={undefined}
+            appDetail={currentApp}
           />
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1000]'>
@@ -87,7 +87,7 @@ const AppSelector: FC<Props> = ({
                 trigger={
                   <AppTrigger
                     open={isShowChooseApp}
-                    appDetail={undefined}
+                    appDetail={currentApp}
                   />
                 }
                 isShow={isShowChooseApp}
