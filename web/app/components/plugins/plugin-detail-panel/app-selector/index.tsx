@@ -9,8 +9,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import AppTrigger from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
 import AppPicker from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
-// import Button from '@/app/components/base/button'
-
+import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel'
 import { useAppFullList } from '@/service/use-apps'
 import type { App } from '@/types/app'
 import type {
@@ -65,8 +64,6 @@ const AppSelector: FC<Props> = ({
     setIsShowChooseApp(false)
   }
 
-  // const { data: currentApp } = useAppDetail(value?.app_id || 'empty')
-
   return (
     <>
       <PortalToFollowElem
@@ -105,8 +102,11 @@ const AppSelector: FC<Props> = ({
               />
             </div>
             {/* app inputs config panel */}
-            <div className='px-4 py-3 flex items-center border-t border-divider-subtle'>
-            </div>
+            {currentAppInfo && (
+              <AppInputsPanel
+                appDetail={currentAppInfo}
+              />
+            )}
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>

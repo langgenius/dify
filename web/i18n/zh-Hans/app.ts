@@ -136,6 +136,7 @@ const translation = {
     label: '应用',
     placeholder: '选择一个应用',
     params: '应用参数',
+    noParams: '无需参数',
   },
 }
 

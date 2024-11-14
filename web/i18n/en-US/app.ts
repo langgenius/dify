@@ -137,6 +137,7 @@ const translation = {
     label: 'APP',
     placeholder: 'Select an app...',
     params: 'APP PARAMETERS',
+    noParams: 'No parameters needed',
   },
 }
 
