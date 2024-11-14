@@ -7,6 +7,7 @@ import type {
   Permissions,
   PluginTask,
   PluginsFromMarketplaceResponse,
+  uploadGitHubResponse,
 } from '@/app/components/plugins/types'
 import type {
   PluginsSearchParams,
@@ -57,6 +58,19 @@ export const useInstallPackageFromLocal = () => {
         body: { plugin_unique_identifiers: [uniqueIdentifier] },
       })
     },
+  })
+}
+
+export const useUploadGitHub = (payload: {
+  repo: string
+  version: string
+  package: string
+}) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'uploadGitHub', payload],
+    queryFn: () => post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
+      body: payload,
+    }),
   })
 }
 
@@ -120,6 +134,17 @@ export const useMutationPluginsFromMarketplace = () => {
         },
       })
     },
+  })
+}
+
+export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[]) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByIds', unique_identifiers],
+    queryFn: () => postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/identifier/batch', {
+      body: {
+        unique_identifiers,
+      },
+    }),
   })
 }
 

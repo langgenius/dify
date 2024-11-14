@@ -1,6 +1,6 @@
 'use client'
 import Card from '@/app/components/plugins/card'
-import { customTool, extensionDallE, modelGPT4, toolNeko, toolNotion } from '@/app/components/plugins/card/card-mock'
+import { customTool, extensionDallE, modelGPT4, toolNotion } from '@/app/components/plugins/card/card-mock'
 // import PluginItem from '@/app/components/plugins/plugin-item'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 // import ProviderCard from '@/app/components/plugins/provider-card'
@@ -12,7 +12,23 @@ const PluginList = () => {
 
   return (
     <div className='pb-3 bg-white'>
-      <InstallBundle onClose={() => { }} plugins={[toolNeko, { ...toolNeko, plugin_unique_identifier: `${toolNeko.plugin_unique_identifier}xxx` }]} />
+      <InstallBundle onClose={() => { }} fromDSLPayload={[
+        {
+          type: 'marketplace',
+          value: {
+            plugin_unique_identifier: 'langgenius/google:0.0.2@dcb354c9d0fee60e6e9c9eb996e1e485bbef343ba8cd545c0cfb3ec80970f6f1',
+          },
+        },
+        {
+          type: 'github',
+          value: {
+            repo: 'YIXIAO0/test',
+            version: '1.11.5',
+            package: 'test.difypkg',
+            github_plugin_unique_identifier: 'yixiao0/test:0.0.1@3592166c87afcf944b4f13f27467a5c8f9e00bd349cb42033a072734a37431b4',
+          },
+        },
+      ]} />
       <div className='mx-3 '>
         {/* <h2 className='my-3'>Dify Plugin list</h2> */}
         {/* <div className='grid grid-cols-2 gap-3'>
