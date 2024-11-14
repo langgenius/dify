@@ -166,6 +166,11 @@ class PluginConfig(BaseSettings):
         default=15728640,
     )
 
+    PLUGIN_MAX_BUNDLE_SIZE: PositiveInt = Field(
+        description="Maximum allowed size for plugin bundles in bytes",
+        default=15728640 * 12,
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """

@@ -162,9 +162,9 @@ class GenericProviderID:
 
 class PluginDependency(BaseModel):
     class Type(str, Enum):
-        Github = "github"
-        Marketplace = "marketplace"
-        Package = "package"
+        Github = PluginInstallationSource.Github.value
+        Marketplace = PluginInstallationSource.Marketplace.value
+        Package = PluginInstallationSource.Package.value
 
     class Github(BaseModel):
         repo: str

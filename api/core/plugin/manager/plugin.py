@@ -2,6 +2,7 @@ from collections.abc import Sequence
 
 from pydantic import BaseModel
 
+from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
     PluginDeclaration,
     PluginEntity,
@@ -52,10 +53,27 @@ class PluginInstallationManager(BasePluginManager):
 
         return self._request_with_plugin_daemon_response(
             "POST",
-            f"plugin/{tenant_id}/management/install/upload",
+            f"plugin/{tenant_id}/management/install/upload/package",
             PluginUploadResponse,
             files=body,
             data=data,
+        )
+
+    def upload_bundle(
+        self,
+        tenant_id: str,
+        bundle: bytes,
+        verify_signature: bool = False,
+    ) -> Sequence[PluginBundleDependency]:
+        """
+        Upload a plugin bundle and return the dependencies.
+        """
+        return self._request_with_plugin_daemon_response(
+            "POST",
+            f"plugin/{tenant_id}/management/install/upload/bundle",
+            list[PluginBundleDependency],
+            files={"dify_bundle": ("dify_bundle", bundle, "application/octet-stream")},
+            data={"verify_signature": "true" if verify_signature else "false"},
         )
 
     def install_from_identifiers(
