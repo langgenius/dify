@@ -561,6 +561,7 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
     if (errResp.status === 401) {
       const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
       const loginUrl = `${globalThis.location.origin}/signin`
+      console.log(parseErr, errRespData)
       if (parseErr) {
         globalThis.location.href = loginUrl
         return Promise.reject(err)
@@ -572,9 +573,9 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
         requiredWebSSOLogin()
         return Promise.reject(err)
       }
-      // force logout
       if (code === 'unauthorized_and_force_logout') {
-        removeAccessToken()
+        localStorage.removeItem('console_token')
+        localStorage.removeItem('refresh_token')
         globalThis.location.reload()
         return Promise.reject(err)
       }
@@ -623,53 +624,6 @@ export const request = async<T>(url: string, options = {}, otherOptions?: IOther
     console.error(error)
     return Promise.reject(error)
   }
-  // return new Promise<T>((resolve, reject) => {
-  //   baseFetch<T>(url, options, otherOptionsForBaseFetch).then(resolve).catch((errResp) => {
-  //     if (errResp?.status === 401) {
-  //       return refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
-  //         baseFetch<T>(url, options, otherOptionsForBaseFetch).then(resolve).catch(reject)
-  //       }).catch(() => {
-  //         const {
-  //           isPublicAPI = false,
-  //           silent,
-  //         } = otherOptionsForBaseFetch
-  //         const bodyJson = errResp.json()
-  //         if (isPublicAPI) {
-  //           return bodyJson.then((data: ResponseError) => {
-  //             if (data.code === 'web_sso_auth_required')
-  //               requiredWebSSOLogin()
-
-  //             if (data.code === 'unauthorized') {
-  //               removeAccessToken()
-  //               globalThis.location.reload()
-  //             }
-
-  //             return Promise.reject(data)
-  //           })
-  //         }
-  //         const loginUrl = `${globalThis.location.origin}/signin`
-  //         bodyJson.then((data: ResponseError) => {
-  //           if (data.code === 'init_validate_failed' && IS_CE_EDITION && !silent)
-  //             Toast.notify({ type: 'error', message: data.message, duration: 4000 })
-  //           else if (data.code === 'not_init_validated' && IS_CE_EDITION)
-  //             globalThis.location.href = `${globalThis.location.origin}/init`
-  //           else if (data.code === 'not_setup' && IS_CE_EDITION)
-  //             globalThis.location.href = `${globalThis.location.origin}/install`
-  //           else if (location.pathname !== '/signin' || !IS_CE_EDITION)
-  //             globalThis.location.href = loginUrl
-  //           else if (!silent)
-  //             Toast.notify({ type: 'error', message: data.message })
-  //         }).catch(() => {
-  //           // Handle any other errors
-  //           globalThis.location.href = loginUrl
-  //         })
-  //       })
-  //     }
-  //     else {
-  //       reject(errResp)
-  //     }
-  //   })
-  // })
 }
 
 // request methods
