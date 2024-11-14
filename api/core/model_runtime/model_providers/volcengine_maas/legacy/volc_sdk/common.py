@@ -12,8 +12,8 @@ class ChatRole:
 
 
 class _Dict(UserDict):
-    __setattr__ = dict.__setitem__
-    __getattr__ = dict.__getitem__
+    __setattr__ = UserDict.__setitem__
+    __getattr__ = UserDict.__getitem__
 
     def __missing__(self, key):
         return None
