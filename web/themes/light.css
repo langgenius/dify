@@ -685,15 +685,10 @@ html[data-theme="light"] {
   --color-third-party-LangChain: #1C3C3C;
   --color-third-party-Langfuse: #000000;
 
-  --color-chatbot-bg: linear-gradient(180deg, rgba(249, 250, 251, 0.90) 0%, rgba(242, 244, 247, 0.90) 90.48%);
-  --color-chat-bubble-bg: linear-gradient(180deg, #FFF 0%, rgba(255, 255, 255, 0.60) 100%);
   --color-third-party-Github: #1B1F24;
   --color-third-party-Github-tertiary: #1B1F24;
   --color-third-party-Github-secondary: #1B1F24;
   --color-third-party-model-bg-openai: #E3E5E8;
   --color-third-party-model-bg-anthropic: #EEEDE7;
   --color-third-party-model-bg-default: #F9FAFB;
-  --color-workflow-process-bg: linear-gradient(90deg, rgba(200, 206, 218, 0.20) 0%, rgba(200, 206, 218, 0.04) 100%);
-  --color-marketplace-divider-bg: linear-gradient(90deg, rgba(16, 24, 40, 0.08) 0%, rgba(255, 255, 255, 0) 100%);
-  --color-marketplace-plugin-empty: linear-gradient(180deg, rgba(255, 255, 255, 0.00) 0%, #FCFCFD 100%);
 }
