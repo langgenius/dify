@@ -30,9 +30,7 @@ class ASRTool(BuiltinTool):
             file=audio_binary,
             user=user_id,
         )
-        return [
-            self.create_text_message(text)
-        ]
+        return [self.create_text_message(text)]
 
     def get_available_models(self) -> list[tuple[str, str]]:
         model_provider_service = ModelProviderService()

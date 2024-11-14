@@ -42,9 +42,7 @@ class TTSTool(BuiltinTool):
 
     def get_available_models(self) -> list[tuple[str, str, list[Any]]]:
         model_provider_service = ModelProviderService()
-        models = model_provider_service.get_models_by_model_type(
-            tenant_id=self.runtime.tenant_id, model_type="tts"
-        )
+        models = model_provider_service.get_models_by_model_type(tenant_id=self.runtime.tenant_id, model_type="tts")
         items = []
         for provider_model in models:
             provider = provider_model.provider
@@ -87,6 +85,6 @@ class TTSTool(BuiltinTool):
                 required=True,
                 default=options[0].value,
                 options=options,
-            )
+            ),
         )
         return parameters
