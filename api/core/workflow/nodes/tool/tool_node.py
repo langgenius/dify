@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file import File, FileTransferMethod, FileType
+from core.file.file_manager import get_file_type_by_mimetype
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
@@ -211,7 +212,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                         raise ValueError(f"tool file {tool_file_id} not exists")
                 mapping = {
                     "tool_file_id": tool_file_id,
-                    "type": FileType.IMAGE,
+                    "type": get_file_type_by_mimetype(response.meta.get("mime_type")),
                     "transfer_method": FileTransferMethod.TOOL_FILE,
                 }
                 file = file_factory.build_from_mapping(
@@ -234,7 +235,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                     extension = ".bin"
                 mapping = {
                     "tool_file_id": tool_file_id,
-                    "type": FileType.IMAGE,
+                    "type": get_file_type_by_mimetype(response.meta.get("mime_type")),
                     "transfer_method": transfer_method,
                     "url": url,
                 }
