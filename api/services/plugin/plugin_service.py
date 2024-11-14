@@ -6,6 +6,7 @@ from configs import dify_config
 from core.helper import marketplace
 from core.helper.download import download_with_size_limit
 from core.helper.marketplace import download_plugin_pkg
+from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginUploadResponse
 from core.plugin.manager.asset import PluginAssetManager
@@ -188,6 +189,16 @@ class PluginService:
             pkg,
             verify_signature,
         )
+
+    @staticmethod
+    def upload_bundle(
+        tenant_id: str, bundle: bytes, verify_signature: bool = False
+    ) -> Sequence[PluginBundleDependency]:
+        """
+        Upload a plugin bundle and return the dependencies.
+        """
+        manager = PluginInstallationManager()
+        return manager.upload_bundle(tenant_id, bundle, verify_signature)
 
     @staticmethod
     def install_from_local_pkg(tenant_id: str, plugin_unique_identifiers: Sequence[str]):

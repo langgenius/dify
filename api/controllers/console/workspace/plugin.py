@@ -94,6 +94,26 @@ class PluginUploadFromGithubApi(Resource):
         return jsonable_encoder(response)
 
 
+class PluginUploadFromBundleApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @plugin_permission_required(install_required=True)
+    def post(self):
+        tenant_id = current_user.current_tenant_id
+
+        file = request.files["bundle"]
+
+        # check file size
+        if file.content_length > dify_config.PLUGIN_MAX_BUNDLE_SIZE:
+            raise ValueError("File size exceeds the maximum allowed size")
+
+        content = file.read()
+        response = PluginService.upload_bundle(tenant_id, content)
+
+        return jsonable_encoder(response)
+
+
 class PluginInstallFromPkgApi(Resource):
     @setup_required
     @login_required
@@ -346,6 +366,7 @@ api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
 api.add_resource(PluginIconApi, "/workspaces/current/plugin/icon")
 api.add_resource(PluginUploadFromPkgApi, "/workspaces/current/plugin/upload/pkg")
 api.add_resource(PluginUploadFromGithubApi, "/workspaces/current/plugin/upload/github")
+api.add_resource(PluginUploadFromBundleApi, "/workspaces/current/plugin/upload/bundle")
 api.add_resource(PluginInstallFromPkgApi, "/workspaces/current/plugin/install/pkg")
 api.add_resource(PluginInstallFromGithubApi, "/workspaces/current/plugin/install/github")
 api.add_resource(PluginUpgradeFromMarketplaceApi, "/workspaces/current/plugin/upgrade/marketplace")
