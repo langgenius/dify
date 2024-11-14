@@ -9,6 +9,7 @@ import { FlatCompat } from '@eslint/eslintrc'
 import globals from 'globals'
 import storybook from 'eslint-plugin-storybook'
 import { fixupConfigRules } from '@eslint/compat'
+import tailwind from 'eslint-plugin-tailwindcss'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -76,6 +77,12 @@ export default combine(
     ? []
     // TODO: remove this when upgrade to nextjs 15
     : fixupConfigRules(compat.extends('next')),
+  {
+    rules: {
+      // performance issue, and not used.
+      '@next/next/no-html-link-for-pages': 'off',
+    },
+  },
   {
     ignores: [
       '**/node_modules/*',
@@ -158,6 +165,19 @@ export default combine(
         ...globals.node,
         ...globals.jest,
       },
+    },
+  },
+  tailwind.configs['flat/recommended'],
+  {
+    rules: {
+      // due to 1k lines of tailwind config, these rule have performance issue
+      'tailwindcss/no-contradicting-classname': 'off',
+      'tailwindcss/no-unnecessary-arbitrary-value': 'off',
+      'tailwindcss/enforces-shorthand': 'off',
+      'tailwindcss/no-custom-classname': 'off',
+
+      // in the future
+      'tailwindcss/classnames-order': 'off',
     },
   },
 )

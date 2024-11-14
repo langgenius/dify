@@ -13,6 +13,15 @@ import {
 
 const NAME_SPACE = 'tools'
 
+const useAllToolProvidersKey = [NAME_SPACE, 'allToolProviders']
+export const useAllToolProviders = () => {
+  return useQuery({
+    queryKey: useAllToolProvidersKey,
+    queryFn: () => get<Collection[]>('/workspaces/current/tool-providers'),
+    initialData: [],
+  })
+}
+
 const useAllBuiltInToolsKey = [NAME_SPACE, 'builtIn']
 export const useAllBuiltInTools = () => {
   return useQuery<ToolWithProvider[]>({

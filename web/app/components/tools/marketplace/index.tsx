@@ -1,9 +1,13 @@
-import { RiArrowUpDoubleLine } from '@remixicon/react'
+import {
+  RiArrowRightUpLine,
+  RiArrowUpDoubleLine,
+} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useMarketplace } from './hooks'
 import List from '@/app/components/plugins/marketplace/list'
 import Loading from '@/app/components/base/loading'
 import { getLocaleOnClient } from '@/i18n'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 
 type MarketplaceProps = {
   searchPluginText: string
@@ -51,7 +55,15 @@ const Marketplace = ({
           <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
             {t('plugin.category.bundles')}
           </span>
-          {t('plugin.marketplace.inDifyMarketplace')}
+          {t('common.operation.in')}
+          <a
+            href={`${MARKETPLACE_URL_PREFIX}`}
+            className='flex items-center ml-1 system-sm-medium text-text-accent'
+            target='_blank'
+          >
+            {t('plugin.marketplace.difyMarketplace')}
+            <RiArrowRightUpLine className='w-4 h-4' />
+          </a>
         </div>
       </div>
       {

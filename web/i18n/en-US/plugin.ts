@@ -142,7 +142,7 @@ const translation = {
     empower: 'Empower your AI development',
     discover: 'Discover',
     and: 'and',
-    inDifyMarketplace: 'in Dify Marketplace',
+    difyMarketplace: 'Dify Marketplace',
     moreFrom: 'More from Marketplace',
     noPluginFound: 'No plugin found',
     pluginsResult: '{{num}} results',

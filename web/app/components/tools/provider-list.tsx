@@ -10,10 +10,10 @@ import LabelFilter from '@/app/components/tools/labels/filter'
 import Input from '@/app/components/base/input'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
-import { fetchCollectionList } from '@/service/tools'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
+import { useAllToolProviders } from '@/service/use-tools'
 
 const ProviderList = () => {
   const { t } = useTranslation()
@@ -36,8 +36,7 @@ const ProviderList = () => {
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
   }
-
-  const [collectionList, setCollectionList] = useState<Collection[]>([])
+  const { data: collectionList, refetch } = useAllToolProviders()
   const filteredCollectionList = useMemo(() => {
     return collectionList.filter((collection) => {
       if (collection.type !== activeTab)
@@ -49,13 +48,6 @@ const ProviderList = () => {
       return true
     })
   }, [activeTab, tagFilterValue, keywords, collectionList])
-  const getProviderList = async () => {
-    const list = await fetchCollectionList()
-    setCollectionList([...list])
-  }
-  useEffect(() => {
-    getProviderList()
-  }, [])
 
   const [currentProvider, setCurrentProvider] = useState<Collection | undefined>()
   useEffect(() => {
@@ -106,7 +98,7 @@ const ProviderList = () => {
             >
               <Card
                 className={cn(
-                  'border-[1.5px] border-transparent',
+                  'border-[1.5px] border-transparent cursor-pointer',
                   currentProvider?.id === collection.id && 'border-components-option-card-option-selected-border',
                 )}
                 hideCornerMark
@@ -140,7 +132,7 @@ const ProviderList = () => {
         <ProviderDetail
           collection={currentProvider}
           onHide={() => setCurrentProvider(undefined)}
-          onRefreshData={getProviderList}
+          onRefreshData={refetch}
         />
       )}
     </div>
