@@ -281,6 +281,10 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.arrayFile].includes(varPayload.type)
   }, [])
 
+  const filterJinjia2InputVar = useCallback((varPayload: Var) => {
+    return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber].includes(varPayload.type)
+  }, [])
+
   const filterMemoryPromptVar = useCallback((varPayload: Var) => {
     return [VarType.arrayObject, VarType.array, VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber, VarType.arrayFile].includes(varPayload.type)
   }, [])
@@ -406,6 +410,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleRun,
     handleStop,
     runResult,
+    filterJinjia2InputVar,
   }
 }
 
