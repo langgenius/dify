@@ -1,4 +1,5 @@
 from abc import ABC
+from collections.abc import Sequence
 from enum import Enum
 from typing import Optional
 
@@ -107,7 +108,7 @@ class PromptMessage(ABC, BaseModel):
     """
 
     role: PromptMessageRole
-    content: Optional[str | list[PromptMessageContent]] = None
+    content: Optional[str | Sequence[PromptMessageContent]] = None
     name: Optional[str] = None
 
     def is_empty(self) -> bool:
