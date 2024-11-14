@@ -60,6 +60,26 @@ export const useInstallPackageFromLocal = () => {
   })
 }
 
+export const useInstallPackageFromGitHub = () => {
+  return useMutation({
+    mutationFn: ({ repoUrl, selectedVersion, selectedPackage, uniqueIdentifier }: {
+      repoUrl: string
+      selectedVersion: string
+      selectedPackage: string
+      uniqueIdentifier: string
+    }) => {
+      return post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
+        body: {
+          repo: repoUrl,
+          version: selectedVersion,
+          package: selectedPackage,
+          plugin_unique_identifier: uniqueIdentifier,
+        },
+      })
+    },
+  })
+}
+
 export const useDebugKey = () => {
   return useQuery({
     queryKey: [NAME_SPACE, 'debugKey'],

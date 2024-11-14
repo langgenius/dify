@@ -103,6 +103,7 @@ const translation = {
     readyToInstallPackage: 'About to install the following plugin',
     readyToInstallPackages: 'About to install the following {{num}} plugins',
     fromTrustSource: 'Please make sure that you only install plugins from a <trustSource>trusted source</trustSource>.',
+    dropPluginToInstall: 'Drop plugin package here to install',
     labels: {
       repository: 'Repository',
       version: 'Version',

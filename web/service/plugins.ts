@@ -54,17 +54,6 @@ export const uploadGitHub = async (repoUrl: string, selectedVersion: string, sel
   })
 }
 
-export const installPackageFromGitHub = async (repoUrl: string, selectedVersion: string, selectedPackage: string, uniqueIdentifier: string) => {
-  return post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
-    body: {
-      repo: repoUrl,
-      version: selectedVersion,
-      package: selectedPackage,
-      plugin_unique_identifier: uniqueIdentifier,
-    },
-  })
-}
-
 export const fetchIcon = (tenantId: string, fileName: string) => {
   return get(`workspaces/current/plugin/icon?tenant_id=${tenantId}&filename=${fileName}`)
 }

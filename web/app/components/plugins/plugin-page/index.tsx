@@ -132,7 +132,7 @@ const PluginPage = ({
               options={options}
             />
           </div>
-          <div className='flex flex-shrink-0 items-center gap-1'>
+          <div className='flex shrink-0 items-center gap-1'>
             <PluginTasks />
             {canManagement && (
               <InstallPluginDropdown
@@ -172,7 +172,7 @@ const PluginPage = ({
           )}
           <div className={`flex py-4 justify-center items-center gap-2 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
             <RiDragDropLine className="w-4 h-4" />
-            <span className="system-xs-regular">Drop plugin package here to install</span>
+            <span className="system-xs-regular">{t('plugin.installModal.dropPluginToInstall')}</span>
           </div>
           {currentFile && (
             <InstallFromLocalPackage

@@ -103,6 +103,7 @@ const translation = {
     readyToInstallPackage: '即将安装以下插件',
     readyToInstallPackages: '即将安装以下 {{num}} 个插件',
     fromTrustSource: '请保证仅从<trustSource>可信源</trustSource>安装插件。',
+    dropPluginToInstall: '拖放插件包到此处安装',
     labels: {
       repository: '仓库',
       version: '版本',

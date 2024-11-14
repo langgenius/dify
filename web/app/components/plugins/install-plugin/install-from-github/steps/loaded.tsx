@@ -7,7 +7,8 @@ import Card from '../../../card'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import { useTranslation } from 'react-i18next'
-import { installPackageFromGitHub, updateFromGitHub } from '@/service/plugins'
+import { updateFromGitHub } from '@/service/plugins'
+import { useInstallPackageFromGitHub } from '@/service/use-plugins'
 import { RiLoader2Line } from '@remixicon/react'
 import { usePluginTaskList } from '@/service/use-plugins'
 import checkTaskStatus from '../../base/check-task-status'
@@ -40,6 +41,7 @@ const Loaded: React.FC<LoadedProps> = ({
 }) => {
   const { t } = useTranslation()
   const [isInstalling, setIsInstalling] = React.useState(false)
+  const { mutateAsync: installPackageFromGitHub } = useInstallPackageFromGitHub()
   const { handleRefetch } = usePluginTaskList()
   const { check } = checkTaskStatus()
 
@@ -72,12 +74,12 @@ const Loaded: React.FC<LoadedProps> = ({
         onInstalled()
       }
       else {
-        const { all_installed: isInstalled, task_id: taskId } = await installPackageFromGitHub(
-          `${owner}/${repo}`,
+        const { all_installed: isInstalled, task_id: taskId } = await installPackageFromGitHub({
+          repoUrl: `${owner}/${repo}`,
           selectedVersion,
           selectedPackage,
           uniqueIdentifier,
-        )
+        })
 
         if (isInstalled) {
           onInstalled()
