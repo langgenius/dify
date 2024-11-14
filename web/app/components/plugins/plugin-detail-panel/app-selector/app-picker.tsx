@@ -13,12 +13,10 @@ import type {
 } from '@floating-ui/react'
 import Input from '@/app/components/base/input'
 import AppIcon from '@/app/components/base/app-icon'
-import {
-  useAppFullList,
-} from '@/service/use-apps'
 import type { App } from '@/types/app'
 
 type Props = {
+  appList: App[]
   disabled: boolean
   trigger: React.ReactNode
   placement?: Placement
@@ -29,6 +27,7 @@ type Props = {
 }
 
 const AppPicker: FC<Props> = ({
+  appList,
   disabled,
   trigger,
   placement = 'right-start',
@@ -38,9 +37,8 @@ const AppPicker: FC<Props> = ({
   onSelect,
 }) => {
   const [searchText, setSearchText] = useState('')
-  const { data: appList } = useAppFullList()
   const filteredAppList = useMemo(() => {
-    return (appList?.data || []).filter(app => app.name.toLowerCase().includes(searchText.toLowerCase())).filter(app => (app.mode !== 'advanced-chat' && app.mode !== 'workflow') || !!app.workflow)
+    return (appList || []).filter(app => app.name.toLowerCase().includes(searchText.toLowerCase())).filter(app => (app.mode !== 'advanced-chat' && app.mode !== 'workflow') || !!app.workflow)
   }, [appList, searchText])
   const getAppType = (app: App) => {
     switch (app.mode) {

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -11,7 +11,7 @@ import AppTrigger from '@/app/components/plugins/plugin-detail-panel/app-selecto
 import AppPicker from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
 // import Button from '@/app/components/base/button'
 
-import { useAppDetail } from '@/service/use-apps'
+import { useAppFullList } from '@/service/use-apps'
 import type { App } from '@/types/app'
 import type {
   OffsetOptions,
@@ -48,7 +48,12 @@ const AppSelector: FC<Props> = ({
     onShowChange(true)
   }
 
-  const { data: currentApp } = useAppDetail(value?.app_id || 'empty')
+  const { data: appList } = useAppFullList()
+  const currentAppInfo = useMemo(() => {
+    if (!appList?.data || !value)
+      return undefined
+    return appList.data.find(app => app.id === value.app_id)
+  }, [appList?.data, value])
   const [isShowChooseApp, setIsShowChooseApp] = useState(false)
   const handleSelectApp = (app: App) => {
     const appValue = {
@@ -59,6 +64,8 @@ const AppSelector: FC<Props> = ({
     onSelect(appValue)
     setIsShowChooseApp(false)
   }
+
+  // const { data: currentApp } = useAppDetail(value?.app_id || 'empty')
 
   return (
     <>
@@ -74,25 +81,26 @@ const AppSelector: FC<Props> = ({
         >
           <AppTrigger
             open={isShow}
-            appDetail={currentApp}
+            appDetail={currentAppInfo}
           />
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1000]'>
           <div className="relative w-[389px] min-h-20 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
             <div className='px-4 py-3 flex flex-col gap-1'>
-              <div className='h-6 flex items-center system-sm-semibold text-text-secondary'>{t('tools.toolSelector.label')}</div>
+              <div className='h-6 flex items-center system-sm-semibold text-text-secondary'>{t('app.appSelector.label')}</div>
               <AppPicker
                 placement='bottom'
                 offset={offset}
                 trigger={
                   <AppTrigger
                     open={isShowChooseApp}
-                    appDetail={currentApp}
+                    appDetail={currentAppInfo}
                   />
                 }
                 isShow={isShowChooseApp}
                 onShowChange={setIsShowChooseApp}
                 disabled={false}
+                appList={appList?.data || []}
                 onSelect={handleSelectApp}
               />
             </div>
