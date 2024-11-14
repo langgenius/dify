@@ -55,14 +55,35 @@ const AppSelector: FC<Props> = ({
   }, [appList?.data, value])
   const [isShowChooseApp, setIsShowChooseApp] = useState(false)
   const handleSelectApp = (app: App) => {
+    const clearValue = app.id !== value?.app_id
     const appValue = {
       app_id: app.id,
-      inputs: value?.inputs || {},
-      files: value?.files || [],
+      inputs: clearValue ? {} : value?.inputs || {},
+      files: clearValue ? [] : value?.files || [],
     }
     onSelect(appValue)
     setIsShowChooseApp(false)
   }
+  const handleFormChange = (inputs: Record<string, any>) => {
+    const newFiles = inputs['#image#']
+    delete inputs['#image#']
+    const newValue = {
+      app_id: value?.app_id || '',
+      inputs,
+      files: newFiles ? [newFiles] : value?.files || [],
+    }
+    onSelect(newValue)
+  }
+
+  const formattedValue = useMemo(() => {
+    return {
+      app_id: value?.app_id || '',
+      inputs: {
+        ...value?.inputs,
+        ...(value?.files?.length ? { '#image#': value.files[0] } : {}),
+      },
+    }
+  }, [value])
 
   return (
     <>
@@ -104,7 +125,9 @@ const AppSelector: FC<Props> = ({
             {/* app inputs config panel */}
             {currentAppInfo && (
               <AppInputsPanel
+                value={formattedValue}
                 appDetail={currentAppInfo}
+                onFormChange={handleFormChange}
               />
             )}
           </div>

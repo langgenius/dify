@@ -22,10 +22,6 @@ export const useInvalidateAppFullList = () => {
 export const useAppDetail = (appID: string) => {
   return useQuery<App>({
     queryKey: [NAME_SPACE, 'detail', appID],
-    queryFn: () => {
-      if (appID === 'empty')
-        return Promise.resolve(undefined as unknown as App)
-      return get<App>(`/apps/${appID}`)
-    },
+    queryFn: () => get<App>(`/apps/${appID}`),
   })
 }

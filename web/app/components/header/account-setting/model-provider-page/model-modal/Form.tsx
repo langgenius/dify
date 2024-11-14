@@ -18,7 +18,7 @@ import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip'
 import Radio from '@/app/components/base/radio'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-// import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
+import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 
 type FormProps = {
@@ -318,34 +318,34 @@ const Form: FC<FormProps> = ({
       )
     }
 
-    // if (formSchema.type === FormTypeEnum.toolSelector) {
-    //   const {
-    //     variable,
-    //     label,
-    //     required,
-    //   } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
+    if (formSchema.type === FormTypeEnum.toolSelector) {
+      const {
+        variable,
+        label,
+        required,
+      } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
 
-    //   return (
-    //     <div key={variable} className={cn(itemClassName, 'py-3')}>
-    //       <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
-    //         {label[language] || label.en_US}
-    //         {
-    //           required && (
-    //             <span className='ml-1 text-red-500'>*</span>
-    //           )
-    //         }
-    //         {tooltipContent}
-    //       </div>
-    //       <ToolSelector
-    //         disabled={readonly}
-    //         value={value[variable]}
-    //         onSelect={item => handleFormChange(variable, item as any)}
-    //       />
-    //       {fieldMoreInfo?.(formSchema)}
-    //       {validating && changeKey === variable && <ValidatingTip />}
-    //     </div>
-    //   )
-    // }
+      return (
+        <div key={variable} className={cn(itemClassName, 'py-3')}>
+          <div className={cn(fieldLabelClassName, 'flex items-center py-2 system-sm-semibold text-text-secondary')}>
+            {label[language] || label.en_US}
+            {
+              required && (
+                <span className='ml-1 text-red-500'>*</span>
+              )
+            }
+            {tooltipContent}
+          </div>
+          <ToolSelector
+            disabled={readonly}
+            value={value[variable]}
+            onSelect={item => handleFormChange(variable, item as any)}
+          />
+          {fieldMoreInfo?.(formSchema)}
+          {validating && changeKey === variable && <ValidatingTip />}
+        </div>
+      )
+    }
 
     if (formSchema.type === FormTypeEnum.appSelector) {
       const {
