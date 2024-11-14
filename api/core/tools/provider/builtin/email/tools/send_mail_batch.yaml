@@ -1,0 +1,46 @@
+identity:
+  name: send_mail_batch
+  author: wakaka6
+  label:
+    en_US: send email to multiple recipients
+    zh_Hans: 发送邮件给多个收件人
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool for sending email to multiple recipients
+    zh_Hans: 用于发送邮件给多个收件人的工具
+  llm: A tool for sending email to multiple recipients
+parameters:
+  - name: send_to
+    type: string
+    required: true
+    label:
+      en_US: Recipient email account(json list)
+      zh_Hans: 收件人邮箱账号(json list)
+    human_description:
+      en_US: Recipient email account
+      zh_Hans: 收件人邮箱账号
+    llm_description: A list of recipient email account(json format)
+    form: llm
+  - name: subject
+    type: string
+    required: true
+    label:
+      en_US: email subject
+      zh_Hans: 邮件主题
+    human_description:
+      en_US: email subject
+      zh_Hans: 邮件主题
+    llm_description: email subject
+    form: llm
+  - name: email_content
+    type: string
+    required: true
+    label:
+      en_US: email content
+      zh_Hans: 邮件内容
+    human_description:
+      en_US: email content
+      zh_Hans: 邮件内容
+    llm_description: email content
+    form: llm

@@ -617,6 +617,10 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         # o1 compatibility
         block_as_stream = False
         if model.startswith("o1"):
+            if "max_tokens" in model_parameters:
+                model_parameters["max_completion_tokens"] = model_parameters["max_tokens"]
+                del model_parameters["max_tokens"]
+
             if stream:
                 block_as_stream = True
                 stream = False
