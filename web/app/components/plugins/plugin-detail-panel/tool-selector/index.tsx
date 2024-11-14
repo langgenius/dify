@@ -7,11 +7,11 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import ToolTrigger from '@/app/components/tools/tool-selector/tool-trigger'
+import ToolTrigger from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-trigger'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
-import ToolCredentialForm from '@/app/components/tools/tool-selector/tool-credentials-form'
+import ToolCredentialForm from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-credentials-form'
 import Toast from '@/app/components/base/toast'
 
 import { useAppContext } from '@/context/app-context'

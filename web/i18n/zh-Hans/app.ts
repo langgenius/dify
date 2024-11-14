@@ -132,6 +132,11 @@ const translation = {
       removeConfirmContent: '当前配置正在使用中，删除它将关闭追踪功能。',
     },
   },
+  appSelector: {
+    label: '应用',
+    placeholder: '选择一个应用',
+    params: '应用参数',
+  },
 }
 
 export default translation

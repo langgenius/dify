@@ -11,6 +11,8 @@ import Toast from '@/app/components/base/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import cn from '@/utils/classnames'
 
+import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
+
 type Props = {
   formSchemas: any
   defaultValues?: any
@@ -37,6 +39,8 @@ const EndpointModal: FC<Props> = ({
     }
     onSaved(tempCredential)
   }
+
+  const [mockApp, setMockApp] = React.useState<any>(null)
 
   return (
     <Drawer
@@ -80,6 +84,11 @@ const EndpointModal: FC<Props> = ({
                   <RiArrowRightUpLine className='ml-1 w-3 h-3' />
                 </a>)
                 : null}
+            />
+            <AppSelector
+              disabled={false}
+              value={mockApp}
+              onSelect={setMockApp}
             />
           </div>
           <div className={cn('p-4 pt-0 flex justify-end')} >

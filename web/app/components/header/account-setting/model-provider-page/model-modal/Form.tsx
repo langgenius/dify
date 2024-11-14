@@ -18,7 +18,7 @@ import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip'
 import Radio from '@/app/components/base/radio'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import ToolSelector from '@/app/components/tools/tool-selector'
+import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 
 type FormProps = {
   className?: string
