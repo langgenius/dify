@@ -12,7 +12,7 @@ from pymochow.model.table import Table
 from requests.adapters import HTTPAdapter
 
 
-class AttrDict2(UserDict):
+class AttrDict(UserDict):
     def __getattr__(self, item):
         return self.get(item)
 
