@@ -1,5 +1,6 @@
 import json
 import random
+from collections import UserDict
 from datetime import datetime
 
 
@@ -10,7 +11,7 @@ class ChatRole:
     FUNCTION = "function"
 
 
-class _Dict(dict):
+class _Dict(UserDict):
     __setattr__ = dict.__setitem__
     __getattr__ = dict.__getitem__
 
