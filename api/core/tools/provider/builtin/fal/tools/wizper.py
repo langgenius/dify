@@ -1,10 +1,12 @@
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
-from core.file.file_manager import _to_url
+from core.file.enums import FileType, FileAttribute
+from core.file.file_manager import download, get_attr
 from typing import Any
 import fal_client
 import os
 import mimetypes
+import io
 
 class WizperTool(BuiltinTool):
 
@@ -15,6 +17,9 @@ class WizperTool(BuiltinTool):
         language = tool_parameters.get("language", "en")
         chunk_level = tool_parameters.get("chunk_level", "segment")
         version = tool_parameters.get("version", "3")
+        
+        if audio_file.type != FileType.AUDIO:
+            return [self.create_text_message("Not a valid audio file.")]
 
         # Get the API key from credentials
         api_key = self.runtime.credentials['fal_api_key']
@@ -23,11 +28,18 @@ class WizperTool(BuiltinTool):
 
         # Upload the audio file using fal_client
         try:
-            audio_url = fal_client.upload_file(audio_file.remote_url)
+            # Download the audio file content
+            audio_binary = io.BytesIO(download(audio_file))
+            mime_type = get_attr(file=audio_file, attr=FileAttribute.MIME_TYPE)
+            
+            # Get the file data
+            file_data = audio_binary.getvalue()
+            
+            # Upload the file using fal_client
+            audio_url = fal_client.upload(file_data, mime_type)
+
         except Exception as e:
-            return self.create_text_message(f"Error uploading audio file: {e}")
-        
-        return self.create_text_message(f"Audio file uploaded to {audio_url}")
+            return [self.create_text_message(f"Error uploading audio file: {str(e)}")]
 
         # Prepare arguments for the API call
         arguments = {
@@ -40,7 +52,7 @@ class WizperTool(BuiltinTool):
 
         def on_queue_update(update):
             if isinstance(update, fal_client.InProgress):
-                pass
+                pass  # Handle progress updates if needed
 
         # Use fal_client.subscribe to submit and wait for the result
         result = fal_client.subscribe(
