@@ -128,6 +128,15 @@ const translation = {
     and: '和',
     inDifyMarketplace: '在 Dify 市场中',
     moreFrom: '更多来自市场',
+    noPluginFound: '未找到插件',
+    pluginsResult: '{{num}} 个插件结果',
+    sortBy: '排序方式',
+    sortOption: {
+      mostPopular: '最受欢迎',
+      recentlyUpdated: '最近更新',
+      newlyReleased: '最新发布',
+      firstReleased: '首次发布',
+    },
   },
   task: {
     installing: '{{installingLength}}/{{totalLength}} 插件安装中...',

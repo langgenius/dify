@@ -128,6 +128,15 @@ const translation = {
     and: 'and',
     inDifyMarketplace: 'in Dify Marketplace',
     moreFrom: 'More from Marketplace',
+    noPluginFound: 'No plugin found',
+    pluginsResult: '{{num}} results',
+    sortBy: 'Sort by',
+    sortOption: {
+      mostPopular: 'Most Popular',
+      recentlyUpdated: 'Recently Updated',
+      newlyReleased: 'Newly Released',
+      firstReleased: 'First Released',
+    },
   },
   task: {
     installing: 'Installing {{installingLength}}/{{totalLength}} plugins...',

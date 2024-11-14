@@ -19,20 +19,20 @@ const Description = async ({
       </h1>
       <h2 className='shrink-0 flex justify-center items-center text-center body-md-regular text-text-tertiary'>
         {t('marketplace.discover')}
-        <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
-          {t('category.models')}
+        <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected z-[1]">
+          <span className='relative z-[2]'>{t('category.models')}</span>
         </span>
         ,
-        <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
-          {t('category.tools')}
+        <span className="relative ml-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected z-[1]">
+          <span className='relative z-[2]'>{t('category.tools')}</span>
         </span>
         ,
-        <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
-          {t('category.extensions')}
+        <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected z-[1]">
+          <span className='relative z-[2]'>{t('category.extensions')}</span>
         </span>
         {t('marketplace.and')}
-        <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected">
-          {t('category.bundles')}
+        <span className="relative ml-1 mr-1 body-md-medium text-text-secondary after:content-[''] after:absolute after:left-0 after:bottom-[1.5px] after:w-full after:h-2 after:bg-text-text-selected z-[1]">
+          <span className='relative z-[2]'>{t('category.bundles')}</span>
         </span>
         {t('marketplace.inDifyMarketplace')}
       </h2>

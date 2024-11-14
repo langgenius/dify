@@ -4,6 +4,7 @@ import {
   RiArrowDownSLine,
   RiCheckLine,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import { useMarketplaceContext } from '../context'
 import {
   PortalToFollowElem,
@@ -11,30 +12,30 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 
-const options = [
-  {
-    value: 'install_count',
-    order: 'DESC',
-    text: 'Most Popular',
-  },
-  {
-    value: 'version_updated_at',
-    order: 'DESC',
-    text: 'Recently Updated',
-  },
-  {
-    value: 'created_at',
-    order: 'DESC',
-    text: 'Newly Released',
-  },
-  {
-    value: 'created_at',
-    order: 'ASC',
-    text: 'First Released',
-  },
-]
-
 const SortDropdown = () => {
+  const { t } = useTranslation()
+  const options = [
+    {
+      value: 'install_count',
+      order: 'DESC',
+      text: t('plugin.marketplace.sortOption.mostPopular'),
+    },
+    {
+      value: 'version_updated_at',
+      order: 'DESC',
+      text: t('plugin.marketplace.sortOption.recentlyUpdated'),
+    },
+    {
+      value: 'created_at',
+      order: 'DESC',
+      text: t('plugin.marketplace.sortOption.newlyReleased'),
+    },
+    {
+      value: 'created_at',
+      order: 'ASC',
+      text: t('plugin.marketplace.sortOption.firstReleased'),
+    },
+  ]
   const sort = useMarketplaceContext(v => v.sort)
   const handleSortChange = useMarketplaceContext(v => v.handleSortChange)
   const [open, setOpen] = useState(false)
@@ -53,7 +54,7 @@ const SortDropdown = () => {
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <div className='flex items-center px-2 pr-3 h-8 rounded-lg bg-state-base-hover-alt cursor-pointer'>
           <span className='mr-1 system-sm-regular'>
-            Sort by
+            {t('plugin.marketplace.sortBy')}
           </span>
           <span className='mr-1 system-sm-medium'>
             {selectedOption.text}
