@@ -55,6 +55,7 @@ class Account(UserMixin, Base):
             tenant.current_role = ta.role
         else:
             tenant = None
+
         self._current_tenant = tenant
 
     @property

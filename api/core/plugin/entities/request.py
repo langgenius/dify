@@ -195,3 +195,12 @@ class RequestInvokeSummary(BaseModel):
 
     text: str
     instruction: str
+
+
+class RequestRequestUploadFile(BaseModel):
+    """
+    Request to upload file
+    """
+
+    filename: str
+    mimetype: str
