@@ -1,0 +1,71 @@
+identity:
+  name: wizper
+  author: Kalo Chin
+  label:
+    en_US: Wizper
+    zh_Hans: Wizper
+description:
+  human:
+    en_US: Transcribe an audio file using the Whisper model.
+    zh_Hans: 使用 Whisper 模型转录音频文件。
+  llm: Transcribe an audio file using the Whisper model.
+parameters:
+  - name: audio_file
+    type: file
+    required: true
+    label:
+      en_US: Audio File
+      zh_Hans: 音频文件
+    llm_description: "The audio file to transcribe. Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, or webm."
+    form: llm
+  - name: task
+    type: select
+    label:
+      en_US: Task
+      zh_Hans: 任务
+    llm_description: "Task to perform on the audio file. Either transcribe or translate. Default is transcribe."
+    form: llm
+    default: transcribe
+    options:
+      - value: transcribe
+        label:
+          en_US: Transcribe
+          zh_Hans: 转录
+      - value: translate
+        label:
+          en_US: Translate
+          zh_Hans: 翻译
+  - name: language
+    type: string
+    label:
+      en_US: Language
+      zh_Hans: 语言
+    llm_description: "Language of the audio file. Use ISO 639-1 codes (e.g., en for English, ja for Japanese, zh for Chinese)."
+    form: llm
+    default: en
+  - name: chunk_level
+    type: select
+    label:
+      en_US: Chunk Level
+      zh_Hans: 分块级别
+    llm_description: "Level of the chunks to return. Default is segment."
+    form: llm
+    default: segment
+    options:
+      - value: segment
+        label:
+          en_US: Segment
+          zh_Hans: 段
+  - name: version
+    type: select
+    label:
+      en_US: Version
+      zh_Hans: 版本
+    llm_description: "Version of the model to use. Currently, only version '3' is supported."
+    form: form
+    default: "3"
+    options:
+      - value: "3"
+        label:
+          en_US: Version 3
+          zh_Hans: 版本 3
