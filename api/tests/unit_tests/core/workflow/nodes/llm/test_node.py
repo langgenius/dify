@@ -240,6 +240,8 @@ def test_fetch_prompt_messages__vison_disabled(faker, llm_node, model_config):
         memory_config=None,
         vision_enabled=False,
         vision_detail=fake_vision_detail,
+        variable_pool=llm_node.graph_runtime_state.variable_pool,
+        jinja2_variables=[],
     )
 
     assert prompt_messages == [UserPromptMessage(content=fake_query)]
@@ -368,7 +370,7 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
             description="Prompt template with variable selector of File",
             user_query=fake_query,
             user_files=[],
-            vision_enabled=True,
+            vision_enabled=False,
             vision_detail=fake_vision_detail,
             features=[ModelFeature.VISION],
             window_size=fake_window_size,
@@ -471,6 +473,8 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
             memory_config=memory_config,
             vision_enabled=scenario.vision_enabled,
             vision_detail=scenario.vision_detail,
+            variable_pool=llm_node.graph_runtime_state.variable_pool,
+            jinja2_variables=[],
         )
 
         # Verify the result
