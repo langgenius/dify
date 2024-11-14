@@ -7,7 +7,7 @@ from core.helper import marketplace
 from core.helper.download import download_with_size_limit
 from core.helper.marketplace import download_plugin_pkg
 from core.plugin.entities.bundle import PluginBundleDependency
-from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallationSource
+from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallation, PluginInstallationSource
 from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginUploadResponse
 from core.plugin.manager.asset import PluginAssetManager
 from core.plugin.manager.debugging import PluginDebuggingManager
@@ -49,6 +49,14 @@ class PluginService:
                     plugin.latest_unique_identifier = manifests[plugin.plugin_id].latest_package_identifier
 
         return plugins
+
+    @staticmethod
+    def list_installations_from_ids(tenant_id: str, ids: Sequence[str]) -> Sequence[PluginInstallation]:
+        """
+        List plugin installations from ids
+        """
+        manager = PluginInstallationManager()
+        return manager.fetch_plugin_installation_by_ids(tenant_id, ids)
 
     @staticmethod
     def get_asset(tenant_id: str, asset_file: str) -> tuple[bytes, str]:
