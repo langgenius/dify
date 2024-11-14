@@ -7,10 +7,31 @@ from flask_restful import reqparse
 from pydantic import BaseModel
 
 from extensions.ext_database import db
-from models.account import Tenant
+from models.account import Account, Tenant
+from models.model import EndUser
+from services.account_service import AccountService
 
 
-def get_tenant(view: Optional[Callable] = None):
+def get_user(user_id: str | None) -> Account | EndUser:
+    try:
+        if not user_id:
+            user_id = "DEFAULT-USER"
+
+        if user_id == "DEFAULT-USER":
+            user_model = db.session.query(EndUser).filter(EndUser.session_id == "DEFAULT-USER").first()
+        else:
+            user_model = AccountService.load_user(user_id)
+            if not user_model:
+                user_model = db.session.query(EndUser).filter(EndUser.id == user_id).first()
+            if not user_model:
+                raise ValueError("user not found")
+    except Exception:
+        raise ValueError("user not found")
+
+    return user_model
+
+
+def get_user_tenant(view: Optional[Callable] = None):
     def decorator(view_func):
         @wraps(view_func)
         def decorated_view(*args, **kwargs):
@@ -42,7 +63,7 @@ def get_tenant(view: Optional[Callable] = None):
                 raise ValueError("tenant not found")
 
             kwargs["tenant_model"] = tenant_model
-            kwargs["user_id"] = user_id
+            kwargs["user_model"] = get_user(user_id)
 
             return view_func(*args, **kwargs)
 
