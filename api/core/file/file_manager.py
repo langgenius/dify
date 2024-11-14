@@ -74,6 +74,8 @@ def to_prompt_message_content(
                 data = _to_url(f)
             else:
                 data = _to_base64_data_string(f)
+            if f.extension is None:
+                raise ValueError("Missing file extension")
             return VideoPromptMessageContent(data=data, format=f.extension.lstrip("."))
         case _:
             raise ValueError("file type f.type is not supported")

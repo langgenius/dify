@@ -248,6 +248,7 @@ def test_fetch_prompt_messages__vison_disabled(faker, llm_node, model_config):
 def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
     # Setup dify config
     dify_config.MULTIMODAL_SEND_IMAGE_FORMAT = "url"
+    dify_config.MULTIMODAL_SEND_VIDEO_FORMAT = "url"
 
     # Generate fake values for prompt template
     fake_assistant_prompt = faker.sentence()
@@ -443,9 +444,10 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
                 "input.image": File(
                     tenant_id="test",
                     type=FileType.VIDEO,
-                    filename="test1.jpg",
+                    filename="test1.mp4",
                     transfer_method=FileTransferMethod.REMOTE_URL,
                     remote_url=fake_remote_url,
+                    extension="mp4",
                 )
             },
         ),
