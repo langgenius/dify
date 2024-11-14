@@ -217,6 +217,7 @@ class WorkflowCycleManage:
             ).total_seconds()
             db.session.commit()
 
+        db.session.add(workflow_run)
         db.session.refresh(workflow_run)
         db.session.close()
 
