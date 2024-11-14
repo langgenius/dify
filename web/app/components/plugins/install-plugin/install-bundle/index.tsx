@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import Modal from '@/app/components/base/modal'
 import React, { useCallback, useState } from 'react'
 import { InstallStep } from '../../types'
-import type { PluginDeclaration } from '../../types'
+import type { Dependency } from '../../types'
 import Install from './steps/install'
 import { useTranslation } from 'react-i18next'
 
@@ -17,13 +17,14 @@ export enum InstallType {
 
 type Props = {
   installType?: InstallType
-  plugins?: PluginDeclaration[]
+  fromDSLPayload: Dependency[]
+  // plugins?: PluginDeclaration[]
   onClose: () => void
 }
 
 const InstallBundle: FC<Props> = ({
   installType = InstallType.fromMarketplace,
-  plugins = [],
+  fromDSLPayload,
   onClose,
 }) => {
   const { t } = useTranslation()
@@ -54,7 +55,7 @@ const InstallBundle: FC<Props> = ({
       </div>
       {step === InstallStep.readyToInstall && (
         <Install
-          plugins={plugins || []}
+          fromDSLPayload={fromDSLPayload}
           onCancel={onClose}
         />
       )}

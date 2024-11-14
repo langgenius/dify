@@ -1,41 +1,42 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import type { PluginDeclaration } from '../../../types'
-import Card from '../../../card'
+import React, { useCallback } from 'react'
+import type { Dependency, Plugin } from '../../../types'
 import Button from '@/app/components/base/button'
 import { RiLoader2Line } from '@remixicon/react'
-import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import { pluginManifestToCardPluginProps } from '../../utils'
 import { useTranslation } from 'react-i18next'
-import Checkbox from '@/app/components/base/checkbox'
+import InstallByDSLList from './install-by-dsl-list'
 
 const i18nPrefix = 'plugin.installModal'
 
 type Props = {
-  plugins: PluginDeclaration[],
+  fromDSLPayload: Dependency[]
   onCancel: () => void
 }
 
 const Install: FC<Props> = ({
-  plugins,
+  fromDSLPayload,
   onCancel,
 }) => {
   const { t } = useTranslation()
-  const [selectedPlugins, setSelectedPlugins] = React.useState<PluginDeclaration[]>([])
+  const [selectedPlugins, setSelectedPlugins] = React.useState<Plugin[]>([])
   const selectedPluginsNum = selectedPlugins.length
-  const handleSelect = (plugin: PluginDeclaration) => {
+
+  const handleSelect = (plugin: Plugin) => {
     return () => {
-      const isSelected = !!selectedPlugins.find(p => p.plugin_unique_identifier === plugin.plugin_unique_identifier)
+      const isSelected = !!selectedPlugins.find(p => p.plugin_id === plugin.plugin_id)
       let nextSelectedPlugins
       if (isSelected)
-        nextSelectedPlugins = selectedPlugins.filter(p => p.plugin_unique_identifier !== plugin.plugin_unique_identifier)
+        nextSelectedPlugins = selectedPlugins.filter(p => p.plugin_id !== plugin.plugin_id)
       else
         nextSelectedPlugins = [...selectedPlugins, plugin]
       setSelectedPlugins(nextSelectedPlugins)
     }
   }
-  const [isInstalling, setIsInstalling] = React.useState(false)
+  const [canInstall, setCanInstall] = React.useState(false)
+  const handleLoadedAllPlugin = useCallback(() => {
+    setCanInstall(true)
+  }, [])
   const handleInstall = () => {
 
   }
@@ -46,25 +47,17 @@ const Install: FC<Props> = ({
           <p>{t(`${i18nPrefix}.${selectedPluginsNum > 1 ? 'readyToInstallPackages' : 'readyToInstallPackage'}`, { num: selectedPluginsNum })}</p>
         </div>
         <div className='w-full p-2 rounded-2xl bg-background-section-burn space-y-1'>
-          {plugins.map(plugin => (
-            <div className='flex items-center space-x-2' key={plugin.plugin_unique_identifier}>
-              <Checkbox
-                className='shrink-0'
-                checked={!!selectedPlugins.find(p => p.plugin_unique_identifier === plugin.plugin_unique_identifier)}
-                onCheck={handleSelect(plugin)}
-              />
-              <Card
-                className='grow'
-                payload={pluginManifestToCardPluginProps(plugin)}
-                titleLeft={<Badge className='mx-1' size="s" state={BadgeState.Default}>{plugin.version}</Badge>}
-              />
-            </div>
-          ))}
+          <InstallByDSLList
+            fromDSLPayload={fromDSLPayload}
+            selectedPlugins={selectedPlugins}
+            handleSelect={handleSelect}
+            onLoadedAllPlugin={handleLoadedAllPlugin}
+          />
         </div>
       </div>
       {/* Action Buttons */}
       <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
-        {!isInstalling && (
+        {!canInstall && (
           <Button variant='secondary' className='min-w-[72px]' onClick={onCancel}>
             {t('common.operation.cancel')}
           </Button>
@@ -72,11 +65,11 @@ const Install: FC<Props> = ({
         <Button
           variant='primary'
           className='min-w-[72px] flex space-x-0.5'
-          disabled={isInstalling || selectedPlugins.length === 0}
+          disabled={canInstall || selectedPlugins.length === 0}
           onClick={handleInstall}
         >
-          {isInstalling && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}
-          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
+          {canInstall && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}
+          <span>{t(`${i18nPrefix}.${canInstall ? 'installing' : 'install'}`)}</span>
         </Button>
       </div>
     </>
