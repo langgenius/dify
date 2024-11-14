@@ -100,7 +100,7 @@ class ModelInstance:
 
     def invoke_llm(
         self,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: Optional[dict] = None,
         tools: Sequence[PromptMessageTool] | None = None,
         stop: Optional[Sequence[str]] = None,
