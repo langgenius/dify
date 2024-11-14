@@ -140,6 +140,16 @@ def test_extract_text_from_plain_text():
     assert text == "Hello, world!"
 
 
+def tet_extract_text_from_plain_text_non_utf8():
+    import tempfile
+    non_utf8_content = b"Hello world\xA9."  # \xA9 represents © in Latin-1
+    with tempfile.NamedTemporaryFile(delete=True) as temp_file:
+        temp_file.write(non_utf8_content)
+        temp_file.seek(0)
+        text = _extract_text_from_plain_text(temp_file.read())
+    assert text == "Hello, world."
+
+
 @patch("pypdfium2.PdfDocument")
 def test_extract_text_from_pdf(mock_pdf_document):
     mock_page = Mock()
