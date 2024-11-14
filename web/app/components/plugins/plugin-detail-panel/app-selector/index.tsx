@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -8,33 +8,29 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import AppTrigger from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
-import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
-import Button from '@/app/components/base/button'
+import AppPicker from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
+// import Button from '@/app/components/base/button'
 
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
-import { CollectionType } from '@/app/components/tools/types'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import { useAppDetail } from '@/service/use-apps'
+import type { App } from '@/types/app'
 import type {
   OffsetOptions,
   Placement,
 } from '@floating-ui/react'
-import cn from '@/utils/classnames'
 
 type Props = {
   value?: {
-    provider: string
-    tool_name: string
+    app_id: string
+    inputs: Record<string, any>
+    files?: any[]
   }
   disabled?: boolean
   placement?: Placement
   offset?: OffsetOptions
-  onSelect: (tool: {
-    provider: string
-    tool_name: string
+  onSelect: (app: {
+    app_id: string
+    inputs: Record<string, any>
+    files?: any[]
   }) => void
   supportAddCustomTool?: boolean
 }
@@ -52,25 +48,16 @@ const AppSelector: FC<Props> = ({
     onShowChange(true)
   }
 
-  const { data: buildInTools } = useAllBuiltInTools()
-  const { data: customTools } = useAllCustomTools()
-  const { data: workflowTools } = useAllWorkflowTools()
-  const currentProvider = useMemo(() => {
-    const mergedTools = [...(buildInTools || []), ...(customTools || []), ...(workflowTools || [])]
-    return mergedTools.find((toolWithProvider) => {
-      return toolWithProvider.id === value?.provider && toolWithProvider.tools.some(tool => tool.name === value?.tool_name)
-    })
-  }, [value, buildInTools, customTools, workflowTools])
+  const { data: currentApp } = useAppDetail(value?.app_id || '')
   const [isShowChooseApp, setIsShowChooseApp] = useState(false)
-  const handleSelectTool = (tool: ToolDefaultValue) => {
-    const toolValue = {
-      provider: tool.provider_id,
-      tool_name: tool.tool_name,
+  const handleSelectApp = (app: App) => {
+    const appValue = {
+      app_id: app.id,
+      inputs: value?.inputs || {},
+      files: value?.files || [],
     }
-    onSelect(toolValue)
+    onSelect(appValue)
     setIsShowChooseApp(false)
-    if (tool.provider_type === CollectionType.builtIn && tool.is_team_authorization)
-      onShowChange(false)
   }
 
   return (
@@ -94,7 +81,7 @@ const AppSelector: FC<Props> = ({
           <div className="relative w-[389px] min-h-20 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border shadow-lg">
             <div className='px-4 py-3 flex flex-col gap-1'>
               <div className='h-6 flex items-center system-sm-semibold text-text-secondary'>{t('tools.toolSelector.label')}</div>
-              <ToolPicker
+              <AppPicker
                 placement='bottom'
                 offset={offset}
                 trigger={
@@ -106,19 +93,11 @@ const AppSelector: FC<Props> = ({
                 isShow={isShowChooseApp}
                 onShowChange={setIsShowChooseApp}
                 disabled={false}
-                supportAddCustomTool
-                onSelect={handleSelectTool}
+                onSelect={handleSelectApp}
               />
             </div>
             {/* app inputs config panel */}
             <div className='px-4 py-3 flex items-center border-t border-divider-subtle'>
-              <Button
-                variant='primary'
-                className={cn('shrink-0 w-full')}
-                onClick={() => {}}
-              >
-                {t('tools.auth.unauthorized')}
-              </Button>
             </div>
           </div>
         </PortalToFollowElemContent>

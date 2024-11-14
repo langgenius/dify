@@ -25,18 +25,16 @@ const AppTrigger = ({
       appDetail && 'pl-1.5 py-1.5',
     )}>
       {appDetail && (
-        <div className='shrink-0 mr-1 p-px rounded-lg bg-components-panel-bg border border-components-panel-border'>
-          <AppIcon
-            size='xs'
-            iconType={appDetail.icon_type}
-            icon={appDetail.icon}
-            background={appDetail.icon_background}
-            imageUrl={appDetail.icon_url}
-          />
-        </div>
+        <AppIcon
+          size='xs'
+          iconType={appDetail.icon_type}
+          icon={appDetail.icon}
+          background={appDetail.icon_background}
+          imageUrl={appDetail.icon_url}
+        />
       )}
       {appDetail && (
-        <div className='grow system-sm-regular text-components-input-text-filled'>{appDetail.name}</div>
+        <div title={appDetail.name} className='grow system-sm-medium text-components-input-text-filled'>{appDetail.name}</div>
       )}
       {!appDetail && (
         <div className='grow text-components-input-text-placeholder system-sm-regular truncate'>{t('app.appSelector.placeholder')}</div>
