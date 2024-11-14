@@ -23,15 +23,13 @@ const Install: FC<Props> = ({
   const selectedPluginsNum = selectedPlugins.length
 
   const handleSelect = (plugin: Plugin) => {
-    return () => {
-      const isSelected = !!selectedPlugins.find(p => p.plugin_id === plugin.plugin_id)
-      let nextSelectedPlugins
-      if (isSelected)
-        nextSelectedPlugins = selectedPlugins.filter(p => p.plugin_id !== plugin.plugin_id)
-      else
-        nextSelectedPlugins = [...selectedPlugins, plugin]
-      setSelectedPlugins(nextSelectedPlugins)
-    }
+    const isSelected = !!selectedPlugins.find(p => p.plugin_id === plugin.plugin_id)
+    let nextSelectedPlugins
+    if (isSelected)
+      nextSelectedPlugins = selectedPlugins.filter(p => p.plugin_id !== plugin.plugin_id)
+    else
+      nextSelectedPlugins = [...selectedPlugins, plugin]
+    setSelectedPlugins(nextSelectedPlugins)
   }
   const [canInstall, setCanInstall] = React.useState(false)
   const handleLoadedAllPlugin = useCallback(() => {

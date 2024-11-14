@@ -27,7 +27,7 @@ const LoadedItem: FC<Props> = ({
       <Card
         className='grow'
         payload={payload}
-        titleLeft={<Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version}</Badge>}
+        titleLeft={payload.version ? <Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version}</Badge> : null}
       />
     </div>
   )

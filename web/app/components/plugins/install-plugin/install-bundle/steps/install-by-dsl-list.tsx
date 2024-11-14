@@ -65,14 +65,14 @@ const InstallByDSLList: FC<Props> = ({
         d.type === 'github'
           ? <GithubItem
             key={index}
-            checked={!!selectedPlugins.find(p => p.plugin_id === d.value.plugin_unique_identifier)}
+            checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
             onCheckedChange={handleSelect}
             dependency={d}
             onFetchedPayload={handlePlugInFetched(index)}
           />
           : <MarketplaceItem
             key={index}
-            checked={!!selectedPlugins.find(p => p.plugin_id === d.value.plugin_unique_identifier)}
+            checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
             onCheckedChange={handleSelect}
             payload={plugins[index] as Plugin}
           />
