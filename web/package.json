@@ -70,6 +70,7 @@
     "lodash-es": "^4.17.21",
     "mermaid": "10.9.3",
     "mime": "^4.0.4",
+    "mitt": "^3.0.1",
     "negotiator": "^0.6.3",
     "next": "^14.2.10",
     "pinyin-pro": "^3.25.0",
