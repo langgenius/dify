@@ -9,7 +9,6 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_resource_check,
-    enterprise_license_required,
     setup_required,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
@@ -29,7 +28,6 @@ class AppListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @enterprise_license_required
     def get(self):
         """Get app list"""
 
