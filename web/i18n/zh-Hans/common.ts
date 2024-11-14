@@ -44,6 +44,7 @@ const translation = {
     zoomOut: '缩小',
     zoomIn: '放大',
     openInNewTab: '在新标签页打开',
+    in: '在',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',

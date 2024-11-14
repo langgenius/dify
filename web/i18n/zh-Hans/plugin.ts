@@ -126,7 +126,7 @@ const translation = {
     empower: '助力您的 AI 开发',
     discover: '探索',
     and: '和',
-    inDifyMarketplace: '在 Dify 市场中',
+    difyMarketplace: 'Dify 市场',
     moreFrom: '更多来自市场',
     noPluginFound: '未找到插件',
     pluginsResult: '{{num}} 个插件结果',
