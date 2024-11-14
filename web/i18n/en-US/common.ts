@@ -126,6 +126,7 @@ const translation = {
     explore: 'Explore',
     apps: 'Studio',
     plugins: 'Plugins',
+    exploreMarketplace: 'Explore Marketplace',
     pluginsTips: 'Integrate third-party plugins or create ChatGPT-compatible AI-Plugins.',
     datasets: 'Knowledge',
     datasetsTips: 'COMING SOON: Import your own text data or write data in real-time via Webhook for LLM context enhancement.',

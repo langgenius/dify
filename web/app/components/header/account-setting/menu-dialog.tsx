@@ -45,6 +45,7 @@ const MenuDialog = ({
               leaveTo="opacity-0 scale-95"
             >
               <Dialog.Panel className={cn('grow relative w-full h-full p-0 overflow-hidden text-left align-middle transition-all transform bg-background-sidenav-bg backdrop-blur-md', className)}>
+                <div className='absolute top-0 right-0 h-full w-1/2 bg-components-panel-bg' />
                 {children}
               </Dialog.Panel>
             </Transition.Child>
