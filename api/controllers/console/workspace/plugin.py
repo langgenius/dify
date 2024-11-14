@@ -41,6 +41,21 @@ class PluginListApi(Resource):
         return jsonable_encoder({"plugins": plugins})
 
 
+class PluginListInstallationsFromIdsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        tenant_id = current_user.current_tenant_id
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("plugin_ids", type=list, required=True, location="json")
+        args = parser.parse_args()
+
+        plugins = PluginService.list_installations_from_ids(tenant_id, args["plugin_ids"])
+        return jsonable_encoder({"plugins": plugins})
+
+
 class PluginIconApi(Resource):
     @setup_required
     def get(self):
@@ -363,6 +378,7 @@ class PluginFetchPermissionApi(Resource):
 
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")
 api.add_resource(PluginListApi, "/workspaces/current/plugin/list")
+api.add_resource(PluginListInstallationsFromIdsApi, "/workspaces/current/plugin/list/installations/ids")
 api.add_resource(PluginIconApi, "/workspaces/current/plugin/icon")
 api.add_resource(PluginUploadFromPkgApi, "/workspaces/current/plugin/upload/pkg")
 api.add_resource(PluginUploadFromGithubApi, "/workspaces/current/plugin/upload/github")

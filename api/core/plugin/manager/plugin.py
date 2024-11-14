@@ -151,7 +151,9 @@ class PluginInstallationManager(BasePluginManager):
             params={"plugin_unique_identifier": plugin_unique_identifier},
         ).declaration
 
-    def fetch_plugin_installation_by_ids(self, tenant_id: str, plugin_ids: Sequence[str]) -> list[PluginInstallation]:
+    def fetch_plugin_installation_by_ids(
+        self, tenant_id: str, plugin_ids: Sequence[str]
+    ) -> Sequence[PluginInstallation]:
         """
         Fetch plugin installations by ids.
         """

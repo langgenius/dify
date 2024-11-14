@@ -105,11 +105,13 @@ class PluginInstallation(BasePluginEntity):
     meta: Mapping[str, Any]
     plugin_id: str
     plugin_unique_identifier: str
+    version: str
+    checksum: str
+    declaration: PluginDeclaration
 
 
 class PluginEntity(PluginInstallation):
     name: str
-    declaration: PluginDeclaration
     installation_id: str
     version: str
     latest_version: Optional[str] = None
