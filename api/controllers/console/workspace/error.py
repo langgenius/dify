@@ -35,9 +35,3 @@ class AccountNotInitializedError(BaseHTTPException):
     error_code = "account_not_initialized"
     description = "The account has not been initialized yet. Please proceed with the initialization process first."
     code = 400
-
-
-class UnauthorizedAndForceLogout(BaseHTTPException):
-    error_code = "unauthorized_and_force_logout"
-    description = "Unauthorized and force logout."
-    code = 401
