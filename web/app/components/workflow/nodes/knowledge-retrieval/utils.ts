@@ -94,9 +94,10 @@ export const getMultipleRetrievalConfig = (
   multipleRetrievalConfig: MultipleRetrievalConfig,
   selectedDatasets: DataSet[],
   originalDatasets: DataSet[],
-  isValidRerankModel?: boolean,
+  validRerankModel?: { provider?: string; model?: string },
 ) => {
   const shouldSetWeightDefaultValue = xorBy(selectedDatasets, originalDatasets, 'id').length > 0
+  const rerankModelIsValid = validRerankModel?.provider && validRerankModel?.model
 
   const {
     allHighQuality,
@@ -128,18 +129,10 @@ export const getMultipleRetrievalConfig = (
     reranking_enable: ((allInternal && allEconomic) || allExternal) ? reranking_enable : true,
   }
 
-  if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || allExternal || mixtureInternalAndExternal)
-    result.reranking_mode = RerankingModeEnum.RerankingModel
+  if (!rerankModelIsValid)
+    result.reranking_model = undefined
 
-  if (allHighQuality && !inconsistentEmbeddingModel && reranking_mode === undefined && allInternal)
-    result.reranking_mode = RerankingModeEnum.WeightedScore
-
-  if (allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined) && allInternal && !weights) {
-    if (!isValidRerankModel)
-      result.reranking_mode = RerankingModeEnum.WeightedScore
-    else
-      result.reranking_mode = RerankingModeEnum.RerankingModel
-
+  const setDefaultWeights = () => {
     result.weights = {
       vector_setting: {
         vector_weight: allHighQualityVectorSearch
@@ -160,31 +153,85 @@ export const getMultipleRetrievalConfig = (
     }
   }
 
-  if (shouldSetWeightDefaultValue && allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined || !isValidRerankModel) && allInternal && weights) {
-    if (!isValidRerankModel)
-      result.reranking_mode = RerankingModeEnum.WeightedScore
-    else
-      result.reranking_mode = RerankingModeEnum.RerankingModel
+  if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || allExternal || mixtureInternalAndExternal) {
+    result.reranking_mode = RerankingModeEnum.RerankingModel
 
-    result.weights = {
-      vector_setting: {
-        vector_weight: allHighQualityVectorSearch
-          ? DEFAULT_WEIGHTED_SCORE.allHighQualityVectorSearch.semantic
-          : allHighQualityFullTextSearch
-            ? DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.semantic
-            : DEFAULT_WEIGHTED_SCORE.other.semantic,
-        embedding_provider_name: selectedDatasets[0].embedding_model_provider,
-        embedding_model_name: selectedDatasets[0].embedding_model,
-      },
-      keyword_setting: {
-        keyword_weight: allHighQualityVectorSearch
-          ? DEFAULT_WEIGHTED_SCORE.allHighQualityVectorSearch.keyword
-          : allHighQualityFullTextSearch
-            ? DEFAULT_WEIGHTED_SCORE.allHighQualityFullTextSearch.keyword
-            : DEFAULT_WEIGHTED_SCORE.other.keyword,
-      },
+    if (rerankModelIsValid) {
+      result.reranking_mode = RerankingModeEnum.RerankingModel
+      result.reranking_model = {
+        provider: validRerankModel?.provider || '',
+        model: validRerankModel?.model || '',
+      }
+    }
+    else {
+      result.reranking_model = undefined
+    }
+  }
+
+  if (allHighQuality && !inconsistentEmbeddingModel && allInternal) {
+    if (!reranking_mode) {
+      if (validRerankModel?.provider && validRerankModel?.model) {
+        result.reranking_mode = RerankingModeEnum.RerankingModel
+        result.reranking_model = {
+          provider: validRerankModel.provider,
+          model: validRerankModel.model,
+        }
+      }
+      else {
+        result.reranking_mode = RerankingModeEnum.WeightedScore
+        setDefaultWeights()
+      }
+    }
+
+    if (reranking_mode === RerankingModeEnum.WeightedScore && !weights)
+      setDefaultWeights()
+
+    if (reranking_mode === RerankingModeEnum.WeightedScore && weights && shouldSetWeightDefaultValue) {
+      if (rerankModelIsValid) {
+        result.reranking_mode = RerankingModeEnum.RerankingModel
+        result.reranking_model = {
+          provider: validRerankModel.provider || '',
+          model: validRerankModel.model || '',
+        }
+      }
+      else {
+        setDefaultWeights()
+      }
+    }
+
+    if (reranking_mode === RerankingModeEnum.RerankingModel && !rerankModelIsValid && shouldSetWeightDefaultValue) {
+      result.reranking_mode = RerankingModeEnum.WeightedScore
+      setDefaultWeights()
     }
   }
 
   return result
+}
+
+export const checkoutRerankModelConfigedInRetrievalSettings = (
+  datasets: DataSet[],
+  multipleRetrievalConfig?: MultipleRetrievalConfig,
+) => {
+  if (!multipleRetrievalConfig)
+    return true
+
+  const {
+    allEconomic,
+    allExternal,
+  } = getSelectedDatasetsMode(datasets)
+
+  const {
+    reranking_enable,
+    reranking_mode,
+    reranking_model,
+  } = multipleRetrievalConfig
+
+  if (reranking_mode === RerankingModeEnum.RerankingModel && (!reranking_model?.provider || !reranking_model?.model)) {
+    if ((allEconomic || allExternal) && !reranking_enable)
+      return true
+
+    return false
+  }
+
+  return true
 }

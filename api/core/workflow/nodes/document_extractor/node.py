@@ -143,14 +143,14 @@ def _extract_text_by_file_extension(*, file_content: bytes, file_extension: str)
 
 def _extract_text_from_plain_text(file_content: bytes) -> str:
     try:
-        return file_content.decode("utf-8")
+        return file_content.decode("utf-8", "ignore")
     except UnicodeDecodeError as e:
         raise TextExtractionError("Failed to decode plain text file") from e
 
 
 def _extract_text_from_json(file_content: bytes) -> str:
     try:
-        json_data = json.loads(file_content.decode("utf-8"))
+        json_data = json.loads(file_content.decode("utf-8", "ignore"))
         return json.dumps(json_data, indent=2, ensure_ascii=False)
     except (UnicodeDecodeError, json.JSONDecodeError) as e:
         raise TextExtractionError(f"Failed to decode or parse JSON file: {e}") from e
@@ -159,7 +159,7 @@ def _extract_text_from_json(file_content: bytes) -> str:
 def _extract_text_from_yaml(file_content: bytes) -> str:
     """Extract the content from yaml file"""
     try:
-        yaml_data = yaml.safe_load_all(file_content.decode("utf-8"))
+        yaml_data = yaml.safe_load_all(file_content.decode("utf-8", "ignore"))
         return yaml.dump_all(yaml_data, allow_unicode=True, sort_keys=False)
     except (UnicodeDecodeError, yaml.YAMLError) as e:
         raise TextExtractionError(f"Failed to decode or parse YAML file: {e}") from e
@@ -217,7 +217,7 @@ def _extract_text_from_file(file: File):
 
 def _extract_text_from_csv(file_content: bytes) -> str:
     try:
-        csv_file = io.StringIO(file_content.decode("utf-8"))
+        csv_file = io.StringIO(file_content.decode("utf-8", "ignore"))
         csv_reader = csv.reader(csv_file)
         rows = list(csv_reader)
 
