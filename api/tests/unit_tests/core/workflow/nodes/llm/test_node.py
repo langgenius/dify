@@ -250,17 +250,15 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
     dify_config.MULTIMODAL_SEND_IMAGE_FORMAT = "url"
 
     # Generate fake values for prompt template
-    fake_user_prompt = faker.sentence()
     fake_assistant_prompt = faker.sentence()
     fake_query = faker.sentence()
-    random_context = faker.sentence()
+    fake_context = faker.sentence()
 
     # Generate fake values for vision
     fake_vision_detail = faker.random_element(
         [ImagePromptMessageContent.DETAIL.HIGH, ImagePromptMessageContent.DETAIL.LOW]
     )
     fake_remote_url = faker.url()
-    fake_prompt_image_url = faker.url()
 
     # Setup prompt template with image variable reference
     prompt_template = [
@@ -307,7 +305,7 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
         type=FileType.IMAGE,
         filename="prompt_image.jpg",
         transfer_method=FileTransferMethod.REMOTE_URL,
-        remote_url=fake_prompt_image_url,
+        remote_url=fake_remote_url,
         related_id="2",
     )
     prompt_images = [
@@ -317,7 +315,7 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
             type=FileType.IMAGE,
             filename="prompt_image.jpg",
             transfer_method=FileTransferMethod.REMOTE_URL,
-            remote_url=fake_prompt_image_url,
+            remote_url=fake_remote_url,
             related_id="3",
         ),
         File(
@@ -326,7 +324,7 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
             type=FileType.IMAGE,
             filename="prompt_image.jpg",
             transfer_method=FileTransferMethod.REMOTE_URL,
-            remote_url=fake_prompt_image_url,
+            remote_url=fake_remote_url,
             related_id="4",
         ),
     ]
@@ -356,7 +354,7 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
     prompt_messages, _ = llm_node._fetch_prompt_messages(
         user_query=fake_query,
         user_files=files,
-        context=random_context,
+        context=fake_context,
         memory=memory,
         model_config=model_config,
         prompt_template=prompt_template,
@@ -368,18 +366,18 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
     # Build expected messages
     expected_messages = [
         # Base template messages
-        SystemPromptMessage(content=random_context),
+        SystemPromptMessage(content=fake_context),
         # Image from variable pool in prompt template
         UserPromptMessage(
             content=[
-                ImagePromptMessageContent(data=fake_prompt_image_url, detail=fake_vision_detail),
+                ImagePromptMessageContent(data=fake_remote_url, detail=fake_vision_detail),
             ]
         ),
         AssistantPromptMessage(content=fake_assistant_prompt),
         UserPromptMessage(
             content=[
-                ImagePromptMessageContent(data=fake_prompt_image_url, detail=fake_vision_detail),
-                ImagePromptMessageContent(data=fake_prompt_image_url, detail=fake_vision_detail),
+                ImagePromptMessageContent(data=fake_remote_url, detail=fake_vision_detail),
+                ImagePromptMessageContent(data=fake_remote_url, detail=fake_vision_detail),
             ]
         ),
     ]
