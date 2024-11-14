@@ -24,7 +24,7 @@ from core.model_runtime.entities.message_entities import (
     SystemPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
+from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
@@ -607,8 +607,12 @@ class LLMNode(BaseNode[LLMNodeData]):
             if isinstance(prompt_message.content, list):
                 prompt_message_content = []
                 for content_item in prompt_message.content:
-                    # Skip image if vision is disabled
-                    if not vision_enabled and content_item.type == PromptMessageContentType.IMAGE:
+                    # Skip image if vision is disabled or model doesn't support vision
+                    if content_item.type == PromptMessageContentType.IMAGE and (
+                        not vision_enabled
+                        or not model_config.model_schema.features
+                        or ModelFeature.VISION not in model_config.model_schema.features
+                    ):
                         continue
                     prompt_message_content.append(content_item)
                 if len(prompt_message_content) == 1 and prompt_message_content[0].type == PromptMessageContentType.TEXT:
