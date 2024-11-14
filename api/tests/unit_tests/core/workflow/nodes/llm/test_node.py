@@ -363,10 +363,48 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
                 ),
             ],
         ),
+        LLMNodeTestScenario(
+            description="Prompt template with variable selector of File",
+            user_query=fake_query,
+            user_files=[],
+            vision_enabled=True,
+            vision_detail=fake_vision_detail,
+            features=[ModelFeature.VISION],
+            window_size=fake_window_size,
+            prompt_template=[
+                LLMNodeChatModelMessage(
+                    text="{{#input.image#}}",
+                    role=PromptMessageRole.USER,
+                    edition_type="basic",
+                ),
+            ],
+            expected_messages=[
+                UserPromptMessage(
+                    content=[
+                        ImagePromptMessageContent(data=fake_remote_url, detail=fake_vision_detail),
+                    ]
+                ),
+            ]
+            + mock_history[fake_window_size * -2 :]
+            + [UserPromptMessage(content=fake_query)],
+            file_variables={
+                "input.image": File(
+                    tenant_id="test",
+                    type=FileType.IMAGE,
+                    filename="test1.jpg",
+                    transfer_method=FileTransferMethod.REMOTE_URL,
+                    remote_url=fake_remote_url,
+                )
+            },
+        ),
     ]
 
     for scenario in test_scenarios:
         model_config.model_schema.features = scenario.features
+
+        for k, v in scenario.file_variables.items():
+            selector = k.split(".")
+            llm_node.graph_runtime_state.variable_pool.add(selector, v)
 
         # Call the method under test
         prompt_messages, _ = llm_node._fetch_prompt_messages(

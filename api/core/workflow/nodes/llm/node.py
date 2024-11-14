@@ -868,8 +868,10 @@ class LLMNode(BaseNode[LLMNodeData]):
                             image_contents.append(image_content)
 
                 # Create message with text from all segments
-                prompt_message = _combine_text_message_with_role(text=segment_group.text, role=message.role)
-                prompt_messages.append(prompt_message)
+                plain_text = segment_group.text
+                if plain_text:
+                    prompt_message = _combine_text_message_with_role(text=plain_text, role=message.role)
+                    prompt_messages.append(prompt_message)
 
                 if image_contents:
                     # Create message with image contents
