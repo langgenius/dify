@@ -16,6 +16,22 @@ const translation = {
   fromMarketplace: '来自市场',
   endpointsEnabled: '{{num}} 组端点已启用',
   searchTools: '搜索工具...',
+  installPlugin: '安装插件',
+  installFrom: '安装源',
+  list: {
+    noInstalled: '无已安装的插件',
+    notFound: '未找到插件',
+    source: {
+      marketplace: '从市场安装',
+      github: '从GitHub安装',
+      local: '从本地文件安装',
+    },
+  },
+  source: {
+    marketplace: '市场',
+    github: 'GitHub',
+    local: '本地文件',
+  },
   detailPanel: {
     categoryTip: {
       marketplace: '从 Marketplace 安装',

@@ -9,8 +9,10 @@ import { Group } from '@/app/components/base/icons/src/vender/other'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import Line from '../../marketplace/empty/line'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useTranslation } from 'react-i18next'
 
 const Empty = () => {
+  const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -30,9 +32,9 @@ const Empty = () => {
 
   const text = useMemo(() => {
     if (pluginList?.plugins.length === 0)
-      return 'No plugins installed'
+      return t('plugin.list.noInstalled')
     if (filters.categories.length > 0 || filters.tags.length > 0 || filters.searchQuery)
-      return 'No plugins found'
+      return t('plugin.list.notFound')
   }, [pluginList, filters])
 
   return (
@@ -70,11 +72,11 @@ const Empty = () => {
               {[
                 ...(
                   (enable_marketplace || true)
-                    ? [{ icon: MagicBox, text: 'Marketplace', action: 'marketplace' }]
+                    ? [{ icon: MagicBox, text: t('plugin.list.source.marketplace'), action: 'marketplace' }]
                     : []
                 ),
-                { icon: Github, text: 'GitHub', action: 'github' },
-                { icon: FileZip, text: 'Local Package File', action: 'local' },
+                { icon: Github, text: t('plugin.list.source.github'), action: 'github' },
+                { icon: FileZip, text: t('plugin.list.source.local'), action: 'local' },
               ].map(({ icon: Icon, text, action }) => (
                 <div
                   key={action}
@@ -90,7 +92,7 @@ const Empty = () => {
                   }}
                 >
                   <Icon className="w-4 h-4 text-text-tertiary" />
-                  <span className='text-text-secondary system-md-regular'>{`Install from ${text}`}</span>
+                  <span className='text-text-secondary system-md-regular'>{text}</span>
                 </div>
               ))}
             </div>

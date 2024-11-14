@@ -16,6 +16,22 @@ const translation = {
   fromMarketplace: 'From Marketplace',
   endpointsEnabled: '{{num}} sets of endpoints enabled',
   searchTools: 'Search tools...',
+  installPlugin: 'Install plugin',
+  installFrom: 'INSTALL FROM',
+  list: {
+    noInstalled: 'No plugins installed',
+    notFound: 'No plugins found',
+    source: {
+      marketplace: 'Install from Marketplace',
+      github: 'Install from GitHub',
+      local: 'Install from Local Package File',
+    },
+  },
+  source: {
+    marketplace: 'Marketplace',
+    github: 'GitHub',
+    local: 'Local Package File',
+  },
   detailPanel: {
     categoryTip: {
       marketplace: 'Installed from Marketplace',
