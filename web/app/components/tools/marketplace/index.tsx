@@ -29,7 +29,7 @@ const Marketplace = ({
   } = useMarketplace(searchPluginText, filterPluginTags)
 
   return (
-    <div className='flex flex-col shrink-0 sticky -bottom-[442px] h-[530px] overflow-y-auto px-12 py-2 pt-0 bg-background-default-subtle'>
+    <div className='flex flex-col shrink-0 sticky bottom-[-442px] h-[530px] overflow-y-auto px-12 py-2 pt-0 bg-background-default-subtle'>
       <RiArrowUpDoubleLine
         className='absolute top-2 left-1/2 -translate-x-1/2 w-4 h-4 text-text-quaternary cursor-pointer'
         onClick={() => onMarketplaceScroll()}
@@ -57,7 +57,7 @@ const Marketplace = ({
           </span>
           {t('common.operation.in')}
           <a
-            href={`${MARKETPLACE_URL_PREFIX}`}
+            href={`${MARKETPLACE_URL_PREFIX}?language=${locale}`}
             className='flex items-center ml-1 system-sm-medium text-text-accent'
             target='_blank'
           >
