@@ -8,6 +8,7 @@ import Button from '@/app/components/base/button'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { useBoolean } from 'ahooks'
+import { useI18N } from '@/context/i18n'
 
 type CardWrapperProps = {
   plugin: Plugin
@@ -24,6 +25,7 @@ const CardWrapper = ({
     setTrue: showInstallFromMarketplace,
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
+  const { locale: localeFromLocale } = useI18N()
 
   if (showInstallButton) {
     return (
@@ -54,7 +56,7 @@ const CardWrapper = ({
               <Button
                 className='flex-1'
               >
-                <a href={`${MARKETPLACE_URL_PREFIX}/plugin/${plugin.org}/${plugin.name}`} target='_blank' className='flex items-center gap-0.5'>
+                <a href={`${MARKETPLACE_URL_PREFIX}/plugin/${plugin.org}/${plugin.name}?language=${localeFromLocale}`} target='_blank' className='flex items-center gap-0.5'>
                   {t('plugin.detailPanel.operation.detail')}
                   <RiArrowRightUpLine className='ml-1 w-4 h-4' />
                 </a>
@@ -105,7 +107,7 @@ const CardWrapper = ({
             <Button
               className='flex-1'
             >
-              <a href={`${MARKETPLACE_URL_PREFIX}/plugin/${plugin.org}/${plugin.name}`} target='_blank' className='flex items-center gap-0.5'>
+              <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${plugin.org}/${plugin.name}`} target='_blank' className='flex items-center gap-0.5'>
                 {t('plugin.detailPanel.operation.detail')}
                 <RiArrowRightUpLine className='ml-1 w-4 h-4' />
               </a>
