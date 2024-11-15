@@ -97,7 +97,7 @@ export const useUploadGitHub = (payload: {
 export const useInstallFromMarketplaceAndGitHub = ({
   onSuccess,
 }: {
-  onSuccess?: () => void
+  onSuccess?: (res: { success: boolean }[]) => void
 }) => {
   return useMutation({
     mutationFn: (payload: Dependency[]) => {

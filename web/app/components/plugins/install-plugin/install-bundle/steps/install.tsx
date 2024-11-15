@@ -35,15 +35,16 @@ const Install: FC<Props> = ({
     const nextSelectedIndexes = isSelected ? selectedIndexes.filter(i => i !== selectedIndex) : [...selectedIndexes, selectedIndex]
     setSelectedIndexes(nextSelectedIndexes)
   }
+
   const [canInstall, setCanInstall] = React.useState(false)
   const handleLoadedAllPlugin = useCallback(() => {
     setCanInstall(true)
-  }, [selectedPlugins, selectedIndexes])
+  }, [])
 
   // Install from marketplace and github
   const { mutate: installFromMarketplaceAndGitHub, isPending: isInstalling } = useInstallFromMarketplaceAndGitHub({
-    onSuccess: () => {
-      console.log('success!')
+    onSuccess: (res: { success: boolean }[]) => {
+      console.log(res)
     },
   })
   console.log(canInstall, !isInstalling, selectedPlugins.length === 0)
