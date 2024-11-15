@@ -11,17 +11,18 @@ import { useGetState } from 'ahooks'
 type Props = {
   fromDSLPayload: Dependency[]
   selectedPlugins: Plugin[]
-  handleSelect: (plugin: Plugin) => void
+  onSelect: (plugin: Plugin, selectedIndex: number) => void
   onLoadedAllPlugin: () => void
 }
 
 const InstallByDSLList: FC<Props> = ({
   fromDSLPayload,
   selectedPlugins,
-  handleSelect,
+  onSelect,
   onLoadedAllPlugin,
 }) => {
   const { isLoading: isFetchingMarketplaceData, data: marketplaceRes } = useFetchPluginsInMarketPlaceByIds(fromDSLPayload.filter(d => d.type === 'marketplace').map(d => d.value.plugin_unique_identifier!))
+
   const [plugins, setPlugins, getPlugins] = useGetState<Plugin[]>([])
   const handlePlugInFetched = useCallback((index: number) => {
     return (p: Plugin) => {
@@ -59,6 +60,12 @@ const InstallByDSLList: FC<Props> = ({
       onLoadedAllPlugin()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isLoadedAllData])
+
+  const handleSelect = useCallback((index: number) => {
+    return () => {
+      onSelect(plugins[index], index)
+    }
+  }, [onSelect, plugins])
   return (
     <>
       {fromDSLPayload.map((d, index) => (
@@ -66,14 +73,14 @@ const InstallByDSLList: FC<Props> = ({
           ? <GithubItem
             key={index}
             checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
-            onCheckedChange={handleSelect}
+            onCheckedChange={handleSelect(index)}
             dependency={d}
             onFetchedPayload={handlePlugInFetched(index)}
           />
           : <MarketplaceItem
             key={index}
             checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
-            onCheckedChange={handleSelect}
+            onCheckedChange={handleSelect(index)}
             payload={plugins[index] as Plugin}
           />
       ))}

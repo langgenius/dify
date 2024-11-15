@@ -6,6 +6,7 @@ import Button from '@/app/components/base/button'
 import { RiLoader2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import InstallByDSLList from './install-by-dsl-list'
+import { useInstallFromMarketplaceAndGitHub } from '@/service/use-plugins'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -20,9 +21,10 @@ const Install: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [selectedPlugins, setSelectedPlugins] = React.useState<Plugin[]>([])
+  const [selectedIndexes, setSelectedIndexes] = React.useState<number[]>([])
   const selectedPluginsNum = selectedPlugins.length
 
-  const handleSelect = (plugin: Plugin) => {
+  const handleSelect = (plugin: Plugin, selectedIndex: number) => {
     const isSelected = !!selectedPlugins.find(p => p.plugin_id === plugin.plugin_id)
     let nextSelectedPlugins
     if (isSelected)
@@ -30,13 +32,23 @@ const Install: FC<Props> = ({
     else
       nextSelectedPlugins = [...selectedPlugins, plugin]
     setSelectedPlugins(nextSelectedPlugins)
+    const nextSelectedIndexes = isSelected ? selectedIndexes.filter(i => i !== selectedIndex) : [...selectedIndexes, selectedIndex]
+    setSelectedIndexes(nextSelectedIndexes)
   }
   const [canInstall, setCanInstall] = React.useState(false)
   const handleLoadedAllPlugin = useCallback(() => {
     setCanInstall(true)
-  }, [])
-  const handleInstall = () => {
+  }, [selectedPlugins, selectedIndexes])
 
+  // Install from marketplace and github
+  const { mutate: installFromMarketplaceAndGitHub, isPending: isInstalling } = useInstallFromMarketplaceAndGitHub({
+    onSuccess: () => {
+      console.log('success!')
+    },
+  })
+  console.log(canInstall, !isInstalling, selectedPlugins.length === 0)
+  const handleInstall = () => {
+    installFromMarketplaceAndGitHub(fromDSLPayload.filter((_d, index) => selectedIndexes.includes(index)))
   }
   return (
     <>
@@ -48,7 +60,7 @@ const Install: FC<Props> = ({
           <InstallByDSLList
             fromDSLPayload={fromDSLPayload}
             selectedPlugins={selectedPlugins}
-            handleSelect={handleSelect}
+            onSelect={handleSelect}
             onLoadedAllPlugin={handleLoadedAllPlugin}
           />
         </div>
@@ -63,11 +75,11 @@ const Install: FC<Props> = ({
         <Button
           variant='primary'
           className='min-w-[72px] flex space-x-0.5'
-          disabled={canInstall || selectedPlugins.length === 0}
+          disabled={!canInstall || isInstalling || selectedPlugins.length === 0}
           onClick={handleInstall}
         >
-          {canInstall && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}
-          <span>{t(`${i18nPrefix}.${canInstall ? 'installing' : 'install'}`)}</span>
+          {isInstalling && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}
+          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
         </Button>
       </div>
     </>

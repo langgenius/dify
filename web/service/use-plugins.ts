@@ -94,6 +94,42 @@ export const useUploadGitHub = (payload: {
   })
 }
 
+export const useInstallFromMarketplaceAndGitHub = ({
+  onSuccess,
+}: {
+  onSuccess?: () => void
+}) => {
+  return useMutation({
+    mutationFn: (payload: Dependency[]) => {
+      return Promise.all(payload.map(async (item) => {
+        try {
+          if (item.type === 'github') {
+            await post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
+              body: {
+                repo: item.value.repo!,
+                version: item.value.version!,
+                package: item.value.package!,
+                plugin_unique_identifier: item.value.github_plugin_unique_identifier!,
+              },
+            })
+            return ({ success: true })
+          }
+          await post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
+            body: {
+              plugin_unique_identifiers: [item.value.plugin_unique_identifier!],
+            },
+          })
+          return ({ success: true })
+        }
+        catch (e) {
+          return Promise.resolve({ success: false })
+        }
+      }))
+    },
+    onSuccess,
+  })
+}
+
 export const useDebugKey = () => {
   return useQuery({
     queryKey: [NAME_SPACE, 'debugKey'],

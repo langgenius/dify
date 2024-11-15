@@ -28,6 +28,12 @@ const PluginList = () => {
             github_plugin_unique_identifier: 'yixiao0/test:0.0.1@3592166c87afcf944b4f13f27467a5c8f9e00bd349cb42033a072734a37431b4',
           },
         },
+        {
+          type: 'marketplace',
+          value: {
+            plugin_unique_identifier: 'langgenius/openai:0.0.1@f88fdb98d104466db16a425bfe3af8c1bcad45047a40fb802d98a989ac57a5a3',
+          },
+        },
       ]} />
       <div className='mx-3 '>
         {/* <h2 className='my-3'>Dify Plugin list</h2> */}
