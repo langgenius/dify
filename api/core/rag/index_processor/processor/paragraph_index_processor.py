@@ -1,6 +1,7 @@
 """Paragraph index processor."""
 
 import uuid
+import re
 from typing import Optional
 
 from core.rag.cleaner.clean_processor import CleanProcessor
@@ -44,8 +45,8 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     document_node.metadata["doc_hash"] = hash
                     # delete Splitter character
                     page_content = document_node.page_content
-                    if page_content.startswith(".") or page_content.startswith("。"):
-                        page_content = page_content[1:].strip()
+                    if re.match(r"^[\p{P}\p{S}]+", page_content, re.UNICODE):
+                        page_content = re.sub(r"^[\p{P}\p{S}]+", "", page_content).strip()
                     else:
                         page_content = page_content
                     if len(page_content) > 0:
