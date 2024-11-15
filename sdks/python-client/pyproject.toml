@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=62.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dify-oapi"
+version = "0.0.1"
+description = "A package for interacting with the Dify Service-API"
+authors = [
+    {name = "QiMington", email = "qimington@gmail.com"}
+]
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.7"
+dependencies = [
+    "pydantic>=1.10,<2.5",
+    "httpx>=0.24,<1.0"
+]
+keywords = ["dify", "nlp", "ai", "language-processing"]
+
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
