@@ -168,17 +168,3 @@ def _to_url(f: File, /):
         return ToolFileParser.get_tool_file_manager().sign_file(tool_file_id=f.related_id, extension=f.extension)
     else:
         raise ValueError(f"Unsupported transfer method: {f.transfer_method}")
-
-
-def get_file_type_by_mimetype(mime_type: str) -> FileType:
-    if "image" in mime_type:
-        file_type = FileType.IMAGE
-    elif "video" in mime_type:
-        file_type = FileType.VIDEO
-    elif "audio" in mime_type:
-        file_type = FileType.AUDIO
-    elif "text" in mime_type or "pdf" in mime_type:
-        file_type = FileType.DOCUMENT
-    else:
-        file_type = FileType.CUSTOM
-    return file_type

@@ -10,7 +10,7 @@ from yarl import URL
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.agent_tool_callback_handler import DifyAgentCallbackHandler
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.file.file_manager import get_file_type_by_mimetype
+from core.file import FileType
 from core.file.models import FileTransferMethod
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, ToolInvokeMeta, ToolParameter
@@ -275,7 +275,16 @@ class ToolEngine:
         result = []
 
         for message in tool_messages:
-            file_type = get_file_type_by_mimetype(message.mimetype)
+            if "image" in message.mimetype:
+                file_type = FileType.IMAGE
+            elif "video" in message.mimetype:
+                file_type = FileType.VIDEO
+            elif "audio" in message.mimetype:
+                file_type = FileType.AUDIO
+            elif "text" in message.mimetype or "pdf" in message.mimetype:
+                file_type = FileType.DOCUMENT
+            else:
+                file_type = FileType.CUSTOM
 
             # extract tool file id from url
             tool_file_id = message.url.split("/")[-1].split(".")[0]
