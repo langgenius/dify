@@ -80,24 +80,16 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       let app
 
       if (currentTab === CreateFromDSLModalTab.FROM_FILE) {
-        const leakedData = await mutateAsync({ dslString: fileContent })
-        if (leakedData?.leaked.length) {
-          isCreatingRef.current = false
-          return
-        }
         app = await importApp({
           data: fileContent || '',
         })
+        await mutateAsync({ dslString: fileContent })
       }
       if (currentTab === CreateFromDSLModalTab.FROM_URL) {
-        const leakedData = await mutateAsync({ url: dslUrlValue })
-        if (leakedData?.leaked.length) {
-          isCreatingRef.current = false
-          return
-        }
         app = await importAppFromUrl({
           url: dslUrlValue || '',
         })
+        await mutateAsync({ url: dslUrlValue })
       }
       if (onSuccess)
         onSuccess()
