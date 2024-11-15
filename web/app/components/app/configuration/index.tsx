@@ -228,6 +228,7 @@ const Configuration: FC = () => {
   const [rerankSettingModalOpen, setRerankSettingModalOpen] = useState(false)
   const {
     currentModel: currentRerankModel,
+    currentProvider: currentRerankProvider,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const handleSelect = (data: DataSet[]) => {
     if (isEqual(data.map(item => item.id), dataSets.map(item => item.id))) {
@@ -281,7 +282,10 @@ const Configuration: FC = () => {
       reranking_mode: restConfigs.reranking_mode,
       weights: restConfigs.weights,
       reranking_enable: restConfigs.reranking_enable,
-    }, newDatasets, dataSets, !!currentRerankModel)
+    }, newDatasets, dataSets, {
+      provider: currentRerankProvider?.provider,
+      model: currentRerankModel?.model,
+    })
 
     setDatasetConfigs({
       ...retrievalConfig,
@@ -636,7 +640,10 @@ const Configuration: FC = () => {
 
         syncToPublishedConfig(config)
         setPublishedConfig(config)
-        const retrievalConfig = getMultipleRetrievalConfig(modelConfig.dataset_configs, datasets, datasets, !!currentRerankModel)
+        const retrievalConfig = getMultipleRetrievalConfig(modelConfig.dataset_configs, datasets, datasets, {
+          provider: currentRerankProvider?.provider,
+          model: currentRerankModel?.model,
+        })
         setDatasetConfigs({
           retrieval_model: RETRIEVE_TYPE.multiWay,
           ...modelConfig.dataset_configs,

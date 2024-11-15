@@ -22,7 +22,7 @@ import AppContext, { useAppContext } from '@/context/app-context'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
 
-export interface ISettingsModalProps {
+export type ISettingsModalProps = {
   isChat: boolean
   appInfo: AppDetailResponse & Partial<AppSSO>
   isShow: boolean
@@ -31,7 +31,7 @@ export interface ISettingsModalProps {
   onSave?: (params: ConfigParams) => Promise<void>
 }
 
-export interface ConfigParams {
+export type ConfigParams = {
   title: string
   description: string
   default_language: string
@@ -243,7 +243,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         <div className='w-full mt-8'>
           <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.workflow.title`)}</p>
           <div className='flex justify-between items-center'>
-            <div className='font-medium system-sm-semibold flex-grow text-gray-900'>{t(`${prefixSettings}.workflow.subTitle`)}</div>
+            <div className='font-medium system-sm-semibold grow text-gray-900'>{t(`${prefixSettings}.workflow.subTitle`)}</div>
             <Switch
               disabled={!(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat')}
               defaultValue={inputInfo.show_workflow_steps}
@@ -261,11 +261,15 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             onChange={onChange('chatColorTheme')}
             placeholder='E.g #A020F0'
           />
+          <div className="mt-1 flex justify-between items-center">
+            <p className={`ml-2 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.chatColorThemeInverted`)}</p>
+            <Switch defaultValue={inputInfo.chatColorThemeInverted} onChange={v => setInputInfo({ ...inputInfo, chatColorThemeInverted: v })}></Switch>
+          </div>
         </>}
         {systemFeatures.enable_web_sso_switch_component && <div className='w-full mt-8'>
           <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.sso.label`)}</p>
           <div className='flex justify-between items-center'>
-            <div className='font-medium system-sm-semibold flex-grow text-gray-900'>{t(`${prefixSettings}.sso.title`)}</div>
+            <div className='font-medium system-sm-semibold grow text-gray-900'>{t(`${prefixSettings}.sso.title`)}</div>
             <Tooltip
               disabled={systemFeatures.sso_enforced_for_web}
               popupContent={
@@ -280,8 +284,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         </div>}
         {!isShowMore && <div className='w-full cursor-pointer mt-8' onClick={() => setIsShowMore(true)}>
           <div className='flex justify-between'>
-            <div className={`font-medium ${s.settingTitle} flex-grow text-gray-900`}>{t(`${prefixSettings}.more.entry`)}</div>
-            <div className='flex-shrink-0 w-4 h-4 text-gray-500'>
+            <div className={`font-medium ${s.settingTitle} grow text-gray-900`}>{t(`${prefixSettings}.more.entry`)}</div>
+            <div className='shrink-0 w-4 h-4 text-gray-500'>
               <ChevronRightIcon />
             </div>
           </div>

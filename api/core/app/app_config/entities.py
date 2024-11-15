@@ -4,7 +4,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
-from core.file import FileExtraConfig, FileTransferMethod, FileType
+from core.file import FileTransferMethod, FileType, FileUploadConfig
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from models.model import AppMode
 
@@ -211,7 +211,7 @@ class TracingConfigEntity(BaseModel):
 
 
 class AppAdditionalFeatures(BaseModel):
-    file_upload: Optional[FileExtraConfig] = None
+    file_upload: Optional[FileUploadConfig] = None
     opening_statement: Optional[str] = None
     suggested_questions: list[str] = []
     suggested_questions_after_answer: bool = False

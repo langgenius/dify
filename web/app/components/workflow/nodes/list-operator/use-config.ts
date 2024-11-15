@@ -119,6 +119,22 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleExtractsEnabledChange = useCallback((enabled: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.extract_by.enabled = enabled
+      if (enabled)
+        draft.extract_by.serial = '1'
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleExtractsChange = useCallback((value: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.extract_by.serial = value
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const handleOrderByEnabledChange = useCallback((enabled: boolean) => {
     const newInputs = produce(inputs, (draft) => {
       draft.order_by.enabled = enabled
@@ -162,6 +178,8 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
     handleOrderByEnabledChange,
     handleOrderByKeyChange,
     handleOrderByTypeChange,
+    handleExtractsEnabledChange,
+    handleExtractsChange,
   }
 }
 

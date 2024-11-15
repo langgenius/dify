@@ -376,7 +376,7 @@ class LoggingConfig(BaseSettings):
 
     LOG_TZ: Optional[str] = Field(
         description="Timezone for log timestamps (e.g., 'America/New_York')",
-        default=None,
+        default="UTC",
     )
 
 
@@ -609,6 +609,11 @@ class DataSetConfig(BaseSettings):
     TIDB_SERVERLESS_NUMBER: PositiveInt = Field(
         description="number of tidb serverless cluster",
         default=500,
+    )
+
+    CREATE_TIDB_SERVICE_JOB_ENABLED: bool = Field(
+        description="Enable or disable create tidb service job",
+        default=False,
     )
 
 

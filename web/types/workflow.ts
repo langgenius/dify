@@ -8,7 +8,7 @@ import type {
 } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
 
-export interface NodeTracing {
+export type NodeTracing = {
   id: string
   index: number
   predecessor_node_id: string
@@ -33,6 +33,7 @@ export interface NodeTracing {
     parent_parallel_id?: string
     parent_parallel_start_node_id?: string
     parallel_mode_run_id?: string
+    iteration_duration_map?: IterationDurationMap
   }
   metadata: {
     iterator_length: number
@@ -44,6 +45,7 @@ export interface NodeTracing {
     name: string
     email: string
   }
+  iterDurationMap?: IterationDurationMap
   finished_at: number
   extras?: any
   expand?: boolean // for UI
@@ -54,7 +56,7 @@ export interface NodeTracing {
   parent_parallel_start_node_id?: string
 }
 
-export interface FetchWorkflowDraftResponse {
+export type FetchWorkflowDraftResponse = {
   id: string
   graph: {
     nodes: Node[]
@@ -75,11 +77,11 @@ export interface FetchWorkflowDraftResponse {
   conversation_variables?: ConversationVariable[]
 }
 
-export interface NodeTracingListResponse {
+export type NodeTracingListResponse = {
   data: NodeTracing[]
 }
 
-export interface WorkflowStartedResponse {
+export type WorkflowStartedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -91,7 +93,7 @@ export interface WorkflowStartedResponse {
   }
 }
 
-export interface WorkflowFinishedResponse {
+export type WorkflowFinishedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -115,7 +117,7 @@ export interface WorkflowFinishedResponse {
   }
 }
 
-export interface NodeStartedResponse {
+export type NodeStartedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -133,7 +135,7 @@ export interface NodeStartedResponse {
   }
 }
 
-export interface FileResponse {
+export type FileResponse = {
   related_id: string
   extension: string
   filename: string
@@ -144,7 +146,7 @@ export interface FileResponse {
   url: string
 }
 
-export interface NodeFinishedResponse {
+export type NodeFinishedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -176,7 +178,7 @@ export interface NodeFinishedResponse {
   }
 }
 
-export interface IterationStartedResponse {
+export type IterationStartedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -193,7 +195,7 @@ export interface IterationStartedResponse {
   }
 }
 
-export interface IterationNextResponse {
+export type IterationNextResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -207,11 +209,14 @@ export interface IterationNextResponse {
     parallel_mode_run_id: string
     execution_metadata: {
       parallel_id?: string
+      iteration_index: number
+      parallel_mode_run_id?: string
     }
+    duration?: number
   }
 }
 
-export interface IterationFinishedResponse {
+export type IterationFinishedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -229,7 +234,7 @@ export interface IterationFinishedResponse {
   }
 }
 
-export interface ParallelBranchStartedResponse {
+export type ParallelBranchStartedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -243,7 +248,7 @@ export interface ParallelBranchStartedResponse {
   }
 }
 
-export interface ParallelBranchFinishedResponse {
+export type ParallelBranchFinishedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -259,7 +264,7 @@ export interface ParallelBranchFinishedResponse {
   }
 }
 
-export interface TextChunkResponse {
+export type TextChunkResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -268,7 +273,7 @@ export interface TextChunkResponse {
   }
 }
 
-export interface TextReplaceResponse {
+export type TextReplaceResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -277,7 +282,7 @@ export interface TextReplaceResponse {
   }
 }
 
-export interface WorkflowRunHistory {
+export type WorkflowRunHistory = {
   id: string
   sequence_number: number
   version: string
@@ -303,11 +308,11 @@ export interface WorkflowRunHistory {
     email: string
   }
 }
-export interface WorkflowRunHistoryResponse {
+export type WorkflowRunHistoryResponse = {
   data: WorkflowRunHistory[]
 }
 
-export interface ChatRunHistoryResponse {
+export type ChatRunHistoryResponse = {
   data: WorkflowRunHistory[]
 }
 
@@ -316,10 +321,12 @@ export type NodesDefaultConfigsResponse = {
   config: any
 }[]
 
-export interface ConversationVariableResponse {
+export type ConversationVariableResponse = {
   data: (ConversationVariable & { updated_at: number; created_at: number })[]
   has_more: boolean
   limit: number
   total: number
   page: number
 }
+
+export type IterationDurationMap = Record<string, number>

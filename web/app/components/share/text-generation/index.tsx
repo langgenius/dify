@@ -46,17 +46,17 @@ enum TaskStatus {
   failed = 'failed',
 }
 
-interface TaskParam {
+type TaskParam = {
   inputs: Record<string, any>
 }
 
-interface Task {
+type Task = {
   id: number
   status: TaskStatus
   params: TaskParam
 }
 
-export interface IMainProps {
+export type IMainProps = {
   isInstalledApp?: boolean
   installedAppInfo?: InstalledApp
   isWorkflow?: boolean
@@ -94,6 +94,7 @@ const TextGeneration: FC<IMainProps> = ({
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
   const isInBatchTab = currentTab === 'batch'
   const [inputs, setInputs] = useState<Record<string, any>>({})
+  const inputsRef = useRef(inputs)
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
@@ -133,8 +134,10 @@ const TextGeneration: FC<IMainProps> = ({
     setIsCallBatchAPI(false)
     setControlSend(Date.now())
 
+    // eslint-disable-next-line ts/no-use-before-define
     setAllTaskList([]) // clear batch task running status
 
+    // eslint-disable-next-line ts/no-use-before-define
     showResSidebar()
   }
 
@@ -315,6 +318,7 @@ const TextGeneration: FC<IMainProps> = ({
     // clear run once task status
     setControlStopResponding(Date.now())
 
+    // eslint-disable-next-line ts/no-use-before-define
     showResSidebar()
   }
   const handleCompleted = (completionRes: string, taskId?: number, isSuccess?: boolean) => {
@@ -604,6 +608,7 @@ const TextGeneration: FC<IMainProps> = ({
               <RunOnce
                 siteInfo={siteInfo}
                 inputs={inputs}
+                inputsRef={inputsRef}
                 onInputsChange={setInputs}
                 promptConfig={promptConfig}
                 onSend={handleSend}

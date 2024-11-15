@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+import pytz
 from celery import Celery, Task
 from celery.schedules import crontab
 from flask import Flask
@@ -43,11 +44,20 @@ def init_app(app: Flask) -> Celery:
         result_backend=dify_config.CELERY_RESULT_BACKEND,
         broker_transport_options=broker_transport_options,
         broker_connection_retry_on_startup=True,
+        worker_log_format=dify_config.LOG_FORMAT,
+        worker_task_log_format=dify_config.LOG_FORMAT,
+        worker_hijack_root_logger=False,
+        timezone=pytz.timezone(dify_config.LOG_TZ),
     )
 
     if dify_config.BROKER_USE_SSL:
         celery_app.conf.update(
             broker_use_ssl=ssl_options,  # Add the SSL options to the broker configuration
+        )
+
+    if dify_config.LOG_FILE:
+        celery_app.conf.update(
+            worker_logfile=dify_config.LOG_FILE,
         )
 
     celery_app.set_default()

@@ -16,11 +16,11 @@ import NodePanel from './node'
 import {
   BlockEnum,
 } from '@/app/components/workflow/types'
-import type { NodeTracing } from '@/types/workflow'
+import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 
 type TracingPanelProps = {
   list: NodeTracing[]
-  onShowIterationDetail?: (detail: NodeTracing[][]) => void
+  onShowIterationDetail?: (detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => void
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
@@ -57,7 +57,7 @@ function buildLogTree(nodes: NodeTracing[], t: (key: string) => string): Tracing
     levelCounts[levelKey]++
 
     const parentTitle = parentId ? parallelStacks[parentId]?.parallelTitle : ''
-    const levelNumber = parentTitle ? parseInt(parentTitle.split('-')[1]) + 1 : 1
+    const levelNumber = parentTitle ? Number.parseInt(parentTitle.split('-')[1]) + 1 : 1
     const letter = parallelChildCounts[levelKey]?.size > 1 ? String.fromCharCode(64 + levelCounts[levelKey]) : ''
     return `${t('workflow.common.parallel')}-${levelNumber}${letter}`
   }
@@ -65,7 +65,7 @@ function buildLogTree(nodes: NodeTracing[], t: (key: string) => string): Tracing
   const getBranchTitle = (parentId: string | null, branchNum: number): string => {
     const levelKey = parentId || 'root'
     const parentTitle = parentId ? parallelStacks[parentId]?.parallelTitle : ''
-    const levelNumber = parentTitle ? parseInt(parentTitle.split('-')[1]) + 1 : 1
+    const levelNumber = parentTitle ? Number.parseInt(parentTitle.split('-')[1]) + 1 : 1
     const letter = parallelChildCounts[levelKey]?.size > 1 ? String.fromCharCode(64 + levelCounts[levelKey]) : ''
     const branchLetter = String.fromCharCode(64 + branchNum)
     return `${t('workflow.common.branch')}-${levelNumber}${letter}-${branchLetter}`
@@ -227,7 +227,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
               <span>{node.parallelTitle}</span>
             </div>
             <div
-              className="mx-2 flex-grow h-px bg-divider-subtle"
+              className="mx-2 grow h-px bg-divider-subtle"
               style={{ background: 'linear-gradient(to right, rgba(16, 24, 40, 0.08), rgba(255, 255, 255, 0)' }}
             ></div>
           </div>

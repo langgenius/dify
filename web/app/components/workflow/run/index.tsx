@@ -13,11 +13,11 @@ import cn from '@/utils/classnames'
 import { ToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
-import type { NodeTracing } from '@/types/workflow'
+import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
-export interface RunProps {
+export type RunProps = {
   hideResult?: boolean
   activeTab?: 'RESULT' | 'DETAIL' | 'TRACING'
   runID: string
@@ -172,15 +172,17 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
   }, [loading])
 
   const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[][]>([])
+  const [iterDurationMap, setIterDurationMap] = useState<IterationDurationMap>({})
   const [isShowIterationDetail, {
     setTrue: doShowIterationDetail,
     setFalse: doHideIterationDetail,
   }] = useBoolean(false)
 
-  const handleShowIterationDetail = useCallback((detail: NodeTracing[][]) => {
+  const handleShowIterationDetail = useCallback((detail: NodeTracing[][], iterDurationMap: IterationDurationMap) => {
     setIterationRunResult(detail)
     doShowIterationDetail()
-  }, [doShowIterationDetail])
+    setIterDurationMap(iterDurationMap)
+  }, [doShowIterationDetail, setIterationRunResult, setIterDurationMap])
 
   if (isShowIterationDetail) {
     return (
@@ -189,6 +191,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
           list={iterationRunResult}
           onHide={doHideIterationDetail}
           onBack={doHideIterationDetail}
+          iterDurationMap={iterDurationMap}
         />
       </div>
     )

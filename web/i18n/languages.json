@@ -139,6 +139,13 @@
       "prompt_name": "Farsi",
       "example": "سلام, دیفای!",
       "supported": true
+    },
+    {
+      "value": "sl-SI",
+      "name": "Slovensko (Slovenija)",
+      "prompt_name": "Slovensko",
+      "example": "Zdravo, Dify!",
+      "supported": true
     }
   ]
 }

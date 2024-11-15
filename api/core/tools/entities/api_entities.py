@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.common_entities import I18nObject
@@ -32,8 +32,13 @@ class UserToolProvider(BaseModel):
     original_credentials: Optional[dict] = None
     is_team_authorization: bool = False
     allow_delete: bool = True
-    tools: list[UserTool] | None = None
+    tools: list[UserTool] = Field(default_factory=list)
     labels: list[str] | None = None
+
+    @field_validator("tools", mode="before")
+    @classmethod
+    def convert_none_to_empty_list(cls, v):
+        return v if v is not None else []
 
     def to_dict(self) -> dict:
         # -------------

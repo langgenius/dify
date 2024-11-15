@@ -26,7 +26,6 @@ from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from factories import file_factory
 from models.account import Account
-from models.enums import CreatedByRole
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import Workflow
 
@@ -98,13 +97,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # parse files
         files = args["files"] if args.get("files") else []
         file_extra_config = FileUploadConfigManager.convert(workflow.features_dict, is_vision=False)
-        role = CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER
         if file_extra_config:
             file_objs = file_factory.build_from_mappings(
                 mappings=files,
                 tenant_id=app_model.tenant_id,
-                user_id=user.id,
-                role=role,
                 config=file_extra_config,
             )
         else:
@@ -127,10 +123,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         application_generate_entity = AdvancedChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
+            file_upload_config=file_extra_config,
             conversation_id=conversation.id if conversation else None,
             inputs=conversation.inputs
             if conversation
-            else self._prepare_user_inputs(user_inputs=inputs, app_config=app_config, user_id=user.id, role=role),
+            else self._prepare_user_inputs(user_inputs=inputs, app_config=app_config),
             query=query,
             files=file_objs,
             parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
