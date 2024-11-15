@@ -5,6 +5,7 @@ import type { Plugin } from '../../../types'
 import Card from '../../../card'
 import Checkbox from '@/app/components/base/checkbox'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
+import useGetIcon from '../../base/use-get-icon'
 
 type Props = {
   checked: boolean
@@ -17,6 +18,7 @@ const LoadedItem: FC<Props> = ({
   onCheckedChange,
   payload,
 }) => {
+  const { getIconUrl } = useGetIcon()
   return (
     <div className='flex items-center space-x-2'>
       <Checkbox
@@ -26,7 +28,10 @@ const LoadedItem: FC<Props> = ({
       />
       <Card
         className='grow'
-        payload={payload}
+        payload={{
+          ...payload,
+          icon: getIconUrl(payload.icon),
+        }}
         titleLeft={payload.version ? <Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version}</Badge> : null}
       />
     </div>

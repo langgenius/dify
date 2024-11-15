@@ -77,17 +77,13 @@ const UpdateDSLModal = ({
       return
     try {
       if (appDetail && fileContent) {
-        const leakedData = await mutateAsync({ dslString: fileContent })
-        if (leakedData?.leaked.length) {
-          isCreatingRef.current = false
-          return
-        }
         setLoading(true)
         const {
           graph,
           features,
           hash,
         } = await updateWorkflowDraftFromDSL(appDetail.id, fileContent)
+        await mutateAsync({ dslString: fileContent })
         const { nodes, edges, viewport } = graph
         const newFeatures = {
           file: {

@@ -243,7 +243,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         <div className='w-full mt-8'>
           <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.workflow.title`)}</p>
           <div className='flex justify-between items-center'>
-            <div className='font-medium system-sm-semibold flex-grow text-gray-900'>{t(`${prefixSettings}.workflow.subTitle`)}</div>
+            <div className='font-medium system-sm-semibold grow text-gray-900'>{t(`${prefixSettings}.workflow.subTitle`)}</div>
             <Switch
               disabled={!(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat')}
               defaultValue={inputInfo.show_workflow_steps}
@@ -269,7 +269,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         {systemFeatures.enable_web_sso_switch_component && <div className='w-full mt-8'>
           <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.sso.label`)}</p>
           <div className='flex justify-between items-center'>
-            <div className='font-medium system-sm-semibold flex-grow text-gray-900'>{t(`${prefixSettings}.sso.title`)}</div>
+            <div className='font-medium system-sm-semibold grow text-gray-900'>{t(`${prefixSettings}.sso.title`)}</div>
             <Tooltip
               disabled={systemFeatures.sso_enforced_for_web}
               popupContent={
@@ -284,8 +284,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         </div>}
         {!isShowMore && <div className='w-full cursor-pointer mt-8' onClick={() => setIsShowMore(true)}>
           <div className='flex justify-between'>
-            <div className={`font-medium ${s.settingTitle} flex-grow text-gray-900`}>{t(`${prefixSettings}.more.entry`)}</div>
-            <div className='flex-shrink-0 w-4 h-4 text-gray-500'>
+            <div className={`font-medium ${s.settingTitle} grow text-gray-900`}>{t(`${prefixSettings}.more.entry`)}</div>
+            <div className='shrink-0 w-4 h-4 text-gray-500'>
               <ChevronRightIcon />
             </div>
           </div>

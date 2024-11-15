@@ -144,7 +144,7 @@ const NodePanel: FC<Props> = ({
                   className='flex items-center w-full self-stretch gap-2 px-3 py-2 bg-components-button-tertiary-bg-hover hover:bg-components-button-tertiary-bg-hover rounded-lg cursor-pointer border-none'
                   onClick={handleOnShowIterationDetail}
                 >
-                  <Iteration className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
+                  <Iteration className='w-4 h-4 text-components-button-tertiary-text shrink-0' />
                   <div className='flex-1 text-left system-sm-medium text-components-button-tertiary-text'>{t('workflow.nodes.iteration.iteration', { count: getCount(nodeInfo.details?.length, nodeInfo.metadata?.iterator_length) })}{getErrorCount(nodeInfo.details) > 0 && (
                     <>
                       {t('workflow.nodes.iteration.comma')}
@@ -153,12 +153,12 @@ const NodePanel: FC<Props> = ({
                   )}</div>
                   {justShowIterationNavArrow
                     ? (
-                      <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
+                      <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text shrink-0' />
                     )
                     : (
                       <div className='flex items-center space-x-1 text-[#155EEF]'>
                         <div className='text-[13px] font-normal '>{t('workflow.common.viewDetailInTracingPanel')}</div>
-                        <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
+                        <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text shrink-0' />
                       </div>
                     )}
                 </Button>

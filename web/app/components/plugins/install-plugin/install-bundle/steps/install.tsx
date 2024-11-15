@@ -7,23 +7,25 @@ import { RiLoader2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import InstallByDSLList from './install-by-dsl-list'
 import { useInstallFromMarketplaceAndGitHub } from '@/service/use-plugins'
-
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 const i18nPrefix = 'plugin.installModal'
 
 type Props = {
   fromDSLPayload: Dependency[]
+  onInstalled: (plugins: Plugin[], installStatus: { success: boolean }[]) => void
   onCancel: () => void
 }
 
 const Install: FC<Props> = ({
   fromDSLPayload,
+  onInstalled,
   onCancel,
 }) => {
   const { t } = useTranslation()
   const [selectedPlugins, setSelectedPlugins] = React.useState<Plugin[]>([])
   const [selectedIndexes, setSelectedIndexes] = React.useState<number[]>([])
   const selectedPluginsNum = selectedPlugins.length
-
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const handleSelect = (plugin: Plugin, selectedIndex: number) => {
     const isSelected = !!selectedPlugins.find(p => p.plugin_id === plugin.plugin_id)
     let nextSelectedPlugins
@@ -35,18 +37,21 @@ const Install: FC<Props> = ({
     const nextSelectedIndexes = isSelected ? selectedIndexes.filter(i => i !== selectedIndex) : [...selectedIndexes, selectedIndex]
     setSelectedIndexes(nextSelectedIndexes)
   }
+
   const [canInstall, setCanInstall] = React.useState(false)
   const handleLoadedAllPlugin = useCallback(() => {
     setCanInstall(true)
-  }, [selectedPlugins, selectedIndexes])
+  }, [])
 
   // Install from marketplace and github
   const { mutate: installFromMarketplaceAndGitHub, isPending: isInstalling } = useInstallFromMarketplaceAndGitHub({
-    onSuccess: () => {
-      console.log('success!')
+    onSuccess: (res: { success: boolean }[]) => {
+      onInstalled(selectedPlugins, res)
+      const hasInstallSuccess = res.some(r => r.success)
+      if (hasInstallSuccess)
+        invalidateInstalledPluginList()
     },
   })
-  console.log(canInstall, !isInstalling, selectedPlugins.length === 0)
   const handleInstall = () => {
     installFromMarketplaceAndGitHub(fromDSLPayload.filter((_d, index) => selectedIndexes.includes(index)))
   }

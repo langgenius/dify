@@ -2,7 +2,7 @@
 
 import React from 'react'
 import Button from '@/app/components/base/button'
-import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
+import type { PluginDeclaration, PluginType, UpdateFromGitHubPayload } from '../../../types'
 import Card from '../../../card'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { pluginManifestToCardPluginProps } from '../../utils'
@@ -13,6 +13,7 @@ import { RiLoader2Line } from '@remixicon/react'
 import { usePluginTaskList } from '@/service/use-plugins'
 import checkTaskStatus from '../../base/check-task-status'
 import { parseGitHubUrl } from '../../utils'
+import { useCategories } from '../../../hooks'
 
 type LoadedProps = {
   updatePayload: UpdateFromGitHubPayload
@@ -40,6 +41,7 @@ const Loaded: React.FC<LoadedProps> = ({
   onFailed,
 }) => {
   const { t } = useTranslation()
+  const { categoriesMap } = useCategories()
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromGitHub } = useInstallPackageFromGitHub()
   const { handleRefetch } = usePluginTaskList()
@@ -115,7 +117,7 @@ const Loaded: React.FC<LoadedProps> = ({
       <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap rounded-2xl bg-background-section-burn'>
         <Card
           className='w-full'
-          payload={pluginManifestToCardPluginProps(payload)}
+          payload={{ ...pluginManifestToCardPluginProps(payload), type: categoriesMap[payload.category].label as PluginType }}
           titleLeft={<Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version}</Badge>}
         />
       </div>

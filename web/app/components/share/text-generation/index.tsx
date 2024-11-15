@@ -133,8 +133,10 @@ const TextGeneration: FC<IMainProps> = ({
   const handleSend = () => {
     setIsCallBatchAPI(false)
     setControlSend(Date.now())
+
     // eslint-disable-next-line ts/no-use-before-define
     setAllTaskList([]) // clear batch task running status
+
     // eslint-disable-next-line ts/no-use-before-define
     showResSidebar()
   }

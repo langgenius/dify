@@ -34,11 +34,14 @@ const PluginTasks = () => {
     handleClearErrorPlugin,
   } = usePluginTaskStatus()
   const { getIconUrl } = useGetIcon()
+  const runningPluginsLength = runningPlugins.length
+  const errorPluginsLength = errorPlugins.length
+  const successPluginsLength = successPlugins.length
 
-  const isInstalling = runningPlugins.length > 0 && errorPlugins.length === 0 && successPlugins.length === 0
-  const isInstallingWithError = errorPlugins.length > 0 && errorPlugins.length < totalPluginsLength
-  const isSuccess = successPlugins.length === totalPluginsLength && totalPluginsLength > 0
-  const isFailed = errorPlugins.length === totalPluginsLength && totalPluginsLength > 0
+  const isInstalling = runningPluginsLength > 0 && errorPluginsLength === 0
+  const isInstallingWithError = runningPluginsLength > 0 && errorPluginsLength > 0
+  const isSuccess = successPluginsLength === totalPluginsLength && totalPluginsLength > 0
+  const isFailed = runningPluginsLength === 0 && (errorPluginsLength + successPluginsLength) === totalPluginsLength && totalPluginsLength > 0
 
   const tip = useMemo(() => {
     if (isInstalling)
@@ -50,6 +53,9 @@ const PluginTasks = () => {
     if (isFailed)
       return t('plugin.task.installError', { errorLength: errorPlugins.length })
   }, [isInstalling, isInstallingWithError, isFailed, errorPlugins, runningPlugins, totalPluginsLength, t])
+
+  if (!totalPluginsLength)
+    return null
 
   return (
     <div className='flex items-center'>
@@ -72,7 +78,7 @@ const PluginTasks = () => {
             <div
               className={cn(
                 'relative flex items-center justify-center w-8 h-8 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg shadow-xs hover:bg-components-button-secondary-bg-hover',
-                (isInstallingWithError || isFailed) && 'border-components-button-destructive-secondary-border-hover bg-state-destructive-hover hover:bg-state-destructive-hover-alt',
+                (isInstallingWithError || isFailed) && 'border-components-button-destructive-secondary-border-hover bg-state-destructive-hover hover:bg-state-destructive-hover-alt cursor-pointer',
               )}
             >
               <RiInstallLine
@@ -115,7 +121,9 @@ const PluginTasks = () => {
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-10'>
           <div className='p-1 pb-2 w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
-            <div className='flex items-center px-2 pt-1 h-7 system-sm-semibold-uppercase'>{t('plugin.task.installedError')}</div>
+            <div className='flex items-center px-2 pt-1 h-7 system-sm-semibold-uppercase'>
+              {t('plugin.task.installedError', { errorLength: errorPlugins.length })}
+            </div>
             {
               errorPlugins.map(errorPlugin => (
                 <div

@@ -43,16 +43,14 @@ const AllTools = ({
   supportAddCustomTool,
   onShowAddCustomCollectionModal,
 }: AllToolsProps) => {
-  const tabs = useToolTabs()
   const language = useGetLanguage()
+  const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
   const [activeView, setActiveView] = useState<ViewType>(ViewType.flat)
-
+  const hasFilter = searchText || tags.length > 0
   const isMatchingKeywords = (text: string, keywords: string) => {
     return text.toLowerCase().includes(keywords.toLowerCase())
   }
-
-  const hasFilter = searchText || tags.length > 0
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
     if (activeTab === ToolTypeEnum.All)

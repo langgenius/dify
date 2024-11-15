@@ -351,6 +351,13 @@ export type App = {
   /** api site url */
   api_base_url: string
   tags: Tag[]
+  workflow?: {
+    id: string
+    created_at: number
+    created_by?: string
+    updated_at: number
+    updated_by?: string
+  }
 }
 
 export type AppSSO = {

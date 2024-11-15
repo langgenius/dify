@@ -25,7 +25,7 @@ import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowled
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 
-interface Props {
+type Props = {
   datasetConfigs: DatasetConfigs
   onChange: (configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void
   isInWorkflow?: boolean

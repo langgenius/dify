@@ -40,7 +40,7 @@ const ToolTrigger = ({
         </div>
       )}
       {value && (
-        <div className='grow system-sm-regular text-components-input-text-filled'>{value.tool_name}</div>
+        <div className='grow system-sm-medium text-components-input-text-filled'>{value.tool_name}</div>
       )}
       {!value && (
         <div className='grow text-components-input-text-placeholder system-sm-regular'>{t('tools.toolSelector.placeholder')}</div>

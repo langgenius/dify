@@ -67,7 +67,7 @@ const ToolCredentialForm: FC<Props> = ({
               isEditMode={true}
               showOnVariableMap={{}}
               validating={false}
-              inputClassName='bg-components-input-bg-normal hover:bg-state-base-hover-alt'
+              inputClassName='bg-components-input-bg-normal hover:bg-components-input-bg-hover'
               fieldMoreInfo={item => item.url
                 ? (<a
                   href={item.url}

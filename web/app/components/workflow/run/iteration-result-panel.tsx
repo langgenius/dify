@@ -104,17 +104,17 @@ const IterationResultPanel: FC<Props> = ({
               onClick={() => toggleIteration(index)}
             >
               <div className={cn('flex items-center gap-2 flex-grow')}>
-                <div className='flex items-center justify-center w-4 h-4 rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500 flex-shrink-0'>
+                <div className='flex items-center justify-center w-4 h-4 rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500 shrink-0'>
                   <Iteration className='w-3 h-3 text-text-primary-on-surface' />
                 </div>
-                <span className='system-sm-semibold-uppercase text-text-primary flex-grow'>
+                <span className='system-sm-semibold-uppercase text-text-primary grow'>
                   {t(`${i18nPrefix}.iteration`)} {index + 1}
                 </span>
                 {iterationStatusShow(index, iteration, iterDurationMap)}
               </div>
             </div>
             {expandedIterations[index] && <div
-              className="flex-grow h-px bg-divider-subtle"
+              className="grow h-px bg-divider-subtle"
             ></div>}
             <div className={cn(
               'overflow-hidden transition-all duration-200',
