@@ -619,7 +619,7 @@ const translation = {
       selectVariableKeyPlaceholder: 'Select sub variable key （選擇子變數鍵）',
       filterConditionComparisonOperator: 'Filter Condition Comparison 運算符',
       filterConditionKey: '篩選條件鍵',
-      extractsCondition: '提取 N 項',
+      extractsCondition: '提取第 N 項',
     },
   },
   tracing: {
