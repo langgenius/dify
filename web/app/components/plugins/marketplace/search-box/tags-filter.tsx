@@ -52,7 +52,10 @@ const TagsFilter = ({
       open={open}
       onOpenChange={setOpen}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
+      <PortalToFollowElemTrigger
+        className='shrink-0'
+        onClick={() => setOpen(v => !v)}
+      >
         <div className={cn(
           'flex items-center text-text-tertiary rounded-lg hover:bg-state-base-hover cursor-pointer',
           size === 'large' && 'px-2 py-1 h-8',
