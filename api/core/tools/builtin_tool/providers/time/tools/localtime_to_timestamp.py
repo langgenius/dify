@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import pytz
 
@@ -13,6 +13,9 @@ class LocaltimeToTimestampTool(BuiltinTool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Convert localtime to timestamp

@@ -90,14 +90,16 @@ class ToolEngine:
                 conversation_id=message.conversation_id,
             )
 
+            message_list = list(messages)
+
             # extract binary data from tool invoke message
-            binary_files = ToolEngine._extract_tool_response_binary(messages)
+            binary_files = ToolEngine._extract_tool_response_binary_and_text(message_list)
             # create message file
             message_files = ToolEngine._create_message_files(
                 tool_messages=binary_files, agent_message=message, invoke_from=invoke_from, user_id=user_id
             )
 
-            plain_text = ToolEngine._convert_tool_response_to_str(messages)
+            plain_text = ToolEngine._convert_tool_response_to_str(message_list)
 
             meta = invocation_meta_dict["meta"]
 
@@ -219,7 +221,7 @@ class ToolEngine:
             yield meta
 
     @staticmethod
-    def _convert_tool_response_to_str(tool_response: Generator[ToolInvokeMessage, None, None]) -> str:
+    def _convert_tool_response_to_str(tool_response: list[ToolInvokeMessage]) -> str:
         """
         Handle tool response
         """
@@ -246,8 +248,8 @@ class ToolEngine:
         return result
 
     @staticmethod
-    def _extract_tool_response_binary(
-        tool_response: Generator[ToolInvokeMessage, None, None],
+    def _extract_tool_response_binary_and_text(
+        tool_response: list[ToolInvokeMessage],
     ) -> Generator[ToolInvokeMessageBinary, None, None]:
         """
         Extract tool response binary
