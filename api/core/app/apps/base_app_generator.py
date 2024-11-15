@@ -91,6 +91,9 @@ class BaseAppGenerator:
             )
 
         if variable_entity.type == VariableEntityType.NUMBER and isinstance(value, str):
+            # handle empty string case
+            if not value.strip():
+                return None
             # may raise ValueError if user_input_value is not a valid number
             try:
                 if "." in value:

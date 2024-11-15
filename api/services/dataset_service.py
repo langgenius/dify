@@ -1458,6 +1458,7 @@ class SegmentService:
             pre_segment_data_list = []
             segment_data_list = []
             keywords_list = []
+            position = max_position + 1 if max_position else 1
             for segment_item in segments:
                 content = segment_item["content"]
                 doc_id = str(uuid.uuid4())
@@ -1475,7 +1476,7 @@ class SegmentService:
                     document_id=document.id,
                     index_node_id=doc_id,
                     index_node_hash=segment_hash,
-                    position=max_position + 1 if max_position else 1,
+                    position=position,
                     content=content,
                     word_count=len(content),
                     tokens=tokens,
@@ -1490,6 +1491,7 @@ class SegmentService:
                 increment_word_count += segment_document.word_count
                 db.session.add(segment_document)
                 segment_data_list.append(segment_document)
+                position += 1
 
                 pre_segment_data_list.append(segment_document)
                 if "keywords" in segment_item:

@@ -57,13 +57,12 @@ class ASRTool(BuiltinTool):
                 name="model",
                 label=I18nObject(en_US="Model", zh_Hans="Model"),
                 human_description=I18nObject(
-                    en_US="All available ASR models",
-                    zh_Hans="所有可用的 ASR 模型",
+                    en_US="All available ASR models. You can config model in the Model Provider of Settings.",
+                    zh_Hans="所有可用的 ASR 模型。你可以在设置中的模型供应商里配置。",
                 ),
                 type=ToolParameter.ToolParameterType.SELECT,
                 form=ToolParameter.ToolParameterForm.FORM,
                 required=True,
-                default=options[0].value,
                 options=options,
             )
         )
