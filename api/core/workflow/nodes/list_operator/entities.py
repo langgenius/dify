@@ -59,4 +59,4 @@ class ListOperatorNodeData(BaseNodeData):
     filter_by: FilterBy
     order_by: OrderBy
     limit: Limit
-    extract_by: ExtractConfig
+    extract_by: ExtractConfig = Field(default_factory=ExtractConfig)

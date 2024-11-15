@@ -122,6 +122,7 @@ celery = "~5.4.0"
 chardet = "~5.1.0"
 cohere = "~5.2.4"
 dashscope = { version = "~1.17.0", extras = ["tokenizer"] }
+fal-client = "0.5.6"
 flask = "~3.0.1"
 flask-compress = "~1.14"
 flask-cors = "~4.0.0"
@@ -278,4 +279,4 @@ pytest-mock = "~3.14.0"
 optional = true
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
-ruff = "~0.6.9"
+ruff = "~0.7.3"
