@@ -779,7 +779,7 @@ class RegisterService:
             db.session.query(Tenant).delete()
             db.session.commit()
 
-            logging.exception(f"Setup failed: {e}")
+            logging.exception(f"Setup account failed, email: {email}, name: {name}")
             raise ValueError(f"Setup failed: {e}")
 
     @classmethod
@@ -821,7 +821,7 @@ class RegisterService:
             db.session.rollback()
         except Exception as e:
             db.session.rollback()
-            logging.exception(f"Register failed: {e}")
+            logging.exception("Register failed")
             raise AccountRegisterError(f"Registration failed: {e}") from e
 
         return account

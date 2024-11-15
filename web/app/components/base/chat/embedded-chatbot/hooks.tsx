@@ -159,7 +159,7 @@ export const useEmbeddedChatbot = () => {
     const conversationInputs: Record<string, any> = {}
 
     inputsForms.forEach((item: any) => {
-      conversationInputs[item.variable] = item.default || ''
+      conversationInputs[item.variable] = item.default || null
     })
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])

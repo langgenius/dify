@@ -4,7 +4,14 @@ import pytest
 
 from core.file import File, FileTransferMethod, FileType
 from core.variables import ArrayFileSegment
-from core.workflow.nodes.list_operator.entities import FilterBy, FilterCondition, Limit, ListOperatorNodeData, OrderBy
+from core.workflow.nodes.list_operator.entities import (
+    ExtractConfig,
+    FilterBy,
+    FilterCondition,
+    Limit,
+    ListOperatorNodeData,
+    OrderBy,
+)
 from core.workflow.nodes.list_operator.exc import InvalidKeyError
 from core.workflow.nodes.list_operator.node import ListOperatorNode, _get_file_extract_string_func
 from models.workflow import WorkflowNodeExecutionStatus
@@ -22,6 +29,7 @@ def list_operator_node():
         ),
         "order_by": OrderBy(enabled=False, value="asc"),
         "limit": Limit(enabled=False, size=0),
+        "extract_by": ExtractConfig(enabled=False, serial="1"),
         "title": "Test Title",
     }
     node_data = ListOperatorNodeData(**config)
