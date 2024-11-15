@@ -6,6 +6,7 @@ import Card from '@/app/components/plugins/card'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
+import useGetIcon from '../../base/use-get-icon'
 
 type Props = {
   list: Plugin[]
@@ -19,6 +20,7 @@ const Installed: FC<Props> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
+  const { getIconUrl } = useGetIcon()
   return (
     <>
       <div className='flex flex-col px-6 py-3 justify-center items-start gap-4 self-stretch'>
@@ -29,7 +31,10 @@ const Installed: FC<Props> = ({
               <Card
                 key={plugin.plugin_id}
                 className='w-full'
-                payload={plugin}
+                payload={{
+                  ...plugin,
+                  icon: getIconUrl(plugin.icon),
+                }}
                 installed={installStatus[index].success}
                 installFailed={!installStatus[index].success}
                 titleLeft={plugin.version ? <Badge className='mx-1' size="s" state={BadgeState.Default}>{plugin.version}</Badge> : null}

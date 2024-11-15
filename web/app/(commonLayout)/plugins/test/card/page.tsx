@@ -44,12 +44,12 @@ const PluginList = () => {
                 github_plugin_unique_identifier: 'wtw0313/dify-test:0.0.1@1633daa043b47155d4228e2db7734245fd6d3e20ba812e5c02ce69fc1e3038f4',
               },
             },
-            // {
-            //   type: 'marketplace',
-            //   value: {
-            //     plugin_unique_identifier: 'langgenius/openai:0.0.1@f88fdb98d104466db16a425bfe3af8c1bcad45047a40fb802d98a989ac57a5a3',
-            //   },
-            // },
+            {
+              type: 'marketplace',
+              value: {
+                plugin_unique_identifier: 'langgenius/openai:0.0.1@f88fdb98d104466db16a425bfe3af8c1bcad45047a40fb802d98a989ac57a5a3',
+              },
+            },
           ]} />
       )
       }
