@@ -22,15 +22,15 @@ const translation = {
     noInstalled: '无已安装的插件',
     notFound: '未找到插件',
     source: {
-      marketplace: '从市场安装',
-      github: '从GitHub安装',
-      local: '从本地文件安装',
+      marketplace: '从 Marketplace 安装',
+      github: '从 GitHub 安装',
+      local: '本地插件',
     },
   },
   source: {
-    marketplace: '市场',
+    marketplace: 'Marketplace',
     github: 'GitHub',
-    local: '本地文件',
+    local: '本地插件',
   },
   detailPanel: {
     categoryTip: {
