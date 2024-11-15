@@ -4,7 +4,7 @@ import cn from '@/utils/classnames'
 
 type Props = {
   wrapClassName: string
-  loadingFileName: string
+  loadingFileName?: string
 }
 
 export const LoadingPlaceholder = ({ className }: { className?: string }) => (
@@ -27,7 +27,11 @@ const Placeholder = ({
         </div>
         <div className="ml-3 grow">
           <div className="flex items-center h-5">
-            <Title title={loadingFileName} />
+            {loadingFileName ? (
+              <Title title={loadingFileName} />
+            ) : (
+              <LoadingPlaceholder className="w-[260px]" />
+            )}
           </div>
           <div className={cn('flex items-center h-4 space-x-0.5')}>
             <LoadingPlaceholder className="w-[41px]" />
