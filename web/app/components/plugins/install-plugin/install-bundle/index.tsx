@@ -3,8 +3,9 @@ import type { FC } from 'react'
 import Modal from '@/app/components/base/modal'
 import React, { useCallback, useState } from 'react'
 import { InstallStep } from '../../types'
-import type { Dependency } from '../../types'
+import type { Dependency, Plugin } from '../../types'
 import Install from './steps/install'
+import Installed from './steps/installed'
 import { useTranslation } from 'react-i18next'
 
 const i18nPrefix = 'plugin.installModal'
@@ -29,7 +30,8 @@ const InstallBundle: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [step, setStep] = useState<InstallStep>(installType === InstallType.fromMarketplace ? InstallStep.readyToInstall : InstallStep.uploading)
-
+  const [installedPlugins, setInstalledPlugins] = useState<Plugin[]>([])
+  const [installStatus, setInstallStatus] = useState<{ success: boolean }[]>([])
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
       return t(`${i18nPrefix}.uploadFailed`)
@@ -40,6 +42,12 @@ const InstallBundle: FC<Props> = ({
 
     return t(`${i18nPrefix}.installPlugin`)
   }, [step, t])
+
+  const handleInstalled = useCallback((plugins: Plugin[], installStatus: { success: boolean }[]) => {
+    setInstallStatus(installStatus)
+    setInstalledPlugins(plugins)
+    setStep(InstallStep.installed)
+  }, [])
 
   return (
     <Modal
@@ -56,6 +64,14 @@ const InstallBundle: FC<Props> = ({
       {step === InstallStep.readyToInstall && (
         <Install
           fromDSLPayload={fromDSLPayload}
+          onCancel={onClose}
+          onInstalled={handleInstalled}
+        />
+      )}
+      {step === InstallStep.installed && (
+        <Installed
+          list={installedPlugins}
+          installStatus={installStatus}
           onCancel={onClose}
         />
       )}

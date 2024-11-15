@@ -29,7 +29,10 @@ const Item: FC<Props> = ({
   const [payload, setPayload] = React.useState<Plugin | null>(null)
   useEffect(() => {
     if (data) {
-      const payload = pluginManifestToCardPluginProps(data.manifest)
+      const payload = {
+        ...pluginManifestToCardPluginProps(data.manifest),
+        plugin_id: data.unique_identifier,
+      }
       onFetchedPayload(payload)
       setPayload(payload)
     }

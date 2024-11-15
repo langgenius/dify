@@ -26,12 +26,12 @@ const InstallByDSLList: FC<Props> = ({
   const [plugins, setPlugins, getPlugins] = useGetState<Plugin[]>([])
   const handlePlugInFetched = useCallback((index: number) => {
     return (p: Plugin) => {
-      const nextPlugins = produce(plugins, (draft) => {
+      const nextPlugins = produce(getPlugins(), (draft) => {
         draft[index] = p
       })
       setPlugins(nextPlugins)
     }
-  }, [plugins, setPlugins])
+  }, [getPlugins, setPlugins])
 
   const marketPlaceInDSLIndex = useMemo(() => {
     const res: number[] = []

@@ -121,6 +121,7 @@ export const useInstallFromMarketplaceAndGitHub = ({
           })
           return ({ success: true })
         }
+        // eslint-disable-next-line unused-imports/no-unused-vars
         catch (e) {
           return Promise.resolve({ success: false })
         }
