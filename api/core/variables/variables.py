@@ -1,9 +1,13 @@
+from collections.abc import Sequence
+from uuid import uuid4
+
 from pydantic import Field
 
 from core.helper import encrypter
 
 from .segments import (
     ArrayAnySegment,
+    ArrayFileSegment,
     ArrayNumberSegment,
     ArrayObjectSegment,
     ArrayStringSegment,
@@ -24,11 +28,12 @@ class Variable(Segment):
     """
 
     id: str = Field(
-        default="",
-        description="Unique identity for variable. It's only used by environment variables now.",
+        default=lambda _: str(uuid4()),
+        description="Unique identity for variable.",
     )
     name: str
     description: str = Field(default="", description="Description of the variable.")
+    selector: Sequence[str] = Field(default_factory=list)
 
 
 class StringVariable(StringSegment, Variable):
@@ -77,4 +82,8 @@ class NoneVariable(NoneSegment, Variable):
 
 
 class FileVariable(FileSegment, Variable):
+    pass
+
+
+class ArrayFileVariable(ArrayFileSegment, Variable):
     pass

@@ -1,11 +1,13 @@
 import { apiPrefix } from '@/config'
 import { fetchWithRetry } from '@/utils'
 
+const LOCAL_STORAGE_KEY = 'is_other_tab_refreshing'
+
 let isRefreshing = false
 function waitUntilTokenRefreshed() {
   return new Promise<void>((resolve, reject) => {
     function _check() {
-      const isRefreshingSign = localStorage.getItem('is_refreshing')
+      const isRefreshingSign = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
       if ((isRefreshingSign && isRefreshingSign === '1') || isRefreshing) {
         setTimeout(() => {
           _check()
@@ -22,13 +24,14 @@ function waitUntilTokenRefreshed() {
 // only one request can send
 async function getNewAccessToken(): Promise<void> {
   try {
-    const isRefreshingSign = localStorage.getItem('is_refreshing')
+    const isRefreshingSign = globalThis.localStorage.getItem(LOCAL_STORAGE_KEY)
     if ((isRefreshingSign && isRefreshingSign === '1') || isRefreshing) {
       await waitUntilTokenRefreshed()
     }
     else {
-      globalThis.localStorage.setItem('is_refreshing', '1')
       isRefreshing = true
+      globalThis.localStorage.setItem(LOCAL_STORAGE_KEY, '1')
+      globalThis.addEventListener('beforeunload', releaseRefreshLock)
       const refresh_token = globalThis.localStorage.getItem('refresh_token')
 
       // Do not use baseFetch to refresh tokens.
@@ -61,15 +64,21 @@ async function getNewAccessToken(): Promise<void> {
     return Promise.reject(error)
   }
   finally {
+    releaseRefreshLock()
+  }
+}
+
+function releaseRefreshLock() {
+  if (isRefreshing) {
     isRefreshing = false
-    globalThis.localStorage.removeItem('is_refreshing')
+    globalThis.localStorage.removeItem(LOCAL_STORAGE_KEY)
+    globalThis.removeEventListener('beforeunload', releaseRefreshLock)
   }
 }
 
 export async function refreshAccessTokenOrRelogin(timeout: number) {
   return Promise.race([new Promise<void>((resolve, reject) => setTimeout(() => {
-    isRefreshing = false
-    globalThis.localStorage.removeItem('is_refreshing')
+    releaseRefreshLock()
     reject(new Error('request timeout'))
   }, timeout)), getNewAccessToken()])
 }
