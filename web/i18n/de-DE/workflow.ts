@@ -407,6 +407,7 @@ const translation = {
       },
       type: 'Art',
       binaryFileVariable: 'Variable der Binärdatei',
+      extractListPlaceholder: 'Geben Sie den Index des Listeneintrags ein, geben Sie \'/\' ein, fügen Sie die Variable ein',
     },
     code: {
       inputVars: 'Eingabevariablen',
@@ -618,6 +619,7 @@ const translation = {
       filterConditionKey: 'Bedingungsschlüssel filtern',
       filterCondition: 'Filter-Bedingung',
       selectVariableKeyPlaceholder: 'Untervariablenschlüssel auswählen',
+      extractsCondition: 'Extrahieren des N-Elements',
     },
   },
   tracing: {

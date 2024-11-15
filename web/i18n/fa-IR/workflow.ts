@@ -407,6 +407,7 @@ const translation = {
       },
       binaryFileVariable: 'متغیر فایل باینری',
       type: 'نوع',
+      extractListPlaceholder: 'فهرست آیتم لیست را وارد کنید، متغیر درج \'/\' را تایپ کنید',
     },
     code: {
       inputVars: 'متغیرهای ورودی',
@@ -618,6 +619,7 @@ const translation = {
       filterConditionComparisonValue: 'مقدار شرایط فیلتر',
       selectVariableKeyPlaceholder: 'کلید متغیر فرعی را انتخاب کنید',
       asc: 'صعودی',
+      extractsCondition: 'مورد N را استخراج کنید',
     },
   },
   tracing: {
