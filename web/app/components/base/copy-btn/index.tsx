@@ -32,6 +32,7 @@ const CopyBtn = ({
     <div className={`${className}`}>
       <Tooltip
         popupContent={(isCopied ? t('appApi.copied') : t('appApi.copy'))}
+        asChild={false}
       >
         <div
           onMouseLeave={onMouseLeave}
