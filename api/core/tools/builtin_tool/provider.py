@@ -45,15 +45,9 @@ class BuiltinToolProviderController(ToolProviderController):
             ),
         )
 
-    def _get_builtin_tools(self) -> list[BuiltinTool]:
-        """
-        returns a list of tools that the provider can provide
+        self._load_tools()
 
-        :return: list of tools
-        """
-        if self.tools:
-            return self.tools
-
+    def _load_tools(self):
         provider = self.entity.identity.name
         tool_path = path.join(path.dirname(path.realpath(__file__)), "providers", provider, "tools")
         # get all the yaml files in the tool path
@@ -86,7 +80,14 @@ class BuiltinToolProviderController(ToolProviderController):
             )
 
         self.tools = tools
-        return tools
+
+    def _get_builtin_tools(self) -> list[BuiltinTool]:
+        """
+        returns a list of tools that the provider can provide
+
+        :return: list of tools
+        """
+        return self.tools
 
     def get_credentials_schema(self) -> list[ProviderConfig]:
         """

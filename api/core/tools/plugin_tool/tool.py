@@ -18,7 +18,6 @@ class PluginTool(Tool):
         self.tenant_id = tenant_id
         self.runtime_parameters = None
 
-    @property
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.PLUGIN
 
