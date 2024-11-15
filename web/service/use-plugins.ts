@@ -9,6 +9,7 @@ import type {
   PluginsFromMarketplaceResponse,
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
+import { TaskStatus } from '@/app/components/plugins/types'
 import type {
   PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
@@ -217,14 +218,14 @@ export const usePluginTaskList = () => {
     queryKey: usePluginTaskListKey,
     queryFn: async () => {
       const currentData = await get<{ tasks: PluginTask[] }>('/workspaces/current/plugin/tasks?page=1&page_size=100')
-      const taskDone = currentData.tasks.every(task => task.total_plugins === task.completed_plugins)
+      const taskDone = currentData.tasks.every(task => task.status === TaskStatus.success)
 
       if (taskDone)
         setEnabled(false)
 
       return currentData
     },
-    // refetchInterval: 5000,
+    refetchInterval: 5000,
     enabled,
   })
   const handleRefetch = useCallback(() => {
