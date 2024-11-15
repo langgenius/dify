@@ -242,7 +242,7 @@ class CouchbaseVector(BaseVector):
         try:
             self._cluster.query(query, named_parameters={"doc_ids": ids}).execute()
         except Exception as e:
-            logger.exception(e)
+            logger.exception(f"Failed to delete documents, ids: {ids}")
 
     def delete_by_document_id(self, document_id: str):
         query = f"""

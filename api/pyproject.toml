@@ -35,6 +35,7 @@ select = [
     "S506", # unsafe-yaml-load
     "SIM", # flake8-simplify rules
     "TRY400", # error-instead-of-exception
+    "TRY401", # verbose-log-message
     "UP", # pyupgrade rules
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence

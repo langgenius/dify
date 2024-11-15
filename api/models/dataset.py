@@ -679,7 +679,7 @@ class DatasetKeywordTable(db.Model):
                     return json.loads(keyword_table_text.decode("utf-8"), cls=SetDecoder)
                 return None
             except Exception as e:
-                logging.exception(str(e))
+                logging.exception(f"Failed to load keyword table from file: {file_key}")
                 return None
 
 

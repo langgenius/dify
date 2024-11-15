@@ -362,5 +362,5 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedError()
             else:
-                logger.exception(e)
+                logger.exception(f"Failed to process generate task pipeline, conversation_id: {conversation.id}")
                 raise e

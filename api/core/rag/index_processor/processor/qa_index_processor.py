@@ -159,7 +159,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
             except Exception as e:
-                logging.exception(e)
+                logging.exception("Failed to format qa document")
 
             all_qa_documents.extend(format_documents)
 
