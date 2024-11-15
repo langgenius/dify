@@ -54,6 +54,9 @@ const PluginTasks = () => {
       return t('plugin.task.installError', { errorLength: errorPlugins.length })
   }, [isInstalling, isInstallingWithError, isFailed, errorPlugins, runningPlugins, totalPluginsLength, t])
 
+  if (!totalPluginsLength)
+    return null
+
   return (
     <div className='flex items-center'>
       <PortalToFollowElem
