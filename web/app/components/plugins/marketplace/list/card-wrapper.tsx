@@ -56,7 +56,7 @@ const CardWrapper = ({
               <Button
                 className='flex-1'
               >
-                <a href={`${MARKETPLACE_URL_PREFIX}/plugin/${plugin.org}/${plugin.name}?language=${localeFromLocale}`} target='_blank' className='flex items-center gap-0.5'>
+                <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${plugin.org}/${plugin.name}?language=${localeFromLocale}`} target='_blank' className='flex items-center gap-0.5'>
                   {t('plugin.detailPanel.operation.detail')}
                   <RiArrowRightUpLine className='ml-1 w-4 h-4' />
                 </a>
