@@ -26,14 +26,14 @@ const Input: FC<InputProps> = ({
   max,
 }) => {
   const toLimit = (v: string) => {
-    const minNum = parseFloat(`${min}`)
-    const maxNum = parseFloat(`${max}`)
-    if (!isNaN(minNum) && parseFloat(v) < minNum) {
+    const minNum = Number.parseFloat(`${min}`)
+    const maxNum = Number.parseFloat(`${max}`)
+    if (!isNaN(minNum) && Number.parseFloat(v) < minNum) {
       onChange(`${min}`)
       return
     }
 
-    if (!isNaN(maxNum) && parseFloat(v) > maxNum)
+    if (!isNaN(maxNum) && Number.parseFloat(v) > maxNum)
       onChange(`${max}`)
   }
   return (
@@ -41,9 +41,9 @@ const Input: FC<InputProps> = ({
       <input
         tabIndex={0}
         className={`
-          block px-3 w-full h-9 bg-gray-100 text-sm rounded-lg border border-transparent
+          block px-3 w-full h-8 bg-components-input-bg-normal text-sm rounded-lg border border-transparent
           appearance-none outline-none caret-primary-600
-          hover:border-[rgba(0,0,0,0.08)] hover:bg-gray-50
+          hover:border-[rgba(0,0,0,0.08)] hover:bg-state-hover-alt
           focus:bg-white focus:border-gray-300 focus:shadow-xs
           placeholder:text-sm placeholder:text-gray-400
           ${validated && 'pr-[30px]'}

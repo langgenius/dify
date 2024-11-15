@@ -1,25 +1,31 @@
+'use client'
+import { useTranslation } from 'react-i18next'
 import { Group } from '@/app/components/base/icons/src/vender/other'
 import Line from './line'
+import cn from '@/utils/classnames'
 
 const Empty = () => {
+  const { t } = useTranslation()
+
   return (
     <div
-      className='grow relative h-0 grid grid-cols-4 grid-rows-4 gap-3 p-2 overflow-hidden'
+      className='grow relative h-0 flex flex-wrap p-2 overflow-hidden'
     >
       {
         Array.from({ length: 16 }).map((_, index) => (
           <div
             key={index}
-            className='h-[144px] rounded-xl bg-background-section-burn'
+            className={cn(
+              'mr-3 mb-3  h-[144px] w-[calc((100%-36px)/4)] rounded-xl bg-background-section-burn',
+              index % 4 === 3 && 'mr-0',
+              index > 11 && 'mb-0',
+            )}
           >
           </div>
         ))
       }
       <div
-        className='absolute inset-0 z-[1]'
-        style={{
-          backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.01), #FCFCFD)',
-        }}
+        className='absolute inset-0 bg-marketplace-plugin-empty z-[1]'
       ></div>
       <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[2] flex flex-col items-center'>
         <div className='relative flex items-center justify-center mb-3 w-14 h-14 rounded-xl border border-divider-subtle bg-components-card-bg shadow-lg'>
@@ -30,7 +36,7 @@ const Empty = () => {
           <Line className='absolute top-full left-1/2 -translate-x-1/2 -translate-y-1/2 rotate-90' />
         </div>
         <div className='text-center system-md-regular text-text-tertiary'>
-          No plugin found
+          {t('plugin.marketplace.noPluginFound')}
         </div>
       </div>
     </div>

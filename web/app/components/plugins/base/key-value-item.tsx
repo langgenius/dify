@@ -15,6 +15,7 @@ type Props = {
   label: string
   labelWidthClassName?: string
   value: string
+  maskedValue?: string
   valueMaxWidthClassName?: string
 }
 
@@ -22,6 +23,7 @@ const KeyValueItem: FC<Props> = ({
   label,
   labelWidthClassName = 'w-10',
   value,
+  maskedValue,
   valueMaxWidthClassName = 'max-w-[162px]',
 }) => {
   const { t } = useTranslation()
@@ -49,7 +51,7 @@ const KeyValueItem: FC<Props> = ({
       <span className={cn('flex flex-col justify-center items-start text-text-tertiary system-xs-medium', labelWidthClassName)}>{label}</span>
       <div className='flex justify-center items-center gap-0.5'>
         <span className={cn(valueMaxWidthClassName, ' truncate system-xs-medium text-text-secondary')}>
-          {value}
+          {maskedValue || value}
         </span>
         <Tooltip popupContent={t(`common.operation.${isCopied ? 'copied' : 'copy'}`)} position='top'>
           <ActionButton onClick={handleCopy}>

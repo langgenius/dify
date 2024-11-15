@@ -13,6 +13,8 @@ import {
 import Checkbox from '@/app/components/base/checkbox'
 import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
+import { useCategories } from '../../hooks'
+import { useTranslation } from 'react-i18next'
 
 type CategoriesFilterProps = {
   value: string[]
@@ -22,27 +24,11 @@ const CategoriesFilter = ({
   value,
   onChange,
 }: CategoriesFilterProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
-  const options = [
-    {
-      value: 'model',
-      text: 'Model',
-    },
-    {
-      value: 'tool',
-      text: 'Tool',
-    },
-    {
-      value: 'extension',
-      text: 'Extension',
-    },
-    {
-      value: 'bundle',
-      text: 'Bundle',
-    },
-  ]
-  const filteredOptions = options.filter(option => option.text.toLowerCase().includes(searchText.toLowerCase()))
+  const { categories: options, categoriesMap } = useCategories()
+  const filteredOptions = options.filter(option => option.name.toLowerCase().includes(searchText.toLowerCase()))
   const handleCheck = (id: string) => {
     if (value.includes(id))
       onChange(value.filter(tag => tag !== id))
@@ -70,10 +56,10 @@ const CategoriesFilter = ({
             'flex items-center p-1 system-sm-medium',
           )}>
             {
-              !selectedTagsLength && 'All Categories'
+              !selectedTagsLength && t('plugin.allCategories')
             }
             {
-              !!selectedTagsLength && value.slice(0, 2).join(',')
+              !!selectedTagsLength && value.map(val => categoriesMap[val].label).slice(0, 2).join(',')
             }
             {
               selectedTagsLength > 2 && (
@@ -110,23 +96,23 @@ const CategoriesFilter = ({
               showLeftIcon
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder='Search categories'
+              placeholder={t('plugin.searchCategories')}
             />
           </div>
           <div className='p-1 max-h-[448px] overflow-y-auto'>
             {
               filteredOptions.map(option => (
                 <div
-                  key={option.value}
+                  key={option.name}
                   className='flex items-center px-2 py-1.5 h-7 rounded-lg cursor-pointer hover:bg-state-base-hover'
-                  onClick={() => handleCheck(option.value)}
+                  onClick={() => handleCheck(option.name)}
                 >
                   <Checkbox
                     className='mr-1'
-                    checked={value.includes(option.value)}
+                    checked={value.includes(option.name)}
                   />
                   <div className='px-1 system-sm-medium text-text-secondary'>
-                    {option.text}
+                    {option.label}
                   </div>
                 </div>
               ))

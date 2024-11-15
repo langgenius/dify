@@ -21,8 +21,8 @@ const i18nPrefix = 'plugin.action'
 type Props = {
   author: string
   installationId: string
+  pluginUniqueIdentifier: string
   pluginName: string
-  version: string
   usedInApps: number
   isShowFetchNewVersion: boolean
   isShowInfo: boolean
@@ -33,8 +33,8 @@ type Props = {
 const Action: FC<Props> = ({
   author,
   installationId,
+  pluginUniqueIdentifier,
   pluginName,
-  version,
   isShowFetchNewVersion,
   isShowInfo,
   isShowDelete,
@@ -61,7 +61,7 @@ const Action: FC<Props> = ({
         return
       const versions = fetchedReleases.map(release => release.tag_name)
       const latestVersion = getLatestVersion(versions)
-      if (compareVersion(latestVersion, version) === 1) {
+      if (compareVersion(latestVersion, meta!.version) === 1) {
         setShowUpdatePluginModal({
           onSaveCallback: () => {
             invalidateInstalledPluginList()
@@ -70,7 +70,7 @@ const Action: FC<Props> = ({
             type: PluginSource.github,
             github: {
               originalPackageInfo: {
-                id: installationId,
+                id: pluginUniqueIdentifier,
                 repo: meta!.repo,
                 version: meta!.version,
                 package: meta!.package,

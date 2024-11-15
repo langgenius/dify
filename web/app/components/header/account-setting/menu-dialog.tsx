@@ -1,8 +1,6 @@
 import { Fragment, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
-import { RiCloseLine } from '@remixicon/react'
 import { Dialog, Transition } from '@headlessui/react'
-import Button from '@/app/components/base/button'
 import cn from '@/utils/classnames'
 
 type DialogProps = {
@@ -47,18 +45,7 @@ const MenuDialog = ({
               leaveTo="opacity-0 scale-95"
             >
               <Dialog.Panel className={cn('grow relative w-full h-full p-0 overflow-hidden text-left align-middle transition-all transform bg-background-sidenav-bg backdrop-blur-md', className)}>
-                <div className='absolute right-0 top-0 h-full w-1/2 bg-components-panel-bg'/>
-                <div className='absolute top-6 right-6 flex flex-col items-center'>
-                  <Button
-                    variant='tertiary'
-                    size='large'
-                    className='px-2'
-                    onClick={close}
-                  >
-                    <RiCloseLine className='w-5 h-5' />
-                  </Button>
-                  <div className='mt-1 text-text-tertiary system-2xs-medium-uppercase'>ESC</div>
-                </div>
+                <div className='absolute top-0 right-0 h-full w-1/2 bg-components-panel-bg' />
                 {children}
               </Dialog.Panel>
             </Transition.Child>

@@ -22,6 +22,7 @@ import cn from '@/utils/classnames'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import { useLanguage } from '../../header/account-setting/model-provider-page/hooks'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useCategories } from '../hooks'
 
 type Props = {
   className?: string
@@ -34,6 +35,7 @@ const PluginItem: FC<Props> = ({
 }) => {
   const locale = useLanguage()
   const { t } = useTranslation()
+  const { categoriesMap } = useCategories()
   const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
   const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
@@ -42,10 +44,10 @@ const PluginItem: FC<Props> = ({
     source,
     tenant_id,
     installation_id,
+    plugin_unique_identifier,
     endpoints_active,
     meta,
     plugin_id,
-    version,
   } = plugin
   const { category, author, name, label, description, icon, verified } = plugin.declaration
 
@@ -61,17 +63,19 @@ const PluginItem: FC<Props> = ({
           ? 'bg-[repeating-linear-gradient(-45deg,rgba(16,24,40,0.04),rgba(16,24,40,0.04)_5px,rgba(0,0,0,0.02)_5px,rgba(0,0,0,0.02)_10px)]'
           : 'bg-background-section-burn',
       )}
-      onClick={() => setCurrentPluginDetail(plugin)}
+      onClick={() => {
+        setCurrentPluginDetail(plugin)
+      }}
     >
       <div className={cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
-        <CornerMark text={category} />
+        <CornerMark text={categoriesMap[category].label} />
         {/* Header */}
         <div className="flex">
           <div className='flex items-center justify-center w-10 h-10 overflow-hidden border-components-panel-border-subtle border-[1px] rounded-xl'>
             <img
               className='w-full h-full'
               src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${tenant_id}&filename=${icon}`}
-              alt={`plugin-${installation_id}-logo`}
+              alt={`plugin-${plugin_unique_identifier}-logo`}
             />
           </div>
           <div className="ml-3 w-0 grow">
@@ -84,10 +88,10 @@ const PluginItem: FC<Props> = ({
               <Description text={description[locale]} descriptionLineRows={1}></Description>
               <div onClick={e => e.stopPropagation()}>
                 <Action
+                  pluginUniqueIdentifier={plugin_unique_identifier}
                   installationId={installation_id}
                   author={author}
                   pluginName={name}
-                  version={version}
                   usedInApps={5}
                   isShowFetchNewVersion={source === PluginSource.github}
                   isShowInfo={source === PluginSource.github}

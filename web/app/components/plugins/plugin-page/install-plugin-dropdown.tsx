@@ -16,6 +16,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useTranslation } from 'react-i18next'
 
 type Props = {
   onSwitchToMarketplaceTab: () => void
@@ -23,6 +24,7 @@ type Props = {
 const InstallPluginDropdown = ({
   onSwitchToMarketplaceTab,
 }: Props) => {
+  const { t } = useTranslation()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [selectedAction, setSelectedAction] = useState<string | null>(null)
@@ -65,14 +67,14 @@ const InstallPluginDropdown = ({
             className={cn('w-full h-full p-2 text-components-button-secondary-text', isMenuOpen && 'bg-state-base-hover')}
           >
             <RiAddLine className='w-4 h-4' />
-            <span className='pl-1'>Install plugin</span>
+            <span className='pl-1'>{t('plugin.installPlugin')}</span>
             <RiArrowDownSLine className='w-4 h-4 ml-1' />
           </Button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
           <div className='flex flex-col p-1 pb-2 items-start w-[200px] bg-components-panel-bg-blur border border-components-panel-border rounded-xl shadows-shadow-lg'>
             <span className='flex pt-1 pb-0.5 pl-2 pr-3 items-start self-stretch text-text-tertiary system-xs-medium-uppercase'>
-              Install From
+              {t('plugin.installFrom')}
             </span>
             <input
               type='file'
@@ -85,11 +87,11 @@ const InstallPluginDropdown = ({
               {[
                 ...(
                   (enable_marketplace || true)
-                    ? [{ icon: MagicBox, text: 'Marketplace', action: 'marketplace' }]
+                    ? [{ icon: MagicBox, text: t('plugin.source.marketplace'), action: 'marketplace' }]
                     : []
                 ),
-                { icon: Github, text: 'GitHub', action: 'github' },
-                { icon: FileZip, text: 'Local Package File', action: 'local' },
+                { icon: Github, text: t('plugin.source.github'), action: 'github' },
+                { icon: FileZip, text: t('plugin.source.local'), action: 'local' },
               ].map(({ icon: Icon, text, action }) => (
                 <div
                   key={action}

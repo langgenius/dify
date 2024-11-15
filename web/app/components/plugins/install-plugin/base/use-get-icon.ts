@@ -1,19 +1,12 @@
+import { useCallback } from 'react'
 import { apiPrefix } from '@/config'
-import { fetchWorkspaces } from '@/service/common'
-
-let tenantId: string | null | undefined = null
+import { useSelector } from '@/context/app-context'
 
 const useGetIcon = () => {
-  const getIconUrl = async (fileName: string) => {
-    if (!tenantId) {
-      const { workspaces } = await fetchWorkspaces({
-        url: '/workspaces',
-        params: {},
-      })
-      tenantId = workspaces.find(v => v.current)?.id
-    }
-    return `${apiPrefix}/workspaces/current/plugin/icon?tenant_id=${tenantId}&filename=${fileName}`
-  }
+  const currentWorkspace = useSelector(s => s.currentWorkspace)
+  const getIconUrl = useCallback((fileName: string) => {
+    return `${apiPrefix}/workspaces/current/plugin/icon?tenant_id=${currentWorkspace.id}&filename=${fileName}`
+  }, [currentWorkspace.id])
 
   return {
     getIconUrl,

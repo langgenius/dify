@@ -1,0 +1,48 @@
+@tailwind components;
+
+@layer components {
+  .premium-badge {
+    @apply inline-flex justify-center items-center rounded-full border box-border border-[rgba(255,255,255,0.8)] text-white
+  }
+
+  /* m is for the regular button */
+  .premium-badge-m {
+    @apply border shadow-lg !p-1 h-6 w-auto
+  }
+
+  .premium-badge-s {
+    @apply border-[0.5px] shadow-xs !px-1 !py-[3px] h-[18px] w-auto
+  }
+
+  .premium-badge-blue {
+    @apply bg-gradient-to-r from-[#5289ffe6] to-[#155aefe6] bg-util-colors-blue-blue-200
+  }
+
+  .premium-badge-indigo {
+    @apply bg-gradient-to-r from-[#8098f9e6] to-[#444ce7e6] bg-util-colors-indigo-indigo-200
+  }
+
+  .premium-badge-gray {
+    @apply bg-gradient-to-r from-[#98a2b2e6] to-[#676f83e6] bg-util-colors-gray-gray-200
+  }
+
+  .premium-badge-orange {
+    @apply bg-gradient-to-r from-[#ff692ee6] to-[#e04f16e6] bg-util-colors-orange-orange-200
+  }
+
+  .premium-badge-blue.allowHover:hover {
+    @apply bg-gradient-to-r from-[#296dffe6] to-[#004aebe6] bg-util-colors-blue-blue-300 cursor-pointer
+  }
+
+  .premium-badge-indigo.allowHover:hover {
+    @apply bg-gradient-to-r from-[#6172f3e6] to-[#2d31a6e6] bg-util-colors-indigo-indigo-300 cursor-pointer
+  }
+
+  .premium-badge-gray.allowHover:hover {
+    @apply bg-gradient-to-r from-[#676f83e6] to-[#354052e6] bg-util-colors-gray-gray-300 cursor-pointer
+  }
+
+  .premium-badge-orange.allowHover:hover {
+    @apply bg-gradient-to-r from-[#ff4405e6] to-[#b93815e6] bg-util-colors-orange-orange-300 cursor-pointer
+  }
+}

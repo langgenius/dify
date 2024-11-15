@@ -17,6 +17,9 @@ const DebugInfo: FC = () => {
   const { t } = useTranslation()
   const { data: info, isLoading } = useDebugKey()
 
+  // info.key likes 4580bdb7-b878-471c-a8a4-bfd760263a53 mask the middle part using *.
+  const maskedKey = info?.key?.replace(/(.{8})(.*)(.{8})/, '$1********$3')
+
   if (isLoading) return null
 
   return (
@@ -26,7 +29,7 @@ const DebugInfo: FC = () => {
       popupContent={
         <>
           <div className='flex items-center gap-1 self-stretch'>
-            <span className='flex flex-col justify-center items-start flex-grow flex-shrink-0 basis-0 text-text-secondary system-sm-semibold'>{t(`${i18nPrefix}.title`)}</span>
+            <span className='flex flex-col justify-center items-start grow shrink-0 basis-0 text-text-secondary system-sm-semibold'>{t(`${i18nPrefix}.title`)}</span>
             <a href='' target='_blank' className='flex items-center gap-0.5 text-text-accent-light-mode-only cursor-pointer'>
               <span className='system-xs-medium'>{t(`${i18nPrefix}.viewDocs`)}</span>
               <RiArrowRightUpLine className='w-3 h-3' />
@@ -40,6 +43,7 @@ const DebugInfo: FC = () => {
             <KeyValueItem
               label={'Key'}
               value={info?.key || ''}
+              maskedValue={maskedKey}
             />
           </div>
         </>

@@ -69,7 +69,7 @@ const EndpointModal: FC<Props> = ({
               isEditMode={true}
               showOnVariableMap={{}}
               validating={false}
-              inputClassName='!bg-gray-50'
+              inputClassName='bg-components-input-bg-normal hover:bg-state-base-hover-alt'
               fieldMoreInfo={item => item.url
                 ? (<a
                   href={item.url}

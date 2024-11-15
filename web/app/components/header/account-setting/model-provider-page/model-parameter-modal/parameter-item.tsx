@@ -17,7 +17,6 @@ type ParameterItemProps = {
   parameterRule: ModelParameterRule
   value?: ParameterValue
   onChange?: (value: ParameterValue) => void
-  className?: string
   onSwitch?: (checked: boolean, assignValue: ParameterValue) => void
   isInWorkflow?: boolean
 }
@@ -25,7 +24,6 @@ const ParameterItem: FC<ParameterItemProps> = ({
   parameterRule,
   value,
   onChange,
-  className,
   onSwitch,
   isInWorkflow,
 }) => {
@@ -249,9 +247,20 @@ const ParameterItem: FC<ParameterItemProps> = ({
   }
 
   return (
-    <div className={`flex items-center justify-between ${className}`}>
-      <div>
-        <div className={cn(isInWorkflow ? 'w-[140px]' : 'w-full', 'ml-4 shrink-0 flex items-center')}>
+    <div className='flex items-center justify-between mb-2'>
+      <div className='shrink-0 basis-1/2'>
+        <div className={cn('shrink-0 w-full flex items-center')}>
+          {
+            !parameterRule.required && parameterRule.name !== 'stop' && (
+              <div className='mr-2 w-7'>
+                <Switch
+                  defaultValue={!isNullOrUndefined(value)}
+                  onChange={handleSwitch}
+                  size='md'
+                />
+              </div>
+            )
+          }
           <div
             className='mr-0.5 text-[13px] font-medium text-gray-700 truncate'
             title={parameterRule.label[language] || parameterRule.label.en_US}
@@ -266,16 +275,6 @@ const ParameterItem: FC<ParameterItemProps> = ({
                 )}
                 popupClassName='mr-1'
                 triggerClassName='mr-1 w-4 h-4 shrink-0'
-              />
-            )
-          }
-          {
-            !parameterRule.required && parameterRule.name !== 'stop' && (
-              <Switch
-                className='mr-1'
-                defaultValue={!isNullOrUndefined(value)}
-                onChange={handleSwitch}
-                size='md'
               />
             )
           }

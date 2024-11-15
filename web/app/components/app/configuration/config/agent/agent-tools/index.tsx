@@ -92,6 +92,7 @@ const AgentTools: FC = () => {
         tool_name: tool.tool_name,
         tool_label: tool.tool_label,
         tool_parameters: tool.params,
+        notAuthor: !tool.is_team_authorization,
         enabled: true,
       })
     })
@@ -101,7 +102,7 @@ const AgentTools: FC = () => {
   return (
     <>
       <Panel
-        className="mt-2"
+        className={cn('mt-2', tools.length === 0 && 'pb-2')}
         noBodySpacing={tools.length === 0}
         headerIcon={
           <RiHammerFill className='w-4 h-4 text-primary-500' />

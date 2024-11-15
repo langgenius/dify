@@ -68,7 +68,7 @@ export const PluginPageContextProvider = ({
       { value: 'plugins', text: t('common.menus.plugins') },
       ...(
         enable_marketplace
-          ? [{ value: 'discover', text: 'Explore Marketplace' }]
+          ? [{ value: 'discover', text: t('common.menus.exploreMarketplace') }]
           : []
       ),
     ]

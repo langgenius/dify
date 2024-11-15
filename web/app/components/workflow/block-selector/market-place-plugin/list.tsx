@@ -14,16 +14,19 @@ type Props = {
   wrapElemRef: React.RefObject<HTMLElement>
   list: Plugin[]
   searchText: string
+  tags: string[]
 }
 
 const List = ({
   wrapElemRef,
   searchText,
+  tags,
   list,
 }: Props, ref: any) => {
   const { t } = useTranslation()
-  const hasSearchText = !searchText
-  const urlWithSearchText = `${marketplaceUrlPrefix}/plugins?q=${searchText}`
+  const hasFilter = !searchText
+  const hasRes = list.length > 0
+  const urlWithSearchText = `${marketplaceUrlPrefix}/marketplace?q=${searchText}&tags=${tags.join(',')}`
   const nextToStickyELemRef = useRef<HTMLDivElement>(null)
 
   const { handleScroll, scrollPosition } = useStickyScroll({
@@ -58,7 +61,7 @@ const List = ({
     window.open(urlWithSearchText, '_blank')
   }
 
-  if (hasSearchText) {
+  if (hasFilter) {
     return (
       <Link
         className='sticky bottom-0 z-10 flex h-8 px-4 py-1 system-sm-medium items-center border-t border-[0.5px] border-components-panel-border bg-components-panel-bg-blur rounded-b-lg shadow-lg text-text-accent-light-mode-only cursor-pointer'
@@ -73,21 +76,23 @@ const List = ({
 
   return (
     <>
-      <div
-        className={cn('sticky z-10 flex justify-between h-8 px-4 py-1 text-text-primary system-sm-medium cursor-pointer', stickyClassName)}
-        onClick={handleHeadClick}
-      >
-        <span>{t('plugin.fromMarketplace')}</span>
-        <Link
-          href={urlWithSearchText}
-          target='_blank'
-          className='flex items-center text-text-accent-light-mode-only'
-          onClick={e => e.stopPropagation()}
+      {hasRes && (
+        <div
+          className={cn('sticky z-10 flex justify-between h-8 px-4 py-1 text-text-primary system-sm-medium cursor-pointer', stickyClassName)}
+          onClick={handleHeadClick}
         >
-          <span>{t('plugin.searchInMarketplace')}</span>
-          <RiArrowRightUpLine className='ml-0.5 w-3 h-3' />
-        </Link>
-      </div>
+          <span>{t('plugin.fromMarketplace')}</span>
+          <Link
+            href={urlWithSearchText}
+            target='_blank'
+            className='flex items-center text-text-accent-light-mode-only'
+            onClick={e => e.stopPropagation()}
+          >
+            <span>{t('plugin.searchInMarketplace')}</span>
+            <RiArrowRightUpLine className='ml-0.5 w-3 h-3' />
+          </Link>
+        </div>
+      )}
       <div className='p-1' ref={nextToStickyELemRef}>
         {list.map((item, index) => (
           <Item

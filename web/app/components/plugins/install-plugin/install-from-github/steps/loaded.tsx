@@ -7,9 +7,10 @@ import Card from '../../../card'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import { useTranslation } from 'react-i18next'
-import { installPackageFromGitHub, uninstallPlugin } from '@/service/plugins'
+import { updateFromGitHub } from '@/service/plugins'
+import { useInstallPackageFromGitHub } from '@/service/use-plugins'
 import { RiLoader2Line } from '@remixicon/react'
-import { usePluginTasksStore } from '@/app/components/plugins/plugin-page/store'
+import { usePluginTaskList } from '@/service/use-plugins'
 import checkTaskStatus from '../../base/check-task-status'
 import { parseGitHubUrl } from '../../utils'
 
@@ -40,7 +41,8 @@ const Loaded: React.FC<LoadedProps> = ({
 }) => {
   const { t } = useTranslation()
   const [isInstalling, setIsInstalling] = React.useState(false)
-  const setPluginTasksWithPolling = usePluginTasksStore(s => s.setPluginTasksWithPolling)
+  const { mutateAsync: installPackageFromGitHub } = useInstallPackageFromGitHub()
+  const { handleRefetch } = usePluginTaskList()
   const { check } = checkTaskStatus()
 
   const handleInstall = async () => {
@@ -49,28 +51,49 @@ const Loaded: React.FC<LoadedProps> = ({
 
     try {
       const { owner, repo } = parseGitHubUrl(repoUrl)
-      const { all_installed: isInstalled, task_id: taskId } = await installPackageFromGitHub(
-        `${owner}/${repo}`,
-        selectedVersion,
-        selectedPackage,
-        uniqueIdentifier,
-      )
+      if (updatePayload) {
+        const { all_installed: isInstalled, task_id: taskId } = await updateFromGitHub(
+          `${owner}/${repo}`,
+          selectedVersion,
+          selectedPackage,
+          updatePayload.originalPackageInfo.id,
+          uniqueIdentifier,
+        )
 
-      if (updatePayload && isInstalled)
-        await uninstallPlugin(updatePayload.originalPackageInfo.id)
+        if (isInstalled) {
+          onInstalled()
+          return
+        }
 
-      if (isInstalled) {
+        handleRefetch()
+        await check({
+          taskId,
+          pluginUniqueIdentifier: uniqueIdentifier,
+        })
+
         onInstalled()
-        return
       }
+      else {
+        const { all_installed: isInstalled, task_id: taskId } = await installPackageFromGitHub({
+          repoUrl: `${owner}/${repo}`,
+          selectedVersion,
+          selectedPackage,
+          uniqueIdentifier,
+        })
 
-      setPluginTasksWithPolling()
-      await check({
-        taskId,
-        pluginUniqueIdentifier: uniqueIdentifier,
-      })
+        if (isInstalled) {
+          onInstalled()
+          return
+        }
 
-      onInstalled()
+        handleRefetch()
+        await check({
+          taskId,
+          pluginUniqueIdentifier: uniqueIdentifier,
+        })
+
+        onInstalled()
+      }
     }
     catch (e) {
       if (typeof e === 'string') {

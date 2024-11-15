@@ -100,6 +100,7 @@ export type PluginDetail = {
   endpoints_active: number
   version: string
   latest_version: string
+  latest_unique_identifier: string
   source: PluginSource
   meta?: MetaData
 }
@@ -194,19 +195,10 @@ export type GitHubUrlInfo = {
 }
 
 // endpoint
-export type CreateEndpointRequest = {
-  plugin_unique_identifier: string
-  settings: Record<string, any>
-  name: string
-}
 export type EndpointOperationResponse = {
   result: 'success' | 'error'
 }
-export type EndpointsRequest = {
-  page_size: number
-  page: number
-  plugin_id: string
-}
+
 export type EndpointsResponse = {
   endpoints: EndpointListItem[]
   has_more: boolean
@@ -246,6 +238,11 @@ export type InstallPackageResponse = {
   task_id: string
 }
 
+export type updatePackageResponse = {
+  all_installed: boolean
+  task_id: string
+}
+
 export type uploadGitHubResponse = {
   unique_identifier: string
   manifest: PluginDeclaration
@@ -268,6 +265,9 @@ export type PluginStatus = {
   plugin_id: string
   status: TaskStatus
   message: string
+  icon: string
+  labels: Record<Locale, string>
+  taskId: string
 }
 
 export type PluginTask = {
@@ -304,4 +304,16 @@ export type UninstallPluginResponse = {
 
 export type PluginsFromMarketplaceResponse = {
   plugins: Plugin[]
+}
+
+export type Dependency = {
+  type: 'github' | 'marketplace' | 'package'
+  value: {
+    repo?: string
+    version?: string
+    package?: string
+    github_plugin_unique_identifier?: string
+    marketplace_plugin_unique_identifier?: string
+    plugin_unique_identifier?: string
+  }
 }

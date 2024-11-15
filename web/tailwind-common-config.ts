@@ -87,6 +87,8 @@ const config = {
         'chatbot-bg': 'var(--color-chatbot-bg)',
         'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
         'workflow-process-bg': 'var(--color-workflow-process-bg)',
+        'marketplace-divider-bg': 'var(--color-marketplace-divider-bg)',
+        'marketplace-plugin-empty': 'var(--color-marketplace-plugin-empty)',
       },
       animation: {
         'spin-slow': 'spin 2s linear infinite',

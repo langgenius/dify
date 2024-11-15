@@ -163,7 +163,6 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
     credentials: isMarketplaceAPI
       ? 'omit'
       : (options.credentials || 'include'),
-    ...init,
     retry: {
       methods: [],
     },

@@ -16,8 +16,7 @@ import InstallPluginDropdown from './install-plugin-dropdown'
 import { useUploader } from './use-uploader'
 import usePermission from './use-permission'
 import DebugInfo from './debug-info'
-import { usePluginTasksStore } from './store'
-import InstallInfo from './install-info'
+import PluginTasks from './plugin-tasks'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
@@ -102,8 +101,6 @@ const PluginPage = ({
   const options = usePluginPageContext(v => v.options)
   const [activeTab, setActiveTab] = usePluginPageContext(v => [v.activeTab, v.setActiveTab])
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
-  const [installed, total] = [2, 3] // Replace this with the actual progress
-  const progressPercentage = (installed / total) * 100
 
   const uploaderProps = useUploader({
     onFileChange: setCurrentFile,
@@ -112,12 +109,6 @@ const PluginPage = ({
   })
 
   const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
-
-  const setPluginTasksWithPolling = usePluginTasksStore(s => s.setPluginTasksWithPolling)
-
-  useEffect(() => {
-    setPluginTasksWithPolling()
-  }, [setPluginTasksWithPolling])
 
   return (
     <div
@@ -141,8 +132,8 @@ const PluginPage = ({
               options={options}
             />
           </div>
-          <div className='flex flex-shrink-0 items-center gap-1'>
-            <InstallInfo />
+          <div className='flex shrink-0 items-center gap-1'>
+            <PluginTasks />
             {canManagement && (
               <InstallPluginDropdown
                 onSwitchToMarketplaceTab={() => setActiveTab('discover')}
@@ -181,7 +172,7 @@ const PluginPage = ({
           )}
           <div className={`flex py-4 justify-center items-center gap-2 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
             <RiDragDropLine className="w-4 h-4" />
-            <span className="system-xs-regular">Drop plugin package here to install</span>
+            <span className="system-xs-regular">{t('plugin.installModal.dropPluginToInstall')}</span>
           </div>
           {currentFile && (
             <InstallFromLocalPackage

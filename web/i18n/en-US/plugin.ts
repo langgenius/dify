@@ -1,11 +1,14 @@
 const translation = {
   category: {
     all: 'All',
-    models: 'models',
-    tools: 'tools',
-    extensions: 'extensions',
-    bundles: 'bundles',
+    models: 'Models',
+    tools: 'Tools',
+    extensions: 'Extensions',
+    bundles: 'Bundles',
   },
+  search: 'Search',
+  allCategories: 'All Categories',
+  searchCategories: 'Search Categories',
   searchPlugins: 'Search plugins',
   from: 'From',
   findMoreInMarketplace: 'Find more in Marketplace',
@@ -13,6 +16,22 @@ const translation = {
   fromMarketplace: 'From Marketplace',
   endpointsEnabled: '{{num}} sets of endpoints enabled',
   searchTools: 'Search tools...',
+  installPlugin: 'Install plugin',
+  installFrom: 'INSTALL FROM',
+  list: {
+    noInstalled: 'No plugins installed',
+    notFound: 'No plugins found',
+    source: {
+      marketplace: 'Install from Marketplace',
+      github: 'Install from GitHub',
+      local: 'Install from Local Package File',
+    },
+  },
+  source: {
+    marketplace: 'Marketplace',
+    github: 'GitHub',
+    local: 'Local Package File',
+  },
   detailPanel: {
     categoryTip: {
       marketplace: 'Installed from Marketplace',
@@ -80,8 +99,11 @@ const translation = {
     install: 'Install',
     installing: 'Installing...',
     uploadingPackage: 'Uploading {{packageName}}...',
-    readyToInstall: 'About to install the following plugin.',
+    readyToInstall: 'About to install the following plugin',
+    readyToInstallPackage: 'About to install the following plugin',
+    readyToInstallPackages: 'About to install the following {{num}} plugins',
     fromTrustSource: 'Please make sure that you only install plugins from a <trustSource>trusted source</trustSource>.',
+    dropPluginToInstall: 'Drop plugin package here to install',
     labels: {
       repository: 'Repository',
       version: 'Version',
@@ -121,8 +143,23 @@ const translation = {
     empower: 'Empower your AI development',
     discover: 'Discover',
     and: 'and',
-    inDifyMarketplace: 'in Dify Marketplace',
+    difyMarketplace: 'Dify Marketplace',
     moreFrom: 'More from Marketplace',
+    noPluginFound: 'No plugin found',
+    pluginsResult: '{{num}} results',
+    sortBy: 'Sort by',
+    sortOption: {
+      mostPopular: 'Most Popular',
+      recentlyUpdated: 'Recently Updated',
+      newlyReleased: 'Newly Released',
+      firstReleased: 'First Released',
+    },
+  },
+  task: {
+    installing: 'Installing {{installingLength}}/{{totalLength}} plugins...',
+    installingWithError: 'Installing {{installingLength}} of {{totalLength}} plugins, {{errorLength}} failed, click to view',
+    installError: '{{errorLength}} plugins failed to install, click to view',
+    installedError: '{{errorLength}} plugins failed to install',
   },
 }
 

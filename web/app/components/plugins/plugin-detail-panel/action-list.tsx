@@ -1,5 +1,4 @@
 import React, { useState } from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
 import { useAppContext } from '@/context/app-context'
@@ -9,28 +8,39 @@ import Indicator from '@/app/components/header/indicator'
 import ToolItem from '@/app/components/tools/provider/tool-item'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import {
-  fetchBuiltInToolList,
-  fetchCollectionDetail,
-  removeBuiltInToolCredential,
-  updateBuiltInToolCredential,
-} from '@/service/tools'
+  useBuiltinProviderInfo,
+  useBuiltinTools,
+  useInvalidateBuiltinProviderInfo,
+  useRemoveProviderCredentials,
+  useUpdateProviderCredentials,
+} from '@/service/use-tools'
 
 const ActionList = () => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
   const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
-  const { data: provider } = useSWR(
-    `builtin/${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`,
-    fetchCollectionDetail,
-  )
-  const { data } = useSWR(
-    `${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`,
-    fetchBuiltInToolList,
-  )
+  const { data: provider } = useBuiltinProviderInfo(`${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`)
+  const invalidateProviderInfo = useInvalidateBuiltinProviderInfo()
+  const { data } = useBuiltinTools(`${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`)
 
   const [showSettingAuth, setShowSettingAuth] = useState(false)
 
-  const handleCredentialSettingUpdate = () => {}
+  const handleCredentialSettingUpdate = () => {
+    invalidateProviderInfo(`${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`)
+    Toast.notify({
+      type: 'success',
+      message: t('common.api.actionSuccess'),
+    })
+    setShowSettingAuth(false)
+  }
+
+  const { mutate: updatePermission } = useUpdateProviderCredentials({
+    onSuccess: handleCredentialSettingUpdate,
+  })
+
+  const { mutate: removePermission } = useRemoveProviderCredentials({
+    onSuccess: handleCredentialSettingUpdate,
+  })
 
   if (!data || !provider)
     return null
@@ -77,24 +87,11 @@ const ActionList = () => {
         <ConfigCredential
           collection={provider}
           onCancel={() => setShowSettingAuth(false)}
-          onSaved={async (value) => {
-            await updateBuiltInToolCredential(provider.name, value)
-            Toast.notify({
-              type: 'success',
-              message: t('common.api.actionSuccess'),
-            })
-            handleCredentialSettingUpdate()
-            setShowSettingAuth(false)
-          }}
-          onRemove={async () => {
-            await removeBuiltInToolCredential(provider.name)
-            Toast.notify({
-              type: 'success',
-              message: t('common.api.actionSuccess'),
-            })
-            handleCredentialSettingUpdate()
-            setShowSettingAuth(false)
-          }}
+          onSaved={async value => updatePermission({
+            providerName: provider.name,
+            credentials: value,
+          })}
+          onRemove={async () => removePermission(provider.name)}
         />
       )}
     </div>

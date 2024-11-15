@@ -44,6 +44,7 @@ const translation = {
     zoomOut: '缩小',
     zoomIn: '放大',
     openInNewTab: '在新标签页打开',
+    in: '在',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',
@@ -126,6 +127,7 @@ const translation = {
     explore: '探索',
     apps: '工作室',
     plugins: '插件',
+    exploreMarketplace: '探索市场',
     pluginsTips: '集成第三方插件或创建与 ChatGPT 兼容的 AI 插件。',
     datasets: '知识库',
     datasetsTips: '即将到来: 上传自己的长文本数据，或通过 Webhook 集成自己的数据源',

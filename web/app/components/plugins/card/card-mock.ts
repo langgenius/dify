@@ -2,6 +2,7 @@ import type { PluginDeclaration } from '../types'
 import { PluginType } from '../types'
 
 export const toolNeko: PluginDeclaration = {
+  plugin_unique_identifier: 'xxxxxx',
   version: '0.0.1',
   author: 'langgenius',
   name: 'neko',

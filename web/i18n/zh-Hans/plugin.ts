@@ -6,6 +6,9 @@ const translation = {
     extensions: '扩展',
     bundles: '捆绑包',
   },
+  search: '搜索',
+  allCategories: '所有类别',
+  searchCategories: '搜索类别',
   searchPlugins: '搜索插件',
   from: '来自',
   findMoreInMarketplace: '在 Marketplace 中查找更多',
@@ -13,6 +16,22 @@ const translation = {
   fromMarketplace: '来自市场',
   endpointsEnabled: '{{num}} 组端点已启用',
   searchTools: '搜索工具...',
+  installPlugin: '安装插件',
+  installFrom: '安装源',
+  list: {
+    noInstalled: '无已安装的插件',
+    notFound: '未找到插件',
+    source: {
+      marketplace: '从市场安装',
+      github: '从GitHub安装',
+      local: '从本地文件安装',
+    },
+  },
+  source: {
+    marketplace: '市场',
+    github: 'GitHub',
+    local: '本地文件',
+  },
   detailPanel: {
     categoryTip: {
       marketplace: '从 Marketplace 安装',
@@ -80,8 +99,11 @@ const translation = {
     install: '安装',
     installing: '安装中...',
     uploadingPackage: '上传 {{packageName}} 中...',
-    readyToInstall: '即将安装以下插件。',
+    readyToInstall: '即将安装以下插件',
+    readyToInstallPackage: '即将安装以下插件',
+    readyToInstallPackages: '即将安装以下 {{num}} 个插件',
     fromTrustSource: '请保证仅从<trustSource>可信源</trustSource>安装插件。',
+    dropPluginToInstall: '拖放插件包到此处安装',
     labels: {
       repository: '仓库',
       version: '版本',
@@ -121,8 +143,23 @@ const translation = {
     empower: '助力您的 AI 开发',
     discover: '探索',
     and: '和',
-    inDifyMarketplace: '在 Dify 市场中',
+    difyMarketplace: 'Dify 市场',
     moreFrom: '更多来自市场',
+    noPluginFound: '未找到插件',
+    pluginsResult: '{{num}} 个插件结果',
+    sortBy: '排序方式',
+    sortOption: {
+      mostPopular: '最受欢迎',
+      recentlyUpdated: '最近更新',
+      newlyReleased: '最新发布',
+      firstReleased: '首次发布',
+    },
+  },
+  task: {
+    installing: '{{installingLength}}/{{totalLength}} 插件安装中...',
+    installingWithError: '{{installingLength}}/{{totalLength}} 插件安装中，{{errorLength}} 安装失败。点击查看',
+    installError: '{{errorLength}} 个插件安装失败，点击查看',
+    installedError: '{{errorLength}} 个插件安装失败',
   },
 }
 
