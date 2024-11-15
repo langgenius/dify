@@ -331,7 +331,6 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         completion_tokens = (response.usage and response.usage.output_tokens) or \
             self.get_num_tokens(model, credentials, [assistant_prompt_message])
 
-
         # transform usage
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
