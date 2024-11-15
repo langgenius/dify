@@ -26,7 +26,7 @@ const List = ({
   const { t } = useTranslation()
   const hasFilter = !searchText
   const hasRes = list.length > 0
-  const urlWithSearchText = `${marketplaceUrlPrefix}/marketplace?q=${searchText}&tags=${tags.join(',')}`
+  const urlWithSearchText = `${marketplaceUrlPrefix}/?q=${searchText}&tags=${tags.join(',')}`
   const nextToStickyELemRef = useRef<HTMLDivElement>(null)
 
   const { handleScroll, scrollPosition } = useStickyScroll({
@@ -65,7 +65,7 @@ const List = ({
     return (
       <Link
         className='sticky bottom-0 z-10 flex h-8 px-4 py-1 system-sm-medium items-center border-t border-[0.5px] border-components-panel-border bg-components-panel-bg-blur rounded-b-lg shadow-lg text-text-accent-light-mode-only cursor-pointer'
-        href={`${marketplaceUrlPrefix}/plugins`}
+        href={`${marketplaceUrlPrefix}/`}
         target='_blank'
       >
         <span>{t('plugin.findMoreInMarketplace')}</span>
