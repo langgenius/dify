@@ -4,8 +4,9 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
 
 from core.workflow.entities.node_entities import NodeRunResult
-from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.enums import CONTINUE_ON_ERROR_NODE_TYPE, ErrorStrategy, NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
+from core.workflow.utils.condition.entities import ContinueOnErrorCondition
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import BaseNodeData
@@ -76,6 +77,10 @@ class BaseNode(Generic[GenericNodeData]):
             )
 
         if isinstance(result, NodeRunResult):
+            if self.node_data.error_strategy == ErrorStrategy.FAIL_BRANCH:
+                result.edge_source_handle = ContinueOnErrorCondition.SUCCESS
+            if result.status == WorkflowNodeExecutionStatus.FAILED and self._should_continue_on_error:
+                result = self.__handle_continue_on_error(result)
             yield RunCompletedEvent(run_result=result)
         else:
             yield from result
@@ -135,3 +140,29 @@ class BaseNode(Generic[GenericNodeData]):
         :return:
         """
         return self._node_type
+
+    @property
+    def _should_continue_on_error(self) -> bool:
+        """judge if should continue on error
+
+        Returns:
+            bool: if should continue on error
+        """
+        return self.node_data.error_strategy is not None and self.node_type in CONTINUE_ON_ERROR_NODE_TYPE
+
+    def __handle_continue_on_error(self, error: NodeRunResult) -> NodeRunResult:
+        if self.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.EXCEPTION,
+                error=error.error,
+                inputs=error.inputs,
+                outputs=self.node_data.default_value,
+            )
+
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.EXCEPTION,
+            error=error.error,
+            inputs=error.inputs,
+            outputs=None,
+            edge_source_handle=ContinueOnErrorCondition.EXCEPTION,
+        )

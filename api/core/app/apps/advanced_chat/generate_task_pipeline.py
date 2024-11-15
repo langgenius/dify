@@ -19,6 +19,7 @@ from core.app.entities.queue_entities import (
     QueueIterationNextEvent,
     QueueIterationStartEvent,
     QueueMessageReplaceEvent,
+    QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
     QueueNodeInIterationFailedEvent,
     QueueNodeStartedEvent,
@@ -315,7 +316,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
                 if response:
                     yield response
-            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent):
+            elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeExceptionEvent):
                 workflow_node_execution = self._handle_workflow_node_execution_failed(event)
 
                 response = self._workflow_node_finish_to_stream_response(

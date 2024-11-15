@@ -520,6 +520,7 @@ class WorkflowNodeExecutionStatus(Enum):
     RUNNING = "running"
     SUCCEEDED = "succeeded"
     FAILED = "failed"
+    EXCEPTION = "exception"
 
     @classmethod
     def value_of(cls, value: str) -> "WorkflowNodeExecutionStatus":

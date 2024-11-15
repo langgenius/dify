@@ -8,6 +8,7 @@ from core.app.entities.queue_entities import (
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
+    QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
     QueueNodeInIterationFailedEvent,
     QueueNodeStartedEvent,
@@ -32,6 +33,7 @@ from core.workflow.graph_engine.entities.event import (
     IterationRunStartedEvent,
     IterationRunSucceededEvent,
     NodeInIterationFailedEvent,
+    NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunStartedEvent,
@@ -228,6 +230,36 @@ class WorkflowBasedAppRunner(AppRunner):
         elif isinstance(event, NodeRunFailedEvent):
             self._publish_event(
                 QueueNodeFailedEvent(
+                    node_execution_id=event.id,
+                    node_id=event.node_id,
+                    node_type=event.node_type,
+                    node_data=event.node_data,
+                    parallel_id=event.parallel_id,
+                    parallel_start_node_id=event.parallel_start_node_id,
+                    parent_parallel_id=event.parent_parallel_id,
+                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
+                    start_at=event.route_node_state.start_at,
+                    inputs=event.route_node_state.node_run_result.inputs
+                    if event.route_node_state.node_run_result
+                    else {},
+                    process_data=event.route_node_state.node_run_result.process_data
+                    if event.route_node_state.node_run_result
+                    else {},
+                    outputs=event.route_node_state.node_run_result.outputs
+                    if event.route_node_state.node_run_result
+                    else {},
+                    error=event.route_node_state.node_run_result.error
+                    if event.route_node_state.node_run_result and event.route_node_state.node_run_result.error
+                    else "Unknown error",
+                    execution_metadata=event.route_node_state.node_run_result.metadata
+                    if event.route_node_state.node_run_result
+                    else {},
+                    in_iteration_id=event.in_iteration_id,
+                )
+            )
+        elif isinstance(event, NodeRunExceptionEvent):
+            self._publish_event(
+                QueueNodeExceptionEvent(
                     node_execution_id=event.id,
                     node_id=event.node_id,
                     node_type=event.node_type,

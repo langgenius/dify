@@ -11,6 +11,7 @@ from core.app.entities.queue_entities import (
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
+    QueueNodeExceptionEvent,
     QueueNodeFailedEvent,
     QueueNodeInIterationFailedEvent,
     QueueNodeStartedEvent,
@@ -314,7 +315,7 @@ class WorkflowCycleManage:
         return workflow_node_execution
 
     def _handle_workflow_node_execution_failed(
-        self, event: QueueNodeFailedEvent | QueueNodeInIterationFailedEvent
+        self, event: QueueNodeFailedEvent | QueueNodeInIterationFailedEvent | QueueNodeExceptionEvent
     ) -> WorkflowNodeExecution:
         """
         Workflow node execution failed
@@ -347,8 +348,12 @@ class WorkflowCycleManage:
         db.session.commit()
         db.session.close()
         process_data = WorkflowEntry.handle_special_values(event.process_data)
-
-        workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
+        status = (
+            WorkflowNodeExecutionStatus.FAILED.value
+            if not isinstance(event, QueueNodeExceptionEvent)
+            else WorkflowNodeExecutionStatus.EXCEPTION.value
+        )
+        workflow_node_execution.status = status
         workflow_node_execution.error = event.error
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
         workflow_node_execution.process_data = json.dumps(process_data) if process_data else None
@@ -479,7 +484,10 @@ class WorkflowCycleManage:
 
     def _workflow_node_finish_to_stream_response(
         self,
-        event: QueueNodeSucceededEvent | QueueNodeFailedEvent | QueueNodeInIterationFailedEvent,
+        event: QueueNodeSucceededEvent
+        | QueueNodeFailedEvent
+        | QueueNodeInIterationFailedEvent
+        | QueueNodeExceptionEvent,
         task_id: str,
         workflow_node_execution: WorkflowNodeExecution,
     ) -> Optional[NodeFinishStreamResponse]:

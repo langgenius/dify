@@ -1,12 +1,16 @@
 from abc import ABC
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
+
+from core.workflow.nodes.enums import ErrorStrategy
 
 
 class BaseNodeData(ABC, BaseModel):
     title: str
     desc: Optional[str] = None
+    error_strategy: Optional[ErrorStrategy] = None
+    default_value: Optional[Any] = None
 
 
 class BaseIterationNodeData(BaseNodeData):

@@ -82,6 +82,10 @@ class NodeRunFailedEvent(BaseNodeEvent):
     error: str = Field(..., description="error")
 
 
+class NodeRunExceptionEvent(BaseNodeEvent):
+    error: str = Field(..., description="error")
+
+
 class NodeInIterationFailedEvent(BaseNodeEvent):
     error: str = Field(..., description="error")
 

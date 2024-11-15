@@ -14,6 +14,7 @@ from core.workflow.graph_engine.entities.graph_init_params import GraphInitParam
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.entities import CodeNodeData
+from core.workflow.nodes.event.event import RunCompletedEvent
 from models.enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 from tests.integration_tests.workflow.nodes.__mock.code_executor import setup_code_executor_mock
@@ -353,3 +354,41 @@ def test_execute_code_output_object_list():
     # validate
     with pytest.raises(ValueError):
         node._transform_result(result, node.node_data.outputs)
+
+
+def test_excute_code_continue_on_error():
+    code = """
+    def main() -> dict:
+        return {
+            "result": 1 / 0,
+        }
+    """
+    code = "\n".join([line[4:] for line in code.split("\n")])
+
+    code_config = {
+        "id": "code",
+        "data": {
+            "outputs": {
+                "result": {
+                    "type": "number",
+                },
+            },
+            "error_strategy": "default-value",
+            "title": "123",
+            "variables": [],
+            "answer": "123",
+            "code_language": "python3",
+            "default_value": {"result": 132123},
+            "code": code,
+        },
+    }
+
+    node = init_code_node(code_config)
+
+    # execute node
+    result = node.run()
+    for r in result:
+        assert isinstance(r, RunCompletedEvent)
+        run_ruslt = r.run_result
+        assert run_ruslt.status == WorkflowNodeExecutionStatus.EXCEPTION
+        assert run_ruslt.outputs == {"result": 132123}

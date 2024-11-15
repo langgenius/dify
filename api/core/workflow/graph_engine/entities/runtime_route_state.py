@@ -15,6 +15,7 @@ class RouteNodeState(BaseModel):
         SUCCESS = "success"
         FAILED = "failed"
         PAUSED = "paused"
+        EXCEPTION = "exception"
 
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
     """node state id"""
@@ -51,13 +52,20 @@ class RouteNodeState(BaseModel):
 
         :param run_result: run result
         """
-        if self.status in {RouteNodeState.Status.SUCCESS, RouteNodeState.Status.FAILED}:
+        if self.status in {
+            RouteNodeState.Status.SUCCESS,
+            RouteNodeState.Status.FAILED,
+            RouteNodeState.Status.EXCEPTION,
+        }:
             raise Exception(f"Route state {self.id} already finished")
 
         if run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
             self.status = RouteNodeState.Status.SUCCESS
         elif run_result.status == WorkflowNodeExecutionStatus.FAILED:
             self.status = RouteNodeState.Status.FAILED
+            self.failed_reason = run_result.error
+        elif run_result.status == WorkflowNodeExecutionStatus.EXCEPTION:
+            self.status = RouteNodeState.Status.EXCEPTION
             self.failed_reason = run_result.error
         else:
             raise Exception(f"Invalid route status {run_result.status}")

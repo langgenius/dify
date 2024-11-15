@@ -22,3 +22,11 @@ class NodeType(str, Enum):
     CONVERSATION_VARIABLE_ASSIGNER = "assigner"
     DOCUMENT_EXTRACTOR = "document-extractor"
     LIST_OPERATOR = "list-operator"
+
+
+class ErrorStrategy(str, Enum):
+    FAIL_BRANCH = "fail-branch"
+    DEFAULT_VALUE = "default-value"
+
+
+CONTINUE_ON_ERROR_NODE_TYPE = [NodeType.LLM, NodeType.CODE, NodeType.TOOL, NodeType.HTTP_REQUEST]

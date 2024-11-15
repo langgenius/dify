@@ -1,4 +1,5 @@
 from collections.abc import Sequence
+from enum import Enum
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -47,3 +48,8 @@ class Condition(BaseModel):
     comparison_operator: SupportedComparisonOperator
     value: str | Sequence[str] | None = None
     sub_variable_condition: SubVariableCondition | None = None
+
+
+class ContinueOnErrorCondition(str, Enum):
+    SUCCESS = "success"
+    EXCEPTION = "exception"

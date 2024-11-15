@@ -20,6 +20,7 @@ from core.workflow.graph_engine.entities.event import (
     GraphRunFailedEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
+    NodeRunExceptionEvent,
     NodeRunFailedEvent,
     NodeRunRetrieverResourceEvent,
     NodeRunStartedEvent,
@@ -599,7 +600,10 @@ class GraphEngine:
                                 parent_parallel_id=parent_parallel_id,
                                 parent_parallel_start_node_id=parent_parallel_start_node_id,
                             )
-                        elif run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
+                        elif run_result.status in (
+                            WorkflowNodeExecutionStatus.SUCCEEDED,
+                            WorkflowNodeExecutionStatus.EXCEPTION,
+                        ):
                             if run_result.metadata and run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
                                 # plus state total_tokens
                                 self.graph_runtime_state.total_tokens += int(
@@ -632,18 +636,23 @@ class GraphEngine:
                                     run_result.metadata[NodeRunMetadataKey.PARENT_PARALLEL_START_NODE_ID] = (
                                         parent_parallel_start_node_id
                                     )
-
-                            yield NodeRunSucceededEvent(
-                                id=node_instance.id,
-                                node_id=node_instance.node_id,
-                                node_type=node_instance.node_type,
-                                node_data=node_instance.node_data,
-                                route_node_state=route_node_state,
-                                parallel_id=parallel_id,
-                                parallel_start_node_id=parallel_start_node_id,
-                                parent_parallel_id=parent_parallel_id,
-                                parent_parallel_start_node_id=parent_parallel_start_node_id,
+                            event_args = {
+                                "id": node_instance.id,
+                                "node_id": node_instance.node_id,
+                                "node_type": node_instance.node_type,
+                                "node_data": node_instance.node_data,
+                                "route_node_state": route_node_state,
+                                "parallel_id": parallel_id,
+                                "parallel_start_node_id": parallel_start_node_id,
+                                "parent_parallel_id": parent_parallel_id,
+                                "parent_parallel_start_node_id": parent_parallel_start_node_id,
+                            }
+                            event = (
+                                NodeRunSucceededEvent(**event_args)
+                                if run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                                else NodeRunExceptionEvent(**event_args, error=run_result.error)
                             )
+                            yield event
 
                         break
                     elif isinstance(item, RunStreamChunkEvent):
