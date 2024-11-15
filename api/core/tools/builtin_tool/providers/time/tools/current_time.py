@@ -1,5 +1,5 @@
 from datetime import datetime, timezone
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from pytz import timezone as pytz_timezone
 
@@ -12,6 +12,9 @@ class CurrentTimeTool(BuiltinTool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         invoke tools

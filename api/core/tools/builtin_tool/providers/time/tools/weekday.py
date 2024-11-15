@@ -1,6 +1,6 @@
 import calendar
 from datetime import datetime
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from core.tools.builtin_tool.tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -11,6 +11,9 @@ class WeekdayTool(BuiltinTool):
         self,
         user_id: str,
         tool_parameters: dict[str, Any],
+        conversation_id: Optional[str] = None,
+        app_id: Optional[str] = None,
+        message_id: Optional[str] = None,
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Calculate the day of the week for a given date
