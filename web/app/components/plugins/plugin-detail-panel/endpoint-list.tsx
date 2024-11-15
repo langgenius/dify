@@ -1,7 +1,11 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import { RiAddLine } from '@remixicon/react'
+import {
+  RiAddLine,
+  RiApps2AddLine,
+  RiBookOpenLine,
+} from '@remixicon/react'
 import EndpointModal from './endpoint-modal'
 import EndpointCard from './endpoint-card'
 import { NAME_FIELD } from './utils'
@@ -61,8 +65,26 @@ const EndpointList = ({ showTopBorder }: Props) => {
         <div className='flex items-center gap-0.5'>
           {t('plugin.detailPanel.endpoints')}
           <Tooltip
+            needsDelay
+            popupClassName='w-[240px] p-4 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border'
             popupContent={
-              <div className='w-[180px]'>TODO</div>
+              <div className='flex flex-col gap-2'>
+                <div className='w-8 h-8 flex items-center justify-center bg-background-default-subtle rounded-lg border-[0.5px] border-components-panel-border-subtle'>
+                  <RiApps2AddLine className='w-4 h-4 text-text-tertiary' />
+                </div>
+                <div className='text-text-tertiary system-xs-regular'>{t('plugin.detailPanel.endpointsTip')}</div>
+                {/* TODO  endpoints doc link */}
+                <a
+                  href=''
+                  target='_blank'
+                  rel='noopener noreferrer'
+                >
+                  <div className='inline-flex items-center gap-1 text-text-accent system-xs-regular cursor-pointer'>
+                    <RiBookOpenLine className='w-3 h-3' />
+                    {t('plugin.detailPanel.endpointsDocLink')}
+                  </div>
+                </a>
+              </div>
             }
           />
         </div>
