@@ -131,7 +131,6 @@ flask-restful = "~0.3.10"
 flask-sqlalchemy = "~3.1.1"
 gevent = "~23.9.1"
 gmpy2 = "~2.2.1"
-google-ai-generativelanguage = "0.6.9"
 google-api-core = "2.18.0"
 google-api-python-client = "2.90.0"
 google-auth = "2.29.0"
@@ -193,6 +192,9 @@ zhipuai = "~2.1.5"
 # Related transparent dependencies with pinned version
 # required by main implementations
 ############################################################
+grpcio = ">=1.48.2,<2.0.0"
+protobuf = ">=4.21.3,<5.0.0"
+grpcio-tools = ">=1.48.2,<2.0.0"
 [tool.poetry.group.indirect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"
@@ -279,3 +281,12 @@ optional = true
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
 ruff = "~0.6.9"
+
+############################################################
+# [ Optional ] dependency group
+############################################################
+[tool.poetry.group.optional]
+optional = true
+
+[tool.poetry.group.optional.dependencies]
+google-ai-generativelanguage = "0.6.9"

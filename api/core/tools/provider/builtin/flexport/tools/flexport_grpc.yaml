@@ -1,0 +1,60 @@
+identity: # 工具的基本信息
+  name: flexport_grpc # 工具名称，唯一，不允许和其他工具重名
+  author: Fujun Tan # 作者
+  label: # 标签，用于前端展示
+    en_US: Flexport Grpc # 英文标签
+    zh_Hans:  Flexport Grpc # 中文标签
+description: # 描述，用于前端展示
+  human: # 用于前端展示的介绍，支持多语言
+    en_US: A tool for executing GRPC requests. Input should be a GRPC request.
+    zh_Hans: 一个用于执行GRPC请求的工具。输入应该是一个GRPC请求。
+  llm:  call Flexport GRPC method.  # 传递给 LLM 的介绍，为了使得LLM更好理解这个工具，我们建议在这里写上关于这个工具尽可能详细的信息，让 LLM 能够理解并使用这个工具
+parameters: # 参数列表
+  - name: proto_content # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: proto file content # 英文标签
+      zh_Hans: proto 文件内容 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: proto_content
+      zh_Hans: proto 文件内容
+    llm_description: proto 文件内容 # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+    form: form # 表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
+
+  - name: service # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: rpc service # 英文标签
+      zh_Hans: rpc service # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: proto_content
+      zh_Hans: 调用的grpc的service,不要忘记包名
+    llm_description: rpc service  # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+    form: form # 表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
+  
+  - name: method # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: rpc method # 英文标签
+      zh_Hans: rpc method # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: rpc method
+      zh_Hans: 调用的grpc的method
+    llm_description: rpc method  # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+    form: form # 表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
+
+  - name: method_parameters # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: method parameters # 英文标签
+      zh_Hans: method parameters # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: method parameters
+      zh_Hans: method parameters
+    llm_description: method parameters  # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+    form: llm # 表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
+

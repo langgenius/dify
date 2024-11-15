@@ -1,0 +1,43 @@
+identity: # 工具的基本信息
+  name: flexport_graphql # 工具名称，唯一，不允许和其他工具重名
+  author: Fujun Tan # 作者
+  label: # 标签，用于前端展示
+    en_US: Flexport GraphQL # 英文标签
+    zh_Hans:  Flexport GraphQL # 中文标签
+description: # 描述，用于前端展示
+  human: # 用于前端展示的介绍，支持多语言
+    en_US: A tool for executing GraphQL requests. Input should be a GraphQL request.
+    zh_Hans: 一个用于执行GraphQL请求的工具。输入应该是一个GraphQL请求。
+  llm: A tool for executing GraphQL.  # 传递给 LLM 的介绍，为了使得LLM更好理解这个工具，我们建议在这里写上关于这个工具尽可能详细的信息，让 LLM 能够理解并使用这个工具
+parameters: # 参数列表
+  - name: query # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: Query string # 英文标签
+      zh_Hans: 查询语句 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: used for searching
+      zh_Hans: 用于搜索网页内容
+    llm_description: key words for searching # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+    form: llm # 表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
+  - name: result_type
+    type: select # 参数类型
+    required: true
+    options: # 下拉框选项
+      - value: text
+        label:
+          en_US: text
+          zh_Hans: 文本
+      - value: link
+        label:
+          en_US: link
+          zh_Hans: 链接
+    default: link
+    label:
+      en_US: Result type
+      zh_Hans: 结果类型
+    human_description:
+      en_US: used for selecting the result type, text or link
+      zh_Hans: 用于选择结果类型，使用文本还是链接进行展示
+    form: form # 表单类型，form表示这个参数需要由用户在对话开始前在前端填写
