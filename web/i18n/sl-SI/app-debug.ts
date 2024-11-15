@@ -237,6 +237,6 @@ const translation = {
       },
     },
   },
-};
+}
 
-module.exports = translation;
+module.exports = translation
