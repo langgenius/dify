@@ -76,7 +76,7 @@ const Header = () => {
                   <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
                   <div className='system-xs-medium'>
                     <span className='p-1'>
-                      {t('billing.upgradeBtn.encourage')}
+                      {t('billing.upgradeBtn.encourageShort')}
                     </span>
                   </div>
                 </PremiumBadge>
@@ -98,7 +98,7 @@ const Header = () => {
                 <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
                 <div className='system-xs-medium'>
                   <span className='p-1'>
-                    {t('billing.upgradeBtn.encourage')}
+                    {t('billing.upgradeBtn.encourageShort')}
                   </span>
                 </div>
               </PremiumBadge>
@@ -115,7 +115,7 @@ const Header = () => {
           {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
         </div>
       )}
-      <div className='flex items-center flex-shrink-0'>
+      <div className='flex items-center shrink-0'>
         <EnvNav />
         <div className='mr-3'>
           <PluginsNav />
