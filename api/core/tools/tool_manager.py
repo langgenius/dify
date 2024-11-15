@@ -698,7 +698,11 @@ class ToolManager:
         """
         get api provider
         """
-        provider_obj: ApiToolProvider | None = (
+        """
+            get tool provider
+        """
+        provider_name = provider
+        provider_obj: ApiToolProvider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
@@ -708,7 +712,7 @@ class ToolManager:
         )
 
         if provider_obj is None:
-            raise ValueError(f"you have not added provider {provider}")
+            raise ValueError(f"you have not added provider {provider_name}")
 
         try:
             credentials = json.loads(provider_obj.credentials_str) or {}

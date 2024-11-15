@@ -1,6 +1,6 @@
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool import ToolParameter
@@ -36,6 +36,11 @@ class ToolProviderApiEntity(BaseModel):
     plugin_id: Optional[str] = Field(default="", description="The plugin id of the tool")
     tools: list[ToolApiEntity] = Field(default_factory=list)
     labels: list[str] = Field(default_factory=list)
+
+    @field_validator("tools", mode="before")
+    @classmethod
+    def convert_none_to_empty_list(cls, v):
+        return v if v is not None else []
 
     def to_dict(self) -> dict:
         # -------------

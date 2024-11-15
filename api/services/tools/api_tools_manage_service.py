@@ -109,8 +109,10 @@ class ApiToolManageService:
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema}")
 
+        provider_name = provider_name.strip()
+
         # check if the provider exists
-        provider: ApiToolProvider | None = (
+        provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
@@ -249,8 +251,10 @@ class ApiToolManageService:
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema}")
 
+        provider_name = provider_name.strip()
+
         # check if the provider exists
-        provider: ApiToolProvider | None = (
+        provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
@@ -322,7 +326,7 @@ class ApiToolManageService:
         """
         delete tool provider
         """
-        provider: ApiToolProvider | None = (
+        provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
@@ -372,7 +376,7 @@ class ApiToolManageService:
         if tool_bundle is None:
             raise ValueError(f"invalid tool name {tool_name}")
 
-        db_provider: ApiToolProvider | None = (
+        db_provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
