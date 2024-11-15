@@ -407,6 +407,7 @@ const translation = {
       },
       type: 'Tip',
       binaryFileVariable: 'Variabilă de fișier binar',
+      extractListPlaceholder: 'Introduceți indexul elementelor din listă, tastați "/" inserați variabila',
     },
     code: {
       inputVars: 'Variabile de intrare',
@@ -618,6 +619,7 @@ const translation = {
       limit: 'N de sus',
       filterConditionComparisonValue: 'Valoare Stare filtrare',
       asc: 'ASC',
+      extractsCondition: 'Extrageți elementul N',
     },
   },
   tracing: {
