@@ -263,12 +263,14 @@ class ApiTool(Tool):
                 elif property["type"] == "object" or property["type"] == "array":
                     if isinstance(value, str):
                         try:
-                            # an array str like '[1,2]' also can convert to list [1,2] through json.loads
-                            # json not support single quote, but we can support it
-                            value = value.replace("'", '"')
-                            return json.loads(value)
+                            # an array str like '[1,2]' can also be converted to list [1,2] through json.loads
+                            # json does not support single quotes, but we can support it
+                            return json.loads(value.replace("'", '"'))
                         except ValueError:
-                            return value
+                            try:
+                                return json.loads(value)
+                            except ValueError:
+                                return value
                     elif isinstance(value, dict):
                         return value
                     else:
