@@ -53,8 +53,8 @@ class AccountBannedError(BaseHTTPException):
 
 
 class NotAllowedRegister(BaseHTTPException):
-    error_code = "unauthorized"
-    description = "Account not found."
+    error_code = "not_allowed_register"
+    description = "Not Allowed Register"
     code = 400
 
 
