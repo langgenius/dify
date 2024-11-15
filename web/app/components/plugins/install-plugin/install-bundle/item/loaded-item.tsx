@@ -6,17 +6,20 @@ import Card from '../../../card'
 import Checkbox from '@/app/components/base/checkbox'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import useGetIcon from '../../base/use-get-icon'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 
 type Props = {
   checked: boolean
   onCheckedChange: (plugin: Plugin) => void
   payload: Plugin
+  isFromMarketPlace?: boolean
 }
 
 const LoadedItem: FC<Props> = ({
   checked,
   onCheckedChange,
   payload,
+  isFromMarketPlace,
 }) => {
   const { getIconUrl } = useGetIcon()
   return (
@@ -30,7 +33,7 @@ const LoadedItem: FC<Props> = ({
         className='grow'
         payload={{
           ...payload,
-          icon: getIconUrl(payload.icon),
+          icon: isFromMarketPlace ? `${MARKETPLACE_API_PREFIX}/plugins/${payload.org}/${payload.name}/icon` : getIconUrl(payload.icon),
         }}
         titleLeft={payload.version ? <Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version}</Badge> : null}
       />

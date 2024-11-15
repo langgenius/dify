@@ -22,6 +22,7 @@ const MarketPlaceItem: FC<Props> = ({
       checked={checked}
       onCheckedChange={onCheckedChange}
       payload={payload}
+      isFromMarketPlace
     />
   )
 }

@@ -7,10 +7,11 @@ import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import useGetIcon from '../../base/use-get-icon'
+import { MARKETPLACE_API_PREFIX } from '@/config'
 
 type Props = {
   list: Plugin[]
-  installStatus: { success: boolean }[]
+  installStatus: { success: boolean, isFromMarketPlace: boolean }[]
   onCancel: () => void
 }
 
@@ -33,7 +34,7 @@ const Installed: FC<Props> = ({
                 className='w-full'
                 payload={{
                   ...plugin,
-                  icon: getIconUrl(plugin.icon),
+                  icon: installStatus[index].isFromMarketPlace ? `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon` : getIconUrl(plugin.icon),
                 }}
                 installed={installStatus[index].success}
                 installFailed={!installStatus[index].success}

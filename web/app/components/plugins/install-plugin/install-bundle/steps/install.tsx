@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
-import type { Dependency, Plugin } from '../../../types'
+import type { Dependency, InstallStatusResponse, Plugin } from '../../../types'
 import Button from '@/app/components/base/button'
 import { RiLoader2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -12,7 +12,7 @@ const i18nPrefix = 'plugin.installModal'
 
 type Props = {
   fromDSLPayload: Dependency[]
-  onInstalled: (plugins: Plugin[], installStatus: { success: boolean }[]) => void
+  onInstalled: (plugins: Plugin[], installStatus: InstallStatusResponse[]) => void
   onCancel: () => void
 }
 
@@ -45,8 +45,13 @@ const Install: FC<Props> = ({
 
   // Install from marketplace and github
   const { mutate: installFromMarketplaceAndGitHub, isPending: isInstalling } = useInstallFromMarketplaceAndGitHub({
-    onSuccess: (res: { success: boolean }[]) => {
-      onInstalled(selectedPlugins, res)
+    onSuccess: (res: InstallStatusResponse[]) => {
+      onInstalled(selectedPlugins, res.map((r, i) => {
+        return ({
+          ...r,
+          isFromMarketPlace: fromDSLPayload[selectedIndexes[i]].type === 'marketplace',
+        })
+      }))
       const hasInstallSuccess = res.some(r => r.success)
       if (hasInstallSuccess)
         invalidateInstalledPluginList()

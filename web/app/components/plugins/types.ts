@@ -238,6 +238,11 @@ export type InstallPackageResponse = {
   task_id: string
 }
 
+export type InstallStatusResponse = {
+  success: boolean,
+  isFromMarketPlace?: boolean
+}
+
 export type updatePackageResponse = {
   all_installed: boolean
   task_id: string
