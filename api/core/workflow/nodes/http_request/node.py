@@ -85,6 +85,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e),
                 process_data=process_data,
+                error_type=type(e).__name__,
             )
 
     @staticmethod

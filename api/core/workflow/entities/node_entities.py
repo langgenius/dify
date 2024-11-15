@@ -43,3 +43,4 @@ class NodeRunResult(BaseModel):
     edge_source_handle: Optional[str] = None  # source handle id of node with multiple branches
 
     error: Optional[str] = None  # error message if status is failed
+    error_type: Optional[str] = None  # error type if status is failed

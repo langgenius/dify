@@ -4,6 +4,7 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Generic, Optional, TypeVar, Union, cast
 
 from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.enums import CONTINUE_ON_ERROR_NODE_TYPE, ErrorStrategy, NodeType
 from core.workflow.nodes.event import NodeEvent, RunCompletedEvent
 from core.workflow.utils.condition.entities import ContinueOnErrorCondition
@@ -71,16 +72,16 @@ class BaseNode(Generic[GenericNodeData]):
             result = self._run()
         except Exception as e:
             logger.exception(f"Node {self.node_id} failed to run: {e}")
-            result = NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
-                error=str(e),
-            )
+            result = NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, error=str(e), error_type="SystemError")
 
         if isinstance(result, NodeRunResult):
-            if self.node_data.error_strategy == ErrorStrategy.FAIL_BRANCH:
+            if (
+                result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                and self.node_data.error_strategy == ErrorStrategy.FAIL_BRANCH
+            ):
                 result.edge_source_handle = ContinueOnErrorCondition.SUCCESS
             if result.status == WorkflowNodeExecutionStatus.FAILED and self._should_continue_on_error:
-                result = self.__handle_continue_on_error(result)
+                result = self.__handle_continue_on_error(result, self.graph_runtime_state.variable_pool)
             yield RunCompletedEvent(run_result=result)
         else:
             yield from result
@@ -150,19 +151,33 @@ class BaseNode(Generic[GenericNodeData]):
         """
         return self.node_data.error_strategy is not None and self.node_type in CONTINUE_ON_ERROR_NODE_TYPE
 
-    def __handle_continue_on_error(self, error: NodeRunResult) -> NodeRunResult:
+    def __handle_continue_on_error(self, error_result: NodeRunResult, variable_pool: VariablePool) -> NodeRunResult:
+        """
+        handle continue on error when self._should_continue_on_error is True
+
+        Args:
+            error_result (NodeRunResult): error run result
+            variable_pool (VariablePool): variable pool
+        Returns:
+            NodeRunResult: excption run result
+        """
+        # add error message and error type to variable pool
+        variable_pool.add((self.node_id, "error_message"), error_result.error)
+        variable_pool.add((self.node_id, "error_type"), error_result.error_type)
+
+        node_error_args = {
+            "status": WorkflowNodeExecutionStatus.EXCEPTION,
+            "error": error_result.error,
+            "inputs": error_result.inputs,
+        }
         if self.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
             return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.EXCEPTION,
-                error=error.error,
-                inputs=error.inputs,
+                **node_error_args,
                 outputs=self.node_data.default_value,
             )
 
         return NodeRunResult(
-            status=WorkflowNodeExecutionStatus.EXCEPTION,
-            error=error.error,
-            inputs=error.inputs,
+            **node_error_args,
             outputs=None,
             edge_source_handle=ContinueOnErrorCondition.EXCEPTION,
         )
