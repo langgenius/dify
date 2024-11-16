@@ -58,7 +58,6 @@ export const getFileExtension = (fileName: string, fileMimetype: string, isRemot
   if (isRemote)
     return ''
 
-
   return ''
 }
 
