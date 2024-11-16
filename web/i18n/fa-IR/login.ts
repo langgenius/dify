@@ -26,6 +26,7 @@ const translation = {
   reset: 'لطفاً برای بازنشانی رمز عبور خود دستور زیر را اجرا کنید',
   withGitHub: 'ادامه با GitHub',
   withGoogle: 'ادامه با Google',
+  withAceData: 'ادامه با AceData',
   rightTitle: 'پتانسیل کامل LLM را باز کنید',
   rightDesc: 'به راحتی برنامه‌های AI با ظاهری جذاب، قابل اجرا و بهبود پذیر ایجاد کنید.',
   tos: 'شرایط خدمات',

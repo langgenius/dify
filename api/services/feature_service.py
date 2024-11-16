@@ -59,10 +59,10 @@ class SystemFeatureModel(BaseModel):
     sso_enforced_for_web_protocol: str = ""
     enable_web_sso_switch_component: bool = False
     enable_email_code_login: bool = False
-    enable_email_password_login: bool = True
-    enable_social_oauth_login: bool = False
+    enable_email_password_login: bool = False
+    enable_social_oauth_login: bool = True
     is_allow_register: bool = False
-    is_allow_create_workspace: bool = False
+    is_allow_create_workspace: bool = True
     license: LicenseModel = LicenseModel()
 
 

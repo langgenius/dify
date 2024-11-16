@@ -815,7 +815,6 @@ class RegisterService:
                 TenantService.create_tenant_member(tenant, account, role="owner")
                 account.current_tenant = tenant
                 tenant_was_created.send(tenant)
-
             db.session.commit()
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()

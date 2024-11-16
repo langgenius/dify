@@ -26,6 +26,7 @@ const translation = {
   reset: 'Por favor, ejecuta el siguiente comando para restablecer tu contraseña',
   withGitHub: 'Continuar con GitHub',
   withGoogle: 'Continuar con Google',
+  withAceData: 'Continuar con AceData',
   rightTitle: 'Desbloquea todo el potencial de LLM',
   rightDesc: 'Construye de manera sencilla aplicaciones de IA visualmente cautivadoras, operables y mejorables.',
   tos: 'Términos de servicio',

@@ -28,6 +28,7 @@ const translation = {
   reset: 'कृपया अपना पासवर्ड रीसेट करने के लिए निम्नलिखित कमांड चलाएं',
   withGitHub: 'GitHub के साथ जारी रखें',
   withGoogle: 'Google के साथ जारी रखें',
+  WithAceData: 'AceData के साथ जारी रखें',
   rightTitle: 'LLM की पूरी क्षमता को अनलॉक करें',
   rightDesc:
     'दृश्य रूप से आकर्षक, संचालन योग्य और सुधार योग्य AI एप्लिकेशन को आसानी से बनाएं।',

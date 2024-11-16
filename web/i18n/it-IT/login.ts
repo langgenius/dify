@@ -30,6 +30,7 @@ const translation = {
     'Per favore esegui il seguente comando per reimpostare la tua password',
   withGitHub: 'Continua con GitHub',
   withGoogle: 'Continua con Google',
+  withAceData: 'Continua con AceData',
   rightTitle: 'Sblocca tutto il potenziale di LLM',
   rightDesc:
     'Costruisci senza sforzo applicazioni AI visivamente accattivanti, operabili e migliorabili.',

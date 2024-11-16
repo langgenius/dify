@@ -31,6 +31,7 @@ const translation = {
   withGitHub: '使用 GitHub 登录',
   withGoogle: '使用 Google 登录',
   withSSO: '使用 SSO 登录',
+  withAceData: '使用 AceData 登录',
   rightTitle: '释放大型语言模型的全部潜能',
   rightDesc: '简单构建可视化、可运营、可改进的 AI 应用',
   tos: '使用协议',

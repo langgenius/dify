@@ -12,14 +12,14 @@ from constants.languages import languages
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import extract_remote_ip
-from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
+from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo, AceDataOAuth
 from models import Account
 from models.account import AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountNotFoundError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 from services.feature_service import FeatureService
-
+import json
 from .. import api
 
 
@@ -41,8 +41,18 @@ def get_oauth_providers():
                 client_secret=dify_config.GOOGLE_CLIENT_SECRET,
                 redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/google",
             )
+        
+        if not dify_config.ACEDATA_CLIENT_ID or not dify_config.ACEDATA_CLIENT_SECRET:
+            acedata_oauth = None
+        else:
+            acedata_oauth = AceDataOAuth(
+                client_id=dify_config.ACEDATA_CLIENT_ID,
+                client_secret=dify_config.ACEDATA_CLIENT_SECRET,
+                redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/acedata",
+            )
+        
+        OAUTH_PROVIDERS = {"github": github_oauth, "google": google_oauth, "acedata": acedata_oauth}
 
-        OAUTH_PROVIDERS = {"github": github_oauth, "google": google_oauth}
         return OAUTH_PROVIDERS
 
 
@@ -141,7 +151,6 @@ def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> 
 def _generate_account(provider: str, user_info: OAuthUserInfo):
     # Get account by openid or email.
     account = _get_account_by_openid_or_email(provider, user_info)
-
     if account:
         tenant = TenantService.get_join_tenants(account)
         if not tenant:

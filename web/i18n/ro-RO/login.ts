@@ -26,6 +26,7 @@ const translation = {
   reset: 'Rulați următoarea comandă pentru a vă reseta parola',
   withGitHub: 'Continuă cu GitHub',
   withGoogle: 'Continuă cu Google',
+  withAceData: 'Continuă cu AceData',
   rightTitle: 'Deblochează întregul potențial al LLM',
   rightDesc: 'Construiește cu ușurință aplicații AI captivante din punct de vedere vizual, utilizabile și îmbunătățibile.',
   tos: 'Termeni și condiții',

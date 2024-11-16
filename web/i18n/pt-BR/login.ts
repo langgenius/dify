@@ -25,6 +25,7 @@ const translation = {
   reset: 'Execute o seguinte comando para redefinir sua senha',
   withGitHub: 'Continuar com o GitHub',
   withGoogle: 'Continuar com o Google',
+  withAceData: 'Continuar com o AceData',
   rightTitle: 'Desbloqueie todo o potencial do LLM',
   rightDesc: 'Crie aplicativos de IA visualmente cativantes, operáveis e aprimoráveis sem esforço.',
   tos: 'Termos de Serviço',

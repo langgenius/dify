@@ -40,7 +40,7 @@ export const defaultSystemFeatures: SystemFeatures = {
   enable_web_sso_switch_component: false,
   enable_email_code_login: false,
   enable_email_password_login: false,
-  enable_social_oauth_login: false,
+  enable_social_oauth_login: true,
   is_allow_create_workspace: false,
   is_allow_register: false,
   license: {

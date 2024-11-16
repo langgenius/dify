@@ -29,6 +29,7 @@ const translation = {
   reset: 'Uruchom poniższą komendę, aby zresetować swoje hasło',
   withGitHub: 'Kontynuuj za pomocą GitHub',
   withGoogle: 'Kontynuuj za pomocą Google',
+  withAceData: 'Kontynuuj za pomocą AceData',
   rightTitle: 'Odblokuj pełny potencjał LLM',
   rightDesc:
     'Łatwo buduj wizualnie atrakcyjne, działające i udoskonalane aplikacje AI.',

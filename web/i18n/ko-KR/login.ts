@@ -25,6 +25,7 @@ const translation = {
   reset: '비밀번호를 재설정하려면 다음 명령을 실행하세요:',
   withGitHub: 'GitHub로 계속',
   withGoogle: 'Google로 계속',
+  withAceData: 'AceData로 계속',
   rightTitle: 'LLM의 최대 잠재력을 발휘하세요',
   rightDesc: '매력적이고 조작 가능하며 개선 가능한 AI 애플리케이션을 쉽게 구축하세요.',
   tos: '이용약관',

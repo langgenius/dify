@@ -26,6 +26,7 @@ const translation = {
   reset: 'Şifrenizi sıfırlamak için şu komutu çalıştırın',
   withGitHub: 'GitHub ile devam et',
   withGoogle: 'Google ile devam et',
+  withAceData: 'AceData ile devam et',
   rightTitle: 'LLM\'nin tam potansiyelini ortaya çıkarın',
   rightDesc: 'Görsel olarak çekici, çalışılabilir ve iyileştirilebilir AI uygulamaları oluşturun.',
   tos: 'Hizmet Şartları',

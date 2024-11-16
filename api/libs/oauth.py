@@ -131,3 +131,48 @@ class GoogleOAuth(OAuth):
 
     def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
         return OAuthUserInfo(id=str(raw_info["sub"]), name=None, email=raw_info["email"])
+
+
+class AceDataOAuth(OAuth):
+    _AUTH_URL = "https://github.com/login/oauth/authorize"
+    _TOKEN_URL = "https://auth.acedata.cloud/oauth2/v1/token"
+    _USER_INFO_URL = "https://auth.acedata.cloud/api/v1/users/me"
+
+    def get_authorization_url(self, invite_token: Optional[str] = None):
+        
+        params = {
+            "site" : "https://dify.acedata.cloud/",
+            "redirect" : "http://dify.acedata.cloud/console/api/oauth/authorize/acedata"
+        }
+        return f"https://auth.acedata.cloud/auth/login?{urllib.parse.urlencode(params)}"
+
+    def get_access_token(self, code: str):
+        data = {
+            "code" : code
+        }
+        headers = {"Accept": "application/json"}
+        response = requests.post(self._TOKEN_URL, data=data, headers=headers)
+
+        response_json = response.json()
+        access_token = response_json.get("access_token")
+
+        if not access_token:
+            raise ValueError(f"Error in GitHub OAuth: {response_json}")
+
+        return access_token
+
+    def get_raw_user_info(self, token: str):
+        headers = {"Authorization": f"Bearer {token}"}
+        response = requests.get(self._USER_INFO_URL, headers=headers)
+        response.raise_for_status()
+        user_info = response.json()
+
+        email = user_info.get("email")
+
+        return {**user_info, "email": email}
+
+    def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
+        email = raw_info.get("email")
+        if not email:
+            email = f"{raw_info['id']}+{raw_info['nickname']}@users.noreply.com"
+        return OAuthUserInfo(id=str(raw_info["id"]), name=raw_info["nickname"], email=email)
