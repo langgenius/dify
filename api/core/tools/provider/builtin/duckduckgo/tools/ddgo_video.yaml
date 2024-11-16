@@ -1,0 +1,86 @@
+identity:
+  name: ddgo_video
+  author: Assistant
+  label:
+    en_US: DuckDuckGo Video Search
+    zh_Hans: DuckDuckGo 视频搜索
+description:
+  human:
+    en_US: Perform video searches on DuckDuckGo and get results with embedded videos.
+    zh_Hans: 在 DuckDuckGo 上进行视频搜索并获取可嵌入的视频结果。
+  llm: Perform video searches on DuckDuckGo and get results with embedded videos.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query String
+      zh_Hans: 查询语句
+    human_description:
+      en_US: Search Query
+      zh_Hans: 搜索查询语句。
+    llm_description: Key words for searching
+    form: llm
+  - name: max_results
+    type: number
+    required: true
+    default: 3
+    minimum: 1
+    maximum: 10
+    label:
+      en_US: Max Results
+      zh_Hans: 最大结果数量
+    human_description:
+      en_US: The max results (1-10).
+      zh_Hans: 最大结果数量（1-10）。
+    form: form
+  - name: timelimit
+    type: select
+    required: false
+    options:
+      - value: Day
+        label:
+          en_US: Current Day
+          zh_Hans: 当天
+      - value: Week
+        label:
+          en_US: Current Week
+          zh_Hans: 本周
+      - value: Month
+        label:
+          en_US: Current Month
+          zh_Hans: 当月
+      - value: Year
+        label:
+          en_US: Current Year
+          zh_Hans: 今年
+    label:
+      en_US: Result Time Limit
+      zh_Hans: 结果时间限制
+    human_description:
+      en_US: Use when querying results within a specific time range only.
+      zh_Hans: 只查询一定时间范围内的结果时使用
+    form: form
+  - name: duration
+    type: select
+    required: false
+    options:
+      - value: short
+        label:
+          en_US: Short (<4 minutes)
+          zh_Hans: 短视频（<4分钟）
+      - value: medium
+        label:
+          en_US: Medium (4-20 minutes)
+          zh_Hans: 中等（4-20分钟）
+      - value: long
+        label:
+          en_US: Long (>20 minutes)
+          zh_Hans: 长视频（>20分钟）
+    label:
+      en_US: Video Duration
+      zh_Hans: 视频时长
+    human_description:
+      en_US: Filter videos by duration
+      zh_Hans: 按时长筛选视频
+    form: form
