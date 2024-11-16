@@ -41,7 +41,8 @@ class DuckDuckGoVideoSearchTool(BuiltinTool):
             if embed_html:
                 # Replace fixed dimensions with responsive wrapper and iframe
                 embed_html = """
-<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; max-width: 100%; border-radius: 8px;">
+<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: \
+hidden; max-width: 100%; border-radius: 8px;">
     <iframe 
         style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;" 
         src="{src}" 
@@ -58,4 +59,5 @@ class DuckDuckGoVideoSearchTool(BuiltinTool):
             
             json_result.append(self.create_json_message(res))
             
-        return [self.create_text_message(markdown_result)] + json_result 
+        return [self.create_text_message(markdown_result)] + json_result
+        
