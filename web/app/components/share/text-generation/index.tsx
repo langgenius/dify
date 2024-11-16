@@ -94,6 +94,7 @@ const TextGeneration: FC<IMainProps> = ({
   const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
   const isInBatchTab = currentTab === 'batch'
   const [inputs, setInputs] = useState<Record<string, any>>({})
+  const inputsRef = useRef(inputs)
   const [appId, setAppId] = useState<string>('')
   const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
   const [canReplaceLogo, setCanReplaceLogo] = useState<boolean>(false)
@@ -604,6 +605,7 @@ const TextGeneration: FC<IMainProps> = ({
               <RunOnce
                 siteInfo={siteInfo}
                 inputs={inputs}
+                inputsRef={inputsRef}
                 onInputsChange={setInputs}
                 promptConfig={promptConfig}
                 onSend={handleSend}

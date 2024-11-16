@@ -407,6 +407,7 @@ const translation = {
       },
       type: 'Тип',
       binaryFileVariable: 'Змінна двійкового файлу',
+      extractListPlaceholder: 'Введіть індекс елемента списку, введіть \'/\' вставити змінну',
     },
     code: {
       inputVars: 'Вхідні змінні',
@@ -618,6 +619,7 @@ const translation = {
       orderBy: 'Замовити по',
       filterConditionComparisonOperator: 'Оператор порівняння умов фільтра',
       filterConditionComparisonValue: 'Значення умови фільтра',
+      extractsCondition: 'Витягніть елемент N',
     },
   },
   tracing: {

@@ -407,6 +407,7 @@ const translation = {
       },
       type: 'タイプ',
       binaryFileVariable: 'バイナリファイル変数',
+      extractListPlaceholder: 'リスト項目のインデックスを入力し、変数を挿入 \'/\' と入力します',
     },
     code: {
       inputVars: '入力変数',
@@ -619,6 +620,7 @@ const translation = {
       filterConditionComparisonOperator: 'フィルター条件を比較オペレーター',
       inputVar: '入力変数',
       desc: 'DESC',
+      extractsCondition: 'N個のアイテムを抽出します',
     },
   },
   tracing: {

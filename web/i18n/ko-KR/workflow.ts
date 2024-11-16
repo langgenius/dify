@@ -407,6 +407,7 @@ const translation = {
       },
       type: '형',
       binaryFileVariable: '바이너리 파일 변수',
+      extractListPlaceholder: '목록 항목 인덱스 입력, \'/\' 변수 삽입',
     },
     code: {
       inputVars: '입력 변수',
@@ -618,6 +619,7 @@ const translation = {
       orderBy: '정렬 기준',
       selectVariableKeyPlaceholder: '하위 변수 키 선택',
       filterConditionComparisonOperator: '필터 조건 비교 연산자',
+      extractsCondition: 'N 항목을 추출합니다.',
     },
   },
   tracing: {

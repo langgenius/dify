@@ -1,7 +1,7 @@
 import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import type { KnowledgeRetrievalNodeType } from './types'
-import { RerankingModeEnum } from '@/models/datasets'
+import { checkoutRerankModelConfigedInRetrievalSettings } from './utils'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
@@ -36,11 +36,16 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
     if (!errorMessages && (!payload.dataset_ids || payload.dataset_ids.length === 0))
       errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.knowledgeRetrieval.knowledge`) })
 
-    if (!errorMessages && payload.retrieval_mode === RETRIEVE_TYPE.multiWay && payload.multiple_retrieval_config?.reranking_mode === RerankingModeEnum.RerankingModel && !payload.multiple_retrieval_config?.reranking_model?.provider && payload.multiple_retrieval_config?.reranking_enable)
-      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.errorMsg.fields.rerankModel`) })
-
     if (!errorMessages && payload.retrieval_mode === RETRIEVE_TYPE.oneWay && !payload.single_retrieval_config?.model?.provider)
       errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t('common.modelProvider.systemReasoningModel.key') })
+
+    const { _datasets, multiple_retrieval_config, retrieval_mode } = payload
+    if (retrieval_mode === RETRIEVE_TYPE.multiWay) {
+      const checked = checkoutRerankModelConfigedInRetrievalSettings(_datasets || [], multiple_retrieval_config)
+
+      if (!errorMessages && !checked)
+        errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.errorMsg.fields.rerankModel`) })
+    }
 
     return {
       isValid: !errorMessages,

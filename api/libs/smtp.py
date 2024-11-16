@@ -39,13 +39,13 @@ class SMTPClient:
 
             smtp.sendmail(self._from, mail["to"], msg.as_string())
         except smtplib.SMTPException as e:
-            logging.exception(f"SMTP error occurred: {str(e)}")
+            logging.exception("SMTP error occurred")
             raise
         except TimeoutError as e:
-            logging.exception(f"Timeout occurred while sending email: {str(e)}")
+            logging.exception("Timeout occurred while sending email")
             raise
         except Exception as e:
-            logging.exception(f"Unexpected error occurred while sending email: {str(e)}")
+            logging.exception(f"Unexpected error occurred while sending email to {mail['to']}")
             raise
         finally:
             if smtp:

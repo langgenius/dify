@@ -103,5 +103,5 @@ def batch_create_segment_to_index_task(
             click.style("Segment batch created job: {} latency: {}".format(job_id, end_at - start_at), fg="green")
         )
     except Exception as e:
-        logging.exception("Segments batch created index failed:{}".format(str(e)))
+        logging.exception("Segments batch created index failed")
         redis_client.setex(indexing_cache_key, 600, "error")
