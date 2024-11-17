@@ -33,6 +33,7 @@ const translation = {
     local: '本地插件',
   },
   detailPanel: {
+    switchVersion: '切换版本',
     categoryTip: {
       marketplace: '从 Marketplace 安装',
       github: '从 Github 安装',

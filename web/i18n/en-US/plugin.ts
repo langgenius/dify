@@ -33,6 +33,7 @@ const translation = {
     local: 'Local Package File',
   },
   detailPanel: {
+    switchVersion: 'Switch Version',
     categoryTip: {
       marketplace: 'Installed from Marketplace',
       github: 'Installed from Github',

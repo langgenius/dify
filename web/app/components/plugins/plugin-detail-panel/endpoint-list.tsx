@@ -65,6 +65,7 @@ const EndpointList = ({ showTopBorder }: Props) => {
         <div className='flex items-center gap-0.5'>
           {t('plugin.detailPanel.endpoints')}
           <Tooltip
+            position='right'
             needsDelay
             popupClassName='w-[240px] p-4 rounded-xl bg-components-panel-bg-blur border-[0.5px] border-components-panel-border'
             popupContent={
