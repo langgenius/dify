@@ -119,8 +119,8 @@ const translation = {
   thought: {
     using: 'Using',
     used: 'Used',
-    requestTitle: 'Request to',
-    responseTitle: 'Response from',
+    requestTitle: 'Request',
+    responseTitle: 'Response',
   },
   setBuiltInTools: {
     info: 'Info',

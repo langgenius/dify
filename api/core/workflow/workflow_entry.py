@@ -5,13 +5,11 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 
 from configs import dify_config
-from core.app.app_config.entities import FileExtraConfig
+from core.app.app_config.entities import FileUploadConfig
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.file_obj import FileTransferMethod, FileType, FileVar
-from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
-from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.node_entities import NodeType, UserFrom
+from core.file.models import File, FileTransferMethod, ImageConfig
+from core.workflow.callbacks import WorkflowCallback
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent, InNodeEvent
@@ -19,10 +17,13 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.graph_engine import GraphEngine
-from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.event import RunEvent
-from core.workflow.nodes.llm.entities import LLMNodeData
-from core.workflow.nodes.node_mapping import node_classes
+from core.workflow.nodes import NodeType
+from core.workflow.nodes.base import BaseNode, BaseNodeData
+from core.workflow.nodes.event import NodeEvent
+from core.workflow.nodes.llm import LLMNodeData
+from core.workflow.nodes.node_mapping import node_type_classes_mapping
+from factories import file_factory
+from models.enums import UserFrom
 from models.workflow import (
     Workflow,
     WorkflowType,
@@ -115,7 +116,7 @@ class WorkflowEntry:
     @classmethod
     def single_step_run(
         cls, workflow: Workflow, node_id: str, user_id: str, user_inputs: dict
-    ) -> tuple[BaseNode, Generator[RunEvent | InNodeEvent, None, None]]:
+    ) -> tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]:
         """
         Single step run workflow node
         :param workflow: Workflow instance
@@ -144,8 +145,8 @@ class WorkflowEntry:
             raise ValueError("node id not found in workflow graph")
 
         # Get node class
-        node_type = NodeType.value_of(node_config.get("data", {}).get("type"))
-        node_cls = node_classes.get(node_type)
+        node_type = NodeType(node_config.get("data", {}).get("type"))
+        node_cls = node_type_classes_mapping.get(node_type)
         node_cls = cast(type[BaseNode], node_cls)
 
         if not node_cls:
@@ -162,7 +163,7 @@ class WorkflowEntry:
         graph = Graph.init(graph_config=workflow.graph_dict)
 
         # init workflow run state
-        node_instance: BaseNode = node_cls(
+        node_instance = node_cls(
             id=str(uuid.uuid4()),
             config=node_config,
             graph_init_params=GraphInitParams(
@@ -205,32 +206,27 @@ class WorkflowEntry:
         except Exception as e:
             raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
 
-    @classmethod
-    def handle_special_values(cls, value: Optional[Mapping[str, Any]]) -> Optional[dict]:
-        """
-        Handle special values
-        :param value: value
-        :return:
-        """
-        if not value:
-            return None
+    @staticmethod
+    def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+        return WorkflowEntry._handle_special_values(value)
 
-        new_value = dict(value) if value else {}
-        if isinstance(new_value, dict):
-            for key, val in new_value.items():
-                if isinstance(val, FileVar):
-                    new_value[key] = val.to_dict()
-                elif isinstance(val, list):
-                    new_val = []
-                    for v in val:
-                        if isinstance(v, FileVar):
-                            new_val.append(v.to_dict())
-                        else:
-                            new_val.append(v)
-
-                    new_value[key] = new_val
-
-        return new_value
+    @staticmethod
+    def _handle_special_values(value: Any) -> Any:
+        if value is None:
+            return value
+        if isinstance(value, dict):
+            res = {}
+            for k, v in value.items():
+                res[k] = WorkflowEntry._handle_special_values(v)
+            return res
+        if isinstance(value, list):
+            res = []
+            for item in value:
+                res.append(WorkflowEntry._handle_special_values(item))
+            return res
+        if isinstance(value, File):
+            return value.to_dict()
+        return value
 
     @classmethod
     def mapping_user_inputs_to_variable_pool(
@@ -276,20 +272,22 @@ class WorkflowEntry:
                     for item in input_value:
                         if isinstance(item, dict) and "type" in item and item["type"] == "image":
                             transfer_method = FileTransferMethod.value_of(item.get("transfer_method"))
-                            file = FileVar(
+                            mapping = {
+                                "id": item.get("id"),
+                                "transfer_method": transfer_method,
+                                "upload_file_id": item.get("upload_file_id"),
+                                "url": item.get("url"),
+                            }
+                            config = FileUploadConfig(image_config=ImageConfig(detail=detail) if detail else None)
+                            file = file_factory.build_from_mapping(
+                                mapping=mapping,
                                 tenant_id=tenant_id,
-                                type=FileType.IMAGE,
-                                transfer_method=transfer_method,
-                                url=item.get("url") if transfer_method == FileTransferMethod.REMOTE_URL else None,
-                                related_id=item.get("upload_file_id")
-                                if transfer_method == FileTransferMethod.LOCAL_FILE
-                                else None,
-                                extra_config=FileExtraConfig(image_config={"detail": detail} if detail else None),
+                                config=config,
                             )
                             new_value.append(file)
 
                 if new_value:
-                    value = new_value
+                    input_value = new_value
 
             # append variable and value to variable pool
             variable_pool.add([variable_node_id] + variable_key_list, input_value)

@@ -160,4 +160,5 @@ class ConversationService:
         conversation = cls.get_conversation(app_model, conversation_id, user)
 
         conversation.is_deleted = True
+        conversation.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()

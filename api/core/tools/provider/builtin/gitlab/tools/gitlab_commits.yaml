@@ -23,7 +23,7 @@ parameters:
     form: llm
   - name: repository
     type: string
-    required: false
+    required: true
     label:
       en_US: repository
       zh_Hans: 仓库路径
@@ -32,16 +32,16 @@ parameters:
       zh_Hans: 仓库路径，以namespace/project_name的形式。
     llm_description: Repository path for GitLab, like namespace/project_name.
     form: llm
-  - name: project
+  - name: branch
     type: string
     required: false
     label:
-      en_US: project
-      zh_Hans: 项目名
+      en_US: branch
+      zh_Hans: 分支名
     human_description:
-      en_US: project
-      zh_Hans: 项目名
-    llm_description: project for GitLab
+      en_US: branch
+      zh_Hans: 分支名
+    llm_description: branch for GitLab
     form: llm
   - name: start_time
     type: string

@@ -2,6 +2,7 @@ import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay
 import type {
   RerankingModeEnum,
 } from '@/models/datasets'
+import type { FileUpload } from '@/app/components/base/features/types'
 export type Inputs = Record<string, string | number | object>
 
 export enum PromptMode {
@@ -126,11 +127,14 @@ export type ModelConfig = {
   configs: PromptConfig
   opening_statement: string | null
   more_like_this: MoreLikeThisConfig | null
+  suggested_questions: string[] | null
   suggested_questions_after_answer: SuggestedQuestionsAfterAnswerConfig | null
   speech_to_text: SpeechToTextConfig | null
   text_to_speech: TextToSpeechConfig | null
+  file_upload: FileUpload | null
   retriever_resource: RetrieverResourceConfig | null
   sensitive_word_avoidance: ModerationConfig | null
+  annotation_reply: AnnotationReplyConfig | null
   dataSets: any[]
   agentConfig: AgentConfig
 }

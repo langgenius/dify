@@ -142,6 +142,7 @@ const translation = {
     websiteSource: '預處理網站',
     webpageUnit: '頁面',
     separatorTip: '分隔符是用於分隔文字的字元。\\n\\n 和 \\n 是分隔段落和行的常用分隔符。與逗號 （\\n\\n，\\n） 組合使用時，當超過最大區塊長度時，段落將按行分段。您也可以使用自定義的特殊分隔符（例如 ***）。',
+    maxLengthCheck: '塊最大長度應小於 4000',
   },
   stepThree: {
     creationTitle: '🎉 知識庫已建立',

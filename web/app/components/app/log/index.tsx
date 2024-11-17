@@ -11,7 +11,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import { Trans, useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import List from './list'
-import Filter from './filter'
+import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
 import { fetchChatConversations, fetchCompletionConversations } from '@/service/log'
@@ -22,7 +22,7 @@ export type ILogsProps = {
 }
 
 export type QueryParam = {
-  period?: number | string
+  period: string
   annotation_status?: string
   keyword?: string
   sort_by?: string
@@ -40,12 +40,12 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
   const pathSegments = pathname.split('/')
   pathSegments.pop()
   return <div className='flex items-center justify-center h-full'>
-    <div className='bg-gray-50 w-[560px] h-fit box-border px-5 py-4 rounded-2xl'>
-      <span className='text-gray-700 font-semibold'>{t('appLog.table.empty.element.title')}<ThreeDotsIcon className='inline relative -top-3 -left-1.5' /></span>
-      <div className='mt-2 text-gray-500 text-sm font-normal'>
+    <div className='bg-background-section-burn w-[560px] h-fit box-border px-5 py-4 rounded-2xl'>
+      <span className='text-text-secondary system-md-semibold'>{t('appLog.table.empty.element.title')}<ThreeDotsIcon className='inline relative -top-3 -left-1.5' /></span>
+      <div className='mt-2 text-text-tertiary system-sm-regular'>
         <Trans
           i18nKey="appLog.table.empty.element.content"
-          components={{ shareLink: <Link href={`${pathSegments.join('/')}/overview`} className='text-primary-600' />, testLink: <Link href={appUrl} className='text-primary-600' target='_blank' rel='noopener noreferrer' /> }}
+          components={{ shareLink: <Link href={`${pathSegments.join('/')}/overview`} className='text-util-colors-blue-blue-600' />, testLink: <Link href={appUrl} className='text-util-colors-blue-blue-600' target='_blank' rel='noopener noreferrer' /> }}
         />
       </div>
     </div>
@@ -55,7 +55,7 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
   const [queryParams, setQueryParams] = useState<QueryParam>({
-    period: 7,
+    period: '2',
     annotation_status: 'all',
     sort_by: '-created_at',
   })
@@ -68,9 +68,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const query = {
     page: currPage + 1,
     limit: APP_PAGE_LIMIT,
-    ...(debouncedQueryParams.period !== 'all'
+    ...((debouncedQueryParams.period !== '9')
       ? {
-        start: dayjs().subtract(debouncedQueryParams.period as number, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+        start: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
         end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
       }
       : {}),
@@ -103,7 +103,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   return (
     <div className='flex flex-col h-full'>
-      <p className='flex text-sm font-normal text-gray-500'>{t('appLog.description')}</p>
+      <p className='text-text-tertiary system-sm-regular'>{t('appLog.description')}</p>
       <div className='flex flex-col py-4 flex-1'>
         <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams} />
         {total === undefined

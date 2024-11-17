@@ -2,7 +2,6 @@ import uuid
 from collections.abc import Generator
 from datetime import datetime, timezone
 
-from core.workflow.entities.node_entities import NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import (
@@ -14,6 +13,7 @@ from core.workflow.graph_engine.entities.event import (
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
+from core.workflow.nodes.enums import NodeType
 from core.workflow.nodes.start.entities import StartNodeData
 
 
@@ -39,7 +39,7 @@ def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEve
 
     node_execution_id = str(uuid.uuid4())
     node_config = graph.node_id_config_mapping[next_node_id]
-    node_type = NodeType.value_of(node_config.get("data", {}).get("type"))
+    node_type = NodeType(node_config.get("data", {}).get("type"))
     mock_node_data = StartNodeData(**{"title": "demo", "variables": []})
 
     yield NodeRunStartedEvent(

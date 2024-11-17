@@ -1,11 +1,12 @@
+from collections.abc import Sequence
 from enum import Enum
 from typing import Any, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 
-from core.file.file_obj import FileExtraConfig
+from core.file import FileTransferMethod, FileType, FileUploadConfig
 from core.model_runtime.entities.message_entities import PromptMessageRole
-from models import AppMode
+from models.model import AppMode
 
 
 class ModelConfigEntity(BaseModel):
@@ -69,7 +70,7 @@ class PromptTemplateEntity(BaseModel):
         ADVANCED = "advanced"
 
         @classmethod
-        def value_of(cls, value: str) -> "PromptType":
+        def value_of(cls, value: str):
             """
             Get value of given mode.
 
@@ -93,6 +94,8 @@ class VariableEntityType(str, Enum):
     PARAGRAPH = "paragraph"
     NUMBER = "number"
     EXTERNAL_DATA_TOOL = "external_data_tool"
+    FILE = "file"
+    FILE_LIST = "file-list"
 
 
 class VariableEntity(BaseModel):
@@ -102,13 +105,24 @@ class VariableEntity(BaseModel):
 
     variable: str
     label: str
-    description: Optional[str] = None
+    description: str = ""
     type: VariableEntityType
     required: bool = False
     max_length: Optional[int] = None
-    options: Optional[list[str]] = None
-    default: Optional[str] = None
-    hint: Optional[str] = None
+    options: Sequence[str] = Field(default_factory=list)
+    allowed_file_types: Sequence[FileType] = Field(default_factory=list)
+    allowed_file_extensions: Sequence[str] = Field(default_factory=list)
+    allowed_file_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
+
+    @field_validator("description", mode="before")
+    @classmethod
+    def convert_none_description(cls, v: Any) -> str:
+        return v or ""
+
+    @field_validator("options", mode="before")
+    @classmethod
+    def convert_none_options(cls, v: Any) -> Sequence[str]:
+        return v or []
 
 
 class ExternalDataVariableEntity(BaseModel):
@@ -136,7 +150,7 @@ class DatasetRetrieveConfigEntity(BaseModel):
         MULTIPLE = "multiple"
 
         @classmethod
-        def value_of(cls, value: str) -> "RetrieveStrategy":
+        def value_of(cls, value: str):
             """
             Get value of given mode.
 
@@ -197,7 +211,7 @@ class TracingConfigEntity(BaseModel):
 
 
 class AppAdditionalFeatures(BaseModel):
-    file_upload: Optional[FileExtraConfig] = None
+    file_upload: Optional[FileUploadConfig] = None
     opening_statement: Optional[str] = None
     suggested_questions: list[str] = []
     suggested_questions_after_answer: bool = False

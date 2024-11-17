@@ -1,3 +1,4 @@
+import { refreshAccessTokenOrRelogin } from './refresh-token'
 import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
@@ -16,6 +17,7 @@ import type {
   WorkflowStartedResponse,
 } from '@/types/workflow'
 import { removeAccessToken } from '@/app/components/share/utils'
+import { asyncRunSafe } from '@/utils'
 const TIME_OUT = 100000
 
 const ContentType = {
@@ -320,7 +322,9 @@ const baseFetch = <T>(
   }
 
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  let urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
+  let urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
+    ? url
+    : `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
 
   const { method, params, body } = options
   // handle query
@@ -356,39 +360,8 @@ const baseFetch = <T>(
           if (!/^(2|3)\d{2}$/.test(String(res.status))) {
             const bodyJson = res.json()
             switch (res.status) {
-              case 401: {
-                if (isPublicAPI) {
-                  return bodyJson.then((data: ResponseError) => {
-                    if (data.code === 'web_sso_auth_required')
-                      requiredWebSSOLogin()
-
-                    if (data.code === 'unauthorized') {
-                      removeAccessToken()
-                      globalThis.location.reload()
-                    }
-
-                    return Promise.reject(data)
-                  })
-                }
-                const loginUrl = `${globalThis.location.origin}/signin`
-                bodyJson.then((data: ResponseError) => {
-                  if (data.code === 'init_validate_failed' && IS_CE_EDITION && !silent)
-                    Toast.notify({ type: 'error', message: data.message, duration: 4000 })
-                  else if (data.code === 'not_init_validated' && IS_CE_EDITION)
-                    globalThis.location.href = `${globalThis.location.origin}/init`
-                  else if (data.code === 'not_setup' && IS_CE_EDITION)
-                    globalThis.location.href = `${globalThis.location.origin}/install`
-                  else if (location.pathname !== '/signin' || !IS_CE_EDITION)
-                    globalThis.location.href = loginUrl
-                  else if (!silent)
-                    Toast.notify({ type: 'error', message: data.message })
-                }).catch(() => {
-                  // Handle any other errors
-                  globalThis.location.href = loginUrl
-                })
-
-                break
-              }
+              case 401:
+                return Promise.reject(resClone)
               case 403:
                 bodyJson.then((data: ResponseError) => {
                   if (!silent)
@@ -484,7 +457,9 @@ export const upload = (options: any, isPublicAPI?: boolean, url?: string, search
 export const ssePost = (
   url: string,
   fetchOptions: FetchOptionType,
-  {
+  otherOptions: IOtherOptions,
+) => {
+  const {
     isPublicAPI = false,
     onData,
     onCompleted,
@@ -507,8 +482,7 @@ export const ssePost = (
     onTextReplace,
     onError,
     getAbortController,
-  }: IOtherOptions,
-) => {
+  } = otherOptions
   const abortController = new AbortController()
 
   const options = Object.assign({}, baseOptions, {
@@ -523,7 +497,9 @@ export const ssePost = (
   getAbortController?.(abortController)
 
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  const urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
+  const urlWithPrefix = (url.startsWith('http://') || url.startsWith('https://'))
+    ? url
+    : `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
 
   const { body } = options
   if (body)
@@ -532,21 +508,29 @@ export const ssePost = (
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^(2|3)\d{2}$/.test(String(res.status))) {
-        res.json().then((data: any) => {
-          if (isPublicAPI) {
-            if (data.code === 'web_sso_auth_required')
-              requiredWebSSOLogin()
+        if (res.status === 401) {
+          refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
+            ssePost(url, fetchOptions, otherOptions)
+          }).catch(() => {
+            res.json().then((data: any) => {
+              if (isPublicAPI) {
+                if (data.code === 'web_sso_auth_required')
+                  requiredWebSSOLogin()
 
-            if (data.code === 'unauthorized') {
-              removeAccessToken()
-              globalThis.location.reload()
-            }
-            if (res.status === 401)
-              return
-          }
-          Toast.notify({ type: 'error', message: data.message || 'Server Error' })
-        })
-        onError?.('Server Error')
+                if (data.code === 'unauthorized') {
+                  removeAccessToken()
+                  globalThis.location.reload()
+                }
+              }
+            })
+          })
+        }
+        else {
+          res.json().then((data) => {
+            Toast.notify({ type: 'error', message: data.message || 'Server Error' })
+          })
+          onError?.('Server Error')
+        }
         return
       }
       return handleStream(res, (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
@@ -567,8 +551,78 @@ export const ssePost = (
 }
 
 // base request
-export const request = <T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
-  return baseFetch<T>(url, options, otherOptions || {})
+export const request = async<T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  try {
+    const otherOptionsForBaseFetch = otherOptions || {}
+    const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
+    if (err === null)
+      return resp
+    const errResp: Response = err as any
+    if (errResp.status === 401) {
+      const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
+      const loginUrl = `${globalThis.location.origin}/signin`
+      if (parseErr) {
+        globalThis.location.href = loginUrl
+        return Promise.reject(err)
+      }
+      // special code
+      const { code, message } = errRespData
+      // webapp sso
+      if (code === 'web_sso_auth_required') {
+        requiredWebSSOLogin()
+        return Promise.reject(err)
+      }
+      if (code === 'unauthorized_and_force_logout') {
+        localStorage.removeItem('console_token')
+        localStorage.removeItem('refresh_token')
+        globalThis.location.reload()
+        return Promise.reject(err)
+      }
+      const {
+        isPublicAPI = false,
+        silent,
+      } = otherOptionsForBaseFetch
+      if (isPublicAPI && code === 'unauthorized') {
+        removeAccessToken()
+        globalThis.location.reload()
+        return Promise.reject(err)
+      }
+      if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {
+        Toast.notify({ type: 'error', message, duration: 4000 })
+        return Promise.reject(err)
+      }
+      if (code === 'not_init_validated' && IS_CE_EDITION) {
+        globalThis.location.href = `${globalThis.location.origin}/init`
+        return Promise.reject(err)
+      }
+      if (code === 'not_setup' && IS_CE_EDITION) {
+        globalThis.location.href = `${globalThis.location.origin}/install`
+        return Promise.reject(err)
+      }
+
+      // refresh token
+      const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrRelogin(TIME_OUT))
+      if (refreshErr === null)
+        return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      if (location.pathname !== '/signin' || !IS_CE_EDITION) {
+        globalThis.location.href = loginUrl
+        return Promise.reject(err)
+      }
+      if (!silent) {
+        Toast.notify({ type: 'error', message })
+        return Promise.reject(err)
+      }
+      globalThis.location.href = loginUrl
+      return Promise.reject(err)
+    }
+    else {
+      return Promise.reject(err)
+    }
+  }
+  catch (error) {
+    console.error(error)
+    return Promise.reject(error)
+  }
 }
 
 // request methods

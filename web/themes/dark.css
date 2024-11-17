@@ -598,5 +598,9 @@ html[data-theme="dark"] {
 
   --color-third-party-LangChain: #FFFFFF;
   --color-third-party-Langfuse: #FFFFFF;
+
+  --color-chatbot-bg: linear-gradient(180deg, rgba(34, 34, 37, 0.90) 0%, rgba(29, 29, 32, 0.90) 90.48%);
+  --color-chat-bubble-bg: linear-gradient(180deg, rgba(200, 206, 218, 0.08) 0%, rgba(200, 206, 218, 0.02) 100%);
   --color-third-party-Github: #FFFFFF;
+  --color-workflow-process-bg: linear-gradient(90deg, rgba(24, 24, 27, 0.25) 0%, rgba(24, 24, 27, 0.04) 100%);
 }

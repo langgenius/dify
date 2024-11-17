@@ -11,7 +11,6 @@ import { ToolTypeEnum } from './types'
 import Tools from './tools'
 import { useToolTabs } from './hooks'
 import cn from '@/utils/classnames'
-import { useGetLanguage } from '@/context/i18n'
 
 type AllToolsProps = {
   searchText: string
@@ -21,12 +20,15 @@ const AllTools = ({
   searchText,
   onSelect,
 }: AllToolsProps) => {
-  const language = useGetLanguage()
   const tabs = useToolTabs()
   const [activeTab, setActiveTab] = useState(ToolTypeEnum.All)
   const buildInTools = useStore(s => s.buildInTools)
   const customTools = useStore(s => s.customTools)
   const workflowTools = useStore(s => s.workflowTools)
+
+  const isMatchingKeywords = (text: string, keywords: string) => {
+    return text.toLowerCase().includes(keywords.toLowerCase())
+  }
 
   const tools = useMemo(() => {
     let mergedTools: ToolWithProvider[] = []
@@ -40,11 +42,14 @@ const AllTools = ({
       mergedTools = workflowTools
 
     return mergedTools.filter((toolWithProvider) => {
-      return toolWithProvider.tools.some((tool) => {
-        return tool.label[language].toLowerCase().includes(searchText.toLowerCase())
+      return isMatchingKeywords(toolWithProvider.name, searchText)
+      || toolWithProvider.tools.some((tool) => {
+        return Object.values(tool.label).some((label) => {
+          return isMatchingKeywords(label, searchText)
+        })
       })
     })
-  }, [activeTab, buildInTools, customTools, workflowTools, searchText, language])
+  }, [activeTab, buildInTools, customTools, workflowTools, searchText])
   return (
     <div>
       <div className='flex items-center px-3 h-8 space-x-1 bg-gray-25 border-b-[0.5px] border-black/[0.08] shadow-xs'>

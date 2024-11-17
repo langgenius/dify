@@ -67,6 +67,13 @@ class DatasetListApi(DatasetApiResource):
             type=_validate_name,
         )
         parser.add_argument(
+            "description",
+            type=str,
+            nullable=True,
+            required=False,
+            default="",
+        )
+        parser.add_argument(
             "indexing_technique",
             type=str,
             location="json",
@@ -108,6 +115,7 @@ class DatasetListApi(DatasetApiResource):
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=tenant_id,
                 name=args["name"],
+                description=args["description"],
                 indexing_technique=args["indexing_technique"],
                 account=current_user,
                 permission=args["permission"],

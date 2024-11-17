@@ -25,7 +25,9 @@ def document_indexing_task(dataset_id: str, document_ids: list):
     start_at = time.perf_counter()
 
     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
-
+    if not dataset:
+        logging.info(click.style("Dataset is not found: {}".format(dataset_id), fg="yellow"))
+        return
     # check document limit
     features = FeatureService.get_features(dataset.tenant_id)
     try:

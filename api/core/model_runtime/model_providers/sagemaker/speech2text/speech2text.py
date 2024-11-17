@@ -78,7 +78,7 @@ class SageMakerSpeech2TextModel(Speech2TextModel):
             json_obj = json.loads(json_str)
             asr_text = json_obj["text"]
         except Exception as e:
-            logger.exception(f"failed to invoke speech2text model, {e}")
+            logger.exception(f"failed to invoke speech2text model, model: {model}")
             raise CredentialsValidateFailedError(str(e))
 
         return asr_text
@@ -111,7 +111,7 @@ class SageMakerSpeech2TextModel(Speech2TextModel):
             InvokeBadRequestError: [InvokeBadRequestError, KeyError, ValueError],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

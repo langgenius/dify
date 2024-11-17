@@ -644,6 +644,11 @@ export const useNodesInteractions = () => {
         newNode.data.isInIteration = true
         newNode.data.iteration_id = prevNode.parentId
         newNode.zIndex = ITERATION_CHILDREN_Z_INDEX
+        if (newNode.data.type === BlockEnum.Answer || newNode.data.type === BlockEnum.Tool || newNode.data.type === BlockEnum.Assigner) {
+          const parentIterNodeIndex = nodes.findIndex(node => node.id === prevNode.parentId)
+          const iterNodeData: IterationNodeType = nodes[parentIterNodeIndex].data
+          iterNodeData._isShowTips = true
+        }
       }
 
       const newEdge: Edge = {

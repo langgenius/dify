@@ -16,6 +16,7 @@ class ToolFilePreviewApi(Resource):
         parser.add_argument("timestamp", type=str, required=True, location="args")
         parser.add_argument("nonce", type=str, required=True, location="args")
         parser.add_argument("sign", type=str, required=True, location="args")
+        parser.add_argument("as_attachment", type=bool, required=False, default=False, location="args")
 
         args = parser.parse_args()
 
@@ -28,18 +29,27 @@ class ToolFilePreviewApi(Resource):
             raise Forbidden("Invalid request.")
 
         try:
-            result = ToolFileManager.get_file_generator_by_tool_file_id(
+            stream, tool_file = ToolFileManager.get_file_generator_by_tool_file_id(
                 file_id,
             )
 
-            if not result:
+            if not stream or not tool_file:
                 raise NotFound("file is not found")
-
-            generator, mimetype = result
         except Exception:
             raise UnsupportedFileTypeError()
 
-        return Response(generator, mimetype=mimetype)
+        response = Response(
+            stream,
+            mimetype=tool_file.mimetype,
+            direct_passthrough=True,
+            headers={},
+        )
+        if tool_file.size > 0:
+            response.headers["Content-Length"] = str(tool_file.size)
+        if args["as_attachment"]:
+            response.headers["Content-Disposition"] = f"attachment; filename={tool_file.name}"
+
+        return response
 
 
 api.add_resource(ToolFilePreviewApi, "/files/tools/<uuid:file_id>.<string:extension>")

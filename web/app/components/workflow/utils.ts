@@ -19,7 +19,7 @@ import type {
   ToolWithProvider,
   ValueSelector,
 } from './types'
-import { BlockEnum } from './types'
+import { BlockEnum, ErrorHandleMode } from './types'
 import {
   CUSTOM_NODE,
   ITERATION_CHILDREN_Z_INDEX,
@@ -267,8 +267,13 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       })
     }
 
-    if (node.data.type === BlockEnum.Iteration)
-      node.data._children = iterationNodeMap[node.id] || []
+    if (node.data.type === BlockEnum.Iteration) {
+      const iterationNodeData = node.data as IterationNodeType
+      iterationNodeData._children = iterationNodeMap[node.id] || []
+      iterationNodeData.is_parallel = iterationNodeData.is_parallel || false
+      iterationNodeData.parallel_nums = iterationNodeData.parallel_nums || 10
+      iterationNodeData.error_handle_mode = iterationNodeData.error_handle_mode || ErrorHandleMode.Terminated
+    }
 
     return node
   })

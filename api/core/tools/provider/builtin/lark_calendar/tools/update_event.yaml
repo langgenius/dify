@@ -1,0 +1,100 @@
+identity:
+  name: update_event
+  author: Doug Lea
+  label:
+    en_US: Update Event
+    zh_Hans: 更新日程
+description:
+  human:
+    en_US: Update Event
+    zh_Hans: 更新日程
+  llm: A tool for updating events in Lark.(更新 Lark 中的日程)
+parameters:
+  - name: event_id
+    type: string
+    required: true
+    label:
+      en_US: Event ID
+      zh_Hans: 日程 ID
+    human_description:
+      en_US: |
+        The ID of the event, for example: e8b9791c-39ae-4908-8ad8-66b13159b9fb_0.
+      zh_Hans: 日程 ID，例如：e8b9791c-39ae-4908-8ad8-66b13159b9fb_0。
+    llm_description: 日程 ID，例如：e8b9791c-39ae-4908-8ad8-66b13159b9fb_0。
+    form: llm
+
+  - name: summary
+    type: string
+    required: false
+    label:
+      en_US: Summary
+      zh_Hans: 日程标题
+    human_description:
+      en_US: The title of the event.
+      zh_Hans: 日程标题。
+    llm_description: 日程标题。
+    form: llm
+
+  - name: description
+    type: string
+    required: false
+    label:
+      en_US: Description
+      zh_Hans: 日程描述
+    human_description:
+      en_US: The description of the event.
+      zh_Hans: 日程描述。
+    llm_description: 日程描述。
+    form: llm
+
+  - name: need_notification
+    type: boolean
+    required: false
+    label:
+      en_US: Need Notification
+      zh_Hans: 是否发送通知
+    human_description:
+      en_US: |
+        Whether to send a bot message when the event is updated, true: send, false: do not send.
+      zh_Hans: 更新日程时是否发送 bot 消息，true：发送，false：不发送。
+    llm_description: 更新日程时是否发送 bot 消息，true：发送，false：不发送。
+    form: form
+
+  - name: start_time
+    type: string
+    required: false
+    label:
+      en_US: Start Time
+      zh_Hans: 开始时间
+    human_description:
+      en_US: |
+        The start time of the event, format: 2006-01-02 15:04:05.
+      zh_Hans: 日程开始时间，格式：2006-01-02 15:04:05。
+    llm_description: 日程开始时间，格式：2006-01-02 15:04:05。
+    form: llm
+
+  - name: end_time
+    type: string
+    required: false
+    label:
+      en_US: End Time
+      zh_Hans: 结束时间
+    human_description:
+      en_US: |
+        The end time of the event, format: 2006-01-02 15:04:05.
+      zh_Hans: 日程结束时间，格式：2006-01-02 15:04:05。
+    llm_description: 日程结束时间，格式：2006-01-02 15:04:05。
+    form: llm
+
+  - name: auto_record
+    type: boolean
+    required: false
+    label:
+      en_US: Auto Record
+      zh_Hans: 自动录制
+    human_description:
+      en_US: |
+        Whether to enable automatic recording, true: enabled, automatically record when the meeting starts; false: not enabled.
+      zh_Hans: 是否开启自动录制，true：开启，会议开始后自动录制；false：不开启。
+    llm_description: 是否开启自动录制，true：开启，会议开始后自动录制；false：不开启。
+    form: form

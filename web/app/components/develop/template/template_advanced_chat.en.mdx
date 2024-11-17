@@ -47,7 +47,9 @@ Chat applications support session persistence, allowing previous chat history to
       </Property>
       <Property name='inputs' type='object' key='inputs'>
           Allows the entry of various variable values defined by the App.
-          The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable. Default `{}`
+          The `inputs` parameter contains multiple key/value pairs, with each key corresponding to a specific variable and each value being the specific value for that variable.
+          If the variable is of file type, specify an object that has the keys described in `files` below.
+          Default `{}`
       </Property>
       <Property name='response_mode' type='string' key='response_mode'>
         The mode of response return, supporting:
@@ -63,8 +65,12 @@ Chat applications support session persistence, allowing previous chat history to
       Conversation ID, to continue the conversation based on previous chat records, it is necessary to pass the previous message's conversation_id.
       </Property>
       <Property name='files' type='array[object]' key='files'>
-          File list, suitable for inputting files (images) combined with text understanding and answering questions, available only when the model supports Vision capability.
-          - `type` (string) Supported type: `image` (currently only supports image type)
+          File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports Vision capability.
+          - `type` (string) Supported type: 
+            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
+            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
+            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
+            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
           - `transfer_method` (string) Transfer method, `remote_url` for image URL / `local_file` for file upload
           - `url` (string) Image URL (when the transfer method is `remote_url`)
           - `upload_file_id` (string) Uploaded file ID, which must be obtained by uploading through the File Upload API in advance (when the transfer method is `local_file`)
@@ -303,8 +309,8 @@ Chat applications support session persistence, allowing previous chat history to
 />
 <Row>
   <Col>
-  Upload a file (currently only images are supported) for use when sending messages, enabling multimodal understanding of images and text.
-  Supports png, jpg, jpeg, webp, gif formats.
+  Upload a file for use when sending messages, enabling multimodal understanding of images and text.
+  Supports any formats that are supported by your application.
   Uploaded files are for use by the current end-user only.
 
   ### Request Body
@@ -650,6 +656,11 @@ Chat applications support session persistence, allowing previous chat history to
       <Property name='pinned' type='bool' key='pinned'>
         Return only pinned conversations as `true`, only non-pinned as `false`
       </Property>
+      <Property name='sort_by' type='string' key='sort_by'>
+        Sorting Field (Optional), Default: -updated_at (sorted in descending order by update time)
+        - Available Values: created_at, -created_at, updated_at, -updated_at
+        - The symbol before the field represents the order or reverse, "-" represents reverse order.
+      </Property>
     </Properties>
 
     ### Response
@@ -763,6 +774,10 @@ Chat applications support session persistence, allowing previous chat history to
 <Row>
   <Col>
     ### Request Body
+    Rename the session, the session name is used for display on clients that support multiple sessions.
+
+    ### Path
+    - `conversation_id` (string) Conversation ID
 
     <Properties>
       <Property name='name' type='string' key='name'>
@@ -785,10 +800,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \
+    curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
     --header 'Content-Type: application/json' \
     --header 'Authorization: Bearer {api_key}' \
     --data-raw '{
@@ -972,7 +987,10 @@ Chat applications support session persistence, allowing previous chat history to
         - `number_limits` (int) Image number limit, default is 3
         - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
     - `system_parameters` (object) System parameters
-      - `image_file_size_limit` (string) Image file upload size limit (MB)
+      - `file_size_limit` (int) Document upload size limit (MB)
+      - `image_file_size_limit` (int) Image file upload size limit (MB)
+      - `audio_file_size_limit` (int) Audio file upload size limit (MB)
+      - `video_file_size_limit` (int) Video file upload size limit (MB)
 
   </Col>
   <Col sticky>
@@ -1024,7 +1042,10 @@ Chat applications support session persistence, allowing previous chat history to
           }
       },
       "system_parameters": {
-          "image_file_size_limit": "10"
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
       }
     }
     ```
