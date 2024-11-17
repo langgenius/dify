@@ -114,4 +114,4 @@ model_credential_schema:
         - value: 'false'
           label:
             en_US: 'No'
-            zh_Hans: 否 
+            zh_Hans: 否
