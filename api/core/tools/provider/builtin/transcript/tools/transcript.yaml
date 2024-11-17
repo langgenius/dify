@@ -28,9 +28,9 @@ parameters:
       en_US: Language Code
       zh_Hans: 语言
     human_description:
-      en_US: Language code (e.g. 'en', 'zh') for the transcript. 
+      en_US: Language code (e.g. 'en', 'zh') for the transcript.
       zh_Hans: 字幕语言代码（如'en'、'zh'）。留空则自动选择。
-    llm_description: Used to set the language for transcripts. 
+    llm_description: Used to set the language for transcripts.
     form: form
   - name: format
     type: select
@@ -99,4 +99,3 @@ parameters:
       zh_Hans: 用于访问年龄限制视频的 cookies.txt 文件路径
     llm_description: Path to a cookies.txt file containing YouTube cookies, needed for accessing age-restricted videos
     form: form
-    
