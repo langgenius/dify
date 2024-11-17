@@ -422,11 +422,11 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
         """
         return {
             "type": "function",
-            "function":{
+            "function": {
                 "name": tool.name,
                 "description": tool.description,
                 "parameters": tool.parameters,
-            }
+            },
         }
 
     def _convert_prompt_message_to_dict(self, message: PromptMessage) -> dict:
@@ -481,7 +481,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 num_tokens += self._get_num_tokens_by_gpt2(str(value))
 
         return num_tokens
-    
+
     def _extract_response_tool_call(self, response_tool_call: dict) -> AssistantPromptMessage.ToolCall:
         """
         Extract response tool call
@@ -492,7 +492,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
             arguments = response_tool_call.get("function").get("arguments")
             if isinstance(arguments, dict):
                 arguments = json.dumps(arguments)
-            
+
             function = AssistantPromptMessage.ToolCall.ToolCallFunction(
                 name=response_tool_call.get("function").get("name"),
                 arguments=arguments,
