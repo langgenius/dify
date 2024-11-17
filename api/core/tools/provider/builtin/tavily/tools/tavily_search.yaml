@@ -28,8 +28,8 @@ parameters:
       en_US: Search Depth
       zh_Hans: 搜索深度
     human_description:
-      en_US: The depth of the search. It can be "basic" or "advanced". Default is "basic".
-      zh_Hans: 搜索的深度。可以是“basic”或“advanced”。默认是“basic”。
+      en_US: The depth of the search.
+      zh_Hans: 搜索的深度。
     form: form
     options:
       - value: basic
@@ -48,8 +48,8 @@ parameters:
       en_US: Topic
       zh_Hans: 主题
     human_description:
-      en_US: The category of the search. Currently only "general" and "news" are supported. Default is "general".
-      zh_Hans: 搜索的类别。目前仅支持“general”和“news”。默认是“general”。
+      en_US: The category of the search.
+      zh_Hans: 搜索的类别。
     form: form
     options:
       - value: general
@@ -68,8 +68,8 @@ parameters:
       en_US: Days
       zh_Hans: 天数
     human_description:
-      en_US: The number of days back from the current date to include in the search results (only applicable when "topic" is "news"). Default is 3.
-      zh_Hans: 从当前日期起向前追溯的天数，以包含在搜索结果中（仅当“topic”为“news”时适用）。默认是3。
+      en_US: The number of days back from the current date to include in the search results (only applicable when "topic" is "news").
+      zh_Hans: 从当前日期起向前追溯的天数，以包含在搜索结果中（仅当“topic”为“news”时适用）。
     form: form
     min: 1
     default: 3
@@ -80,8 +80,8 @@ parameters:
       en_US: Max Results
       zh_Hans: 最大结果数
     human_description:
-      en_US: The maximum number of search results to return. Default is 5.
-      zh_Hans: 要返回的最大搜索结果数。默认是5。
+      en_US: The maximum number of search results to return.
+      zh_Hans: 要返回的最大搜索结果数。
     form: form
     min: 1
     max: 20
@@ -93,8 +93,8 @@ parameters:
       en_US: Include Images
       zh_Hans: 包含图片
     human_description:
-      en_US: Include a list of query-related images in the response. Default is False.
-      zh_Hans: 在响应中包含与查询相关的图片列表。默认是False。
+      en_US: Include a list of query-related images in the response.
+      zh_Hans: 在响应中包含与查询相关的图片列表。
     form: form
     default: false
   - name: include_image_descriptions
@@ -104,8 +104,8 @@ parameters:
       en_US: Include Image Descriptions
       zh_Hans: 包含图片描述
     human_description:
-      en_US: When include_images is True, adds descriptive text for each image. Default is False.
-      zh_Hans: 当 include_images 为 True 时，为每个图像添加描述文本。默认是False。
+      en_US: When include_images is True, adds descriptive text for each image.
+      zh_Hans: 当 include_images 为 True 时，为每个图像添加描述文本。
     form: form
     default: false
   - name: include_answer
@@ -115,8 +115,8 @@ parameters:
       en_US: Include Answer
       zh_Hans: 包含答案
     human_description:
-      en_US: Include a short answer to the original query in the response. Default is False.
-      zh_Hans: 在响应中包含对原始查询的简短回答。默认是False。
+      en_US: Include a short answer to the original query in the response.
+      zh_Hans: 在响应中包含对原始查询的简短回答。
     form: form
     default: false
   - name: include_raw_content
@@ -126,8 +126,8 @@ parameters:
       en_US: Include Raw Content
       zh_Hans: 包含原始内容
     human_description:
-      en_US: Include the cleaned and parsed HTML content of each search result. Default is False.
-      zh_Hans: 包含每个搜索结果的已清理和解析的HTML内容。默认是False。
+      en_US: Include the cleaned and parsed HTML content of each search result.
+      zh_Hans: 包含每个搜索结果的已清理和解析的HTML内容。
     form: form
     default: false
   - name: include_domains
@@ -137,8 +137,8 @@ parameters:
       en_US: Include Domains
       zh_Hans: 包含域
     human_description:
-      en_US: A comma-separated list of domains to specifically include in the search results. Default is all domains.
-      zh_Hans: 要在搜索结果中特别包含的域的逗号分隔列表。默认是所有域。
+      en_US: A comma-separated list of domains to specifically include in the search results.
+      zh_Hans: 要在搜索结果中特别包含的域的逗号分隔列表。
     form: form
   - name: exclude_domains
     type: string
@@ -147,6 +147,6 @@ parameters:
       en_US: Exclude Domains
       zh_Hans: 排除域
     human_description:
-      en_US: A comma-separated list of domains to specifically exclude from the search results. Default is none.
-      zh_Hans: 要从搜索结果中特别排除的域的逗号分隔列表。默认是没有。
+      en_US: A comma-separated list of domains to specifically exclude from the search results.
+      zh_Hans: 要从搜索结果中特别排除的域的逗号分隔列表。
     form: form

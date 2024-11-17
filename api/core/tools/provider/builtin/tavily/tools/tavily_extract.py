@@ -1,4 +1,5 @@
-from typing import Any, List
+from typing import Any
+
 import requests
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -56,17 +57,17 @@ class TavilyExtract:
         processed_params = {}
 
         # Process 'urls'
-        if 'urls' in params:
-            urls = params['urls']
+        if "urls" in params:
+            urls = params["urls"]
             if isinstance(urls, str):
-                processed_params['urls'] = [url.strip() for url in urls.replace(',', ' ').split()]
+                processed_params["urls"] = [url.strip() for url in urls.replace(",", " ").split()]
             elif isinstance(urls, list):
-                processed_params['urls'] = urls
+                processed_params["urls"] = urls
         else:
             raise ValueError("The 'urls' parameter is required.")
 
         # Only include 'api_key'
-        processed_params['api_key'] = params.get('api_key', self.api_key)
+        processed_params["api_key"] = params.get("api_key", self.api_key)
 
         return processed_params
 
@@ -76,7 +77,7 @@ class TavilyExtractTool(BuiltinTool):
     A tool for extracting content from web pages using Tavily Extract.
     """
 
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
         """
         Invokes the Tavily Extract tool with the given user ID and tool parameters.
 
@@ -90,7 +91,9 @@ class TavilyExtractTool(BuiltinTool):
         urls = tool_parameters.get("urls", "")
         api_key = self.runtime.credentials.get("tavily_api_key")
         if not api_key:
-            return self.create_text_message("Tavily API key is missing. Please set the 'tavily_api_key' in credentials.")
+            return self.create_text_message(
+                "Tavily API key is missing. Please set the 'tavily_api_key' in credentials."
+            )
         if not urls:
             return self.create_text_message("Please input at least one URL to extract.")
 
@@ -100,7 +103,7 @@ class TavilyExtractTool(BuiltinTool):
         except requests.HTTPError as e:
             return self.create_text_message(f"Error occurred while extracting content: {str(e)}")
 
-        if not raw_results.get('results'):
+        if not raw_results.get("results"):
             return self.create_text_message("No content could be extracted from the provided URLs.")
         else:
             # Always return JSON message with all data
@@ -124,19 +127,19 @@ class TavilyExtractTool(BuiltinTool):
         """
         output_lines = []
 
-        for idx, result in enumerate(raw_results.get('results', []), 1):
-            url = result.get('url', '')
-            raw_content = result.get('raw_content', '')
+        for idx, result in enumerate(raw_results.get("results", []), 1):
+            url = result.get("url", "")
+            raw_content = result.get("raw_content", "")
 
             output_lines.append(f"## Extracted Content {idx}: {url}\n")
             output_lines.append(f"**Raw Content:**\n{raw_content}\n")
             output_lines.append("---\n")
 
-        if 'failed_results' in raw_results and raw_results['failed_results']:
+        if raw_results.get("failed_results"):
             output_lines.append("## Failed URLs:\n")
-            for failed in raw_results['failed_results']:
-                url = failed.get('url', '')
-                error = failed.get('error', 'Unknown error')
+            for failed in raw_results["failed_results"]:
+                url = failed.get("url", "")
+                error = failed.get("error", "Unknown error")
                 output_lines.append(f"- {url}: {error}\n")
 
-        return '\n'.join(output_lines)
+        return "\n".join(output_lines)

@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any
 
 import requests
 
@@ -61,7 +61,7 @@ class TavilySearch:
             if key in ["include_domains", "exclude_domains"]:
                 if isinstance(value, str):
                     # Split the string by commas or spaces and strip whitespace
-                    processed_params[key] = [domain.strip() for domain in value.replace(',', ' ').split()]
+                    processed_params[key] = [domain.strip() for domain in value.replace(",", " ").split()]
             elif key in ["include_images", "include_image_descriptions", "include_answer", "include_raw_content"]:
                 # Ensure boolean type
                 if isinstance(value, str):
@@ -96,7 +96,7 @@ class TavilySearchTool(BuiltinTool):
     A tool for searching Tavily using a given query.
     """
 
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | List[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
         """
         Invokes the Tavily search tool with the given user ID and tool parameters.
 
@@ -110,7 +110,9 @@ class TavilySearchTool(BuiltinTool):
         query = tool_parameters.get("query", "")
         api_key = self.runtime.credentials.get("tavily_api_key")
         if not api_key:
-            return self.create_text_message("Tavily API key is missing. Please set the 'tavily_api_key' in credentials.")
+            return self.create_text_message(
+                "Tavily API key is missing. Please set the 'tavily_api_key' in credentials."
+            )
         if not query:
             return self.create_text_message("Please input a query.")
 
@@ -120,7 +122,7 @@ class TavilySearchTool(BuiltinTool):
         except requests.HTTPError as e:
             return self.create_text_message(f"Error occurred while searching: {str(e)}")
 
-        if not raw_results.get('results'):
+        if not raw_results.get("results"):
             return self.create_text_message(f"No results found for '{query}' in Tavily.")
         else:
             # Always return JSON message with all data
@@ -151,24 +153,21 @@ class TavilySearchTool(BuiltinTool):
 
         # Include images if requested
         if tool_parameters.get("include_images", False) and raw_results.get("images"):
-            output_lines.append(f"**Images:**\n")
-            for image in raw_results['images']:
-                if (
-                    tool_parameters.get("include_image_descriptions", False)
-                    and 'description' in image
-                ):
+            output_lines.append("**Images:**\n")
+            for image in raw_results["images"]:
+                if tool_parameters.get("include_image_descriptions", False) and "description" in image:
                     output_lines.append(f"![{image['description']}]({image['url']})\n")
                 else:
                     output_lines.append(f"![]({image['url']})\n")
 
         # Process each result
-        if 'results' in raw_results:
-            for idx, result in enumerate(raw_results['results'], 1):
-                title = result.get('title', 'No Title')
-                url = result.get('url', '')
-                content = result.get('content', '')
-                published_date = result.get('published_date', '')
-                score = result.get('score', '')
+        if "results" in raw_results:
+            for idx, result in enumerate(raw_results["results"], 1):
+                title = result.get("title", "No Title")
+                url = result.get("url", "")
+                content = result.get("content", "")
+                published_date = result.get("published_date", "")
+                score = result.get("score", "")
 
                 output_lines.append(f"### Result {idx}: [{title}]({url})\n")
 
@@ -187,13 +186,10 @@ class TavilySearchTool(BuiltinTool):
                     output_lines.append(f"**Content:**\n{content}\n")
 
                 # Include raw content if requested
-                if (
-                    tool_parameters.get("include_raw_content", False)
-                    and result.get('raw_content')
-                ):
+                if tool_parameters.get("include_raw_content", False) and result.get("raw_content"):
                     output_lines.append(f"**Raw Content:**\n{result['raw_content']}\n")
 
                 # Add a separator
                 output_lines.append("---\n")
 
-        return '\n'.join(output_lines)
+        return "\n".join(output_lines)
