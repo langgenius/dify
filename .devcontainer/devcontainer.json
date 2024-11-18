@@ -2,7 +2,7 @@
 // README at: https://github.com/devcontainers/templates/tree/main/src/anaconda
 {
 	"name": "Python 3.10",
-	"build": { 
+	"build": {
 		"context": "..",
 		"dockerfile": "Dockerfile"
 	},
@@ -33,8 +33,10 @@
 		}
 	},
 	"postStartCommand": "./.devcontainer/post_start_command.sh",
-	"postCreateCommand": "./.devcontainer/post_create_command.sh"
-
+	"postCreateCommand": "./.devcontainer/post_create_command.sh",
+	"runArgs": [
+		"--platform=linux/amd64"
+	]
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	// "features": {},
 
