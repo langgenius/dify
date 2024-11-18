@@ -195,7 +195,7 @@ const DetailHeader = ({
                   uppercase={false}
                   text={
                     <>
-                      <div>{version}</div>
+                      <div>{isFromGitHub ? meta!.version : version}</div>
                       {isFromMarketplace && <RiArrowLeftRightLine className='ml-1 w-3 h-3 text-text-tertiary' />}
                     </>
                   }
