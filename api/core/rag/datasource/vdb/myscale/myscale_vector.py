@@ -142,7 +142,7 @@ class MyScaleVector(BaseVector):
                 for r in self._client.query(sql).named_results()
             ]
         except Exception as e:
-            logging.error(f"\033[91m\033[1m{type(e)}\033[0m \033[95m{str(e)}\033[0m")
+            logging.exception(f"\033[91m\033[1m{type(e)}\033[0m \033[95m{str(e)}\033[0m")  # noqa:TRY401
             return []
 
     def delete(self) -> None:

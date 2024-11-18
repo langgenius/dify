@@ -69,7 +69,7 @@ class BaseNode(Generic[GenericNodeData]):
         try:
             result = self._run()
         except Exception as e:
-            logger.error(f"Node {self.node_id} failed to run: {e}")
+            logger.exception(f"Node {self.node_id} failed to run")
             result = NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 error=str(e),

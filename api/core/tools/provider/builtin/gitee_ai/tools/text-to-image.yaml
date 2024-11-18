@@ -1,0 +1,72 @@
+identity:
+  name: text to image
+  author: gitee_ai
+  label:
+    en_US: text to image
+  icon: icon.svg
+description:
+  human:
+    en_US: generate images using a variety of popular models
+  llm: This tool is used to generate image from text.
+parameters:
+  - name: model
+    type: select
+    required: true
+    options:
+      - value: flux-1-schnell
+        label:
+          en_US: flux-1-schnell
+      - value: Kolors
+        label:
+          en_US: Kolors
+      - value: stable-diffusion-3-medium
+        label:
+          en_US: stable-diffusion-3-medium
+      - value: stable-diffusion-xl-base-1.0
+        label:
+          en_US: stable-diffusion-xl-base-1.0
+      - value: stable-diffusion-v1-4
+        label:
+          en_US: stable-diffusion-v1-4
+    default: Kolors
+    label:
+      en_US: Choose Image Model
+      zh_Hans: 选择生成图片的模型
+    form: form
+  - name: inputs
+    type: string
+    required: true
+    label:
+      en_US: Input Text
+      zh_Hans: 输入文本
+    human_description:
+      en_US: The text input used to generate the image.
+      zh_Hans: 用于生成图片的输入文本。
+    llm_description: This text input will be used to generate image.
+    form: llm
+  - name: width
+    type: number
+    required: true
+    default: 720
+    min: 1
+    max: 1024
+    label:
+      en_US: Image Width
+      zh_Hans: 图片宽度
+    human_description:
+      en_US: The width of the generated image.
+      zh_Hans: 生成图片的宽度。
+    form: form
+  - name: height
+    type: number
+    required: true
+    default: 720
+    min: 1
+    max: 1024
+    label:
+      en_US: Image Height
+      zh_Hans: 图片高度
+    human_description:
+      en_US: The height of the generated image.
+      zh_Hans: 生成图片的高度。
+    form: form
