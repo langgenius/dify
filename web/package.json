@@ -42,6 +42,8 @@
     "@svgdotjs/svg.js": "^3.2.4",
     "@tailwindcss/line-clamp": "^0.4.4",
     "@tailwindcss/typography": "^0.5.9",
+    "@tanstack/react-query": "^5.60.5",
+    "@tanstack/react-query-devtools": "^5.60.5",
     "ahooks": "^3.7.5",
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.3.2",
