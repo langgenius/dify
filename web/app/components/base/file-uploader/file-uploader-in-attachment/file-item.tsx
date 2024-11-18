@@ -1,6 +1,5 @@
 import {
   memo,
-  useMemo,
 } from 'react'
 import {
   RiDeleteBinLine,
@@ -35,17 +34,9 @@ const FileInAttachmentItem = ({
   onRemove,
   onReUpload,
 }: FileInAttachmentItemProps) => {
-  const { id, name, type, progress, supportFileType, base64Url, url } = file
-  const ext = getFileExtension(name, type)
+  const { id, name, type, progress, supportFileType, base64Url, url, isRemote } = file
+  const ext = getFileExtension(name, type, isRemote)
   const isImageFile = supportFileType === SupportUploadFileTypes.image
-  const nameArr = useMemo(() => {
-    const nameMatch = name.match(/(.+)\.([^.]+)$/)
-
-    if (nameMatch)
-      return [nameMatch[1], nameMatch[2]]
-
-    return [name, '']
-  }, [name])
 
   return (
     <div className={cn(
@@ -75,12 +66,7 @@ const FileInAttachmentItem = ({
           className='flex items-center mb-0.5 system-xs-medium text-text-secondary truncate'
           title={file.name}
         >
-          <div className='truncate'>{nameArr[0]}</div>
-          {
-            nameArr[1] && (
-              <span>.{nameArr[1]}</span>
-            )
-          }
+          <div className='truncate'>{name}</div>
         </div>
         <div className='flex items-center system-2xs-medium-uppercase text-text-tertiary'>
           {
@@ -93,7 +79,11 @@ const FileInAttachmentItem = ({
               <span className='mx-1 system-2xs-medium'>•</span>
             )
           }
-          <span>{formatFileSize(file.size || 0)}</span>
+          {
+            !!file.size && (
+              <span>{formatFileSize(file.size)}</span>
+            )
+          }
         </div>
       </div>
       <div className='shrink-0 flex items-center'>

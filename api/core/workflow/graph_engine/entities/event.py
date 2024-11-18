@@ -59,6 +59,7 @@ class BaseNodeEvent(GraphEngineEvent):
 
 class NodeRunStartedEvent(BaseNodeEvent):
     predecessor_node_id: Optional[str] = None
+    parallel_mode_run_id: Optional[str] = None
     """predecessor node id"""
 
 
@@ -78,6 +79,10 @@ class NodeRunSucceededEvent(BaseNodeEvent):
 
 
 class NodeRunFailedEvent(BaseNodeEvent):
+    error: str = Field(..., description="error")
+
+
+class NodeInIterationFailedEvent(BaseNodeEvent):
     error: str = Field(..., description="error")
 
 
@@ -129,6 +134,8 @@ class BaseIterationEvent(GraphEngineEvent):
     """parent parallel id if node is in parallel"""
     parent_parallel_start_node_id: Optional[str] = None
     """parent parallel start node id if node is in parallel"""
+    parallel_mode_run_id: Optional[str] = None
+    """iteratoin run in parallel mode run id"""
 
 
 class IterationRunStartedEvent(BaseIterationEvent):
@@ -141,6 +148,7 @@ class IterationRunStartedEvent(BaseIterationEvent):
 class IterationRunNextEvent(BaseIterationEvent):
     index: int = Field(..., description="index")
     pre_iteration_output: Optional[Any] = Field(None, description="pre iteration output")
+    duration: Optional[float] = Field(None, description="duration")
 
 
 class IterationRunSucceededEvent(BaseIterationEvent):
@@ -149,6 +157,7 @@ class IterationRunSucceededEvent(BaseIterationEvent):
     outputs: Optional[dict[str, Any]] = None
     metadata: Optional[dict[str, Any]] = None
     steps: int = 0
+    iteration_duration_map: Optional[dict[str, float]] = None
 
 
 class IterationRunFailedEvent(BaseIterationEvent):

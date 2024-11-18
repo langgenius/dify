@@ -1,8 +1,7 @@
 from collections.abc import Mapping
 from typing import Any
 
-from core.file.models import FileExtraConfig
-from models import FileUploadConfig
+from core.file import FileUploadConfig
 
 
 class FileUploadConfigManager:
@@ -30,15 +29,14 @@ class FileUploadConfigManager:
                 if is_vision:
                     data["image_config"]["detail"] = file_upload_dict.get("image", {}).get("detail", "low")
 
-                return FileExtraConfig.model_validate(data)
+                return FileUploadConfig.model_validate(data)
 
     @classmethod
-    def validate_and_set_defaults(cls, config: dict, is_vision: bool = True) -> tuple[dict, list[str]]:
+    def validate_and_set_defaults(cls, config: dict) -> tuple[dict, list[str]]:
         """
         Validate and set defaults for file upload feature
 
         :param config: app model config args
-        :param is_vision: if True, the feature is vision feature
         """
         if not config.get("file_upload"):
             config["file_upload"] = {}

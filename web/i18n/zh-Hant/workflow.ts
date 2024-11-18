@@ -407,6 +407,7 @@ const translation = {
       },
       type: '類型',
       binaryFileVariable: '二進位檔變數',
+      extractListPlaceholder: '輸入清單項索引，鍵入 『/』 插入變數',
     },
     code: {
       inputVars: '輸入變量',
@@ -557,6 +558,23 @@ const translation = {
       iteration_one: '{{count}}個迭代',
       iteration_other: '{{count}}個迭代',
       currentIteration: '當前迭代',
+      ErrorMethod: {
+        operationTerminated: '終止',
+        removeAbnormalOutput: 'remove-abnormal-output',
+        continueOnError: '出錯時繼續',
+      },
+      comma: ',',
+      parallelMode: '並行模式',
+      parallelModeEnableTitle: 'Parallel Mode 已啟用',
+      MaxParallelismTitle: '最大並行度',
+      parallelModeUpper: '並行模式',
+      parallelPanelDesc: '在並行模式下，反覆運算中的任務支援並行執行。',
+      error_one: '{{count}}錯誤',
+      errorResponseMethod: '錯誤回應方法',
+      parallelModeEnableDesc: '在並行模式下，反覆運算中的任務支援並行執行。您可以在右側的 properties 面板中進行配置。',
+      answerNodeWarningDesc: '並行模式警告：反覆運算中的應答節點、對話變數賦值和持久讀/寫操作可能會導致異常。',
+      error_other: '{{count}}錯誤',
+      MaxParallelismDesc: '最大並行度用於控制在單個反覆運算中同時執行的任務數。',
     },
     note: {
       editor: {
@@ -601,6 +619,7 @@ const translation = {
       selectVariableKeyPlaceholder: 'Select sub variable key （選擇子變數鍵）',
       filterConditionComparisonOperator: 'Filter Condition Comparison 運算符',
       filterConditionKey: '篩選條件鍵',
+      extractsCondition: '提取第 N 項',
     },
   },
   tracing: {

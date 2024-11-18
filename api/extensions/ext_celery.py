@@ -1,6 +1,8 @@
 from datetime import timedelta
 
+import pytz
 from celery import Celery, Task
+from celery.schedules import crontab
 from flask import Flask
 
 from configs import dify_config
@@ -42,11 +44,20 @@ def init_app(app: Flask) -> Celery:
         result_backend=dify_config.CELERY_RESULT_BACKEND,
         broker_transport_options=broker_transport_options,
         broker_connection_retry_on_startup=True,
+        worker_log_format=dify_config.LOG_FORMAT,
+        worker_task_log_format=dify_config.LOG_FORMAT,
+        worker_hijack_root_logger=False,
+        timezone=pytz.timezone(dify_config.LOG_TZ),
     )
 
     if dify_config.BROKER_USE_SSL:
         celery_app.conf.update(
             broker_use_ssl=ssl_options,  # Add the SSL options to the broker configuration
+        )
+
+    if dify_config.LOG_FILE:
+        celery_app.conf.update(
+            worker_logfile=dify_config.LOG_FILE,
         )
 
     celery_app.set_default()
@@ -55,6 +66,9 @@ def init_app(app: Flask) -> Celery:
     imports = [
         "schedule.clean_embedding_cache_task",
         "schedule.clean_unused_datasets_task",
+        "schedule.create_tidb_serverless_task",
+        "schedule.update_tidb_serverless_status_task",
+        "schedule.clean_messages",
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
     beat_schedule = {
@@ -64,6 +78,18 @@ def init_app(app: Flask) -> Celery:
         },
         "clean_unused_datasets_task": {
             "task": "schedule.clean_unused_datasets_task.clean_unused_datasets_task",
+            "schedule": timedelta(days=day),
+        },
+        "create_tidb_serverless_task": {
+            "task": "schedule.create_tidb_serverless_task.create_tidb_serverless_task",
+            "schedule": crontab(minute="0", hour="*"),
+        },
+        "update_tidb_serverless_status_task": {
+            "task": "schedule.update_tidb_serverless_status_task.update_tidb_serverless_status_task",
+            "schedule": crontab(minute="30", hour="*"),
+        },
+        "clean_messages": {
+            "task": "schedule.clean_messages.clean_messages",
             "schedule": timedelta(days=day),
         },
     }

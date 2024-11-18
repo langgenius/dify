@@ -13,6 +13,7 @@ from core.variables import (
     StringVariable,
 )
 from core.variables.exc import VariableError
+from core.variables.segments import ArrayAnySegment
 from factories import variable_factory
 
 
@@ -156,3 +157,9 @@ def test_variable_cannot_large_than_200_kb():
                 "value": "a" * 1024 * 201,
             }
         )
+
+
+def test_array_none_variable():
+    var = variable_factory.build_segment([None, None, None, None])
+    assert isinstance(var, ArrayAnySegment)
+    assert var.value == [None, None, None, None]

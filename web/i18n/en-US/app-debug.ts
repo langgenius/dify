@@ -224,6 +224,8 @@ const translation = {
     description: 'The Code Generator uses configured models to generate high-quality code based on your instructions. Please provide clear and detailed instructions.',
     instruction: 'Instructions',
     instructionPlaceholder: 'Enter detailed description of the code you want to generate.',
+    noDataLine1: 'Describe your use case on the left,',
+    noDataLine2: 'the code preview will show here.',
     generate: 'Generate',
     generatedCodeTitle: 'Generated Code',
     loading: 'Generating code...',
@@ -386,7 +388,7 @@ const translation = {
     'localUpload': 'Local Upload',
     'both': 'Both',
     'maxNumberOfUploads': 'Max number of uploads',
-    'maxNumberTip': 'Max {{size}} each',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'errorMsg': {
       labelNameRequired: 'Label name is required',
       varNameCanBeRepeat: 'Variable name can not be repeated',

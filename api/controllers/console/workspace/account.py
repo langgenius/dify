@@ -8,14 +8,13 @@ from flask_restful import Resource, fields, marshal_with, reqparse
 from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
-from controllers.console.setup import setup_required
 from controllers.console.workspace.error import (
     AccountAlreadyInitedError,
     CurrentPasswordIncorrectError,
     InvalidInvitationCodeError,
     RepeatPasswordNotMatchError,
 )
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.helper import TimestampField, timezone
@@ -80,6 +79,7 @@ class AccountProfileApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
+    @enterprise_license_required
     def get(self):
         return current_user
 

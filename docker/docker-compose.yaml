@@ -1,8 +1,13 @@
 x-shared-env: &shared-api-worker-env
+  WORKFLOW_FILE_UPLOAD_LIMIT: ${WORKFLOW_FILE_UPLOAD_LIMIT:-10}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   LOG_FILE: ${LOG_FILE:-}
   LOG_FILE_MAX_SIZE: ${LOG_FILE_MAX_SIZE:-20}
   LOG_FILE_BACKUP_COUNT: ${LOG_FILE_BACKUP_COUNT:-5}
+  # Log dateformat
+  LOG_DATEFORMAT: ${LOG_DATEFORMAT:-%Y-%m-%d %H:%M:%S}
+  # Log Timezone
+  LOG_TZ: ${LOG_TZ:-UTC}
   DEBUG: ${DEBUG:-false}
   FLASK_DEBUG: ${FLASK_DEBUG:-false}
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
@@ -43,14 +48,14 @@ x-shared-env: &shared-api-worker-env
   REDIS_USERNAME: ${REDIS_USERNAME:-}
   REDIS_PASSWORD: ${REDIS_PASSWORD:-difyai123456}
   REDIS_USE_SSL: ${REDIS_USE_SSL:-false}
-  REDIS_DB: 0
+  REDIS_DB: ${REDIS_DB:-0}
   REDIS_USE_SENTINEL: ${REDIS_USE_SENTINEL:-false}
   REDIS_SENTINELS: ${REDIS_SENTINELS:-}
   REDIS_SENTINEL_SERVICE_NAME: ${REDIS_SENTINEL_SERVICE_NAME:-}
   REDIS_SENTINEL_USERNAME: ${REDIS_SENTINEL_USERNAME:-}
   REDIS_SENTINEL_PASSWORD: ${REDIS_SENTINEL_PASSWORD:-}
-  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
   REDIS_SENTINEL_SOCKET_TIMEOUT: ${REDIS_SENTINEL_SOCKET_TIMEOUT:-0.1}
+  ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
   CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://:difyai123456@redis:6379/1}
   BROKER_USE_SSL: ${BROKER_USE_SSL:-false}
   CELERY_USE_SENTINEL: ${CELERY_USE_SENTINEL:-false}
@@ -59,7 +64,7 @@ x-shared-env: &shared-api-worker-env
   WEB_API_CORS_ALLOW_ORIGINS: ${WEB_API_CORS_ALLOW_ORIGINS:-*}
   CONSOLE_CORS_ALLOW_ORIGINS: ${CONSOLE_CORS_ALLOW_ORIGINS:-*}
   STORAGE_TYPE: ${STORAGE_TYPE:-local}
-  STORAGE_LOCAL_PATH: storage
+  STORAGE_LOCAL_PATH: ${STORAGE_LOCAL_PATH:-storage}
   S3_USE_AWS_MANAGED_IAM: ${S3_USE_AWS_MANAGED_IAM:-false}
   S3_ENDPOINT: ${S3_ENDPOINT:-}
   S3_BUCKET_NAME: ${S3_BUCKET_NAME:-}
@@ -110,6 +115,11 @@ x-shared-env: &shared-api-worker-env
   QDRANT_CLIENT_TIMEOUT: ${QDRANT_CLIENT_TIMEOUT:-20}
   QDRANT_GRPC_ENABLED: ${QDRANT_GRPC_ENABLED:-false}
   QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
+  COUCHBASE_CONNECTION_STRING: ${COUCHBASE_CONNECTION_STRING:-'couchbase-server'}
+  COUCHBASE_USER: ${COUCHBASE_USER:-Administrator}
+  COUCHBASE_PASSWORD: ${COUCHBASE_PASSWORD:-password}
+  COUCHBASE_BUCKET_NAME: ${COUCHBASE_BUCKET_NAME:-Embeddings}
+  COUCHBASE_SCOPE_NAME: ${COUCHBASE_SCOPE_NAME:-_default}
   MILVUS_URI: ${MILVUS_URI:-http://127.0.0.1:19530}
   MILVUS_TOKEN: ${MILVUS_TOKEN:-}
   MILVUS_USER: ${MILVUS_USER:-root}
@@ -135,6 +145,18 @@ x-shared-env: &shared-api-worker-env
   TIDB_VECTOR_USER: ${TIDB_VECTOR_USER:-}
   TIDB_VECTOR_PASSWORD: ${TIDB_VECTOR_PASSWORD:-}
   TIDB_VECTOR_DATABASE: ${TIDB_VECTOR_DATABASE:-dify}
+  TIDB_ON_QDRANT_URL: ${TIDB_ON_QDRANT_URL:-http://127.0.0.1}
+  TIDB_ON_QDRANT_API_KEY: ${TIDB_ON_QDRANT_API_KEY:-dify}
+  TIDB_ON_QDRANT_CLIENT_TIMEOUT: ${TIDB_ON_QDRANT_CLIENT_TIMEOUT:-20}
+  TIDB_ON_QDRANT_GRPC_ENABLED: ${TIDB_ON_QDRANT_GRPC_ENABLED:-false}
+  TIDB_ON_QDRANT_GRPC_PORT: ${TIDB_ON_QDRANT_GRPC_PORT:-6334}
+  TIDB_PUBLIC_KEY: ${TIDB_PUBLIC_KEY:-dify}
+  TIDB_PRIVATE_KEY: ${TIDB_PRIVATE_KEY:-dify}
+  TIDB_API_URL: ${TIDB_API_URL:-http://127.0.0.1}
+  TIDB_IAM_API_URL: ${TIDB_IAM_API_URL:-http://127.0.0.1}
+  TIDB_REGION: ${TIDB_REGION:-regions/aws-us-east-1}
+  TIDB_PROJECT_ID: ${TIDB_PROJECT_ID:-dify}
+  TIDB_SPEND_LIMIT: ${TIDB_SPEND_LIMIT:-100}
   ORACLE_HOST: ${ORACLE_HOST:-oracle}
   ORACLE_PORT: ${ORACLE_PORT:-1521}
   ORACLE_USER: ${ORACLE_USER:-dify}
@@ -150,6 +172,9 @@ x-shared-env: &shared-api-worker-env
   ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
   ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
   ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
+  LINDORM_URL: ${LINDORM_URL:-http://lindorm:30070}
+  LINDORM_USERNAME: ${LINDORM_USERNAME:-lindorm}
+  LINDORM_PASSWORD: ${LINDORM_USERNAME:-lindorm }
   KIBANA_PORT: ${KIBANA_PORT:-5601}
   # AnalyticDB configuration
   ANALYTICDB_KEY_ID: ${ANALYTICDB_KEY_ID:-}
@@ -160,6 +185,10 @@ x-shared-env: &shared-api-worker-env
   ANALYTICDB_PASSWORD: ${ANALYTICDB_PASSWORD:-}
   ANALYTICDB_NAMESPACE: ${ANALYTICDB_NAMESPACE:-dify}
   ANALYTICDB_NAMESPACE_PASSWORD: ${ANALYTICDB_NAMESPACE_PASSWORD:-}
+  ANALYTICDB_HOST: ${ANALYTICDB_HOST:-}
+  ANALYTICDB_PORT: ${ANALYTICDB_PORT:-5432}
+  ANALYTICDB_MIN_CONNECTION: ${ANALYTICDB_MIN_CONNECTION:-1}
+  ANALYTICDB_MAX_CONNECTION: ${ANALYTICDB_MAX_CONNECTION:-5}
   OPENSEARCH_HOST: ${OPENSEARCH_HOST:-opensearch}
   OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
   OPENSEARCH_USER: ${OPENSEARCH_USER:-admin}
@@ -190,8 +219,13 @@ x-shared-env: &shared-api-worker-env
   UPLOAD_FILE_BATCH_LIMIT: ${UPLOAD_FILE_BATCH_LIMIT:-5}
   ETL_TYPE: ${ETL_TYPE:-dify}
   UNSTRUCTURED_API_URL: ${UNSTRUCTURED_API_URL:-}
+  PROMPT_GENERATION_MAX_TOKENS: ${PROMPT_GENERATION_MAX_TOKENS:-512}
+  CODE_GENERATION_MAX_TOKENS: ${CODE_GENERATION_MAX_TOKENS:-1024}
   MULTIMODAL_SEND_IMAGE_FORMAT: ${MULTIMODAL_SEND_IMAGE_FORMAT:-base64}
+  MULTIMODAL_SEND_VIDEO_FORMAT: ${MULTIMODAL_SEND_VIDEO_FORMAT:-base64}
   UPLOAD_IMAGE_FILE_SIZE_LIMIT: ${UPLOAD_IMAGE_FILE_SIZE_LIMIT:-10}
+  UPLOAD_VIDEO_FILE_SIZE_LIMIT: ${UPLOAD_VIDEO_FILE_SIZE_LIMIT:-100}
+  UPLOAD_AUDIO_FILE_SIZE_LIMIT: ${UPLOAD_AUDIO_FILE_SIZE_LIMIT:-50}
   SENTRY_DSN: ${API_SENTRY_DSN:-}
   SENTRY_TRACES_SAMPLE_RATE: ${API_SENTRY_TRACES_SAMPLE_RATE:-1.0}
   SENTRY_PROFILES_SAMPLE_RATE: ${API_SENTRY_PROFILES_SAMPLE_RATE:-1.0}
@@ -208,12 +242,15 @@ x-shared-env: &shared-api-worker-env
   SMTP_USE_TLS: ${SMTP_USE_TLS:-true}
   SMTP_OPPORTUNISTIC_TLS: ${SMTP_OPPORTUNISTIC_TLS:-false}
   RESEND_API_KEY: ${RESEND_API_KEY:-your-resend-api-key}
-  RESEND_API_URL: https://api.resend.com
+  RESEND_API_URL: ${RESEND_API_URL:-https://api.resend.com}
   INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: ${INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH:-1000}
   INVITE_EXPIRY_HOURS: ${INVITE_EXPIRY_HOURS:-72}
   RESET_PASSWORD_TOKEN_EXPIRY_MINUTES: ${RESET_PASSWORD_TOKEN_EXPIRY_MINUTES:-5}
   CODE_EXECUTION_ENDPOINT: ${CODE_EXECUTION_ENDPOINT:-http://sandbox:8194}
   CODE_EXECUTION_API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
+  CODE_EXECUTION_CONNECT_TIMEOUT: ${CODE_EXECUTION_CONNECT_TIMEOUT:-10}
+  CODE_EXECUTION_READ_TIMEOUT: ${CODE_EXECUTION_READ_TIMEOUT:-60}
+  CODE_EXECUTION_WRITE_TIMEOUT: ${CODE_EXECUTION_WRITE_TIMEOUT:-10}
   CODE_MAX_NUMBER: ${CODE_MAX_NUMBER:-9223372036854775807}
   CODE_MIN_NUMBER: ${CODE_MIN_NUMBER:--9223372036854775808}
   CODE_MAX_DEPTH: ${CODE_MAX_DEPTH:-5}
@@ -237,11 +274,20 @@ x-shared-env: &shared-api-worker-env
   POSITION_PROVIDER_PINS: ${POSITION_PROVIDER_PINS:-}
   POSITION_PROVIDER_INCLUDES: ${POSITION_PROVIDER_INCLUDES:-}
   POSITION_PROVIDER_EXCLUDES: ${POSITION_PROVIDER_EXCLUDES:-}
+  MAX_VARIABLE_SIZE: ${MAX_VARIABLE_SIZE:-204800}
+  OCEANBASE_VECTOR_HOST: ${OCEANBASE_VECTOR_HOST:-http://oceanbase-vector}
+  OCEANBASE_VECTOR_PORT: ${OCEANBASE_VECTOR_PORT:-2881}
+  OCEANBASE_VECTOR_USER: ${OCEANBASE_VECTOR_USER:-root@test}
+  OCEANBASE_VECTOR_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+  OCEANBASE_VECTOR_DATABASE: ${OCEANBASE_VECTOR_DATABASE:-test}
+  OCEANBASE_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
+  OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
+  CREATE_TIDB_SERVICE_JOB_ENABLED: ${CREATE_TIDB_SERVICE_JOB_ENABLED:-false}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.10.1
+    image: langgenius/dify-api:0.11.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -261,7 +307,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.10.1
+    image: langgenius/dify-api:0.11.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -280,7 +326,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.10.1
+    image: langgenius/dify-web:0.11.2
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -474,6 +520,39 @@ services:
     environment:
       QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
 
+  # The Couchbase vector store.
+  couchbase-server:
+    build: ./couchbase-server
+    profiles:
+      - couchbase
+    restart: always
+    environment:
+      - CLUSTER_NAME=dify_search
+      - COUCHBASE_ADMINISTRATOR_USERNAME=${COUCHBASE_USER:-Administrator}
+      - COUCHBASE_ADMINISTRATOR_PASSWORD=${COUCHBASE_PASSWORD:-password}
+      - COUCHBASE_BUCKET=${COUCHBASE_BUCKET_NAME:-Embeddings}
+      - COUCHBASE_BUCKET_RAMSIZE=512
+      - COUCHBASE_RAM_SIZE=2048
+      - COUCHBASE_EVENTING_RAM_SIZE=512
+      - COUCHBASE_INDEX_RAM_SIZE=512
+      - COUCHBASE_FTS_RAM_SIZE=1024
+    hostname: couchbase-server
+    container_name: couchbase-server
+    working_dir: /opt/couchbase
+    stdin_open: true
+    tty: true
+    entrypoint: [""]
+    command: sh -c "/opt/couchbase/init/init-cbserver.sh"
+    volumes:
+      - ./volumes/couchbase/data:/opt/couchbase/var/lib/couchbase/data
+    healthcheck:
+      # ensure bucket was created before proceeding
+      test: [ "CMD-SHELL", "curl -s -f -u Administrator:password http://localhost:8091/pools/default/buckets | grep -q '\\[{' || exit 1" ]
+      interval: 10s
+      retries: 10
+      start_period: 30s
+      timeout: 10s
+
   # The pgvector vector database.
   pgvector:
     image: pgvector/pgvector:pg16
@@ -530,6 +609,23 @@ services:
       CHROMA_SERVER_AUTHN_CREDENTIALS: ${CHROMA_SERVER_AUTHN_CREDENTIALS:-difyai123456}
       CHROMA_SERVER_AUTHN_PROVIDER: ${CHROMA_SERVER_AUTHN_PROVIDER:-chromadb.auth.token_authn.TokenAuthenticationServerProvider}
       IS_PERSISTENT: ${CHROMA_IS_PERSISTENT:-TRUE}
+
+  # OceanBase vector database
+  oceanbase:
+    image: quay.io/oceanbase/oceanbase-ce:4.3.3.0-100000142024101215
+    profiles:
+      - oceanbase
+    restart: always
+    volumes:
+      - ./volumes/oceanbase/data:/root/ob
+      - ./volumes/oceanbase/conf:/root/.obd/cluster
+      - ./volumes/oceanbase/init.d:/root/boot/init.d
+    environment:
+      OB_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
+      OB_SYS_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      OB_TENANT_PASSWORD: ${OCEANBASE_VECTOR_PASSWORD:-difyai123456}
+      OB_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
+      OB_SERVER_IP: '127.0.0.1'
 
   # Oracle vector database
   oracle:

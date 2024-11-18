@@ -407,6 +407,7 @@ const translation = {
       },
       binaryFileVariable: 'Biến tệp nhị phân',
       type: 'Kiểu',
+      extractListPlaceholder: 'Nhập chỉ mục mục danh sách, nhập \'/\' chèn biến',
     },
     code: {
       inputVars: 'Biến đầu vào',
@@ -557,6 +558,23 @@ const translation = {
       iteration_one: '{{count}} Lặp',
       iteration_other: '{{count}} Lặp',
       currentIteration: 'Lặp hiện tại',
+      ErrorMethod: {
+        operationTerminated: 'Chấm dứt',
+        removeAbnormalOutput: 'loại bỏ-bất thường-đầu ra',
+        continueOnError: 'Tiếp tục lỗi',
+      },
+      comma: ',',
+      error_other: '{{đếm}} Lỗi',
+      error_one: '{{đếm}} Lỗi',
+      MaxParallelismTitle: 'Song song tối đa',
+      parallelPanelDesc: 'Ở chế độ song song, các tác vụ trong quá trình lặp hỗ trợ thực thi song song.',
+      parallelMode: 'Chế độ song song',
+      parallelModeEnableTitle: 'Đã bật Chế độ song song',
+      errorResponseMethod: 'Phương pháp phản hồi lỗi',
+      MaxParallelismDesc: 'Tính song song tối đa được sử dụng để kiểm soát số lượng tác vụ được thực hiện đồng thời trong một lần lặp.',
+      answerNodeWarningDesc: 'Cảnh báo chế độ song song: Các nút trả lời, bài tập biến hội thoại và các thao tác đọc/ghi liên tục trong các lần lặp có thể gây ra ngoại lệ.',
+      parallelModeEnableDesc: 'Trong chế độ song song, các tác vụ trong các lần lặp hỗ trợ thực thi song song. Bạn có thể định cấu hình điều này trong bảng thuộc tính ở bên phải.',
+      parallelModeUpper: 'CHẾ ĐỘ SONG SONG',
     },
     note: {
       editor: {
@@ -601,6 +619,7 @@ const translation = {
       filterCondition: 'Điều kiện lọc',
       asc: 'ASC',
       filterConditionComparisonOperator: 'Toán tử so sánh điều kiện bộ lọc',
+      extractsCondition: 'Giải nén mục N',
     },
   },
   tracing: {

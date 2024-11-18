@@ -1,33 +1,65 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from typing import Any
+from uuid import uuid4
 
 from configs import dify_config
 from core.file import File
-from core.variables import (
+from core.variables.exc import VariableError
+from core.variables.segments import (
     ArrayAnySegment,
     ArrayFileSegment,
     ArrayNumberSegment,
-    ArrayNumberVariable,
     ArrayObjectSegment,
-    ArrayObjectVariable,
+    ArraySegment,
     ArrayStringSegment,
-    ArrayStringVariable,
     FileSegment,
     FloatSegment,
-    FloatVariable,
     IntegerSegment,
-    IntegerVariable,
     NoneSegment,
     ObjectSegment,
+    Segment,
+    StringSegment,
+)
+from core.variables.types import SegmentType
+from core.variables.variables import (
+    ArrayAnyVariable,
+    ArrayFileVariable,
+    ArrayNumberVariable,
+    ArrayObjectVariable,
+    ArrayStringVariable,
+    FileVariable,
+    FloatVariable,
+    IntegerVariable,
+    NoneVariable,
     ObjectVariable,
     SecretVariable,
-    Segment,
-    SegmentType,
-    StringSegment,
     StringVariable,
     Variable,
 )
-from core.variables.exc import VariableError
+
+
+class InvalidSelectorError(ValueError):
+    pass
+
+
+class UnsupportedSegmentTypeError(Exception):
+    pass
+
+
+# Define the constant
+SEGMENT_TO_VARIABLE_MAP = {
+    StringSegment: StringVariable,
+    IntegerSegment: IntegerVariable,
+    FloatSegment: FloatVariable,
+    ObjectSegment: ObjectVariable,
+    FileSegment: FileVariable,
+    ArrayStringSegment: ArrayStringVariable,
+    ArrayNumberSegment: ArrayNumberVariable,
+    ArrayObjectSegment: ArrayObjectVariable,
+    ArrayFileSegment: ArrayFileVariable,
+    ArrayAnySegment: ArrayAnyVariable,
+    NoneSegment: NoneVariable,
+}
 
 
 def build_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
@@ -79,7 +111,7 @@ def build_segment(value: Any, /) -> Segment:
     if isinstance(value, list):
         items = [build_segment(item) for item in value]
         types = {item.value_type for item in items}
-        if len(types) != 1:
+        if len(types) != 1 or all(isinstance(item, ArraySegment) for item in items):
             return ArrayAnySegment(value=value)
         match types.pop():
             case SegmentType.STRING:
@@ -90,6 +122,35 @@ def build_segment(value: Any, /) -> Segment:
                 return ArrayObjectSegment(value=value)
             case SegmentType.FILE:
                 return ArrayFileSegment(value=value)
+            case SegmentType.NONE:
+                return ArrayAnySegment(value=value)
             case _:
                 raise ValueError(f"not supported value {value}")
     raise ValueError(f"not supported value {value}")
+
+
+def segment_to_variable(
+    *,
+    segment: Segment,
+    selector: Sequence[str],
+    id: str | None = None,
+    name: str | None = None,
+    description: str = "",
+) -> Variable:
+    if isinstance(segment, Variable):
+        return segment
+    name = name or selector[-1]
+    id = id or str(uuid4())
+
+    segment_type = type(segment)
+    if segment_type not in SEGMENT_TO_VARIABLE_MAP:
+        raise UnsupportedSegmentTypeError(f"not supported segment type {segment_type}")
+
+    variable_class = SEGMENT_TO_VARIABLE_MAP[segment_type]
+    return variable_class(
+        id=id,
+        name=name,
+        description=description,
+        value=segment.value,
+        selector=selector,
+    )

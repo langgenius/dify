@@ -59,7 +59,7 @@ class AudioApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception(f"internal server error: {str(e)}")
+            logging.exception("Failed to handle post request to AudioApi")
             raise InternalServerError()
 
 
@@ -117,7 +117,7 @@ class TextApi(WebApiResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception(f"internal server error: {str(e)}")
+            logging.exception("Failed to handle post request to TextApi")
             raise InternalServerError()
 
 

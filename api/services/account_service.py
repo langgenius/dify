@@ -198,9 +198,9 @@ class AccountService:
     ) -> Account:
         """create account"""
         if not FeatureService.get_system_features().is_allow_register and not is_setup:
-            from controllers.console.error import NotAllowedRegister
+            from controllers.console.error import AccountNotFound
 
-            raise NotAllowedRegister()
+            raise AccountNotFound()
         account = Account()
         account.email = email
         account.name = name
@@ -486,9 +486,13 @@ def _get_login_cache_key(*, account_id: str, token: str):
 
 class TenantService:
     @staticmethod
-    def create_tenant(name: str, is_setup: Optional[bool] = False) -> Tenant:
+    def create_tenant(name: str, is_setup: Optional[bool] = False, is_from_dashboard: Optional[bool] = False) -> Tenant:
         """Create tenant"""
-        if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
+        if (
+            not FeatureService.get_system_features().is_allow_create_workspace
+            and not is_setup
+            and not is_from_dashboard
+        ):
             from controllers.console.error import NotAllowedCreateWorkspace
 
             raise NotAllowedCreateWorkspace()
@@ -505,15 +509,17 @@ class TenantService:
     def create_owner_tenant_if_not_exist(
         account: Account, name: Optional[str] = None, is_setup: Optional[bool] = False
     ):
-        """Create owner tenant if not exist"""
-        if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
-            raise WorkSpaceNotAllowedCreateError()
+        """Check if user have a workspace or not"""
         available_ta = (
             TenantAccountJoin.query.filter_by(account_id=account.id).order_by(TenantAccountJoin.id.asc()).first()
         )
 
         if available_ta:
             return
+
+        """Create owner tenant if not exist"""
+        if not FeatureService.get_system_features().is_allow_create_workspace and not is_setup:
+            raise WorkSpaceNotAllowedCreateError()
 
         if name:
             tenant = TenantService.create_tenant(name=name, is_setup=is_setup)
@@ -773,7 +779,7 @@ class RegisterService:
             db.session.query(Tenant).delete()
             db.session.commit()
 
-            logging.exception(f"Setup failed: {e}")
+            logging.exception(f"Setup account failed, email: {email}, name: {name}")
             raise ValueError(f"Setup failed: {e}")
 
     @classmethod
@@ -815,7 +821,7 @@ class RegisterService:
             db.session.rollback()
         except Exception as e:
             db.session.rollback()
-            logging.error(f"Register failed: {e}")
+            logging.exception("Register failed")
             raise AccountRegisterError(f"Registration failed: {e}") from e
 
         return account

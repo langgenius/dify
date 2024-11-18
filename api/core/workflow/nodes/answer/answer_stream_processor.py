@@ -22,7 +22,7 @@ class AnswerStreamProcessor(StreamProcessor):
         super().__init__(graph, variable_pool)
         self.generate_routes = graph.answer_stream_generate_routes
         self.route_position = {}
-        for answer_node_id, route_chunks in self.generate_routes.answer_generate_route.items():
+        for answer_node_id in self.generate_routes.answer_generate_route:
             self.route_position[answer_node_id] = 0
         self.current_stream_chunk_generating_node_ids: dict[str, list[str]] = {}
 

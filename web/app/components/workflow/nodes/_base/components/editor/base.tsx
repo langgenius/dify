@@ -26,9 +26,10 @@ type Props = {
   isFocus: boolean
   isInNode?: boolean
   onGenerated?: (prompt: string) => void
-  codeLanguages: CodeLanguage
+  codeLanguages?: CodeLanguage
   fileList?: FileEntity[]
   showFileList?: boolean
+  showCodeGenerator?: boolean
 }
 
 const Base: FC<Props> = ({
@@ -44,6 +45,7 @@ const Base: FC<Props> = ({
   codeLanguages,
   fileList = [],
   showFileList,
+  showCodeGenerator = false,
 }) => {
   const ref = useRef<HTMLDivElement>(null)
   const {
@@ -76,9 +78,11 @@ const Base: FC<Props> = ({
             e.stopPropagation()
           }}>
             {headerRight}
-            <div className='ml-1'>
-              <CodeGeneratorButton onGenerated={onGenerated} codeLanguages={codeLanguages}/>
-            </div>
+            {showCodeGenerator && codeLanguages && (
+              <div className='ml-1'>
+                <CodeGeneratorButton onGenerated={onGenerated} codeLanguages={codeLanguages}/>
+              </div>
+            )}
             {!isCopied
               ? (
                 <Clipboard className='mx-1 w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={handleCopy} />

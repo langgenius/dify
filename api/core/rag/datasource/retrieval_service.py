@@ -34,6 +34,8 @@ class RetrievalService:
         reranking_mode: Optional[str] = "reranking_model",
         weights: Optional[dict] = None,
     ):
+        if not query:
+            return []
         dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
         if not dataset:
             return []

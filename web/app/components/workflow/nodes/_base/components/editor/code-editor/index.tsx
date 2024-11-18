@@ -31,6 +31,8 @@ export type Props = {
   noWrapper?: boolean
   isExpand?: boolean
   showFileList?: boolean
+  onGenerated?: (value: string) => void
+  showCodeGenerator?: boolean
 }
 
 export const languageMap = {
@@ -63,6 +65,8 @@ const CodeEditor: FC<Props> = ({
   noWrapper,
   isExpand,
   showFileList,
+  onGenerated,
+  showCodeGenerator = false,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
@@ -149,9 +153,6 @@ const CodeEditor: FC<Props> = ({
 
     return isFocus ? 'focus-theme' : 'blur-theme'
   })()
-  const handleGenerated = (code: string) => {
-    handleEditorChange(code)
-  }
 
   const main = (
     <>
@@ -203,10 +204,11 @@ const CodeEditor: FC<Props> = ({
             isFocus={isFocus && !readOnly}
             minHeight={minHeight}
             isInNode={isInNode}
-            onGenerated={handleGenerated}
+            onGenerated={onGenerated}
             codeLanguages={language}
             fileList={fileList}
             showFileList={showFileList}
+            showCodeGenerator={showCodeGenerator}
           >
             {main}
           </Base>

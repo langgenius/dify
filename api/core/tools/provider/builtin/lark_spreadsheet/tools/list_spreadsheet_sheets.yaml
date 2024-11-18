@@ -1,0 +1,23 @@
+identity:
+  name: list_spreadsheet_sheets
+  author: Doug Lea
+  label:
+    en_US: List Spreadsheet Sheets
+    zh_Hans: 列出电子表格所有工作表
+description:
+  human:
+    en_US: List Spreadsheet Sheets
+    zh_Hans: 列出电子表格所有工作表
+  llm: A tool for listing all sheets in a spreadsheet. (列出电子表格所有工作表)
+parameters:
+  - name: spreadsheet_token
+    type: string
+    required: true
+    label:
+      en_US: Spreadsheet Token
+      zh_Hans: 电子表格 token
+    human_description:
+      en_US: Spreadsheet token, supports input of spreadsheet URL.
+      zh_Hans: 电子表格 token，支持输入电子表格 URL。
+    llm_description: 电子表格 token，支持输入电子表格 URL。
+    form: llm

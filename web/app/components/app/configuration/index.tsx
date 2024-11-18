@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname } from 'next/navigation'
@@ -69,6 +70,7 @@ import type { Features as FeaturesData, FileUpload } from '@/app/components/base
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
+import { fetchFileUploadConfig } from '@/service/common'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -84,6 +86,8 @@ const Configuration: FC = () => {
     showAppConfigureFeaturesModal: state.showAppConfigureFeaturesModal,
     setShowAppConfigureFeaturesModal: state.setShowAppConfigureFeaturesModal,
   })))
+  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
+
   const latestPublishedAt = useMemo(() => appDetail?.model_config.updated_at, [appDetail])
   const [formattingChanged, setFormattingChanged] = useState(false)
   const { setShowAccountSettingModal } = useModalContext()
@@ -222,6 +226,7 @@ const Configuration: FC = () => {
   const [rerankSettingModalOpen, setRerankSettingModalOpen] = useState(false)
   const {
     currentModel: currentRerankModel,
+    currentProvider: currentRerankProvider,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const handleSelect = (data: DataSet[]) => {
     if (isEqual(data.map(item => item.id), dataSets.map(item => item.id))) {
@@ -249,12 +254,18 @@ const Configuration: FC = () => {
     }
     hideSelectDataSet()
     const {
-      allEconomic,
+      allExternal,
+      allInternal,
+      mixtureInternalAndExternal,
       mixtureHighQualityAndEconomic,
       inconsistentEmbeddingModel,
     } = getSelectedDatasetsMode(newDatasets)
 
-    if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)
+    if (
+      (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
+      || mixtureInternalAndExternal
+      || allExternal
+    )
       setRerankSettingModalOpen(true)
 
     const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
@@ -269,7 +280,10 @@ const Configuration: FC = () => {
       reranking_mode: restConfigs.reranking_mode,
       weights: restConfigs.weights,
       reranking_enable: restConfigs.reranking_enable,
-    }, newDatasets, dataSets, !!currentRerankModel)
+    }, newDatasets, dataSets, {
+      provider: currentRerankProvider?.provider,
+      model: currentRerankModel?.model,
+    })
 
     setDatasetConfigs({
       ...retrievalConfig,
@@ -458,16 +472,17 @@ const Configuration: FC = () => {
           transfer_methods: modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
         },
         enabled: !!(modelConfig.file_upload?.enabled || modelConfig.file_upload?.image?.enabled),
-        allowed_file_types: modelConfig.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
-        allowed_file_extensions: modelConfig.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
+        allowed_file_types: modelConfig.file_upload?.allowed_file_types || [SupportUploadFileTypes.image, SupportUploadFileTypes.video],
+        allowed_file_extensions: modelConfig.file_upload?.allowed_file_extensions || [...FILE_EXTS[SupportUploadFileTypes.image], ...FILE_EXTS[SupportUploadFileTypes.video]].map(ext => `.${ext}`),
         allowed_file_upload_methods: modelConfig.file_upload?.allowed_file_upload_methods || modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
         number_limits: modelConfig.file_upload?.number_limits || modelConfig.file_upload?.image?.number_limits || 3,
+        fileUploadConfig: fileUploadConfigResponse,
       } as FileUpload,
       suggested: modelConfig.suggested_questions_after_answer || { enabled: false },
       citation: modelConfig.retriever_resource || { enabled: false },
       annotationReply: modelConfig.annotation_reply || { enabled: false },
     }
-  }, [modelConfig])
+  }, [fileUploadConfigResponse, modelConfig])
   const handleFeaturesChange = useCallback((flag: any) => {
     setShowAppConfigureFeaturesModal(true)
     if (flag)
@@ -609,7 +624,10 @@ const Configuration: FC = () => {
 
         syncToPublishedConfig(config)
         setPublishedConfig(config)
-        const retrievalConfig = getMultipleRetrievalConfig(modelConfig.dataset_configs, datasets, datasets, !!currentRerankModel)
+        const retrievalConfig = getMultipleRetrievalConfig(modelConfig.dataset_configs, datasets, datasets, {
+          provider: currentRerankProvider?.provider,
+          model: currentRerankModel?.model,
+        })
         setDatasetConfigs({
           retrieval_model: RETRIEVE_TYPE.multiWay,
           ...modelConfig.dataset_configs,
@@ -684,6 +702,9 @@ const Configuration: FC = () => {
       },
     }))
 
+    const fileUpload = { ...features?.file }
+    delete fileUpload?.fileUploadConfig
+
     // new model config data struct
     const data: BackendModelConfig = {
       // Simple Mode prompt
@@ -700,7 +721,7 @@ const Configuration: FC = () => {
       sensitive_word_avoidance: features?.moderation as any,
       speech_to_text: features?.speech2text as any,
       text_to_speech: features?.text2speech as any,
-      file_upload: features?.file as any,
+      file_upload: fileUpload as any,
       suggested_questions_after_answer: features?.suggested as any,
       retriever_resource: features?.citation as any,
       agent_mode: {

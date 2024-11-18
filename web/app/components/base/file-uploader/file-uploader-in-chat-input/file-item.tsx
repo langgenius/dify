@@ -31,8 +31,8 @@ const FileItem = ({
   onRemove,
   onReUpload,
 }: FileItemProps) => {
-  const { id, name, type, progress, url } = file
-  const ext = getFileExtension(name, type)
+  const { id, name, type, progress, url, isRemote } = file
+  const ext = getFileExtension(name, type, isRemote)
   const uploadError = progress === -1
 
   return (
@@ -75,7 +75,9 @@ const FileItem = ({
               </>
             )
           }
-          {formatFileSize(file.size || 0)}
+          {
+            !!file.size && formatFileSize(file.size)
+          }
         </div>
         {
           showDownloadAction && (
@@ -96,6 +98,7 @@ const FileItem = ({
             <ProgressCircle
               percentage={progress}
               size={12}
+              className='shrink-0'
             />
           )
         }

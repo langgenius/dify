@@ -48,6 +48,13 @@
 - feishu_task
 - feishu_calendar
 - feishu_spreadsheet
+- lark_base
+- lark_document
+- lark_message_and_group
+- lark_wiki
+- lark_task
+- lark_calendar
+- lark_spreadsheet
 - slack
 - twilio
 - wecom
@@ -71,3 +78,4 @@
 - regex
 - trello
 - vanna
+- fal

@@ -99,6 +99,12 @@ const translation = {
   sendVerificationCode: '確認コードの送信',
   enterYourName: 'ユーザー名を入力してください',
   resetPasswordDesc: 'Difyへのサインアップに使用したメールアドレスを入力すると、パスワードリセットメールが送信されます。',
+  licenseLost: 'ライセンスを失った',
+  licenseExpiredTip: 'ワークスペースの Dify Enterprise ライセンスの有効期限が切れています。Difyを引き続き使用するには、管理者に連絡してください。',
+  licenseInactive: 'ライセンスが非アクティブです',
+  licenseInactiveTip: 'ワークスペースの Dify Enterprise ライセンスが非アクティブです。Difyを引き続き使用するには、管理者に連絡してください。',
+  licenseExpired: 'ライセンスの有効期限が切れています',
+  licenseLostTip: 'Difyライセンスサーバーへの接続に失敗しました。続けてDifyを使用するために管理者に連絡してください。',
 }
 
 export default translation

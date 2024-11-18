@@ -169,7 +169,7 @@ const translation = {
     deleteConfirmTip: '확인하려면 등록된 이메일에서 다음 내용을 로 보내주세요 ',
     myAccount: '내 계정',
     studio: '디파이 스튜디오',
-    account: '계좌',
+    account: '계정',
   },
   members: {
     team: '팀',
@@ -586,6 +586,10 @@ const translation = {
     fileExtensionNotSupport: '지원되지 않는 파일 확장자',
     uploadFromComputerLimit: '업로드 파일은 {{size}}를 초과할 수 없습니다.',
     uploadFromComputerUploadError: '파일 업로드에 실패했습니다. 다시 업로드하십시오.',
+  },
+  license: {
+    expiring_plural: '{{count}}일 후에 만료',
+    expiring: '하루 후에 만료',
   },
 }
 
