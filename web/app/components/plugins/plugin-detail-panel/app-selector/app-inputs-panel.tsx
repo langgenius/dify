@@ -33,7 +33,7 @@ const AppInputsPanel = ({
   const isBasicApp = appDetail.mode !== 'advanced-chat' && appDetail.mode !== 'workflow'
   const { data: fileUploadConfig } = useFileUploadConfig()
   const { data: currentApp, isFetching: isAppLoading } = useAppDetail(appDetail.id)
-  const { data: currentWorkflow, isFetching: isWorkflowLoading } = useAppWorkflow(isBasicApp ? 'empty' : appDetail.id)
+  const { data: currentWorkflow, isFetching: isWorkflowLoading } = useAppWorkflow(isBasicApp ? '' : appDetail.id)
   const isLoading = isAppLoading || isWorkflowLoading
 
   const basicAppFileConfig = useMemo(() => {
