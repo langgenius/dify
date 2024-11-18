@@ -16,9 +16,9 @@ from controllers.console.auth.error import (
 )
 from controllers.console.error import (
     AccountBannedError,
+    AccountNotFound,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
-    AccountNotFound,
 )
 from controllers.console.wraps import setup_required
 from events.tenant_event import tenant_was_created
