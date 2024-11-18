@@ -22,7 +22,6 @@ def clean_unused_datasets_task():
     start_at = time.perf_counter()
     plan_sandbox_clean_day = datetime.datetime.now() - datetime.timedelta(days=plan_sandbox_clean_day_setting)
     plan_pro_clean_day = datetime.datetime.now() - datetime.timedelta(days=plan_pro_clean_day_setting)
-    page = 1
     while True:
         try:
             # Subquery for counting new documents
@@ -62,14 +61,13 @@ def clean_unused_datasets_task():
                     func.coalesce(document_subquery_old.c.document_count, 0) > 0,
                 )
                 .order_by(Dataset.created_at.desc())
-                .paginate(page=page, per_page=50)
+                .paginate(page=1, per_page=50)
             )
 
         except NotFound:
             break
         if datasets.items is None or len(datasets.items) == 0:
             break
-        page += 1
         for dataset in datasets:
             dataset_query = (
                 db.session.query(DatasetQuery)
@@ -92,7 +90,6 @@ def clean_unused_datasets_task():
                     click.echo(
                         click.style("clean dataset index error: {} {}".format(e.__class__.__name__, str(e)), fg="red")
                     )
-    page = 1
     while True:
         try:
             # Subquery for counting new documents
@@ -132,14 +129,13 @@ def clean_unused_datasets_task():
                     func.coalesce(document_subquery_old.c.document_count, 0) > 0,
                 )
                 .order_by(Dataset.created_at.desc())
-                .paginate(page=page, per_page=50)
+                .paginate(page=1, per_page=50)
             )
 
         except NotFound:
             break
         if datasets.items is None or len(datasets.items) == 0:
             break
-        page += 1
         for dataset in datasets:
             dataset_query = (
                 db.session.query(DatasetQuery)
@@ -149,11 +145,13 @@ def clean_unused_datasets_task():
             if not dataset_query or len(dataset_query) == 0:
                 try:
                     features_cache_key = f"features:{dataset.tenant_id}"
-                    plan = redis_client.get(features_cache_key)
-                    if plan is None:
+                    plan_cache = redis_client.get(features_cache_key)
+                    if plan_cache is None:
                         features = FeatureService.get_features(dataset.tenant_id)
                         redis_client.setex(features_cache_key, 600, features.billing.subscription.plan)
                         plan = features.billing.subscription.plan
+                    else:
+                        plan = plan_cache.decode()
                     if plan == "sandbox":
                         # remove index
                         index_processor = IndexProcessorFactory(dataset.doc_form).init_index_processor()
