@@ -75,12 +75,14 @@ const translation = {
     viewDetailInTracingPanel: 'View details',
     syncingData: 'Syncing data, just a few seconds.',
     importDSL: 'Import DSL',
-    importDSLTip: 'Current draft will be overwritten. Export workflow as backup before importing.',
+    importDSLTip: 'Current draft will be overwritten.\nExport workflow as backup before importing.',
     backupCurrentDraft: 'Backup Current Draft',
-    chooseDSL: 'Choose DSL(yml) file',
+    chooseDSL: 'Choose DSL file',
     overwriteAndImport: 'Overwrite and Import',
-    importFailure: 'Import failure',
-    importSuccess: 'Import success',
+    importFailure: 'Import Failed',
+    importWarning: 'Caution',
+    importWarningDetails: 'DSL version difference may affect certain features',
+    importSuccess: 'Import Successfully',
     parallelRun: 'Parallel Run',
     parallelTip: {
       click: {

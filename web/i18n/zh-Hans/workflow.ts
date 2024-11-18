@@ -80,6 +80,8 @@ const translation = {
     chooseDSL: '选择 DSL(yml) 文件',
     overwriteAndImport: '覆盖并导入',
     importFailure: '导入失败',
+    importWarning: '注意',
+    importWarningDetails: 'DSL 版本差异可能影响部分功能表现',
     importSuccess: '导入成功',
     parallelRun: '并行运行',
     parallelTip: {

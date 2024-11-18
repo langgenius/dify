@@ -10,8 +10,9 @@ import {
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import {
-  RiAlertLine,
+  RiAlertFill,
   RiCloseLine,
+  RiFileDownloadLine,
 } from '@remixicon/react'
 import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
@@ -136,36 +137,48 @@ const UpdateDSLModal = ({
       isShow={true}
       onClose={() => {}}
     >
-      <div className='flex items-center justify-between mb-6'>
-        <div className='text-2xl font-semibold text-[#101828]'>{t('workflow.common.importDSL')}</div>
+      <div className='flex items-center justify-between mb-3'>
+        <div className='title-2xl-semi-bold text-text-primary'>{t('workflow.common.importDSL')}</div>
         <div className='flex items-center justify-center w-[22px] h-[22px] cursor-pointer' onClick={onCancel}>
-          <RiCloseLine className='w-5 h-5 text-gray-500' />
+          <RiCloseLine className='w-[18px] h-[18px] text-text-tertiary' />
         </div>
       </div>
-      <div className='flex mb-4 px-4 py-3 bg-[#FFFAEB] rounded-xl border border-[#FEDF89]'>
-        <RiAlertLine className='shrink-0 mt-0.5 mr-2 w-4 h-4 text-[#F79009]' />
-        <div>
-          <div className='mb-2 text-sm font-medium text-[#354052]'>{t('workflow.common.importDSLTip')}</div>
-          <Button
-            variant='secondary-accent'
-            onClick={onBackup}
-          >
-            {t('workflow.common.backupCurrentDraft')}
-          </Button>
+      <div className='flex relative p-2 mb-2 gap-0.5 flex-grow rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xs overflow-hidden'>
+        <div className='absolute top-0 left-0 w-full h-full opacity-40 bg-[linear-gradient(92deg,rgba(247,144,9,0.25)_0%,rgba(255,255,255,0.00)_100%)]' />
+        <div className='flex p-1 justify-center items-start'>
+          <RiAlertFill className='w-4 h-4 flex-shrink-0 text-text-warning-secondary' />
+        </div>
+        <div className='flex py-1 flex-col items-start gap-0.5 flex-grow'>
+          <div className='text-text-primary system-xs-medium whitespace-pre-line'>{t('workflow.common.importDSLTip')}</div>
+          <div className='flex pt-1 pb-0.5 items-start gap-1 self-stretch'>
+            <Button
+              size='small'
+              variant='secondary'
+              className='z-[1000]'
+              onClick={onBackup}
+            >
+              <RiFileDownloadLine className='w-3.5 h-3.5 text-components-button-secondary-text' />
+              <div className='flex px-[3px] justify-center items-center gap-1'>
+                {t('workflow.common.backupCurrentDraft')}
+              </div>
+            </Button>
+          </div>
         </div>
       </div>
-      <div className='mb-8'>
-        <div className='mb-1 text-[13px] font-semibold text-[#354052]'>
+      <div>
+        <div className='pt-2 text-text-primary system-md-semibold'>
           {t('workflow.common.chooseDSL')}
         </div>
-        <Uploader
-          file={currentFile}
-          updateFile={handleFile}
-          className='!mt-0'
-        />
+        <div className='flex w-full py-4 flex-col justify-center items-start gap-4 self-stretch'>
+          <Uploader
+            file={currentFile}
+            updateFile={handleFile}
+            className='!mt-0 w-full'
+          />
+        </div>
       </div>
-      <div className='flex justify-end'>
-        <Button className='mr-2' onClick={onCancel}>{t('app.newApp.Cancel')}</Button>
+      <div className='flex pt-5 gap-2 items-center justify-end self-stretch'>
+        <Button onClick={onCancel}>{t('app.newApp.Cancel')}</Button>
         <Button
           disabled={!currentFile || loading}
           variant='warning'
