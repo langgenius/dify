@@ -19,7 +19,7 @@ class WizperTool(BuiltinTool):
         version = tool_parameters.get("version", "3")
 
         if audio_file.type != FileType.AUDIO:
-            return [self.create_text_message("Not a valid audio file.")]
+            return self.create_text_message("Not a valid audio file.")
 
         api_key = self.runtime.credentials["fal_api_key"]
 
@@ -31,9 +31,8 @@ class WizperTool(BuiltinTool):
 
         try:
             audio_url = fal_client.upload(file_data, mime_type)
-
         except Exception as e:
-            return [self.create_text_message(f"Error uploading audio file: {str(e)}")]
+            return self.create_text_message(f"Error uploading audio file: {str(e)}")
 
         arguments = {
             "audio_url": audio_url,
@@ -49,4 +48,9 @@ class WizperTool(BuiltinTool):
             with_logs=False,
         )
 
-        return self.create_json_message(result)
+        json_message = self.create_json_message(result)
+
+        text = result.get("text", "")
+        text_message = self.create_text_message(text)
+
+        return [json_message, text_message]

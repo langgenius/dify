@@ -68,6 +68,7 @@ def init_app(app: Flask) -> Celery:
         "schedule.clean_unused_datasets_task",
         "schedule.create_tidb_serverless_task",
         "schedule.update_tidb_serverless_status_task",
+        "schedule.clean_messages",
     ]
     day = dify_config.CELERY_BEAT_SCHEDULER_TIME
     beat_schedule = {
@@ -86,6 +87,10 @@ def init_app(app: Flask) -> Celery:
         "update_tidb_serverless_status_task": {
             "task": "schedule.update_tidb_serverless_status_task.update_tidb_serverless_status_task",
             "schedule": crontab(minute="30", hour="*"),
+        },
+        "clean_messages": {
+            "task": "schedule.clean_messages.clean_messages",
+            "schedule": timedelta(days=day),
         },
     }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)

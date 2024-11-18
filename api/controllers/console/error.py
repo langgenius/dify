@@ -52,8 +52,8 @@ class AccountBannedError(BaseHTTPException):
     code = 400
 
 
-class NotAllowedRegister(BaseHTTPException):
-    error_code = "unauthorized"
+class AccountNotFound(BaseHTTPException):
+    error_code = "account_not_found"
     description = "Account not found."
     code = 400
 
