@@ -888,14 +888,14 @@ def _handle_list_messages(
             for segment in segment_group.value:
                 if isinstance(segment, ArrayFileSegment):
                     for file in segment.value:
-                        if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO}:
+                        if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT}:
                             file_content = file_manager.to_prompt_message_content(
                                 file, image_detail_config=vision_detail_config
                             )
                             file_contents.append(file_content)
                 if isinstance(segment, FileSegment):
                     file = segment.value
-                    if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO}:
+                    if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT}:
                         file_content = file_manager.to_prompt_message_content(
                             file, image_detail_config=vision_detail_config
                         )
