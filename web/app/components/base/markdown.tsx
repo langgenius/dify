@@ -212,7 +212,8 @@ const AudioBlock: CodeComponent = memo(({ node }) => {
 AudioBlock.displayName = 'AudioBlock'
 
 const ScriptBlock = memo(({ node }: any) => {
-  return `<script>${node.children[0]?.value}</script>`
+  const scriptContent = node.children[0]?.value || ''
+  return `<script>${scriptContent}</script>`
 })
 ScriptBlock.displayName = 'ScriptBlock'
 
