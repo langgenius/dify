@@ -468,8 +468,6 @@ class ChildChunkAddApi(Resource):
             raise ChildChunkIndexingError(str(e))
         return {"data": marshal(child_chunk, child_chunk_fields)}, 200
 
-
-class ChildChunkUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -533,11 +531,12 @@ class ChildChunkUpdateApi(Resource):
         args = parser.parse_args()
         try:
             chunks = [ChildChunkUpdateArgs(**chunk) for chunk in args.get("chunks")]
-            child_chunks = SegmentService.update_child_chunk(chunks, segment, document, dataset)
+            child_chunks = SegmentService.update_child_chunks(chunks, segment, document, dataset)
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return {"data": marshal(child_chunks, child_chunk_fields)}, 200
-
+    
+class ChildChunkUpdateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -579,7 +578,55 @@ class ChildChunkUpdateApi(Resource):
             SegmentService.delete_child_chunk(child_chunk, dataset)
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
-        return {"result": "success"}, 200
+        return {"result": "success"}, 200    
+    
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @cloud_edition_billing_resource_check("vector_space")
+    def patch(self, dataset_id, document_id, segment_id, child_chunk_id):
+        # check dataset
+        dataset_id = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id)
+        if not dataset:
+            raise NotFound("Dataset not found.")
+        # check user's model setting
+        DatasetService.check_dataset_model_setting(dataset)
+        # check document
+        document_id = str(document_id)
+        document = DocumentService.get_document(dataset_id, document_id)
+        if not document:
+            raise NotFound("Document not found.")
+            # check segment
+        segment_id = str(segment_id)
+        segment = DocumentSegment.query.filter(
+            DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not segment:
+            raise NotFound("Segment not found.")
+        # check child chunk
+        child_chunk_id = str(child_chunk_id)
+        child_chunk = ChildChunk.query.filter(
+            ChildChunk.id == str(child_chunk_id), ChildChunk.tenant_id == current_user.current_tenant_id
+        ).first()
+        if not child_chunk:
+            raise NotFound("Child chunk not found.")
+        # The role of the current user in the ta table must be admin or owner
+        if not current_user.is_editor:
+            raise Forbidden()
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+        # validate args
+        parser = reqparse.RequestParser()
+        parser.add_argument("content", type=str, required=True, nullable=False, location="json")
+        args = parser.parse_args()
+        try:
+            child_chunk = SegmentService.update_child_chunk(args.get("content"), child_chunk, segment, document, dataset)
+        except ChildChunkIndexingServiceError as e:
+            raise ChildChunkIndexingError(str(e))
+        return {"data": marshal(child_chunk, child_chunk_fields)}, 200
 
 
 api.add_resource(DatasetDocumentSegmentListApi, "/datasets/<uuid:dataset_id>/documents/<uuid:document_id>/segments")

@@ -1753,7 +1753,7 @@ class SegmentService:
             return child_chunk
 
     @classmethod
-    def update_child_chunk(
+    def update_child_chunks(
         cls,
         child_chunks_update_args: list[ChildChunkUpdateArgs],
         segment: DocumentSegment,
@@ -1824,6 +1824,31 @@ class SegmentService:
             db.session.rollback()
             raise ChildChunkIndexingError(str(e))
         return sorted(new_child_chunks + update_child_chunks, key=lambda x: x.position)
+    
+    @classmethod
+    def update_child_chunk(
+        cls,
+        content: str,
+        child_chunk: ChildChunk,
+        segment: DocumentSegment,
+        document: Document,
+        dataset: Dataset,
+    ) -> ChildChunk:
+
+        try:
+            child_chunk.content = content
+            child_chunk.word_count = len(content)
+            child_chunk.updated_by = current_user.id
+            child_chunk.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            child_chunk.type = "customized"
+            db.session.add(child_chunk)
+            VectorService.update_child_chunk_vector([], [child_chunk], [], dataset)
+            db.session.commit()
+        except Exception as e:
+            logging.exception("update child chunk index failed")
+            db.session.rollback()
+            raise ChildChunkIndexingError(str(e))
+        return child_chunk
 
     @classmethod
     def delete_child_chunk(cls, child_chunk: ChildChunk, dataset: Dataset):
