@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import { useContextSelector } from 'use-context-selector'
 import useSWR from 'swr'
 import { useEffect, useState } from 'react'
 import {
@@ -14,10 +14,11 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import { Plan, type UsagePlanInfo } from '@/app/components/billing/type'
+import type { Plan, UsagePlanInfo } from '@/app/components/billing/type'
 import { fetchCurrentPlanInfo } from '@/service/billing'
 import { parseCurrentPlan } from '@/app/components/billing/utils'
 import { defaultPlan } from '@/app/components/billing/config'
+import { createSelectorCtx } from '@/utils/context'
 
 type ProviderContextState = {
   modelProviders: ModelProvider[]
@@ -36,37 +37,9 @@ type ProviderContextState = {
   modelLoadBalancingEnabled: boolean
   datasetOperatorEnabled: boolean
 }
-const ProviderContext = createContext<ProviderContextState>({
-  modelProviders: [],
-  textGenerationModelList: [],
-  supportRetrievalMethods: [],
-  isAPIKeySet: true,
-  plan: {
-    type: Plan.sandbox,
-    usage: {
-      vectorSpace: 32,
-      buildApps: 12,
-      teamMembers: 1,
-      annotatedResponse: 1,
-      documentsUploadQuota: 50,
-    },
-    total: {
-      vectorSpace: 200,
-      buildApps: 50,
-      teamMembers: 1,
-      annotatedResponse: 10,
-      documentsUploadQuota: 500,
-    },
-  },
-  isFetchedPlan: false,
-  enableBilling: false,
-  onPlanInfoChanged: () => { },
-  enableReplaceWebAppLogo: false,
-  modelLoadBalancingEnabled: false,
-  datasetOperatorEnabled: false,
-})
+const [, useProviderContext, ProviderContext] = createSelectorCtx<ProviderContextState>()
 
-export const useProviderContext = () => useContext(ProviderContext)
+export { useProviderContext }
 
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713

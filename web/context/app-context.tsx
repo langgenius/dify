@@ -1,8 +1,8 @@
 'use client'
 
-import { createRef, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import useSWR from 'swr'
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import { useContext, useContextSelector } from 'use-context-selector'
 import type { FC, ReactNode } from 'react'
 import { fetchAppList } from '@/service/apps'
 import Loading from '@/app/components/base/loading'
@@ -13,6 +13,7 @@ import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse 
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import type { SystemFeatures } from '@/types/feature'
 import { defaultSystemFeatures } from '@/types/feature'
+import { createSelectorCtx } from '@/utils/context'
 
 export type AppContextValue = {
   theme: Theme
@@ -54,30 +55,7 @@ const initialWorkspaceInfo: ICurrentWorkspace = {
   in_trail: true,
 }
 
-const AppContext = createContext<AppContextValue>({
-  theme: Theme.light,
-  systemFeatures: defaultSystemFeatures,
-  setTheme: () => { },
-  apps: [],
-  mutateApps: () => { },
-  userProfile: {
-    id: '',
-    name: '',
-    email: '',
-    avatar: '',
-    is_password_set: false,
-  },
-  currentWorkspace: initialWorkspaceInfo,
-  isCurrentWorkspaceManager: false,
-  isCurrentWorkspaceOwner: false,
-  isCurrentWorkspaceEditor: false,
-  isCurrentWorkspaceDatasetOperator: false,
-  mutateUserProfile: () => { },
-  mutateCurrentWorkspace: () => { },
-  pageContainerRef: createRef(),
-  langeniusVersionInfo: initialLangeniusVersionInfo,
-  useSelector,
-})
+const [,, AppContext] = createSelectorCtx<AppContextValue>()
 
 export function useSelector<T>(selector: (value: AppContextValue) => T): T {
   return useContextSelector(AppContext, selector)

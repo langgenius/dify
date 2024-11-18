@@ -1,11 +1,11 @@
 import {
-  createContext,
   useRef,
 } from 'react'
 import { createWorkflowStore } from './store'
+import { createCtx } from '@/utils/context'
 
 type WorkflowStore = ReturnType<typeof createWorkflowStore>
-export const WorkflowContext = createContext<WorkflowStore | null>(null)
+export const [,, WorkflowContext] = createCtx<WorkflowStore>()
 
 type WorkflowProviderProps = {
   children: React.ReactNode

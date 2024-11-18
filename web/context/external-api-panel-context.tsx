@@ -1,13 +1,14 @@
 'use client'
 
-import React, { createContext, useContext, useState } from 'react'
+import React, { useState } from 'react'
+import { createCtx } from '@/utils/context'
 
 type ExternalApiPanelContextType = {
   showExternalApiPanel: boolean
   setShowExternalApiPanel: (show: boolean) => void
 }
 
-const ExternalApiPanelContext = createContext<ExternalApiPanelContextType | undefined>(undefined)
+const [, useExternalApiPanel, ExternalApiPanelContext] = createCtx<ExternalApiPanelContextType>()
 
 export const ExternalApiPanelProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
@@ -19,10 +20,4 @@ export const ExternalApiPanelProvider: React.FC<{ children: React.ReactNode }> =
   )
 }
 
-export const useExternalApiPanel = () => {
-  const context = useContext(ExternalApiPanelContext)
-  if (context === undefined)
-    throw new Error('useExternalApiPanel must be used within an ExternalApiPanelProvider')
-
-  return context
-}
+export { useExternalApiPanel }

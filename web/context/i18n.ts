@@ -1,9 +1,6 @@
-import {
-  createContext,
-  useContext,
-} from 'use-context-selector'
 import type { Locale } from '@/i18n'
 import { getLanguage } from '@/i18n/language'
+import { createSelectorCtx } from '@/utils/context'
 
 type II18NContext = {
   locale: Locale
@@ -11,13 +8,9 @@ type II18NContext = {
   setLocaleOnClient: (_lang: Locale, _reloadPage?: boolean) => void
 }
 
-const I18NContext = createContext<II18NContext>({
-  locale: 'en-US',
-  i18n: {},
-  setLocaleOnClient: (_lang: Locale, _reloadPage?: boolean) => { },
-})
+const [, useI18N, I18NContext] = createSelectorCtx<II18NContext>()
 
-export const useI18N = () => useContext(I18NContext)
+export { useI18N }
 export const useGetLanguage = () => {
   const { locale } = useI18N()
 

@@ -1,8 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { createContext, useContext } from 'use-context-selector'
 import type { ChatProps } from './index'
+import { createSelectorCtx } from '@/utils/context'
 
 export type ChatContextValue = Pick<ChatProps, 'config'
   | 'isResponding'
@@ -18,9 +18,7 @@ export type ChatContextValue = Pick<ChatProps, 'config'
   | 'onFeedback'
 >
 
-const ChatContext = createContext<ChatContextValue>({
-  chatList: [],
-})
+const [, useChatContext, ChatContext] = createSelectorCtx<ChatContextValue>()
 
 type ChatContextProviderProps = {
   children: ReactNode
@@ -61,6 +59,6 @@ export const ChatContextProvider = ({
   )
 }
 
-export const useChatContext = () => useContext(ChatContext)
+export { useChatContext }
 
 export default ChatContext

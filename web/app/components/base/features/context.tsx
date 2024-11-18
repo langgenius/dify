@@ -1,5 +1,4 @@
 import {
-  createContext,
   useRef,
 } from 'react'
 import type {
@@ -7,8 +6,9 @@ import type {
   FeaturesStore,
 } from './store'
 import { createFeaturesStore } from './store'
+import { createCtx } from '@/utils/context'
 
-export const FeaturesContext = createContext<FeaturesStore | null>(null)
+export const [, , FeaturesContext] = createCtx<FeaturesStore>()
 
 type FeaturesProviderProps = {
   children: React.ReactNode

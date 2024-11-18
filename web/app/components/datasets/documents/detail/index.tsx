@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import useSWR from 'swr'
 import { ArrowLeftIcon } from '@heroicons/react/24/solid'
-import { createContext, useContext } from 'use-context-selector'
+import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { omit } from 'lodash-es'
@@ -25,8 +25,9 @@ import type { DocForm } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { createSelectorCtx } from '@/utils/context'
 
-export const DocumentContext = createContext<{ datasetId?: string; documentId?: string; docForm: string }>({ docForm: '' })
+export const [,, DocumentContext] = createSelectorCtx<{ datasetId?: string; documentId?: string; docForm: string }>()
 
 type DocumentTitleProps = {
   extension?: string

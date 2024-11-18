@@ -1,6 +1,4 @@
 import {
-  createContext,
-  useContext,
   useRef,
 } from 'react'
 import {
@@ -10,6 +8,7 @@ import {
 import type {
   FileEntity,
 } from './types'
+import { createCtx } from '@/utils/context'
 
 type Shape = {
   files: FileEntity[]
@@ -30,18 +29,11 @@ export const createFileStore = (
 }
 
 type FileStore = ReturnType<typeof createFileStore>
-export const FileContext = createContext<FileStore | null>(null)
+export const [, useFileStore, FileContext] = createCtx<FileStore>()
 
 export function useStore<T>(selector: (state: Shape) => T): T {
-  const store = useContext(FileContext)
-  if (!store)
-    throw new Error('Missing FileContext.Provider in the tree')
-
+  const store = useFileStore()
   return useZustandStore(store, selector)
-}
-
-export const useFileStore = () => {
-  return useContext(FileContext)!
 }
 
 type FileProviderProps = {

@@ -2,7 +2,7 @@
 
 import type { Dispatch, SetStateAction } from 'react'
 import { useCallback, useState } from 'react'
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import { useContextSelector } from 'use-context-selector'
 import { useRouter, useSearchParams } from 'next/navigation'
 import AccountSetting from '@/app/components/header/account-setting'
 import ApiBasedExtensionModal from '@/app/components/header/account-setting/api-based-extension-page/modal'
@@ -31,6 +31,7 @@ import ModelLoadBalancingModal from '@/app/components/header/account-setting/mod
 import OpeningSettingModal from '@/app/components/base/features/new-feature-panel/conversation-opener/modal'
 import type { OpeningStatement } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
+import { createSelectorCtx } from '@/utils/context'
 
 export type ModalState<T> = {
   payload: T
@@ -69,21 +70,9 @@ export type ModalContextState = {
     onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
   }> | null>>
 }
-const ModalContext = createContext<ModalContextState>({
-  setShowAccountSettingModal: () => { },
-  setShowApiBasedExtensionModal: () => { },
-  setShowModerationSettingModal: () => { },
-  setShowExternalDataToolModal: () => { },
-  setShowPricingModal: () => { },
-  setShowAnnotationFullModal: () => { },
-  setShowModelModal: () => { },
-  setShowExternalKnowledgeAPIModal: () => { },
-  setShowModelLoadBalancingModal: () => { },
-  setShowModelLoadBalancingEntryModal: () => { },
-  setShowOpeningModal: () => { },
-})
+const [,useModalContext, ModalContext] = createSelectorCtx<ModalContextState>()
 
-export const useModalContext = () => useContext(ModalContext)
+export { useModalContext }
 
 // Adding a dangling comma to avoid the generic parsing issue in tsx, see:
 // https://github.com/microsoft/TypeScript/issues/15713

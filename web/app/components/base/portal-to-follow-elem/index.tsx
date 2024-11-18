@@ -17,6 +17,7 @@ import {
 
 import type { OffsetOptions, Placement } from '@floating-ui/react'
 import cn from '@/utils/classnames'
+import { createCtx } from '@/utils/context'
 export type PortalToFollowElemOptions = {
   /*
   * top, bottom, left, right
@@ -78,18 +79,9 @@ export function usePortalToFollowElem({
   )
 }
 
-type ContextType = ReturnType<typeof usePortalToFollowElem> | null
+type ContextType = ReturnType<typeof usePortalToFollowElem>
 
-const PortalToFollowElemContext = React.createContext<ContextType>(null)
-
-export function usePortalToFollowElemContext() {
-  const context = React.useContext(PortalToFollowElemContext)
-
-  if (context == null)
-    throw new Error('PortalToFollowElem components must be wrapped in <PortalToFollowElem />')
-
-  return context
-}
+const [, usePortalToFollowElemContext, PortalToFollowElemContext] = createCtx<ContextType>()
 
 export function PortalToFollowElem({
   children,

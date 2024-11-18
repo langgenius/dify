@@ -1,10 +1,11 @@
 'use client'
 
-import { createContext, useContext, useMemo } from 'react'
+import { useMemo } from 'react'
 import type { FC, ReactNode } from 'react'
 import useSWR from 'swr'
 import type { ExternalAPIItem, ExternalAPIListResponse } from '@/models/datasets'
 import { fetchExternalAPIList } from '@/service/datasets'
+import { createCtx } from '@/utils/context'
 
 type ExternalKnowledgeApiContextType = {
   externalKnowledgeApiList: ExternalAPIItem[]
@@ -12,7 +13,7 @@ type ExternalKnowledgeApiContextType = {
   isLoading: boolean
 }
 
-const ExternalKnowledgeApiContext = createContext<ExternalKnowledgeApiContextType | undefined>(undefined)
+const [,useExternalKnowledgeApi, ExternalKnowledgeApiContext] = createCtx<ExternalKnowledgeApiContextType>()
 
 export type ExternalKnowledgeApiProviderProps = {
   children: ReactNode
@@ -37,10 +38,4 @@ export const ExternalKnowledgeApiProvider: FC<ExternalKnowledgeApiProviderProps>
   )
 }
 
-export const useExternalKnowledgeApi = () => {
-  const context = useContext(ExternalKnowledgeApiContext)
-  if (context === undefined)
-    throw new Error('useExternalKnowledgeApi must be used within a ExternalKnowledgeApiProvider')
-
-  return context
-}
+export { useExternalKnowledgeApi }

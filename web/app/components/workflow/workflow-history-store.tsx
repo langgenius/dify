@@ -1,12 +1,12 @@
-import { type ReactNode, createContext, useContext, useMemo, useState } from 'react'
+import { type ReactNode, useContext, useMemo, useState } from 'react'
 import { type StoreApi, create } from 'zustand'
 import { type TemporalState, temporal } from 'zundo'
 import isDeepEqual from 'fast-deep-equal'
 import type { Edge, Node } from './types'
 import type { WorkflowHistoryEvent } from './hooks'
+import { createCtx } from '@/utils/context'
 
-export const WorkflowHistoryStoreContext = createContext<WorkflowHistoryStoreContextType>({ store: null, shortcutsEnabled: true, setShortcutsEnabled: () => {} })
-export const Provider = WorkflowHistoryStoreContext.Provider
+export const [Provider,,WorkflowHistoryStoreContext] = createCtx<WorkflowHistoryStoreContextType>()
 
 export function WorkflowHistoryProvider({
   nodes,
