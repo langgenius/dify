@@ -2,26 +2,28 @@ import json
 from typing import Any
 
 from configs import dify_config
+from core.rag.datasource.vdb.analyticdb.analyticdb_vector_openapi import (
+    AnalyticdbVectorOpenAPI,
+    AnalyticdbVectorOpenAPIConfig,
+)
+from core.rag.datasource.vdb.analyticdb.analyticdb_vector_sql import AnalyticdbVectorBySql, AnalyticdbVectorBySqlConfig
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from models.dataset import Dataset
-from core.rag.datasource.vdb.analyticdb.analyticdb_vector_sql import AnalyticdbVectorBySqlConfig
-from core.rag.datasource.vdb.analyticdb.analyticdb_vector_openapi import AnalyticdbVectorOpenAPIConfig
-
-from core.rag.datasource.vdb.analyticdb.analyticdb_vector_sql import AnalyticdbVectorBySql
-from core.rag.datasource.vdb.analyticdb.analyticdb_vector_openapi import AnalyticdbVectorOpenAPI
 
 
 class AnalyticdbVector(BaseVector):
-    def __init__(self, collection_name: str, apiConfig: AnalyticdbVectorOpenAPIConfig, sqlConfig: AnalyticdbVectorBySqlConfig):
+    def __init__(
+        self, collection_name: str, api_config: AnalyticdbVectorOpenAPIConfig, sql_config: AnalyticdbVectorBySqlConfig
+    ):
         super().__init__(collection_name)
-        if apiConfig is not None:
-            self.analyticdb_vector = AnalyticdbVectorOpenAPI(collection_name, apiConfig)
+        if api_config is not None:
+            self.analyticdb_vector = AnalyticdbVectorOpenAPI(collection_name, api_config)
         else:
-            self.analyticdb_vector = AnalyticdbVectorBySql(collection_name, sqlConfig)
+            self.analyticdb_vector = AnalyticdbVectorBySql(collection_name, sql_config)
 
     def get_type(self) -> str:
         return VectorType.ANALYTICDB

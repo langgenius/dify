@@ -44,7 +44,7 @@ class AnalyticdbVectorBySqlConfig(BaseModel):
 class AnalyticdbVectorBySql:
     def __init__(self, collection_name: str, config: AnalyticdbVectorBySqlConfig):
         self._collection_name = collection_name.lower()
-        self.databaseName = 'knowledgebase'
+        self.databaseName = "knowledgebase"
         self.config = config
         self.table_name = f"{self.config.namespace}.{self._collection_name}"
         self.pool = None
@@ -70,7 +70,7 @@ class AnalyticdbVectorBySql:
             port=self.config.port,
             user=self.config.account,
             password=self.config.account_password,
-            database=self.databaseName
+            database=self.databaseName,
         )
 
     @contextmanager
@@ -90,7 +90,7 @@ class AnalyticdbVectorBySql:
             port=self.config.port,
             user=self.config.account,
             password=self.config.account_password,
-            database='postgres',
+            database="postgres",
         )
         conn.autocommit = True
         cur = conn.cursor()
@@ -106,16 +106,19 @@ class AnalyticdbVectorBySql:
         self.pool = self._create_connection_pool()
         with self._get_cursor() as cur:
             try:
-                cur.execute(f"CREATE TEXT SEARCH CONFIGURATION zh_cn (PARSER = zhparser)")
-                cur.execute(f"ALTER TEXT SEARCH CONFIGURATION zh_cn ADD MAPPING FOR n,v,a,i,e,l,x WITH simple")
+                cur.execute("CREATE TEXT SEARCH CONFIGURATION zh_cn (PARSER = zhparser)")
+                cur.execute("ALTER TEXT SEARCH CONFIGURATION zh_cn ADD MAPPING FOR n,v,a,i,e,l,x WITH simple")
             except Exception as e:
                 if "already exists" not in str(e):
                     raise e
             cur.execute(
-                f"CREATE OR REPLACE FUNCTION public.to_tsquery_from_text(txt text, lang regconfig DEFAULT 'english'::regconfig) "
-                f"RETURNS tsquery LANGUAGE sql IMMUTABLE STRICT AS $function$ "
-                f"SELECT to_tsquery(lang, COALESCE(string_agg(split_part(word, ':', 1), ' | '), '')) "
-                f"FROM (SELECT unnest(string_to_array(to_tsvector(lang, txt)::text, ' ')) AS word) AS words_only;$function$")
+                "CREATE OR REPLACE FUNCTION "
+                "public.to_tsquery_from_text(txt text, lang regconfig DEFAULT 'english'::regconfig) "
+                "RETURNS tsquery LANGUAGE sql IMMUTABLE STRICT AS $function$ "
+                "SELECT to_tsquery(lang, COALESCE(string_agg(split_part(word, ':', 1), ' | '), '')) "
+                "FROM (SELECT unnest(string_to_array(to_tsvector(lang, txt)::text, ' ')) AS word) "
+                "AS words_only;$function$"
+            )
             cur.execute(f"CREATE SCHEMA IF NOT EXISTS {self.config.namespace}")
 
     def _create_collection_if_not_exists(self, embedding_dimension: int):
@@ -126,18 +129,21 @@ class AnalyticdbVectorBySql:
             if redis_client.get(collection_exist_cache_key):
                 return
             with self._get_cursor() as cur:
-                cur.execute(f"CREATE TABLE IF NOT EXISTS {self.table_name}("
-                            f"id text PRIMARY KEY,"
-                            f"vector real[], ref_doc_id text, page_content text, metadata_ jsonb, "
-                            f"to_tsvector TSVECTOR"
-                            f") WITH (fillfactor=70) DISTRIBUTED BY (id);"
-                            )
+                cur.execute(
+                    f"CREATE TABLE IF NOT EXISTS {self.table_name}("
+                    f"id text PRIMARY KEY,"
+                    f"vector real[], ref_doc_id text, page_content text, metadata_ jsonb, "
+                    f"to_tsvector TSVECTOR"
+                    f") WITH (fillfactor=70) DISTRIBUTED BY (id);"
+                )
                 if embedding_dimension is not None:
                     index_name = f"{self._collection_name}_embedding_idx"
                     cur.execute(f"ALTER TABLE {self.table_name} ALTER COLUMN vector SET STORAGE PLAIN")
-                    cur.execute(f"CREATE INDEX {index_name} ON {self.table_name} USING ann(vector) "
-                                f"WITH(dim='{embedding_dimension}', distancemeasure='{self.config.metrics}', "
-                                f"pq_enable=0, external_storage=0)")
+                    cur.execute(
+                        f"CREATE INDEX {index_name} ON {self.table_name} USING ann(vector) "
+                        f"WITH(dim='{embedding_dimension}', distancemeasure='{self.config.metrics}', "
+                        f"pq_enable=0, external_storage=0)"
+                    )
                     cur.execute(f"CREATE INDEX ON {self.table_name} USING gin(to_tsvector)")
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
@@ -152,7 +158,7 @@ class AnalyticdbVectorBySql:
         for i, doc in enumerate(documents):
             values.append(
                 (
-                    id_prefix+str(i),
+                    id_prefix + str(i),
                     doc.metadata.get("doc_id", str(uuid.uuid4())),
                     embeddings[i],
                     doc.page_content,
@@ -189,7 +195,7 @@ class AnalyticdbVectorBySql:
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
         with self._get_cursor() as cur:
             query_vector_str = json.dumps(query_vector)
-            query_vector_str = '{' + query_vector_str[1:-1] + '}'
+            query_vector_str = "{" + query_vector_str[1:-1] + "}"
             cur.execute(
                 f"SELECT t.id AS id, t.vector AS vector, (1.0 - t.score) AS score, "
                 f"t.page_content as page_content, t.metadata_ AS metadata_ "
@@ -201,7 +207,7 @@ class AnalyticdbVectorBySql:
             for record in cur:
                 id, vector, score, page_content, metadata = record
                 if score > score_threshold:
-                    metadata['score'] = score
+                    metadata["score"] = score
                     doc = Document(
                         page_content=page_content,
                         vector=vector,
@@ -225,7 +231,7 @@ class AnalyticdbVectorBySql:
             documents = []
             for record in cur:
                 id, vector, page_content, metadata, score = record
-                metadata['score'] = score
+                metadata["score"] = score
                 doc = Document(
                     page_content=page_content,
                     vector=vector,

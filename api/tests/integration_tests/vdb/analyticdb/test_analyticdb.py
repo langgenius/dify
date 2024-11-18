@@ -1,7 +1,7 @@
 from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbConfig, AnalyticdbVector
-from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, setup_mock_redis
-from core.rag.datasource.vdb.analyticdb.analyticdb_vector_sql import AnalyticdbVectorBySqlConfig
 from core.rag.datasource.vdb.analyticdb.analyticdb_vector_openapi import AnalyticdbVectorOpenAPIConfig
+from core.rag.datasource.vdb.analyticdb.analyticdb_vector_sql import AnalyticdbVectorBySqlConfig
+from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, setup_mock_redis
 
 
 class AnalyticdbVectorTest(AbstractVectorTest):
@@ -13,20 +13,20 @@ class AnalyticdbVectorTest(AbstractVectorTest):
         if config_type == "sql":
             self.vector = AnalyticdbVector(
                 collection_name=self.collection_name,
-                sqlConfig=AnalyticdbVectorBySqlConfig(
+                sql_config=AnalyticdbVectorBySqlConfig(
                     host="test_host",
                     port=5432,
                     account="test_account",
                     account_password="test_passwd",
                     namespace="difytest_namespace",
                 ),
-                apiConfig=None,
+                api_config=None,
             )
         else:
             self.vector = AnalyticdbVector(
                 collection_name=self.collection_name,
-                sqlConfig=None,
-                apiConfig=AnalyticdbVectorOpenAPIConfig(
+                sql_config=None,
+                api_config=AnalyticdbVectorOpenAPIConfig(
                     access_key_id="test_key_id",
                     access_key_secret="test_key_secret",
                     region_id="test_region",

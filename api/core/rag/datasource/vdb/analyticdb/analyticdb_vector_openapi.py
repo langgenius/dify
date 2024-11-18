@@ -114,7 +114,7 @@ class AnalyticdbVectorOpenAPI:
             else:
                 raise ValueError(f"failed to create namespace {self.config.namespace}: {e}")
 
-    def _create_collection_if_not_exists(self, embedding_dimension: int ):
+    def _create_collection_if_not_exists(self, embedding_dimension: int):
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
         from Tea.exceptions import TeaException
 
