@@ -1260,7 +1260,7 @@ class OperationLog(Base):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class EndUser(UserMixin, Base):
+class EndUser(Base, UserMixin):
     __tablename__ = "end_users"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="end_user_pkey"),
