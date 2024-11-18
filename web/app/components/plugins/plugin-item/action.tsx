@@ -11,7 +11,6 @@ import Tooltip from '../../base/tooltip'
 import Confirm from '../../base/confirm'
 import { uninstallPlugin } from '@/service/plugins'
 import { useGitHubReleases } from '../install-plugin/hooks'
-import { compareVersion, getLatestVersion } from '@/utils/semver'
 import Toast from '@/app/components/base/toast'
 import { useModalContext } from '@/context/modal-context'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
@@ -50,18 +49,14 @@ const Action: FC<Props> = ({
     setTrue: showDeleting,
     setFalse: hideDeleting,
   }] = useBoolean(false)
-  const { fetchReleases } = useGitHubReleases()
+  const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const handleFetchNewVersion = async () => {
     try {
       const fetchedReleases = await fetchReleases(author, pluginName)
-      if (fetchedReleases.length === 0)
-        return
-      const versions = fetchedReleases.map(release => release.tag_name)
-      const latestVersion = getLatestVersion(versions)
-      if (compareVersion(latestVersion, meta!.version) === 1) {
+      if (checkForUpdates(fetchedReleases, meta!.version)) {
         setShowUpdatePluginModal({
           onSaveCallback: () => {
             invalidateInstalledPluginList()
@@ -87,11 +82,19 @@ const Action: FC<Props> = ({
         })
       }
     }
-    catch {
-      Toast.notify({
-        type: 'error',
-        message: 'Failed to compare versions',
-      })
+    catch (error) {
+      if (error instanceof Error) {
+        Toast.notify({
+          type: 'error',
+          message: error.message,
+        })
+      }
+      else {
+        Toast.notify({
+          type: 'error',
+          message: 'Failed to compare versions',
+        })
+      }
     }
   }
 
@@ -108,6 +111,7 @@ const Action: FC<Props> = ({
       hideDeleteConfirm()
       onDelete()
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [installationId, onDelete])
   return (
     <div className='flex space-x-1'>

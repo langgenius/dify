@@ -15,7 +15,6 @@ import Icon from '../card/base/card-icon'
 import Title from '../card/base/title'
 import OrgInfo from '../card/base/org-info'
 import { useGitHubReleases } from '../install-plugin/hooks'
-import { compareVersion, getLatestVersion } from '@/utils/semver'
 import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
 import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
 import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
@@ -49,7 +48,7 @@ const DetailHeader = ({
 }: Props) => {
   const { t } = useTranslation()
   const locale = useGetLanguage()
-  const { fetchReleases } = useGitHubReleases()
+  const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
 
   const {
@@ -72,14 +71,11 @@ const DetailHeader = ({
     unique_identifier: latest_unique_identifier,
   })
   const hasNewVersion = useMemo(() => {
-    if (isFromGitHub)
-      return latest_version !== version
-
     if (isFromMarketplace)
       return !!latest_version && latest_version !== version
 
     return false
-  }, [isFromGitHub, isFromMarketplace, latest_version, version])
+  }, [isFromMarketplace, latest_version, version])
 
   const [isShowUpdateModal, {
     setTrue: showUpdateModal,
@@ -94,11 +90,7 @@ const DetailHeader = ({
 
     try {
       const fetchedReleases = await fetchReleases(author, name)
-      if (fetchedReleases.length === 0)
-        return
-      const versions = fetchedReleases.map(release => release.tag_name)
-      const latestVersion = getLatestVersion(versions)
-      if (compareVersion(latestVersion, version) === 1) {
+      if (checkForUpdates(fetchedReleases, meta!.version)) {
         setShowUpdatePluginModal({
           onSaveCallback: () => {
             onUpdate()
@@ -107,7 +99,7 @@ const DetailHeader = ({
             type: PluginSource.github,
             github: {
               originalPackageInfo: {
-                id: installation_id,
+                id: detail.plugin_unique_identifier,
                 repo: meta!.repo,
                 version: meta!.version,
                 package: meta!.package,
@@ -124,11 +116,19 @@ const DetailHeader = ({
         })
       }
     }
-    catch {
-      Toast.notify({
-        type: 'error',
-        message: 'Failed to compare versions',
-      })
+    catch (error) {
+      if (error instanceof Error) {
+        Toast.notify({
+          type: 'error',
+          message: error.message,
+        })
+      }
+      else {
+        Toast.notify({
+          type: 'error',
+          message: 'Failed to compare versions',
+        })
+      }
     }
   }
 
@@ -203,7 +203,7 @@ const DetailHeader = ({
                 />
               }
             />
-            {hasNewVersion && (
+            {(hasNewVersion || isFromGitHub) && (
               <Button variant='secondary-accent' size='small' className='!h-5' onClick={handleUpdate}>{t('plugin.detailPanel.operation.update')}</Button>
             )}
           </div>

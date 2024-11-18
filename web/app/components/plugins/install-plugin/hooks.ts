@@ -2,6 +2,8 @@ import Toast from '@/app/components/base/toast'
 import { uploadGitHub } from '@/service/plugins'
 import { Octokit } from '@octokit/core'
 import { GITHUB_ACCESS_TOKEN } from '@/config'
+import { compareVersion, getLatestVersion } from '@/utils/semver'
+import type { GitHubRepoReleaseResponse } from '../types'
 
 export const useGitHubReleases = () => {
   const fetchReleases = async (owner: string, repo: string) => {
@@ -37,7 +39,21 @@ export const useGitHubReleases = () => {
     }
   }
 
-  return { fetchReleases }
+  const checkForUpdates = (fetchedReleases: GitHubRepoReleaseResponse[], currentVersion: string) => {
+    if (fetchedReleases.length === 0) throw new Error('No releases found')
+    const versions = fetchedReleases.map(release => release.tag_name)
+    const latestVersion = getLatestVersion(versions)
+    let res = false
+    try {
+      res = compareVersion(latestVersion, currentVersion) === 1
+    }
+    catch {
+      throw new Error('Failed to compare versions, please check the version format.')
+    }
+    return res
+  }
+
+  return { fetchReleases, checkForUpdates }
 }
 
 export const useGitHubUpload = () => {

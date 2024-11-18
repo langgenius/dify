@@ -82,7 +82,7 @@ const PluginItem: FC<Props> = ({
             <div className="flex items-center h-5">
               <Title title={label[locale]} />
               {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
-              <Badge className='ml-1' text={plugin.version} />
+              <Badge className='ml-1' text={source === PluginSource.github ? plugin.meta!.version : plugin.version} />
             </div>
             <div className='flex items-center justify-between'>
               <Description text={description[locale]} descriptionLineRows={1}></Description>
