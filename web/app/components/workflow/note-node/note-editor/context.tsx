@@ -1,6 +1,7 @@
 'use client'
 
 import {
+  createContext,
   memo,
   useRef,
 } from 'react'
@@ -12,10 +13,9 @@ import {
 } from '@lexical/list'
 import { createNoteEditorStore } from './store'
 import theme from './theme'
-import { createCtx } from '@/utils/context'
 
 type NoteEditorStore = ReturnType<typeof createNoteEditorStore>
-const [,, NoteEditorContext] = createCtx<NoteEditorStore>()
+const NoteEditorContext = createContext<NoteEditorStore | null>(null)
 
 type NoteEditorContextProviderProps = {
   value: string

@@ -1,15 +1,17 @@
 'use client'
 
+import { createContext, useContext } from 'use-context-selector'
 import useSWR from 'swr'
 import { fetchWorkspaces } from '@/service/common'
 import type { IWorkspace } from '@/models/common'
-import { createSelectorCtx } from '@/utils/context'
 
 export type WorkspacesContextValue = {
   workspaces: IWorkspace[]
 }
 
-const [, useWorkspacesContext, WorkspacesContext] = createSelectorCtx<WorkspacesContextValue>()
+const WorkspacesContext = createContext<WorkspacesContextValue>({
+  workspaces: [],
+})
 
 type IWorkspaceProviderProps = {
   children: React.ReactNode
@@ -29,6 +31,6 @@ export const WorkspaceProvider = ({
   )
 }
 
-export { useWorkspacesContext }
+export const useWorkspacesContext = () => useContext(WorkspacesContext)
 
 export default WorkspacesContext

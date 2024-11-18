@@ -1,5 +1,5 @@
+import { createContext } from 'use-context-selector'
 import type { InstalledApp } from '@/models/explore'
-import { createSelectorCtx } from '@/utils/context'
 
 type IExplore = {
   controlUpdateInstalledApps: number
@@ -9,6 +9,12 @@ type IExplore = {
   setInstalledApps: (installedApps: InstalledApp[]) => void
 }
 
-const [,, ExploreContext] = createSelectorCtx<IExplore>()
+const ExploreContext = createContext<IExplore>({
+  controlUpdateInstalledApps: 0,
+  setControlUpdateInstalledApps: () => { },
+  hasEditPermission: false,
+  installedApps: [],
+  setInstalledApps: () => { },
+})
 
 export default ExploreContext

@@ -8,8 +8,8 @@ import {
   InformationCircleIcon,
   XCircleIcon,
 } from '@heroicons/react/20/solid'
+import { createContext, useContext } from 'use-context-selector'
 import classNames from '@/utils/classnames'
-import { createSelectorCtx } from '@/utils/context'
 
 export type IToastProps = {
   type?: 'success' | 'error' | 'warning' | 'info'
@@ -23,7 +23,8 @@ type IToastContext = {
   notify: (props: IToastProps) => void
 }
 
-export const [, useToastContext, ToastContext] = createSelectorCtx<IToastContext>()
+export const ToastContext = createContext<IToastContext>({} as IToastContext)
+export const useToastContext = () => useContext(ToastContext)
 const Toast = ({
   type = 'info',
   message,
@@ -45,7 +46,7 @@ const Toast = ({
     type === 'info' ? 'bg-blue-50' : '',
   )}>
     <div className="flex">
-      <div className="shrink-0">
+      <div className="flex-shrink-0">
         {type === 'success' && <CheckCircleIcon className="w-5 h-5 text-green-400" aria-hidden="true" />}
         {type === 'error' && <XCircleIcon className="w-5 h-5 text-red-400" aria-hidden="true" />}
         {type === 'warning' && <ExclamationTriangleIcon className="w-5 h-5 text-yellow-400" aria-hidden="true" />}

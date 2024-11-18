@@ -1,10 +1,8 @@
+import { createContext, useContext } from 'use-context-selector'
 import type { DataSet } from '@/models/datasets'
-import { createSelectorCtx } from '@/utils/context'
 
-const [, useDatasetDetailContext, DatasetDetailContext] = createSelectorCtx<{ indexingTechnique?: string; dataset?: DataSet; mutateDatasetRes?: () => void }>({
-  defaultValue: {},
-})
+const DatasetDetailContext = createContext<{ indexingTechnique?: string; dataset?: DataSet; mutateDatasetRes?: () => void }>({})
 
-export { useDatasetDetailContext }
+export const useDatasetDetailContext = () => useContext(DatasetDetailContext)
 
 export default DatasetDetailContext

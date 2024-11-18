@@ -1,7 +1,7 @@
 'use client'
 
+import { createContext, useContext } from 'use-context-selector'
 import type { ModelAndParameter } from '../types'
-import { createSelectorCtx } from '@/utils/context'
 
 export type DebugWithMultipleModelContextType = {
   multipleModelConfigs: ModelAndParameter[]
@@ -9,9 +9,13 @@ export type DebugWithMultipleModelContextType = {
   onDebugWithMultipleModelChange: (singleModelConfig: ModelAndParameter) => void
   checkCanSend?: () => boolean
 }
-const [,useDebugWithMultipleModelContext, DebugWithMultipleModelContext] = createSelectorCtx<DebugWithMultipleModelContextType>()
+const DebugWithMultipleModelContext = createContext<DebugWithMultipleModelContextType>({
+  multipleModelConfigs: [],
+  onMultipleModelConfigsChange: () => {},
+  onDebugWithMultipleModelChange: () => {},
+})
 
-export { useDebugWithMultipleModelContext }
+export const useDebugWithMultipleModelContext = () => useContext(DebugWithMultipleModelContext)
 
 type DebugWithMultipleModelContextProviderProps = {
   children: React.ReactNode

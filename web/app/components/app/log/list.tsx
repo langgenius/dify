@@ -13,7 +13,7 @@ import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 import timezone from 'dayjs/plugin/timezone'
-import { useContext } from 'use-context-selector'
+import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import type { ChatItemInTree } from '../../base/chat/types'
@@ -44,7 +44,6 @@ import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
 import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
-import { createSelectorCtx } from '@/utils/context'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -62,7 +61,7 @@ type IDrawerContext = {
   appDetail?: App
 }
 
-const [,, DrawerContext] = createSelectorCtx<IDrawerContext>()
+const DrawerContext = createContext<IDrawerContext>({} as IDrawerContext)
 
 /**
  * Icon component with numbers

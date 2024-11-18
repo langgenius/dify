@@ -1,7 +1,7 @@
 'use client'
 
+import { createContext, useContext } from 'use-context-selector'
 import type { DataSet } from '@/models/datasets'
-import { createSelectorCtx } from '@/utils/context'
 
 export type DatasetsContextValue = {
   datasets: DataSet[]
@@ -9,8 +9,12 @@ export type DatasetsContextValue = {
   currentDataset?: DataSet
 }
 
-const [, useDatasetsContext, DatasetsContext] = createSelectorCtx<DatasetsContextValue>()
+const DatasetsContext = createContext<DatasetsContextValue>({
+  datasets: [],
+  mutateDatasets: () => {},
+  currentDataset: undefined,
+})
 
-export { useDatasetsContext }
+export const useDatasetsContext = () => useContext(DatasetsContext)
 
 export default DatasetsContext
