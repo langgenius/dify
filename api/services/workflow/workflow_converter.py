@@ -13,12 +13,12 @@ from core.app.app_config.entities import (
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
-from core.file.file_obj import FileExtraConfig
+from core.file.models import FileUploadConfig
 from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.simple_prompt_transform import SimplePromptTransform
-from core.workflow.entities.node_entities import NodeType
+from core.workflow.nodes import NodeType
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from models.account import Account
@@ -381,7 +381,7 @@ class WorkflowConverter:
         graph: dict,
         model_config: ModelConfigEntity,
         prompt_template: PromptTemplateEntity,
-        file_upload: Optional[FileExtraConfig] = None,
+        file_upload: Optional[FileUploadConfig] = None,
         external_data_variable_node_mapping: dict[str, str] | None = None,
     ) -> dict:
         """
@@ -522,7 +522,7 @@ class WorkflowConverter:
                 "vision": {
                     "enabled": file_upload is not None,
                     "variable_selector": ["sys", "files"] if file_upload is not None else None,
-                    "configs": {"detail": file_upload.image_config["detail"]}
+                    "configs": {"detail": file_upload.image_config.detail}
                     if file_upload is not None and file_upload.image_config is not None
                     else None,
                 },

@@ -55,11 +55,12 @@ const ConfigContent: FC<Props> = ({
         retrieval_model: RETRIEVE_TYPE.multiWay,
       }, isInWorkflow)
     }
-  }, [type])
+  }, [type, datasetConfigs, isInWorkflow, onChange])
 
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
+    currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const {
@@ -160,18 +161,18 @@ const ConfigContent: FC<Props> = ({
   const selectedRerankMode = datasetConfigs.reranking_mode || RerankingModeEnum.RerankingModel
 
   const canManuallyToggleRerank = useMemo(() => {
-    return !(
-      (selectedDatasetsMode.allInternal && selectedDatasetsMode.allEconomic)
+    return (selectedDatasetsMode.allInternal && selectedDatasetsMode.allEconomic)
       || selectedDatasetsMode.allExternal
-    )
   }, [selectedDatasetsMode.allEconomic, selectedDatasetsMode.allExternal, selectedDatasetsMode.allInternal])
 
   const showRerankModel = useMemo(() => {
     if (!canManuallyToggleRerank)
+      return true
+    else if (canManuallyToggleRerank && !isRerankDefaultModelValid)
       return false
 
     return datasetConfigs.reranking_enable
-  }, [canManuallyToggleRerank, datasetConfigs.reranking_enable])
+  }, [canManuallyToggleRerank, datasetConfigs.reranking_enable, isRerankDefaultModelValid])
 
   const handleDisabledSwitchClick = useCallback(() => {
     if (!currentRerankModel && !showRerankModel)
@@ -179,7 +180,7 @@ const ConfigContent: FC<Props> = ({
   }, [currentRerankModel, showRerankModel, t])
 
   useEffect(() => {
-    if (!canManuallyToggleRerank && showRerankModel !== datasetConfigs.reranking_enable) {
+    if (canManuallyToggleRerank && showRerankModel !== datasetConfigs.reranking_enable) {
       onChange({
         ...datasetConfigs,
         reranking_enable: showRerankModel,
@@ -265,7 +266,7 @@ const ConfigContent: FC<Props> = ({
               <div className='mt-2'>
                 <div className='flex items-center'>
                   {
-                    selectedDatasetsMode.allEconomic && (
+                    selectedDatasetsMode.allEconomic && !selectedDatasetsMode.mixtureInternalAndExternal && (
                       <div
                         className='flex items-center'
                         onClick={handleDisabledSwitchClick}

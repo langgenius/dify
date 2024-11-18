@@ -10,8 +10,7 @@ from controllers.console.app.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_runtime.errors.invoke import InvokeError
@@ -52,4 +51,39 @@ class RuleGenerateApi(Resource):
         return rules
 
 
+class RuleCodeGenerateApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("instruction", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("model_config", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("no_variable", type=bool, required=True, default=False, location="json")
+        parser.add_argument("code_language", type=str, required=False, default="javascript", location="json")
+        args = parser.parse_args()
+
+        account = current_user
+        CODE_GENERATION_MAX_TOKENS = int(os.getenv("CODE_GENERATION_MAX_TOKENS", "1024"))
+        try:
+            code_result = LLMGenerator.generate_code(
+                tenant_id=account.current_tenant_id,
+                instruction=args["instruction"],
+                model_config=args["model_config"],
+                code_language=args["code_language"],
+                max_tokens=CODE_GENERATION_MAX_TOKENS,
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+
+        return code_result
+
+
 api.add_resource(RuleGenerateApi, "/rule-generate")
+api.add_resource(RuleCodeGenerateApi, "/rule-code-generate")

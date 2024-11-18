@@ -4,10 +4,7 @@ import re
 from collections.abc import Generator, Iterator
 from typing import Any, Optional, Union, cast
 
-# from openai.types.chat import ChatCompletion, ChatCompletionChunk
 import boto3
-from sagemaker import Predictor, serializers
-from sagemaker.session import Session
 
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
@@ -212,6 +209,9 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
+        from sagemaker import Predictor, serializers
+        from sagemaker.session import Session
+
         if not self.sagemaker_session:
             access_key = credentials.get("aws_access_key_id")
             secret_key = credentials.get("aws_secret_access_key")
@@ -408,7 +408,7 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
             InvokeBadRequestError: [InvokeBadRequestError, KeyError, ValueError],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

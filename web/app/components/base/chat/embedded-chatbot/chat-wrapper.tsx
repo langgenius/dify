@@ -42,6 +42,10 @@ const ChatWrapper = () => {
 
     return {
       ...config,
+      file_upload: {
+        ...(config as any).file_upload,
+        fileUploadConfig: (config as any).system_parameters,
+      },
       supportFeedback: true,
       opening_statement: currentConversationId ? currentConversationItem?.introduction : (config as any).opening_statement,
     } as ChatConfig
@@ -58,7 +62,7 @@ const ChatWrapper = () => {
     appConfig,
     {
       inputs: (currentConversationId ? currentConversationItem?.inputs : newConversationInputs) as any,
-      promptVariables: inputsForms,
+      inputsForm: inputsForms,
     },
     appPrevChatList,
     taskId => stopChatMessageResponding('', taskId, isInstalledApp, appId),
@@ -72,13 +76,11 @@ const ChatWrapper = () => {
   const doSend: OnSend = useCallback((message, files, last_answer) => {
     const data: any = {
       query: message,
+      files,
       inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
       conversation_id: currentConversationId,
       parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
     }
-
-    if (appConfig?.file_upload?.image.enabled && files?.length)
-      data.files = files
 
     handleSend(
       getUrl('chat-messages', isInstalledApp, appId || ''),
@@ -159,6 +161,8 @@ const ChatWrapper = () => {
       chatFooterClassName='pb-4'
       chatFooterInnerClassName={cn('mx-auto w-full max-w-full tablet:px-4', isMobile && 'px-4')}
       onSend={doSend}
+      inputs={currentConversationId ? currentConversationItem?.inputs as any : newConversationInputs}
+      inputsForm={inputsForms}
       onRegenerate={doRegenerate}
       onStopResponding={handleStop}
       chatNode={chatNode}

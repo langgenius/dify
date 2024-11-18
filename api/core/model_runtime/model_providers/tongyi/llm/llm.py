@@ -29,6 +29,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
+    VideoPromptMessageContent,
 )
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -431,6 +432,14 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
                             sub_message_dict = {"image": image_url}
                             sub_messages.append(sub_message_dict)
+                        elif message_content.type == PromptMessageContentType.VIDEO:
+                            message_content = cast(VideoPromptMessageContent, message_content)
+                            video_url = message_content.data
+                            if message_content.data.startswith("data:"):
+                                raise InvokeError("not support base64, please set MULTIMODAL_SEND_VIDEO_FORMAT to url")
+
+                            sub_message_dict = {"video": video_url}
+                            sub_messages.append(sub_message_dict)
 
                     # resort sub_messages to ensure text is always at last
                     sub_messages = sorted(sub_messages, key=lambda x: "text" in x)
@@ -535,7 +544,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
             ],
         }
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         Architecture for defining customizable models
 

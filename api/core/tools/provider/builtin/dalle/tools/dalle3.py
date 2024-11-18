@@ -66,7 +66,7 @@ class DallE3Tool(BuiltinTool):
         for image in response.data:
             mime_type, blob_image = DallE3Tool._decode_image(image.b64_json)
             blob_message = self.create_blob_message(
-                blob=blob_image, meta={"mime_type": mime_type}, save_as=self.VariableKey.IMAGE.value
+                blob=blob_image, meta={"mime_type": mime_type}, save_as=self.VariableKey.IMAGE
             )
             result.append(blob_message)
         return result

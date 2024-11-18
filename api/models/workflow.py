@@ -1,43 +1,24 @@
 import json
 from collections.abc import Mapping, Sequence
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 from typing import Any, Optional, Union
 
+import sqlalchemy as sa
 from sqlalchemy import func
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import Mapped, mapped_column
 
 import contexts
 from constants import HIDDEN_VALUE
-from core.app.segments import SecretVariable, Variable, factory
 from core.helper import encrypter
+from core.variables import SecretVariable, Variable
 from extensions.ext_database import db
+from factories import variable_factory
 from libs import helper
+from models.enums import CreatedByRole
 
 from .account import Account
 from .types import StringUUID
-
-
-class CreatedByRole(Enum):
-    """
-    Created By Role Enum
-    """
-
-    ACCOUNT = "account"
-    END_USER = "end_user"
-
-    @classmethod
-    def value_of(cls, value: str) -> "CreatedByRole":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid created by role value {value}")
 
 
 class WorkflowType(Enum):
@@ -114,23 +95,25 @@ class Workflow(db.Model):
         db.Index("workflow_version_idx", "tenant_id", "app_id", "version"),
     )
 
-    id: Mapped[str] = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
-    app_id: Mapped[str] = db.Column(StringUUID, nullable=False)
-    type: Mapped[str] = db.Column(db.String(255), nullable=False)
-    version: Mapped[str] = db.Column(db.String(255), nullable=False)
-    graph: Mapped[str] = db.Column(db.Text)
-    features: Mapped[str] = db.Column(db.Text)
-    created_by: Mapped[str] = db.Column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = db.Column(
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    type: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    version: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    graph: Mapped[str] = mapped_column(sa.Text)
+    _features: Mapped[str] = mapped_column("features", sa.TEXT)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
         db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
-    updated_by: Mapped[str] = db.Column(StringUUID)
-    updated_at: Mapped[datetime] = db.Column(db.DateTime)
-    _environment_variables: Mapped[str] = db.Column(
+    updated_by: Mapped[Optional[str]] = mapped_column(StringUUID)
+    updated_at: Mapped[datetime] = mapped_column(
+        sa.DateTime, nullable=False, default=datetime.now(tz=timezone.utc), server_onupdate=func.current_timestamp()
+    )
+    _environment_variables: Mapped[str] = mapped_column(
         "environment_variables", db.Text, nullable=False, server_default="{}"
     )
-    _conversation_variables: Mapped[str] = db.Column(
+    _conversation_variables: Mapped[str] = mapped_column(
         "conversation_variables", db.Text, nullable=False, server_default="{}"
     )
 
@@ -168,6 +151,34 @@ class Workflow(db.Model):
     @property
     def graph_dict(self) -> Mapping[str, Any]:
         return json.loads(self.graph) if self.graph else {}
+
+    @property
+    def features(self) -> str:
+        """
+        Convert old features structure to new features structure.
+        """
+        if not self._features:
+            return self._features
+
+        features = json.loads(self._features)
+        if features.get("file_upload", {}).get("image", {}).get("enabled", False):
+            image_enabled = True
+            image_number_limits = int(features["file_upload"]["image"].get("number_limits", 1))
+            image_transfer_methods = features["file_upload"]["image"].get(
+                "transfer_methods", ["remote_url", "local_file"]
+            )
+            features["file_upload"]["enabled"] = image_enabled
+            features["file_upload"]["number_limits"] = image_number_limits
+            features["file_upload"]["allowed_upload_methods"] = image_transfer_methods
+            features["file_upload"]["allowed_file_types"] = ["image"]
+            features["file_upload"]["allowed_extensions"] = []
+            del features["file_upload"]["image"]
+            self._features = json.dumps(features)
+        return self._features
+
+    @features.setter
+    def features(self, value: str) -> None:
+        self._features = value
 
     @property
     def features_dict(self) -> Mapping[str, Any]:
@@ -227,7 +238,7 @@ class Workflow(db.Model):
         tenant_id = contexts.tenant_id.get()
 
         environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables)
-        results = [factory.build_variable_from_mapping(v) for v in environment_variables_dict.values()]
+        results = [variable_factory.build_variable_from_mapping(v) for v in environment_variables_dict.values()]
 
         # decrypt secret variables value
         decrypt_func = (
@@ -240,6 +251,10 @@ class Workflow(db.Model):
 
     @environment_variables.setter
     def environment_variables(self, value: Sequence[Variable]):
+        if not value:
+            self._environment_variables = "{}"
+            return
+
         tenant_id = contexts.tenant_id.get()
 
         value = list(value)
@@ -288,7 +303,7 @@ class Workflow(db.Model):
             self._conversation_variables = "{}"
 
         variables_dict: dict[str, Any] = json.loads(self._conversation_variables)
-        results = [factory.build_variable_from_mapping(v) for v in variables_dict.values()]
+        results = [variable_factory.build_variable_from_mapping(v) for v in variables_dict.values()]
         return results
 
     @conversation_variables.setter
@@ -297,28 +312,6 @@ class Workflow(db.Model):
             {var.name: var.model_dump() for var in value},
             ensure_ascii=False,
         )
-
-
-class WorkflowRunTriggeredFrom(Enum):
-    """
-    Workflow Run Triggered From Enum
-    """
-
-    DEBUGGING = "debugging"
-    APP_RUN = "app-run"
-
-    @classmethod
-    def value_of(cls, value: str) -> "WorkflowRunTriggeredFrom":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid workflow run triggered from value {value}")
 
 
 class WorkflowRunStatus(Enum):
@@ -401,7 +394,7 @@ class WorkflowRun(db.Model):
     graph = db.Column(db.Text)
     inputs = db.Column(db.Text)
     status = db.Column(db.String(255), nullable=False)
-    outputs = db.Column(db.Text)
+    outputs: Mapped[str] = db.Column(db.Text)
     error = db.Column(db.Text)
     elapsed_time = db.Column(db.Float, nullable=False, server_default=db.text("0"))
     total_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
@@ -413,27 +406,27 @@ class WorkflowRun(db.Model):
 
     @property
     def created_by_account(self):
-        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        created_by_role = CreatedByRole(self.created_by_role)
         return db.session.get(Account, self.created_by) if created_by_role == CreatedByRole.ACCOUNT else None
 
     @property
     def created_by_end_user(self):
         from models.model import EndUser
 
-        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        created_by_role = CreatedByRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
 
     @property
     def graph_dict(self):
-        return json.loads(self.graph) if self.graph else None
+        return json.loads(self.graph) if self.graph else {}
 
     @property
-    def inputs_dict(self):
-        return json.loads(self.inputs) if self.inputs else None
+    def inputs_dict(self) -> Mapping[str, Any]:
+        return json.loads(self.inputs) if self.inputs else {}
 
     @property
-    def outputs_dict(self):
-        return json.loads(self.outputs) if self.outputs else None
+    def outputs_dict(self) -> Mapping[str, Any]:
+        return json.loads(self.outputs) if self.outputs else {}
 
     @property
     def message(self) -> Optional["Message"]:
@@ -640,14 +633,14 @@ class WorkflowNodeExecution(db.Model):
 
     @property
     def created_by_account(self):
-        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        created_by_role = CreatedByRole(self.created_by_role)
         return db.session.get(Account, self.created_by) if created_by_role == CreatedByRole.ACCOUNT else None
 
     @property
     def created_by_end_user(self):
         from models.model import EndUser
 
-        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        created_by_role = CreatedByRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
 
     @property
@@ -672,7 +665,7 @@ class WorkflowNodeExecution(db.Model):
 
         extras = {}
         if self.execution_metadata_dict:
-            from core.workflow.entities.node_entities import NodeType
+            from core.workflow.nodes import NodeType
 
             if self.node_type == NodeType.TOOL.value and "tool_info" in self.execution_metadata_dict:
                 tool_info = self.execution_metadata_dict["tool_info"]
@@ -759,14 +752,14 @@ class WorkflowAppLog(db.Model):
 
     @property
     def created_by_account(self):
-        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        created_by_role = CreatedByRole(self.created_by_role)
         return db.session.get(Account, self.created_by) if created_by_role == CreatedByRole.ACCOUNT else None
 
     @property
     def created_by_end_user(self):
         from models.model import EndUser
 
-        created_by_role = CreatedByRole.value_of(self.created_by_role)
+        created_by_role = CreatedByRole(self.created_by_role)
         return db.session.get(EndUser, self.created_by) if created_by_role == CreatedByRole.END_USER else None
 
 
@@ -800,4 +793,4 @@ class ConversationVariable(db.Model):
 
     def to_variable(self) -> Variable:
         mapping = json.loads(self.data)
-        return factory.build_variable_from_mapping(mapping)
+        return variable_factory.build_variable_from_mapping(mapping)

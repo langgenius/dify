@@ -5,10 +5,32 @@ identity:
     en_US: Feishu Base
     zh_Hans: 飞书多维表格
   description:
-    en_US: Feishu Base
-    zh_Hans: 飞书多维表格
-  icon: icon.svg
+    en_US: |
+      Feishu base, requires the following permissions: bitable:app.
+    zh_Hans: |
+      飞书多维表格，需要开通以下权限: bitable:app。
+  icon: icon.png
   tags:
     - social
     - productivity
 credentials_for_provider:
+  app_id:
+    type: text-input
+    required: true
+    label:
+      en_US: APP ID
+    placeholder:
+      en_US: Please input your feishu app id
+      zh_Hans: 请输入你的飞书 app id
+    help:
+      en_US: Get your app_id and app_secret from Feishu
+      zh_Hans: 从飞书获取您的 app_id 和 app_secret
+    url: https://open.larkoffice.com/app
+  app_secret:
+    type: secret-input
+    required: true
+    label:
+      en_US: APP Secret
+    placeholder:
+      en_US: Please input your app secret
+      zh_Hans: 请输入你的飞书 app secret

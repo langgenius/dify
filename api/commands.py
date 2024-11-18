@@ -19,7 +19,7 @@ from extensions.ext_redis import redis_client
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
-from models.account import Tenant
+from models import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
@@ -277,6 +277,9 @@ def migrate_knowledge_vector_database():
         VectorType.TENCENT,
         VectorType.BAIDU,
         VectorType.VIKINGDB,
+        VectorType.UPSTASH,
+        VectorType.COUCHBASE,
+        VectorType.OCEANBASE,
     }
     page = 1
     while True:
@@ -426,14 +429,14 @@ def convert_to_agent_apps():
         # fetch first 1000 apps
         sql_query = """SELECT a.id AS id FROM apps a
             INNER JOIN app_model_configs am ON a.app_model_config_id=am.id
-            WHERE a.mode = 'chat' 
-            AND am.agent_mode is not null 
+            WHERE a.mode = 'chat'
+            AND am.agent_mode is not null
             AND (
-				am.agent_mode like '%"strategy": "function_call"%' 
+				am.agent_mode like '%"strategy": "function_call"%'
                 OR am.agent_mode  like '%"strategy": "react"%'
-			) 
+			)
             AND (
-				am.agent_mode like '{"enabled": true%' 
+				am.agent_mode like '{"enabled": true%'
                 OR am.agent_mode like '{"max_iteration": %'
 			) ORDER BY a.created_at DESC LIMIT 1000
         """
@@ -586,7 +589,7 @@ def upgrade_db():
             click.echo(click.style("Database migration successful!", fg="green"))
 
         except Exception as e:
-            logging.exception(f"Database migration failed: {e}")
+            logging.exception("Failed to execute database migration")
         finally:
             lock.release()
     else:
@@ -630,7 +633,7 @@ where sites.id is null limit 1000"""
                 except Exception as e:
                     failed_app_ids.append(app_id)
                     click.echo(click.style("Failed to fix missing site for app {}".format(app_id), fg="red"))
-                    logging.exception(f"Fix app related site missing issue failed, error: {e}")
+                    logging.exception(f"Failed to fix app related site missing issue, app_id: {app_id}")
                     continue
 
             if not processed_count:

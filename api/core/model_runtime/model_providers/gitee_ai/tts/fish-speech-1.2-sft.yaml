@@ -1,0 +1,11 @@
+model: fish-speech-1.2-sft
+model_type: tts
+model_properties:
+  default_voice: 'default'
+  voices:
+    - mode: 'default'
+      name: 'Default'
+      language: [ 'zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID' ]
+  word_limit: 3500
+  audio_type: 'mp3'
+  max_workers: 5

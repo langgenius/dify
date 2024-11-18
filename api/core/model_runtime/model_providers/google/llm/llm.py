@@ -116,26 +116,33 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         :param tools: tool messages
         :return: glm tools
         """
-        return glm.Tool(
-            function_declarations=[
-                glm.FunctionDeclaration(
-                    name=tool.name,
-                    parameters=glm.Schema(
-                        type=glm.Type.OBJECT,
-                        properties={
-                            key: {
-                                "type_": value.get("type", "string").upper(),
-                                "description": value.get("description", ""),
-                                "enum": value.get("enum", []),
-                            }
-                            for key, value in tool.parameters.get("properties", {}).items()
-                        },
-                        required=tool.parameters.get("required", []),
-                    ),
+        function_declarations = []
+        for tool in tools:
+            properties = {}
+            for key, value in tool.parameters.get("properties", {}).items():
+                properties[key] = {
+                    "type_": glm.Type.STRING,
+                    "description": value.get("description", ""),
+                    "enum": value.get("enum", []),
+                }
+
+            if properties:
+                parameters = glm.Schema(
+                    type=glm.Type.OBJECT,
+                    properties=properties,
+                    required=tool.parameters.get("required", []),
                 )
-                for tool in tools
-            ]
-        )
+            else:
+                parameters = None
+
+            function_declaration = glm.FunctionDeclaration(
+                name=tool.name,
+                parameters=parameters,
+                description=tool.description,
+            )
+            function_declarations.append(function_declaration)
+
+        return glm.Tool(function_declarations=function_declarations)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """

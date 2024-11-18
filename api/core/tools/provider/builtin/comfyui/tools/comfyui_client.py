@@ -6,58 +6,81 @@ import httpx
 from websocket import WebSocket
 from yarl import URL
 
+from core.file.file_manager import download
+from core.file.models import File
+
 
 class ComfyUiClient:
     def __init__(self, base_url: str):
         self.base_url = URL(base_url)
 
-    def get_history(self, prompt_id: str):
+    def get_history(self, prompt_id: str) -> dict:
         res = httpx.get(str(self.base_url / "history"), params={"prompt_id": prompt_id})
         history = res.json()[prompt_id]
         return history
 
-    def get_image(self, filename: str, subfolder: str, folder_type: str):
+    def get_image(self, filename: str, subfolder: str, folder_type: str) -> bytes:
         response = httpx.get(
             str(self.base_url / "view"),
             params={"filename": filename, "subfolder": subfolder, "type": folder_type},
         )
         return response.content
 
-    def upload_image(self, input_path: str, name: str, image_type: str = "input", overwrite: bool = False):
-        # plan to support img2img in dify 0.10.0
-        with open(input_path, "rb") as file:
-            files = {"image": (name, file, "image/png")}
-            data = {"type": image_type, "overwrite": str(overwrite).lower()}
+    def upload_image(self, image_file: File) -> dict:
+        file = download(image_file)
+        files = {"image": (image_file.filename, file, image_file.mime_type), "overwrite": "true"}
+        res = httpx.post(str(self.base_url / "upload/image"), files=files)
+        return res.json()
 
-        res = httpx.post(str(self.base_url / "upload/image"), data=data, files=files)
-        return res
-
-    def queue_prompt(self, client_id: str, prompt: dict):
+    def queue_prompt(self, client_id: str, prompt: dict) -> str:
         res = httpx.post(str(self.base_url / "prompt"), json={"client_id": client_id, "prompt": prompt})
         prompt_id = res.json()["prompt_id"]
         return prompt_id
 
-    def open_websocket_connection(self):
+    def open_websocket_connection(self) -> tuple[WebSocket, str]:
         client_id = str(uuid.uuid4())
         ws = WebSocket()
         ws_address = f"ws://{self.base_url.authority}/ws?clientId={client_id}"
         ws.connect(ws_address)
         return ws, client_id
 
-    def set_prompt(self, origin_prompt: dict, positive_prompt: str, negative_prompt: str = ""):
-        """
-        find the first KSampler, then can find the prompt node through it.
-        """
+    def set_prompt_by_ksampler(self, origin_prompt: dict, positive_prompt: str, negative_prompt: str = "") -> dict:
         prompt = origin_prompt.copy()
         id_to_class_type = {id: details["class_type"] for id, details in prompt.items()}
         k_sampler = [key for key, value in id_to_class_type.items() if value == "KSampler"][0]
-        prompt.get(k_sampler)["inputs"]["seed"] = random.randint(10**14, 10**15 - 1)
         positive_input_id = prompt.get(k_sampler)["inputs"]["positive"][0]
         prompt.get(positive_input_id)["inputs"]["text"] = positive_prompt
 
         if negative_prompt != "":
             negative_input_id = prompt.get(k_sampler)["inputs"]["negative"][0]
             prompt.get(negative_input_id)["inputs"]["text"] = negative_prompt
+
+        return prompt
+
+    def set_prompt_images_by_ids(self, origin_prompt: dict, image_names: list[str], image_ids: list[str]) -> dict:
+        prompt = origin_prompt.copy()
+        for index, image_node_id in enumerate(image_ids):
+            prompt[image_node_id]["inputs"]["image"] = image_names[index]
+        return prompt
+
+    def set_prompt_images_by_default(self, origin_prompt: dict, image_names: list[str]) -> dict:
+        prompt = origin_prompt.copy()
+        id_to_class_type = {id: details["class_type"] for id, details in prompt.items()}
+        load_image_nodes = [key for key, value in id_to_class_type.items() if value == "LoadImage"]
+        for load_image, image_name in zip(load_image_nodes, image_names):
+            prompt.get(load_image)["inputs"]["image"] = image_name
+        return prompt
+
+    def set_prompt_seed_by_id(self, origin_prompt: dict, seed_id: str) -> dict:
+        prompt = origin_prompt.copy()
+        if seed_id not in prompt:
+            raise Exception("Not a valid seed node")
+        if "seed" in prompt[seed_id]["inputs"]:
+            prompt[seed_id]["inputs"]["seed"] = random.randint(10**14, 10**15 - 1)
+        elif "noise_seed" in prompt[seed_id]["inputs"]:
+            prompt[seed_id]["inputs"]["noise_seed"] = random.randint(10**14, 10**15 - 1)
+        else:
+            raise Exception("Not a valid seed node")
         return prompt
 
     def track_progress(self, prompt: dict, ws: WebSocket, prompt_id: str):
@@ -89,7 +112,7 @@ class ComfyUiClient:
             else:
                 continue
 
-    def generate_image_by_prompt(self, prompt: dict):
+    def generate_image_by_prompt(self, prompt: dict) -> list[bytes]:
         try:
             ws, client_id = self.open_websocket_connection()
             prompt_id = self.queue_prompt(client_id, prompt)

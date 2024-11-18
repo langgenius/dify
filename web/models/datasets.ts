@@ -1,4 +1,4 @@
-import type { DataSourceNotionPage } from './common'
+import type { DataSourceNotionPage, DataSourceProvider } from './common'
 import type { AppIconType, AppMode, RetrievalConfig } from '@/types/app'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 
@@ -230,6 +230,9 @@ export type DataSourceInfo = {
     extension: string
   }
   notion_page_icon?: string
+  notion_workspace_id?: string
+  notion_page_id?: string
+  provider?: DataSourceProvider
   job_id: string
   url: string
 }
@@ -565,14 +568,6 @@ export const DEFAULT_WEIGHTED_SCORE = {
   allHighQualityFullTextSearch: {
     semantic: 0,
     keyword: 1.0,
-  },
-  semanticFirst: {
-    semantic: 0.7,
-    keyword: 0.3,
-  },
-  keywordFirst: {
-    semantic: 0.3,
-    keyword: 0.7,
   },
   other: {
     semantic: 0.7,

@@ -8,11 +8,10 @@ import {
   useNodesReadOnly,
 } from '../../hooks'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
+import useConfigVision from '../../hooks/use-config-vision'
 import type { LLMNodeType } from './types'
-import { Resolution } from '@/types/app'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel, useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
-  ModelFeatureEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
@@ -100,7 +99,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       })
       setInputs(newInputs)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig, isChatModel])
 
   const [modelChanged, setModelChanged] = useState(false)
@@ -108,6 +107,21 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     currentProvider,
     currentModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
+
+  const {
+    isVisionModel,
+    handleVisionResolutionEnabledChange,
+    handleVisionResolutionChange,
+    handleModelChanged: handleVisionConfigAfterModelChanged,
+  } = useConfigVision(model, {
+    payload: inputs.vision,
+    onChange: (newPayload) => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.vision = newPayload
+      })
+      setInputs(newInputs)
+    },
+  })
 
   const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
@@ -139,44 +153,14 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const {
-    currentModel: currModel,
-  } = useTextGenerationCurrentProviderAndModelAndModelList(
-    {
-      provider: model.provider,
-      model: model.name,
-    },
-  )
-  const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
   // change to vision model to set vision enabled, else disabled
   useEffect(() => {
     if (!modelChanged)
       return
     setModelChanged(false)
-    if (!isShowVisionConfig) {
-      const newInputs = produce(inputs, (draft) => {
-        draft.vision = {
-          enabled: false,
-        }
-      })
-      setInputs(newInputs)
-      return
-    }
-    if (!inputs.vision?.enabled) {
-      const newInputs = produce(inputs, (draft) => {
-        if (!draft.vision?.enabled) {
-          draft.vision = {
-            enabled: true,
-            configs: {
-              detail: Resolution.high,
-            },
-          }
-        }
-      })
-      setInputs(newInputs)
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isShowVisionConfig, modelChanged])
+    handleVisionConfigAfterModelChanged()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isVisionModel, modelChanged])
 
   // variables
   const isShowVars = (() => {
@@ -293,46 +277,12 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const handleVisionResolutionEnabledChange = useCallback((enabled: boolean) => {
-    const newInputs = produce(inputs, (draft) => {
-      if (!draft.vision) {
-        draft.vision = {
-          enabled,
-          configs: {
-            detail: Resolution.high,
-          },
-        }
-      }
-      else {
-        draft.vision.enabled = enabled
-        if (!draft.vision.configs) {
-          draft.vision.configs = {
-            detail: Resolution.high,
-          }
-        }
-      }
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
-  const handleVisionResolutionChange = useCallback((newResolution: Resolution) => {
-    const newInputs = produce(inputs, (draft) => {
-      if (!draft.vision.configs) {
-        draft.vision.configs = {
-          detail: Resolution.high,
-        }
-      }
-      draft.vision.configs.detail = newResolution
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [VarType.number, VarType.string, VarType.secret].includes(varPayload.type)
+    return [VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber].includes(varPayload.type)
   }, [])
 
-  const filterVar = useCallback((varPayload: Var) => {
-    return [VarType.arrayObject, VarType.array, VarType.number, VarType.string, VarType.secret].includes(varPayload.type)
+  const filterMemoryPromptVar = useCallback((varPayload: Var) => {
+    return [VarType.arrayObject, VarType.array, VarType.number, VarType.string, VarType.secret, VarType.arrayString, VarType.arrayNumber].includes(varPayload.type)
   }, [])
 
   const {
@@ -340,7 +290,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     availableNodesWithParent,
   } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
-    filterVar,
+    filterVar: filterMemoryPromptVar,
   })
 
   // single run
@@ -425,7 +375,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     isCompletionModel,
     hasSetBlockStatus,
     shouldShowContextTip,
-    isShowVisionConfig,
+    isVisionModel,
     handleModelChanged,
     handleCompletionParamsChange,
     isShowVars,
@@ -435,7 +385,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleAddEmptyVariable,
     handleContextVarChange,
     filterInputVar,
-    filterVar,
+    filterVar: filterMemoryPromptVar,
     availableVars,
     availableNodesWithParent,
     handlePromptChange,

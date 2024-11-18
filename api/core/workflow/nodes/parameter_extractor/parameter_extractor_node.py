@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.file import File
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
@@ -22,12 +23,31 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.nodes.llm.entities import ModelConfig
-from core.workflow.nodes.llm.llm_node import LLMNode
-from core.workflow.nodes.parameter_extractor.entities import ParameterExtractorNodeData
-from core.workflow.nodes.parameter_extractor.prompts import (
+from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.llm import LLMNode, ModelConfig
+from core.workflow.utils import variable_template_parser
+from extensions.ext_database import db
+from models.workflow import WorkflowNodeExecutionStatus
+
+from .entities import ParameterExtractorNodeData
+from .exc import (
+    InvalidArrayValueError,
+    InvalidBoolValueError,
+    InvalidInvokeResultError,
+    InvalidModelModeError,
+    InvalidModelTypeError,
+    InvalidNumberOfParametersError,
+    InvalidNumberValueError,
+    InvalidSelectValueError,
+    InvalidStringValueError,
+    InvalidTextContentTypeError,
+    ModelSchemaNotFoundError,
+    ParameterExtractorNodeError,
+    RequiredParameterMissingError,
+)
+from .prompts import (
     CHAT_EXAMPLE,
     CHAT_GENERATE_JSON_USER_MESSAGE_TEMPLATE,
     COMPLETION_GENERATE_JSON_PROMPT,
@@ -36,9 +56,6 @@ from core.workflow.nodes.parameter_extractor.prompts import (
     FUNCTION_CALLING_EXTRACTOR_SYSTEM_PROMPT,
     FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE,
 )
-from core.workflow.utils.variable_template_parser import VariableTemplateParser
-from extensions.ext_database import db
-from models.workflow import WorkflowNodeExecutionStatus
 
 
 class ParameterExtractorNode(LLMNode):
@@ -65,33 +82,39 @@ class ParameterExtractorNode(LLMNode):
             }
         }
 
-    def _run(self) -> NodeRunResult:
+    def _run(self):
         """
         Run the node.
         """
         node_data = cast(ParameterExtractorNodeData, self.node_data)
-        variable = self.graph_runtime_state.variable_pool.get_any(node_data.query)
-        if not variable:
-            raise ValueError("Input variable content not found or is empty")
-        query = variable
+        variable = self.graph_runtime_state.variable_pool.get(node_data.query)
+        query = variable.text if variable else ""
 
-        inputs = {
-            "query": query,
-            "parameters": jsonable_encoder(node_data.parameters),
-            "instruction": jsonable_encoder(node_data.instruction),
-        }
+        files = (
+            self._fetch_files(
+                selector=node_data.vision.configs.variable_selector,
+            )
+            if node_data.vision.enabled
+            else []
+        )
 
         model_instance, model_config = self._fetch_model_config(node_data.model)
         if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
-            raise ValueError("Model is not a Large Language Model")
+            raise InvalidModelTypeError("Model is not a Large Language Model")
 
         llm_model = model_instance.model_type_instance
-        model_schema = llm_model.get_model_schema(model_config.model, model_config.credentials)
+        model_schema = llm_model.get_model_schema(
+            model=model_config.model,
+            credentials=model_config.credentials,
+        )
         if not model_schema:
-            raise ValueError("Model schema not found")
+            raise ModelSchemaNotFoundError("Model schema not found")
 
         # fetch memory
-        memory = self._fetch_memory(node_data.memory, self.graph_runtime_state.variable_pool, model_instance)
+        memory = self._fetch_memory(
+            node_data_memory=node_data.memory,
+            model_instance=model_instance,
+        )
 
         if (
             set(model_schema.features or []) & {ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}
@@ -99,14 +122,32 @@ class ParameterExtractorNode(LLMNode):
         ):
             # use function call
             prompt_messages, prompt_message_tools = self._generate_function_call_prompt(
-                node_data, query, self.graph_runtime_state.variable_pool, model_config, memory
+                node_data=node_data,
+                query=query,
+                variable_pool=self.graph_runtime_state.variable_pool,
+                model_config=model_config,
+                memory=memory,
+                files=files,
             )
         else:
             # use prompt engineering
             prompt_messages = self._generate_prompt_engineering_prompt(
-                node_data, query, self.graph_runtime_state.variable_pool, model_config, memory
+                data=node_data,
+                query=query,
+                variable_pool=self.graph_runtime_state.variable_pool,
+                model_config=model_config,
+                memory=memory,
+                files=files,
             )
+
             prompt_message_tools = []
+
+        inputs = {
+            "query": query,
+            "files": [f.to_dict() for f in files],
+            "parameters": jsonable_encoder(node_data.parameters),
+            "instruction": jsonable_encoder(node_data.instruction),
+        }
 
         process_data = {
             "model_mode": model_config.mode,
@@ -119,7 +160,7 @@ class ParameterExtractorNode(LLMNode):
         }
 
         try:
-            text, usage, tool_call = self._invoke_llm(
+            text, usage, tool_call = self._invoke(
                 node_data_model=node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
@@ -129,7 +170,7 @@ class ParameterExtractorNode(LLMNode):
             process_data["usage"] = jsonable_encoder(usage)
             process_data["tool_call"] = jsonable_encoder(tool_call)
             process_data["llm_text"] = text
-        except Exception as e:
+        except ParameterExtractorNodeError as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=inputs,
@@ -150,12 +191,12 @@ class ParameterExtractorNode(LLMNode):
                 error = "Failed to extract result from function call or text response, using empty result."
 
         try:
-            result = self._validate_result(node_data, result)
-        except Exception as e:
+            result = self._validate_result(data=node_data, result=result or {})
+        except ParameterExtractorNodeError as e:
             error = str(e)
 
         # transform result into standard format
-        result = self._transform_result(node_data, result)
+        result = self._transform_result(data=node_data, result=result or {})
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -170,7 +211,7 @@ class ParameterExtractorNode(LLMNode):
             llm_usage=usage,
         )
 
-    def _invoke_llm(
+    def _invoke(
         self,
         node_data_model: ModelConfig,
         model_instance: ModelInstance,
@@ -178,14 +219,6 @@ class ParameterExtractorNode(LLMNode):
         tools: list[PromptMessageTool],
         stop: list[str],
     ) -> tuple[str, LLMUsage, Optional[AssistantPromptMessage.ToolCall]]:
-        """
-        Invoke large language model
-        :param node_data_model: node data model
-        :param model_instance: model instance
-        :param prompt_messages: prompt messages
-        :param stop: stop
-        :return:
-        """
         db.session.close()
 
         invoke_result = model_instance.invoke_llm(
@@ -199,9 +232,12 @@ class ParameterExtractorNode(LLMNode):
 
         # handle invoke result
         if not isinstance(invoke_result, LLMResult):
-            raise ValueError(f"Invalid invoke result: {invoke_result}")
+            raise InvalidInvokeResultError(f"Invalid invoke result: {invoke_result}")
 
         text = invoke_result.message.content
+        if not isinstance(text, str):
+            raise InvalidTextContentTypeError(f"Invalid text content type: {type(text)}. Expected str.")
+
         usage = invoke_result.usage
         tool_call = invoke_result.message.tool_calls[0] if invoke_result.message.tool_calls else None
 
@@ -217,6 +253,7 @@ class ParameterExtractorNode(LLMNode):
         variable_pool: VariablePool,
         model_config: ModelConfigWithCredentialsEntity,
         memory: Optional[TokenBufferMemory],
+        files: Sequence[File],
     ) -> tuple[list[PromptMessage], list[PromptMessageTool]]:
         """
         Generate function call prompt.
@@ -234,7 +271,7 @@ class ParameterExtractorNode(LLMNode):
             prompt_template=prompt_template,
             inputs={},
             query="",
-            files=[],
+            files=files,
             context="",
             memory_config=node_data.memory,
             memory=None,
@@ -296,6 +333,7 @@ class ParameterExtractorNode(LLMNode):
         variable_pool: VariablePool,
         model_config: ModelConfigWithCredentialsEntity,
         memory: Optional[TokenBufferMemory],
+        files: Sequence[File],
     ) -> list[PromptMessage]:
         """
         Generate prompt engineering prompt.
@@ -303,11 +341,25 @@ class ParameterExtractorNode(LLMNode):
         model_mode = ModelMode.value_of(data.model.mode)
 
         if model_mode == ModelMode.COMPLETION:
-            return self._generate_prompt_engineering_completion_prompt(data, query, variable_pool, model_config, memory)
+            return self._generate_prompt_engineering_completion_prompt(
+                node_data=data,
+                query=query,
+                variable_pool=variable_pool,
+                model_config=model_config,
+                memory=memory,
+                files=files,
+            )
         elif model_mode == ModelMode.CHAT:
-            return self._generate_prompt_engineering_chat_prompt(data, query, variable_pool, model_config, memory)
+            return self._generate_prompt_engineering_chat_prompt(
+                node_data=data,
+                query=query,
+                variable_pool=variable_pool,
+                model_config=model_config,
+                memory=memory,
+                files=files,
+            )
         else:
-            raise ValueError(f"Invalid model mode: {model_mode}")
+            raise InvalidModelModeError(f"Invalid model mode: {model_mode}")
 
     def _generate_prompt_engineering_completion_prompt(
         self,
@@ -316,20 +368,23 @@ class ParameterExtractorNode(LLMNode):
         variable_pool: VariablePool,
         model_config: ModelConfigWithCredentialsEntity,
         memory: Optional[TokenBufferMemory],
+        files: Sequence[File],
     ) -> list[PromptMessage]:
         """
         Generate completion prompt.
         """
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
-        rest_token = self._calculate_rest_token(node_data, query, variable_pool, model_config, "")
+        rest_token = self._calculate_rest_token(
+            node_data=node_data, query=query, variable_pool=variable_pool, model_config=model_config, context=""
+        )
         prompt_template = self._get_prompt_engineering_prompt_template(
-            node_data, query, variable_pool, memory, rest_token
+            node_data=node_data, query=query, variable_pool=variable_pool, memory=memory, max_token_limit=rest_token
         )
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,
             inputs={"structure": json.dumps(node_data.get_parameter_json_schema())},
             query="",
-            files=[],
+            files=files,
             context="",
             memory_config=node_data.memory,
             memory=memory,
@@ -345,27 +400,30 @@ class ParameterExtractorNode(LLMNode):
         variable_pool: VariablePool,
         model_config: ModelConfigWithCredentialsEntity,
         memory: Optional[TokenBufferMemory],
+        files: Sequence[File],
     ) -> list[PromptMessage]:
         """
         Generate chat prompt.
         """
         prompt_transform = AdvancedPromptTransform(with_variable_tmpl=True)
-        rest_token = self._calculate_rest_token(node_data, query, variable_pool, model_config, "")
+        rest_token = self._calculate_rest_token(
+            node_data=node_data, query=query, variable_pool=variable_pool, model_config=model_config, context=""
+        )
         prompt_template = self._get_prompt_engineering_prompt_template(
-            node_data,
-            CHAT_GENERATE_JSON_USER_MESSAGE_TEMPLATE.format(
+            node_data=node_data,
+            query=CHAT_GENERATE_JSON_USER_MESSAGE_TEMPLATE.format(
                 structure=json.dumps(node_data.get_parameter_json_schema()), text=query
             ),
-            variable_pool,
-            memory,
-            rest_token,
+            variable_pool=variable_pool,
+            memory=memory,
+            max_token_limit=rest_token,
         )
 
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=prompt_template,
             inputs={},
             query="",
-            files=[],
+            files=files,
             context="",
             memory_config=node_data.memory,
             memory=None,
@@ -406,35 +464,36 @@ class ParameterExtractorNode(LLMNode):
         Validate result.
         """
         if len(data.parameters) != len(result):
-            raise ValueError("Invalid number of parameters")
+            raise InvalidNumberOfParametersError("Invalid number of parameters")
 
         for parameter in data.parameters:
             if parameter.required and parameter.name not in result:
-                raise ValueError(f"Parameter {parameter.name} is required")
+                raise RequiredParameterMissingError(f"Parameter {parameter.name} is required")
 
             if parameter.type == "select" and parameter.options and result.get(parameter.name) not in parameter.options:
-                raise ValueError(f"Invalid `select` value for parameter {parameter.name}")
+                raise InvalidSelectValueError(f"Invalid `select` value for parameter {parameter.name}")
 
             if parameter.type == "number" and not isinstance(result.get(parameter.name), int | float):
-                raise ValueError(f"Invalid `number` value for parameter {parameter.name}")
+                raise InvalidNumberValueError(f"Invalid `number` value for parameter {parameter.name}")
 
             if parameter.type == "bool" and not isinstance(result.get(parameter.name), bool):
-                raise ValueError(f"Invalid `bool` value for parameter {parameter.name}")
+                raise InvalidBoolValueError(f"Invalid `bool` value for parameter {parameter.name}")
 
             if parameter.type == "string" and not isinstance(result.get(parameter.name), str):
-                raise ValueError(f"Invalid `string` value for parameter {parameter.name}")
+                raise InvalidStringValueError(f"Invalid `string` value for parameter {parameter.name}")
 
             if parameter.type.startswith("array"):
-                if not isinstance(result.get(parameter.name), list):
-                    raise ValueError(f"Invalid `array` value for parameter {parameter.name}")
+                parameters = result.get(parameter.name)
+                if not isinstance(parameters, list):
+                    raise InvalidArrayValueError(f"Invalid `array` value for parameter {parameter.name}")
                 nested_type = parameter.type[6:-1]
-                for item in result.get(parameter.name):
+                for item in parameters:
                     if nested_type == "number" and not isinstance(item, int | float):
-                        raise ValueError(f"Invalid `array[number]` value for parameter {parameter.name}")
+                        raise InvalidArrayValueError(f"Invalid `array[number]` value for parameter {parameter.name}")
                     if nested_type == "string" and not isinstance(item, str):
-                        raise ValueError(f"Invalid `array[string]` value for parameter {parameter.name}")
+                        raise InvalidArrayValueError(f"Invalid `array[string]` value for parameter {parameter.name}")
                     if nested_type == "object" and not isinstance(item, dict):
-                        raise ValueError(f"Invalid `array[object]` value for parameter {parameter.name}")
+                        raise InvalidArrayValueError(f"Invalid `array[object]` value for parameter {parameter.name}")
         return result
 
     def _transform_result(self, data: ParameterExtractorNodeData, result: dict) -> dict:
@@ -565,18 +624,6 @@ class ParameterExtractorNode(LLMNode):
 
         return result
 
-    def _render_instruction(self, instruction: str, variable_pool: VariablePool) -> str:
-        """
-        Render instruction.
-        """
-        variable_template_parser = VariableTemplateParser(instruction)
-        inputs = {}
-        for selector in variable_template_parser.extract_variable_selectors():
-            variable = variable_pool.get_any(selector.value_selector)
-            inputs[selector.variable] = variable
-
-        return variable_template_parser.format(inputs)
-
     def _get_function_calling_prompt_template(
         self,
         node_data: ParameterExtractorNodeData,
@@ -588,9 +635,9 @@ class ParameterExtractorNode(LLMNode):
         model_mode = ModelMode.value_of(node_data.model.mode)
         input_text = query
         memory_str = ""
-        instruction = self._render_instruction(node_data.instruction or "", variable_pool)
+        instruction = variable_pool.convert_template(node_data.instruction or "").text
 
-        if memory:
+        if memory and node_data.memory and node_data.memory.window:
             memory_str = memory.get_history_prompt_text(
                 max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
             )
@@ -602,7 +649,7 @@ class ParameterExtractorNode(LLMNode):
             user_prompt_message = ChatModelMessage(role=PromptMessageRole.USER, text=input_text)
             return [system_prompt_messages, user_prompt_message]
         else:
-            raise ValueError(f"Model mode {model_mode} not support.")
+            raise InvalidModelModeError(f"Model mode {model_mode} not support.")
 
     def _get_prompt_engineering_prompt_template(
         self,
@@ -611,13 +658,13 @@ class ParameterExtractorNode(LLMNode):
         variable_pool: VariablePool,
         memory: Optional[TokenBufferMemory],
         max_token_limit: int = 2000,
-    ) -> list[ChatModelMessage]:
+    ):
         model_mode = ModelMode.value_of(node_data.model.mode)
         input_text = query
         memory_str = ""
-        instruction = self._render_instruction(node_data.instruction or "", variable_pool)
+        instruction = variable_pool.convert_template(node_data.instruction or "").text
 
-        if memory:
+        if memory and node_data.memory and node_data.memory.window:
             memory_str = memory.get_history_prompt_text(
                 max_token_limit=max_token_limit, message_limit=node_data.memory.window.size
             )
@@ -637,7 +684,7 @@ class ParameterExtractorNode(LLMNode):
                 .replace("}γγγ", "")
             )
         else:
-            raise ValueError(f"Model mode {model_mode} not support.")
+            raise InvalidModelModeError(f"Model mode {model_mode} not support.")
 
     def _calculate_rest_token(
         self,
@@ -651,12 +698,12 @@ class ParameterExtractorNode(LLMNode):
 
         model_instance, model_config = self._fetch_model_config(node_data.model)
         if not isinstance(model_instance.model_type_instance, LargeLanguageModel):
-            raise ValueError("Model is not a Large Language Model")
+            raise InvalidModelTypeError("Model is not a Large Language Model")
 
         llm_model = model_instance.model_type_instance
         model_schema = llm_model.get_model_schema(model_config.model, model_config.credentials)
         if not model_schema:
-            raise ValueError("Model schema not found")
+            raise ModelSchemaNotFoundError("Model schema not found")
 
         if set(model_schema.features or []) & {ModelFeature.MULTI_TOOL_CALL, ModelFeature.MULTI_TOOL_CALL}:
             prompt_template = self._get_function_calling_prompt_template(node_data, query, variable_pool, None, 2000)
@@ -691,7 +738,7 @@ class ParameterExtractorNode(LLMNode):
                 ):
                     max_tokens = (
                         model_config.parameters.get(parameter_rule.name)
-                        or model_config.parameters.get(parameter_rule.use_template)
+                        or model_config.parameters.get(parameter_rule.use_template or "")
                     ) or 0
 
             rest_tokens = model_context_tokens - max_tokens - curr_message_tokens
@@ -712,7 +759,11 @@ class ParameterExtractorNode(LLMNode):
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, graph_config: Mapping[str, Any], node_id: str, node_data: ParameterExtractorNodeData
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: ParameterExtractorNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -721,11 +772,11 @@ class ParameterExtractorNode(LLMNode):
         :param node_data: node data
         :return:
         """
-        variable_mapping = {"query": node_data.query}
+        variable_mapping: dict[str, Sequence[str]] = {"query": node_data.query}
 
         if node_data.instruction:
-            variable_template_parser = VariableTemplateParser(template=node_data.instruction)
-            for selector in variable_template_parser.extract_variable_selectors():
+            selectors = variable_template_parser.extract_selectors_from_template(node_data.instruction)
+            for selector in selectors:
                 variable_mapping[selector.variable] = selector.value_selector
 
         variable_mapping = {node_id + "." + key: value for key, value in variable_mapping.items()}

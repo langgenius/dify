@@ -1,6 +1,7 @@
 import pytest
 
 from app_factory import create_app
+from configs import dify_config
 
 mock_user = type(
     "MockUser",
@@ -20,5 +21,5 @@ mock_user = type(
 @pytest.fixture
 def app():
     app = create_app()
-    app.config["LOGIN_DISABLED"] = True
+    dify_config.LOGIN_DISABLED = True
     return app
