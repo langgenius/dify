@@ -1,7 +1,7 @@
 from abc import ABC
 from collections.abc import Sequence
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -101,6 +101,13 @@ class ImagePromptMessageContent(PromptMessageContent):
 
     type: PromptMessageContentType = PromptMessageContentType.IMAGE
     detail: DETAIL = DETAIL.LOW
+
+
+class DocumentPromptMessageContent(PromptMessageContent):
+    type: PromptMessageContentType = PromptMessageContentType.DOCUMENT
+    encode_format: Literal["base64"]
+    mime_type: str
+    data: str
 
 
 class PromptMessage(ABC, BaseModel):
