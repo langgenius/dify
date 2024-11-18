@@ -211,6 +211,11 @@ const AudioBlock: CodeComponent = memo(({ node }) => {
 })
 AudioBlock.displayName = 'AudioBlock'
 
+const ScriptBlock = memo(({ node }: any) => {
+  return `<script>${node.children[0]?.value}</script>`
+})
+ScriptBlock.displayName = 'ScriptBlock'
+
 const Paragraph = (paragraph: any) => {
   const { node }: any = paragraph
   const children_node = node.children
@@ -265,7 +270,7 @@ export function Markdown(props: { content: string; className?: string }) {
             }
           },
         ]}
-        disallowedElements={['script', 'iframe', 'head', 'html', 'meta', 'link', 'style', 'body']}
+        disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body']}
         components={{
           code: CodeBlock,
           img: Img,
@@ -275,6 +280,7 @@ export function Markdown(props: { content: string; className?: string }) {
           p: Paragraph,
           button: MarkdownButton,
           form: MarkdownForm,
+          script: ScriptBlock,
         }}
         linkTarget='_blank'
       >
