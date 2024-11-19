@@ -58,6 +58,7 @@ from tasks.mail_reset_password_task import send_reset_password_mail_task
 class TokenPair(BaseModel):
     access_token: str
     refresh_token: str
+    asa_uid: Optional[str] = None
 
 
 REFRESH_TOKEN_PREFIX = "refresh_token:"
@@ -197,10 +198,10 @@ class AccountService:
         is_setup: Optional[bool] = False,
     ) -> Account:
         """create account"""
-        if not FeatureService.get_system_features().is_allow_register and not is_setup:
-            from controllers.console.error import NotAllowedRegister
+        # if not FeatureService.get_system_features().is_allow_register and not is_setup:
+        #     from controllers.console.error import NotAllowedRegister
 
-            raise NotAllowedRegister()
+        #     raise NotAllowedRegister()
         account = Account()
         account.email = email
         account.name = name
@@ -294,7 +295,7 @@ class AccountService:
         db.session.commit()
 
     @staticmethod
-    def login(account: Account, *, ip_address: Optional[str] = None) -> TokenPair:
+    def login(account: Account, *, ip_address: Optional[str] = None, asa_uid: Optional[str] = None) -> TokenPair:
         if ip_address:
             AccountService.update_login_info(account=account, ip_address=ip_address)
 
@@ -307,7 +308,8 @@ class AccountService:
 
         AccountService._store_refresh_token(refresh_token, account.id)
 
-        return TokenPair(access_token=access_token, refresh_token=refresh_token)
+        # Include asa uid in the TokenPair if provided
+        return TokenPair(access_token=access_token, refresh_token=refresh_token, asa_uid=asa_uid)
 
     @staticmethod
     def logout(*, account: Account) -> None:

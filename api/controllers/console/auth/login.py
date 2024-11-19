@@ -23,11 +23,14 @@ from controllers.console.error import (
 from controllers.console.setup import setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, extract_remote_ip
+from libs.passport import PassportService
 from libs.password import valid_password
 from models.account import Account
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
+
+ASA_ACCOUNT_EMAIL = 'junsheng@asa.team'
 
 
 class LoginApi(Resource):
@@ -87,6 +90,39 @@ class LoginApi(Resource):
 
         token_pair = AccountService.login(account=account, ip_address=extract_remote_ip(request))
         AccountService.reset_login_error_rate_limit(args["email"])
+        return {"result": "success", "data": token_pair.model_dump()}
+    
+
+class SharedAccountLoginApi(Resource):
+    """Resource for shared account login with external user tracking."""
+
+    @staticmethod
+    def post():
+        token = request.headers.get("Authorization")
+        print('token', token)
+        if not token:
+            return {"result": "fail", "data": "Authorization token is missing"}, 401
+        
+        payload = PassportService().verify(token)
+        user_email = payload.get("email")
+        asa_uid = payload.get("asa_uid")
+        print('decoded token', payload)
+        if not user_email or not asa_uid:
+            return {"result": "fail", "data": "Email or external user ID not provided in token"}, 400
+
+        # Ensure only one main account is used
+        account = AccountService.get_user_through_email(ASA_ACCOUNT_EMAIL)
+        if not account:
+            account = AccountService.create_account(
+                email=ASA_ACCOUNT_EMAIL,
+                name=user_email,
+                interface_language="en-US"
+            )
+
+        # Include `asa_uid` in the login metadata for tracking
+        token_pair = AccountService.login(account=account, asa_uid=asa_uid)
+        print('token_pair', token_pair)
+        AccountService.reset_login_error_rate_limit(user_email)
         return {"result": "success", "data": token_pair.model_dump()}
 
 
@@ -215,6 +251,7 @@ class RefreshTokenApi(Resource):
 
 
 api.add_resource(LoginApi, "/login")
+api.add_resource(SharedAccountLoginApi, "/external-login")
 api.add_resource(LogoutApi, "/logout")
 api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
 api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
