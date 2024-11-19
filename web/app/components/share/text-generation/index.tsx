@@ -391,7 +391,7 @@ const TextGeneration: FC<IMainProps> = ({
       setVisionConfig({
         // legacy of image upload compatible
         ...file_upload,
-        transfer_methods: file_upload.allowed_upload_methods,
+        transfer_methods: file_upload.allowed_file_upload_methods || file_upload.allowed_upload_methods,
         // legacy of image upload compatible
         image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
