@@ -5,6 +5,7 @@ import type {
 } from 'react'
 import {
   useCallback,
+  useEffect,
   useRef,
   useState,
 } from 'react'
@@ -14,9 +15,14 @@ import {
 } from 'use-context-selector'
 import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import type { Plugin } from '../types'
+import {
+  getValidCategoryKeys,
+  getValidTagKeys,
+} from '../utils'
 import type {
   MarketplaceCollection,
   PluginsSort,
+  SearchParams,
 } from './types'
 import { DEFAULT_SORT } from './constants'
 import {
@@ -66,6 +72,7 @@ export const MarketplaceContext = createContext<MarketplaceContextValue>({
 
 type MarketplaceContextProviderProps = {
   children: ReactNode
+  searchParams?: SearchParams
 }
 
 export function useMarketplaceContext(selector: (value: MarketplaceContextValue) => any) {
@@ -74,13 +81,19 @@ export function useMarketplaceContext(selector: (value: MarketplaceContextValue)
 
 export const MarketplaceContextProvider = ({
   children,
+  searchParams,
 }: MarketplaceContextProviderProps) => {
+  const queryFromSearchParams = searchParams?.q || ''
+  const tagsFromSearchParams = searchParams?.tags ? getValidTagKeys(searchParams.tags.split(',')) : []
+  const hasValidTags = !!tagsFromSearchParams.length
+  const hasValidCategory = getValidCategoryKeys(searchParams?.category)
+  const categoryFromSearchParams = hasValidCategory || PLUGIN_TYPE_SEARCH_MAP.all
   const [intersected, setIntersected] = useState(true)
-  const [searchPluginText, setSearchPluginText] = useState('')
+  const [searchPluginText, setSearchPluginText] = useState(queryFromSearchParams)
   const searchPluginTextRef = useRef(searchPluginText)
-  const [filterPluginTags, setFilterPluginTags] = useState<string[]>([])
+  const [filterPluginTags, setFilterPluginTags] = useState<string[]>(tagsFromSearchParams)
   const filterPluginTagsRef = useRef(filterPluginTags)
-  const [activePluginType, setActivePluginType] = useState(PLUGIN_TYPE_SEARCH_MAP.all)
+  const [activePluginType, setActivePluginType] = useState(categoryFromSearchParams)
   const activePluginTypeRef = useRef(activePluginType)
   const [sort, setSort] = useState(DEFAULT_SORT)
   const sortRef = useRef(sort)
@@ -99,6 +112,20 @@ export const MarketplaceContextProvider = ({
     queryPluginsWithDebounced,
     isLoading: isPluginsLoading,
   } = useMarketplacePlugins()
+
+  useEffect(() => {
+    if (queryFromSearchParams || hasValidTags || hasValidCategory) {
+      queryPlugins({
+        query: queryFromSearchParams,
+        category: hasValidCategory,
+        tags: hasValidTags ? tagsFromSearchParams : [],
+        sortBy: sortRef.current.sortBy,
+        sortOrder: sortRef.current.sortOrder,
+      })
+      history.pushState({}, '', `/${searchParams?.language ? `?language=${searchParams?.language}` : ''}`)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queryPlugins])
 
   const handleSearchPluginTextChange = useCallback((text: string) => {
     setSearchPluginText(text)
