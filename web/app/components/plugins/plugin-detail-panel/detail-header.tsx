@@ -1,7 +1,8 @@
-import React, { useCallback, useMemo } from 'react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import {
+  RiArrowLeftRightLine,
   RiBugLine,
   RiCloseLine,
   RiHardDrive3Line,
@@ -14,8 +15,9 @@ import Icon from '../card/base/card-icon'
 import Title from '../card/base/title'
 import OrgInfo from '../card/base/org-info'
 import { useGitHubReleases } from '../install-plugin/hooks'
-import { compareVersion, getLatestVersion } from '@/utils/semver'
-import OperationDropdown from './operation-dropdown'
+import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-version-picker'
+import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
+import OperationDropdown from '@/app/components/plugins/plugin-detail-panel/operation-dropdown'
 import PluginInfo from '@/app/components/plugins/plugin-page/plugin-info'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
@@ -28,7 +30,6 @@ import { Github } from '@/app/components/base/icons/src/public/common'
 import { uninstallPlugin } from '@/service/plugins'
 import { useGetLanguage } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
-import UpdateFromMarketplace from '@/app/components/plugins/update-plugin/from-market-place'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 
@@ -47,7 +48,7 @@ const DetailHeader = ({
 }: Props) => {
   const { t } = useTranslation()
   const locale = useGetLanguage()
-  const { fetchReleases } = useGitHubReleases()
+  const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
 
   const {
@@ -58,20 +59,23 @@ const DetailHeader = ({
     latest_unique_identifier,
     latest_version,
     meta,
+    plugin_id,
   } = detail
   const { author, name, label, description, icon, verified } = detail.declaration
   const isFromGitHub = source === PluginSource.github
   const isFromMarketplace = source === PluginSource.marketplace
 
+  const [isShow, setIsShow] = useState(false)
+  const [targetVersion, setTargetVersion] = useState({
+    version: latest_version,
+    unique_identifier: latest_unique_identifier,
+  })
   const hasNewVersion = useMemo(() => {
-    if (isFromGitHub)
-      return latest_version !== version
-
     if (isFromMarketplace)
       return !!latest_version && latest_version !== version
 
     return false
-  }, [isFromGitHub, isFromMarketplace, latest_version, version])
+  }, [isFromMarketplace, latest_version, version])
 
   const [isShowUpdateModal, {
     setTrue: showUpdateModal,
@@ -84,42 +88,27 @@ const DetailHeader = ({
       return
     }
 
-    try {
-      const fetchedReleases = await fetchReleases(author, name)
-      if (fetchedReleases.length === 0)
-        return
-      const versions = fetchedReleases.map(release => release.tag_name)
-      const latestVersion = getLatestVersion(versions)
-      if (compareVersion(latestVersion, version) === 1) {
-        setShowUpdatePluginModal({
-          onSaveCallback: () => {
-            onUpdate()
-          },
-          payload: {
-            type: PluginSource.github,
-            github: {
-              originalPackageInfo: {
-                id: installation_id,
-                repo: meta!.repo,
-                version: meta!.version,
-                package: meta!.package,
-                releases: fetchedReleases,
-              },
+    const fetchedReleases = await fetchReleases(author, name)
+    if (fetchedReleases.length === 0) return
+    const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
+    Toast.notify(toastProps)
+    if (needUpdate) {
+      setShowUpdatePluginModal({
+        onSaveCallback: () => {
+          onUpdate()
+        },
+        payload: {
+          type: PluginSource.github,
+          github: {
+            originalPackageInfo: {
+              id: detail.plugin_unique_identifier,
+              repo: meta!.repo,
+              version: meta!.version,
+              package: meta!.package,
+              releases: fetchedReleases,
             },
           },
-        })
-      }
-      else {
-        Toast.notify({
-          type: 'info',
-          message: 'No new version available',
-        })
-      }
-    }
-    catch {
-      Toast.notify({
-        type: 'error',
-        message: 'Failed to compare versions',
+        },
       })
     }
   }
@@ -167,12 +156,35 @@ const DetailHeader = ({
           <div className="flex items-center h-5">
             <Title title={label[locale]} />
             {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
-            <Badge
-              className='mx-1'
-              text={version}
-              hasRedCornerMark={hasNewVersion}
+            <PluginVersionPicker
+              disabled={!isFromMarketplace || !hasNewVersion}
+              isShow={isShow}
+              onShowChange={setIsShow}
+              pluginID={plugin_id}
+              currentVersion={version}
+              onSelect={(state) => {
+                setTargetVersion(state)
+                handleUpdate()
+              }}
+              trigger={
+                <Badge
+                  className={cn(
+                    'mx-1',
+                    isShow && 'bg-state-base-hover',
+                    (isShow || isFromMarketplace) && 'hover:bg-state-base-hover',
+                  )}
+                  uppercase={false}
+                  text={
+                    <>
+                      <div>{isFromGitHub ? meta!.version : version}</div>
+                      {isFromMarketplace && <RiArrowLeftRightLine className='ml-1 w-3 h-3 text-text-tertiary' />}
+                    </>
+                  }
+                  hasRedCornerMark={hasNewVersion}
+                />
+              }
             />
-            {hasNewVersion && (
+            {(hasNewVersion || isFromGitHub) && (
               <Button variant='secondary-accent' size='small' className='!h-5' onClick={handleUpdate}>{t('plugin.detailPanel.operation.update')}</Button>
             )}
           </div>
@@ -254,8 +266,8 @@ const DetailHeader = ({
                 payload: detail.declaration,
               },
               targetPackageInfo: {
-                id: latest_unique_identifier,
-                version: latest_version,
+                id: targetVersion.unique_identifier,
+                version: targetVersion.version,
               },
             }}
             onCancel={hideUpdateModal}

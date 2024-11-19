@@ -322,3 +322,17 @@ export type Dependency = {
     plugin_unique_identifier?: string
   }
 }
+
+export type Version = {
+  plugin_org: string
+  plugin_name: string
+  version: string
+  file_name: string
+  checksum: string
+  created_at: string
+  unique_identifier: string
+}
+
+export type VersionListResponse = {
+  versions: Version[]
+}

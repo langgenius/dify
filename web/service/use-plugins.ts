@@ -7,13 +7,14 @@ import type {
   Permissions,
   PluginTask,
   PluginsFromMarketplaceResponse,
+  VersionListResponse,
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
 import { TaskStatus } from '@/app/components/plugins/types'
 import type {
   PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
-import { get, post, postMarketplace } from './base'
+import { get, getMarketplace, post, postMarketplace } from './base'
 import {
   useMutation,
   useQuery,
@@ -50,6 +51,19 @@ export const useInstallPackageFromMarketPlace = () => {
       return post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', { body: { plugin_unique_identifiers: [uniqueIdentifier] } })
     },
   })
+}
+
+export const useVersionListOfPlugin = (pluginID: string) => {
+  return useQuery<{ data: VersionListResponse }>({
+    queryKey: [NAME_SPACE, 'versions', pluginID],
+    queryFn: () => getMarketplace<{ data: VersionListResponse }>(`/plugins/${pluginID}/versions`, { params: { page: 1, page_size: 100 } }),
+  })
+}
+export const useInvalidateVersionListOfPlugin = () => {
+  const queryClient = useQueryClient()
+  return (pluginID: string) => {
+    queryClient.invalidateQueries({ queryKey: [NAME_SPACE, 'versions', pluginID] })
+  }
 }
 
 export const useInstallPackageFromLocal = () => {

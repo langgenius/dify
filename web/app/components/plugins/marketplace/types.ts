@@ -36,3 +36,10 @@ export type PluginsSort = {
 export type CollectionsAndPluginsSearchParams = {
   category?: string
 }
+
+export type SearchParams = {
+  language?: string
+  q?: string
+  tags?: string
+  category?: string
+}

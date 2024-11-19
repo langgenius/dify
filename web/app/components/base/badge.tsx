@@ -3,7 +3,7 @@ import cn from '@/utils/classnames'
 
 type BadgeProps = {
   className?: string
-  text: string
+  text: string | React.ReactNode
   uppercase?: boolean
   hasRedCornerMark?: boolean
 }

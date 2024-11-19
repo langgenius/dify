@@ -33,6 +33,7 @@ const translation = {
     local: 'Local Package File',
   },
   detailPanel: {
+    switchVersion: 'Switch Version',
     categoryTip: {
       marketplace: 'Installed from Marketplace',
       github: 'Installed from Github',
@@ -50,6 +51,8 @@ const translation = {
     },
     actionNum: '{{num}} ACTIONS INCLUDED',
     endpoints: 'Endpoints',
+    endpointsTip: 'This plugin provides specific functionalities via endpoints, and you can configure multiple endpoint sets for current workspace.',
+    endpointsDocLink: 'View the document',
     endpointsEmpty: 'Click the \'+\' button to add an endpoint',
     endpointDisableTip: 'Disable Endpoint',
     endpointDisableContent: 'Would you like to disable {{name}}? ',

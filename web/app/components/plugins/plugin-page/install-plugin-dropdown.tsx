@@ -17,6 +17,7 @@ import {
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useTranslation } from 'react-i18next'
+import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 
 type Props = {
   onSwitchToMarketplaceTab: () => void
@@ -81,7 +82,7 @@ const InstallPluginDropdown = ({
               ref={fileInputRef}
               style={{ display: 'none' }}
               onChange={handleFileChange}
-              accept='.difypkg'
+              accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
             />
             <div className='w-full'>
               {[
@@ -126,7 +127,7 @@ const InstallPluginDropdown = ({
         && (<InstallFromLocalPackage
           file={selectedFile}
           onClose={() => setSelectedAction(null)}
-          onSuccess={() => {}}
+          onSuccess={() => { }}
         />
         )
       }
