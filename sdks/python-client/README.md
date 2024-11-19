@@ -12,7 +12,7 @@ pip install dify-client
 
 or install the latest sdk from soure
 
-```sh
+```bash
 pip install -e "git+https://github.com/langgenius/dify.git#egg=dify-client&subdirectory=sdks/python-client"
 ```
 
@@ -24,7 +24,7 @@ Write your code with sdk:
 ```python
 from dify_client import CompletionClient
 
-api_key = "your_api_key" 
+api_key = "your_api_key"
 
 # Initialize CompletionClient
 completion_client = CompletionClient(api_key)
