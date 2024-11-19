@@ -21,6 +21,12 @@ const PluginDetailPanel: FC<Props> = ({
 
   const handleHide = () => setCurrentPluginDetail(undefined)
 
+  const handleUpdate = (isDelete = false) => {
+    if (isDelete)
+      handleHide()
+    onUpdate()
+  }
+
   if (!pluginDetail)
     return null
 
@@ -39,7 +45,7 @@ const PluginDetailPanel: FC<Props> = ({
           <DetailHeader
             detail={pluginDetail}
             onHide={handleHide}
-            onUpdate={onUpdate}
+            onUpdate={handleUpdate}
           />
           <div className='grow overflow-y-auto'>
             {!!pluginDetail.declaration.tool && <ActionList />}

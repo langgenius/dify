@@ -12,7 +12,7 @@ import { useTranslation } from 'react-i18next'
 import { usePluginPageContext } from '../plugin-page/context'
 import { Github } from '../../base/icons/src/public/common'
 import Badge from '../../base/badge'
-import { type PluginDetail, PluginSource } from '../types'
+import { type PluginDetail, PluginSource, PluginType } from '../types'
 import CornerMark from '../card/base/corner-mark'
 import Description from '../card/base/description'
 import OrgInfo from '../card/base/org-info'
@@ -23,6 +23,7 @@ import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import { useLanguage } from '../../header/account-setting/model-provider-page/hooks'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useCategories } from '../hooks'
+import { useProviderContext } from '@/context/provider-context'
 
 type Props = {
   className?: string
@@ -39,6 +40,7 @@ const PluginItem: FC<Props> = ({
   const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
   const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const { refreshModelProviders } = useProviderContext()
 
   const {
     source,
@@ -54,6 +56,12 @@ const PluginItem: FC<Props> = ({
   const orgName = useMemo(() => {
     return [PluginSource.github, PluginSource.marketplace].includes(source) ? author : ''
   }, [source, author])
+
+  const handleDelete = () => {
+    invalidateInstalledPluginList()
+    if (category === PluginType.model)
+      refreshModelProviders()
+  }
   return (
     <div
       className={cn(
@@ -97,9 +105,7 @@ const PluginItem: FC<Props> = ({
                   isShowInfo={source === PluginSource.github}
                   isShowDelete
                   meta={meta}
-                  onDelete={() => {
-                    invalidateInstalledPluginList()
-                  }}
+                  onDelete={handleDelete}
                 />
               </div>
             </div>
