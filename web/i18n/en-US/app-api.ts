@@ -23,6 +23,7 @@ const translation = {
     created: 'CREATED',
     lastUsed: 'LAST USED',
     generateTips: 'Keep this key in a secure and accessible place.',
+    customSecretKey: 'Custom API key. If empty, a random key will be generated.',
   },
   actionMsg: {
     deleteConfirmTitle: 'Delete this secret key?',

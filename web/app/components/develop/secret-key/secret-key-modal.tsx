@@ -1,5 +1,5 @@
 'use client'
-import {
+import React, {
   useEffect,
   useState,
 } from 'react'
@@ -51,7 +51,7 @@ const SecretKeyModal = ({
     : { url: '/datasets/api-keys', params: {} }
   const fetchApiKeysList = appId ? fetchAppApiKeysList : fetchDatasetApiKeysList
   const { data: apiKeysList } = useSWR(commonParams, fetchApiKeysList)
-
+  const [apikey, setApikey] = useState('')
   const [delKeyID, setDelKeyId] = useState('')
 
   const [copyValue, setCopyValue] = useState('')
@@ -83,8 +83,8 @@ const SecretKeyModal = ({
 
   const onCreate = async () => {
     const params = appId
-      ? { url: `/apps/${appId}/api-keys`, body: {} }
-      : { url: '/datasets/api-keys', body: {} }
+      ? { url: `/apps/${appId}/api-keys?apikey=${apikey}`, body: {} }
+      : { url: `/datasets/api-keys?apikey=${apikey}`, body: {} }
     const createApikey = appId ? createAppApikey : createDatasetApikey
     const res = await createApikey(params)
     setVisible(true)
@@ -141,6 +141,14 @@ const SecretKeyModal = ({
           </div>
         )
       }
+      <input
+        id="apikey"
+        type="text"
+        value={ apikey }
+        onChange={e => setApikey(e.target.value)}
+        placeholder={t('appApi.apiKeyModal.customSecretKey') || ''}
+        className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
+      />
       <div className='flex'>
         <Button className={`flex flex-shrink-0 mt-4 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
           <PlusIcon className='flex flex-shrink-0 w-4 h-4' />

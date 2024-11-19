@@ -548,6 +548,7 @@ class DatasetApiKeyApi(Resource):
         if not current_user.is_admin_or_owner:
             raise Forbidden()
 
+        key = request.args.get("apikey")
         current_key_count = (
             db.session.query(ApiToken)
             .filter(ApiToken.type == self.resource_type, ApiToken.tenant_id == current_user.current_tenant_id)
@@ -561,7 +562,14 @@ class DatasetApiKeyApi(Resource):
                 code="max_keys_exceeded",
             )
 
-        key = ApiToken.generate_api_key(self.token_prefix, 24)
+        if key and len(key) > 1:
+            if not key.startswith(self.token_prefix):
+                key = self.token_prefix + key
+            if db.session.query(ApiToken).filter(ApiToken.token == key).count() > 0:
+                flask_restful.abort(400, message="key has exists.", code="max_keys_exceeded")
+        else:
+            key = ApiToken.generate_api_key(self.token_prefix, 24)
+
         api_token = ApiToken()
         api_token.tenant_id = current_user.current_tenant_id
         api_token.token = key

@@ -1,4 +1,5 @@
 import flask_restful
+from flask import request
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with
 from werkzeug.exceptions import Forbidden
@@ -54,6 +55,7 @@ class BaseApiKeyListResource(Resource):
 
     @marshal_with(api_key_fields)
     def post(self, resource_id):
+        key = request.args.get("apikey")
         resource_id = str(resource_id)
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
         if not current_user.is_editor:
@@ -71,8 +73,13 @@ class BaseApiKeyListResource(Resource):
                 message=f"Cannot create more than {self.max_keys} API keys for this resource type.",
                 code="max_keys_exceeded",
             )
-
-        key = ApiToken.generate_api_key(self.token_prefix, 24)
+        if key and len(key) > 1:
+            if not key.startswith(self.token_prefix):
+                key = self.token_prefix + key
+            if db.session.query(ApiToken).filter(ApiToken.token == key).count() > 0:
+                flask_restful.abort(400, message="key has exists.", code="max_keys_exceeded")
+        else:
+            key = ApiToken.generate_api_key(self.token_prefix, 24)
         api_token = ApiToken()
         setattr(api_token, self.resource_id_field, resource_id)
         api_token.tenant_id = current_user.current_tenant_id

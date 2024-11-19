@@ -23,6 +23,7 @@ const translation = {
     created: '创建时间',
     lastUsed: '最后使用',
     generateTips: '请将此密钥保存在安全且可访问的地方。',
+    customSecretKey: '自定义API密钥，如果为空，则生成随机密钥。',
   },
   actionMsg: {
     deleteConfirmTitle: '删除此密钥？',
