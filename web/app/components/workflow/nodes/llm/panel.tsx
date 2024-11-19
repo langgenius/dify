@@ -196,6 +196,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               onChange={handleVarListChange}
               onVarNameChange={handleVarNameChange}
               filterVar={filterJinjia2InputVar}
+              isSupportFileVar={false}
             />
           </Field>
         )}
