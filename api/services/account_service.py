@@ -198,9 +198,9 @@ class AccountService:
     ) -> Account:
         """create account"""
         if not FeatureService.get_system_features().is_allow_register and not is_setup:
-            from controllers.console.error import NotAllowedRegister
+            from controllers.console.error import AccountNotFound
 
-            raise NotAllowedRegister()
+            raise AccountNotFound()
         account = Account()
         account.email = email
         account.name = name
