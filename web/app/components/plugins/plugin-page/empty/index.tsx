@@ -10,6 +10,7 @@ import { useSelector as useAppContextSelector } from '@/context/app-context'
 import Line from '../../marketplace/empty/line'
 import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useTranslation } from 'react-i18next'
+import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 
 const Empty = () => {
   const { t } = useTranslation()
@@ -42,11 +43,11 @@ const Empty = () => {
       {/* skeleton */}
       <div className='h-full w-full px-12 absolute top-0 grid grid-cols-2 gap-2 overflow-hidden z-10'>
         {Array.from({ length: 20 }).fill(0).map((_, i) => (
-          <div key={i} className='h-[100px] bg-components-card-bg rounded-xl'/>
+          <div key={i} className='h-[100px] bg-components-card-bg rounded-xl' />
         ))}
       </div>
       {/* mask */}
-      <div className='h-full w-full absolute z-20 bg-gradient-to-b from-background-gradient-mask-transparent to-white'/>
+      <div className='h-full w-full absolute z-20 bg-gradient-to-b from-background-gradient-mask-transparent to-white' />
       <div className='flex items-center justify-center h-full relative z-30'>
         <div className='flex flex-col items-center gap-y-3'>
           <div className='relative -z-10 flex items-center justify-center w-[52px] h-[52px] rounded-xl
@@ -66,7 +67,7 @@ const Empty = () => {
               ref={fileInputRef}
               style={{ display: 'none' }}
               onChange={handleFileChange}
-              accept='.difypkg'
+              accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
             />
             <div className='w-full flex flex-col gap-y-1'>
               {[

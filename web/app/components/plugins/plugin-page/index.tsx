@@ -32,6 +32,7 @@ import type { PluginDeclaration, PluginManifestInMarket } from '../types'
 import { sleep } from '@/utils'
 import { fetchManifestFromMarketPlace } from '@/service/plugins'
 import { marketplaceApiPrefix } from '@/config'
+import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 
 const PACKAGE_IDS_KEY = 'package-ids'
 
@@ -186,7 +187,7 @@ const PluginPage = ({
             className="hidden"
             type="file"
             id="fileUploader"
-            accept='.difypkg'
+            accept={SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS}
             onChange={fileChangeHandle ?? (() => { })}
           />
         </>

@@ -47,7 +47,7 @@ const PluginList = () => {
             {
               type: 'marketplace',
               value: {
-                plugin_unique_identifier: 'langgenius/openai:0.0.1@f88fdb98d104466db16a425bfe3af8c1bcad45047a40fb802d98a989ac57a5a3',
+                plugin_unique_identifier: 'langgenius/openai:0.0.2@7baee9635a07573ea192621ebfdacb39db466fa691e75255beaf48bf41d44375',
               },
             },
           ]} />

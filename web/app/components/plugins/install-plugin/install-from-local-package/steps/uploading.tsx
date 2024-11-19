@@ -3,34 +3,37 @@ import type { FC } from 'react'
 import React from 'react'
 import { RiLoader2Line } from '@remixicon/react'
 import Card from '../../../card'
-import type { PluginDeclaration } from '../../../types'
+import type { Dependency, PluginDeclaration } from '../../../types'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
-import { uploadPackageFile } from '@/service/plugins'
+import { uploadFile } from '@/service/plugins'
 const i18nPrefix = 'plugin.installModal'
 
 type Props = {
+  isBundle: boolean
   file: File
   onCancel: () => void
-  onUploaded: (result: {
+  onPackageUploaded: (result: {
     uniqueIdentifier: string
     manifest: PluginDeclaration
   }) => void
+  onBundleUploaded: (result: Dependency[]) => void
   onFailed: (errorMsg: string) => void
 }
 
 const Uploading: FC<Props> = ({
+  isBundle,
   file,
   onCancel,
-  onUploaded,
+  onPackageUploaded,
+  onBundleUploaded,
   onFailed,
 }) => {
   const { t } = useTranslation()
   const fileName = file.name
   const handleUpload = async () => {
     try {
-      const res = await uploadPackageFile(file)
-      onUploaded(res)
+      await uploadFile(file, isBundle)
     }
     catch (e: any) {
       if (e.response?.message) {
@@ -38,7 +41,11 @@ const Uploading: FC<Props> = ({
       }
       else { // Why it would into this branch?
         const res = e.response
-        onUploaded({
+        if (isBundle) {
+          onBundleUploaded(res)
+          return
+        }
+        onPackageUploaded({
           uniqueIdentifier: res.unique_identifier,
           manifest: res.manifest,
         })

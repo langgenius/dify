@@ -16,13 +16,13 @@ import type {
   MarketplaceCollectionsResponse,
 } from '@/app/components/plugins/marketplace/types'
 
-export const uploadPackageFile = async (file: File) => {
+export const uploadFile = async (file: File, isBundle: boolean) => {
   const formData = new FormData()
-  formData.append('pkg', file)
+  formData.append(isBundle ? 'bundle' : 'pkg', file)
   return upload({
     xhr: new XMLHttpRequest(),
     data: formData,
-  }, false, '/workspaces/current/plugin/upload/pkg')
+  }, false, `/workspaces/current/plugin/upload/${isBundle ? 'bundle' : 'pkg'}`)
 }
 
 export const updateFromMarketPlace = async (body: Record<string, string>) => {

@@ -2,14 +2,13 @@
 
 import React, { useCallback, useState } from 'react'
 import Modal from '@/app/components/base/modal'
-import type { PluginDeclaration } from '../../types'
+import type { Dependency, PluginDeclaration } from '../../types'
 import { InstallStep } from '../../types'
 import Uploading from './steps/uploading'
-import Install from './steps/install'
-import Installed from '../base/installed'
 import { useTranslation } from 'react-i18next'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
-import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import ReadyToInstallPackage from './ready-to-install'
+import ReadyToInstallBundle from '../install-bundle/ready-to-install'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -29,7 +28,8 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
   const [manifest, setManifest] = useState<PluginDeclaration | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const isBundle = file.name.endsWith('.bundle')
+  const [dependencies, setDependencies] = useState<Dependency[]>([])
 
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
@@ -44,7 +44,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
 
   const { getIconUrl } = useGetIcon()
 
-  const handleUploaded = useCallback(async (result: {
+  const handlePackageUploaded = useCallback(async (result: {
     uniqueIdentifier: string
     manifest: PluginDeclaration
   }) => {
@@ -61,20 +61,14 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
     setStep(InstallStep.readyToInstall)
   }, [getIconUrl])
 
+  const handleBundleUploaded = useCallback((result: Dependency[]) => {
+    setDependencies(result)
+    setStep(InstallStep.readyToInstall)
+  }, [])
+
   const handleUploadFail = useCallback((errorMsg: string) => {
     setErrorMsg(errorMsg)
     setStep(InstallStep.uploadFailed)
-  }, [])
-
-  const handleInstalled = useCallback(() => {
-    invalidateInstalledPluginList()
-    setStep(InstallStep.installed)
-  }, [invalidateInstalledPluginList])
-
-  const handleFailed = useCallback((errorMsg?: string) => {
-    setStep(InstallStep.installFailed)
-    if (errorMsg)
-      setErrorMsg(errorMsg)
   }, [])
 
   return (
@@ -91,33 +85,32 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       </div>
       {step === InstallStep.uploading && (
         <Uploading
+          isBundle={isBundle}
           file={file}
           onCancel={onClose}
-          onUploaded={handleUploaded}
+          onPackageUploaded={handlePackageUploaded}
+          onBundleUploaded={handleBundleUploaded}
           onFailed={handleUploadFail}
         />
       )}
-      {
-        step === InstallStep.readyToInstall && (
-          <Install
-            uniqueIdentifier={uniqueIdentifier!}
-            payload={manifest!}
-            onCancel={onClose}
-            onInstalled={handleInstalled}
-            onFailed={handleFailed}
-          />
-        )
-      }
-      {
-        ([InstallStep.uploadFailed, InstallStep.installed, InstallStep.installFailed].includes(step)) && (
-          <Installed
-            payload={manifest}
-            isFailed={[InstallStep.uploadFailed, InstallStep.installFailed].includes(step)}
-            errMsg={errorMsg}
-            onCancel={onClose}
-          />
-        )
-      }
+      {isBundle ? (
+        <ReadyToInstallBundle
+          step={step}
+          onStepChange={setStep}
+          onClose={onClose}
+          dependencies={dependencies}
+        />
+      ) : (
+        <ReadyToInstallPackage
+          step={step}
+          onStepChange={setStep}
+          onClose={onClose}
+          uniqueIdentifier={uniqueIdentifier}
+          manifest={manifest}
+          errorMsg={errorMsg}
+          onError={setErrorMsg}
+        />
+      )}
     </Modal>
   )
 }
