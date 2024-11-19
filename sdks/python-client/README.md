@@ -6,9 +6,16 @@ A Dify App Service-API Client, using for build a webapp by request Service-API
 
 First, install `dify-client` python sdk package:
 
-```
+```bash
 pip install dify-client
 ```
+
+or install the latest sdk from soure
+
+```sh
+pip install -e "git+https://github.com/langgenius/dify.git#egg=dify-client&subdirectory=sdks/python-client"
+```
+
 
 Write your code with sdk:
 
@@ -17,7 +24,7 @@ Write your code with sdk:
 ```python
 from dify_client import CompletionClient
 
-api_key = "your_api_key"
+api_key = "your_api_key" 
 
 # Initialize CompletionClient
 completion_client = CompletionClient(api_key)
@@ -153,6 +160,9 @@ api_key = "your_api_key"
 
 # Initialize Client
 client = ChatClient(api_key)
+
+# Initialize Client for self-hosted service
+client = ChatClient(api_key, base_url="your_api_endpoint")
 
 # Get App parameters
 parameters = client.get_application_parameters(user="user_id")
