@@ -1,9 +1,11 @@
 import logging
 from collections.abc import Mapping
-from typing import Any
+from enum import Enum
+from typing import Any, Literal
 
 import yaml
 from packaging import version
+from pydantic import BaseModel, ConfigDict
 
 from core.helper import ssrf_proxy
 from events.app_event import app_model_config_was_updated, app_was_created
@@ -27,19 +29,56 @@ from .exc import (
 
 logger = logging.getLogger(__name__)
 
-current_dsl_version = "0.1.3"
+CURRENT_DSL_VERSION = "0.1.3"
+
+
+class Status(str, Enum):
+    ERROR = "error"
+    WARNING = "warning"
+    SUCCESS = "success"
+
+
+class ImportResult(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    app: App
+    current_dsl_version: str
+    imported_dsl_version: str
+    status: Status
+
+
+def _get_status(current_version: str, imported_version: str) -> Status:
+    try:
+        current_ver = version.parse(current_version)
+        imported_ver = version.parse(imported_version)
+    except version.InvalidVersion:
+        return Status.ERROR
+
+    # Compare major version
+    if current_ver.major != imported_ver.major:
+        return Status.ERROR
+
+    # Compare minor version
+    if current_ver.minor != imported_ver.minor:
+        return Status.WARNING
+
+    return Status.SUCCESS
 
 
 class AppDslService:
     @classmethod
-    def import_and_create_new_app_from_url(cls, tenant_id: str, url: str, args: dict, account: Account) -> App:
-        """
-        Import app dsl from url and create new app
-        :param tenant_id: tenant id
-        :param url: import url
-        :param args: request args
-        :param account: Account instance
-        """
+    def import_and_create_new_app_from_url(
+        cls,
+        *,
+        tenant_id: str,
+        url: str,
+        account: Account,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: Literal["emoji", "image"] | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+    ) -> ImportResult:
         max_size = 10 * 1024 * 1024  # 10MB
         response = ssrf_proxy.get(url.strip(), follow_redirects=True, timeout=(10, 10))
         response.raise_for_status()
@@ -56,42 +95,66 @@ class AppDslService:
         except UnicodeDecodeError as e:
             raise ContentDecodingError(f"Error decoding content: {e}")
 
-        return cls.import_and_create_new_app(tenant_id, data, args, account)
-
-    @classmethod
-    def import_and_create_new_app(cls, tenant_id: str, data: str, args: dict, account: Account) -> App:
-        """
-        Import app dsl and create new app
-        :param tenant_id: tenant id
-        :param data: import data
-        :param args: request args
-        :param account: Account instance
-        """
         try:
             import_data = yaml.safe_load(data)
         except yaml.YAMLError:
             raise InvalidYAMLFormatError("Invalid YAML format in data argument.")
 
-        # check or repair dsl version
-        import_data = _check_or_fix_dsl(import_data)
+        return cls.import_and_create_new_app(
+            tenant_id=tenant_id,
+            data=import_data,
+            account=account,
+            name=name,
+            description=description,
+            icon_type=icon_type,
+            icon=icon,
+            icon_background=icon_background,
+        )
 
-        app_data = import_data.get("app")
+    @classmethod
+    def import_and_create_new_app(
+        cls,
+        *,
+        tenant_id: str,
+        data: Mapping[str, Any],
+        account: Account,
+        name: str | None = None,
+        description: str | None = None,
+        icon_type: Literal["emoji", "image"] | None = None,
+        icon: str | None = None,
+        icon_background: str | None = None,
+    ) -> ImportResult:
+        imported_version = data.get("version", "0.1.0")
+        status = _get_status(CURRENT_DSL_VERSION, imported_version)
+
+        # check or repair dsl version
+        data = _check_or_fix_dsl(data)
+
+        app_data = data.get("app")
         if not app_data:
             raise MissingAppDataError("Missing app in data argument")
 
         # get app basic info
-        name = args.get("name") or app_data.get("name")
-        description = args.get("description") or app_data.get("description", "")
-        icon_type = args.get("icon_type") or app_data.get("icon_type")
-        icon = args.get("icon") or app_data.get("icon")
-        icon_background = args.get("icon_background") or app_data.get("icon_background")
+        name = name or str(app_data.get("name", ""))
+        description = description or str(app_data.get("description", ""))
+        icon_background = icon_background or str(app_data.get("icon_background", ""))
         use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
 
+        raw_icon_type = str(app_data.get("icon_type", ""))
+        if icon_type or raw_icon_type:
+            icon_type_value = icon_type or raw_icon_type
+            if icon_type_value not in ("emoji", "image"):
+                raise ValueError(f"Invalid icon_type: {icon_type_value}. Must be either 'emoji' or 'image'")
+            icon_type = icon_type_value
+        else:
+            icon_type = "emoji"
+        icon = icon or str(app_data.get("icon", ""))
+
         # import dsl and create app
-        app_mode = AppMode.value_of(app_data.get("mode"))
+        app_mode = AppMode(app_data["mode"])
 
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            workflow_data = import_data.get("workflow")
+            workflow_data = data.get("workflow")
             if not workflow_data or not isinstance(workflow_data, dict):
                 raise MissingWorkflowDataError(
                     "Missing workflow in data argument when app mode is advanced-chat or workflow"
@@ -110,7 +173,7 @@ class AppDslService:
                 use_icon_as_answer_icon=use_icon_as_answer_icon,
             )
         elif app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION}:
-            model_config = import_data.get("model_config")
+            model_config = data.get("model_config")
             if not model_config or not isinstance(model_config, dict):
                 raise MissingModelConfigError(
                     "Missing model_config in data argument when app mode is chat, agent-chat or completion"
@@ -131,7 +194,12 @@ class AppDslService:
         else:
             raise InvalidAppModeError("Invalid app mode")
 
-        return app
+        return ImportResult(
+            app=app,
+            current_dsl_version=CURRENT_DSL_VERSION,
+            imported_dsl_version=imported_version,
+            status=status,
+        )
 
     @classmethod
     def import_and_overwrite_workflow(cls, app_model: App, data: str, account: Account) -> Workflow:
@@ -183,7 +251,7 @@ class AppDslService:
         app_mode = AppMode.value_of(app_model.mode)
 
         export_data = {
-            "version": current_dsl_version,
+            "version": CURRENT_DSL_VERSION,
             "kind": "app",
             "app": {
                 "name": app_model.name,
@@ -451,25 +519,20 @@ class AppDslService:
         export_data["model_config"] = app_model_config.to_dict()
 
 
-def _check_or_fix_dsl(import_data: dict[str, Any]) -> Mapping[str, Any]:
-    """
-    Check or fix dsl
+def _check_or_fix_dsl(dsl_mapping: Mapping[str, Any]) -> Mapping[str, Any]:
+    fixed_mapping = dict(dsl_mapping)
+    if not fixed_mapping.get("version"):
+        fixed_mapping["version"] = "0.1.0"
 
-    :param import_data: import data
-    :raises DSLVersionNotSupportedError: if the imported DSL version is newer than the current version
-    """
-    if not import_data.get("version"):
-        import_data["version"] = "0.1.0"
+    if not fixed_mapping.get("kind") or fixed_mapping.get("kind") != "app":
+        fixed_mapping["kind"] = "app"
 
-    if not import_data.get("kind") or import_data.get("kind") != "app":
-        import_data["kind"] = "app"
-
-    imported_version = import_data.get("version")
-    if imported_version != current_dsl_version:
-        if imported_version and version.parse(imported_version) > version.parse(current_dsl_version):
+    imported_version = fixed_mapping.get("version")
+    if imported_version != CURRENT_DSL_VERSION:
+        if imported_version and version.parse(imported_version) > version.parse(CURRENT_DSL_VERSION):
             errmsg = (
                 f"The imported DSL version {imported_version} is newer than "
-                f"the current supported version {current_dsl_version}. "
+                f"the current supported version {CURRENT_DSL_VERSION}. "
                 f"Please upgrade your Dify instance to import this configuration."
             )
             logger.warning(errmsg)
@@ -477,8 +540,8 @@ def _check_or_fix_dsl(import_data: dict[str, Any]) -> Mapping[str, Any]:
         else:
             logger.warning(
                 f"DSL version {imported_version} is older than "
-                f"the current version {current_dsl_version}. "
+                f"the current version {CURRENT_DSL_VERSION}. "
                 f"This may cause compatibility issues."
             )
 
-    return import_data
+    return fixed_mapping
