@@ -315,8 +315,8 @@ export type GitHubItemAndMarketPlaceDependency = {
   type: 'github' | 'marketplace' | 'package'
   value: {
     repo?: string
-    version?: string
-    package?: string
+    release?: string
+    packages?: string
     github_plugin_unique_identifier?: string
     marketplace_plugin_unique_identifier?: string
     plugin_unique_identifier?: string

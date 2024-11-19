@@ -125,8 +125,8 @@ export const useInstallFromMarketplaceAndGitHub = ({
             await post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
               body: {
                 repo: data.value.repo!,
-                version: data.value.version!,
-                package: data.value.package!,
+                version: data.value.release!,
+                package: data.value.packages!,
                 plugin_unique_identifier: data.value.github_plugin_unique_identifier!,
               },
             })
@@ -231,6 +231,7 @@ export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[]) 
         unique_identifiers,
       },
     }),
+    enabled: unique_identifiers.filter(i => !!i).length > 0, // loaded then fetch
   })
 }
 

@@ -30,7 +30,7 @@ const PluginList = () => {
               type: 'github',
               value: {
                 repo: 'YIXIAO0/test',
-                version: '1.11.5',
+                release: '1.11.5',
                 package: 'test.difypkg',
                 github_plugin_unique_identifier: 'yixiao0/test:0.0.1@3592166c87afcf944b4f13f27467a5c8f9e00bd349cb42033a072734a37431b4',
               },
@@ -40,7 +40,7 @@ const PluginList = () => {
               value: {
                 package: 'dify-test.difypkg',
                 repo: 'WTW0313/dify-test',
-                version: '0.0.5-beta.2',
+                release: '0.0.5-beta.2',
                 github_plugin_unique_identifier: 'wtw0313/dify-test:0.0.1@1633daa043b47155d4228e2db7734245fd6d3e20ba812e5c02ce69fc1e3038f4',
               },
             },
