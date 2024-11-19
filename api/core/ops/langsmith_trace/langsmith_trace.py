@@ -276,11 +276,6 @@ class LangSmithDataTrace(BaseTraceInstance):
         self.add_run(llm_run)
 
     def moderation_trace(self, trace_info: ModerationTraceInfo):
-        parent_run_id = trace_info.message_id
-        parent_dotted_order = generate_dotted_order(parent_run_id, trace_info.start_time)
-        moderation_dotted_order = generate_dotted_order(
-            trace_info.message_id, trace_info.start_time, parent_dotted_order
-        )
         langsmith_run = LangSmithRunModel(
             name=TraceTaskName.MODERATION_TRACE.value,
             inputs=trace_info.inputs,
@@ -298,17 +293,11 @@ class LangSmithDataTrace(BaseTraceInstance):
             parent_run_id=trace_info.message_id,
             start_time=trace_info.start_time or trace_info.message_data.created_at,
             end_time=trace_info.end_time or trace_info.message_data.updated_at,
-            dotted_order=moderation_dotted_order,
         )
 
         self.add_run(langsmith_run)
 
     def suggested_question_trace(self, trace_info: SuggestedQuestionTraceInfo):
-        parent_run_id = trace_info.message_id
-        parent_dotted_order = generate_dotted_order(parent_run_id, trace_info.start_time)
-        suggested_question_dotted_order = generate_dotted_order(
-            trace_info.message_id, trace_info.start_time, parent_dotted_order
-        )
         message_data = trace_info.message_data
         suggested_question_run = LangSmithRunModel(
             name=TraceTaskName.SUGGESTED_QUESTION_TRACE.value,
@@ -322,17 +311,11 @@ class LangSmithDataTrace(BaseTraceInstance):
             parent_run_id=trace_info.message_id,
             start_time=trace_info.start_time or message_data.created_at,
             end_time=trace_info.end_time or message_data.updated_at,
-            dotted_order=suggested_question_dotted_order,
         )
 
         self.add_run(suggested_question_run)
 
     def dataset_retrieval_trace(self, trace_info: DatasetRetrievalTraceInfo):
-        parent_run_id = trace_info.message_id
-        parent_dotted_order = generate_dotted_order(parent_run_id, trace_info.start_time)
-        dataset_retrieval_dotted_order = generate_dotted_order(
-            trace_info.message_id, trace_info.start_time, parent_dotted_order
-        )
         dataset_retrieval_run = LangSmithRunModel(
             name=TraceTaskName.DATASET_RETRIEVAL_TRACE.value,
             inputs=trace_info.inputs,
@@ -345,15 +328,11 @@ class LangSmithDataTrace(BaseTraceInstance):
             parent_run_id=trace_info.message_id,
             start_time=trace_info.start_time or trace_info.message_data.created_at,
             end_time=trace_info.end_time or trace_info.message_data.updated_at,
-            dotted_order=dataset_retrieval_dotted_order,
         )
 
         self.add_run(dataset_retrieval_run)
 
     def tool_trace(self, trace_info: ToolTraceInfo):
-        parent_run_id = trace_info.message_id
-        parent_dotted_order = generate_dotted_order(parent_run_id, trace_info.start_time)
-        tool_dotted_order = generate_dotted_order(trace_info.message_id, trace_info.start_time, parent_dotted_order)
         tool_run = LangSmithRunModel(
             name=trace_info.tool_name,
             inputs=trace_info.tool_inputs,
@@ -367,17 +346,11 @@ class LangSmithDataTrace(BaseTraceInstance):
             start_time=trace_info.start_time,
             end_time=trace_info.end_time,
             file_list=[trace_info.file_url],
-            dotted_order=tool_dotted_order,
         )
 
         self.add_run(tool_run)
 
     def generate_name_trace(self, trace_info: GenerateNameTraceInfo):
-        parent_run_id = trace_info.message_id
-        parent_dotted_order = generate_dotted_order(parent_run_id, trace_info.start_time)
-        generate_name_dotted_order = generate_dotted_order(
-            trace_info.message_id, trace_info.start_time, parent_dotted_order
-        )
         name_run = LangSmithRunModel(
             name=TraceTaskName.GENERATE_NAME_TRACE.value,
             inputs=trace_info.inputs,
@@ -389,7 +362,6 @@ class LangSmithDataTrace(BaseTraceInstance):
             tags=["generate_name"],
             start_time=trace_info.start_time or datetime.now(),
             end_time=trace_info.end_time or datetime.now(),
-            dotted_order=generate_name_dotted_order,
         )
 
         self.add_run(name_run)
