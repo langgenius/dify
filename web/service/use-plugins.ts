@@ -2,8 +2,10 @@ import { useCallback, useState } from 'react'
 import type {
   DebugInfo as DebugInfoTypes,
   Dependency,
+  GitHubItemAndMarketPlaceDependency,
   InstallPackageResponse,
   InstalledPluginListResponse,
+  PackageDependency,
   Permissions,
   PluginTask,
   PluginsFromMarketplaceResponse,
@@ -119,21 +121,33 @@ export const useInstallFromMarketplaceAndGitHub = ({
       return Promise.all(payload.map(async (item) => {
         try {
           if (item.type === 'github') {
+            const data = item as GitHubItemAndMarketPlaceDependency
             await post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
               body: {
-                repo: item.value.repo!,
-                version: item.value.version!,
-                package: item.value.package!,
-                plugin_unique_identifier: item.value.github_plugin_unique_identifier!,
+                repo: data.value.repo!,
+                version: data.value.version!,
+                package: data.value.package!,
+                plugin_unique_identifier: data.value.github_plugin_unique_identifier!,
               },
             })
-            return ({ success: true })
           }
-          await post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
-            body: {
-              plugin_unique_identifiers: [item.value.plugin_unique_identifier!],
-            },
-          })
+          if (item.type === 'marketplace') {
+            const data = item as GitHubItemAndMarketPlaceDependency
+
+            await post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
+              body: {
+                plugin_unique_identifiers: [data.value.plugin_unique_identifier!],
+              },
+            })
+          }
+          if (item.type === 'package') {
+            const data = item as PackageDependency
+            await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
+              body: {
+                plugin_unique_identifiers: [data.value.unique_identifier],
+              },
+            })
+          }
           return ({ success: true })
         }
         // eslint-disable-next-line unused-imports/no-unused-vars

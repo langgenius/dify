@@ -22,9 +22,21 @@ const InstallByDSLList: FC<Props> = ({
   onSelect,
   onLoadedAllPlugin,
 }) => {
-  const { isLoading: isFetchingMarketplaceData, data: marketplaceRes } = useFetchPluginsInMarketPlaceByIds(allPlugins.filter(d => d.type === 'marketplace').map(d => d.value.plugin_unique_identifier!))
+  const { isLoading: isFetchingMarketplaceData, data: marketplaceRes } = useFetchPluginsInMarketPlaceByIds(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value.plugin_unique_identifier!))
 
-  const [plugins, setPlugins, getPlugins] = useGetState<Plugin[]>([])
+  const [plugins, setPlugins, getPlugins] = useGetState<(Plugin | undefined)[]>((() => {
+    const hasLocalPackage = allPlugins.some(d => d.type === 'package')
+    if (!hasLocalPackage)
+      return []
+
+    const _plugins = allPlugins.map((d) => {
+      if (d.type === 'package')
+        return (d as any).value.manifest
+
+      return undefined
+    })
+    return _plugins
+  })())
 
   const [errorIndexes, setErrorIndexes] = useState<number[]>([])
 
@@ -53,15 +65,20 @@ const InstallByDSLList: FC<Props> = ({
   }, [allPlugins])
 
   useEffect(() => {
-    if (!isFetchingMarketplaceData && marketplaceRes?.data.plugins && marketplaceRes?.data.plugins.length > 0) {
+    if (!isFetchingMarketplaceData && marketplaceRes?.data.plugins) {
       const payloads = marketplaceRes?.data.plugins
-
+      const failedIndex: number[] = []
       const nextPlugins = produce(getPlugins(), (draft) => {
         marketPlaceInDSLIndex.forEach((index, i) => {
-          draft[index] = payloads[i]
+          if (payloads[i])
+            draft[index] = payloads[i]
+          else
+            failedIndex.push(index)
         })
       })
       setPlugins(nextPlugins)
+      if (failedIndex.length > 0)
+        setErrorIndexes([...errorIndexes, ...failedIndex])
       // marketplaceRes?.data.plugins
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -76,7 +93,7 @@ const InstallByDSLList: FC<Props> = ({
 
   const handleSelect = useCallback((index: number) => {
     return () => {
-      onSelect(plugins[index], index)
+      onSelect(plugins[index]!, index)
     }
   }, [onSelect, plugins])
   return (
