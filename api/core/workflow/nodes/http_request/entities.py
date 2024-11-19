@@ -13,6 +13,7 @@ NON_FILE_CONTENT_TYPES = (
     "text/html",
     "text/plain",
     "application/x-www-form-urlencoded",
+    "application/x-javascript",
 )
 
 
