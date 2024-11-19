@@ -234,7 +234,6 @@ class LangSmithDataTrace(BaseTraceInstance):
                 end_user_id = end_user_data.session_id
                 metadata["end_user_id"] = end_user_id
 
-        dotted_order = generate_dotted_order(message_id, trace_info.start_time)
         message_run = LangSmithRunModel(
             input_tokens=trace_info.message_tokens,
             output_tokens=trace_info.answer_tokens,
@@ -252,12 +251,10 @@ class LangSmithDataTrace(BaseTraceInstance):
             tags=["message", str(trace_info.conversation_mode)],
             error=trace_info.error,
             file_list=file_list,
-            dotted_order=dotted_order,
         )
         self.add_run(message_run)
 
         # create llm run parented to message run
-        llm_dotted_order = generate_dotted_order(message_id, trace_info.start_time, dotted_order)
         llm_run = LangSmithRunModel(
             input_tokens=trace_info.message_tokens,
             output_tokens=trace_info.answer_tokens,
@@ -275,7 +272,6 @@ class LangSmithDataTrace(BaseTraceInstance):
             tags=["llm", str(trace_info.conversation_mode)],
             error=trace_info.error,
             file_list=file_list,
-            dotted_order=llm_dotted_order,
         )
         self.add_run(llm_run)
 
