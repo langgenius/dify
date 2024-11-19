@@ -48,7 +48,7 @@ def test_invoke_model(setup_google_mock):
                 ]
             ),
         ],
-        model_parameters={"temperature": 0.5, "top_p": 1.0, "max_tokens_to_sample": 2048},
+        model_parameters={"temperature": 0.5, "top_p": 1.0, "max_output_tokens": 2048},
         stop=["How"],
         stream=False,
         user="abc-123",
@@ -80,7 +80,7 @@ def test_invoke_stream_model(setup_google_mock):
                 ]
             ),
         ],
-        model_parameters={"temperature": 0.2, "top_k": 5, "max_tokens_to_sample": 2048},
+        model_parameters={"temperature": 0.2, "top_k": 5, "max_output_tokens": 2048},
         stream=True,
         user="abc-123",
     )

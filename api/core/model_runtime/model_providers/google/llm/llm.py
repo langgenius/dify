@@ -223,7 +223,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         return self._handle_generate_response(model, credentials, response, prompt_messages)
 
     def _handle_generate_response(
-            self, model: str, credentials: dict, response: GenerateContentResponse, prompt_messages: list[PromptMessage]
+        self, model: str, credentials: dict, response: GenerateContentResponse, prompt_messages: list[PromptMessage]
     ) -> LLMResult:
         """
         Handle llm response
@@ -255,7 +255,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
         return result
 
     def _handle_generate_stream_response(
-            self, model: str, credentials: dict, response: GenerateContentResponse, prompt_messages: list[PromptMessage]
+        self, model: str, credentials: dict, response: GenerateContentResponse, prompt_messages: list[PromptMessage]
     ) -> Generator:
         """
         Handle llm stream response
