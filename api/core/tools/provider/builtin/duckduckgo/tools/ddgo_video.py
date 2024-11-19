@@ -10,6 +10,17 @@ class DuckDuckGoVideoSearchTool(BuiltinTool):
     """
     Tool for performing a video search using DuckDuckGo search engine.
     """
+    
+    IFRAME_TEMPLATE = """
+<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; \
+max-width: 100%; border-radius: 8px;">
+    <iframe
+        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+        src="{src}"
+        frameborder="0"
+        allowfullscreen>
+    </iframe>
+</div>"""
 
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> list[ToolInvokeMessage]:
         query_dict = {
@@ -46,32 +57,14 @@ class DuckDuckGoVideoSearchTool(BuiltinTool):
                 embed_url = content_url.replace("www.ted.com", "embed.ted.com")
                 if proxy_url:
                     embed_url = f"{proxy_url}{embed_url}"
-                embed_html = """
-<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; \
-max-width: 100%; border-radius: 8px;">
-    <iframe
-        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
-        src="{src}"
-        frameborder="0"
-        allowfullscreen>
-    </iframe>
-</div>""".format(src=embed_url)
+                embed_html = self.IFRAME_TEMPLATE.format(src=embed_url)
 
             # Original YouTube/other platform handling
             elif embed_html:
                 embed_url = res.get("embed_url", "")
                 if proxy_url and embed_url:
                     embed_url = f"{proxy_url}{embed_url}"
-                embed_html = """
-<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; \
-max-width: 100%; border-radius: 8px;">
-    <iframe
-        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
-        src="{src}"
-        frameborder="0"
-        allowfullscreen>
-    </iframe>
-</div>""".format(src=embed_url)
+                embed_html = self.IFRAME_TEMPLATE.format(src=embed_url)
 
             markdown_result += f"{title}\n\n"
             markdown_result += f"{embed_html}\n\n"

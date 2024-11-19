@@ -18,7 +18,7 @@ parameters:
     required: true
     human_description:
       en_US: Search Query
-      zh_Hans: 搜索查询语句。
+      zh_Hans: 搜索查询语句
     llm_description: Key words for searching
     form: llm
   - name: max_results
@@ -92,6 +92,6 @@ parameters:
     required: false
     default: ""
     human_description:
-      en_US: Please end with / , e.g. https://example.com/
-      zh_Hans: 请以 / 结尾，比如 https://example.com/
+      en_US: Proxy URL
+      zh_Hans: 视频代理地址
     form: form
