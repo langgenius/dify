@@ -1,0 +1,26 @@
+identity:
+  name: 阿里云文字识别OCR（读光OCR）
+  author: Liu Ji Cheng
+  label:
+    en_US: DuGuang ocr
+    zh_Hans: 阿里云文字识别OCR（读光OCR）
+    pt_BR: DuGuang ocr
+description:
+  human:
+    en_US: An OCR tool used to recognize textual information contained in images, documents, cards, and other files.
+    zh_Hans: 一个OCR工具，用于识别图片、文档、卡证等文件所包含的文字信息。
+    pt_BR: An OCR tool used to recognize textual information contained in images, documents, cards, and other files.
+  llm: An OCR tool used to recognize textual information contained in images, documents, cards, and other files.
+parameters:
+  - name: image_url
+    type: string
+    required: true
+    label:
+      en_US: image url to be recognize textual information
+      zh_Hans: 图片地址
+      pt_BR: image url to be recognize textual information
+    human_description:
+      en_US: image url to be recognize textual information
+      zh_Hans: 图片地址
+      pt_BR: image url to be recognize textual information
+    form: llm

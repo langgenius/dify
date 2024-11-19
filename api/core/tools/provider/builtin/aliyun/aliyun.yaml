@@ -1,0 +1,37 @@
+identity:
+  author: Liu Ji Cheng
+  name: aliyun
+  label:
+    en_US: aliyun
+    zh_Hans: 阿里云
+    pt_BR: aliyun
+  description:
+    en_US: aliyun, https://www.aliyun.com.
+    zh_Hans: 集成了阿里云（https://www.aliyun.com）的强大开放能力
+    pt_BR: aliyun, https://www.aliyun.com.
+  icon: icon.png
+  tags:
+    - productivity
+credentials_for_provider:
+  access_key_id:
+    type: secret-input
+    required: true
+    label:
+      en_US: Access Key ID
+      zh_Hans: Access Key ID
+      pt_BR: Access Key ID
+    placeholder:
+      en_US: Please input your Access Key ID
+      zh_Hans: 请输入你的 Access Key ID
+      pt_BR: Please input your Access Key ID
+  access_key_secret:
+    type: secret-input
+    required: true
+    label:
+      en_US: Access Key Secret
+      zh_Hans: Access Key Secret
+      pt_BR: Access Key Secret
+    placeholder:
+      en_US: Please input your Access Key Secret
+      zh_Hans: 请输入你的 Access Key Secret
+      pt_BR: Please input your Access Key Secret

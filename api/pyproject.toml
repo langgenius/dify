@@ -154,7 +154,7 @@ oci = "~2.135.1"
 openai = "~1.52.0"
 openpyxl = "~3.1.5"
 pandas = { version = "~2.2.2", extras = ["performance", "excel"] }
-psycopg2-binary = "~2.9.6"
+psycopg2-binary = "~2.9.10"
 pycryptodome = "3.19.1"
 pydantic = "~2.9.2"
 pydantic-settings = "~2.6.0"
@@ -186,6 +186,7 @@ werkzeug = "~3.0.1"
 xinference-client = "0.15.2"
 yarl = "~1.9.4"
 zhipuai = "~2.1.5"
+grpcio = "1.68.0rc1"
 # Before adding new dependency, consider place it in alphabet order (a-z) and suitable group.
 
 ############################################################
@@ -217,6 +218,7 @@ twilio = "~9.0.4"
 vanna = { version = "0.7.5", extras = ["postgres", "mysql", "clickhouse", "duckdb", "oracle"] }
 wikipedia = "1.4.0"
 yfinance = "~0.2.40"
+alibabacloud_ocr_api20210707  = "3.1.1"
 
 ############################################################
 # [ Storage ] dependency group
