@@ -14,6 +14,7 @@ import type {
 } from './types'
 import {
   getMarketplaceCollectionsAndPlugins,
+  getPluginIconInMarketplace,
 } from './utils'
 import i18n from '@/i18n/i18next-config'
 import { useMutationPluginsFromMarketplace } from '@/service/use-plugins'
@@ -61,7 +62,10 @@ export const useMarketplacePlugins = () => {
   })
 
   return {
-    plugins: data?.data?.plugins,
+    plugins: data?.data?.plugins.map(plugin => ({
+      ...plugin,
+      icon: getPluginIconInMarketplace(plugin),
+    })),
     resetPlugins: reset,
     queryPlugins,
     queryPluginsWithDebounced,
