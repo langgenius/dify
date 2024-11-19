@@ -30,8 +30,12 @@ const InstallByDSLList: FC<Props> = ({
       return []
 
     const _plugins = allPlugins.map((d) => {
-      if (d.type === 'package')
-        return (d as any).value.manifest
+      if (d.type === 'package') {
+        return {
+          ...(d as any).value.manifest,
+          plugin_id: (d as any).value.unique_identifier,
+        }
+      }
 
       return undefined
     })
@@ -84,7 +88,7 @@ const InstallByDSLList: FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFetchingMarketplaceData])
 
-  const isLoadedAllData = allPlugins.length === plugins.length && plugins.every(p => !!p)
+  const isLoadedAllData = (plugins.filter(p => !!p).length + errorIndexes.length) === allPlugins.length
   useEffect(() => {
     if (isLoadedAllData)
       onLoadedAllPlugin()
