@@ -65,6 +65,34 @@ def _get_status(current_version: str, imported_version: str) -> Status:
     return Status.SUCCESS
 
 
+def _check_or_fix_dsl(dsl_mapping: Mapping[str, Any]) -> Mapping[str, Any]:
+    fixed_mapping = dict(dsl_mapping)
+    if not fixed_mapping.get("version"):
+        fixed_mapping["version"] = "0.1.0"
+
+    if not fixed_mapping.get("kind") or fixed_mapping.get("kind") != "app":
+        fixed_mapping["kind"] = "app"
+
+    imported_version = fixed_mapping.get("version")
+    if imported_version != CURRENT_DSL_VERSION:
+        if imported_version and version.parse(imported_version) > version.parse(CURRENT_DSL_VERSION):
+            errmsg = (
+                f"The imported DSL version {imported_version} is newer than "
+                f"the current supported version {CURRENT_DSL_VERSION}. "
+                f"Please upgrade your Dify instance to import this configuration."
+            )
+            logger.warning(errmsg)
+            # raise DSLVersionNotSupportedError(errmsg)
+        else:
+            logger.warning(
+                f"DSL version {imported_version} is older than "
+                f"the current version {CURRENT_DSL_VERSION}. "
+                f"This may cause compatibility issues."
+            )
+
+    return fixed_mapping
+
+
 class AppDslService:
     @classmethod
     def import_and_create_new_app_from_url(
@@ -517,31 +545,3 @@ class AppDslService:
             raise ValueError("Missing app configuration, please check.")
 
         export_data["model_config"] = app_model_config.to_dict()
-
-
-def _check_or_fix_dsl(dsl_mapping: Mapping[str, Any]) -> Mapping[str, Any]:
-    fixed_mapping = dict(dsl_mapping)
-    if not fixed_mapping.get("version"):
-        fixed_mapping["version"] = "0.1.0"
-
-    if not fixed_mapping.get("kind") or fixed_mapping.get("kind") != "app":
-        fixed_mapping["kind"] = "app"
-
-    imported_version = fixed_mapping.get("version")
-    if imported_version != CURRENT_DSL_VERSION:
-        if imported_version and version.parse(imported_version) > version.parse(CURRENT_DSL_VERSION):
-            errmsg = (
-                f"The imported DSL version {imported_version} is newer than "
-                f"the current supported version {CURRENT_DSL_VERSION}. "
-                f"Please upgrade your Dify instance to import this configuration."
-            )
-            logger.warning(errmsg)
-            # raise DSLVersionNotSupportedError(errmsg)
-        else:
-            logger.warning(
-                f"DSL version {imported_version} is older than "
-                f"the current version {CURRENT_DSL_VERSION}. "
-                f"This may cause compatibility issues."
-            )
-
-    return fixed_mapping
