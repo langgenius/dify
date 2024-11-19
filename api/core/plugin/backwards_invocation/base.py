@@ -1,4 +1,3 @@
-import json
 from collections.abc import Generator
 from typing import Generic, Optional, TypeVar
 
@@ -19,10 +18,7 @@ class BaseBackwardsInvocation:
                 error_message = BaseBackwardsInvocationResponse(error=str(e)).model_dump_json()
                 yield f"{error_message}\n\n".encode()
         else:
-            if isinstance(response, BaseModel):
-                yield response.model_dump_json().encode() + b"\n\n"
-            else:
-                yield json.dumps(response).encode() + b"\n\n"
+            yield BaseBackwardsInvocationResponse(data=response).model_dump_json().encode() + b"\n\n"
 
 
 T = TypeVar("T", bound=dict | str | bool | int | BaseModel)

@@ -162,7 +162,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
     def single_iteration_generate(
         self, app_model: App, workflow: Workflow, node_id: str, user: Account | EndUser, args: dict, stream: bool = True
-    ) -> dict[str, Any] | Generator[str, Any, None]:
+    ) -> dict[str, Any] | Generator[str | dict[str, Any], Any, None]:
         """
         Generate App response.
 
@@ -218,7 +218,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: AdvancedChatAppGenerateEntity,
         conversation: Optional[Conversation] = None,
         stream: bool = True,
-    ) -> dict[str, Any] | Generator[str, Any, None]:
+    ) -> dict[str, Any] | Generator[str | dict[str, Any], Any, None]:
         """
         Generate App response.
 
