@@ -10,7 +10,7 @@ type ListProps = {
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   plugins?: Plugin[]
   showInstallButton?: boolean
-  locale?: string
+  locale: string
 }
 const List = ({
   marketplaceCollections,
