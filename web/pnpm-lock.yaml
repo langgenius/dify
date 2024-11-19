@@ -55,6 +55,9 @@ importers:
       '@octokit/core':
         specifier: ^6.1.2
         version: 6.1.2
+      '@octokit/request-error':
+        specifier: ^6.1.5
+        version: 6.1.5
       '@remixicon/react':
         specifier: ^4.3.0
         version: 4.3.0(react@18.2.0)

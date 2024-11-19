@@ -88,47 +88,28 @@ const DetailHeader = ({
       return
     }
 
-    try {
-      const fetchedReleases = await fetchReleases(author, name)
-      if (checkForUpdates(fetchedReleases, meta!.version)) {
-        setShowUpdatePluginModal({
-          onSaveCallback: () => {
-            onUpdate()
-          },
-          payload: {
-            type: PluginSource.github,
-            github: {
-              originalPackageInfo: {
-                id: detail.plugin_unique_identifier,
-                repo: meta!.repo,
-                version: meta!.version,
-                package: meta!.package,
-                releases: fetchedReleases,
-              },
+    const fetchedReleases = await fetchReleases(author, name)
+    if (fetchedReleases.length === 0) return
+    const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
+    Toast.notify(toastProps)
+    if (needUpdate) {
+      setShowUpdatePluginModal({
+        onSaveCallback: () => {
+          onUpdate()
+        },
+        payload: {
+          type: PluginSource.github,
+          github: {
+            originalPackageInfo: {
+              id: detail.plugin_unique_identifier,
+              repo: meta!.repo,
+              version: meta!.version,
+              package: meta!.package,
+              releases: fetchedReleases,
             },
           },
-        })
-      }
-      else {
-        Toast.notify({
-          type: 'info',
-          message: 'No new version available',
-        })
-      }
-    }
-    catch (error) {
-      if (error instanceof Error) {
-        Toast.notify({
-          type: 'error',
-          message: error.message,
-        })
-      }
-      else {
-        Toast.notify({
-          type: 'error',
-          message: 'Failed to compare versions',
-        })
-      }
+        },
+      })
     }
   }
 

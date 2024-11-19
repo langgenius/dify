@@ -54,47 +54,28 @@ const Action: FC<Props> = ({
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
 
   const handleFetchNewVersion = async () => {
-    try {
-      const fetchedReleases = await fetchReleases(author, pluginName)
-      if (checkForUpdates(fetchedReleases, meta!.version)) {
-        setShowUpdatePluginModal({
-          onSaveCallback: () => {
-            invalidateInstalledPluginList()
-          },
-          payload: {
-            type: PluginSource.github,
-            github: {
-              originalPackageInfo: {
-                id: pluginUniqueIdentifier,
-                repo: meta!.repo,
-                version: meta!.version,
-                package: meta!.package,
-                releases: fetchedReleases,
-              },
+    const fetchedReleases = await fetchReleases(author, pluginName)
+    if (fetchReleases.length === 0) return
+    const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
+    Toast.notify(toastProps)
+    if (needUpdate) {
+      setShowUpdatePluginModal({
+        onSaveCallback: () => {
+          invalidateInstalledPluginList()
+        },
+        payload: {
+          type: PluginSource.github,
+          github: {
+            originalPackageInfo: {
+              id: pluginUniqueIdentifier,
+              repo: meta!.repo,
+              version: meta!.version,
+              package: meta!.package,
+              releases: fetchedReleases,
             },
           },
-        })
-      }
-      else {
-        Toast.notify({
-          type: 'info',
-          message: 'No new version available',
-        })
-      }
-    }
-    catch (error) {
-      if (error instanceof Error) {
-        Toast.notify({
-          type: 'error',
-          message: error.message,
-        })
-      }
-      else {
-        Toast.notify({
-          type: 'error',
-          message: 'Failed to compare versions',
-        })
-      }
+        },
+      })
     }
   }
 
