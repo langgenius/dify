@@ -1,11 +1,11 @@
 import logging
 from collections.abc import Mapping
+from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Literal
 
 import yaml
 from packaging import version
-from pydantic import BaseModel, ConfigDict
 
 from core.helper import ssrf_proxy
 from events.app_event import app_model_config_was_updated, app_was_created
@@ -38,13 +38,20 @@ class Status(str, Enum):
     SUCCESS = "success"
 
 
-class ImportResult(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
+@dataclass
+class ImportResult:
     app: App
     current_dsl_version: str
     imported_dsl_version: str
     status: Status
+
+    def to_dict(self):
+        return {
+            "app": self.app,
+            "current_dsl_version": self.current_dsl_version,
+            "imported_dsl_version": self.imported_dsl_version,
+            "status": self.status.value,
+        }
 
 
 def _get_status(current_version: str, imported_version: str) -> Status:
@@ -168,7 +175,9 @@ class AppDslService:
         icon_background = icon_background or str(app_data.get("icon_background", ""))
         use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
 
-        raw_icon_type = str(app_data.get("icon_type", ""))
+        raw_icon_type = app_data.get("icon_type")
+        raw_icon_type = raw_icon_type or ""
+        raw_icon_type = str(raw_icon_type)
         if icon_type or raw_icon_type:
             icon_type_value = icon_type or raw_icon_type
             if icon_type_value not in ("emoji", "image"):

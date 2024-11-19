@@ -131,7 +131,7 @@ class AppImportApi(Resource):
             icon_background=args.get("icon_background"),
         )
 
-        return result.model_dump(), 201
+        return result.to_dict(), 201
 
 
 class AppImportFromUrlApi(Resource):
@@ -166,7 +166,7 @@ class AppImportFromUrlApi(Resource):
             icon_background=args.get("icon_background"),
         )
 
-        return result.model_dump(), 201
+        return result.to_dict(), 201
 
 
 class AppApi(Resource):
