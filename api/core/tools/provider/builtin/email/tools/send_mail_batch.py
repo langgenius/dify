@@ -18,7 +18,7 @@ class SendMailTool(BuiltinTool):
         invoke tools
         """
         sender = self.runtime.credentials.get("email_account", "")
-        email_rgx = re.compile(r"^[a-zA-Z0-9_-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$")
+        email_rgx = re.compile(r"^[a-zA-Z0-9._-]+@[a-zA-Z0-9_-]+(\.[a-zA-Z0-9_-]+)+$")
         password = self.runtime.credentials.get("email_password", "")
         smtp_server = self.runtime.credentials.get("smtp_server", "")
         if not smtp_server:
