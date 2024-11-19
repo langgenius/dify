@@ -235,7 +235,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 hasSetBlockStatus={hasSetBlockStatus}
                 nodesOutputVars={availableVars}
                 availableNodes={availableNodesWithParent}
-                isSupportFileVar
+                isSupportFileVar={false}
               />
 
               {inputs.memory.query_prompt_template && !inputs.memory.query_prompt_template.includes('{{#sys.query#}}') && (
