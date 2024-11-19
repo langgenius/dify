@@ -23,8 +23,12 @@ class PluginUploadFileApi(Resource):
         timestamp = request.args.get("timestamp")
         nonce = request.args.get("nonce")
         sign = request.args.get("sign")
+        tenant_id = request.args.get("tenant_id")
+        if not tenant_id:
+            raise Forbidden("Invalid request.")
+
         user_id = request.args.get("user_id")
-        user = get_user(user_id)
+        user = get_user(tenant_id, user_id)
 
         filename = file.filename
         mimetype = file.mimetype
@@ -38,6 +42,7 @@ class PluginUploadFileApi(Resource):
         if not verify_plugin_file_signature(
             filename=filename,
             mimetype=mimetype,
+            tenant_id=tenant_id,
             user_id=user_id,
             timestamp=timestamp,
             nonce=nonce,
