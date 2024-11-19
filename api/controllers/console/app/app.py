@@ -2,7 +2,7 @@ import uuid
 
 import yaml
 from flask_login import current_user
-from flask_restful import Resource, fields, inputs, marshal, marshal_with, reqparse
+from flask_restful import Resource, inputs, marshal, marshal_with, reqparse
 from werkzeug.exceptions import BadRequest, Forbidden, abort
 
 from controllers.console import api
@@ -17,6 +17,7 @@ from core.ops.ops_trace_manager import OpsTraceManager
 from fields.app_fields import (
     app_detail_fields,
     app_detail_fields_with_site,
+    app_import_fields,
     app_pagination_fields,
 )
 from libs.login import login_required
@@ -24,13 +25,6 @@ from services.app_dsl_service import AppDslService
 from services.app_service import AppService
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
-
-app_import_fields = {
-    "app": app_detail_fields_with_site,
-    "current_dsl_version": fields.String,
-    "imported_dsl_version": fields.String,
-    "status": fields.String,
-}
 
 
 class AppListApi(Resource):

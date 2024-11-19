@@ -190,3 +190,10 @@ app_site_fields = {
     "show_workflow_steps": fields.Boolean,
     "use_icon_as_answer_icon": fields.Boolean,
 }
+
+app_import_fields = {
+    "app": app_detail_fields_with_site,
+    "current_dsl_version": fields.String,
+    "imported_dsl_version": fields.String,
+    "status": fields.String,
+}
