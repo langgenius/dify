@@ -2,7 +2,8 @@ import type { Plugin } from '../types'
 
 export type MarketplaceCollection = {
   name: string
-  description: string
+  label: Record<string, string>
+  description: Record<string, string>
   rule: string
   created_at: string
   updated_at: string

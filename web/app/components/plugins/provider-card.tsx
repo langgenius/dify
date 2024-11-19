@@ -64,17 +64,17 @@ const ProviderCard: FC<Props> = ({
         className='hidden group-hover:flex items-center gap-2 absolute bottom-0 left-0 right-0 p-4 pt-8 rounded-xl bg-gradient-to-tr from-[#f9fafb] to-[rgba(249,250,251,0)]'
       >
         <Button
-          className='flex-grow'
+          className='grow'
           variant='primary'
           onClick={showInstallFromMarketplace}
         >
           {t('plugin.detailPanel.operation.install')}
         </Button>
         <Button
-          className='flex-grow'
+          className='grow'
           variant='secondary'
         >
-          <a href={`${MARKETPLACE_URL_PREFIX}/plugin/${payload.org}/${payload.name}`} target='_blank' className='flex items-center gap-0.5'>
+          <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${payload.org}/${payload.name}`} target='_blank' className='flex items-center gap-0.5'>
             {t('plugin.detailPanel.operation.detail')}
             <RiArrowRightUpLine className='w-4 h-4' />
           </a>

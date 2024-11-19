@@ -11,7 +11,7 @@ type ListWrapperProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   showInstallButton?: boolean
-  locale?: string
+  locale: string
 }
 const ListWrapper = ({
   marketplaceCollections,

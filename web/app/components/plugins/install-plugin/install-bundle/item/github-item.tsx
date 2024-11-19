@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect } from 'react'
-import type { Dependency, Plugin } from '../../../types'
+import type { GitHubItemAndMarketPlaceDependency, Plugin } from '../../../types'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import { useUploadGitHub } from '@/service/use-plugins'
 import Loading from './loading'
@@ -10,8 +10,9 @@ import LoadedItem from './loaded-item'
 type Props = {
   checked: boolean
   onCheckedChange: (plugin: Plugin) => void
-  dependency: Dependency
+  dependency: GitHubItemAndMarketPlaceDependency
   onFetchedPayload: (payload: Plugin) => void
+  onFetchError: () => void
 }
 
 const Item: FC<Props> = ({
@@ -19,9 +20,10 @@ const Item: FC<Props> = ({
   onCheckedChange,
   dependency,
   onFetchedPayload,
+  onFetchError,
 }) => {
   const info = dependency.value
-  const { data } = useUploadGitHub({
+  const { data, error } = useUploadGitHub({
     repo: info.repo!,
     version: info.version!,
     package: info.package!,
@@ -38,6 +40,12 @@ const Item: FC<Props> = ({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data])
+  useEffect(() => {
+    if (error)
+      onFetchError()
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [error])
   if (!payload) return <Loading />
   return (
     <LoadedItem

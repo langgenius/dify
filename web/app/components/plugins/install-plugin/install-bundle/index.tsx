@@ -56,7 +56,7 @@ const InstallBundle: FC<Props> = ({
       <ReadyToInstall
         step={step}
         onStepChange={setStep}
-        dependencies={fromDSLPayload}
+        allPlugins={fromDSLPayload}
         onClose={onClose}
       />
     </Modal>

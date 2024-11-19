@@ -1,30 +1,34 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo } from 'react'
-import type { Dependency, Plugin } from '../../../types'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin } from '../../../types'
 import MarketplaceItem from '../item/marketplace-item'
 import GithubItem from '../item/github-item'
 import { useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
 import produce from 'immer'
 import { useGetState } from 'ahooks'
+import PackageItem from '../item/package-item'
 
 type Props = {
-  fromDSLPayload: Dependency[]
+  allPlugins: Dependency[]
   selectedPlugins: Plugin[]
   onSelect: (plugin: Plugin, selectedIndex: number) => void
   onLoadedAllPlugin: () => void
 }
 
 const InstallByDSLList: FC<Props> = ({
-  fromDSLPayload,
+  allPlugins,
   selectedPlugins,
   onSelect,
   onLoadedAllPlugin,
 }) => {
-  const { isLoading: isFetchingMarketplaceData, data: marketplaceRes } = useFetchPluginsInMarketPlaceByIds(fromDSLPayload.filter(d => d.type === 'marketplace').map(d => d.value.plugin_unique_identifier!))
+  const { isLoading: isFetchingMarketplaceData, data: marketplaceRes } = useFetchPluginsInMarketPlaceByIds(allPlugins.filter(d => d.type === 'marketplace').map(d => d.value.plugin_unique_identifier!))
 
   const [plugins, setPlugins, getPlugins] = useGetState<Plugin[]>([])
-  const handlePlugInFetched = useCallback((index: number) => {
+
+  const [errorIndexes, setErrorIndexes] = useState<number[]>([])
+
+  const handleGitHubPluginFetched = useCallback((index: number) => {
     return (p: Plugin) => {
       const nextPlugins = produce(getPlugins(), (draft) => {
         draft[index] = p
@@ -33,14 +37,20 @@ const InstallByDSLList: FC<Props> = ({
     }
   }, [getPlugins, setPlugins])
 
+  const handleGitHubPluginFetchError = useCallback((index: number) => {
+    return () => {
+      setErrorIndexes([...errorIndexes, index])
+    }
+  }, [errorIndexes])
+
   const marketPlaceInDSLIndex = useMemo(() => {
     const res: number[] = []
-    fromDSLPayload.forEach((d, index) => {
+    allPlugins.forEach((d, index) => {
       if (d.type === 'marketplace')
         res.push(index)
     })
     return res
-  }, [fromDSLPayload])
+  }, [allPlugins])
 
   useEffect(() => {
     if (!isFetchingMarketplaceData && marketplaceRes?.data.plugins && marketplaceRes?.data.plugins.length > 0) {
@@ -57,7 +67,7 @@ const InstallByDSLList: FC<Props> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isFetchingMarketplaceData])
 
-  const isLoadedAllData = fromDSLPayload.length === plugins.length && plugins.every(p => !!p)
+  const isLoadedAllData = allPlugins.length === plugins.length && plugins.every(p => !!p)
   useEffect(() => {
     if (isLoadedAllData)
       onLoadedAllPlugin()
@@ -71,22 +81,44 @@ const InstallByDSLList: FC<Props> = ({
   }, [onSelect, plugins])
   return (
     <>
-      {fromDSLPayload.map((d, index) => (
-        d.type === 'github'
-          ? <GithubItem
+      {allPlugins.map((d, index) => {
+        if (errorIndexes.includes(index)) {
+          return (
+            <div key={index}>error</div>
+          )
+        }
+        if (d.type === 'github') {
+          return (<GithubItem
             key={index}
             checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
             onCheckedChange={handleSelect(index)}
-            dependency={d}
-            onFetchedPayload={handlePlugInFetched(index)}
-          />
-          : <MarketplaceItem
+            dependency={d as GitHubItemAndMarketPlaceDependency}
+            onFetchedPayload={handleGitHubPluginFetched(index)}
+            onFetchError={handleGitHubPluginFetchError(index)}
+          />)
+        }
+
+        if (d.type === 'marketplace') {
+          return (
+            <MarketplaceItem
+              key={index}
+              checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
+              onCheckedChange={handleSelect(index)}
+              payload={plugins[index] as Plugin}
+            />
+          )
+        }
+
+        return (
+          <PackageItem
             key={index}
             checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
             onCheckedChange={handleSelect(index)}
-            payload={plugins[index] as Plugin}
+            payload={d as PackageDependency}
           />
-      ))}
+        )
+      })
+      }
     </>
   )
 }

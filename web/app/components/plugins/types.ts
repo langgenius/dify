@@ -311,7 +311,7 @@ export type PluginsFromMarketplaceResponse = {
   plugins: Plugin[]
 }
 
-export type Dependency = {
+export type GitHubItemAndMarketPlaceDependency = {
   type: 'github' | 'marketplace' | 'package'
   value: {
     repo?: string
@@ -322,6 +322,16 @@ export type Dependency = {
     plugin_unique_identifier?: string
   }
 }
+
+export type PackageDependency = {
+  type: 'github' | 'marketplace' | 'package'
+  value: {
+    unique_identifier: string
+    manifest: PluginDeclaration
+  }
+}
+
+export type Dependency = GitHubItemAndMarketPlaceDependency | PackageDependency
 
 export type Version = {
   plugin_org: string

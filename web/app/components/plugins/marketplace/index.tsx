@@ -9,7 +9,7 @@ import { getMarketplaceCollectionsAndPlugins } from './utils'
 import { TanstackQueryIniter } from '@/context/query-client'
 
 type MarketplaceProps = {
-  locale?: string
+  locale: string
   showInstallButton?: boolean
   searchParams?: SearchParams
 }

@@ -5,19 +5,19 @@ import type { Dependency, InstallStatusResponse, Plugin } from '../../../types'
 import Button from '@/app/components/base/button'
 import { RiLoader2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import InstallByDSLList from './install-by-dsl-list'
+import InstallByDSLList from './install-multi'
 import { useInstallFromMarketplaceAndGitHub } from '@/service/use-plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 const i18nPrefix = 'plugin.installModal'
 
 type Props = {
-  fromDSLPayload: Dependency[]
+  allPlugins: Dependency[]
   onInstalled: (plugins: Plugin[], installStatus: InstallStatusResponse[]) => void
   onCancel: () => void
 }
 
 const Install: FC<Props> = ({
-  fromDSLPayload,
+  allPlugins,
   onInstalled,
   onCancel,
 }) => {
@@ -49,7 +49,7 @@ const Install: FC<Props> = ({
       onInstalled(selectedPlugins, res.map((r, i) => {
         return ({
           ...r,
-          isFromMarketPlace: fromDSLPayload[selectedIndexes[i]].type === 'marketplace',
+          isFromMarketPlace: allPlugins[selectedIndexes[i]].type === 'marketplace',
         })
       }))
       const hasInstallSuccess = res.some(r => r.success)
@@ -58,7 +58,7 @@ const Install: FC<Props> = ({
     },
   })
   const handleInstall = () => {
-    installFromMarketplaceAndGitHub(fromDSLPayload.filter((_d, index) => selectedIndexes.includes(index)))
+    installFromMarketplaceAndGitHub(allPlugins.filter((_d, index) => selectedIndexes.includes(index)))
   }
   return (
     <>
@@ -68,7 +68,7 @@ const Install: FC<Props> = ({
         </div>
         <div className='w-full p-2 rounded-2xl bg-background-section-burn space-y-1'>
           <InstallByDSLList
-            fromDSLPayload={fromDSLPayload}
+            allPlugins={allPlugins}
             selectedPlugins={selectedPlugins}
             onSelect={handleSelect}
             onLoadedAllPlugin={handleLoadedAllPlugin}
