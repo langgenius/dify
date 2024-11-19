@@ -30,7 +30,7 @@ from services.account_service import AccountService, RegisterService, TenantServ
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from services.feature_service import FeatureService
 
-ASA_ACCOUNT_EMAIL = 'junsheng@asa.team'
+ASA_ACCOUNT_EMAIL = 'webmasters@asa.team'
 
 
 class LoginApi(Resource):
