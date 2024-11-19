@@ -29,7 +29,6 @@ const translation = {
   newApp: {
     startFromBlank: 'Create from Blank',
     startFromTemplate: 'Create from Template',
-    captionAppType: 'What type of app do you want to create?',
     chatbotDescription: 'Build a chat-based application. This app uses a question-and-answer format, allowing for multiple rounds of continuous conversation.',
     completionDescription: 'Build an application that generates high-quality text based on prompts, such as generating articles, summaries, translations, and more.',
     completionWarning: 'This type of app will no longer be supported.',

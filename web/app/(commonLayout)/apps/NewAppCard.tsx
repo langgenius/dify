@@ -25,7 +25,7 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
   const dslUrl = searchParams.get('remoteInstallUrl') || undefined
 
   const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
-  const [showNewAppModal, setShowNewAppModal] = useState(false)
+  const [showNewAppModal, setShowNewAppModal] = useState(true)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(!!dslUrl)
 
   const activeTab = useMemo(() => {
