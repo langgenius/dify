@@ -229,7 +229,7 @@ class WordExtractor(BaseExtractor):
                                 for i in url_pattern.findall(x.text):
                                     hyperlinks_url = str(i)
                     except Exception as e:
-                        logger.exception(e)
+                        logger.exception("Failed to parse HYPERLINK xml")
 
         def parse_paragraph(paragraph):
             paragraph_content = []

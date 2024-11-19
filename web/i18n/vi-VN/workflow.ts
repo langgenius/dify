@@ -407,6 +407,7 @@ const translation = {
       },
       binaryFileVariable: 'Biến tệp nhị phân',
       type: 'Kiểu',
+      extractListPlaceholder: 'Nhập chỉ mục mục danh sách, nhập \'/\' chèn biến',
     },
     code: {
       inputVars: 'Biến đầu vào',
@@ -618,6 +619,7 @@ const translation = {
       filterCondition: 'Điều kiện lọc',
       asc: 'ASC',
       filterConditionComparisonOperator: 'Toán tử so sánh điều kiện bộ lọc',
+      extractsCondition: 'Giải nén mục N',
     },
   },
   tracing: {

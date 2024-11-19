@@ -1,4 +1,5 @@
 import os
+from collections import UserDict
 from unittest.mock import MagicMock
 
 import pytest
@@ -14,7 +15,7 @@ from tests.unit_tests.oss.__mock.base import (
 )
 
 
-class AttrDict(dict):
+class AttrDict(UserDict):
     def __getattr__(self, item):
         return self.get(item)
 

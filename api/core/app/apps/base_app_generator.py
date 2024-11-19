@@ -33,8 +33,8 @@ class BaseAppGenerator:
                 tenant_id=app_config.tenant_id,
                 config=FileUploadConfig(
                     allowed_file_types=entity_dictionary[k].allowed_file_types,
-                    allowed_extensions=entity_dictionary[k].allowed_file_extensions,
-                    allowed_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
+                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,
+                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
                 ),
             )
             for k, v in user_inputs.items()
@@ -47,8 +47,8 @@ class BaseAppGenerator:
                 tenant_id=app_config.tenant_id,
                 config=FileUploadConfig(
                     allowed_file_types=entity_dictionary[k].allowed_file_types,
-                    allowed_extensions=entity_dictionary[k].allowed_file_extensions,
-                    allowed_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
+                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,
+                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
                 ),
             )
             for k, v in user_inputs.items()
@@ -91,6 +91,9 @@ class BaseAppGenerator:
             )
 
         if variable_entity.type == VariableEntityType.NUMBER and isinstance(value, str):
+            # handle empty string case
+            if not value.strip():
+                return None
             # may raise ValueError if user_input_value is not a valid number
             try:
                 if "." in value:

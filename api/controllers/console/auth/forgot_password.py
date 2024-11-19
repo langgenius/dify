@@ -12,7 +12,7 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import EmailSendIpLimitError, NotAllowedRegister
+from controllers.console.error import AccountNotFound, EmailSendIpLimitError
 from controllers.console.wraps import setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
@@ -48,7 +48,7 @@ class ForgotPasswordSendEmailApi(Resource):
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
                 return {"result": "fail", "data": token, "code": "account_not_found"}
             else:
-                raise NotAllowedRegister()
+                raise AccountNotFound()
         else:
             token = AccountService.send_reset_password_email(account=account, email=args["email"], language=language)
 
