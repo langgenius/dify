@@ -50,7 +50,7 @@ const Container = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const { data } = useQuery(
     {
-      queryKey: ['datasetApiBaseInfo', activeTab],
+      queryKey: ['datasetApiBaseInfo'],
       queryFn: () => fetchDatasetApiBaseUrl('/datasets/api-base-info'),
       enabled: activeTab !== 'dataset',
     },
