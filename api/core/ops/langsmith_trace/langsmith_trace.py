@@ -62,8 +62,17 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
+        trace_id = trace_info.message_id or trace_info.workflow_app_log_id or trace_info.workflow_run_id
+        message_dotted_order = (
+            generate_dotted_order(trace_info.message_id, trace_info.start_time) if trace_info.message_id else None
+        )
+        workflow_dotted_order = generate_dotted_order(
+            trace_info.workflow_app_log_id or trace_info.workflow_run_id,
+            trace_info.workflow_data.created_at,
+            message_dotted_order,
+        )
+
         if trace_info.message_id:
-            dotted_order = generate_dotted_order(trace_info.message_id, trace_info.start_time)
             message_run = LangSmithRunModel(
                 id=trace_info.message_id,
                 name=TraceTaskName.MESSAGE_TRACE.value,
@@ -77,13 +86,11 @@ class LangSmithDataTrace(BaseTraceInstance):
                 },
                 tags=["message", "workflow"],
                 error=trace_info.error,
-                dotted_order=dotted_order,
+                trace_id=trace_id,
+                dotted_order=message_dotted_order,
             )
             self.add_run(message_run)
 
-        workflow_dotted_order = generate_dotted_order(
-            trace_info.workflow_app_log_id or trace_info.workflow_run_id, trace_info.workflow_data.created_at
-        )
         langsmith_run = LangSmithRunModel(
             file_list=trace_info.file_list,
             total_tokens=trace_info.total_tokens,
@@ -100,6 +107,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             error=trace_info.error,
             tags=["workflow"],
             parent_run_id=trace_info.message_id or None,
+            trace_id=trace_id,
             dotted_order=workflow_dotted_order,
         )
 
@@ -198,6 +206,8 @@ class LangSmithDataTrace(BaseTraceInstance):
                 },
                 parent_run_id=trace_info.workflow_app_log_id or trace_info.workflow_run_id,
                 tags=["node_execution"],
+                id=node_execution_id,
+                trace_id=trace_id,
                 dotted_order=node_dotted_order,
             )
 

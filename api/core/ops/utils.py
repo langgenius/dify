@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Union
 
 from extensions.ext_database import db
 from models.model import Message
@@ -46,10 +46,13 @@ def replace_text_with_content(data):
         return data
 
 
-def generate_dotted_order(run_id: str, start_time: datetime, parent_dotted_order: Optional[str] = None) -> str:
+def generate_dotted_order(
+    run_id: str, start_time: Union[str, datetime], parent_dotted_order: Optional[str] = None
+) -> str:
     """
     generate dotted_order for langsmith
     """
+    start_time = datetime.fromisoformat(start_time) if isinstance(start_time, str) else start_time
     timestamp = start_time.strftime("%Y%m%dT%H%M%S%f")[:-3] + "Z"
     current_segment = f"{timestamp}{run_id}"
 
