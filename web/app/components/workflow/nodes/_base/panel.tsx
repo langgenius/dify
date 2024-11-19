@@ -20,6 +20,7 @@ import {
   DescriptionInput,
   TitleInput,
 } from './components/title-description-input'
+import ErrorHandle from './components/error-handle'
 import { useResizePanel } from './hooks/use-resize-panel'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -34,7 +35,10 @@ import {
   useWorkflow,
   useWorkflowHistory,
 } from '@/app/components/workflow/hooks'
-import { canRunBySingle } from '@/app/components/workflow/utils'
+import {
+  canRunBySingle,
+  hasErrorHandleNode,
+} from '@/app/components/workflow/utils'
 import Tooltip from '@/app/components/base/tooltip'
 import type { Node } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -164,6 +168,11 @@ const BasePanel: FC<BasePanelProps> = ({
         <div className='py-2'>
           {cloneElement(children, { id, data })}
         </div>
+        {
+          hasErrorHandleNode(data.type) && (
+            <ErrorHandle />
+          )
+        }
         {
           !!availableNextBlocks.length && (
             <div className='p-4 border-t-[0.5px] border-t-black/5'>

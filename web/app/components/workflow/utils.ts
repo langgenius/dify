@@ -761,3 +761,7 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
     hasAbnormalEdges,
   }
 }
+
+export const hasErrorHandleNode = (nodeType: BlockEnum) => {
+  return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
+}
