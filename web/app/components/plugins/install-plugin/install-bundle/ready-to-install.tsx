@@ -9,14 +9,14 @@ import type { Dependency, InstallStatusResponse, Plugin } from '../../types'
 type Props = {
   step: InstallStep
   onStepChange: (step: InstallStep) => void,
-  dependencies: Dependency[]
+  allPlugins: Dependency[]
   onClose: () => void
 }
 
 const ReadyToInstall: FC<Props> = ({
   step,
   onStepChange,
-  dependencies,
+  allPlugins,
   onClose,
 }) => {
   const [installedPlugins, setInstalledPlugins] = useState<Plugin[]>([])
@@ -30,7 +30,7 @@ const ReadyToInstall: FC<Props> = ({
     <>
       {step === InstallStep.readyToInstall && (
         <Install
-          fromDSLPayload={dependencies}
+          allPlugins={allPlugins}
           onCancel={onClose}
           onInstalled={handleInstalled}
         />

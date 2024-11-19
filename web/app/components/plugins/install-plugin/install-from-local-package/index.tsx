@@ -98,7 +98,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
           step={step}
           onStepChange={setStep}
           onClose={onClose}
-          dependencies={dependencies}
+          allPlugins={dependencies}
         />
       ) : (
         <ReadyToInstallPackage
