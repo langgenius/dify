@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, ClassVar
 
 from duckduckgo_search import DDGS
 
@@ -10,8 +10,8 @@ class DuckDuckGoVideoSearchTool(BuiltinTool):
     """
     Tool for performing a video search using DuckDuckGo search engine.
     """
-    
-    IFRAME_TEMPLATE = """
+
+    IFRAME_TEMPLATE: ClassVar[str] = """
 <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; \
 max-width: 100%; border-radius: 8px;">
     <iframe
