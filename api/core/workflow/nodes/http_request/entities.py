@@ -1,6 +1,6 @@
-import cgi
 import mimetypes
 from collections.abc import Sequence
+from email.message import Message
 from typing import Any, Literal, Optional
 
 import httpx
@@ -98,8 +98,11 @@ class Response:
 
         # Check if it's explicitly marked as an attachment
         if content_disposition:
-            _, params = cgi.parse_header(content_disposition)
-            if "attachment" in content_disposition or "filename" in params or "filename*" in params:
+            msg = Message()
+            msg["content-disposition"] = content_disposition
+            disp_type = msg.get_content_disposition()  # Returns 'attachment', 'inline', or None
+            filename = msg.get_filename()  # Returns filename if present, None otherwise
+            if disp_type == "attachment" or filename is not None:
                 return True
 
         # For application types, try to detect if it's a text-based format
