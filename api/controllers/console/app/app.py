@@ -1,7 +1,6 @@
 import uuid
 from typing import cast
 
-import yaml
 from flask_login import current_user
 from flask_restful import Resource, inputs, marshal, marshal_with, reqparse
 from sqlalchemy import select
@@ -21,7 +20,6 @@ from extensions.ext_database import db
 from fields.app_fields import (
     app_detail_fields,
     app_detail_fields_with_site,
-    app_import_fields,
     app_pagination_fields,
 )
 from libs.login import login_required
@@ -97,81 +95,6 @@ class AppListApi(Resource):
         app = app_service.create_app(current_user.current_tenant_id, args, current_user)
 
         return app, 201
-
-
-class AppImportApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(app_import_fields)
-    @cloud_edition_billing_resource_check("apps")
-    def post(self):
-        """Import app"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("data", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, location="json")
-        parser.add_argument("description", type=str, location="json")
-        parser.add_argument("icon_type", type=str, location="json")
-        parser.add_argument("icon", type=str, location="json")
-        parser.add_argument("icon_background", type=str, location="json")
-        args = parser.parse_args()
-
-        try:
-            import_data = yaml.safe_load(args["data"])
-        except yaml.YAMLError:
-            raise ValueError("Invalid YAML format in data argument.")
-
-        result = AppDslService.import_and_create_new_app(
-            tenant_id=current_user.current_tenant_id,
-            data=import_data,
-            account=current_user,
-            name=args.get("name"),
-            description=args.get("description"),
-            icon_type=args.get("icon_type"),
-            icon=args.get("icon"),
-            icon_background=args.get("icon_background"),
-        )
-
-        return result.to_dict(), 201
-
-
-class AppImportFromUrlApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @marshal_with(app_import_fields)
-    @cloud_edition_billing_resource_check("apps")
-    def post(self):
-        """Import app from url"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("url", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str, location="json")
-        parser.add_argument("description", type=str, location="json")
-        parser.add_argument("icon", type=str, location="json")
-        parser.add_argument("icon_background", type=str, location="json")
-        parser.add_argument("icon_type", type=str, location="json")
-        args = parser.parse_args()
-
-        result = AppDslService.import_and_create_new_app_from_url(
-            tenant_id=current_user.current_tenant_id,
-            url=args["url"],
-            account=current_user,
-            name=args.get("name"),
-            description=args.get("description"),
-            icon_type=args.get("icon_type"),
-            icon=args.get("icon"),
-            icon_background=args.get("icon_background"),
-        )
-
-        return result.to_dict(), 201
 
 
 class AppApi(Resource):
@@ -409,8 +332,6 @@ class AppTraceApi(Resource):
 
 
 api.add_resource(AppListApi, "/apps")
-api.add_resource(AppImportApi, "/apps/import")
-api.add_resource(AppImportFromUrlApi, "/apps/import/url")
 api.add_resource(AppApi, "/apps/<uuid:app_id>")
 api.add_resource(AppCopyApi, "/apps/<uuid:app_id>/copy")
 api.add_resource(AppExportApi, "/apps/<uuid:app_id>/export")
