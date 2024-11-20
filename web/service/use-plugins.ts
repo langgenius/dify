@@ -128,12 +128,24 @@ export const useInstallFromMarketplaceAndGitHub = ({
         try {
           if (item.type === 'github') {
             const data = item as GitHubItemAndMarketPlaceDependency
+            let pluginId = ''
+            // From local bundle don't have data.value.github_plugin_unique_identifier
+            if (!data.value.github_plugin_unique_identifier) {
+              const { unique_identifier } = await post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
+                body: {
+                  repo: data.value.repo!,
+                  version: data.value.release! || data.value.version!,
+                  package: data.value.packages! || data.value.package!,
+                },
+              })
+              pluginId = unique_identifier
+            }
             await post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
               body: {
                 repo: data.value.repo!,
                 version: data.value.release! || data.value.version!,
                 package: data.value.packages! || data.value.package!,
-                plugin_unique_identifier: data.value.github_plugin_unique_identifier!,
+                plugin_unique_identifier: data.value.github_plugin_unique_identifier! || pluginId,
               },
             })
           }
