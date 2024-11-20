@@ -185,6 +185,10 @@ x-shared-env: &shared-api-worker-env
   ANALYTICDB_PASSWORD: ${ANALYTICDB_PASSWORD:-}
   ANALYTICDB_NAMESPACE: ${ANALYTICDB_NAMESPACE:-dify}
   ANALYTICDB_NAMESPACE_PASSWORD: ${ANALYTICDB_NAMESPACE_PASSWORD:-}
+  ANALYTICDB_HOST: ${ANALYTICDB_HOST:-}
+  ANALYTICDB_PORT: ${ANALYTICDB_PORT:-5432}
+  ANALYTICDB_MIN_CONNECTION: ${ANALYTICDB_MIN_CONNECTION:-1}
+  ANALYTICDB_MAX_CONNECTION: ${ANALYTICDB_MAX_CONNECTION:-5}
   OPENSEARCH_HOST: ${OPENSEARCH_HOST:-opensearch}
   OPENSEARCH_PORT: ${OPENSEARCH_PORT:-9200}
   OPENSEARCH_USER: ${OPENSEARCH_USER:-admin}
@@ -283,7 +287,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.11.1
+    image: langgenius/dify-api:0.11.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -303,7 +307,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.11.1
+    image: langgenius/dify-api:0.11.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -322,7 +326,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.11.1
+    image: langgenius/dify-web:0.11.2
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
