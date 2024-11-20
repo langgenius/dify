@@ -24,7 +24,7 @@ const InstallByDSLList: FC<Props> = ({
   onLoadedAllPlugin,
 }) => {
   const { isLoading: isFetchingMarketplaceData, data: marketplaceRes } = useFetchPluginsInMarketPlaceByIds(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value.plugin_unique_identifier!))
-  console.log(allPlugins)
+  // console.log(allPlugins)
   const [plugins, setPlugins, getPlugins] = useGetState<(Plugin | undefined)[]>((() => {
     const hasLocalPackage = allPlugins.some(d => d.type === 'package')
     if (!hasLocalPackage)
