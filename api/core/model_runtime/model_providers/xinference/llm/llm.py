@@ -315,7 +315,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             message_dict = {"role": "system", "content": message.content}
         elif isinstance(message, ToolPromptMessage):
             message = cast(ToolPromptMessage, message)
-            message_dict = {"tool_call_id": message.tool_call_id, "role": "tool", "content": message.content}
+            message_dict = {"tool_call_id": message.tool_call_id, "role": "tool", "content": message.content, "name": message.name}
         else:
             raise ValueError(f"Unknown message type {type(message)}")
 
