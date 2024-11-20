@@ -92,7 +92,8 @@ class Graph(BaseModel):
             run_condition = None
             if edge_config.get("sourceHandle") and edge_config.get("sourceHandle") != "source":
                 run_condition = RunCondition(type="branch_identify", branch_identify=edge_config.get("sourceHandle"))
-
+            if edge_config.get("errorHandle"):
+                run_condition = RunCondition(type="branch_identify", branch_identify=edge_config.get("errorHandle"))
             graph_edge = GraphEdge(
                 source_node_id=source_node_id, target_node_id=target_node_id, run_condition=run_condition
             )

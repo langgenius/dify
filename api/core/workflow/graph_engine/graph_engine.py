@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Generator, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
 from copy import copy, deepcopy
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 from flask import Flask, current_app
 
@@ -41,7 +41,6 @@ from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.enums import ErrorStrategy
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.node_mapping import node_type_classes_mapping
-from core.workflow.utils.condition.entities import ContinueOnErrorCondition
 from extensions.ext_database import db
 from models.enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
@@ -337,7 +336,7 @@ class GraphEngine:
                         if len(sub_edge_mappings) == 0:
                             continue
 
-                        edge = sub_edge_mappings[0]
+                        edge = cast(GraphEdge, sub_edge_mappings[0])
 
                         result = ConditionManager.get_condition_handler(
                             init_params=self.init_params,
@@ -632,7 +631,7 @@ class GraphEngine:
 
                         elif run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
                             if node_instance.should_continue_on_error:
-                                run_result.edge_source_handle = ContinueOnErrorCondition.SUCCESS
+                                run_result.edge_source_handle = "false"
                             if run_result.metadata and run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
                                 # plus state total_tokens
                                 self.graph_runtime_state.total_tokens += int(
@@ -796,11 +795,7 @@ class GraphEngine:
                 outputs=node_instance.node_data.default_value,
             )
 
-        return NodeRunResult(
-            **node_error_args,
-            outputs=None,
-            edge_source_handle=ContinueOnErrorCondition.EXCEPTION,
-        )
+        return NodeRunResult(**node_error_args, outputs=None, edge_source_handle="true")
 
 
 class GraphRunFailedError(Exception):

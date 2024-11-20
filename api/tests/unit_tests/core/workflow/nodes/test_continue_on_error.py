@@ -1,6 +1,10 @@
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.enums import SystemVariableKey
-from core.workflow.graph_engine.entities.event import GraphRunSucceededEvent, NodeRunExceptionEvent
+from core.workflow.graph_engine.entities.event import (
+    GraphRunSucceededEvent,
+    NodeRunExceptionEvent,
+    NodeRunStreamChunkEvent,
+)
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from models.enums import UserFrom
@@ -140,14 +144,12 @@ DEFAULT_VALUE_EDGE = [
         "source": "start",
         "target": "node",
         "sourceHandle": "source",
-        "targetHandle": "target",
     },
     {
         "id": "node-source-answer-target",
         "source": "node",
         "target": "answer",
         "sourceHandle": "source",
-        "targetHandle": "target",
     },
 ]
 
@@ -157,21 +159,20 @@ FAIL_BRANCH_EDGES = [
         "source": "start",
         "target": "node",
         "sourceHandle": "source",
-        "targetHandle": "target",
     },
     {
         "id": "node-true-success-target",
         "source": "node",
         "target": "success",
-        "sourceHandle": "success",
-        "targetHandle": "target",
+        "sourceHandle": "source",
+        "errorHandle": "false",
     },
     {
         "id": "node-false-error-target",
         "source": "node",
         "target": "error",
-        "sourceHandle": "exception",
-        "targetHandle": "target",
+        "sourceHandle": "source",
+        "errorHandle": "true",
     },
 ]
 
@@ -198,6 +199,7 @@ def test_code_default_value_continue_on_error():
 
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
     assert any(isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "132123"} for e in events)
+    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
 
 def test_code_fail_branch_continue_on_error():
@@ -226,7 +228,7 @@ def test_code_fail_branch_continue_on_error():
 
     graph_engine = ContinueOnErrorTestHelper.create_test_graph_engine(graph_config)
     events = list(graph_engine.run())
-
+    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
     assert any(
         isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "node node run failed"} for e in events
@@ -245,6 +247,7 @@ def test_code_success_branch_continue_on_error():
         "edges": FAIL_BRANCH_EDGES,
         "nodes": [
             {"data": {"title": "Start", "type": "start", "variables": []}, "id": "start"},
+            ContinueOnErrorTestHelper.get_code_node(success_code),
             {
                 "data": {"title": "success", "type": "answer", "answer": "node node run successfully"},
                 "id": "success",
@@ -253,7 +256,6 @@ def test_code_success_branch_continue_on_error():
                 "data": {"title": "error", "type": "answer", "answer": "node node run failed"},
                 "id": "error",
             },
-            ContinueOnErrorTestHelper.get_code_node(success_code),
         ],
     }
 
@@ -263,6 +265,7 @@ def test_code_success_branch_continue_on_error():
     assert any(
         isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "node node run successfully"} for e in events
     )
+    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
 
 def test_http_node_default_value_continue_on_error():
@@ -284,6 +287,7 @@ def test_http_node_default_value_continue_on_error():
         isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "http node got error response"}
         for e in events
     )
+    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
 
 def test_http_node_fail_branch_continue_on_error():
@@ -309,6 +313,7 @@ def test_http_node_fail_branch_continue_on_error():
 
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
     assert any(isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "HTTP request failed"} for e in events)
+    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
 
 def test_tool_node_default_value_continue_on_error():
@@ -327,6 +332,7 @@ def test_tool_node_default_value_continue_on_error():
 
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
     assert any(isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "default tool result"} for e in events)
+    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
 
 def test_tool_node_fail_branch_continue_on_error():
@@ -352,6 +358,7 @@ def test_tool_node_fail_branch_continue_on_error():
 
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
     assert any(isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "tool execute failed"} for e in events)
+    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
 
 def test_llm_node_default_value_continue_on_error():
@@ -372,6 +379,7 @@ def test_llm_node_default_value_continue_on_error():
     assert any(
         isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "default LLM response"} for e in events
     )
+    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
 
 def test_llm_node_fail_branch_continue_on_error():
@@ -397,3 +405,4 @@ def test_llm_node_fail_branch_continue_on_error():
 
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
     assert any(isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "LLM request failed"} for e in events)
+    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
