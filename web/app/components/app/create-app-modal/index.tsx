@@ -143,6 +143,7 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
               </div>
               <div className='flex flex-row gap-2'>
                 <AppTypeCard
+                  beta
                   active={appMode === 'advanced-chat'}
                   title={t('app.types.advanced')}
                   description={t('app.newApp.advancedShortDescription')}
@@ -152,6 +153,7 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
                     setAppMode('advanced-chat')
                   }} />
                 <AppTypeCard
+                  beta
                   active={appMode === 'workflow'}
                   title={t('app.types.workflow')}
                   description={t('app.newApp.workflowShortDescription')}
@@ -267,25 +269,30 @@ export default CreateAppModal
 
 type AppTypeCardProps = {
   icon: JSX.Element
+  beta?: boolean
   title: string
   description: string
   tooltipContent: string
   active: boolean
   onClick: () => void
 }
-function AppTypeCard({ icon, title, description, tooltipContent, active, onClick }: AppTypeCardProps) {
+function AppTypeCard({ icon, title, beta = false, description, tooltipContent, active, onClick }: AppTypeCardProps) {
+  const { t } = useTranslation()
   return <Tooltip
     popupContent={
       <div className='max-w-[280px] body-xs-regular text-text-secondary'>{tooltipContent}</div>
     }
   >
     <div
-      className={cn(`w-[191px] h-[84px] p-3 border-[0.5px] box-content
+      className={cn(`w-[191px] h-[84px] p-3 border-[0.5px] relative box-content
         rounded-xl border-components-option-card-option-border 
         bg-components-panel-on-panel-item-bg shadow-xs cursor-pointer`,
       active ? 'outline outline-[1.5px] outline-components-option-card-option-selected-border' : '')}
       onClick={onClick}
     >
+      {beta && <div className='px-[5px] py-[3px]
+      rounded-[5px] min-w-[18px] absolute top-3 right-3
+      border border-divider-deep system-2xs-medium-uppercase text-text-tertiary'>{t('common.menus.status')}</div>}
       {icon}
       <div className='system-sm-semibold text-text-secondary mt-2 mb-0.5'>{title}</div>
       <div className='system-xs-regular text-text-tertiary'>{description}</div>
