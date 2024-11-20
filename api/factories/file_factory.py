@@ -165,7 +165,7 @@ def _build_from_remote_url(
     )
 
 
-def _get_remote_file_info(url: str):    
+def _get_remote_file_info(url: str):
     file_size = -1
     filename = url.split("/")[-1].split("?")[0] or "unknown_file"
     mime_type = mimetypes.guess_type(filename)[0] or ""
