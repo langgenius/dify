@@ -389,7 +389,10 @@ const TextGeneration: FC<IMainProps> = ({
 
       const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
       setVisionConfig({
-        ...file_upload.image,
+        // legacy of image upload compatible
+        ...file_upload,
+        transfer_methods: file_upload.allowed_file_upload_methods || file_upload.allowed_upload_methods,
+        // legacy of image upload compatible
         image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
         fileUploadConfig: appParams?.system_parameters,
       })

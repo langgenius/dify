@@ -16,9 +16,9 @@ from controllers.console.auth.error import (
 )
 from controllers.console.error import (
     AccountBannedError,
+    AccountNotFound,
     EmailSendIpLimitError,
     NotAllowedCreateWorkspace,
-    NotAllowedRegister,
 )
 from controllers.console.wraps import setup_required
 from events.tenant_event import tenant_was_created
@@ -76,7 +76,7 @@ class LoginApi(Resource):
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
                 return {"result": "fail", "data": token, "code": "account_not_found"}
             else:
-                raise NotAllowedRegister()
+                raise AccountNotFound()
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
         if len(tenants) == 0:
@@ -119,7 +119,7 @@ class ResetPasswordSendEmailApi(Resource):
             if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_reset_password_email(email=args["email"], language=language)
             else:
-                raise NotAllowedRegister()
+                raise AccountNotFound()
         else:
             token = AccountService.send_reset_password_email(account=account, language=language)
 
@@ -148,7 +148,7 @@ class EmailCodeLoginSendEmailApi(Resource):
             if FeatureService.get_system_features().is_allow_register:
                 token = AccountService.send_email_code_login_email(email=args["email"], language=language)
             else:
-                raise NotAllowedRegister()
+                raise AccountNotFound()
         else:
             token = AccountService.send_email_code_login_email(account=account, language=language)
 

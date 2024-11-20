@@ -99,6 +99,12 @@ const translation = {
   noLoginMethod: 'Método de autenticación no configurado',
   setYourAccount: 'Configura tu cuenta',
   noLoginMethodTip: 'Póngase en contacto con el administrador del sistema para agregar un método de autenticación.',
+  licenseInactive: 'Licencia inactiva',
+  licenseInactiveTip: 'La licencia de Dify Enterprise para su espacio de trabajo está inactiva. Póngase en contacto con su administrador para seguir utilizando Dify.',
+  licenseExpired: 'Licencia caducada',
+  licenseLost: 'Licencia perdida',
+  licenseExpiredTip: 'La licencia de Dify Enterprise para su espacio de trabajo ha caducado. Póngase en contacto con su administrador para seguir utilizando Dify.',
+  licenseLostTip: 'No se pudo conectar el servidor de licencias de Dife. Póngase en contacto con su administrador para seguir utilizando Dify.',
 }
 
 export default translation
