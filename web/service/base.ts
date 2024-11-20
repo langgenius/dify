@@ -124,6 +124,24 @@ function requiredWebSSOLogin() {
   globalThis.location.href = `/webapp-signin?redirect_url=${globalThis.location.pathname}`
 }
 
+function getAccessToken(isPublicAPI?: boolean) {
+  if (isPublicAPI) {
+    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
+    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
+    let accessTokenJson = { [sharedToken]: '' }
+    try {
+      accessTokenJson = JSON.parse(accessToken)
+    }
+    catch (e) {
+
+    }
+    return accessTokenJson[sharedToken]
+  }
+  else {
+    return localStorage.getItem('console_token') || ''
+  }
+}
+
 export function format(text: string) {
   let res = text.trim()
   if (res.startsWith('\n'))
@@ -295,22 +313,8 @@ const baseFetch = <T>(
     getAbortController(abortController)
     options.signal = abortController.signal
   }
-  if (isPublicAPI) {
-    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
-    let accessTokenJson = { [sharedToken]: '' }
-    try {
-      accessTokenJson = JSON.parse(accessToken)
-    }
-    catch (e) {
-
-    }
-    options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
-  }
-  else {
-    const accessToken = localStorage.getItem('console_token') || ''
-    options.headers.set('Authorization', `Bearer ${accessToken}`)
-  }
+  const accessToken = getAccessToken(isPublicAPI)
+  options.headers.set('Authorization', `Bearer ${accessToken}`)
 
   if (deleteContentType) {
     options.headers.delete('Content-Type')
@@ -403,23 +407,7 @@ const baseFetch = <T>(
 
 export const upload = (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  let token = ''
-  if (isPublicAPI) {
-    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
-    let accessTokenJson = { [sharedToken]: '' }
-    try {
-      accessTokenJson = JSON.parse(accessToken)
-    }
-    catch (e) {
-
-    }
-    token = accessTokenJson[sharedToken]
-  }
-  else {
-    const accessToken = localStorage.getItem('console_token') || ''
-    token = accessToken
-  }
+  const token = getAccessToken(isPublicAPI)
   const defaultOptions = {
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
@@ -504,6 +492,9 @@ export const ssePost = (
   const { body } = options
   if (body)
     options.body = JSON.stringify(body)
+
+  const accessToken = getAccessToken(isPublicAPI)
+  options.headers.set('Authorization', `Bearer ${accessToken}`)
 
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
