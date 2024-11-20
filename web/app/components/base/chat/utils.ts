@@ -127,18 +127,12 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
       lastAppendedLegacyAnswer = answerNode
     }
     else {
-      if (!parentMessageId)
+      if (!parentMessageId || !allMessages.some(item => item.id === parentMessageId))
         rootNodes.push(questionNode)
       else
         map[parentMessageId]?.children!.push(questionNode)
     }
   }
-
-  // If no messages have parentMessageId=null (indicating a root node),
-  // then we likely have a partial chat history. In this case,
-  // use the first available message as the root node.
-  if (rootNodes.length === 0 && allMessages.length > 0)
-    rootNodes.push(map[allMessages[0]!.id]!)
 
   return rootNodes
 }
