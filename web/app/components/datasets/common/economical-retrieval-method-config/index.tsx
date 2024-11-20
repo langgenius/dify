@@ -2,11 +2,12 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Image from 'next/image'
 import RetrievalParamConfig from '../retrieval-param-config'
 import { OptionCard } from '../../create/step-two/option-card'
+import Selection from '../../create/assets/selection-mod.svg'
 import { RETRIEVE_METHOD } from '@/types/app'
 import type { RetrievalConfig } from '@/types/app'
-import { HighPriority } from '@/app/components/base/icons/src/vender/solid/arrows'
 
 type Props = {
   value: RetrievalConfig
@@ -21,9 +22,11 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
 
   return (
     <div className='space-y-2'>
-      <OptionCard icon={<HighPriority className='w-4 h-4 text-[#7839EE]' />}
+      <OptionCard icon={<Image className='w-4 h-4' src={Selection} alt='' />}
         title={t('dataset.retrieval.invertedIndex.title')}
-        description={t('dataset.retrieval.invertedIndex.description')} isActive>
+        description={t('dataset.retrieval.invertedIndex.description')} isActive
+        activeHeaderClassName='bg-gradient-to-r from-[#F0EEFA] to-[#F9FAFB]'
+      >
         <RetrievalParamConfig
           type={RETRIEVE_METHOD.invertedIndex}
           value={value}

@@ -1,24 +1,33 @@
 'use client'
-import type { ComponentProps, FC, PropsWithChildren, ReactNode } from 'react'
+import type { FC, PropsWithChildren, ReactNode } from 'react'
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
-import { MagnifyingGlassCircleIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import { XMarkIcon } from '@heroicons/react/20/solid'
 import { RocketLaunchIcon } from '@heroicons/react/24/outline'
 import {
+  RiArrowLeftLine,
   RiCloseLine,
+  RiSearchEyeLine,
 } from '@remixicon/react'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
 import Image from 'next/image'
+import { Switch } from '@headlessui/react'
 import SettingCog from '../assets/setting-gear-mod.svg'
+import OrangeEffect from '../assets/option-card-effect-orange.svg'
+import FamilyMod from '../assets/family-mod.svg'
+import GoldIcon from '../assets/gold.svg'
+import Piggybank from '../assets/piggy-bank-mod.svg'
+import Note from '../assets/note-mod.svg'
+import FileList from '../assets/file-list-3-fill.svg'
 import PreviewItem, { PreviewType } from './preview-item'
-import LanguageSelect from './language-select'
 import s from './index.module.css'
 import unescape from './unescape'
 import escape from './escape'
 import { OptionCard } from './option-card'
+import LanguageSelect from './language-select'
 import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
@@ -39,11 +48,8 @@ import Toast from '@/app/components/base/toast'
 import type { NotionPage } from '@/models/common'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType, DocForm } from '@/models/datasets'
-import Switch from '@/app/components/base/switch'
-import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
-import { IS_CE_EDITION } from '@/config'
 import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Tooltip from '@/app/components/base/tooltip'
@@ -53,6 +59,20 @@ import ModelSelector from '@/app/components/header/account-setting/model-provide
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Checkbox from '@/app/components/base/checkbox'
+import RadioCard from '@/app/components/base/radio-card'
+import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
+import { IS_CE_EDITION } from '@/config'
+
+const TextLabel: FC<PropsWithChildren> = (props) => {
+  return <label className='text-[#354052] text-xs font-semibold leading-none'>{props.children}</label>
+}
+
+const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
+  return <div className='space-y-2 flex-1'>
+    <TextLabel>{props.label}</TextLabel>
+    {props.children}
+  </div>
+}
 
 type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
@@ -579,26 +599,6 @@ const StepTwo = ({
     }
   }, [segmentationType, indexType])
 
-  const Label: FC<PropsWithChildren> = (props) => {
-    return <label className='text-[#354052] text-xs font-semibold leading-none'>{props.children}</label>
-  }
-
-  const FormItem: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
-    return <div className='space-y-2 flex-1'>
-      <Label>{props.label}</Label>
-      {props.children}
-    </div>
-  }
-
-  const CheckboxWithLabel: FC<PropsWithChildren<ComponentProps<typeof Checkbox> & {
-    label: string
-  }>> = (props) => {
-    return <div className='flex items-center gap-2'>
-      <Checkbox />
-      <Label>{props.label}</Label>
-    </div>
-  }
-
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
@@ -637,14 +637,14 @@ const StepTwo = ({
               <OptionCard
                 title={'General'}
                 icon={<Image src={SettingCog} alt='General' />}
-                activeHeaderClassName='bg-gradient-to-r from-blue-50/40 to-[#ffffff]'
+                activeHeaderClassName='bg-gradient-to-r from-[#EFF0F9] to-[#F9FAFB]'
                 description={'General text chunking mode, the chunks retrieved and recalled are the same.'}
                 isActive={SegmentType.AUTO === segmentationType}
                 onClick={() => setSegmentationType(SegmentType.AUTO)}
                 actions={
                   <>
                     <Button variant={'secondary-accent'}>
-                      <MagnifyingGlassCircleIcon className='size-4 mr-2' />
+                      <RiSearchEyeLine className='h-4 w-4 mr-1.5' />
                       Preview Chunk
                     </Button>
                     <Button variant={'ghost'} disabled>Reset</Button>
@@ -653,7 +653,7 @@ const StepTwo = ({
               >
                 <div className='space-y-4'>
                   <div className='flex gap-2'>
-                    <FormItem label={<div className='flex'>
+                    <FormField label={<div className='flex'>
                       {t('datasetCreation.stepTwo.separator')}
                       <Tooltip
                         popupContent={
@@ -669,8 +669,8 @@ const StepTwo = ({
                         placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''} value={segmentIdentifier}
                         onChange={e => setSegmentIdentifier(e.target.value)}
                       />
-                    </FormItem>
-                    <FormItem label={<div>
+                    </FormField>
+                    <FormField label={<div>
                       {t('datasetCreation.stepTwo.maxLength')}
                     </div>}>
                       <Input
@@ -682,8 +682,8 @@ const StepTwo = ({
                         min={1}
                         onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
                       />
-                    </FormItem>
-                    <FormItem label={<div className='flex'>
+                    </FormField>
+                    <FormField label={<div className='flex'>
                       {t('datasetCreation.stepTwo.overlap')}
                       <Tooltip
                         popupContent={
@@ -700,11 +700,11 @@ const StepTwo = ({
                         value={overlap}
                         min={1}
                         onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))} />
-                    </FormItem>
+                    </FormField>
                   </div>
                   <div className='space-y-2'>
                     <div className='w-full flex flex-col'>
-                      <Label>{t('datasetCreation.stepTwo.rules')}</Label>
+                      <TextLabel>{t('datasetCreation.stepTwo.rules')}</TextLabel>
                       <div className='mt-4 space-y-2'>
                         {rules.map(rule => (
                           <div key={rule.id} className={s.ruleItem} onClick={() => {
@@ -723,16 +723,76 @@ const StepTwo = ({
               </OptionCard>
               <OptionCard
                 title={'Parent-child'}
-                icon={undefined}
-                activeHeaderClassName='bg-gradient-to-r from-red-50/40 to-[#ffffff]'
+                icon={<Image src={FamilyMod} alt='Parent-child' />}
+                effectImg={OrangeEffect.src}
+                activeHeaderClassName='bg-gradient-to-r from-[#F9F1EE] to-[#F9FAFB]'
                 description={'When using the parent-child mode, the child-chunk is used for retrieval and the parent-chunk is used for recall as context.'}
                 isActive={SegmentType.CUSTOM === segmentationType}
                 onClick={() => setSegmentationType(SegmentType.CUSTOM)}
+                actions={
+                  <>
+                    <Button variant={'secondary-accent'}>
+                      <RiSearchEyeLine className='h-4 w-4 mr-1.5' />
+                      Preview Chunk
+                    </Button>
+                    <Button variant={'ghost'} onClick={resetRules}>Reset</Button>
+                  </>
+                }
               >
                 <div className='space-y-4'>
-                  <Label>
-       Parent-chunk for Context
-                  </Label>
+                  <TextLabel>
+                    Parent-chunk for Context
+                  </TextLabel>
+                  <RadioCard
+                    icon={<Image src={Note} alt='' />}
+                    title={'Paragraph'}
+                    description={'This mode splits the text in to paragraphs based on delimiters and the maximum chunk length, using the split text as the parent chunk for retrieval.'}
+                    isChosen={true}
+                    chosenConfig={
+                      <div className='flex gap-2'>
+                        <FormField label={'Delimiter'}>
+                          <Input type="text" placeholder={'\n\n'} value={segmentIdentifier} onChange={e => setSegmentIdentifier(e.target.value)} />
+                        </FormField>
+                        <FormField label={'Maximum chunk length'}>
+                          <Input type="number" placeholder={'\n\n'} value={segmentIdentifier} onChange={e => setSegmentIdentifier(e.target.value)} />
+                        </FormField>
+                      </div>
+                    }
+                  />
+                  <RadioCard
+                    icon={<Image src={FileList} alt='' />}
+                    title={'Full Doc'}
+                    description={'The entire document is used as the parent chunk and retrieved directly. Please note that for performance reasons, text exceeding 10000 tokens will be automatically truncated.'}
+                    isChosen={true}
+                  />
+
+                  <TextLabel>
+                    Child-chunk for Retrieval
+                  </TextLabel>
+                  <div className='flex gap-2'>
+                    <FormField label={'Delimiter'}>
+                      <Input type="text" placeholder={'\n'} value={segmentIdentifier} onChange={e => setSegmentIdentifier(e.target.value)} />
+                    </FormField>
+                    <FormField label={'Maximum chunk length'}>
+                      <Input type="number" placeholder={'\n'} value={segmentIdentifier} onChange={e => setSegmentIdentifier(e.target.value)} />
+                    </FormField>
+                  </div>
+
+                  <TextLabel>
+                    Text Pre-processing Rules
+                  </TextLabel>
+                  <div className='space-y-2'>
+                    {rules.map(rule => (
+                      <div key={rule.id} className={s.ruleItem} onClick={() => {
+                        ruleChangeHandle(rule.id)
+                      }}>
+                        <Checkbox
+                          checked={rule.enabled}
+                        />
+                        <label className="ml-2 text-sm font-normal cursor-pointer text-gray-800">{getRuleName(rule.id)}</label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </OptionCard>
             </div>
@@ -755,7 +815,9 @@ const StepTwo = ({
                       setIndexType(IndexingType.QUALIFIED)
                   }}
                 >
-                  <span className={cn(s.typeIcon, s.qualified)} />
+                  <div className='h-8 p-1.5 bg-white rounded-lg border border-[#101828]/10 justify-center items-center inline-flex absolute left-5 top-[18px]'>
+                    <Image src={GoldIcon} alt='Gold Icon' width={20} height={20} />
+                  </div>
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
                   <div className={s.typeHeader}>
                     <div className={s.title}>
@@ -784,7 +846,9 @@ const StepTwo = ({
                   )}
                   onClick={changeToEconomicalType}
                 >
-                  <span className={cn(s.typeIcon, s.economical)} />
+                  <div className='h-8 p-1.5 bg-white rounded-lg border border-[#101828]/10 justify-center items-center inline-flex absolute left-5 top-[18px]'>
+                    <Image src={Piggybank} alt='Economical Icon' width={20} height={20} />
+                  </div>
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
                   <div className={s.typeHeader}>
                     <div className={s.title}>{t('datasetCreation.stepTwo.economical')}</div>
@@ -888,9 +952,11 @@ const StepTwo = ({
             {!isSetting
               ? (
                 <div className='flex items-center mt-8 py-2'>
-                  <Button onClick={() => onStepChange && onStepChange(-1)}>{t('datasetCreation.stepTwo.previousStep')}</Button>
-                  <div className={s.divider} />
-                  <Button loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
+                  <Button onClick={() => onStepChange && onStepChange(-1)}>
+                    <RiArrowLeftLine className='w-4 h-4 mr-1' />
+                    {t('datasetCreation.stepTwo.previousStep')}
+                  </Button>
+                  <Button className='ml-auto' loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
                 </div>
               )
               : (

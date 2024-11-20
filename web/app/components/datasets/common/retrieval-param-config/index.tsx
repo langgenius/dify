@@ -3,6 +3,9 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import Image from 'next/image'
+import ProgressIndicator from '../../create/assets/progress-indicator.svg'
+import Reranking from '../../create/assets/rerank.svg'
 import cn from '@/utils/classnames'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
@@ -209,7 +212,11 @@ const RetrievalParamConfig: FC<Props> = ({
                     key={option.value}
                     isChosen={value.reranking_mode === option.value}
                     onChosen={() => handleChangeRerankMode(option.value)}
-                    icon={<div className='w-4 h-4 text-[#7839EE]' />}
+                    icon={<Image src={
+                      option.value === RerankingModeEnum.WeightedScore
+                        ? ProgressIndicator
+                        : Reranking
+                    } alt=''/>}
                     title={option.label}
                     description={option.tips}
                     className='flex-1'
