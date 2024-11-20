@@ -408,6 +408,7 @@ const translation = {
       },
       type: 'Tür',
       binaryFileVariable: 'İkili Dosya Değişkeni',
+      extractListPlaceholder: 'Liste öğesi dizinini girin, \'/\' yazın değişken ekle',
     },
     code: {
       inputVars: 'Giriş Değişkenleri',
@@ -619,6 +620,7 @@ const translation = {
       filterConditionComparisonValue: 'Filtre Koşulu değeri',
       selectVariableKeyPlaceholder: 'Alt değişken anahtarını seçin',
       desc: 'DESC',
+      extractsCondition: 'N öğesini ayıklayın',
     },
   },
   tracing: {

@@ -325,14 +325,13 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 assistant_prompt_message.tool_calls.append(tool_call)
 
         # calculate num tokens
-        if response.usage:
-            # transform usage
-            prompt_tokens = response.usage.input_tokens
-            completion_tokens = response.usage.output_tokens
-        else:
-            # calculate num tokens
-            prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
-            completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
+        prompt_tokens = (response.usage and response.usage.input_tokens) or self.get_num_tokens(
+            model, credentials, prompt_messages
+        )
+
+        completion_tokens = (response.usage and response.usage.output_tokens) or self.get_num_tokens(
+            model, credentials, [assistant_prompt_message]
+        )
 
         # transform usage
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)

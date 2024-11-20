@@ -38,7 +38,7 @@ def send_mail(parmas: SendEmailToolParameters):
                 server.sendmail(parmas.email_account, parmas.sender_to, msg.as_string())
                 return True
         except Exception as e:
-            logging.exception("send email failed: %s", e)
+            logging.exception("send email failed")
             return False
     else:  # NONE or TLS
         try:
@@ -49,5 +49,5 @@ def send_mail(parmas: SendEmailToolParameters):
                 server.sendmail(parmas.email_account, parmas.sender_to, msg.as_string())
                 return True
         except Exception as e:
-            logging.exception("send email failed: %s", e)
+            logging.exception("send email failed")
             return False

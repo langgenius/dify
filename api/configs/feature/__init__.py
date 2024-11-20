@@ -616,6 +616,11 @@ class DataSetConfig(BaseSettings):
         default=False,
     )
 
+    PLAN_SANDBOX_CLEAN_MESSAGE_DAY_SETTING: PositiveInt = Field(
+        description="Interval in days for message cleanup operations - plan: sandbox",
+        default=30,
+    )
+
 
 class WorkspaceConfig(BaseSettings):
     """

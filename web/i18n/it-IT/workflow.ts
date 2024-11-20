@@ -424,6 +424,7 @@ const translation = {
       },
       binaryFileVariable: 'Variabile file binario',
       type: 'Digitare',
+      extractListPlaceholder: 'Inserisci l\'indice delle voci dell\'elenco, digita \'/\' inserisci la variabile',
     },
     code: {
       inputVars: 'Variabili di Input',
@@ -645,6 +646,7 @@ const translation = {
       desc: 'DESC',
       filterConditionComparisonValue: 'Valore della condizione di filtro',
       orderBy: 'Ordina per',
+      extractsCondition: 'Estrai l\'elemento N',
     },
   },
   tracing: {

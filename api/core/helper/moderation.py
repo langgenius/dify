@@ -41,7 +41,7 @@ def check_moderation(model_config: ModelConfigWithCredentialsEntity, text: str) 
                 if moderation_result is True:
                     return True
             except Exception as ex:
-                logger.exception(ex)
+                logger.exception(f"Fails to check moderation, provider_name: {provider_name}")
                 raise InvokeBadRequestError("Rate limit exceeded, please try again later.")
 
     return False

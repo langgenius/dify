@@ -609,6 +609,10 @@ const translation = {
     fileExtensionNotSupport: 'Rozszerzenie pliku nie jest obsługiwane',
     uploadFromComputer: 'Przesyłanie lokalne',
   },
+  license: {
+    expiring_plural: 'Wygasa za {{count}} dni',
+    expiring: 'Wygasa w ciągu jednego dnia',
+  },
 }
 
 export default translation
