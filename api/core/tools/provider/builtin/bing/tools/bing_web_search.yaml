@@ -125,9 +125,9 @@ parameters:
           pt_BR: Link
       - value: json
         label:
-          en_US: json
-          zh_Hans: json
-          pt_BR: json
+          en_US: JSON
+          zh_Hans: JSON
+          pt_BR: JSON
       - value: text
         label:
           en_US: Text
