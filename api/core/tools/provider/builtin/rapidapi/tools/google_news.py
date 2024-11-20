@@ -19,9 +19,7 @@ class GooglenewsTool(BuiltinTool):
         key = self.runtime.credentials.get("x-rapidapi-key", "")
         host = self.runtime.credentials.get("x-rapidapi-host", "")
         if not all([key, host]):
-            raise ToolProviderCredentialValidationError(
-                "Please input correct x-rapidapi-key and x-rapidapi-host"
-            )
+            raise ToolProviderCredentialValidationError("Please input correct x-rapidapi-key and x-rapidapi-host")
         headers = {"x-rapidapi-key": key, "x-rapidapi-host": host}
         lr = tool_parameters.get("language_region", "")
         url = f"https://{host}/latest?lr={lr}"
