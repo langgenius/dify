@@ -158,7 +158,7 @@ class AppService:
             model_config: AppModelConfig = app.app_model_config
             agent_mode = model_config.agent_mode_dict
             # decrypt agent tool parameters if it's secret-input
-            for tool in agent_mode.get("tools", []):
+            for tool in agent_mode.get("tools") or []:
                 if not isinstance(tool, dict) or len(tool.keys()) <= 3:
                     continue
                 agent_tool_entity = AgentToolEntity(**tool)

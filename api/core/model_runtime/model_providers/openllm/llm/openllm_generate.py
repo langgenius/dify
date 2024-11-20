@@ -41,9 +41,9 @@ class OpenLLMGenerate:
         model_name: str,
         stream: bool,
         model_parameters: dict[str, Any],
-        stop: list[str],
-        prompt_messages: list[OpenLLMGenerateMessage],
-        user: str,
+        stop: list[str] | None = None,
+        prompt_messages: list[OpenLLMGenerateMessage] = [],
+        user: str | None = None,
     ) -> Union[Generator[OpenLLMGenerateMessage, None, None], OpenLLMGenerateMessage]:
         if not server_url:
             raise InvalidAuthenticationError("Invalid server URL")
@@ -106,7 +106,7 @@ class OpenLLMGenerate:
             timeout = 120
 
         data = {
-            "stop": stop,
+            "stop": stop or [],
             "prompt": "\n".join([message.content for message in prompt_messages]),
             "llm_config": default_llm_config,
         }
