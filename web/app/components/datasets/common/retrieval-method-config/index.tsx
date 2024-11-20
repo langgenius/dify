@@ -2,8 +2,13 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Image from 'next/image'
 import RetrievalParamConfig from '../retrieval-param-config'
 import { OptionCard } from '../../create/step-two/option-card'
+import Selection from '../../create/assets/selection-mod.svg'
+import Research from '../../create/assets/research-mod.svg'
+import PatternRecognition from '../../create/assets/pattern-recognition-mod.svg'
+import Effect from '../../create/assets/option-card-effect-purple.svg'
 import type { RetrievalConfig } from '@/types/app'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
@@ -14,8 +19,6 @@ import {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
-import { PatternRecognition, Semantic } from '@/app/components/base/icons/src/vender/solid/development'
-import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files'
 
 type Props = {
   value: RetrievalConfig
@@ -56,7 +59,7 @@ const RetrievalMethodConfig: FC<Props> = ({
   return (
     <div className='space-y-2'>
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
-        <OptionCard icon={<Semantic className='w-4 h-4 text-[#7839EE]' />}
+        <OptionCard icon={<Image className='w-4 h-4' src={Selection} alt='' />}
           title={t('dataset.retrieval.semantic_search.title')}
           description={t('dataset.retrieval.semantic_search.description')}
           isActive={
@@ -66,6 +69,8 @@ const RetrievalMethodConfig: FC<Props> = ({
             ...value,
             search_method: RETRIEVE_METHOD.semantic,
           })}
+          effectImg={Effect.src}
+          activeHeaderClassName='bg-gradient-to-r from-[#F0EEFA] to-[#F9FAFB]'
         >
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.semantic}
@@ -75,7 +80,7 @@ const RetrievalMethodConfig: FC<Props> = ({
         </OptionCard>
       )}
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
-        <OptionCard icon={<FileSearch02 className='w-4 h-4 text-[#7839EE]' />}
+        <OptionCard icon={<Image className='w-4 h-4' src={Research} alt='' />}
           title={t('dataset.retrieval.full_text_search.title')}
           description={t('dataset.retrieval.full_text_search.description')}
           isActive={
@@ -85,6 +90,8 @@ const RetrievalMethodConfig: FC<Props> = ({
             ...value,
             search_method: RETRIEVE_METHOD.fullText,
           })}
+          effectImg={Effect.src}
+          activeHeaderClassName='bg-gradient-to-r from-[#F0EEFA] to-[#F9FAFB]'
         >
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.fullText}
@@ -94,7 +101,7 @@ const RetrievalMethodConfig: FC<Props> = ({
         </OptionCard>
       )}
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
-        <OptionCard icon={<PatternRecognition className='w-4 h-4 text-[#7839EE]' />}
+        <OptionCard icon={<Image className='w-4 h-4' src={PatternRecognition} alt='' />}
           title={
             <div className='flex items-center space-x-1'>
               <div>{t('dataset.retrieval.hybrid_search.title')}</div>
@@ -109,6 +116,8 @@ const RetrievalMethodConfig: FC<Props> = ({
             search_method: RETRIEVE_METHOD.hybrid,
             reranking_enable: true,
           })}
+          effectImg={Effect.src}
+          activeHeaderClassName='bg-gradient-to-r from-[#F0EEFA] to-[#F9FAFB]'
         >
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.hybrid}

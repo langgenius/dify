@@ -117,7 +117,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
     return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
 
   return (
-    <div className='flex' style={{ height: 'calc(100vh - 56px)' }}>
+    <div className='flex flex-col' style={{ height: 'calc(100vh - 56px)' }}>
       <div className="grow bg-white">
         <div className={step === 1 ? 'block h-full' : 'hidden'}>
           <StepOne
