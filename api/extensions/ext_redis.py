@@ -1,6 +1,6 @@
 import redis
-from redis.cluster import ClusterNode, RedisCluster
 from flask_caching import Cache
+from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
 from redis.sentinel import Sentinel
 
