@@ -114,7 +114,7 @@ parameters:
       pt_BR: result type
     human_description:
       en_US: return a list of links, json or texts
-      zh_Hans: 返回一个列表，内容是链接、纯文本还是json
+      zh_Hans: 返回一个列表，内容是链接、json还是纯文本
       pt_BR: return a list of links, json or texts
     default: text
     options:
