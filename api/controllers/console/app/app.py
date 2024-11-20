@@ -1,8 +1,11 @@
 import uuid
+from typing import cast
 
 import yaml
 from flask_login import current_user
 from flask_restful import Resource, inputs, marshal, marshal_with, reqparse
+from sqlalchemy import select
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden, abort
 
 from controllers.console import api
@@ -14,6 +17,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.ops.ops_trace_manager import OpsTraceManager
+from extensions.ext_database import db
 from fields.app_fields import (
     app_detail_fields,
     app_detail_fields_with_site,
@@ -21,7 +25,8 @@ from fields.app_fields import (
     app_pagination_fields,
 )
 from libs.login import login_required
-from services.app_dsl_service import AppDslService
+from models import Account, App
+from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
 
 ALLOW_CREATE_APP_MODES = ["chat", "agent-chat", "advanced-chat", "workflow", "completion"]
@@ -246,24 +251,26 @@ class AppCopyApi(Resource):
         parser.add_argument("icon_background", type=str, location="json")
         args = parser.parse_args()
 
-        data = AppDslService.export_dsl(app_model=app_model, include_secret=True)
-        try:
-            import_data = yaml.safe_load(data)
-        except yaml.YAMLError:
-            raise ValueError("Invalid YAML format in data argument.")
+        with Session(db.engine) as session:
+            import_service = AppDslService(session)
+            yaml_content = import_service.export_dsl(app_model=app_model, include_secret=True)
+            account = cast(Account, current_user)
+            result = import_service.import_app(
+                account=account,
+                import_mode=ImportMode.YAML_CONTENT.value,
+                yaml_content=yaml_content,
+                name=args.get("name"),
+                description=args.get("description"),
+                icon_type=args.get("icon_type"),
+                icon=args.get("icon"),
+                icon_background=args.get("icon_background"),
+            )
+            session.commit()
 
-        result = AppDslService.import_and_create_new_app(
-            tenant_id=current_user.current_tenant_id,
-            data=import_data,
-            account=current_user,
-            name=args.get("name"),
-            description=args.get("description"),
-            icon_type=args.get("icon_type"),
-            icon=args.get("icon"),
-            icon_background=args.get("icon_background"),
-        )
+            stmt = select(App).where(App.id == result.app.id)
+            app = session.scalar(stmt)
 
-        return result.app, 201
+        return app, 201
 
 
 class AppExportApi(Resource):
