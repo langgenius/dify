@@ -132,7 +132,7 @@ class PluginService:
         except Exception:
             # plugin not installed, download and upload pkg
             pkg = download_plugin_pkg(new_plugin_unique_identifier)
-            manager.upload_pkg(tenant_id, pkg, verify_signature=True)
+            manager.upload_pkg(tenant_id, pkg, verify_signature=False)
 
         return manager.upgrade_plugin(
             tenant_id,
