@@ -28,7 +28,7 @@
    ```bash for Linux
    sed -i "/^SECRET_KEY=/c\SECRET_KEY=$(openssl rand -base64 42)" .env
    ```
-   bash for Mac  
+   bash for Mac
    ```bash for Mac
    secret_key=$(openssl rand -base64 42)
    sed -i '' "/^SECRET_KEY=/c\\
