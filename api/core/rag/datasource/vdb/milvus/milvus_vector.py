@@ -15,6 +15,8 @@ from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
+# import the bgem3EmbeddingFunction
+from core.rag.datasource.vdb.milvus.bgem3_embedding import BGEM3EmbeddingFunction
 
 logger = logging.getLogger(__name__)
 
@@ -56,6 +58,9 @@ class MilvusVector(BaseVector):
         self._consistency_level = "Session"
         self._fields = []
 
+        # name the sparse vector field
+        self.sparse_vector_field = "sparse_vector_field"
+
     def get_type(self) -> str:
         return VectorType.MILVUS
 
@@ -67,11 +72,13 @@ class MilvusVector(BaseVector):
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         insert_dict_list = []
+        bge_m3_ef = BGEM3EmbeddingFunction(use_fp16=False, device='cpu', return_dense=False) # This will download the model file
         for i in range(len(documents)):
             insert_dict = {
                 Field.CONTENT_KEY.value: documents[i].page_content,
                 Field.VECTOR.value: embeddings[i],
                 Field.METADATA_KEY.value: documents[i].metadata,
+                self.sparse_vector_field:bge_m3_ef.encode_documents([documents[i].page_content])["sparse"], # encode the documents using the bgem3EmbeddingFunction
             }
             insert_dict_list.append(insert_dict)
         # Total insert count
@@ -148,8 +155,28 @@ class MilvusVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        # milvus/zilliz doesn't support bm25 search
-        return []
+        bge = BGEM3EmbeddingFunction(use_fp16=False, device='cpu', return_dense=False)
+        query_embeddings = bge.encode_queries([query])
+        search_params = {"metric_type": "IP", "params": {}}
+        results = self._client.search(
+            collection_name=self._collection_name,
+            data=query_embeddings["sparse"],
+            anns_field=self.sparse_vector_field,
+            limit=kwargs.get("top_k", 4),
+            output_fields=[Field.CONTENT_KEY.value, Field.METADATA_KEY.value],
+            search_params=search_params,
+        )
+
+        # Organize results.
+        docs = []
+        for result in results[0]:
+            metadata = result["entity"].get(Field.METADATA_KEY.value)
+            metadata["score"] = result["distance"]
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
+            if result["distance"] > score_threshold:
+                doc = Document(page_content=result["entity"].get(Field.CONTENT_KEY.value), metadata=metadata)
+                docs.append(doc)
+        return docs
 
     def create_collection(
         self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
@@ -176,7 +203,8 @@ class MilvusVector(BaseVector):
                 fields.append(FieldSchema(Field.PRIMARY_KEY.value, DataType.INT64, is_primary=True, auto_id=True))
                 # Create the vector field, supports binary or float vectors
                 fields.append(FieldSchema(Field.VECTOR.value, infer_dtype_bydata(embeddings[0]), dim=dim))
-
+                # Create the vector field, supports binary or float vectors for sparse vector
+                fields.append(FieldSchema(self.sparse_vector_field, DataType.SPARSE_FLOAT_VECTOR))
                 # Create the schema for the collection
                 schema = CollectionSchema(fields)
 
@@ -188,6 +216,8 @@ class MilvusVector(BaseVector):
                 # Create Index params for the collection
                 index_params_obj = IndexParams()
                 index_params_obj.add_index(field_name=Field.VECTOR.value, **index_params)
+                # add index method for sparse vector
+                index_params_obj.add_index(field_name=self.sparse_vector_field, index_type="SPARSE_INVERTED_INDEX", metric_type="IP")
 
                 # Create the collection
                 collection_name = self._collection_name
