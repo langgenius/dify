@@ -407,6 +407,7 @@ const translation = {
       },
       type: 'Tipo',
       binaryFileVariable: 'Variável de arquivo binário',
+      extractListPlaceholder: 'Insira o índice do item da lista, digite \'/\' inserir variável',
     },
     code: {
       inputVars: 'Variáveis de entrada',
@@ -618,6 +619,7 @@ const translation = {
       filterConditionKey: 'Chave de condição do filtro',
       filterConditionComparisonOperator: 'Operador de comparação de condição de filtro',
       filterConditionComparisonValue: 'Valor da condição do filtro',
+      extractsCondition: 'Extraia o item N',
     },
   },
   tracing: {

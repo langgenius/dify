@@ -407,6 +407,7 @@ const translation = {
       },
       type: '類型',
       binaryFileVariable: '二進位檔變數',
+      extractListPlaceholder: '輸入清單項索引，鍵入 『/』 插入變數',
     },
     code: {
       inputVars: '輸入變量',
@@ -618,6 +619,7 @@ const translation = {
       selectVariableKeyPlaceholder: 'Select sub variable key （選擇子變數鍵）',
       filterConditionComparisonOperator: 'Filter Condition Comparison 運算符',
       filterConditionKey: '篩選條件鍵',
+      extractsCondition: '提取第 N 項',
     },
   },
   tracing: {

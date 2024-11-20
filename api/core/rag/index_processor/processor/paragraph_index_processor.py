@@ -11,6 +11,7 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import Document
+from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
 from models.dataset import Dataset
 
@@ -43,11 +44,7 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
                     document_node.metadata["doc_id"] = doc_id
                     document_node.metadata["doc_hash"] = hash
                     # delete Splitter character
-                    page_content = document_node.page_content
-                    if page_content.startswith(".") or page_content.startswith("。"):
-                        page_content = page_content[1:].strip()
-                    else:
-                        page_content = page_content
+                    page_content = remove_leading_symbols(document_node.page_content).strip()
                     if len(page_content) > 0:
                         document_node.page_content = page_content
                         split_documents.append(document_node)

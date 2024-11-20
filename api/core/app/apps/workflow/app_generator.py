@@ -298,5 +298,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedError()
             else:
-                logger.exception(e)
+                logger.exception(
+                    f"Fails to process generate task pipeline, task_id: {application_generate_entity.task_id}"
+                )
                 raise e
