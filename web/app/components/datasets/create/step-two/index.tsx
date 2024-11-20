@@ -7,11 +7,13 @@ import { useBoolean } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import { RocketLaunchIcon } from '@heroicons/react/24/outline'
 import {
+  RiCloseLine,
   RiSearchEyeLine,
 } from '@remixicon/react'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
 import Image from 'next/image'
+import { Switch } from '@headlessui/react'
 import SettingCog from '../assets/setting-gear-mod.svg'
 import OrangeEffect from '../assets/option-card-effect-orange.svg'
 import FamilyMod from '../assets/family-mod.svg'
@@ -24,6 +26,7 @@ import s from './index.module.css'
 import unescape from './unescape'
 import escape from './escape'
 import { OptionCard } from './option-card'
+import LanguageSelect from './language-select'
 import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
@@ -56,6 +59,8 @@ import type { DefaultModel } from '@/app/components/header/account-setting/model
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Checkbox from '@/app/components/base/checkbox'
 import RadioCard from '@/app/components/base/radio-card'
+import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
+import { IS_CE_EDITION } from '@/config'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-[#354052] text-xs font-semibold leading-none'>{props.children}</label>
@@ -855,6 +860,35 @@ const StepTwo = ({
               <div className='mt-2 text-xs text-gray-500 font-medium'>
                 {t('datasetCreation.stepTwo.indexSettingTip')}
                 <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
+              </div>
+            )}
+            {IS_CE_EDITION && indexType === IndexingType.QUALIFIED && (
+              <div className='mt-3 rounded-xl bg-gray-50 border border-gray-100'>
+                <div className='flex justify-between items-center px-5 py-4'>
+                  <div className='flex justify-center items-center w-8 h-8 rounded-lg bg-indigo-50'>
+                    <MessageChatSquare className='w-4 h-4' />
+                  </div>
+                  <div className='grow mx-3'>
+                    <div className='mb-[2px] text-md font-medium text-gray-900'>{t('datasetCreation.stepTwo.QATitle')}</div>
+                    <div className='inline-flex items-center text-[13px] leading-[18px] text-gray-500'>
+                      <span className='pr-1'>{t('datasetCreation.stepTwo.QALanguage')}</span>
+                      <LanguageSelect currentLanguage={docLanguage} onSelect={handleSelect} disabled={isLanguageSelectDisabled} />
+                    </div>
+                  </div>
+                  <div className='shrink-0'>
+                    <Switch
+                      defaultValue={docForm === DocForm.QA}
+                      onChange={handleSwitch}
+                      size='md'
+                    />
+                  </div>
+                </div>
+                {docForm === DocForm.QA && !QATipHide && (
+                  <div className='flex justify-between items-center px-5 py-2 bg-orange-50 border-t border-amber-100 rounded-b-xl text-[13px] leading-[18px] text-medium text-amber-500'>
+                    {t('datasetCreation.stepTwo.QATip')}
+                    <RiCloseLine className='w-4 h-4 text-gray-500 cursor-pointer' onClick={() => setQATipHide(true)} />
+                  </div>
+                )}
               </div>
             )}
             {/* Embedding model */}
