@@ -78,7 +78,12 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         documents = []
         for i, text in enumerate(texts):
             index = -1
-            for chunk in self.split_text(text):
+
+            if "Q00001:" in text and "A00001:" in text:
+                split_text_arr = [text]
+            else:
+                split_text_arr = self.split_text(text)
+            for chunk in split_text_arr:
                 metadata = copy.deepcopy(_metadatas[i])
                 if self._add_start_index:
                     index = text.find(chunk, index + 1)

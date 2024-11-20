@@ -54,7 +54,10 @@ class QAIndexProcessor(BaseIndexProcessor):
                     document_node.metadata["doc_hash"] = hash
                     # delete Splitter character
                     page_content = document_node.page_content
-                    document_node.page_content = remove_leading_symbols(page_content)
+                    if "Q00001:" in page_content and "A00001:" in page_content:
+                        document_node.page_content = page_content
+                    else:
+                        document_node.page_content = remove_leading_symbols(page_content)
                     split_documents.append(document_node)
             all_documents.extend(split_documents)
         for i in range(0, len(all_documents), 10):
@@ -143,7 +146,13 @@ class QAIndexProcessor(BaseIndexProcessor):
         with flask_app.app_context():
             try:
                 # qa model document
-                response = LLMGenerator.generate_qa_document(tenant_id, document_node.page_content, document_language)
+
+                if "Q00001:" in document_node.page_content and "A00001:" in document_node.page_content:
+                    response = document_node.page_content
+                else:
+                    response = LLMGenerator.generate_qa_document(
+                        tenant_id, document_node.page_content, document_language
+                    )
                 document_qa_list = self._format_split_text(response)
                 qa_documents = []
                 for result in document_qa_list:

@@ -25,6 +25,7 @@ class CSVExtractor(BaseExtractor):
         autodetect_encoding: bool = False,
         source_column: Optional[str] = None,
         csv_args: Optional[dict] = None,
+        document_model: Optional[str] = None,
     ):
         """Initialize with file path."""
         self._file_path = file_path
@@ -32,6 +33,7 @@ class CSVExtractor(BaseExtractor):
         self._autodetect_encoding = autodetect_encoding
         self.source_column = source_column
         self.csv_args = csv_args or {}
+        self.document_model = document_model
 
     def extract(self) -> list[Document]:
         """Load data into document objects."""
@@ -67,7 +69,10 @@ class CSVExtractor(BaseExtractor):
             # create document objects
 
             for i, row in df.iterrows():
-                content = ";".join(f"{col.strip()}: {str(row[col]).strip()}" for col in df.columns)
+                if len(df.columns) == 2 and "qa_model" == self.document_model:
+                    content = f"Q00001:{str(row[0]).strip()}\nA00001:{str(row[1]).strip()}"
+                else:
+                    content = ";".join(f"{col.strip()}: {str(row[col]).strip()}" for col in df.columns)
                 source = row[self.source_column] if self.source_column else ""
                 metadata = {"source": source, "row": i}
                 doc = Document(page_content=content, metadata=metadata)

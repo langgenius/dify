@@ -138,7 +138,7 @@ class ExtractProcessor:
                         )
                 else:
                     if file_extension in {".xlsx", ".xls"}:
-                        extractor = ExcelExtractor(file_path)
+                        extractor = ExcelExtractor(file_path, document_model=extract_setting.document_model)
                     elif file_extension == ".pdf":
                         extractor = PdfExtractor(file_path)
                     elif file_extension in {".md", ".markdown"}:
@@ -148,7 +148,9 @@ class ExtractProcessor:
                     elif file_extension == ".docx":
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".csv":
-                        extractor = CSVExtractor(file_path, autodetect_encoding=True)
+                        extractor = CSVExtractor(
+                            file_path, autodetect_encoding=True, document_model=extract_setting.document_model
+                        )
                     elif file_extension == ".epub":
                         extractor = UnstructuredEpubExtractor(file_path)
                     else:

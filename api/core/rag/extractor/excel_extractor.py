@@ -18,11 +18,18 @@ class ExcelExtractor(BaseExtractor):
         file_path: Path to the file to load.
     """
 
-    def __init__(self, file_path: str, encoding: Optional[str] = None, autodetect_encoding: bool = False):
+    def __init__(
+        self,
+        file_path: str,
+        encoding: Optional[str] = None,
+        autodetect_encoding: bool = False,
+        document_model: Optional[str] = None,
+    ):
         """Initialize with file path."""
         self._file_path = file_path
         self._encoding = encoding
         self._autodetect_encoding = autodetect_encoding
+        self.document_model = document_model
 
     def extract(self) -> list[Document]:
         """Load from Excel file in xls or xlsx format using Pandas and openpyxl."""
@@ -43,20 +50,24 @@ class ExcelExtractor(BaseExtractor):
                 df.dropna(how="all", inplace=True)
 
                 for index, row in df.iterrows():
-                    page_content = []
-                    for col_index, (k, v) in enumerate(row.items()):
-                        if pd.notna(v):
-                            cell = sheet.cell(
-                                row=index + 2, column=col_index + 1
-                            )  # +2 to account for header and 1-based index
-                            if cell.hyperlink:
-                                value = f"[{v}]({cell.hyperlink.target})"
-                                page_content.append(f'"{k}":"{value}"')
-                            else:
-                                page_content.append(f'"{k}":"{v}"')
-                    documents.append(
-                        Document(page_content=";".join(page_content), metadata={"source": self._file_path})
-                    )
+                    if len(df.columns) == 2 and "qa_model" == self.document_model:
+                        content = f"Q00001:{str(row[0]).strip()}\nA00001:{str(row[1]).strip()}"
+                        documents.append(Document(page_content=content, metadata={"source": self._file_path}))
+                    else:
+                        page_content = []
+                        for col_index, (k, v) in enumerate(row.items()):
+                            if pd.notna(v):
+                                cell = sheet.cell(
+                                    row=index + 2, column=col_index + 1
+                                )  # +2 to account for header and 1-based index
+                                if cell.hyperlink:
+                                    value = f"[{v}]({cell.hyperlink.target})"
+                                    page_content.append(f'"{k}":"{value}"')
+                                else:
+                                    page_content.append(f'"{k}":"{v}"')
+                        documents.append(
+                            Document(page_content=";".join(page_content), metadata={"source": self._file_path})
+                        )
 
         elif file_extension == ".xls":
             excel_file = pd.ExcelFile(self._file_path, engine="xlrd")
@@ -65,13 +76,17 @@ class ExcelExtractor(BaseExtractor):
                 df.dropna(how="all", inplace=True)
 
                 for _, row in df.iterrows():
-                    page_content = []
-                    for k, v in row.items():
-                        if pd.notna(v):
-                            page_content.append(f'"{k}":"{v}"')
-                    documents.append(
-                        Document(page_content=";".join(page_content), metadata={"source": self._file_path})
-                    )
+                    if len(df.columns) == 2 and "qa_model" == self.document_model:
+                        content = f"Q00001:{str(row[0]).strip()}\nA00001:{str(row[1]).strip()}"
+                        documents.append(Document(page_content=content, metadata={"source": self._file_path}))
+                    else:
+                        page_content = []
+                        for k, v in row.items():
+                            if pd.notna(v):
+                                page_content.append(f'"{k}":"{v}"')
+                        documents.append(
+                            Document(page_content=";".join(page_content), metadata={"source": self._file_path})
+                        )
         else:
             raise ValueError(f"Unsupported file extension: {file_extension}")
 

@@ -282,9 +282,12 @@ class IndexingRunner:
         if doc_form and doc_form == "qa_model":
             if len(preview_texts) > 0:
                 # qa model document
-                response = LLMGenerator.generate_qa_document(
-                    current_user.current_tenant_id, preview_texts[0], doc_language
-                )
+                if "Q00001:" in preview_texts[0] and "A00001:" in preview_texts[0]:
+                    response = preview_texts[0]
+                else:
+                    response = LLMGenerator.generate_qa_document(
+                        current_user.current_tenant_id, preview_texts[0], doc_language
+                    )
                 document_qa_list = self.format_split_text(response)
 
                 return {"total_segments": total_segments * 20, "qa_preview": document_qa_list, "preview": preview_texts}
@@ -501,7 +504,10 @@ class IndexingRunner:
                     document_node.metadata["doc_hash"] = hash
                     # delete Splitter character
                     page_content = document_node.page_content
-                    document_node.page_content = remove_leading_symbols(page_content)
+                    if "Q00001:" in page_content and "A00001:" in page_content:
+                        document_node.page_content = page_content
+                    else:
+                        document_node.page_content = remove_leading_symbols(page_content)
 
                     if document_node.page_content:
                         split_documents.append(document_node)
@@ -536,7 +542,12 @@ class IndexingRunner:
         with flask_app.app_context():
             try:
                 # qa model document
-                response = LLMGenerator.generate_qa_document(tenant_id, document_node.page_content, document_language)
+                if "Q00001:" in document_node.page_content and "A00001:" in document_node.page_content:
+                    response = document_node.page_content
+                else:
+                    response = LLMGenerator.generate_qa_document(
+                        tenant_id, document_node.page_content, document_language
+                    )
                 document_qa_list = self.format_split_text(response)
                 qa_documents = []
                 for result in document_qa_list:
