@@ -7,15 +7,17 @@ import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import Badge from '@/app/components/base/badge'
 import InstallBundle from '@/app/components/plugins/install-plugin/install-bundle'
 import { useBoolean } from 'ahooks'
+import LoadingError from '@/app/components/plugins/install-plugin/base/loading-error'
 
 const PluginList = () => {
   const pluginList = [toolNotion, extensionDallE, modelGPT4, customTool]
   const [isShow, {
     setFalse: hide,
-  }] = useBoolean(true)
+  }] = useBoolean(false)
 
   return (
     <div className='pb-3 bg-white'>
+      <LoadingError />
       {isShow && (
         <InstallBundle
           onClose={hide}

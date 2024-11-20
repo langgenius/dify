@@ -4,7 +4,7 @@ import React, { useEffect } from 'react'
 import type { GitHubItemAndMarketPlaceDependency, Plugin } from '../../../types'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import { useUploadGitHub } from '@/service/use-plugins'
-import Loading from './loading'
+import Loading from '../../base/loading'
 import LoadedItem from './loaded-item'
 
 type Props = {

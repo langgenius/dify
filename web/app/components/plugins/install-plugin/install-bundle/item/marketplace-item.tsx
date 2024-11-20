@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import type { Plugin } from '../../../types'
-import Loading from './loading'
+import Loading from '../../base/loading'
 import LoadedItem from './loaded-item'
 
 type Props = {

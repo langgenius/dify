@@ -1,6 +1,6 @@
 'use client'
 import React from 'react'
-import Placeholder from '../../../card/base/placeholder'
+import Placeholder from '../../card/base/placeholder'
 import Checkbox from '@/app/components/base/checkbox'
 
 const Loading = () => {
