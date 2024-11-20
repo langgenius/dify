@@ -58,7 +58,10 @@ const Install: FC<Props> = ({
     },
   })
   const handleInstall = () => {
-    installFromMarketplaceAndGitHub(allPlugins.filter((_d, index) => selectedIndexes.includes(index)))
+    installFromMarketplaceAndGitHub({
+      payload: allPlugins.filter((_d, index) => selectedIndexes.includes(index)),
+      plugin: selectedPlugins,
+    })
   }
   return (
     <>

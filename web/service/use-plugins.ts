@@ -7,7 +7,9 @@ import type {
   InstalledPluginListResponse,
   PackageDependency,
   Permissions,
+  Plugin,
   PluginTask,
+  PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
   VersionListResponse,
   uploadGitHubResponse,
@@ -117,8 +119,12 @@ export const useInstallFromMarketplaceAndGitHub = ({
   onSuccess?: (res: { success: boolean }[]) => void
 }) => {
   return useMutation({
-    mutationFn: (payload: Dependency[]) => {
-      return Promise.all(payload.map(async (item) => {
+    mutationFn: (data: {
+      payload: Dependency[],
+      plugin: Plugin[],
+    }) => {
+      const { payload, plugin } = data
+      return Promise.all(payload.map(async (item, i) => {
         try {
           if (item.type === 'github') {
             const data = item as GitHubItemAndMarketPlaceDependency
@@ -136,7 +142,7 @@ export const useInstallFromMarketplaceAndGitHub = ({
 
             await post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
               body: {
-                plugin_unique_identifiers: [data.value.plugin_unique_identifier!],
+                plugin_unique_identifiers: [data.value.plugin_unique_identifier! || plugin[i]?.plugin_id],
               },
             })
           }
@@ -231,7 +237,25 @@ export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[]) 
         unique_identifiers,
       },
     }),
-    enabled: unique_identifiers.filter(i => !!i).length > 0, // loaded then fetch
+    enabled: unique_identifiers?.filter(i => !!i).length > 0,
+    retry: 0,
+  })
+}
+
+export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[]) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByInfo', infos],
+    queryFn: () => postMarketplace<{ data: PluginsFromMarketplaceByInfoResponse }>('/plugins/versions', {
+      body: {
+        plugin_tuples: infos.map(info => ({
+          org: info.organization,
+          name: info.plugin,
+          version: info.version,
+        })),
+      },
+    }),
+    enabled: infos?.filter(i => !!i).length > 0,
+    retry: 0,
   })
 }
 

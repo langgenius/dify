@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin } from '../../../types'
 import MarketplaceItem from '../item/marketplace-item'
 import GithubItem from '../item/github-item'
-import { useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
+import { useFetchPluginsInMarketPlaceByIds, useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
 import produce from 'immer'
 import { useGetState } from 'ahooks'
 import PackageItem from '../item/package-item'
@@ -23,8 +23,8 @@ const InstallByDSLList: FC<Props> = ({
   onSelect,
   onLoadedAllPlugin,
 }) => {
-  const { isLoading: isFetchingMarketplaceData, data: marketplaceRes } = useFetchPluginsInMarketPlaceByIds(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value.plugin_unique_identifier!))
-  // console.log(allPlugins)
+  const { isLoading: isFetchingMarketplaceDataFromDSL, data: marketplaceFromDSLRes } = useFetchPluginsInMarketPlaceByIds(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value.plugin_unique_identifier!))
+  const { isLoading: isFetchingMarketplaceDataFromLocal, data: marketplaceResFromLocalRes } = useFetchPluginsInMarketPlaceByInfo(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value!))
   const [plugins, setPlugins, getPlugins] = useGetState<(Plugin | undefined)[]>((() => {
     const hasLocalPackage = allPlugins.some(d => d.type === 'package')
     if (!hasLocalPackage)
@@ -70,8 +70,8 @@ const InstallByDSLList: FC<Props> = ({
   }, [allPlugins])
 
   useEffect(() => {
-    if (!isFetchingMarketplaceData && marketplaceRes?.data.plugins) {
-      const payloads = marketplaceRes?.data.plugins
+    if (!isFetchingMarketplaceDataFromDSL && marketplaceFromDSLRes?.data.plugins) {
+      const payloads = marketplaceFromDSLRes?.data.plugins
       const failedIndex: number[] = []
       const nextPlugins = produce(getPlugins(), (draft) => {
         marketPlaceInDSLIndex.forEach((index, i) => {
@@ -84,10 +84,34 @@ const InstallByDSLList: FC<Props> = ({
       setPlugins(nextPlugins)
       if (failedIndex.length > 0)
         setErrorIndexes([...errorIndexes, ...failedIndex])
-      // marketplaceRes?.data.plugins
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFetchingMarketplaceData])
+  }, [isFetchingMarketplaceDataFromDSL])
+
+  useEffect(() => {
+    if (!isFetchingMarketplaceDataFromLocal && marketplaceResFromLocalRes?.data.versions) {
+      const payloads = marketplaceResFromLocalRes?.data.versions
+      const failedIndex: number[] = []
+      const nextPlugins = produce(getPlugins(), (draft) => {
+        marketPlaceInDSLIndex.forEach((index, i) => {
+          if (payloads[i]) {
+            const item = payloads[i]
+            draft[index] = { // TODO: wait for api change
+              name: 'xxx',
+              plugin_id: item.unique_identifier,
+            } as Plugin
+          }
+          else {
+            failedIndex.push(index)
+          }
+        })
+      })
+      setPlugins(nextPlugins)
+      if (failedIndex.length > 0)
+        setErrorIndexes([...errorIndexes, ...failedIndex])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFetchingMarketplaceDataFromLocal])
 
   const isLoadedAllData = (plugins.filter(p => !!p).length + errorIndexes.length) === allPlugins.length
   useEffect(() => {
