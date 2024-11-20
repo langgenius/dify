@@ -7,6 +7,7 @@ import { useBoolean } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import { RocketLaunchIcon } from '@heroicons/react/24/outline'
 import {
+  RiArrowLeftLine,
   RiCloseLine,
   RiSearchEyeLine,
 } from '@remixicon/react'
@@ -951,9 +952,11 @@ const StepTwo = ({
             {!isSetting
               ? (
                 <div className='flex items-center mt-8 py-2'>
-                  <Button onClick={() => onStepChange && onStepChange(-1)}>{t('datasetCreation.stepTwo.previousStep')}</Button>
-                  <div className={s.divider} />
-                  <Button loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
+                  <Button onClick={() => onStepChange && onStepChange(-1)}>
+                    <RiArrowLeftLine className='w-4 h-4 mr-1' />
+                    {t('datasetCreation.stepTwo.previousStep')}
+                  </Button>
+                  <Button className='ml-auto' loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
                 </div>
               )
               : (
