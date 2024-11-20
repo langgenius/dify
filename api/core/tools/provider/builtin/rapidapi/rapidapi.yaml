@@ -8,7 +8,7 @@ identity:
     en_US: RapidAPI is the world's largest API marketplace with over 1,000,000 developers and 10,000 APIs.
     zh_Hans: RapidAPI是全球最大的API市场，拥有超过100万开发人员和10000个API。
   icon: rapidapi.png
-  tags: 
+  tags:
     - news
 credentials_for_provider:
   x-rapidapi-host:
