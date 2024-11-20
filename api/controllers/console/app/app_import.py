@@ -80,7 +80,8 @@ class AppImportConfirmApi(Resource):
         with Session(db.engine) as session:
             import_service = AppDslService(session)
             # Confirm import
-            result = import_service.confirm_import(import_id=import_id, account=current_user)
+            account = cast(Account, current_user)
+            result = import_service.confirm_import(import_id=import_id, account=account)
             session.commit()
 
         # Return appropriate status code based on result
