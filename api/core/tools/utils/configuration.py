@@ -127,7 +127,7 @@ class ToolParameterConfigurationManager(BaseModel):
         # get tool parameters
         tool_parameters = self.tool_runtime.parameters or []
         # get tool runtime parameters
-        runtime_parameters = self.tool_runtime.get_runtime_parameters() or []
+        runtime_parameters = self.tool_runtime.get_runtime_parameters()
         # override parameters
         current_parameters = tool_parameters.copy()
         for runtime_parameter in runtime_parameters:
