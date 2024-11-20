@@ -2,13 +2,11 @@
 import base64
 import json
 import logging
-import mimetypes
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
 # 3rd import
 import boto3
-import requests
 from botocore.config import Config
 from botocore.exceptions import (
     ClientError,
