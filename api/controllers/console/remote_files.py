@@ -45,7 +45,7 @@ class RemoteFileUploadApi(Resource):
 
         resp = ssrf_proxy.head(url=url)
         if resp.status_code != httpx.codes.OK:
-            resp = ssrf_proxy.get(url=url, timeout=3)
+            resp = ssrf_proxy.get(url=url, timeout=3, follow_redirects=True)
         resp.raise_for_status()
 
         file_info = helpers.guess_file_info_from_response(resp)

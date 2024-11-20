@@ -34,13 +34,12 @@ const MembersPage = () => {
   }
   const { locale } = useContext(I18n)
 
-  const { userProfile, currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
+  const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
   const { data, mutate } = useSWR({ url: '/workspaces/current/members' }, fetchMembers)
   const [inviteModalVisible, setInviteModalVisible] = useState(false)
   const [invitationResults, setInvitationResults] = useState<InvitationResult[]>([])
   const [invitedModalVisible, setInvitedModalVisible] = useState(false)
   const accounts = data?.accounts || []
-  const owner = accounts.filter(account => account.role === 'owner')?.[0]?.email === userProfile.email
   const { plan, enableBilling } = useProviderContext()
   const isNotUnlimitedMemberPlan = enableBilling && plan.type !== Plan.team && plan.type !== Plan.enterprise
   const isMemberFull = enableBilling && isNotUnlimitedMemberPlan && accounts.length >= plan.total.teamMembers
@@ -109,8 +108,8 @@ const MembersPage = () => {
                   <div className='shrink-0 flex items-center w-[104px] py-2 text-[13px] text-gray-700'>{dayjs(Number((account.last_active_at || account.created_at)) * 1000).locale(locale === 'zh-Hans' ? 'zh-cn' : 'en').fromNow()}</div>
                   <div className='shrink-0 w-[96px] flex items-center'>
                     {
-                      (owner && account.role !== 'owner')
-                        ? <Operation member={account} onOperate={mutate} />
+                      ((isCurrentWorkspaceOwner && account.role !== 'owner') || (isCurrentWorkspaceManager && !['owner', 'admin'].includes(account.role)))
+                        ? <Operation member={account} operatorRole={currentWorkspace.role} onOperate={mutate} />
                         : <div className='px-3 text-[13px] text-gray-700'>{RoleMap[account.role] || RoleMap.normal}</div>
                     }
                   </div>

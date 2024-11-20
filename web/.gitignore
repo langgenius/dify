@@ -50,3 +50,7 @@ package-lock.json
 # storybook
 /storybook-static
 *storybook.log
+
+# mise
+mise.toml
+

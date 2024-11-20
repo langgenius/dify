@@ -14,6 +14,7 @@ import PluginsNav from './plugins-nav'
 import ExploreNav from './explore-nav'
 import ToolsNav from './tools-nav'
 import GithubStar from './github-star'
+import LicenseNav from './license-env'
 import { WorkspaceProvider } from '@/context/workspace-context'
 import { useAppContext } from '@/context/app-context'
 import LogoSite from '@/app/components/base/logo/logo-site'
@@ -61,29 +62,29 @@ const Header = () => {
           <Bars3Icon className="h-4 w-4 text-gray-500" />
         </div>}
         {!isMobile
-        && <div className='flex w-64 p-2 pl-3 gap-1.5 items-center shrink-0 self-stretch'>
-          <Link href="/apps" className='flex w-8 h-8 items-center justify-center gap-2 shrink-0'>
-            <LogoSite className='object-contain' />
-          </Link>
-          <div className='font-light text-divider-deep'>/</div>
-          <div className='flex items-center gap-0.5'>
-            <WorkspaceProvider>
-              <WorkplaceSelector />
-            </WorkspaceProvider>
-            {enableBilling && (
-              <div className='select-none'>
-                <PremiumBadge color='blue' allowHover={true} onClick={handlePlanClick}>
-                  <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
-                  <div className='system-xs-medium'>
-                    <span className='p-1'>
-                      {t('billing.upgradeBtn.encourageShort')}
-                    </span>
-                  </div>
-                </PremiumBadge>
-              </div>
-            )}
+          && <div className='flex w-64 p-2 pl-3 gap-1.5 items-center shrink-0 self-stretch'>
+            <Link href="/apps" className='flex w-8 h-8 items-center justify-center gap-2 shrink-0'>
+              <LogoSite className='object-contain' />
+            </Link>
+            <div className='font-light text-divider-deep'>/</div>
+            <div className='flex items-center gap-0.5'>
+              <WorkspaceProvider>
+                <WorkplaceSelector />
+              </WorkspaceProvider>
+              {enableBilling && (
+                <div className='select-none'>
+                  <PremiumBadge color='blue' allowHover={true} onClick={handlePlanClick}>
+                    <SparklesSoft className='flex items-center py-[1px] pl-[3px] w-3.5 h-3.5 text-components-premium-badge-indigo-text-stop-0' />
+                    <div className='system-xs-medium'>
+                      <span className='p-1'>
+                        {t('billing.upgradeBtn.encourageShort')}
+                      </span>
+                    </div>
+                  </PremiumBadge>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
         }
       </div>
       {isMobile && (
@@ -116,6 +117,7 @@ const Header = () => {
         </div>
       )}
       <div className='flex items-center shrink-0'>
+        <LicenseNav />
         <EnvNav />
         <div className='mr-3'>
           <PluginsNav />

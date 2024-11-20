@@ -407,6 +407,7 @@ const translation = {
       },
       type: 'Тип',
       binaryFileVariable: 'Переменная двоичного файла',
+      extractListPlaceholder: 'Введите индекс элемента списка, введите \'/\' вставьте переменную',
     },
     code: {
       inputVars: 'Входные переменные',
@@ -618,6 +619,7 @@ const translation = {
       filterConditionKey: 'Ключ условия фильтра',
       selectVariableKeyPlaceholder: 'Выбор ключа подпеременной',
       filterConditionComparisonValue: 'Значение условия фильтра',
+      extractsCondition: 'Извлечение элемента N',
     },
   },
   tracing: {

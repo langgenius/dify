@@ -138,7 +138,7 @@ const CodeBlock: Components['code'] = memo(({ className, children, ...props }) =
       try {
         return JSON.parse(String(children).replace(/\n$/, ''))
       }
-      catch {}
+      catch { }
     }
     return JSON.parse('{"title":{"text":"ECharts error - Wrong JSON format."}}')
   }, [language, children])
@@ -196,7 +196,7 @@ const CodeBlock: Components['code'] = memo(({ className, children, ...props }) =
       >
         <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
         <div style={{ display: 'flex' }}>
-          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG}/>}
+          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
           <CopyBtn
             className='mr-1'
             value={String(children).replace(/\n$/, '')}
@@ -225,6 +225,12 @@ const AudioBlock: Components['audio'] = memo(({ node }) => {
   return <AudioGallery key={srcs.join()} srcs={srcs} />
 })
 // AudioBlock.displayName = 'AudioBlock'
+
+const ScriptBlock = memo(({ node }: any) => {
+  const scriptContent = node.children[0]?.value || ''
+  return `<script>${scriptContent}</script>`
+})
+ScriptBlock.displayName = 'ScriptBlock'
 
 const Paragraph: Components['p'] = ({ node, children }) => {
   const children_node = node!.children
@@ -278,7 +284,7 @@ export function Markdown(props: { content: string; className?: string }) {
             }
           },
         ]}
-        disallowedElements={['script', 'iframe', 'head', 'html', 'meta', 'link', 'style', 'body']}
+        disallowedElements={['iframe', 'head', 'html', 'meta', 'link', 'style', 'body']}
         components={{
           pre: PreBlock,
           code: CodeBlock,
@@ -289,6 +295,7 @@ export function Markdown(props: { content: string; className?: string }) {
           p: Paragraph,
           button: MarkdownButton,
           form: MarkdownForm,
+          script: ScriptBlock,
         }}
       >
         {/* Markdown detect has problem. */}

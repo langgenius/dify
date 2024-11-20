@@ -420,6 +420,7 @@ const translation = {
       },
       type: 'प्रकार',
       binaryFileVariable: 'बाइनरी फ़ाइल चर',
+      extractListPlaceholder: 'सूची आइटम इंडेक्स दर्ज करें, \'/\' इन्सर्ट वेरिएबल टाइप करें',
     },
     code: {
       inputVars: 'इनपुट वेरिएबल्स',
@@ -638,6 +639,7 @@ const translation = {
       filterConditionComparisonOperator: 'फ़िल्टर शर्त तुलन ऑपरेटर',
       selectVariableKeyPlaceholder: 'उप चर कुंजी का चयन करें',
       inputVar: 'इनपुट वेरिएबल',
+      extractsCondition: 'N आइटम निकालें',
     },
   },
   tracing: {

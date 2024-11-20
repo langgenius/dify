@@ -117,7 +117,7 @@ class SageMakerEmbeddingModel(TextEmbeddingModel):
             return TextEmbeddingResult(embeddings=all_embeddings, usage=usage, model=model)
 
         except Exception as e:
-            logger.exception(f"Exception {e}, line : {line}")
+            logger.exception(f"Failed to invoke text embedding model, model: {model}, line: {line}")
 
     def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
         """

@@ -72,18 +72,36 @@ export const getPublicToken = () => {
   try {
     accessTokenJson = JSON.parse(accessToken)
   }
-  catch {}
+  catch { }
   token = accessTokenJson[sharedToken]
   return token || ''
 }
 
+export function getAccessToken(isPublicAPI?: boolean) {
+  if (isPublicAPI) {
+    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
+    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
+    let accessTokenJson = { [sharedToken]: '' }
+    try {
+      accessTokenJson = JSON.parse(accessToken)
+    }
+    catch (e) {
+
+    }
+    return accessTokenJson[sharedToken]
+  }
+  else {
+    return localStorage.getItem('console_token') || ''
+  }
+}
+
 const beforeRequestPublicAuthorization: BeforeRequestHook = (request) => {
-  const token = getPublicToken()
+  const token = getAccessToken(true)
   request.headers.set('Authorization', `Bearer ${token}`)
 }
 
 const beforeRequestAuthorization: BeforeRequestHook = (request) => {
-  const accessToken = localStorage.getItem('console_token') || ''
+  const accessToken = getAccessToken()
   request.headers.set('Authorization', `Bearer ${accessToken}`)
 }
 
@@ -175,7 +193,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   const contentType = res.headers.get('content-type')
   if (
     contentType
-      && [ContentType.download, ContentType.audio].includes(contentType)
+    && [ContentType.download, ContentType.audio].includes(contentType)
   )
     return await res.blob() as T
 
