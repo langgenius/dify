@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppUnavailable from '../../base/app-unavailable'
 import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/declarations'
-import StepsNavBar from './steps-nav-bar'
 import StepOne from './step-one'
 import StepTwo from './step-two'
 import StepThree from './step-three'
@@ -119,9 +118,6 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
 
   return (
     <div className='flex' style={{ height: 'calc(100vh - 56px)' }}>
-      <div className="flex flex-col w-11 sm:w-56 overflow-y-auto bg-white border-r border-gray-200 shrink-0">
-        <StepsNavBar step={step} datasetId={datasetId} />
-      </div>
       <div className="grow bg-white">
         <div className={step === 1 ? 'block h-full' : 'hidden'}>
           <StepOne

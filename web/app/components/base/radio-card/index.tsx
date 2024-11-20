@@ -26,12 +26,14 @@ const RadioCard: FC<Props> = ({
   onChosen = () => { },
   chosenConfig,
   chosenConfigWrapClassName,
+  className,
 }) => {
   return (
     <div
       className={cn(
         'border border-components-option-card-option-border bg-components-option-card-option-bg rounded-xl hover:shadow-xs cursor-pointer',
         isChosen && 'bg-components-option-card-option-selected-bg border-components-panel-border shadow-xs',
+        className,
       )}
     >
       <div className='flex py-3 pl-3 pr-4' onClick={onChosen}>

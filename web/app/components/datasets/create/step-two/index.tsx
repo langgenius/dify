@@ -1,20 +1,24 @@
 'use client'
+import type { ComponentProps, FC, PropsWithChildren, ReactNode } from 'react'
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
-import { XMarkIcon } from '@heroicons/react/20/solid'
+import { MagnifyingGlassCircleIcon, XMarkIcon } from '@heroicons/react/20/solid'
 import { RocketLaunchIcon } from '@heroicons/react/24/outline'
 import {
   RiCloseLine,
 } from '@remixicon/react'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
+import Image from 'next/image'
+import SettingCog from '../assets/setting-gear-mod.svg'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
 import unescape from './unescape'
 import escape from './escape'
+import { OptionCard } from './option-card'
 import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
@@ -32,11 +36,9 @@ import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/ec
 import { type RetrievalConfig } from '@/types/app'
 import { ensureRerankModelSelected, isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
 import Toast from '@/app/components/base/toast'
-import { formatNumber } from '@/utils/format'
 import type { NotionPage } from '@/models/common'
 import { DataSourceProvider } from '@/models/common'
 import { DataSourceType, DocForm } from '@/models/datasets'
-import NotionIcon from '@/app/components/base/notion-icon'
 import Switch from '@/app/components/base/switch'
 import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
@@ -50,7 +52,7 @@ import { LanguagesSupported } from '@/i18n/language'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { Globe01 } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
+import Checkbox from '@/app/components/base/checkbox'
 
 type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
@@ -577,6 +579,26 @@ const StepTwo = ({
     }
   }, [segmentationType, indexType])
 
+  const Label: FC<PropsWithChildren> = (props) => {
+    return <label className='text-[#354052] text-xs font-semibold leading-none'>{props.children}</label>
+  }
+
+  const FormItem: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
+    return <div className='space-y-2 flex-1'>
+      <Label>{props.label}</Label>
+      {props.children}
+    </div>
+  }
+
+  const CheckboxWithLabel: FC<PropsWithChildren<ComponentProps<typeof Checkbox> & {
+    label: string
+  }>> = (props) => {
+    return <div className='flex items-center gap-2'>
+      <Checkbox />
+      <Label>{props.label}</Label>
+    </div>
+  }
+
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
     search_method: RETRIEVE_METHOD.semantic,
     reranking_enable: false,
@@ -611,61 +633,46 @@ const StepTwo = ({
         <div className={cn(s.form, isMobile && '!px-4')}>
           <div className={s.label}>{t('datasetCreation.stepTwo.segmentation')}</div>
           <div className='max-w-[640px]'>
-            <div
-              className={cn(
-                s.radioItem,
-                s.segmentationItem,
-                segmentationType === SegmentType.AUTO && s.active,
-              )}
-              onClick={() => setSegmentationType(SegmentType.AUTO)}
-            >
-              <span className={cn(s.typeIcon, s.auto)} />
-              <span className={cn(s.radio)} />
-              <div className={s.typeHeader}>
-                <div className={s.title}>{t('datasetCreation.stepTwo.auto')}</div>
-                <div className={s.tip}>{t('datasetCreation.stepTwo.autoDescription')}</div>
-              </div>
-            </div>
-            <div
-              className={cn(
-                s.radioItem,
-                s.segmentationItem,
-                segmentationType === SegmentType.CUSTOM && s.active,
-                segmentationType === SegmentType.CUSTOM && s.custom,
-              )}
-              onClick={() => setSegmentationType(SegmentType.CUSTOM)}
-            >
-              <span className={cn(s.typeIcon, s.customize)} />
-              <span className={cn(s.radio)} />
-              <div className={s.typeHeader}>
-                <div className={s.title}>{t('datasetCreation.stepTwo.custom')}</div>
-                <div className={s.tip}>{t('datasetCreation.stepTwo.customDescription')}</div>
-              </div>
-              {segmentationType === SegmentType.CUSTOM && (
-                <div className={s.typeFormBody}>
-                  <div className={s.formRow}>
-                    <div className='w-full'>
-                      <div className={s.label}>
-                        {t('datasetCreation.stepTwo.separator')}
-                        <Tooltip
-                          popupContent={
-                            <div className='max-w-[200px]'>
-                              {t('datasetCreation.stepTwo.separatorTip')}
-                            </div>
-                          }
-                        />
-                      </div>
+            <div className='space-y-4'>
+              <OptionCard
+                title={'General'}
+                icon={<Image src={SettingCog} alt='General' />}
+                activeHeaderClassName='bg-gradient-to-r from-blue-50/40 to-[#ffffff]'
+                description={'General text chunking mode, the chunks retrieved and recalled are the same.'}
+                isActive={SegmentType.AUTO === segmentationType}
+                onClick={() => setSegmentationType(SegmentType.AUTO)}
+                actions={
+                  <>
+                    <Button variant={'secondary-accent'}>
+                      <MagnifyingGlassCircleIcon className='size-4 mr-2' />
+                      Preview Chunk
+                    </Button>
+                    <Button variant={'ghost'} disabled>Reset</Button>
+                  </>
+                }
+              >
+                <div className='space-y-4'>
+                  <div className='flex gap-2'>
+                    <FormItem label={<div className='flex'>
+                      {t('datasetCreation.stepTwo.separator')}
+                      <Tooltip
+                        popupContent={
+                          <div className='max-w-[200px]'>
+                            {t('datasetCreation.stepTwo.separatorTip')}
+                          </div>
+                        }
+                      />
+                    </div>}>
                       <Input
                         type="text"
                         className='h-9'
                         placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''} value={segmentIdentifier}
                         onChange={e => setSegmentIdentifier(e.target.value)}
                       />
-                    </div>
-                  </div>
-                  <div className={s.formRow}>
-                    <div className='w-full'>
-                      <div className={s.label}>{t('datasetCreation.stepTwo.maxLength')}</div>
+                    </FormItem>
+                    <FormItem label={<div>
+                      {t('datasetCreation.stepTwo.maxLength')}
+                    </div>}>
                       <Input
                         type="number"
                         className='h-9'
@@ -675,47 +682,59 @@ const StepTwo = ({
                         min={1}
                         onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
                       />
-                    </div>
-                  </div>
-                  <div className={s.formRow}>
-                    <div className='w-full'>
-                      <div className={s.label}>
-                        {t('datasetCreation.stepTwo.overlap')}
-                        <Tooltip
-                          popupContent={
-                            <div className='max-w-[200px]'>
-                              {t('datasetCreation.stepTwo.overlapTip')}
-                            </div>
-                          }
-                        />
-                      </div>
+                    </FormItem>
+                    <FormItem label={<div className='flex'>
+                      {t('datasetCreation.stepTwo.overlap')}
+                      <Tooltip
+                        popupContent={
+                          <div className='max-w-[200px]'>
+                            {t('datasetCreation.stepTwo.overlapTip')}
+                          </div>
+                        }
+                      />
+                    </div>}>
                       <Input
                         type="number"
                         className='h-9'
                         placeholder={t('datasetCreation.stepTwo.overlap') || ''}
                         value={overlap}
                         min={1}
-                        onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))}
-                      />
-                    </div>
+                        onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))} />
+                    </FormItem>
                   </div>
-                  <div className={s.formRow}>
-                    <div className='w-full flex flex-col gap-1'>
-                      <div className={s.label}>{t('datasetCreation.stepTwo.rules')}</div>
-                      {rules.map(rule => (
-                        <div key={rule.id} className={s.ruleItem}>
-                          <input id={rule.id} type="checkbox" checked={rule.enabled} onChange={() => ruleChangeHandle(rule.id)} className="w-4 h-4 rounded border-gray-300 text-blue-700 focus:ring-blue-700" />
-                          <label htmlFor={rule.id} className="ml-2 text-sm font-normal cursor-pointer text-gray-800">{getRuleName(rule.id)}</label>
-                        </div>
-                      ))}
+                  <div className='space-y-2'>
+                    <div className='w-full flex flex-col'>
+                      <Label>{t('datasetCreation.stepTwo.rules')}</Label>
+                      <div className='mt-4 space-y-2'>
+                        {rules.map(rule => (
+                          <div key={rule.id} className={s.ruleItem} onClick={() => {
+                            ruleChangeHandle(rule.id)
+                          }}>
+                            <Checkbox
+                              checked={rule.enabled}
+                            />
+                            <label className="ml-2 text-sm font-normal cursor-pointer text-gray-800">{getRuleName(rule.id)}</label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                  <div className={s.formFooter}>
-                    <Button variant="primary" className={cn(s.button)} onClick={confirmChangeCustomConfig}>{t('datasetCreation.stepTwo.preview')}</Button>
-                    <Button className={cn(s.button, 'ml-2')} onClick={resetRules}>{t('datasetCreation.stepTwo.reset')}</Button>
                   </div>
                 </div>
-              )}
+              </OptionCard>
+              <OptionCard
+                title={'Parent-child'}
+                icon={undefined}
+                activeHeaderClassName='bg-gradient-to-r from-red-50/40 to-[#ffffff]'
+                description={'When using the parent-child mode, the child-chunk is used for retrieval and the parent-chunk is used for recall as context.'}
+                isActive={SegmentType.CUSTOM === segmentationType}
+                onClick={() => setSegmentationType(SegmentType.CUSTOM)}
+              >
+                <div className='space-y-4'>
+                  <Label>
+       Parent-chunk for Context
+                  </Label>
+                </div>
+              </OptionCard>
             </div>
           </div>
           <div className={s.label}>{t('datasetCreation.stepTwo.indexMode')}</div>
@@ -866,77 +885,6 @@ const StepTwo = ({
               </div>
             </div>
 
-            <div className={s.source}>
-              <div className={s.sourceContent}>
-                {dataSourceType === DataSourceType.FILE && (
-                  <>
-                    <div className='mb-2 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.fileSource')}</div>
-                    <div className='flex items-center text-sm leading-6 font-medium text-gray-800'>
-                      <span className={cn(s.fileIcon, files.length && s[files[0].extension || ''])} />
-                      {getFileName(files[0].name || '')}
-                      {files.length > 1 && (
-                        <span className={s.sourceCount}>
-                          <span>{t('datasetCreation.stepTwo.other')}</span>
-                          <span>{files.length - 1}</span>
-                          <span>{t('datasetCreation.stepTwo.fileUnit')}</span>
-                        </span>
-                      )}
-                    </div>
-                  </>
-                )}
-                {dataSourceType === DataSourceType.NOTION && (
-                  <>
-                    <div className='mb-2 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.notionSource')}</div>
-                    <div className='flex items-center text-sm leading-6 font-medium text-gray-800'>
-                      <NotionIcon
-                        className='shrink-0 mr-1'
-                        type='page'
-                        src={notionPages[0]?.page_icon}
-                      />
-                      {notionPages[0]?.page_name}
-                      {notionPages.length > 1 && (
-                        <span className={s.sourceCount}>
-                          <span>{t('datasetCreation.stepTwo.other')}</span>
-                          <span>{notionPages.length - 1}</span>
-                          <span>{t('datasetCreation.stepTwo.notionUnit')}</span>
-                        </span>
-                      )}
-                    </div>
-                  </>
-                )}
-                {dataSourceType === DataSourceType.WEB && (
-                  <>
-                    <div className='mb-2 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.websiteSource')}</div>
-                    <div className='flex items-center text-sm leading-6 font-medium text-gray-800'>
-                      <Globe01 className='shrink-0 mr-1' />
-                      <span className='grow w-0 truncate'>{websitePages[0].source_url}</span>
-                      {websitePages.length > 1 && (
-                        <span className={s.sourceCount}>
-                          <span>{t('datasetCreation.stepTwo.other')}</span>
-                          <span>{websitePages.length - 1}</span>
-                          <span>{t('datasetCreation.stepTwo.webpageUnit')}</span>
-                        </span>
-                      )}
-                    </div>
-                  </>
-                )}
-              </div>
-              <div className={s.divider} />
-              <div className={s.segmentCount}>
-                <div className='mb-2 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.estimateSegment')}</div>
-                <div className='flex items-center text-sm leading-6 font-medium text-gray-800'>
-                  {
-                    fileIndexingEstimate
-                      ? (
-                        <div className='text-xs font-medium text-gray-800'>{formatNumber(fileIndexingEstimate.total_segments)} </div>
-                      )
-                      : (
-                        <div className={s.calculating}>{t('datasetCreation.stepTwo.calculating')}</div>
-                      )
-                  }
-                </div>
-              </div>
-            </div>
             {!isSetting
               ? (
                 <div className='flex items-center mt-8 py-2'>

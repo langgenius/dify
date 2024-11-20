@@ -20,6 +20,7 @@ import {
 } from '@/models/datasets'
 import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import Toast from '@/app/components/base/toast'
+import RadioCard from '@/app/components/base/radio-card'
 
 type Props = {
   type: RETRIEVE_METHOD
@@ -201,24 +202,18 @@ const RetrievalParamConfig: FC<Props> = ({
       {
         isHybridSearch && (
           <>
-            <div className='flex items-center justify-between'>
+            <div className='flex gap-2 mb-4'>
               {
                 rerankingModeOptions.map(option => (
-                  <div
+                  <RadioCard
                     key={option.value}
-                    className={cn(
-                      'flex items-center justify-center mb-4 w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
-                      value.reranking_mode === RerankingModeEnum.WeightedScore && option.value === RerankingModeEnum.WeightedScore && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
-                      value.reranking_mode !== RerankingModeEnum.WeightedScore && option.value !== RerankingModeEnum.WeightedScore && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
-                    )}
-                    onClick={() => handleChangeRerankMode(option.value)}
-                  >
-                    <div className='truncate'>{option.label}</div>
-                    <Tooltip
-                      popupContent={<div className='w-[200px]'>{option.tips}</div>}
-                      triggerClassName='ml-0.5 w-3.5 h-3.5'
-                    />
-                  </div>
+                    isChosen={value.reranking_mode === option.value}
+                    onChosen={() => handleChangeRerankMode(option.value)}
+                    icon={<div className='w-4 h-4 text-[#7839EE]' />}
+                    title={option.label}
+                    description={option.tips}
+                    className='flex-1'
+                  />
                 ))
               }
             </div>
