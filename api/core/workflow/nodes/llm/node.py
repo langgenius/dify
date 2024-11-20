@@ -14,6 +14,7 @@ from core.model_runtime.entities import (
     PromptMessage,
     PromptMessageContentType,
     TextPromptMessageContent,
+    VideoPromptMessageContent,
 )
 from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.entities.model_entities import ModelType
@@ -560,7 +561,9 @@ class LLMNode(BaseNode[LLMNodeData]):
                         # cuz vision detail is related to the configuration from FileUpload feature.
                         content_item.detail = vision_detail
                         prompt_message_content.append(content_item)
-                    elif isinstance(content_item, TextPromptMessageContent | AudioPromptMessageContent):
+                    elif isinstance(
+                        content_item, TextPromptMessageContent | AudioPromptMessageContent | VideoPromptMessageContent
+                    ):
                         prompt_message_content.append(content_item)
 
                 if len(prompt_message_content) > 1:

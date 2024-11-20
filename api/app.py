@@ -1,8 +1,9 @@
 import os
+import sys
 
 from configs import dify_config
 
-if os.environ.get("DEBUG", "false").lower() != "true":
+if not dify_config.DEBUG:
     from gevent import monkey
 
     monkey.patch_all()
@@ -29,6 +30,9 @@ from models import account, dataset, model, source, task, tool, tools, web  # no
 
 # DO NOT REMOVE ABOVE
 
+if sys.version_info[:2] == (3, 10):
+    print("Warning: Python 3.10 will not be supported in the next version.")
+
 
 warnings.simplefilter("ignore", ResourceWarning)
 
@@ -49,7 +53,6 @@ if dify_config.TESTING:
 @app.after_request
 def after_request(response):
     """Add Version headers to the response."""
-    response.set_cookie("remember_token", "", expires=0)
     response.headers.add("X-Version", dify_config.CURRENT_VERSION)
     response.headers.add("X-Env", dify_config.DEPLOY_ENV)
     return response

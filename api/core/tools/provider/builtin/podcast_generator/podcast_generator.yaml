@@ -32,3 +32,15 @@ credentials_for_provider:
     placeholder:
       en_US: Enter your TTS service API key
       zh_Hans: 输入您的 TTS 服务 API 密钥
+  openai_base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: OpenAI base URL
+      zh_Hans: OpenAI base URL
+    help:
+      en_US: Please input your OpenAI base URL
+      zh_Hans: 请输入你的 OpenAI base URL
+    placeholder:
+      en_US: Please input your OpenAI base URL
+      zh_Hans: 请输入你的 OpenAI base URL

@@ -445,6 +445,7 @@ export const useWorkflowRun = () => {
               ...data,
               status: NodeRunningStatus.Running,
               details: [],
+              iterDurationMap: {},
             } as any)
           }))
 
@@ -496,6 +497,8 @@ export const useWorkflowRun = () => {
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             const iteration = draft.tracing!.find(trace => trace.node_id === data.node_id)
             if (iteration) {
+              if (iteration.iterDurationMap && data.duration)
+                iteration.iterDurationMap[data.parallel_mode_run_id ?? `${data.index - 1}`] = data.duration
               if (iteration.details!.length >= iteration.metadata.iterator_length!)
                 return
             }

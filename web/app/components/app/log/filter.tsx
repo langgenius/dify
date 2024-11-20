@@ -15,17 +15,17 @@ dayjs.extend(quarterOfYear)
 
 const today = dayjs()
 
-export const TIME_PERIOD_LIST = [
-  { value: 0, name: 'today' },
-  { value: 7, name: 'last7days' },
-  { value: 28, name: 'last4weeks' },
-  { value: today.diff(today.subtract(3, 'month'), 'day'), name: 'last3months' },
-  { value: today.diff(today.subtract(12, 'month'), 'day'), name: 'last12months' },
-  { value: today.diff(today.startOf('month'), 'day'), name: 'monthToDate' },
-  { value: today.diff(today.startOf('quarter'), 'day'), name: 'quarterToDate' },
-  { value: today.diff(today.startOf('year'), 'day'), name: 'yearToDate' },
-  { value: 'all', name: 'allTime' },
-]
+export const TIME_PERIOD_MAPPING: { [key: string]: { value: number; name: string } } = {
+  1: { value: 0, name: 'today' },
+  2: { value: 7, name: 'last7days' },
+  3: { value: 28, name: 'last4weeks' },
+  4: { value: today.diff(today.subtract(3, 'month'), 'day'), name: 'last3months' },
+  5: { value: today.diff(today.subtract(12, 'month'), 'day'), name: 'last12months' },
+  6: { value: today.diff(today.startOf('month'), 'day'), name: 'monthToDate' },
+  7: { value: today.diff(today.startOf('quarter'), 'day'), name: 'quarterToDate' },
+  8: { value: today.diff(today.startOf('year'), 'day'), name: 'yearToDate' },
+  9: { value: -1, name: 'allTime' },
+}
 
 type IFilterProps = {
   isChatMode?: boolean
@@ -45,12 +45,12 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
         className='min-w-[150px]'
         panelClassName='w-[270px]'
         leftIcon={<RiCalendarLine className='h-4 w-4 text-text-secondary' />}
-        value={queryParams.period || 7}
+        value={queryParams.period}
         onSelect={(item) => {
-          setQueryParams({ ...queryParams, period: item.value as string })
+          setQueryParams({ ...queryParams, period: item.value })
         }}
-        onClear={() => setQueryParams({ ...queryParams, period: 7 })}
-        items={TIME_PERIOD_LIST.map(item => ({ value: item.value, name: t(`appLog.filter.period.${item.name}`) }))}
+        onClear={() => setQueryParams({ ...queryParams, period: '9' })}
+        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}`) }))}
       />
       <Chip
         className='min-w-[150px]'

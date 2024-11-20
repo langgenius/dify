@@ -49,8 +49,14 @@ class Limit(BaseModel):
     size: int = -1
 
 
+class ExtractConfig(BaseModel):
+    enabled: bool = False
+    serial: str = "1"
+
+
 class ListOperatorNodeData(BaseNodeData):
     variable: Sequence[str] = Field(default_factory=list)
     filter_by: FilterBy
     order_by: OrderBy
     limit: Limit
+    extract_by: ExtractConfig = Field(default_factory=ExtractConfig)

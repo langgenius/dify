@@ -95,13 +95,16 @@ class VariablePool(BaseModel):
         if len(selector) < 2:
             raise ValueError("Invalid selector")
 
+        if isinstance(value, Variable):
+            variable = value
         if isinstance(value, Segment):
-            v = value
+            variable = variable_factory.segment_to_variable(segment=value, selector=selector)
         else:
-            v = variable_factory.build_segment(value)
+            segment = variable_factory.build_segment(value)
+            variable = variable_factory.segment_to_variable(segment=segment, selector=selector)
 
         hash_key = hash(tuple(selector[1:]))
-        self.variable_dictionary[selector[0]][hash_key] = v
+        self.variable_dictionary[selector[0]][hash_key] = variable
 
     def get(self, selector: Sequence[str], /) -> Segment | None:
         """
