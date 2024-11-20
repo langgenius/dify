@@ -1,11 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
+import { useTranslation } from 'react-i18next'
 import Card from '../../card'
 import Button from '@/app/components/base/button'
+import { useUpdateModelProviders } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { PluginType } from '../../types'
+import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { pluginManifestInMarketToPluginProps, pluginManifestToCardPluginProps } from '../utils'
-import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 
 type Props = {
@@ -24,6 +26,13 @@ const Installed: FC<Props> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
+  const updateModelProviders = useUpdateModelProviders()
+
+  const handleClose = () => {
+    onCancel()
+    if (payload?.category === PluginType.model)
+      updateModelProviders()
+  }
   return (
     <>
       <div className='flex flex-col px-6 py-3 justify-center items-start gap-4 self-stretch'>
@@ -45,7 +54,7 @@ const Installed: FC<Props> = ({
         <Button
           variant='primary'
           className='min-w-[72px]'
-          onClick={onCancel}
+          onClick={handleClose}
         >
           {t('common.operation.close')}
         </Button>
