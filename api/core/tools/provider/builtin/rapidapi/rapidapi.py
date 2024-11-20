@@ -13,13 +13,10 @@ class RapidapiProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
+                user_id="",
                 tool_parameters={
                     "language_region": "en-US",
                 },
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
-
-
-    
