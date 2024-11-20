@@ -45,19 +45,7 @@ class OpenRouterLargeLanguageModel(OAIAPICompatLargeLanguageModel):
         user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:
         self._update_credential(model, credentials)
-
-        block_as_stream = False
-        if model.startswith("openai/o1"):
-            block_as_stream = True
-            stop = None
-
-        # invoke block as stream
-        if stream and block_as_stream:
-            return self._generate_block_as_stream(
-                model, credentials, prompt_messages, model_parameters, tools, stop, user
-            )
-        else:
-            return super()._generate(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
+        return super()._generate(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
 
     def _generate_block_as_stream(
         self,
