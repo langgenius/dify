@@ -32,7 +32,7 @@ const PluginList = () => {
               type: 'github',
               value: {
                 repo: 'YIXIAO0/test',
-                release: '1.11.5',
+                version: '1.11.5',
                 package: 'test.difypkg',
                 github_plugin_unique_identifier: 'yixiao0/test:0.0.1@3592166c87afcf944b4f13f27467a5c8f9e00bd349cb42033a072734a37431b4',
               },

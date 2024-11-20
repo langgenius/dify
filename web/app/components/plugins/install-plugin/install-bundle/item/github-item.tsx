@@ -25,8 +25,8 @@ const Item: FC<Props> = ({
   const info = dependency.value
   const { data, error } = useUploadGitHub({
     repo: info.repo!,
-    version: info.release!,
-    package: info.packages!,
+    version: info.release! || info.version!,
+    package: info.packages! || info.package!,
   })
   const [payload, setPayload] = React.useState<Plugin | null>(null)
   useEffect(() => {

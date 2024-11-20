@@ -125,8 +125,8 @@ export const useInstallFromMarketplaceAndGitHub = ({
             await post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
               body: {
                 repo: data.value.repo!,
-                version: data.value.release!,
-                package: data.value.packages!,
+                version: data.value.release! || data.value.version!,
+                package: data.value.packages! || data.value.package!,
                 plugin_unique_identifier: data.value.github_plugin_unique_identifier!,
               },
             })
