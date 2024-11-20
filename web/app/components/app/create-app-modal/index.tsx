@@ -1,5 +1,5 @@
 'use client'
-import type { MouseEventHandler } from 'react'
+
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
 import { RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
 import Link from 'next/link'
+import { useKeyPress } from 'ahooks'
 import AppIconPicker from '../../base/app-icon-picker'
 import type { AppIconSelection } from '../../base/app-icon-picker'
 import Button from '@/app/components/base/button'
@@ -21,7 +22,7 @@ import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
+import { Agent, ChatFlow, Chatbot, TextGenerator, Workflow } from '@/app/components/base/icons/src/public/app'
 import Tooltip from '@/app/components/base/tooltip'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
@@ -50,7 +51,8 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
   const { isCurrentWorkspaceEditor } = useAppContext()
 
   const isCreatingRef = useRef(false)
-  const onCreate: MouseEventHandler = useCallback(async () => {
+
+  const onCreate = useCallback(async () => {
     if (!appMode) {
       notify({ type: 'error', message: t('app.newApp.appTypeRequired') })
       return
@@ -84,6 +86,11 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
     isCreatingRef.current = false
   }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, mutateApps, push, isCurrentWorkspaceEditor])
 
+  useKeyPress(['meta.enter', 'ctrl.enter'], () => {
+    if (isAppsFull)
+      return
+    onCreate()
+  })
   return (
     <FullScreenModal
       overflowVisible
@@ -109,29 +116,32 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
                 </div>
                 <div className='flex flex-row gap-2'>
                   {/* chatbot */}
-                  <AppTypeCard title={t('app.types.chatbot')}
+                  <AppTypeCard
+                    active={appMode === 'chat'}
+                    title={t('app.types.chatbot')}
                     description='LLM-Based chatbot with simple setup'
                     tooltipContent={t('app.newApp.chatbotDescription')}
-                    icon={<ChatBot className='w-4 h-4 text-white' />}
-                    iconBgClassName=''
+                    icon={<Chatbot className='w-6 h-6' />}
                     onClick={() => {
                       setAppMode('chat')
                     }} />
                   {/* agent */}
-                  <AppTypeCard title={t('app.types.agent')}
+                  <AppTypeCard
+                    active={appMode === 'agent-chat'}
+                    title={t('app.types.agent')}
                     description='LLM-Based chatbot with simple setup'
                     tooltipContent={t('app.newApp.agentDescription')}
-                    icon={<CuteRobot className='w-4 h-4 text-indigo-600' />}
-                    iconBgClassName=''
+                    icon={<Agent className='w-6 h-6' />}
                     onClick={() => {
                       setAppMode('agent-chat')
                     }} />
                   {/* text generator */}
-                  <AppTypeCard title={t('app.newApp.completeApp')}
+                  <AppTypeCard
+                    active={appMode === 'completion'}
+                    title={t('app.newApp.completeApp')}
                     description='LLM-Based chatbot with simple setup'
                     tooltipContent={t('app.newApp.completionDescription')}
-                    icon={<AiText className='w-4 h-4 text-[#0E9384]' />}
-                    iconBgClassName=''
+                    icon={<TextGenerator className='w-6 h-6' />}
                     onClick={() => {
                       setAppMode('completion')
                     }} />
@@ -144,20 +154,22 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
                 </div>
                 <div className='flex flex-row gap-2'>
                   {/* chat flow */}
-                  <AppTypeCard title={t('app.newApp.advanced')}
+                  <AppTypeCard
+                    active={appMode === 'advanced-chat'}
+                    title={t('app.newApp.advanced')}
                     description={t('app.newApp.advancedFor')}
                     tooltipContent={t('app.newApp.advancedDescription')}
-                    icon={<ChatBot className='w-4 h-4 text-white' />}
-                    iconBgClassName=''
+                    icon={<ChatFlow className='w-6 h-6' />}
                     onClick={() => {
                       setAppMode('advanced-chat')
                     }} />
                   {/* workflow */}
-                  <AppTypeCard title={t('app.types.workflow')}
+                  <AppTypeCard
+                    active={appMode === 'workflow'}
+                    title={t('app.types.workflow')}
                     description={t('app.newApp.captionAppType')}
                     tooltipContent={t('app.newApp.workflowDescription')}
-                    icon={<CuteRobot className='w-4 h-4 text-indigo-600' />}
-                    iconBgClassName=''
+                    icon={<Workflow className='w-6 h-6' />}
                     onClick={() => {
                       setAppMode('workflow')
                     }} />
@@ -250,27 +262,27 @@ export default CreateAppModal
 
 type AppTypeCardProps = {
   icon: JSX.Element
-  iconBgClassName: string
   title: string
   description: string
   tooltipContent: string
+  active: boolean
   onClick: () => void
 }
-function AppTypeCard({ icon, iconBgClassName, title, description, tooltipContent, onClick }: AppTypeCardProps) {
+function AppTypeCard({ icon, title, description, tooltipContent, active, onClick }: AppTypeCardProps) {
   return <Tooltip
     popupContent={
       <div className='max-w-[280px] body-xs-regular text-text-secondary'>{tooltipContent}</div>
     }
   >
     <div
-      className='w-[191px] p-3 border-[0.5px] box-content rounded-xl
-    border-components-option-card-option-border bg-components-panel-on-panel-item-bg shadow-xs'
+      className={cn(`w-[191px] h-[84px] p-3 border-[0.5px] box-content
+        rounded-xl border-components-option-card-option-border 
+        bg-components-panel-on-panel-item-bg shadow-xs cursor-pointer`,
+      active ? 'outline outline-[1.5px] outline-components-option-card-option-selected-border' : '')}
       onClick={onClick}
     >
-      <div className={cn('p-1 mb-2 inline-flex rounded-md border border-components-panel-border', iconBgClassName)}>
-        {icon}
-      </div>
-      <div className='system-sm-semibold text-text-secondary mb-0.5'>{title}</div>
+      {icon}
+      <div className='system-sm-semibold text-text-secondary mt-2 mb-0.5'>{title}</div>
       <div className='system-xs-regular text-text-tertiary'>{description}</div>
     </div>
   </Tooltip>
