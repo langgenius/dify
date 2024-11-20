@@ -44,13 +44,13 @@ const AgentTools: FC = () => {
   const [currentTool, setCurrentTool] = useState<AgentToolWithMoreInfo>(null)
   const currentCollection = useMemo(() => {
     if (!currentTool) return null
-    const collection = collectionList.find(collection => collection.id === currentTool?.provider_id && collection.type === currentTool?.provider_type)
+    const collection = collectionList.find(collection => collection.id === currentTool?.provider_id.split('/').pop() && collection.type === currentTool?.provider_type)
     return collection
   }, [currentTool, collectionList])
   const [isShowSettingTool, setIsShowSettingTool] = useState(false)
   const [isShowSettingAuth, setShowSettingAuth] = useState(false)
   const tools = (modelConfig?.agentConfig?.tools as AgentTool[] || []).map((item) => {
-    const collection = collectionList.find(collection => collection.id === item.provider_id && collection.type === item.provider_type)
+    const collection = collectionList.find(collection => collection.id === item.provider_id.split('/').pop() && collection.type === item.provider_type)
     const icon = collection?.icon
     return {
       ...item,
@@ -157,11 +157,10 @@ const AgentTools: FC = () => {
                 <div
                   className={cn(
                     'grow w-0 ml-1.5 flex items-center system-xs-regular truncate',
-                    item.isDeleted ? 'line-through' : '',
                     (item.isDeleted || item.notAuthor || !item.enabled) ? 'opacity-50' : '',
                   )}
                 >
-                  <span className='text-text-secondary pr-1.5'>{item.provider_type === CollectionType.builtIn ? item.provider_name : item.tool_label}</span>
+                  <span className='text-text-secondary system-xs-medium pr-1.5'>{item.provider_type === CollectionType.builtIn ? item.provider_name.split('/').pop() : item.tool_label}</span>
                   <span className='text-text-tertiary'>{item.tool_name}</span>
                   {!item.isDeleted && (
                     <Tooltip
