@@ -37,12 +37,13 @@ class OpenLLMGenerateMessage:
 class OpenLLMGenerate:
     def generate(
         self,
+        *,
         server_url: str,
         model_name: str,
         stream: bool,
         model_parameters: dict[str, Any],
         stop: list[str] | None = None,
-        prompt_messages: list[OpenLLMGenerateMessage] = [],
+        prompt_messages: list[OpenLLMGenerateMessage],
         user: str | None = None,
     ) -> Union[Generator[OpenLLMGenerateMessage, None, None], OpenLLMGenerateMessage]:
         if not server_url:
