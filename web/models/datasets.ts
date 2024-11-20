@@ -170,7 +170,9 @@ export type IndexingStatusBatchResponse = {
   data: IndexingStatusResponse[]
 }
 
-export type ProcessMode = 'automatic' | 'custom'
+export type ProcessMode = 'custom' | 'hierarchical'
+
+export type ParentMode = 'full-doc' | 'paragraph'
 
 export type ProcessRuleResponse = {
   mode: ProcessMode
@@ -180,6 +182,8 @@ export type ProcessRuleResponse = {
 export type Rules = {
   pre_processing_rules: PreProcessingRule[]
   segmentation: Segmentation
+  parent_node: ParentMode
+  subchunk_segmentation: Segmentation
 }
 
 export type PreProcessingRule = {
@@ -190,7 +194,7 @@ export type PreProcessingRule = {
 export type Segmentation = {
   separator: string
   max_tokens: number
-  chunk_overlap: number
+  chunk_overlap?: number
 }
 
 export const DocumentIndexingStatusList = [
@@ -336,6 +340,11 @@ export type createDocumentResponse = {
   documents: InitialDocumentDetail[]
 }
 
+export type PrecessRule = {
+  mode: ProcessMode
+  rules: Rules
+}
+
 export type FullDocumentDetail = SimpleDocumentDetail & {
   batch: string
   created_api_request_id: string
@@ -358,6 +367,7 @@ export type FullDocumentDetail = SimpleDocumentDetail & {
   doc_type?: DocType | null | 'others'
   doc_metadata?: DocMetadata | null
   segment_count: number
+  dataset_process_rule: PrecessRule
   [key: string]: any
 }
 

@@ -3,11 +3,12 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  RiAddLine,
+  RiArrowDownSLine,
   RiErrorWarningFill,
   RiLoader2Line,
 } from '@remixicon/react'
 import cn from '@/utils/classnames'
-import { FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import Popover from '@/app/components/base/popover'
 
@@ -25,6 +26,7 @@ export enum ProcessStatus {
   ERROR = 'error',
 }
 
+// todo: Modify processing status
 const SegmentAdd: FC<ISegmentAddProps> = ({
   importStatus,
   clearProcessStatus,
@@ -63,24 +65,43 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
   }
 
   return (
-    <Popover
-      manualClose
-      trigger='click'
-      htmlContent={
-        <div className='w-full py-1'>
-          <div className='py-2 px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer text-gray-700 text-sm' onClick={showNewSegmentModal}>{t('datasetDocuments.list.action.add')}</div>
-          <div className='py-2 px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer text-gray-700 text-sm' onClick={showBatchModal}>{t('datasetDocuments.list.action.batchAdd')}</div>
-        </div>
-      }
-      btnElement={
-        <div className='inline-flex items-center'>
-          <FilePlus02 className='w-4 h-4 text-gray-700' />
-          <span className='pl-1'>{t('datasetDocuments.list.action.addButton')}</span>
-        </div>
-      }
-      btnClassName={open => cn('mr-2 !py-[6px] !text-[13px] !leading-[18px] hover:bg-gray-50 border border-gray-200 hover:border-gray-300 hover:shadow-[0_1px_2px_rgba(16,24,40,0.05)]', open ? '!bg-gray-100 !shadow-none' : '!bg-transparent')}
-      className='!w-[132px] h-fit !z-20  !translate-x-0 !left-0'
-    />
+    <div className='flex items-center rounded-lg border-[0.5px] border-components-button-secondary-border
+      bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] mr-2'>
+      <div
+        className='inline-flex items-center px-2.5 py-2 border-r-[1px] border-r-divider-subtle cursor-pointer'
+        onClick={showNewSegmentModal}
+      >
+        <RiAddLine className='w-4 h-4 text-components-button-secondary-accent-text' />
+        <span className='text-components-button-secondary-accent-text text-[13px] leading-[16px] font-medium px-0.5 ml-0.5'>
+          {t('datasetDocuments.list.action.addButton')}
+        </span>
+      </div>
+      <Popover
+        position='br'
+        manualClose
+        trigger='click'
+        htmlContent={
+          <div className='w-full p-1'>
+            <div
+              className='py-1.5 px-2 flex items-center hover:bg-state-base-hover rounded-lg cursor-pointer text-text-tertiary system-md-regular'
+              onClick={showBatchModal}
+            >
+              {t('datasetDocuments.list.action.batchAdd')}
+            </div>
+          </div>
+        }
+        btnElement={
+          <div className='flex justify-center items-center'>
+            <RiArrowDownSLine className='w-4 h-4 text-components-button-secondary-accent-text'/>
+          </div>
+        }
+        btnClassName={open => cn('!p-2 !border-0 !rounded-l-none !rounded-r-lg !hover:bg-state-base-hover shadow-xs shadow-shadow-3 backdrop-blur-[5px]',
+          open ? '!bg-state-base-hover' : '')}
+        popupClassName='!min-w-[128px] !bg-components-panel-bg-blur !rounded-xl border-[0.5px] !ring-0
+          border-components-panel-border !shadow-xl !shadow-shadow-shadow-5 backdrop-blur-[5px]'
+        className='min-w-[128px] h-fit !z-20'
+      />
+    </div>
   )
 }
 export default React.memo(SegmentAdd)
