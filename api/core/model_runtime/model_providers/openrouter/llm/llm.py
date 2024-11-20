@@ -69,9 +69,7 @@ class OpenRouterLargeLanguageModel(OAIAPICompatLargeLanguageModel):
         stop: Optional[list[str]] = None,
         user: Optional[str] = None,
     ) -> Generator:
-        resp: LLMResult = super()._generate(
-            model, credentials, prompt_messages, model_parameters, tools, stop, False, user
-        )
+        resp = super()._generate(model, credentials, prompt_messages, model_parameters, tools, stop, False, user)
 
         yield LLMResultChunk(
             model=model,
