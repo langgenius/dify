@@ -69,35 +69,34 @@ class BingSearchTool(BuiltinTool):
         elif result_type == "json":
             result = {}
             if search_results:
-                result['organic'] = [
+                result["organic"] = [
                     {
                         "title": item.get("name", ""),
                         "snippet": item.get("snippet", ""),
                         "url": item.get("url", ""),
-                        "siteName": item.get("siteName", "")
-                     }
+                        "siteName": item.get("siteName", ""),
+                    }
                     for item in search_results
                 ]
 
             if computation and "expression" in computation and "value" in computation:
-                result['computation'] = {
-                    "expression": computation["expression"],
-                    "value": computation["value"]
-                }
+                result["computation"] = {"expression": computation["expression"], "value": computation["value"]}
 
             if entities:
-                result['entities'] = [
-                    {"name": item.get("name", ""), "url": item.get("url", ""), "description": item.get("description", "")}
+                result["entities"] = [
+                    {
+                        "name": item.get("name", ""),
+                        "url": item.get("url", ""),
+                        "description": item.get("description", ""),
+                    }
                     for item in entities
                 ]
 
             if news:
-                result['news'] = [
-                    {"name": item.get("name", ""), "url": item.get("url", "")} for item in news
-                ]
+                result["news"] = [{"name": item.get("name", ""), "url": item.get("url", "")} for item in news]
 
             if related_searches:
-                result['related searches'] = [
+                result["related searches"] = [
                     {"displayText": item.get("displayText", ""), "url": item.get("webSearchUrl", "")} for item in news
                 ]
 
