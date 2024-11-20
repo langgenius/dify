@@ -192,8 +192,10 @@ app_site_fields = {
 }
 
 app_import_fields = {
-    "app": fields.Nested(app_detail_fields_with_site),
+    "id": fields.String,
+    "status": fields.String,
+    "app_id": fields.String,
     "current_dsl_version": fields.String,
     "imported_dsl_version": fields.String,
-    "status": fields.String,
+    "error": fields.String,
 }
