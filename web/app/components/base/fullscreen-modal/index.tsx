@@ -25,7 +25,7 @@ export default function FullScreenModal({
   overflowVisible = false,
 }: IModal) {
   return (
-    <Transition appear show={open} as={Fragment}>
+    <Transition show={open} as={Fragment}>
       <Dialog as="div" className={classNames('modal-dialog', wrapperClassName)} onClose={onClose}>
         <Transition.Child
           as={Fragment}

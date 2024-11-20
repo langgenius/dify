@@ -5,9 +5,9 @@ import { useTranslation } from 'react-i18next'
 
 import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
-import { RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
+import { RiArrowRightLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
 import Link from 'next/link'
-import { useKeyPress } from 'ahooks'
+import { useDebounceFn, useKeyPress } from 'ahooks'
 import AppIconPicker from '../../base/app-icon-picker'
 import type { AppIconSelection } from '../../base/app-icon-picker'
 import Button from '@/app/components/base/button'
@@ -28,13 +28,12 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
 
-type CreateAppDialogProps = {
-  show: boolean
+type CreateAppProps = {
   onSuccess: () => void
   onClose: () => void
 }
 
-const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
+function CreateApp({ onClose, onSuccess }: CreateAppProps) {
   const { t } = useTranslation()
   const { push } = useRouter()
   const { notify } = useContext(ToastContext)
@@ -86,140 +85,136 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
     isCreatingRef.current = false
   }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, mutateApps, push, isCurrentWorkspaceEditor])
 
+  const { run: handleCreateApp } = useDebounceFn(onCreate, { wait: 300 })
   useKeyPress(['meta.enter', 'ctrl.enter'], () => {
     if (isAppsFull)
       return
-    onCreate()
+    handleCreateApp()
   })
-  return (
-    <FullScreenModal
-      overflowVisible
-      closable
-      open={show}
-      onClose={onClose}
-    >
-      <div className='flex justify-center h-full'>
-        <div className='flex-1 flex justify-end'>
-          <div className='px-10 w-[740px] max-w-[760px]'>
-            <div className='w-full h-[139px]' />
-            <div className='pt-1 pb-6'>
-              <span className='title-2xl-semi-bold text-text-primary'>{t('app.newApp.startFromBlank')}</span>
+  return <>
+    <div className='flex justify-center h-full'>
+      <div className='flex-1 flex justify-end'>
+        <div className='px-10 w-[740px] max-w-[760px]'>
+          <div className='w-full h-6 xl:h-[139px]' />
+          <div className='pt-1 pb-6'>
+            <span className='title-2xl-semi-bold text-text-primary'>{t('app.newApp.startFromBlank')}</span>
+          </div>
+          <div className='leading-6 mb-2'>
+            <span className='system-sm-semibold text-text-secondary'>{t('app.newApp.chooseAppType')}</span>
+          </div>
+          <div className='flex flex-col gap-4'>
+            <div>
+              <div className='mb-2'>
+                <span className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.newApp.forBeginners')}</span>
+              </div>
+              <div className='flex flex-row gap-2'>
+                <AppTypeCard
+                  active={appMode === 'chat'}
+                  title={t('app.types.chatbot')}
+                  description={t('app.newApp.chatbotShortDescription')}
+                  tooltipContent={t('app.newApp.chatbotDescription')}
+                  icon={<Chatbot className='w-6 h-6' />}
+                  onClick={() => {
+                    setAppMode('chat')
+                  }} />
+                <AppTypeCard
+                  active={appMode === 'agent-chat'}
+                  title={t('app.types.agent')}
+                  description={t('app.newApp.agentShortDescription')}
+                  tooltipContent={t('app.newApp.agentDescription')}
+                  icon={<Agent className='w-6 h-6' />}
+                  onClick={() => {
+                    setAppMode('agent-chat')
+                  }} />
+                <AppTypeCard
+                  active={appMode === 'completion'}
+                  title={t('app.newApp.completeApp')}
+                  description={t('app.newApp.completionShortDescription')}
+                  tooltipContent={t('app.newApp.completionDescription')}
+                  icon={<TextGenerator className='w-6 h-6' />}
+                  onClick={() => {
+                    setAppMode('completion')
+                  }} />
+              </div>
             </div>
-            <div className='leading-6 mb-2'>
-              <span className='system-sm-semibold text-text-secondary'>Choose app type</span>
+            <div>
+              <div className='mb-2'>
+                <span className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.newApp.forAdvanced')}</span>
+              </div>
+              <div className='flex flex-row gap-2'>
+                <AppTypeCard
+                  active={appMode === 'advanced-chat'}
+                  title={t('app.types.advanced')}
+                  description={t('app.newApp.advancedShortDescription')}
+                  tooltipContent={t('app.newApp.advancedDescription')}
+                  icon={<ChatFlow className='w-6 h-6' />}
+                  onClick={() => {
+                    setAppMode('advanced-chat')
+                  }} />
+                <AppTypeCard
+                  active={appMode === 'workflow'}
+                  title={t('app.types.workflow')}
+                  description={t('app.newApp.workflowShortDescription')}
+                  tooltipContent={t('app.newApp.workflowDescription')}
+                  icon={<Workflow className='w-6 h-6' />}
+                  onClick={() => {
+                    setAppMode('workflow')
+                  }} />
+              </div>
             </div>
-            <div className='flex flex-col gap-4'>
-              {/* for beginners */}
-              <div>
-                <div className='mb-2'>
-                  <span className='system-2xs-medium-uppercase text-text-tertiary'>FOR BEGINNERS</span>
-                </div>
-                <div className='flex flex-row gap-2'>
-                  {/* chatbot */}
-                  <AppTypeCard
-                    active={appMode === 'chat'}
-                    title={t('app.types.chatbot')}
-                    description='LLM-Based chatbot with simple setup'
-                    tooltipContent={t('app.newApp.chatbotDescription')}
-                    icon={<Chatbot className='w-6 h-6' />}
-                    onClick={() => {
-                      setAppMode('chat')
-                    }} />
-                  {/* agent */}
-                  <AppTypeCard
-                    active={appMode === 'agent-chat'}
-                    title={t('app.types.agent')}
-                    description='LLM-Based chatbot with simple setup'
-                    tooltipContent={t('app.newApp.agentDescription')}
-                    icon={<Agent className='w-6 h-6' />}
-                    onClick={() => {
-                      setAppMode('agent-chat')
-                    }} />
-                  {/* text generator */}
-                  <AppTypeCard
-                    active={appMode === 'completion'}
-                    title={t('app.newApp.completeApp')}
-                    description='LLM-Based chatbot with simple setup'
-                    tooltipContent={t('app.newApp.completionDescription')}
-                    icon={<TextGenerator className='w-6 h-6' />}
-                    onClick={() => {
-                      setAppMode('completion')
-                    }} />
-                </div>
-              </div>
-              {/* for advanced */}
-              <div>
-                <div className='mb-2'>
-                  <span className='system-2xs-medium-uppercase text-text-tertiary'>FOR ADVANCED USERS</span>
-                </div>
-                <div className='flex flex-row gap-2'>
-                  {/* chat flow */}
-                  <AppTypeCard
-                    active={appMode === 'advanced-chat'}
-                    title={t('app.newApp.advanced')}
-                    description={t('app.newApp.advancedFor')}
-                    tooltipContent={t('app.newApp.advancedDescription')}
-                    icon={<ChatFlow className='w-6 h-6' />}
-                    onClick={() => {
-                      setAppMode('advanced-chat')
-                    }} />
-                  {/* workflow */}
-                  <AppTypeCard
-                    active={appMode === 'workflow'}
-                    title={t('app.types.workflow')}
-                    description={t('app.newApp.captionAppType')}
-                    tooltipContent={t('app.newApp.workflowDescription')}
-                    icon={<Workflow className='w-6 h-6' />}
-                    onClick={() => {
-                      setAppMode('workflow')
-                    }} />
-                </div>
-              </div>
-              <Divider style={{ margin: 0 }} />
-              <div className='flex space-x-3 items-center'>
-                <div className='flex-1'>
-                  <div className='h-6 flex items-center mb-1'>
-                    <label className='system-sm-semibold text-text-secondary'>{t('app.newApp.captionName')}</label>
-                  </div>
-                  <Input
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder={t('app.newApp.appNamePlaceholder') || ''}
-                  />
-                </div>
-                <AppIcon
-                  iconType={appIcon.type}
-                  icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
-                  background={appIcon.type === 'emoji' ? appIcon.background : undefined}
-                  imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                  size='xxl' className='cursor-pointer rounded-2xl'
-                  onClick={() => { setShowAppIconPicker(true) }}
-                />
-                {showAppIconPicker && <AppIconPicker
-                  onSelect={(payload) => {
-                    setAppIcon(payload)
-                    setShowAppIconPicker(false)
-                  }}
-                  onClose={() => {
-                    setShowAppIconPicker(false)
-                  }}
-                />}
-              </div>
-              <div>
+            <Divider style={{ margin: 0 }} />
+            <div className='flex space-x-3 items-center'>
+              <div className='flex-1'>
                 <div className='h-6 flex items-center mb-1'>
-                  <label className='system-sm-semibold text-text-secondary'>{t('app.newApp.captionDescription')}</label>
+                  <label className='system-sm-semibold text-text-secondary'>{t('app.newApp.captionName')}</label>
                 </div>
-                <Textarea
-                  className='resize-none'
-                  placeholder={t('app.newApp.appDescriptionPlaceholder') || ''}
-                  value={description}
-                  onChange={e => setDescription(e.target.value)}
+                <Input
+                  value={name}
+                  onChange={e => setName(e.target.value)}
+                  placeholder={t('app.newApp.appNamePlaceholder') || ''}
                 />
               </div>
+              <AppIcon
+                iconType={appIcon.type}
+                icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
+                background={appIcon.type === 'emoji' ? appIcon.background : undefined}
+                imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+                size='xxl' className='cursor-pointer rounded-2xl'
+                onClick={() => { setShowAppIconPicker(true) }}
+              />
+              {showAppIconPicker && <AppIconPicker
+                onSelect={(payload) => {
+                  setAppIcon(payload)
+                  setShowAppIconPicker(false)
+                }}
+                onClose={() => {
+                  setShowAppIconPicker(false)
+                }}
+              />}
             </div>
-            <div className='px-8 py-6 flex justify-end'>
-              <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
-              <Button disabled={isAppsFull || !name} className='gap-1' variant="primary" onClick={onCreate}>
+            <div>
+              <div className='h-6 flex items-center mb-1'>
+                <label className='system-sm-semibold text-text-secondary'>{t('app.newApp.captionDescription')}</label>
+                <span className='system-xs-regular text-text-tertiary ml-1'>({t('app.newApp.optional')})</span>
+              </div>
+              <Textarea
+                className='resize-none'
+                placeholder={t('app.newApp.appDescriptionPlaceholder') || ''}
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className='pt-5 pb-10 flex justify-between items-center'>
+            <div className='flex gap-1 items-center system-xs-regular text-text-tertiary cursor-pointer'>
+              <span>{t('app.newApp.noIdeaTip')}</span>
+              <div className='p-[1px]'>
+                <RiArrowRightLine className='w-3.5 h-3.5' />
+              </div>
+            </div>
+            <div className='flex gap-2'>
+              <Button onClick={onClose}>{t('app.newApp.Cancel')}</Button>
+              <Button disabled={isAppsFull || !name} className='gap-1' variant="primary" onClick={handleCreateApp}>
                 <span>{t('app.newApp.Create')}</span>
                 <div className='flex gap-0.5'>
                   <RiCommandLine size={14} className='p-0.5 system-kbd bg-components-kbd-bg-white rounded-sm' />
@@ -229,32 +224,42 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
             </div>
           </div>
         </div>
-        <div className='flex-1 h-full flex justify-start relative'>
-          <div className='h-[139px] absolute left-0 top-0 right-0 border-b  border-b-divider-subtle'></div>
-          <div className='w-[740px] max-w-[760px] border-x border-x-divider-subtle'>
-            <div className='h-[139px]' />
-            <div className='px-8 py-4'>
-              <h4 className='system-sm-semibold-uppercase text-text-secondary'>CHAT FLOW</h4>
-              <p className='mt-1 system-xs-regular text-text-tertiary'>
-                Workflow orchestration for multi-round complex <br /> dialogue tasks with memory capabilities. <Link href='' className='text-text-accent'>Learn more</Link>
-              </p>
-            </div>
-            <div className='absolute left-0 right-0 border-b border-b-divider-subtle'></div>
-            <div className='min-w-[600px] min-h-[400px]' style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 4px, rgba(16,24,40,0.04) 5px,transparent 4px, transparent 8px)' }}>
-              <AppScreenShot mode={appMode} />
-            </div>
-            <div className='absolute left-0 right-0 border-b border-b-divider-subtle'></div>
+      </div>
+      <div className='flex-1 h-full flex justify-start relative'>
+        <div className='h-6 xl:h-[139px] absolute left-0 top-0 right-0 border-b border-b-divider-subtle'></div>
+        <div className='w-[740px] max-w-[760px] border-x border-x-divider-subtle'>
+          <div className='h-6 xl:h-[139px]' />
+          <AppPreview mode={appMode} />
+          <div className='absolute left-0 right-0 border-b border-b-divider-subtle'></div>
+          <div className='min-w-[600px] min-h-[400px]' style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 4px, rgba(16,24,40,0.04) 5px,transparent 4px, transparent 8px)' }}>
+            <AppScreenShot mode={appMode} />
           </div>
+          <div className='absolute left-0 right-0 border-b border-b-divider-subtle'></div>
         </div>
       </div>
-      {
-        isAppsFull && (
-          <div className='px-8 py-2'>
-            <AppsFull loc='app-create' />
-          </div>
-        )
-      }
-    </FullScreenModal >
+    </div>
+    {
+      isAppsFull && (
+        <div className='px-8 py-2'>
+          <AppsFull loc='app-create' />
+        </div>
+      )
+    }
+  </>
+}
+type CreateAppDialogProps = CreateAppProps & {
+  show: boolean
+}
+const CreateAppModal = ({ show, onClose, onSuccess }: CreateAppDialogProps) => {
+  return (
+    <FullScreenModal
+      overflowVisible
+      closable
+      open={show}
+      onClose={onClose}
+    >
+      <CreateApp onClose={onClose} onSuccess={onSuccess} />
+    </FullScreenModal>
   )
 }
 
@@ -286,6 +291,45 @@ function AppTypeCard({ icon, title, description, tooltipContent, active, onClick
       <div className='system-xs-regular text-text-tertiary'>{description}</div>
     </div>
   </Tooltip>
+}
+
+function AppPreview({ mode }: { mode: AppMode }) {
+  const { t } = useTranslation()
+  const modeToPreviewInfoMap = {
+    'chat': {
+      title: t('app.types.chatbot'),
+      description: t('app.newApp.chatbotUserDescription'),
+      link: 'https://docs.dify.ai/guides/application-orchestrate/conversation-application?fallback=true',
+    },
+    'advanced-chat': {
+      title: t('app.types.advanced'),
+      description: t('app.newApp.advancedUserDescription'),
+      link: 'https://docs.dify.ai/guides/workflow',
+    },
+    'agent-chat': {
+      title: t('app.types.agent'),
+      description: t('app.newApp.agentUserDescription'),
+      link: 'https://docs.dify.ai/guides/application-orchestrate/agent',
+    },
+    'completion': {
+      title: t('app.newApp.completeApp'),
+      description: t('app.newApp.completionUserDescription'),
+      link: null,
+    },
+    'workflow': {
+      title: t('app.types.workflow'),
+      description: t('app.newApp.workflowUserDescription'),
+      link: 'https://docs.dify.ai/guides/workflow',
+    },
+  }
+  const previewInfo = modeToPreviewInfoMap[mode]
+  return <div className='px-8 py-4'>
+    <h4 className='system-sm-semibold-uppercase text-text-secondary'>{previewInfo.title}</h4>
+    <div className='mt-1 system-xs-regular text-text-tertiary max-w-96 min-h-8'>
+      <span>{previewInfo.description}</span>
+      {previewInfo.link && <Link target='_blank' href={previewInfo.link} className='text-text-accent ml-1'>{t('app.newApp.learnMore')}</Link>}
+    </div>
+  </div>
 }
 
 function AppScreenShot({ mode }: { mode: AppMode }) {
