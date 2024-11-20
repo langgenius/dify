@@ -257,7 +257,7 @@ export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[]) 
 export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[]) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByInfo', infos],
-    queryFn: () => postMarketplace<{ data: PluginsFromMarketplaceByInfoResponse }>('/plugins/versions', {
+    queryFn: () => postMarketplace<{ data: PluginsFromMarketplaceByInfoResponse }>('/plugins/versions/batch', {
       body: {
         plugin_tuples: infos.map(info => ({
           org: info.organization,

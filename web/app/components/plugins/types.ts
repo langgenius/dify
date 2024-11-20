@@ -311,10 +311,13 @@ export type PluginsFromMarketplaceResponse = {
   plugins: Plugin[]
 }
 export type PluginsFromMarketplaceByInfoResponse = {
-  versions: {
-    plugin_name: string
-    plugin_org: string
-    unique_identifier: string
+  list: {
+    plugin: Plugin
+    version: {
+      plugin_name: string
+      plugin_org: string
+      unique_identifier: string
+    }
   }[]
 }
 

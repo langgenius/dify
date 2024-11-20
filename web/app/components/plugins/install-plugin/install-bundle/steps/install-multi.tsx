@@ -89,17 +89,17 @@ const InstallByDSLList: FC<Props> = ({
   }, [isFetchingMarketplaceDataFromDSL])
 
   useEffect(() => {
-    if (!isFetchingMarketplaceDataFromLocal && marketplaceResFromLocalRes?.data.versions) {
-      const payloads = marketplaceResFromLocalRes?.data.versions
+    if (!isFetchingMarketplaceDataFromLocal && marketplaceResFromLocalRes?.data.list) {
+      const payloads = marketplaceResFromLocalRes?.data.list
       const failedIndex: number[] = []
       const nextPlugins = produce(getPlugins(), (draft) => {
         marketPlaceInDSLIndex.forEach((index, i) => {
           if (payloads[i]) {
             const item = payloads[i]
-            draft[index] = { // TODO: wait for api change
-              name: 'xxx',
-              plugin_id: item.unique_identifier,
-            } as Plugin
+            draft[index] = {
+              ...item.plugin,
+              plugin_id: item.version.unique_identifier,
+            }
           }
           else {
             failedIndex.push(index)
