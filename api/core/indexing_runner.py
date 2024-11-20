@@ -29,6 +29,7 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
+from core.tools.utils.text_processing_utils import remove_leading_symbols
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -500,11 +501,7 @@ class IndexingRunner:
                     document_node.metadata["doc_hash"] = hash
                     # delete Splitter character
                     page_content = document_node.page_content
-                    if page_content.startswith(".") or page_content.startswith("。"):
-                        page_content = page_content[1:]
-                    else:
-                        page_content = page_content
-                    document_node.page_content = page_content
+                    document_node.page_content = remove_leading_symbols(page_content)
 
                     if document_node.page_content:
                         split_documents.append(document_node)
@@ -554,7 +551,7 @@ class IndexingRunner:
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
             except Exception as e:
-                logging.exception(e)
+                logging.exception("Failed to format qa document")
 
             all_qa_documents.extend(format_documents)
 

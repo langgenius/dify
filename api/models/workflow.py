@@ -169,9 +169,9 @@ class Workflow(db.Model):
             )
             features["file_upload"]["enabled"] = image_enabled
             features["file_upload"]["number_limits"] = image_number_limits
-            features["file_upload"]["allowed_upload_methods"] = image_transfer_methods
+            features["file_upload"]["allowed_file_upload_methods"] = image_transfer_methods
             features["file_upload"]["allowed_file_types"] = ["image"]
-            features["file_upload"]["allowed_extensions"] = []
+            features["file_upload"]["allowed_file_extensions"] = []
             del features["file_upload"]["image"]
             self._features = json.dumps(features)
         return self._features

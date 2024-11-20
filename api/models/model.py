@@ -719,6 +719,7 @@ class Message(db.Model):
         db.Index("message_end_user_idx", "app_id", "from_source", "from_end_user_id"),
         db.Index("message_account_idx", "app_id", "from_source", "from_account_id"),
         db.Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
+        db.Index("message_created_at_idx", "created_at"),
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))

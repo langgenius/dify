@@ -180,6 +180,20 @@ def _get_remote_file_info(url: str):
     return mime_type, filename, file_size
 
 
+def _get_file_type_by_mimetype(mime_type: str) -> FileType:
+    if "image" in mime_type:
+        file_type = FileType.IMAGE
+    elif "video" in mime_type:
+        file_type = FileType.VIDEO
+    elif "audio" in mime_type:
+        file_type = FileType.AUDIO
+    elif "text" in mime_type or "pdf" in mime_type:
+        file_type = FileType.DOCUMENT
+    else:
+        file_type = FileType.CUSTOM
+    return file_type
+
+
 def _build_from_tool_file(
     *,
     mapping: Mapping[str, Any],
@@ -199,12 +213,13 @@ def _build_from_tool_file(
         raise ValueError(f"ToolFile {mapping.get('tool_file_id')} not found")
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
+    file_type = mapping.get("type", _get_file_type_by_mimetype(tool_file.mimetype))
 
     return File(
         id=mapping.get("id"),
         tenant_id=tenant_id,
         filename=tool_file.name,
-        type=FileType.value_of(mapping.get("type")),
+        type=file_type,
         transfer_method=transfer_method,
         remote_url=tool_file.original_url,
         related_id=tool_file.id,
@@ -218,10 +233,10 @@ def _is_file_valid_with_config(*, file: File, config: FileUploadConfig) -> bool:
     if config.allowed_file_types and file.type not in config.allowed_file_types and file.type != FileType.CUSTOM:
         return False
 
-    if config.allowed_extensions and file.extension not in config.allowed_extensions:
+    if config.allowed_file_extensions and file.extension not in config.allowed_file_extensions:
         return False
 
-    if config.allowed_upload_methods and file.transfer_method not in config.allowed_upload_methods:
+    if config.allowed_file_upload_methods and file.transfer_method not in config.allowed_file_upload_methods:
         return False
 
     if file.type == FileType.IMAGE and config.image_config:

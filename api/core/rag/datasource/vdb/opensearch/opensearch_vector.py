@@ -158,7 +158,7 @@ class OpenSearchVector(BaseVector):
         try:
             response = self._client.search(index=self._collection_name.lower(), body=query)
         except Exception as e:
-            logger.exception(f"Error executing search: {e}")
+            logger.exception(f"Error executing vector search, query: {query}")
             raise
 
         docs = []
