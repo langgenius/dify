@@ -17,7 +17,7 @@ class GooglenewsTool(BuiltinTool):
         """
         key = self.runtime.credentials.get("x-rapidapi-key","")
         host = self.runtime.credentials.get("x-rapidapi-host","")
-        if not key or key is None or host is None or not host:
+        if not all([key, host]):
             raise ToolProviderCredentialValidationError("Please input correct x-rapidapi-key and x-rapidapi-host")
         headers = {
             "x-rapidapi-key": key,
