@@ -13,7 +13,7 @@ const PluginList = () => {
   const pluginList = [toolNotion, extensionDallE, modelGPT4, customTool]
   const [isShow, {
     setFalse: hide,
-  }] = useBoolean(false)
+  }] = useBoolean(true)
 
   return (
     <div className='pb-3 bg-white'>
@@ -22,12 +22,12 @@ const PluginList = () => {
         <InstallBundle
           onClose={hide}
           fromDSLPayload={[
-            // {
-            //   type: 'marketplace',
-            //   value: {
-            //     plugin_unique_identifier: 'langgenius/google:0.0.2@dcb354c9d0fee60e6e9c9eb996e1e485bbef343ba8cd545c0cfb3ec80970f6f1',
-            //   },
-            // },
+            {
+              type: 'marketplace',
+              value: {
+                plugin_unique_identifier: 'langgenius/google:0.0.2@dcb354c9d0fee60e6e9c9eb996e1e485bbef343ba8cd545c0cfb3ec80970f6f1',
+              },
+            },
             {
               type: 'github',
               value: {

@@ -8,6 +8,7 @@ import { useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
 import produce from 'immer'
 import { useGetState } from 'ahooks'
 import PackageItem from '../item/package-item'
+import LoadingError from '../../base/loading-error'
 
 type Props = {
   allPlugins: Dependency[]
@@ -105,7 +106,7 @@ const InstallByDSLList: FC<Props> = ({
       {allPlugins.map((d, index) => {
         if (errorIndexes.includes(index)) {
           return (
-            <div key={index}>error</div>
+            <LoadingError key={index} />
           )
         }
         if (d.type === 'github') {
