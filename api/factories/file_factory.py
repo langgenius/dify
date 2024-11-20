@@ -233,10 +233,10 @@ def _is_file_valid_with_config(*, file: File, config: FileUploadConfig) -> bool:
     if config.allowed_file_types and file.type not in config.allowed_file_types and file.type != FileType.CUSTOM:
         return False
 
-    if config.allowed_extensions and file.extension not in config.allowed_extensions:
+    if config.allowed_file_extensions and file.extension not in config.allowed_file_extensions:
         return False
 
-    if config.allowed_upload_methods and file.transfer_method not in config.allowed_upload_methods:
+    if config.allowed_file_upload_methods and file.transfer_method not in config.allowed_file_upload_methods:
         return False
 
     if file.type == FileType.IMAGE and config.image_config:

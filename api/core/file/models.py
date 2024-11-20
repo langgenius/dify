@@ -28,8 +28,8 @@ class FileUploadConfig(BaseModel):
 
     image_config: Optional[ImageConfig] = None
     allowed_file_types: Sequence[FileType] = Field(default_factory=list)
-    allowed_extensions: Sequence[str] = Field(default_factory=list)
-    allowed_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
+    allowed_file_extensions: Sequence[str] = Field(default_factory=list)
+    allowed_file_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
     number_limits: int = 0
 
 
