@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import useSWR from 'swr'
-import { ArrowLeftIcon } from '@heroicons/react/24/solid'
 import { createContext, useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { omit } from 'lodash-es'
+import { RiArrowDownSLine, RiArrowLeftLine, RiLayoutRight2Line } from '@remixicon/react'
 import { OperationAction, StatusItem } from '../list'
 import s from '../style.module.css'
 import Completed from './completed'
@@ -21,7 +21,7 @@ import Loading from '@/app/components/base/loading'
 import type { MetadataType } from '@/service/datasets'
 import { checkSegmentBatchImportProgress, fetchDocumentDetail, segmentBatchImport } from '@/service/datasets'
 import { ToastContext } from '@/app/components/base/toast'
-import type { DocForm } from '@/models/datasets'
+import type { DocForm, ParentMode, ProcessMode } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -31,17 +31,36 @@ export const DocumentContext = createContext<{ datasetId?: string; documentId?: 
 type DocumentTitleProps = {
   extension?: string
   name?: string
+  processMode?: ProcessMode
+  parent_mode?: ParentMode
   iconCls?: string
   textCls?: string
   wrapperCls?: string
 }
 
-export const DocumentTitle: FC<DocumentTitleProps> = ({ extension, name, iconCls, textCls, wrapperCls }) => {
+export const DocumentTitle: FC<DocumentTitleProps> = ({ extension, name, processMode, parent_mode, iconCls, textCls, wrapperCls }) => {
   const localExtension = extension?.toLowerCase() || name?.split('.')?.pop()?.toLowerCase()
-  return <div className={cn('flex items-center justify-start flex-1', wrapperCls)}>
-    <div className={cn(s[`${localExtension || 'txt'}Icon`], style.titleIcon, iconCls)}></div>
-    <span className={cn('font-semibold text-lg text-gray-900 ml-1', textCls)}> {name || '--'}</span>
-  </div>
+  return (
+    <div className={cn('flex items-center justify-start flex-1 cursor-pointer', wrapperCls)}>
+      {/* // todo: add file switcher */}
+      <div className='flex items-center ml-1 px-2 py-0.5 rounded-lg hover:bg-state-base-hover'>
+        {/* // todo: add icons map */}
+        <div className={cn(s[`${localExtension || 'txt'}Icon`], style.titleIcon, iconCls)}></div>
+        <div className='flex flex-col items-start ml-1 mr-0.5'>
+          <div className='flex items-center'>
+            <span className={cn('system-md-semibold', textCls)}> {name || '--'}</span>
+            <RiArrowDownSLine className='h-4 w-4 text-text-primary'/>
+          </div>
+          <div className='flex items-center gap-x-0.5'>
+            <div className='w-3 h-3 bg-text-tertiary'/>
+            <span className={'system-2xs-medium-uppercase'}>
+              {`${processMode || '--'}${processMode === 'hierarchical' ? `·${parent_mode || '--'}` : ''}`}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 type Props = {
@@ -130,14 +149,17 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
   return (
     <DocumentContext.Provider value={{ datasetId, documentId, docForm: documentDetail?.doc_form || '' }}>
       <div className='flex flex-col h-full'>
-        <div className='flex min-h-16 border-b-gray-100 border-b items-center p-4 justify-between flex-wrap gap-y-2'>
-          <div onClick={backToPrev} className={'shrink-0 rounded-full w-8 h-8 flex justify-center items-center border-gray-100 cursor-pointer border hover:border-gray-300 shadow-[0px_12px_16px_-4px_rgba(16,24,40,0.08),0px_4px_6px_-2px_rgba(16,24,40,0.03)]'}>
-            <ArrowLeftIcon className='text-primary-600 fill-current stroke-current h-4 w-4' />
+        <div className='flex items-center justify-between flex-wrap min-h-16 pl-3 pr-4 py-2.5 border-b border-b-divider-subtle'>
+          <div onClick={backToPrev} className={'shrink-0 rounded-full w-8 h-8 flex justify-center items-center cursor-pointer hover:bg-components-button-tertiary-bg'}>
+            <RiArrowLeftLine className='text-components-button-ghost-text hover:text-text-tertiary w-4 h-4' />
           </div>
-          <Divider className='!h-4' type='vertical' />
-          <DocumentTitle extension={documentDetail?.data_source_info?.upload_file?.extension} name={documentDetail?.name} />
-          <div className='flex items-center flex-wrap gap-y-2'>
-            <StatusItem status={documentDetail?.display_status || 'available'} scene='detail' errorMessage={documentDetail?.error || ''} />
+          <DocumentTitle
+            extension={documentDetail?.data_source_info?.upload_file?.extension}
+            name={documentDetail?.name}
+            wrapperCls='mr-2'
+            processMode={documentDetail?.dataset_process_rule?.mode}
+          />
+          <div className='flex items-center flex-wrap'>
             {embeddingAvailable && documentDetail && !documentDetail.archived && (
               <SegmentAdd
                 importStatus={importStatus}
@@ -146,6 +168,20 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
                 showBatchModal={showBatchModal}
               />
             )}
+            <Divider type='vertical' className='!bg-divider-regular !h-[14px] !mx-3'/>
+            <StatusItem
+              status={documentDetail?.display_status || 'available'}
+              scene='detail'
+              errorMessage={documentDetail?.error || ''}
+              textCls='font-semibold text-xs uppercase'
+              detail={{
+                enabled: documentDetail?.enabled || false,
+                archived: documentDetail?.archived || false,
+                id: documentId,
+              }}
+              datasetId={datasetId}
+              onUpdate={handleOperate}
+            />
             <OperationAction
               scene='detail'
               embeddingAvailable={embeddingAvailable}
@@ -159,12 +195,14 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
               }}
               datasetId={datasetId}
               onUpdate={handleOperate}
-              className='!w-[216px]'
+              className='!w-[200px]'
             />
             <button
-              className={cn(style.layoutRightIcon, showMetadata ? style.iconShow : style.iconClose)}
+              className={style.layoutRightIcon}
               onClick={() => setShowMetadata(!showMetadata)}
-            />
+            >
+              <RiLayoutRight2Line className={cn('w-4 h-4', showMetadata ? 'text-components-button-secondary-accent-text' : 'text-components-button-secondary-text')} />
+            </button>
           </div>
         </div>
         <div className='flex flex-row flex-1' style={{ height: 'calc(100% - 4rem)' }}>

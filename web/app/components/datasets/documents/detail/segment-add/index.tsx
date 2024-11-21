@@ -66,13 +66,13 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
 
   return (
     <div className='flex items-center rounded-lg border-[0.5px] border-components-button-secondary-border
-      bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] mr-2'>
+      bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] relative z-20'>
       <div
         className='inline-flex items-center px-2.5 py-2 border-r-[1px] border-r-divider-subtle cursor-pointer'
         onClick={showNewSegmentModal}
       >
         <RiAddLine className='w-4 h-4 text-components-button-secondary-accent-text' />
-        <span className='text-components-button-secondary-accent-text text-[13px] leading-[16px] font-medium px-0.5 ml-0.5'>
+        <span className='text-components-button-secondary-accent-text text-[13px] leading-[16px] font-medium capitalize px-0.5 ml-0.5'>
           {t('datasetDocuments.list.action.addButton')}
         </span>
       </div>
@@ -83,7 +83,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
         htmlContent={
           <div className='w-full p-1'>
             <div
-              className='py-1.5 px-2 flex items-center hover:bg-state-base-hover rounded-lg cursor-pointer text-text-tertiary system-md-regular'
+              className='py-1.5 px-2 flex items-center hover:bg-state-base-hover rounded-lg cursor-pointer text-text-secondary system-md-regular'
               onClick={showBatchModal}
             >
               {t('datasetDocuments.list.action.batchAdd')}
@@ -99,7 +99,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
           open ? '!bg-state-base-hover' : '')}
         popupClassName='!min-w-[128px] !bg-components-panel-bg-blur !rounded-xl border-[0.5px] !ring-0
           border-components-panel-border !shadow-xl !shadow-shadow-shadow-5 backdrop-blur-[5px]'
-        className='min-w-[128px] h-fit !z-20'
+        className='min-w-[128px] h-fit'
       />
     </div>
   )
