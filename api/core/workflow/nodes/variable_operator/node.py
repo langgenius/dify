@@ -10,7 +10,7 @@ from factories import variable_factory
 from models import ConversationVariable
 from models.workflow import WorkflowNodeExecutionStatus
 
-from .exc import VariableOperatorNodeError
+from .common.exc import VariableOperatorNodeError
 from .node_data import VariableOperatorData, WriteMode
 
 
