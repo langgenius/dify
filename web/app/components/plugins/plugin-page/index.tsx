@@ -77,6 +77,7 @@ const PluginPage = ({
       if (packageId) {
         const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
         const { plugin } = data
+        // TODO: wait api return current plugin version
         setManifest({
           ...plugin,
           icon: `${marketplaceApiPrefix}/plugins/${plugin.org}/${plugin.name}/icon`,
@@ -84,6 +85,7 @@ const PluginPage = ({
         showInstallFromMarketplace()
       }
     })()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [packageId])
 
   const {
