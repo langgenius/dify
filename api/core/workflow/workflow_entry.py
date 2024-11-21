@@ -17,7 +17,7 @@ from core.workflow.graph_engine.entities.graph_init_params import GraphInitParam
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes import NodeType
-from core.workflow.nodes.base import BaseNode, BaseNodeData
+from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.event import NodeEvent
 from core.workflow.nodes.node_mapping import node_type_classes_mapping
 from factories import file_factory
@@ -113,7 +113,12 @@ class WorkflowEntry:
 
     @classmethod
     def single_step_run(
-        cls, workflow: Workflow, node_id: str, user_id: str, user_inputs: dict
+        cls,
+        *,
+        workflow: Workflow,
+        node_id: str,
+        user_id: str,
+        user_inputs: dict,
     ) -> tuple[BaseNode, Generator[NodeEvent | InNodeEvent, None, None]]:
         """
         Single step run workflow node
@@ -133,13 +138,9 @@ class WorkflowEntry:
             raise ValueError("nodes not found in workflow graph")
 
         # fetch node config from node id
-        node_config = None
-        for node in nodes:
-            if node.get("id") == node_id:
-                node_config = node
-                break
-
-        if not node_config:
+        try:
+            node_config = next(filter(lambda node: node["id"] == node_id, nodes))
+        except StopIteration:
             raise ValueError("node id not found in workflow graph")
 
         # Get node class
@@ -151,11 +152,7 @@ class WorkflowEntry:
             raise ValueError(f"Node class not found for node type {node_type}")
 
         # init variable pool
-        variable_pool = VariablePool(
-            system_variables={},
-            user_inputs={},
-            environment_variables=workflow.environment_variables,
-        )
+        variable_pool = VariablePool(environment_variables=workflow.environment_variables)
 
         # init graph
         graph = Graph.init(graph_config=workflow.graph_dict)
@@ -181,28 +178,24 @@ class WorkflowEntry:
 
         try:
             # variable selector to variable mapping
-            try:
-                variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                    graph_config=workflow.graph_dict, config=node_config
-                )
-            except NotImplementedError:
-                variable_mapping = {}
-
-            cls.mapping_user_inputs_to_variable_pool(
-                variable_mapping=variable_mapping,
-                user_inputs=user_inputs,
-                variable_pool=variable_pool,
-                tenant_id=workflow.tenant_id,
-                node_type=node_type,
-                node_data=node_instance.node_data,
+            variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
+                graph_config=workflow.graph_dict, config=node_config
             )
+        except NotImplementedError:
+            variable_mapping = {}
 
+        cls.mapping_user_inputs_to_variable_pool(
+            variable_mapping=variable_mapping,
+            user_inputs=user_inputs,
+            variable_pool=variable_pool,
+            tenant_id=workflow.tenant_id,
+        )
+        try:
             # run node
             generator = node_instance.run()
-
-            return node_instance, generator
         except Exception as e:
             raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
+        return node_instance, generator
 
     @staticmethod
     def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
@@ -229,12 +222,11 @@ class WorkflowEntry:
     @classmethod
     def mapping_user_inputs_to_variable_pool(
         cls,
+        *,
         variable_mapping: Mapping[str, Sequence[str]],
         user_inputs: dict,
         variable_pool: VariablePool,
         tenant_id: str,
-        node_type: NodeType,
-        node_data: BaseNodeData,
     ) -> None:
         for node_variable, variable_selector in variable_mapping.items():
             # fetch node id and variable key from node_variable
@@ -252,7 +244,7 @@ class WorkflowEntry:
             # fetch variable node id from variable selector
             variable_node_id = variable_selector[0]
             variable_key_list = variable_selector[1:]
-            variable_key_list = cast(list[str], variable_key_list)
+            variable_key_list = list(variable_key_list)
 
             # get input value
             input_value = user_inputs.get(node_variable)
