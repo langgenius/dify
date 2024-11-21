@@ -59,6 +59,7 @@ const Item: FC<Props> = ({
             onOpenChange={setOpen}
             author={payload.org}
             name={payload.name}
+            version={payload.latest_version}
           />
         </div>
         {isShowInstallModal && (

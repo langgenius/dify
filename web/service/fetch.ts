@@ -12,6 +12,7 @@ export const ContentType = {
   audio: 'audio/mpeg',
   form: 'application/x-www-form-urlencoded; charset=UTF-8',
   download: 'application/octet-stream', // for download
+  downloadZip: 'application/zip', // for download
   upload: 'multipart/form-data', // for upload
 }
 
@@ -193,7 +194,7 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   const contentType = res.headers.get('content-type')
   if (
     contentType
-    && [ContentType.download, ContentType.audio].includes(contentType)
+    && [ContentType.download, ContentType.audio, ContentType.downloadZip].includes(contentType)
   )
     return await res.blob() as T
 

@@ -344,3 +344,12 @@ export const useMutationCheckDependenciesBeforeImportDSL = () => {
 
   return mutation
 }
+
+export const useDownloadPlugin = (info: { organization: string; pluginName: string; version: string }, needDownload: boolean) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'downloadPlugin', info],
+    queryFn: () => getMarketplace<Blob>(`/plugins/${info.organization}/${info.pluginName}/${info.version}/download`),
+    enabled: needDownload,
+    retry: 0,
+  })
+}
