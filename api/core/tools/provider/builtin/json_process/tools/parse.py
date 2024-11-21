@@ -40,6 +40,9 @@ class JSONParseTool(BuiltinTool):
             expr = parse(json_filter)
             result = [match.value for match in expr.find(input_data)]
 
+            if not result:
+                return ""
+
             if len(result) == 1:
                 result = result[0]
 

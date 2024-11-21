@@ -341,7 +341,7 @@ class AppService:
             if not app_model_config:
                 return meta
 
-            agent_config = app_model_config.agent_mode_dict or {}
+            agent_config = app_model_config.agent_mode_dict
 
             # get all tools
             tools = agent_config.get("tools", [])
