@@ -79,6 +79,14 @@ const DetailHeader = ({
     return false
   }, [isFromMarketplace, latest_version, version])
 
+  const detailUrl = useMemo(() => {
+    if (isFromGitHub)
+      return `https://github.com/${meta!.repo}`
+    if (isFromMarketplace)
+      return `${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`
+    return ''
+  }, [author, isFromGitHub, isFromMarketplace, meta, name])
+
   const [isShowUpdateModal, {
     setTrue: showUpdateModal,
     setFalse: hideUpdateModal,
@@ -229,7 +237,7 @@ const DetailHeader = ({
             onInfo={showPluginInfo}
             onCheckVersion={handleUpdate}
             onRemove={showDeleteConfirm}
-            detailUrl={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`}
+            detailUrl={detailUrl}
           />
           <ActionButton onClick={onHide}>
             <RiCloseLine className='w-4 h-4' />
