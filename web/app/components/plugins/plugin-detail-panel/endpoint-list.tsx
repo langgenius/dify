@@ -13,23 +13,23 @@ import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-for
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
-import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
 import {
   useCreateEndpoint,
   useEndpointList,
   useInvalidateEndpointList,
 } from '@/service/use-endpoints'
+import type { PluginDetail } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
 
 type Props = {
-  showTopBorder?: boolean
+  detail: PluginDetail
 }
-const EndpointList = ({ showTopBorder }: Props) => {
+const EndpointList = ({ detail }: Props) => {
   const { t } = useTranslation()
-  const pluginDetail = usePluginPageContext(v => v.currentPluginDetail)
-  const pluginUniqueID = pluginDetail.plugin_unique_identifier
-  const declaration = pluginDetail.declaration.endpoint
-  const { data } = useEndpointList(pluginDetail.plugin_id)
+  const pluginUniqueID = detail.plugin_unique_identifier
+  const declaration = detail.declaration.endpoint
+  const showTopBorder = detail.declaration.tool
+  const { data } = useEndpointList(detail.plugin_id)
   const invalidateEndpointList = useInvalidateEndpointList()
 
   const [isShowEndpointModal, {
@@ -43,7 +43,7 @@ const EndpointList = ({ showTopBorder }: Props) => {
 
   const { mutate: createEndpoint } = useCreateEndpoint({
     onSuccess: async () => {
-      await invalidateEndpointList(pluginDetail.plugin_id)
+      await invalidateEndpointList(detail.plugin_id)
       hideEndpointModal()
     },
     onError: () => {
@@ -101,7 +101,7 @@ const EndpointList = ({ showTopBorder }: Props) => {
           <EndpointCard
             key={index}
             data={item}
-            handleChange={() => invalidateEndpointList(pluginDetail.plugin_id)}
+            handleChange={() => invalidateEndpointList(detail.plugin_id)}
           />
         ))}
       </div>

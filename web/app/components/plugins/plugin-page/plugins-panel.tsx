@@ -14,6 +14,7 @@ const PluginsPanel = () => {
   const [filters, setFilters] = usePluginPageContext(v => [v.filters, v.setFilters]) as [FilterState, (filter: FilterState) => void]
   const { data: pluginList, isLoading: isPluginListLoading } = useInstalledPluginList()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const currentPluginID = usePluginPageContext(v => v.currentPluginID)
 
   const { run: handleFilterChange } = useDebounceFn((filters: FilterState) => {
     setFilters(filters)
@@ -31,6 +32,11 @@ const PluginsPanel = () => {
     return filteredList
   }, [pluginList, filters])
 
+  const currentPluginDetail = useMemo(() => {
+    const detail = pluginList?.plugins.find(plugin => plugin.plugin_id === currentPluginID)
+    return detail
+  }, [currentPluginID, pluginList?.plugins])
+
   return (
     <>
       <div className='flex flex-col pt-1 pb-3 px-12 justify-center items-start gap-3 self-stretch'>
@@ -40,7 +46,7 @@ const PluginsPanel = () => {
         />
       </div>
       {isPluginListLoading ? <Loading type='app' /> : (filteredList?.length ?? 0) > 0 ? (
-        <div className='flex px-12 items-start content-start gap-2 flex-grow self-stretch flex-wrap'>
+        <div className='flex px-12 items-start content-start gap-2 grow self-stretch flex-wrap'>
           <div className='w-full'>
             <List pluginList={filteredList || []} />
           </div>
@@ -48,7 +54,7 @@ const PluginsPanel = () => {
       ) : (
         <Empty />
       )}
-      <PluginDetailPanel onUpdate={() => invalidateInstalledPluginList()}/>
+      <PluginDetailPanel detail={currentPluginDetail} onUpdate={() => invalidateInstalledPluginList()}/>
     </>
   )
 }

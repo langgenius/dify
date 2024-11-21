@@ -7,19 +7,21 @@ import ActionList from './action-list'
 import ModelList from './model-list'
 import Drawer from '@/app/components/base/drawer'
 import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
+import type { PluginDetail } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
 
 type Props = {
+  detail?: PluginDetail
   onUpdate: () => void
 }
 
 const PluginDetailPanel: FC<Props> = ({
+  detail,
   onUpdate,
 }) => {
-  const pluginDetail = usePluginPageContext(v => v.currentPluginDetail)
-  const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
+  const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
 
-  const handleHide = () => setCurrentPluginDetail(undefined)
+  const handleHide = () => setCurrentPluginID(undefined)
 
   const handleUpdate = (isDelete = false) => {
     if (isDelete)
@@ -27,12 +29,12 @@ const PluginDetailPanel: FC<Props> = ({
     onUpdate()
   }
 
-  if (!pluginDetail)
+  if (!detail)
     return null
 
   return (
     <Drawer
-      isOpen={!!pluginDetail}
+      isOpen={!!detail}
       clickOutsideNotOpen={false}
       onClose={handleHide}
       footer={null}
@@ -40,17 +42,17 @@ const PluginDetailPanel: FC<Props> = ({
       positionCenter={false}
       panelClassname={cn('justify-start mt-[64px] mr-2 mb-2 !w-[420px] !max-w-[420px] !p-0 !bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-xl')}
     >
-      {pluginDetail && (
+      {detail && (
         <>
           <DetailHeader
-            detail={pluginDetail}
+            detail={detail}
             onHide={handleHide}
             onUpdate={handleUpdate}
           />
           <div className='grow overflow-y-auto'>
-            {!!pluginDetail.declaration.tool && <ActionList />}
-            {!!pluginDetail.declaration.endpoint && <EndpointList showTopBorder={!!pluginDetail.declaration.tool} />}
-            {!!pluginDetail.declaration.model && <ModelList />}
+            {!!detail.declaration.tool && <ActionList detail={detail} />}
+            {!!detail.declaration.endpoint && <EndpointList detail={detail} />}
+            {!!detail.declaration.model && <ModelList detail={detail} />}
           </div>
         </>
       )}

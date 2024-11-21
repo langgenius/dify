@@ -1,14 +1,19 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
 import { useModelProviderModelList } from '@/service/use-models'
+import type { PluginDetail } from '@/app/components/plugins/types'
 
-const ModelList = () => {
+type Props = {
+  detail: PluginDetail
+}
+
+const ModelList = ({
+  detail,
+}: Props) => {
   const { t } = useTranslation()
-  const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
-  const { data: res } = useModelProviderModelList(`${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`)
+  const { data: res } = useModelProviderModelList(`${detail.plugin_id}/${detail.name}`)
 
   if (!res)
     return null
