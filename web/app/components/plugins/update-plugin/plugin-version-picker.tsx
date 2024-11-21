@@ -67,7 +67,7 @@ const PluginVersionPicker: FC<Props> = ({
       return
     onSelect({ version, unique_identifier })
     onShowChange(false)
-  }, [currentVersion, onSelect])
+  }, [currentVersion, onSelect, onShowChange])
 
   return (
     <PortalToFollowElem
