@@ -14,7 +14,6 @@ import {
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
 import Image from 'next/image'
-import { Switch } from '@headlessui/react'
 import SettingCog from '../assets/setting-gear-mod.svg'
 import OrangeEffect from '../assets/option-card-effect-orange.svg'
 import FamilyMod from '../assets/family-mod.svg'
@@ -28,6 +27,7 @@ import unescape from './unescape'
 import escape from './escape'
 import { OptionCard } from './option-card'
 import LanguageSelect from './language-select'
+import { DelimiterInput, MaxLengthInput, OverlapInput } from './inputs'
 import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
@@ -37,7 +37,6 @@ import {
   fetchDefaultProcessRule,
 } from '@/service/datasets'
 import Button from '@/app/components/base/button'
-import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
@@ -62,6 +61,7 @@ import Checkbox from '@/app/components/base/checkbox'
 import RadioCard from '@/app/components/base/radio-card'
 import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
 import { IS_CE_EDITION } from '@/config'
+import Switch from '@/app/components/base/switch'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-[#354052] text-xs font-semibold leading-none'>{props.children}</label>
@@ -106,6 +106,19 @@ enum IndexingType {
 }
 
 const DEFAULT_SEGMENT_IDENTIFIER = '\\n\\n'
+
+type ParentChildConfig = {
+  chunkForContext: 'paragraph' | 'full_doc'
+  parent: {
+    delimiter: string
+    maxLength: number
+  }
+  child: {
+    delimiter: string
+    maxLength: number
+  }
+  rules: PreProcessingRule[]
+}
 
 const StepTwo = ({
   isSetting,
@@ -172,6 +185,19 @@ const StepTwo = ({
     return segmentationType === SegmentType.AUTO ? automaticFileIndexingEstimate : customFileIndexingEstimate
   })()
   const [isCreating, setIsCreating] = useState(false)
+
+  const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>({
+    chunkForContext: 'paragraph',
+    parent: {
+      delimiter: '\\n\\n',
+      maxLength: 4000,
+    },
+    child: {
+      delimiter: '\\n\\n',
+      maxLength: 4000,
+    },
+    rules: [],
+  })
 
   const scrollHandle = (e: Event) => {
     if ((e.target as HTMLDivElement).scrollTop > 0)
@@ -653,54 +679,19 @@ const StepTwo = ({
               >
                 <div className='space-y-4'>
                   <div className='flex gap-2'>
-                    <FormField label={<div className='flex'>
-                      {t('datasetCreation.stepTwo.separator')}
-                      <Tooltip
-                        popupContent={
-                          <div className='max-w-[200px]'>
-                            {t('datasetCreation.stepTwo.separatorTip')}
-                          </div>
-                        }
-                      />
-                    </div>}>
-                      <Input
-                        type="text"
-                        className='h-9'
-                        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''} value={segmentIdentifier}
-                        onChange={e => setSegmentIdentifier(e.target.value)}
-                      />
-                    </FormField>
-                    <FormField label={<div>
-                      {t('datasetCreation.stepTwo.maxLength')}
-                    </div>}>
-                      <Input
-                        type="number"
-                        className='h-9'
-                        placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
-                        value={max}
-                        max={4000}
-                        min={1}
-                        onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
-                      />
-                    </FormField>
-                    <FormField label={<div className='flex'>
-                      {t('datasetCreation.stepTwo.overlap')}
-                      <Tooltip
-                        popupContent={
-                          <div className='max-w-[200px]'>
-                            {t('datasetCreation.stepTwo.overlapTip')}
-                          </div>
-                        }
-                      />
-                    </div>}>
-                      <Input
-                        type="number"
-                        className='h-9'
-                        placeholder={t('datasetCreation.stepTwo.overlap') || ''}
-                        value={overlap}
-                        min={1}
-                        onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))} />
-                    </FormField>
+                    <DelimiterInput
+                      value={segmentIdentifier}
+                      onChange={e => setSegmentIdentifier(e.target.value)}
+                    />
+                    <MaxLengthInput
+                      value={max}
+                      onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                    />
+                    <OverlapInput
+                      value={overlap}
+                      min={1}
+                      onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                    />
                   </div>
                   <div className='space-y-2'>
                     <div className='w-full flex flex-col'>
@@ -740,58 +731,103 @@ const StepTwo = ({
                 }
               >
                 <div className='space-y-4'>
-                  <TextLabel>
+                  <div className='space-y-2'>
+                    <TextLabel>
                     Parent-chunk for Context
-                  </TextLabel>
-                  <RadioCard
-                    icon={<Image src={Note} alt='' />}
-                    title={'Paragraph'}
-                    description={'This mode splits the text in to paragraphs based on delimiters and the maximum chunk length, using the split text as the parent chunk for retrieval.'}
-                    isChosen={true}
-                    chosenConfig={
-                      <div className='flex gap-2'>
-                        <FormField label={'Delimiter'}>
-                          <Input type="text" placeholder={'\n\n'} value={segmentIdentifier} onChange={e => setSegmentIdentifier(e.target.value)} />
-                        </FormField>
-                        <FormField label={'Maximum chunk length'}>
-                          <Input type="number" placeholder={'\n\n'} value={segmentIdentifier} onChange={e => setSegmentIdentifier(e.target.value)} />
-                        </FormField>
-                      </div>
-                    }
-                  />
-                  <RadioCard
-                    icon={<Image src={FileList} alt='' />}
-                    title={'Full Doc'}
-                    description={'The entire document is used as the parent chunk and retrieved directly. Please note that for performance reasons, text exceeding 10000 tokens will be automatically truncated.'}
-                    isChosen={true}
-                  />
-
-                  <TextLabel>
-                    Child-chunk for Retrieval
-                  </TextLabel>
-                  <div className='flex gap-2'>
-                    <FormField label={'Delimiter'}>
-                      <Input type="text" placeholder={'\n'} value={segmentIdentifier} onChange={e => setSegmentIdentifier(e.target.value)} />
-                    </FormField>
-                    <FormField label={'Maximum chunk length'}>
-                      <Input type="number" placeholder={'\n'} value={segmentIdentifier} onChange={e => setSegmentIdentifier(e.target.value)} />
-                    </FormField>
+                    </TextLabel>
+                    <RadioCard
+                      icon={<Image src={Note} alt='' />}
+                      title={'Paragraph'}
+                      description={'This mode splits the text in to paragraphs based on delimiters and the maximum chunk length, using the split text as the parent chunk for retrieval.'}
+                      isChosen={parentChildConfig.chunkForContext === 'paragraph'}
+                      onChosen={() => setParentChildConfig(
+                        {
+                          ...parentChildConfig,
+                          chunkForContext: 'paragraph',
+                        },
+                      )}
+                      chosenConfig={
+                        <div className='flex gap-2'>
+                          <DelimiterInput
+                            value={parentChildConfig.parent.delimiter}
+                            onChange={e => setParentChildConfig({
+                              ...parentChildConfig,
+                              parent: {
+                                ...parentChildConfig.parent,
+                                delimiter: e.target.value,
+                              },
+                            })}
+                          />
+                          <MaxLengthInput
+                            value={parentChildConfig.parent.maxLength}
+                            onChange={e => setParentChildConfig({
+                              ...parentChildConfig,
+                              parent: {
+                                ...parentChildConfig.parent,
+                                maxLength: parseInt(e.target.value.replace(/^0+/, ''), 10),
+                              },
+                            })}
+                          />
+                        </div>
+                      }
+                    />
+                    <RadioCard
+                      icon={<Image src={FileList} alt='' />}
+                      title={'Full Doc'}
+                      description={'The entire document is used as the parent chunk and retrieved directly. Please note that for performance reasons, text exceeding 10000 tokens will be automatically truncated.'}
+                      onChosen={() => setParentChildConfig(
+                        {
+                          ...parentChildConfig,
+                          chunkForContext: 'full_doc',
+                        },
+                      )}
+                      isChosen={parentChildConfig.chunkForContext === 'full_doc'}
+                    />
                   </div>
 
-                  <TextLabel>
-                    Text Pre-processing Rules
-                  </TextLabel>
                   <div className='space-y-2'>
-                    {rules.map(rule => (
-                      <div key={rule.id} className={s.ruleItem} onClick={() => {
-                        ruleChangeHandle(rule.id)
-                      }}>
-                        <Checkbox
-                          checked={rule.enabled}
-                        />
-                        <label className="ml-2 text-sm font-normal cursor-pointer text-gray-800">{getRuleName(rule.id)}</label>
-                      </div>
-                    ))}
+                    <TextLabel>
+                      Child-chunk for Retrieval
+                    </TextLabel>
+                    <div className='flex gap-2'>
+                      <DelimiterInput
+                        value={parentChildConfig.child.delimiter}
+                        onChange={e => setParentChildConfig({
+                          ...parentChildConfig,
+                          child: {
+                            ...parentChildConfig.child,
+                            delimiter: e.target.value,
+                          },
+                        })}
+                      />
+                      <MaxLengthInput
+                        value={parentChildConfig.child.maxLength}
+
+                        onChange={e => setParentChildConfig({
+                          ...parentChildConfig,
+                          child: {
+                            ...parentChildConfig.child,
+                            maxLength: parseInt(e.target.value.replace(/^0+/, ''), 10),
+                          },
+                        })}
+                      />
+                    </div>
+
+                    <TextLabel>
+                    Text Pre-processing Rules
+                    </TextLabel>
+                    <div className='space-y-2'>
+                      {rules.map(rule => (
+                        <div key={rule.id} className={s.ruleItem} onClick={() => {
+                          ruleChangeHandle(rule.id)
+                        }}>
+                          <Checkbox
+                            checked={rule.enabled}
+                          />
+                          <label className="ml-2 text-sm font-normal cursor-pointer text-gray-800">{getRuleName(rule.id)}</label>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </OptionCard>
@@ -876,13 +912,11 @@ const StepTwo = ({
                       <LanguageSelect currentLanguage={docLanguage} onSelect={handleSelect} disabled={isLanguageSelectDisabled} />
                     </div>
                   </div>
-                  <div className='shrink-0'>
-                    <Switch
-                      defaultValue={docForm === DocForm.QA}
-                      onChange={handleSwitch}
-                      size='md'
-                    />
-                  </div>
+                  <Switch
+                    defaultValue={docForm === DocForm.QA}
+                    onChange={handleSwitch}
+                    size='md'
+                  />
                 </div>
                 {docForm === DocForm.QA && !QATipHide && (
                   <div className='flex justify-between items-center px-5 py-2 bg-orange-50 border-t border-amber-100 rounded-b-xl text-[13px] leading-[18px] text-medium text-amber-500'>
