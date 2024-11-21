@@ -11,7 +11,7 @@ from pymochow.model.table import Table
 from requests.adapters import HTTPAdapter
 
 
-class AttrDict(dict):
+class AttrDict(dict):   # noqa: FURB189
     def __getattr__(self, item):
         return self.get(item)
 

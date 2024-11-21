@@ -10,7 +10,7 @@ class ChatRole:
     FUNCTION = "function"
 
 
-class _Dict(dict):
+class _Dict(dict):   # noqa: FURB189
     __setattr__ = dict.__setitem__
     __getattr__ = dict.__getitem__
 

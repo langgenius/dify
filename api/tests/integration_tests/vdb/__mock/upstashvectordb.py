@@ -50,7 +50,7 @@ class MockIndex:
         return AttrDict({"dimension": 1024})
 
 
-class AttrDict(dict):
+class AttrDict(dict):   # noqa: FURB189
     def __getattr__(self, item):
         return self.get(item)
 

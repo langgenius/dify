@@ -67,6 +67,7 @@ class AppDslService:
         :param data: import data
         :param args: request args
         :param account: Account instance
+        :param asa_company_id: Optional company id
         """
         try:
             import_data = yaml.safe_load(data)
@@ -87,6 +88,7 @@ class AppDslService:
         icon = args.get("icon") or app_data.get("icon")
         icon_background = args.get("icon_background") or app_data.get("icon_background")
         use_icon_as_answer_icon = app_data.get("use_icon_as_answer_icon", False)
+        asa_company_id = args.get("asa_company_id") or app_data.get("asa_company_id")
 
         # import dsl and create app
         app_mode = AppMode.value_of(app_data.get("mode"))
@@ -102,6 +104,7 @@ class AppDslService:
                 icon=icon,
                 icon_background=icon_background,
                 use_icon_as_answer_icon=use_icon_as_answer_icon,
+                asa_company_id=asa_company_id,
             )
         elif app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION}:
             app = cls._import_and_create_new_model_config_based_app(
@@ -115,6 +118,7 @@ class AppDslService:
                 icon=icon,
                 icon_background=icon_background,
                 use_icon_as_answer_icon=use_icon_as_answer_icon,
+                asa_company_id=asa_company_id,
             )
         else:
             raise ValueError("Invalid app mode")
@@ -177,6 +181,10 @@ class AppDslService:
             },
         }
 
+        # Add asa_company_id to the root level if it is not None
+        if app_model.asa_company_id:
+            export_data["asa_company_id"] = app_model.asa_company_id
+
         if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             cls._append_workflow_export_data(
                 export_data=export_data, app_model=app_model, include_secret=include_secret
@@ -222,6 +230,7 @@ class AppDslService:
         icon: str,
         icon_background: str,
         use_icon_as_answer_icon: bool,
+        asa_company_id: str,
     ) -> App:
         """
         Import app dsl and create new workflow based app
@@ -239,7 +248,7 @@ class AppDslService:
         """
         if not workflow_data:
             raise ValueError("Missing workflow in data argument when app mode is advanced-chat or workflow")
-
+        
         app = cls._create_app(
             tenant_id=tenant_id,
             app_mode=app_mode,
@@ -250,6 +259,7 @@ class AppDslService:
             icon=icon,
             icon_background=icon_background,
             use_icon_as_answer_icon=use_icon_as_answer_icon,
+            asa_company_id=asa_company_id,
         )
 
         # init draft workflow
@@ -331,6 +341,7 @@ class AppDslService:
         icon: str,
         icon_background: str,
         use_icon_as_answer_icon: bool,
+        asa_company_id: str,
     ) -> App:
         """
         Import app dsl and create new model config based app
@@ -357,6 +368,7 @@ class AppDslService:
             icon=icon,
             icon_background=icon_background,
             use_icon_as_answer_icon=use_icon_as_answer_icon,
+            asa_company_id=asa_company_id,
         )
 
         app_model_config = AppModelConfig()
@@ -386,6 +398,7 @@ class AppDslService:
         icon: str,
         icon_background: str,
         use_icon_as_answer_icon: bool,
+        asa_company_id: str,
     ) -> App:
         """
         Create new app
@@ -413,6 +426,7 @@ class AppDslService:
             use_icon_as_answer_icon=use_icon_as_answer_icon,
             created_by=account.id,
             updated_by=account.id,
+            asa_company_id=asa_company_id,
         )
 
         db.session.add(app)

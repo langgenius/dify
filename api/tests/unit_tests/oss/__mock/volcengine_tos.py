@@ -14,7 +14,7 @@ from tests.unit_tests.oss.__mock.base import (
 )
 
 
-class AttrDict(dict):
+class AttrDict(dict):   # noqa: FURB189
     def __getattr__(self, item):
         return self.get(item)
 

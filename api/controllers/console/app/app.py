@@ -106,6 +106,7 @@ class AppImportApi(Resource):
         parser.add_argument("icon_type", type=str, location="json")
         parser.add_argument("icon", type=str, location="json")
         parser.add_argument("icon_background", type=str, location="json")
+        parser.add_argument("asa_company_id", type=str, location="json")
         args = parser.parse_args()
 
         app = AppDslService.import_and_create_new_app(

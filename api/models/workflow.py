@@ -107,6 +107,7 @@ class Workflow(db.Model):
     )
     updated_by: Mapped[str] = mapped_column(StringUUID)
     updated_at: Mapped[datetime] = mapped_column(db.DateTime)
+    asa_company_id: Mapped[str] = mapped_column(db.String(255), nullable=True)
     _environment_variables: Mapped[str] = mapped_column(
         "environment_variables", db.Text, nullable=False, server_default="{}"
     )
@@ -126,6 +127,7 @@ class Workflow(db.Model):
         created_by: str,
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable],
+        asa_company_id: Optional[str] = None,
     ):
         self.tenant_id = tenant_id
         self.app_id = app_id
@@ -136,6 +138,7 @@ class Workflow(db.Model):
         self.created_by = created_by
         self.environment_variables = environment_variables or []
         self.conversation_variables = conversation_variables or []
+        self.asa_company_id = asa_company_id
 
     @property
     def created_by_account(self):
@@ -144,6 +147,10 @@ class Workflow(db.Model):
     @property
     def updated_by_account(self):
         return db.session.get(Account, self.updated_by) if self.updated_by else None
+    
+    @property
+    def created_by_company(self):
+        return db.session.get(Account, self.asa_company_id) if self.asa_company_id else None
 
     @property
     def graph_dict(self) -> Mapping[str, Any]:

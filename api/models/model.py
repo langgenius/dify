@@ -96,7 +96,8 @@ class App(db.Model):
     updated_by = db.Column(StringUUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-
+    asa_company_id = db.Column(db.String(255), nullable=True)  # New column
+    
     @property
     def desc_or_prompt(self):
         if self.description:
@@ -255,6 +256,7 @@ class AppModelConfig(db.Model):
     dataset_configs = db.Column(db.Text)
     external_data_tools = db.Column(db.Text)
     file_upload = db.Column(db.Text)
+    asa_company_id = db.Column(db.String(255))
 
     @property
     def app(self):
@@ -394,6 +396,7 @@ class AppModelConfig(db.Model):
             "completion_prompt_config": self.completion_prompt_config_dict,
             "dataset_configs": self.dataset_configs_dict,
             "file_upload": self.file_upload_dict,
+            "asa_company_id": self.asa_company_id
         }
 
     def from_model_config_dict(self, model_config: dict):
@@ -440,6 +443,9 @@ class AppModelConfig(db.Model):
             json.dumps(model_config.get("dataset_configs")) if model_config.get("dataset_configs") else None
         )
         self.file_upload = json.dumps(model_config.get("file_upload")) if model_config.get("file_upload") else None
+        self.asa_company_id = (
+            json.dumps(model_config.get("asa_company_id")) if model_config.get("asa_company_id") else None
+        ) 
         return self
 
     def copy(self):
@@ -465,6 +471,7 @@ class AppModelConfig(db.Model):
             completion_prompt_config=self.completion_prompt_config,
             dataset_configs=self.dataset_configs,
             file_upload=self.file_upload,
+            asa_company_id=self.asa_company_id,
         )
 
         return new_app_model_config
@@ -515,6 +522,7 @@ class InstalledApp(db.Model):
     is_pinned = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     last_used_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    asa_company_id = db.Column(db.String(255), nullable=True)
 
     @property
     def app(self):

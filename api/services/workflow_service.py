@@ -108,6 +108,7 @@ class WorkflowService:
                 created_by=account.id,
                 environment_variables=environment_variables,
                 conversation_variables=conversation_variables,
+                asa_company_id=app_model.asa_company_id
             )
             db.session.add(workflow)
         # update draft workflow if found
@@ -118,6 +119,7 @@ class WorkflowService:
             workflow.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
+            workflow.asa_company_id = app_model.asa_company_id
 
         # commit db session changes
         db.session.commit()
@@ -148,6 +150,7 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=draft_workflow.type,
+            asa_company_id=app_model.asa_company_id,
             version=str(datetime.now(timezone.utc).replace(tzinfo=None)),
             graph=draft_workflow.graph,
             features=draft_workflow.features,

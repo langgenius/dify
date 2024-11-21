@@ -170,6 +170,7 @@ app_detail_fields_with_site = {
     "updated_by": fields.String,
     "updated_at": TimestampField,
     "deleted_tools": fields.List(fields.String),
+    'asa_company_id': fields.String,
 }
 
 app_site_fields = {
