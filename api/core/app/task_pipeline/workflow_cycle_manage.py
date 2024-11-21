@@ -428,7 +428,7 @@ class WorkflowCycleManage:
                 created_by=created_by,
                 created_at=int(workflow_run.created_at.timestamp()),
                 finished_at=int(workflow_run.finished_at.timestamp()),
-                files=self._fetch_files_from_node_outputs(dict(workflow_run.outputs_dict or {})),
+                files=self._fetch_files_from_node_outputs(workflow_run.outputs_dict),
             ),
         )
 
