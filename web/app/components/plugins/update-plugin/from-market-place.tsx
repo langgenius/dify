@@ -94,11 +94,9 @@ const UpdatePluginModal: FC<Props> = ({
       }
       return
     }
-    if (uploadStep === UploadStep.installed) {
+    if (uploadStep === UploadStep.installed)
       onSave()
-      onCancel()
-    }
-  }, [onCancel, onSave, uploadStep, check, originalPackageInfo.id, handleRefetch, targetPackageInfo.id])
+  }, [onSave, uploadStep, check, originalPackageInfo.id, handleRefetch, targetPackageInfo.id])
   const usedInAppInfo = useMemo(() => {
     return (
       <div className='flex px-0.5 justify-center items-center gap-0.5'>

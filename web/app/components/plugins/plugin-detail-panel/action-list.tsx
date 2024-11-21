@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
 import { useAppContext } from '@/context/app-context'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
@@ -14,19 +13,25 @@ import {
   useRemoveProviderCredentials,
   useUpdateProviderCredentials,
 } from '@/service/use-tools'
+import type { PluginDetail } from '@/app/components/plugins/types'
 
-const ActionList = () => {
+type Props = {
+  detail: PluginDetail
+}
+
+const ActionList = ({
+  detail,
+}: Props) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
-  const { data: provider } = useBuiltinProviderInfo(`${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`)
+  const { data: provider } = useBuiltinProviderInfo(`${detail.plugin_id}/${detail.name}`)
   const invalidateProviderInfo = useInvalidateBuiltinProviderInfo()
-  const { data } = useBuiltinTools(`${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`)
+  const { data } = useBuiltinTools(`${detail.plugin_id}/${detail.name}`)
 
   const [showSettingAuth, setShowSettingAuth] = useState(false)
 
   const handleCredentialSettingUpdate = () => {
-    invalidateProviderInfo(`${currentPluginDetail.plugin_id}/${currentPluginDetail.name}`)
+    invalidateProviderInfo(`${detail.plugin_id}/${detail.name}`)
     Toast.notify({
       type: 'success',
       message: t('common.api.actionSuccess'),
@@ -74,7 +79,7 @@ const ActionList = () => {
       <div className='flex flex-col gap-2'>
         {data.map(tool => (
           <ToolItem
-            key={`${currentPluginDetail.plugin_id}${tool.name}`}
+            key={`${detail.plugin_id}${tool.name}`}
             disabled={false}
             collection={provider}
             tool={tool}

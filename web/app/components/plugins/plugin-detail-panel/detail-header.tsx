@@ -31,6 +31,7 @@ import { uninstallPlugin } from '@/service/plugins'
 import { useGetLanguage } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import { useInvalidateAllToolProviders } from '@/service/use-tools'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 
@@ -52,6 +53,7 @@ const DetailHeader = ({
   const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
   const { refreshModelProviders } = useProviderContext()
+  const invalidateAllToolProviders = useInvalidateAllToolProviders()
 
   const {
     installation_id,
@@ -150,10 +152,12 @@ const DetailHeader = ({
     if (res.success) {
       hideDeleteConfirm()
       onUpdate(true)
-      if (category === PluginType.model)
+      if (PluginType.model.includes(category))
         refreshModelProviders()
+      if (PluginType.tool.includes(category))
+        invalidateAllToolProviders()
     }
-  }, [showDeleting, installation_id, hideDeleting, hideDeleteConfirm, onUpdate, category, refreshModelProviders])
+  }, [showDeleting, installation_id, hideDeleting, hideDeleteConfirm, onUpdate, category, refreshModelProviders, invalidateAllToolProviders])
 
   // #plugin TODO# used in apps
   // const usedInApps = 3
@@ -169,7 +173,7 @@ const DetailHeader = ({
             <Title title={label[locale]} />
             {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
             <PluginVersionPicker
-              disabled={!isFromMarketplace || !hasNewVersion}
+              disabled={!isFromMarketplace}
               isShow={isShow}
               onShowChange={setIsShow}
               pluginID={plugin_id}

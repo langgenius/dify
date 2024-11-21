@@ -2,11 +2,12 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import type { PluginDeclaration } from '../../types'
-import { InstallStep } from '../../types'
+import { InstallStep, PluginType } from '../../types'
 import Install from './steps/install'
 import Installed from '../base/installed'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-
+import { useUpdateModelProviders } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useInvalidateAllToolProviders } from '@/service/use-tools'
 type Props = {
   step: InstallStep
   onStepChange: (step: InstallStep) => void,
@@ -27,11 +28,19 @@ const ReadyToInstall: FC<Props> = ({
   onError,
 }) => {
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const updateModelProviders = useUpdateModelProviders()
+  const invalidateAllToolProviders = useInvalidateAllToolProviders()
 
   const handleInstalled = useCallback(() => {
-    invalidateInstalledPluginList()
     onStepChange(InstallStep.installed)
-  }, [invalidateInstalledPluginList, onStepChange])
+    invalidateInstalledPluginList()
+    if (!manifest)
+      return
+    if (PluginType.model.includes(manifest.category))
+      updateModelProviders()
+    if (PluginType.tool.includes(manifest.category))
+      invalidateAllToolProviders()
+  }, [invalidateAllToolProviders, invalidateInstalledPluginList, manifest, onStepChange, updateModelProviders])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     onStepChange(InstallStep.installFailed)

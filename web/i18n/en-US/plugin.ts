@@ -94,6 +94,7 @@ const translation = {
   },
   installModal: {
     installPlugin: 'Install Plugin',
+    installComplete: 'Installation complete',
     installedSuccessfully: 'Installation successful',
     installedSuccessfullyDesc: 'The plugin has been installed successfully.',
     uploadFailed: 'Upload failed',

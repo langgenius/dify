@@ -4,8 +4,6 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Card from '../../card'
 import Button from '@/app/components/base/button'
-import { useUpdateModelProviders } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { PluginType } from '../../types'
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import { pluginManifestInMarketToPluginProps, pluginManifestToCardPluginProps } from '../utils'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
@@ -26,12 +24,9 @@ const Installed: FC<Props> = ({
   onCancel,
 }) => {
   const { t } = useTranslation()
-  const updateModelProviders = useUpdateModelProviders()
 
   const handleClose = () => {
     onCancel()
-    if (payload?.category === PluginType.model)
-      updateModelProviders()
   }
   return (
     <>

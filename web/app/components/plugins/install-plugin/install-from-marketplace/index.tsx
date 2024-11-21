@@ -3,10 +3,13 @@
 import React, { useCallback, useState } from 'react'
 import Modal from '@/app/components/base/modal'
 import type { Plugin, PluginManifestInMarket } from '../../types'
-import { InstallStep } from '../../types'
+import { InstallStep, PluginType } from '../../types'
 import Install from './steps/install'
 import Installed from '../base/installed'
 import { useTranslation } from 'react-i18next'
+import { useUpdateModelProviders } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useInvalidateAllToolProviders } from '@/service/use-tools'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -27,7 +30,9 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   // readyToInstall -> check installed -> installed/failed
   const [step, setStep] = useState<InstallStep>(InstallStep.readyToInstall)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-
+  const updateModelProviders = useUpdateModelProviders()
+  const invalidateAllToolProviders = useInvalidateAllToolProviders()
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   // TODO: check installed in beta version.
 
   const getTitle = useCallback(() => {
@@ -40,7 +45,12 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
 
   const handleInstalled = useCallback(() => {
     setStep(InstallStep.installed)
-  }, [])
+    invalidateInstalledPluginList()
+    if (PluginType.model.includes(manifest.category))
+      updateModelProviders()
+    if (PluginType.tool.includes(manifest.category))
+      invalidateAllToolProviders()
+  }, [invalidateAllToolProviders, invalidateInstalledPluginList, manifest.category, updateModelProviders])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     setStep(InstallStep.installFailed)

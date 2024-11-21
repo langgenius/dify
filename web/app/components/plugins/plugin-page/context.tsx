@@ -11,15 +11,14 @@ import {
   useContextSelector,
 } from 'use-context-selector'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
-import type { PluginDetail } from '../types'
 import type { FilterState } from './filter-management'
 import { useTranslation } from 'react-i18next'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 
 export type PluginPageContextValue = {
   containerRef: React.RefObject<HTMLDivElement>
-  currentPluginDetail: PluginDetail | undefined
-  setCurrentPluginDetail: (plugin: PluginDetail) => void
+  currentPluginID: string | undefined
+  setCurrentPluginID: (pluginID?: string) => void
   filters: FilterState
   setFilters: (filter: FilterState) => void
   activeTab: string
@@ -29,8 +28,8 @@ export type PluginPageContextValue = {
 
 export const PluginPageContext = createContext<PluginPageContextValue>({
   containerRef: { current: null },
-  currentPluginDetail: undefined,
-  setCurrentPluginDetail: () => { },
+  currentPluginID: undefined,
+  setCurrentPluginID: () => { },
   filters: {
     categories: [],
     tags: [],
@@ -60,7 +59,7 @@ export const PluginPageContextProvider = ({
     tags: [],
     searchQuery: '',
   })
-  const [currentPluginDetail, setCurrentPluginDetail] = useState<PluginDetail | undefined>()
+  const [currentPluginID, setCurrentPluginID] = useState<string | undefined>()
 
   const { enable_marketplace } = useAppContextSelector(s => s.systemFeatures)
   const options = useMemo(() => {
@@ -81,8 +80,8 @@ export const PluginPageContextProvider = ({
     <PluginPageContext.Provider
       value={{
         containerRef,
-        currentPluginDetail,
-        setCurrentPluginDetail,
+        currentPluginID,
+        setCurrentPluginID,
         filters,
         setFilters,
         activeTab,

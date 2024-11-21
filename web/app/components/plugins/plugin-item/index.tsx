@@ -22,6 +22,7 @@ import cn from '@/utils/classnames'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import { useLanguage } from '../../header/account-setting/model-provider-page/hooks'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useInvalidateAllToolProviders } from '@/service/use-tools'
 import { useCategories } from '../hooks'
 import { useProviderContext } from '@/context/provider-context'
 
@@ -37,9 +38,10 @@ const PluginItem: FC<Props> = ({
   const locale = useLanguage()
   const { t } = useTranslation()
   const { categoriesMap } = useCategories()
-  const currentPluginDetail = usePluginPageContext(v => v.currentPluginDetail)
-  const setCurrentPluginDetail = usePluginPageContext(v => v.setCurrentPluginDetail)
+  const currentPluginID = usePluginPageContext(v => v.currentPluginID)
+  const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const invalidateAllToolProviders = useInvalidateAllToolProviders()
   const { refreshModelProviders } = useProviderContext()
 
   const {
@@ -59,20 +61,22 @@ const PluginItem: FC<Props> = ({
 
   const handleDelete = () => {
     invalidateInstalledPluginList()
-    if (category === PluginType.model)
+    if (PluginType.model.includes(category))
       refreshModelProviders()
+    if (PluginType.tool.includes(category))
+      invalidateAllToolProviders()
   }
   return (
     <div
       className={cn(
         'p-1 rounded-xl border-[1.5px] border-background-section-burn',
-        currentPluginDetail?.plugin_id === plugin_id && 'border-components-option-card-option-selected-border',
+        currentPluginID === plugin_id && 'border-components-option-card-option-selected-border',
         source === PluginSource.debugging
           ? 'bg-[repeating-linear-gradient(-45deg,rgba(16,24,40,0.04),rgba(16,24,40,0.04)_5px,rgba(0,0,0,0.02)_5px,rgba(0,0,0,0.02)_10px)]'
           : 'bg-background-section-burn',
       )}
       onClick={() => {
-        setCurrentPluginDetail(plugin)
+        setCurrentPluginID(plugin.plugin_id)
       }}
     >
       <div className={cn('relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
