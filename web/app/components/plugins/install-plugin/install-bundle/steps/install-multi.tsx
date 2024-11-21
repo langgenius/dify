@@ -6,7 +6,6 @@ import MarketplaceItem from '../item/marketplace-item'
 import GithubItem from '../item/github-item'
 import { useFetchPluginsInMarketPlaceByIds, useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
 import produce from 'immer'
-import { useGetState } from 'ahooks'
 import PackageItem from '../item/package-item'
 import LoadingError from '../../base/loading-error'
 
@@ -25,7 +24,7 @@ const InstallByDSLList: FC<Props> = ({
 }) => {
   const { isLoading: isFetchingMarketplaceDataFromDSL, data: marketplaceFromDSLRes } = useFetchPluginsInMarketPlaceByIds(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value.plugin_unique_identifier!))
   const { isLoading: isFetchingMarketplaceDataFromLocal, data: marketplaceResFromLocalRes } = useFetchPluginsInMarketPlaceByInfo(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value!))
-  const [plugins, setPlugins, getPlugins] = useGetState<(Plugin | undefined)[]>((() => {
+  const [plugins, doSetPlugins] = useState<(Plugin | undefined)[]>((() => {
     const hasLocalPackage = allPlugins.some(d => d.type === 'package')
     if (!hasLocalPackage)
       return []
@@ -42,17 +41,23 @@ const InstallByDSLList: FC<Props> = ({
     })
     return _plugins
   })())
+  const pluginsRef = React.useRef<(Plugin | undefined)[]>(plugins)
+
+  const setPlugins = useCallback((p: (Plugin | undefined)[]) => {
+    doSetPlugins(p)
+    pluginsRef.current = p
+  }, [])
 
   const [errorIndexes, setErrorIndexes] = useState<number[]>([])
 
   const handleGitHubPluginFetched = useCallback((index: number) => {
     return (p: Plugin) => {
-      const nextPlugins = produce(getPlugins(), (draft) => {
+      const nextPlugins = produce(pluginsRef.current, (draft) => {
         draft[index] = p
       })
       setPlugins(nextPlugins)
     }
-  }, [getPlugins, setPlugins])
+  }, [setPlugins])
 
   const handleGitHubPluginFetchError = useCallback((index: number) => {
     return () => {
@@ -73,7 +78,7 @@ const InstallByDSLList: FC<Props> = ({
     if (!isFetchingMarketplaceDataFromDSL && marketplaceFromDSLRes?.data.plugins) {
       const payloads = marketplaceFromDSLRes?.data.plugins
       const failedIndex: number[] = []
-      const nextPlugins = produce(getPlugins(), (draft) => {
+      const nextPlugins = produce(pluginsRef.current, (draft) => {
         marketPlaceInDSLIndex.forEach((index, i) => {
           if (payloads[i])
             draft[index] = payloads[i]
@@ -82,6 +87,7 @@ const InstallByDSLList: FC<Props> = ({
         })
       })
       setPlugins(nextPlugins)
+
       if (failedIndex.length > 0)
         setErrorIndexes([...errorIndexes, ...failedIndex])
     }
@@ -92,7 +98,7 @@ const InstallByDSLList: FC<Props> = ({
     if (!isFetchingMarketplaceDataFromLocal && marketplaceResFromLocalRes?.data.list) {
       const payloads = marketplaceResFromLocalRes?.data.list
       const failedIndex: number[] = []
-      const nextPlugins = produce(getPlugins(), (draft) => {
+      const nextPlugins = produce(pluginsRef.current, (draft) => {
         marketPlaceInDSLIndex.forEach((index, i) => {
           if (payloads[i]) {
             const item = payloads[i]
