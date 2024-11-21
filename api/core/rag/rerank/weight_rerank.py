@@ -37,11 +37,11 @@ class WeightRerankRunner(BaseRerankRunner):
         :return:
         """
         unique_documents = []
-        doc_id = set()
+        doc_ids = set()
         for document in documents:
             doc_id = document.metadata.get("doc_id")
-            if doc_id not in doc_id:
-                doc_id.add(doc_id)
+            if doc_id not in doc_ids:
+                doc_ids.add(doc_id)
                 unique_documents.append(document)
 
         documents = unique_documents
