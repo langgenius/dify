@@ -80,12 +80,9 @@ def build_from_mapping(
 def build_from_mappings(
     *,
     mappings: Sequence[Mapping[str, Any]],
-    config: FileUploadConfig | None,
+    config: FileUploadConfig | None = None,
     tenant_id: str,
 ) -> Sequence[File]:
-    if not config:
-        return []
-
     files = [
         build_from_mapping(
             mapping=mapping,
@@ -96,13 +93,14 @@ def build_from_mappings(
     ]
 
     if (
+        config
         # If image config is set.
-        config.image_config
+        and config.image_config
         # And the number of image files exceeds the maximum limit
         and sum(1 for _ in (filter(lambda x: x.type == FileType.IMAGE, files))) > config.image_config.number_limits
     ):
         raise ValueError(f"Number of image files exceeds the maximum limit {config.image_config.number_limits}")
-    if config.number_limits and len(files) > config.number_limits:
+    if config and config.number_limits and len(files) > config.number_limits:
         raise ValueError(f"Number of files exceeds the maximum limit {config.number_limits}")
 
     return files

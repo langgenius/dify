@@ -5,10 +5,9 @@ from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 
 from configs import dify_config
-from core.app.app_config.entities import FileUploadConfig
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.models import File, FileTransferMethod, ImageConfig
+from core.file.models import File
 from core.workflow.callbacks import WorkflowCallback
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -20,7 +19,6 @@ from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode, BaseNodeData
 from core.workflow.nodes.event import NodeEvent
-from core.workflow.nodes.llm import LLMNodeData
 from core.workflow.nodes.node_mapping import node_type_classes_mapping
 from factories import file_factory
 from models.enums import UserFrom
@@ -261,33 +259,14 @@ class WorkflowEntry:
             if not input_value:
                 input_value = user_inputs.get(node_variable_key)
 
-            # FIXME: temp fix for image type
-            if node_type == NodeType.LLM:
-                new_value = []
-                if isinstance(input_value, list):
-                    node_data = cast(LLMNodeData, node_data)
-
-                    detail = node_data.vision.configs.detail if node_data.vision.configs else None
-
-                    for item in input_value:
-                        if isinstance(item, dict) and "type" in item and item["type"] == "image":
-                            transfer_method = FileTransferMethod.value_of(item.get("transfer_method"))
-                            mapping = {
-                                "id": item.get("id"),
-                                "transfer_method": transfer_method,
-                                "upload_file_id": item.get("upload_file_id"),
-                                "url": item.get("url"),
-                            }
-                            config = FileUploadConfig(image_config=ImageConfig(detail=detail) if detail else None)
-                            file = file_factory.build_from_mapping(
-                                mapping=mapping,
-                                tenant_id=tenant_id,
-                                config=config,
-                            )
-                            new_value.append(file)
-
-                if new_value:
-                    input_value = new_value
+            if isinstance(input_value, dict) and "type" in input_value and "transfer_method" in input_value:
+                input_value = file_factory.build_from_mapping(mapping=input_value, tenant_id=tenant_id)
+            if (
+                isinstance(input_value, list)
+                and all(isinstance(item, dict) for item in input_value)
+                and all("type" in item and "transfer_method" in item for item in input_value)
+            ):
+                input_value = file_factory.build_from_mappings(mappings=input_value, tenant_id=tenant_id)
 
             # append variable and value to variable pool
             variable_pool.add([variable_node_id] + variable_key_list, input_value)
