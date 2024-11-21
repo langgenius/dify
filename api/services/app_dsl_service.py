@@ -267,9 +267,9 @@ class AppDslService:
         Confirm an import that requires confirmation
         """
         redis_key = f"{IMPORT_INFO_REDIS_KEY_PREFIX}{import_id}"
-        panding_data = redis_client.get(redis_key)
+        pending_data = redis_client.get(redis_key)
 
-        if not panding_data:
+        if not pending_data:
             return Import(
                 id=import_id,
                 status=ImportStatus.FAILED,
@@ -277,18 +277,18 @@ class AppDslService:
             )
 
         try:
-            if not isinstance(panding_data, str | bytes):
+            if not isinstance(pending_data, str | bytes):
                 return Import(
                     id=import_id,
                     status=ImportStatus.FAILED,
                     error="Invalid import information",
                 )
-            panding_data = PendingData.model_validate_json(panding_data)
-            data = yaml.safe_load(panding_data.yaml_content)
+            pending_data = PendingData.model_validate_json(pending_data)
+            data = yaml.safe_load(pending_data.yaml_content)
 
             app = None
-            if "app_id" in data and "tenant_id" in data:
-                stmt = select(App).where(App.id == data["app_id"], App.tenant_id == data["tenant_id"])
+            if pending_data.app_id:
+                stmt = select(App).where(App.id == pending_data.app_id, App.tenant_id == account.current_tenant_id)
                 app = self._session.scalar(stmt)
 
             # Create or update app
@@ -296,11 +296,11 @@ class AppDslService:
                 app=app,
                 data=data,
                 account=account,
-                name=panding_data.name,
-                description=panding_data.description,
-                icon_type=panding_data.icon_type,
-                icon=panding_data.icon,
-                icon_background=panding_data.icon_background,
+                name=pending_data.name,
+                description=pending_data.description,
+                icon_type=pending_data.icon_type,
+                icon=pending_data.icon,
+                icon_background=pending_data.icon_background,
             )
 
             # Delete import info from Redis
