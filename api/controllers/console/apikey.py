@@ -1,4 +1,5 @@
 import flask_restful
+from api.controllers.service_api.wraps import get_api_token_from_db
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with
 from werkzeug.exceptions import Forbidden
@@ -10,7 +11,6 @@ from libs.login import login_required
 from models.dataset import Dataset
 from models.model import ApiToken, App
 
-from ..service_api.wraps import get_api_token_from_db
 from . import api
 from .wraps import account_initialization_required, setup_required
 
