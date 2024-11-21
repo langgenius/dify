@@ -173,7 +173,7 @@ const DetailHeader = ({
             <Title title={label[locale]} />
             {verified && <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" />}
             <PluginVersionPicker
-              disabled={!isFromMarketplace || !hasNewVersion}
+              disabled={!isFromMarketplace}
               isShow={isShow}
               onShowChange={setIsShow}
               pluginID={plugin_id}
@@ -187,13 +187,13 @@ const DetailHeader = ({
                   className={cn(
                     'mx-1',
                     isShow && 'bg-state-base-hover',
-                    (isShow || isFromMarketplace) && hasNewVersion && 'hover:bg-state-base-hover',
+                    (isShow || isFromMarketplace) && 'hover:bg-state-base-hover',
                   )}
                   uppercase={false}
                   text={
                     <>
                       <div>{isFromGitHub ? meta!.version : version}</div>
-                      {isFromMarketplace && hasNewVersion && <RiArrowLeftRightLine className='ml-1 w-3 h-3 text-text-tertiary' />}
+                      {isFromMarketplace && <RiArrowLeftRightLine className='ml-1 w-3 h-3 text-text-tertiary' />}
                     </>
                   }
                   hasRedCornerMark={hasNewVersion}
