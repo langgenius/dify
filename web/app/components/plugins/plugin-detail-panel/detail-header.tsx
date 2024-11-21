@@ -229,7 +229,7 @@ const DetailHeader = ({
             onInfo={showPluginInfo}
             onCheckVersion={handleUpdate}
             onRemove={showDeleteConfirm}
-            detailUrl={`${MARKETPLACE_URL_PREFIX}/plugin/${author}/${name}`}
+            detailUrl={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`}
           />
           <ActionButton onClick={onHide}>
             <RiCloseLine className='w-4 h-4' />
