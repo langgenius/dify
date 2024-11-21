@@ -2,12 +2,19 @@ import { RiCheckLine, RiCloseLine } from '@remixicon/react'
 import AppIcon from '@/app/components/base/app-icon'
 import cn from '@/utils/classnames'
 
+const iconSizeMap = {
+  xs: 'w-4 h-4 text-base',
+  tiny: 'w-6 h-6 text-base',
+  small: 'w-8 h-8',
+  medium: 'w-9 h-9',
+  large: 'w-10 h-10',
+}
 const Icon = ({
   className,
   src,
   installed = false,
   installFailed = false,
-  size,
+  size = 'large',
 }: {
   className?: string
   src: string | {
@@ -23,7 +30,7 @@ const Icon = ({
     return (
       <div className={cn('relative', className)}>
         <AppIcon
-          size={size || 'large'}
+          size={size}
           iconType={'emoji'}
           icon={src.content}
           background={src.background}
@@ -32,9 +39,10 @@ const Icon = ({
       </div>
     )
   }
+
   return (
     <div
-      className={cn('shrink-0 relative w-10 h-10 rounded-md bg-center bg-no-repeat bg-contain', className)}
+      className={cn('shrink-0 relative rounded-md bg-center bg-no-repeat bg-contain', iconSizeMap[size], className)}
       style={{
         backgroundImage: `url(${src})`,
       }}
