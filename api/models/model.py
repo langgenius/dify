@@ -75,6 +75,17 @@ class App(db.Model):
     workflow_id = db.Column(StringUUID, nullable=True)
     status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
     enable_site = db.Column(db.Boolean, nullable=False)
+    # to enable/disable public site URL
+    # _enable_site = db.Column("enable_site", db.Boolean, nullable=False, server_default=db.text("false"))
+
+    # @property
+    # def enable_site(self) -> Literal[False]:
+    #     return False
+
+    # @enable_site.setter
+    # def enable_site(self, value: bool) -> None:
+    #     self._enable_site = value
+
     enable_api = db.Column(db.Boolean, nullable=False)
     api_rpm = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     api_rph = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
