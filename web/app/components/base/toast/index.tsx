@@ -56,14 +56,14 @@ const Toast = ({
       || (type === 'info' && 'bg-[linear-gradient(92deg,rgba(11,165,236,0.25)_0%,rgba(255,255,255,0.00)_100%)]')
     }`}
     />
-    <div className="flex gap-1">
-      <div className="flex-shrink-0">
-        {type === 'success' && <RiCheckboxCircleFill className="w-5 h-5 text-text-success" aria-hidden="true" />}
-        {type === 'error' && <RiErrorWarningFill className="w-5 h-5 text-text-destructive" aria-hidden="true" />}
-        {type === 'warning' && <RiAlertFill className="w-5 h-5 text-text-warning-secondary" aria-hidden="true" />}
-        {type === 'info' && <RiInformation2Fill className="w-5 h-5 text-text-accent" aria-hidden="true" />}
+    <div className={`flex ${size === 'md' ? 'gap-1' : 'gap-0.5'}`}>
+      <div className={`flex justify-center items-center ${size === 'md' ? 'p-0.5' : 'p-1'}`}>
+        {type === 'success' && <RiCheckboxCircleFill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-success`} aria-hidden="true" />}
+        {type === 'error' && <RiErrorWarningFill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-destructive`} aria-hidden="true" />}
+        {type === 'warning' && <RiAlertFill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-warning-secondary`} aria-hidden="true" />}
+        {type === 'info' && <RiInformation2Fill className={`${size === 'md' ? 'w-5 h-5' : 'w-4 h-4'} text-text-accent`} aria-hidden="true" />}
       </div>
-      <div className="flex p-1 flex-col items-start gap-1 flex-grow">
+      <div className={`flex py-1 ${size === 'md' ? 'px-1' : 'px-0.5'} flex-col items-start gap-1 flex-grow`}>
         <div className='text-text-primary system-sm-semibold'>{message}</div>
         {children && <div className='text-text-secondary system-xs-regular'>
           {children}
