@@ -52,6 +52,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
     <Modal
       isShow={true}
       onClose={onClose}
+      wrapperClassName='z-[9999]'
       className='flex min-w-[560px] p-0 flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadows-shadow-xl'
       closable
     >

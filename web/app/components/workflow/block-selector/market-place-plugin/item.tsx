@@ -5,10 +5,12 @@ import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import Action from './action'
 import type { Plugin } from '@/app/components/plugins/types.ts'
+import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import I18n from '@/context/i18n'
 import cn from '@/utils/classnames'
 
 import { formatNumber } from '@/utils/format'
+import { useBoolean } from 'ahooks'
 
 enum ActionType {
   install = 'install',
@@ -28,6 +30,10 @@ const Item: FC<Props> = ({
   const { locale } = useContext(I18n)
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj?.[locale] || obj?.['en-US'] || obj?.en_US || ''
+  const [isShowInstallModal, {
+    setTrue: showInstallModal,
+    setFalse: hideInstallModal,
+  }] = useBoolean(false)
 
   return (
     <div className='group/plugin flex rounded-lg py-1 pr-1 pl-3 hover:bg-state-base-hover'>
@@ -47,14 +53,21 @@ const Item: FC<Props> = ({
         </div>
         {/* Action */}
         <div className={cn(!open ? 'hidden' : 'flex', 'group-hover/plugin:flex  items-center space-x-1 h-4 text-components-button-secondary-accent-text system-xs-medium')}>
-          <div className='px-1.5'>{t('plugin.installAction')}</div>
+          <div className='px-1.5 cursor-pointer' onClick={showInstallModal}>{t('plugin.installAction')}</div>
           <Action
             open={open}
             onOpenChange={setOpen}
           />
         </div>
+        {isShowInstallModal && (
+          <InstallFromMarketplace
+            uniqueIdentifier={payload.latest_package_identifier}
+            manifest={payload}
+            onSuccess={hideInstallModal}
+            onClose={hideInstallModal}
+          />
+        )}
       </div>
-
     </div>
   )
 }

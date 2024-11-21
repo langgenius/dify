@@ -47,7 +47,7 @@ const OperationDropdown: FC<Props> = ({
           <RiMoreFill className='w-4 h-4 text-components-button-secondary-accent-text' />
         </ActionButton>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-50'>
+      <PortalToFollowElemContent className='z-[9999]'>
         <div className='w-[112px] p-1 bg-components-panel-bg-blur rounded-xl border-[0.5px] border-components-panel-border shadow-lg'>
           <div className='px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>{t('common.operation.download')}</div>
           {/* Wait marketplace */}
