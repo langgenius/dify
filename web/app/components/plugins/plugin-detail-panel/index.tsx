@@ -6,26 +6,23 @@ import EndpointList from './endpoint-list'
 import ActionList from './action-list'
 import ModelList from './model-list'
 import Drawer from '@/app/components/base/drawer'
-import { usePluginPageContext } from '@/app/components/plugins/plugin-page/context'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import cn from '@/utils/classnames'
 
 type Props = {
   detail?: PluginDetail
   onUpdate: () => void
+  onHide: () => void
 }
 
 const PluginDetailPanel: FC<Props> = ({
   detail,
   onUpdate,
+  onHide,
 }) => {
-  const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
-
-  const handleHide = () => setCurrentPluginID(undefined)
-
   const handleUpdate = (isDelete = false) => {
     if (isDelete)
-      handleHide()
+      onHide()
     onUpdate()
   }
 
@@ -36,7 +33,7 @@ const PluginDetailPanel: FC<Props> = ({
     <Drawer
       isOpen={!!detail}
       clickOutsideNotOpen={false}
-      onClose={handleHide}
+      onClose={onHide}
       footer={null}
       mask={false}
       positionCenter={false}
@@ -46,7 +43,7 @@ const PluginDetailPanel: FC<Props> = ({
         <>
           <DetailHeader
             detail={detail}
-            onHide={handleHide}
+            onHide={onHide}
             onUpdate={handleUpdate}
           />
           <div className='grow overflow-y-auto'>

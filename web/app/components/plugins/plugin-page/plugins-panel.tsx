@@ -15,6 +15,7 @@ const PluginsPanel = () => {
   const { data: pluginList, isLoading: isPluginListLoading } = useInstalledPluginList()
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)
+  const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
 
   const { run: handleFilterChange } = useDebounceFn((filters: FilterState) => {
     setFilters(filters)
@@ -37,6 +38,8 @@ const PluginsPanel = () => {
     return detail
   }, [currentPluginID, pluginList?.plugins])
 
+  const handleHide = () => setCurrentPluginID(undefined)
+
   return (
     <>
       <div className='flex flex-col pt-1 pb-3 px-12 justify-center items-start gap-3 self-stretch'>
@@ -54,7 +57,11 @@ const PluginsPanel = () => {
       ) : (
         <Empty />
       )}
-      <PluginDetailPanel detail={currentPluginDetail} onUpdate={() => invalidateInstalledPluginList()}/>
+      <PluginDetailPanel
+        detail={currentPluginDetail}
+        onUpdate={() => invalidateInstalledPluginList()}
+        onHide={handleHide}
+      />
     </>
   )
 }

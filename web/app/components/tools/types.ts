@@ -48,6 +48,7 @@ export type Collection = {
   is_team_authorization: boolean
   allow_delete: boolean
   labels: string[]
+  plugin_id?: string
 }
 
 export type ToolParameter = {
