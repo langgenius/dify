@@ -261,7 +261,7 @@ class Tool(BaseModel, ABC):
         """
         parameters = self.parameters or []
         parameters = parameters.copy()
-        user_parameters = self.get_runtime_parameters() or []
+        user_parameters = self.get_runtime_parameters()
         user_parameters = user_parameters.copy()
 
         # override parameters

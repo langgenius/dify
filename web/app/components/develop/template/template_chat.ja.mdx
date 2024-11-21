@@ -1,0 +1,1134 @@
+import { CodeGroup } from '../code.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
+
+# チャットアプリAPI
+
+チャットアプリケーションはセッションの持続性をサポートしており、以前のチャット履歴を応答のコンテキストとして使用できます。これは、チャットボットやカスタマーサービスAIなどに適用できます。
+
+<div>
+  ### ベースURL
+  <CodeGroup title="コード" targetCode={props.appDetail.api_base_url}>
+    ```javascript
+    ```
+  </CodeGroup>
+
+  ### 認証
+
+  サービスAPIは`API-Key`認証を使用します。
+  <i>**APIキーの漏洩を防ぐため、APIキーはクライアント側で共有または保存せず、サーバー側で保存することを強くお勧めします。**</i>
+
+  すべてのAPIリクエストにおいて、以下のように`Authorization`HTTPヘッダーにAPIキーを含めてください：
+
+  <CodeGroup title="コード">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+
+    ```
+  </CodeGroup>
+</div>
+
+---
+
+<Heading
+  url='/chat-messages'
+  method='POST'
+  title='チャットメッセージを送信'
+  name='#Send-Chat-Message'
+/>
+<Row>
+  <Col>
+    チャットアプリケーションにリクエストを送信します。
+
+    ### リクエストボディ
+
+    <Properties>
+      <Property name='query' type='string' key='query'>
+        ユーザー入力/質問内容
+      </Property>
+      <Property name='inputs' type='object' key='inputs'>
+          アプリで定義されたさまざまな変数値の入力を許可します。
+          `inputs`パラメータには複数のキー/値ペアが含まれ、各キーは特定の変数に対応し、各値はその変数の特定の値です。デフォルトは`{}`
+      </Property>
+      <Property name='response_mode' type='string' key='response_mode'>
+        応答の返却モードを指定します。サポートされているモード：
+        - `streaming` ストリーミングモード（推奨）、SSE（[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)）を通じてタイプライターのような出力を実装します。
+        - `blocking` ブロッキングモード、実行完了後に結果を返します。（プロセスが長い場合、リクエストが中断される可能性があります）
+        Cloudflareの制限により、100秒後に応答がない場合、リクエストは中断されます。
+        <i>注：エージェントアシスタントモードではブロッキングモードはサポートされていません</i>
+      </Property>
+      <Property name='user' type='string' key='user'>
+          ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用されます。
+          アプリケーション内で開発者によって一意に定義される必要があります。
+      </Property>
+      <Property name='conversation_id' type='string' key='conversation_id'>
+      会話ID、以前のチャット記録に基づいて会話を続けるには、前のメッセージのconversation_idを渡す必要があります。
+      </Property>
+      <Property name='files' type='array[object]' key='files'>
+          ファイルリスト、テキストの理解と質問への回答を組み合わせたファイル（画像）の入力に適しており、モデルがビジョン機能をサポートしている場合にのみ利用可能です。
+          - `type` (string) サポートされているタイプ：`image`（現在は画像タイプのみサポート）
+          - `transfer_method` (string) 転送方法、画像URLの場合は`remote_url` / ファイルアップロードの場合は`local_file`
+          - `url` (string) 画像URL（転送方法が`remote_url`の場合）
+          - `upload_file_id` (string) アップロードされたファイルID、事前にファイルアップロードAPIを通じて取得する必要があります（転送方法が`local_file`の場合）
+      </Property>
+      <Property name='auto_generate_name' type='bool' key='auto_generate_name'>
+      タイトルを自動生成します。デフォルトは`true`です。
+      `false`に設定すると、会話のリネームAPIを呼び出し、`auto_generate`を`true`に設定することで非同期タイトル生成を実現できます。
+      </Property>
+    </Properties>
+
+    ### 応答
+    response_modeがブロッキングの場合、CompletionResponseオブジェクトを返します。
+    response_modeがストリーミングの場合、ChunkCompletionResponseストリームを返します。
+
+    ### ChatCompletionResponse
+    完全なアプリ結果を返します。`Content-Type`は`application/json`です。
+    - `message_id` (string) 一意のメッセージID
+    - `conversation_id` (string) 会話ID
+    - `mode` (string) アプリモード、`chat`として固定
+    - `answer` (string) 完全な応答内容
+    - `metadata` (object) メタデータ
+      - `usage` (Usage) モデル使用情報
+      - `retriever_resources` (array[RetrieverResource]) 引用と帰属リスト
+    - `created_at` (int) メッセージ作成タイムスタンプ、例：1705395332
+
+    ### ChunkChatCompletionResponse
+    アプリによって出力されたストリームチャンクを返します。`Content-Type`は`text/event-stream`です。
+    各ストリーミングチャンクは`data:`で始まり、2つの改行文字`\n\n`で区切られます。以下のように表示されます：
+    <CodeGroup>
+    ```streaming {{ title: '応答' }}
+    data: {"event": "message", "task_id": "900bbd43-dc0b-4383-a372-aa6e6c414227", "id": "663c5084-a254-4040-8ad3-51f2a3c1a77c", "answer": "Hi", "created_at": 1705398420}\n\n
+    ```
+    </CodeGroup>
+    ストリーミングチャンクの構造は`event`に応じて異なります：
+    - `event: message` LLMはテキストチャンクイベントを返します。つまり、完全なテキストがチャンク形式で出力されます。
+      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+      - `message_id` (string) 一意のメッセージID
+      - `conversation_id` (string) 会話ID
+      - `answer` (string) LLMが返したテキストチャンク内容
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+    - `event: agent_message` LLMはテキストチャンクイベントを返します。つまり、エージェントアシスタントが有効な場合、完全なテキストがチャンク形式で出力されます（エージェントモードでのみサポート）
+      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+      - `message_id` (string) 一意のメッセージID
+      - `conversation_id` (string) 会話ID
+      - `answer` (string) LLMが返したテキストチャンク内容
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+    - `event: tts_message` TTSオーディオストリームイベント、つまり音声合成出力。内容はMp3形式のオーディオブロックで、base64文字列としてエンコードされています。再生時には、base64をデコードしてプレーヤーに入力するだけです。（このメッセージは自動再生が有効な場合にのみ利用可能）
+      - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
+      - `message_id` (string) 一意のメッセージID
+      - `audio` (string) 音声合成後のオーディオ、base64テキストコンテンツとしてエンコードされており、再生時にはbase64をデコードしてプレーヤーに入力するだけです
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+    - `event: tts_message_end` TTSオーディオストリーム終了イベント。このイベントを受信すると、オーディオストリームの終了を示します。
+      - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
+      - `message_id` (string) 一意のメッセージID
+      - `audio` (string) 終了イベントにはオーディオがないため、これは空の文字列です
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+    - `event: agent_thought` エージェントの思考、LLMの思考、ツール呼び出しの入力と出力を含みます（エージェントモードでのみサポート）
+      - `id` (string) エージェント思考ID、各反復には一意のエージェント思考IDがあります
+      - `task_id` (string) (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+      - `message_id` (string) 一意のメッセージID
+      - `position` (int) 現在のエージェント思考の位置、各メッセージには順番に複数の思考が含まれる場合があります。
+      - `thought` (string) LLMが考えていること
+      - `observation` (string) ツール呼び出しからの応答
+      - `tool` (string) 呼び出されたツールのリスト、;で区切られます
+      - `tool_input` (string) ツールの入力、JSON形式。例：`{"dalle3": {"prompt": "a cute cat"}}`。
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+      - `message_files` (array[string]) message_fileイベントを参照
+        - `file_id` (string) ファイルID
+      - `conversation_id` (string) 会話ID
+    - `event: message_file` メッセージファイルイベント、ツールによって新しいファイルが作成されました
+      - `id` (string) ファイル一意ID
+      - `type` (string) ファイルタイプ、現在は"image"のみ許可
+      - `belongs_to` (string) 所属、ここでは'assistant'のみ
+      - `url` (string) ファイルのリモートURL
+      - `conversation_id`  (string) 会話ID
+    - `event: message_end` メッセージ終了イベント、このイベントを受信するとストリーミングが終了したことを意味します。
+      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+      - `message_id` (string) 一意のメッセージID
+      - `conversation_id` (string) 会話ID
+      - `metadata` (object) メタデータ
+        - `usage` (Usage) モデル使用情報
+        - `retriever_resources` (array[RetrieverResource]) 引用と帰属リスト
+    - `event: message_replace` メッセージ内容置換イベント。
+      出力内容のモデレーションが有効な場合、内容がフラグされると、このイベントを通じてメッセージ内容が事前設定された返信に置き換えられます。
+      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+      - `message_id` (string) 一意のメッセージID
+      - `conversation_id` (string) 会話ID
+      - `answer` (string) 置換内容（すべてのLLM返信テキストを直接置換）
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+    - `event: error`
+      ストリーミングプロセス中に発生した例外はストリームイベントの形式で出力され、エラーイベントを受信するとストリームが終了します。
+      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+      - `message_id` (string) 一意のメッセージID
+      - `status` (int) HTTPステータスコード
+      - `code` (string) エラーコード
+      - `message` (string) エラーメッセージ
+    - `event: ping` 接続を維持するために10秒ごとにpingイベントが発生します。
+
+    ### エラー
+    - 404, 会話が存在しません
+    - 400, `invalid_param`, 異常なパラメータ入力
+    - 400, `app_unavailable`, アプリ構成が利用できません
+    - 400, `provider_not_initialize`, 利用可能なモデル資格情報構成がありません
+    - 400, `provider_quota_exceeded`, モデル呼び出しクォータが不足しています
+    - 400, `model_currently_not_support`, 現在のモデルは利用できません
+    - 400, `completion_request_error`, テキスト生成に失敗しました
+    - 500, 内部サーバーエラー
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="POST" label="/chat-messages" targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "query": "What are the specs of the iPhone 13 Pro Max?",\n    "response_mode": "streaming",\n    "conversation_id": "",\n    "user": "abc-123",\n    "files": [\n      {\n        "type": "image",\n        "transfer_method": "remote_url",\n        "url": "https://cloud.dify.ai/logo/logo-site.png"\n      }\n    ]\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/chat-messages' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "inputs": {},
+        "query": "eh",
+        "response_mode": "streaming",
+        "conversation_id": "1c7e55fb-1ba2-4e10-81b5-30addcea2276",
+        "user": "abc-123"
+    }'
+    ```
+    </CodeGroup>
+    ### ブロッキングモード
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+        "event": "message",
+        "message_id": "9da23599-e713-473b-982c-4328d4f5c78a",
+        "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2",
+        "mode": "chat",
+        "answer": "iPhone 13 Pro Maxの仕様は次のとおりです:...",
+        "metadata": {
+            "usage": {
+                "prompt_tokens": 1033,
+                "prompt_unit_price": "0.001",
+                "prompt_price_unit": "0.001",
+                "prompt_price": "0.0010330",
+                "completion_tokens": 128,
+                "completion_unit_price": "0.002",
+                "completion_price_unit": "0.001",
+                "completion_price": "0.0002560",
+                "total_tokens": 1161,
+                "total_price": "0.0012890",
+                "currency": "USD",
+                "latency": 0.7682376249867957
+            },
+            "retriever_resources": [
+                {
+                    "position": 1,
+                    "dataset_id": "101b4c97-fc2e-463c-90b1-5261a4cdcafb",
+                    "dataset_name": "iPhone",
+                    "document_id": "8dd1ad74-0b5f-4175-b735-7d98bbbb4e00",
+                    "document_name": "iPhone List",
+                    "segment_id": "ed599c7f-2766-4294-9d1d-e5235a61270a",
+                    "score": 0.98457545,
+                    "content": "\"Model\",\"Release Date\",\"Display Size\",\"Resolution\",\"Processor\",\"RAM\",\"Storage\",\"Camera\",\"Battery\",\"Operating System\"\n\"iPhone 13 Pro Max\",\"September 24, 2021\",\"6.7 inch\",\"1284 x 2778\",\"Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard)\",\"6 GB\",\"128, 256, 512 GB, 1TB\",\"12 MP\",\"4352 mAh\",\"iOS 15\""
+                }
+            ]
+        },
+        "created_at": 1705407629
+    }
+    ```
+    </CodeGroup>
+    ### ストリーミングモード（基本アシスタント）
+    <CodeGroup title="応答">
+    ```streaming {{ title: '応答' }}
+      data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " I", "created_at": 1679586595}
+      data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": "'m", "created_at": 1679586595}
+      data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " glad", "created_at": 1679586595}
+      data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " to", "created_at": 1679586595}
+      data: {"event": "message", "message_id": : "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " meet", "created_at": 1679586595}
+      data: {"event": "message", "message_id": : "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " you", "created_at": 1679586595}
+      data: {"event": "message_end", "id": "5e52ce04-874b-4d27-9045-b3bc80def685", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "metadata": {"usage": {"prompt_tokens": 1033, "prompt_unit_price": "0.001", "prompt_price_unit": "0.001", "prompt_price": "0.0010330", "completion_tokens": 135, "completion_unit_price": "0.002", "completion_price_unit": "0.001", "completion_price": "0.0002700", "total_tokens": 1168, "total_price": "0.0013030", "currency": "USD", "latency": 1.381760165997548}, "retriever_resources": [{"position": 1, "dataset_id": "101b4c97-fc2e-463c-90b1-5261a4cdcafb", "dataset_name": "iPhone", "document_id": "8dd1ad74-0b5f-4175-b735-7d98bbbb4e00", "document_name": "iPhone List", "segment_id": "ed599c7f-2766-4294-9d1d-e5235a61270a", "score": 0.98457545, "content": "\"Model\",\"Release Date\",\"Display Size\",\"Resolution\",\"Processor\",\"RAM\",\"Storage\",\"Camera\",\"Battery\",\"Operating System\"\n\"iPhone 13 Pro Max\",\"September 24, 2021\",\"6.7 inch\",\"1284 x 2778\",\"Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard)\",\"6 GB\",\"128, 256, 512 GB, 1TB\",\"12 MP\",\"4352 mAh\",\"iOS 15\""}]}}
+      data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
+      data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
+    ```
+    </CodeGroup>
+    ### 応答例（エージェントアシスタント）
+    <CodeGroup title="応答">
+    ```streaming {{ title: '応答' }}
+    data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " I", "created_at": 1679586595}
+    data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": "'m", "created_at": 1679586595}
+    data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " glad", "created_at": 1679586595}
+    data: {"event": "message", "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " to", "created_at": 1679586595}
+    data: {"event": "message", "message_id": : "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " meet", "created_at": 1679586595}
+    data: {"event": "message", "message_id": : "5ad4cb98-f0c7-4085-b384-88c403be6290", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "answer": " you", "created_at": 1679586595}
+    data: {"event": "message_end", "id": "5e52ce04-874b-4d27-9045-b3bc80def685", "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2", "metadata": {"usage": {"prompt_tokens": 1033, "prompt_unit_price": "0.001", "prompt_price_unit": "0.001", "prompt_price": "0.0010330", "completion_tokens": 135, "completion_unit_price": "0.002", "completion_price_unit": "0.001", "completion_price": "0.0002700", "total_tokens": 1168, "total_price": "0.0013030", "currency": "USD", "latency": 1.381760165997548}, "retriever_resources": [{"position": 1, "dataset_id": "101b4c97-fc2e-463c-90b1-5261a4cdcafb", "dataset_name": "iPhone", "document_id": "8dd1ad74-0b5f-4175-b735-7d98bbbb4e00", "document_name": "iPhone List", "segment_id": "ed599c7f-2766-4294-9d1d-e5235a61270a", "score": 0.98457545, "content": "\"Model\",\"Release Date\",\"Display Size\",\"Resolution\",\"Processor\",\"RAM\",\"Storage\",\"Camera\",\"Battery\",\"Operating System\"\n\"iPhone 13 Pro Max\",\"September 24, 2021\",\"6.7 inch\",\"1284 x 2778\",\"Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard)\",\"6 GB\",\"128, 256, 512 GB, 1TB\",\"12 MP\",\"4352 mAh\",\"iOS 15\""}]}}
+    data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
+    data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
+  ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+<Heading
+  url='/files/upload'
+  method='POST'
+  title='ファイルアップロード'
+  name='#file-upload'
+/>
+<Row>
+  <Col>
+  メッセージ送信時に使用するためのファイルをアップロードします（現在は画像のみサポート）。画像とテキストのマルチモーダル理解を可能にします。
+  png、jpg、jpeg、webp、gif形式をサポートしています。
+  アップロードされたファイルは現在のエンドユーザーのみが使用できます。
+
+  ### リクエストボディ
+  このインターフェースは`multipart/form-data`リクエストを必要とします。
+  - `file` (File) 必須
+    アップロードするファイル。
+  - `user` (string) 必須
+    ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
+
+  ### 応答
+  アップロードが成功すると、サーバーはファイルのIDと関連情報を返します。
+  - `id` (uuid) ID
+  - `name` (string) ファイル名
+  - `size` (int) ファイルサイズ（バイト）
+  - `extension` (string) ファイル拡張子
+  - `mime_type` (string) ファイルのMIMEタイプ
+  - `created_by` (uuid) エンドユーザーID
+  - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
+
+  ### エラー
+  - 400, `no_file_uploaded`, ファイルが提供されなければなりません
+  - 400, `too_many_files`, 現在は1つのファイルのみ受け付けます
+  - 400, `unsupported_preview`, ファイルはプレビューをサポートしていません
+  - 400, `unsupported_estimate`, ファイルは推定をサポートしていません
+  - 413, `file_too_large`, ファイルが大きすぎます
+  - 415, `unsupported_file_type`, サポートされていない拡張子、現在はドキュメントファイルのみ受け付けます
+  - 503, `s3_connection_failed`, S3サービスに接続できません
+  - 503, `s3_permission_denied`, S3にファイルをアップロードする権限がありません
+  - 503, `s3_file_too_large`, ファイルがS3のサイズ制限を超えています
+  - 500, 内部サーバーエラー
+
+
+  </Col>
+  <Col sticky>
+  ### リクエスト例
+  <CodeGroup title="リクエスト" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/files/upload' \
+    --header 'Authorization: Bearer {api_key}' \
+    --form 'file=@"/path/to/file"'
+    ```
+
+    </CodeGroup>
+
+
+  ### 応答例
+  <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",
+      "name": "example.png",
+      "size": 1024,
+      "extension": "png",
+      "mime_type": "image/png",
+      "created_by": "6ad1ab0a-73ff-4ac1-b9e4-cdb312f71f13",
+      "created_at": 1577836800,
+    }
+  ```
+  </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/chat-messages/:task_id/stop'
+  method='POST'
+  title='生成停止'
+  name='#stop-generatebacks'
+/>
+<Row>
+  <Col>
+  ストリーミングモードでのみサポートされています。
+  ### パス
+  - `task_id` (string) タスクID、ストリーミングチャンクの返り値から取得できます
+  ### リクエストボディ
+  - `user` (string) 必須
+    ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用され、メッセージ送信インターフェースで渡されたユーザーと一致している必要があります。
+  ### 応答
+  - `result` (string) 常に"success"を返します
+  </Col>
+  <Col sticky>
+  ### リクエスト例
+  <CodeGroup title="リクエスト" tag="POST" label="/chat-messages/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/chat-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{"user": "abc-123"}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/chat-messages/:task_id/stop' \
+    -H 'Authorization: Bearer {api_key}' \
+    -H 'Content-Type: application/json' \
+    --data-raw '{
+        "user": "abc-123"
+    }'
+    ```
+    </CodeGroup>
+
+    ### 応答例
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/messages/:message_id/feedbacks'
+  method='POST'
+  title='メッセージフィードバック'
+  name='#feedbacks'
+/>
+<Row>
+  <Col>
+    エンドユーザーはフィードバックメッセージを提供でき、アプリケーション開発者が期待される出力を最適化するのに役立ちます。
+
+    ### パス
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+       メッセージID
+      </Property>
+    </Properties>
+
+    ### リクエストボディ
+
+    <Properties>
+      <Property name='rating' type='string' key='rating'>
+        アップボートは`like`、ダウンボートは`dislike`、アップボートの取り消しは`null`
+      </Property>
+      <Property name='user' type='string' key='user'>
+        ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
+      </Property>
+    </Properties>
+
+    ### 応答
+    - `result` (string) 常に"success"を返します
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n --header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "rating": "like",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/messages/{message_id}/suggested'
+  method='GET'
+  title='次の推奨質問'
+  name='#suggested'
+/>
+<Row>
+  <Col>
+    現在のメッセージに対する次の質問の提案を取得します
+
+    ### パスパラメータ
+
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+        メッセージID
+      </Property>
+    </Properties>
+
+    ### クエリ
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用され、統計のために使用されます。
+        アプリケーション内で開発者によって一意に定義される必要があります。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="GET" label="/messages/{message_id}/suggested" targetCode={`curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested?user=abc-123& \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--header 'Content-Type: application/json'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.appDetail.api_base_url}/messages/{message_id}/suggested' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --header 'Content-Type: application/json' \
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "result": "success",
+      "data": [
+            "a",
+            "b",
+            "c"
+        ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/messages'
+  method='GET'
+  title='会話履歴メッセージを取得'
+  name='#messages'
+/>
+<Row>
+  <Col>
+    スクロールロード形式で過去のチャット記録を返し、最初のページは最新の`{limit}`メッセージを返します。つまり、逆順です。
+
+    ### クエリ
+
+    <Properties>
+      <Property name='conversation_id' type='string' key='conversation_id'>
+        会話ID
+      </Property>
+      <Property name='user' type='string' key='user'>
+        ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用され、統計のために使用されます。
+        アプリケーション内で開発者によって一意に定義される必要があります。
+      </Property>
+      <Property name='first_id' type='string' key='first_id'>
+          現在のページの最初のチャット記録のID、デフォルトはnullです。
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+          1回のリクエストで返すチャット履歴メッセージの数、デフォルトは20です。
+      </Property>
+    </Properties>
+
+    ### 応答
+    - `data` (array[object]) メッセージリスト
+    - `id` (string) メッセージID
+    - `conversation_id` (string) 会話ID
+    - `inputs` (array[object]) ユーザー入力パラメータ。
+    - `query` (string) ユーザー入力/質問内容。
+    - `message_files` (array[object]) メッセージファイル
+      - `id` (string) ID
+      - `type` (string) ファイルタイプ、画像の場合はimage
+      - `url` (string) プレビュー画像URL
+      - `belongs_to` (string) 所属、ユーザーまたはアシスタント
+    - `agent_thoughts` (array[object]) エージェントの思考（基本アシスタントの場合は空）
+      - `id` (string) エージェント思考ID、各反復には一意のエージェント思考IDがあります
+      - `message_id` (string) 一意のメッセージID
+      - `position` (int) 現在のエージェント思考の位置、各メッセージには順番に複数の思考が含まれる場合があります。
+      - `thought` (string) LLMが考えていること
+      - `observation` (string) ツール呼び出しからの応答
+      - `tool` (string) 呼び出されたツールのリスト、;で区切られます
+      - `tool_input` (string) ツールの入力、JSON形式。例：`{"dalle3": {"prompt": "a cute cat"}}`。
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+      - `message_files` (array[string]) message_fileイベントを参照
+        - `file_id` (string) ファイルID
+    - `answer` (string) 応答メッセージ内容
+    - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
+    - `feedback` (object) フィードバック情報
+      - `rating` (string) アップボートは`like` / ダウンボートは`dislike`
+    - `retriever_resources` (array[RetrieverResource]) 引用と帰属リスト
+  - `has_more` (bool) 次のページがあるかどうか
+  - `limit` (int) 返されたアイテムの数、入力がシステム制限を超える場合、システム制限の数を返します
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="GET" label="/messages" targetCode={`curl -X GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='\\\n --header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/messages?user=abc-123&conversation_id='
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+    ### 応答例（基本アシスタント）
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "limit": 20,
+      "has_more": false,
+      "data": [
+        {
+            "id": "a076a87f-31e5-48dc-b452-0061adbbc922",
+            "conversation_id": "cd78daf6-f9e4-4463-9ff2-54257230a0ce",
+            "inputs": {
+                "name": "dify"
+            },
+            "query": "iphone 13 pro",
+            "answer": "iPhone 13 Proは2021年9月24日に発売され、6.1インチのディスプレイと1170 x 2532の解像度を備えています。Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard)プロセッサ、6 GBのRAMを搭載し、128 GB、256 GB、512 GB、1 TBのストレージオプションを提供します。カメラは12 MP、バッテリー容量は3095 mAhで、iOS 15を搭載しています。",
+            "message_files": [],
+            "feedback": null,
+            "retriever_resources": [
+                {
+                    "position": 1,
+                    "dataset_id": "101b4c97-fc2e-463c-90b1-5261a4cdcafb",
+                    "dataset_name": "iPhone",
+                    "document_id": "8dd1ad74-0b5f-4175-b735-7d98bbbb4e00",
+                    "document_name": "iPhone List",
+                    "segment_id": "ed599c7f-2766-4294-9d1d-e5235a61270a",
+                    "score": 0.98457545,
+                    "content": "\"Model\",\"Release Date\",\"Display Size\",\"Resolution\",\"Processor\",\"RAM\",\"Storage\",\"Camera\",\"Battery\",\"Operating System\"\n\"iPhone 13 Pro Max\",\"September 24, 2021\",\"6.7 inch\",\"1284 x 2778\",\"Hexa-core (2x3.23 GHz Avalanche + 4x1.82 GHz Blizzard)\",\"6 GB\",\"128, 256, 512 GB, 1TB\",\"12 MP\",\"4352 mAh\",\"iOS 15\""
+                }
+            ],
+            "agent_thoughts": [],
+            "created_at": 1705569239,
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+
+    ### 応答例（エージェントアシスタント）
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+        "limit": 20,
+        "has_more": false,
+        "data": [
+            {
+                "id": "d35e006c-7c4d-458f-9142-be4930abdf94",
+                "conversation_id": "957c068b-f258-4f89-ba10-6e8a0361c457",
+                "inputs": {},
+                "query": "draw a cat",
+                "answer": "猫の画像を生成しました。メッセージを確認して画像を表示してください。",
+                "message_files": [
+                    {
+                        "id": "976990d2-5294-47e6-8f14-7356ba9d2d76",
+                        "type": "image",
+                        "url": "http://127.0.0.1:5001/files/tools/976990d2-5294-47e6-8f14-7356ba9d2d76.png?timestamp=1705988524&nonce=55df3f9f7311a9acd91bf074cd524092&sign=z43nMSO1L2HBvoqADLkRxr7Biz0fkjeDstnJiCK1zh8=",
+                        "belongs_to": "assistant"
+                    }
+                ],
+                "feedback": null,
+                "retriever_resources": [],
+                "created_at": 1705988187,
+                "agent_thoughts": [
+                    {
+                        "id": "592c84cf-07ee-441c-9dcc-ffc66c033469",
+                        "chain_id": null,
+                        "message_id": "d35e006c-7c4d-458f-9142-be4930abdf94",
+                        "position": 1,
+                        "thought": "",
+                        "tool": "dalle2",
+                        "tool_input": "{\"dalle2\": {\"prompt\": \"cat\"}}",
+                        "created_at": 1705988186,
+                        "observation": "画像はすでに作成され、ユーザーに送信されました。今すぐユーザーに確認するように伝えてください。",
+                        "message_files": [
+                            "976990d2-5294-47e6-8f14-7356ba9d2d76"
+                        ]
+                    },
+                    {
+                        "id": "73ead60d-2370-4780-b5ed-532d2762b0e5",
+                        "chain_id": null,
+                        "message_id": "d35e006c-7c4d-458f-9142-be4930abdf94",
+                        "position": 2,
+                        "thought": "猫の画像を生成しました。メッセージを確認して画像を表示してください。",
+                        "tool": "",
+                        "tool_input": "",
+                        "created_at": 1705988199,
+                        "observation": "",
+                        "message_files": []
+                    }
+                ]
+            }
+        ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/conversations'
+  method='GET'
+  title='会話を取得'
+  name='#conversations'
+/>
+<Row>
+  <Col>
+    現在のユーザーの会話リストを取得し、デフォルトで最新の20件を返します。
+
+    ### クエリ
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+          ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用され、統計のために使用されます。
+          アプリケーション内で開発者によって一意に定義される必要があります。
+      </Property>
+      <Property name='last_id' type='string' key='last_id'>
+          現在のページの最後のレコードのID、デフォルトはnullです。
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+          1回のリクエストで返すレコードの数、デフォルトは最新の20件です。
+      </Property>
+      <Property name='pinned' type='bool' key='pinned'>
+        ピン留めされた会話のみを`true`として返し、ピン留めされていないもののみを`false`として返します
+      </Property>
+      <Property name='sort_by' type='string' key='sort_by'>
+        ソートフィールド（オプション）、デフォルト：-updated_at（更新時間で降順にソート）
+        - 利用可能な値：created_at, -created_at, updated_at, -updated_at
+        - フィールドの前の記号は順序または逆順を表し、"-"は逆順を表します。
+      </Property>
+    </Properties>
+
+    ### 応答
+    - `data` (array[object]) 会話のリスト
+      - `id` (string) 会話ID
+      - `name` (string) 会話名、デフォルトでは、ユーザーが会話で最初に尋ねた質問のスニペットです。
+      - `inputs` (array[object]) ユーザー入力パラメータ。
+      - `introduction` (string) 紹介
+      - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
+    - `has_more` (bool)
+    - `limit` (int) 返されたエントリの数、入力がシステム制限を超える場合、システム制限の数を返します
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="GET" label="/conversations" targetCode={`curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/conversations?user=abc-123&last_id=&limit=20' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "limit": 20,
+      "has_more": false,
+      "data": [
+        {
+          "id": "10799fb8-64f7-4296-bbf7-b42bfbe0ae54",
+          "name": "新しいチャット",
+          "inputs": {
+              "book": "book",
+              "myName": "Lucy"
+          },
+          "status": "normal",
+          "created_at": 1679667915
+        },
+        {
+          "id": "hSIhXBhNe8X1d8Et"
+          // ...
+        }
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/conversations/:conversation_id'
+  method='DELETE'
+  title='会話を削除'
+  name='#delete'
+/>
+<Row>
+  <Col>
+    会話を削除します。
+
+    ### パス
+    - `conversation_id` (string) 会話ID
+
+    ### リクエストボディ
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        ユーザー識別子、開発者によって定義され、アプリケーション内で一意である必要があります。
+      </Property>
+    </Properties>
+
+    ### 応答
+    - `result` (string) 常に"success"を返します
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="DELETE" label="/conversations/:conversation_id" targetCode={`curl -X DELETE '${props.appDetail.api_base_url}/conversations/:conversation_id' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+        curl -X DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \
+        --header 'Content-Type: application/json' \
+        --header 'Accept: application/json' \
+        --header 'Authorization: Bearer {api_key}' \
+        --data '{
+            "user": "abc-123"
+        }'
+      ```
+
+    </CodeGroup>
+
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+<Heading
+  url='/conversations/:conversation_id/name'
+  method='POST'
+  title='会話の名前を変更'
+  name='#rename'
+/>
+<Row>
+  <Col>
+    ### リクエストボディ
+    セッションの名前を変更します。セッション名は、複数のセッションをサポートするクライアントでの表示に使用されます。
+
+    ### パス
+    - `conversation_id` (string) 会話ID
+
+    <Properties>
+      <Property name='name' type='string' key='name'>
+          会話の名前。このパラメータは、`auto_generate`が`true`に設定されている場合、省略できます。
+      </Property>
+      <Property name='auto_generate' type='bool' key='auto_generate'>
+        タイトルを自動生成します。デフォルトは`false`です。
+      </Property>
+      <Property name='user' type='string' key='user'>
+        ユーザー識別子、開発者によって定義され、アプリケーション内で一意である必要があります。
+      </Property>
+    </Properties>
+
+    ### 応答
+    - `id` (string) 会話ID
+    - `name` (string) 会話名
+    - `inputs` array[object] ユーザー入力パラメータ。
+    - `introduction` (string) 紹介
+    - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
+    --header 'Content-Type: application/json' \
+    --header 'Authorization: Bearer {api_key}' \
+    --data-raw '{
+        "name": "",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+        "id": "cd78daf6-f9e4-4463-9ff2-54257230a0ce",
+        "name": "Chat vs AI",
+        "inputs": {},
+        "introduction": "",
+        "created_at": 1705569238
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/audio-to-text'
+  method='POST'
+  title='音声からテキストへ'
+  name='#audio'
+/>
+<Row>
+  <Col>
+    このエンドポイントはmultipart/form-dataリクエストを必要とします。
+
+    ### リクエストボディ
+
+    <Properties>
+      <Property name='file' type='file' key='file'>
+        オーディオファイル。
+        サポートされている形式：`['mp3', 'mp4', 'mpeg', 'mpga', 'm4a', 'wav', 'webm']`
+        ファイルサイズ制限：15MB
+      </Property>
+      <Property name='user' type='string' key='user'>
+      ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
+      </Property>
+    </Properties>
+
+    ### 応答
+    - `text` (string) 出力テキスト
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="POST" label="/audio-to-text" targetCode={`curl -X POST '${props.appDetail.api_base_url}/audio-to-text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=audio/[mp3|mp4|mpeg|mpga|m4a|wav|webm]'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/conversations/name' \
+    --header 'Authorization: Bearer {api_key}' \
+    --form 'file=@localfile;type=audio/mp3'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="応答">
+    ```json {{ text: 'hello' }}
+    {
+      "text": ""
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/text-to-audio'
+  method='POST'
+  title='テキストから音声へ'
+  name='#audio'
+/>
+<Row>
+  <Col>
+    テキストを音声に変換します。
+
+    ### リクエストボディ
+
+    <Properties>
+      <Property name='message_id' type='str' key='text'>
+        Difyによって生成されたテキストメッセージの場合、生成されたメッセージIDを直接渡します。バックエンドはメッセージIDを使用して対応するコンテンツを検索し、音声情報を直接合成します。message_idとtextが同時に提供される場合、message_idが優先されます。
+      </Property>
+      <Property name='text' type='str' key='text'>
+        音声生成コンテンツ。
+      </Property>
+      <Property name='user' type='string' key='user'>
+        ユーザー識別子、開発者によって定義され、アプリ内で一意である必要があります。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=Hello Dify;user=abc-123;message_id=5ad4cb98-f0c7-4085-b384-88c403be6290`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \
+    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
+    --form 'file=Hello Dify;user=abc-123;message_id=5ad4cb98-f0c7-4085-b384-88c403be6290'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="ヘッダー">
+    ```json {{ title: 'ヘッダー' }}
+    {
+      "Content-Type": "audio/wav"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='アプリケーション情報を取得'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    ページに入る際に、機能、入力パラメータ名、タイプ、デフォルト値などの情報を取得するために使用されます。
+
+    ### クエリ
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+          ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
+      </Property>
+    </Properties>
+
+    ### 応答
+    - `opening_statement` (string) 開始文
+    - `suggested_questions` (array[string]) 開始時の推奨質問のリスト
+    - `suggested_questions_after_answer` (object) 答えを有効にした後の質問を提案します。
+      - `enabled` (bool) 有効かどうか
+    - `speech_to_text` (object) 音声からテキストへ
+      - `enabled` (bool) 有効かどうか
+    - `retriever_resource` (object) 引用と帰属
+      - `enabled` (bool) 有効かどうか
+    - `annotation_reply` (object) 注釈返信
+      - `enabled` (bool) 有効かどうか
+    - `user_input_form` (array[object]) ユーザー入力フォームの構成
+      - `text-input` (object) テキスト入力コントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+      - `paragraph` (object) 段落テキスト入力コントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+      - `select` (object) ドロップダウンコントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+        - `options` (array[string]) オプション値
+    - `file_upload` (object) ファイルアップロード構成
+      - `image` (object) 画像設定
+        現在サポートされている画像タイプ：`png`, `jpg`, `jpeg`, `webp`, `gif`
+        - `enabled` (bool) 有効かどうか
+        - `number_limits` (int) 画像数の制限、デフォルトは3
+        - `transfer_methods` (array[string]) 転送方法のリスト、remote_url, local_file、いずれかを選択する必要があります
+    - `system_parameters` (object) システムパラメータ
+      - `file_size_limit` (int) ドキュメントアップロードサイズ制限（MB）
+      - `image_file_size_limit` (int) 画像ファイルアップロードサイズ制限（MB）
+      - `audio_file_size_limit` (int) オーディオファイルアップロードサイズ制限（MB）
+      - `video_file_size_limit` (int) ビデオファイルアップロードサイズ制限（MB）
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "opening_statement": "こんにちは！",
+      "suggested_questions_after_answer": {
+          "enabled": true
+      },
+      "speech_to_text": {
+          "enabled": true
+      },
+      "retriever_resource": {
+          "enabled": true
+      },
+      "annotation_reply": {
+          "enabled": true
+      },
+      "user_input_form": [
+          {
+              "paragraph": {
+                  "label": "クエリ",
+                  "variable": "query",
+                  "required": true,
+                  "default": ""
+              }
+          }
+      ],
+      "file_upload": {
+          "image": {
+              "enabled": false,
+              "number_limits": 3,
+              "detail": "high",
+              "transfer_methods": [
+                  "remote_url",
+                  "local_file"
+              ]
+          }
+      },
+      "system_parameters": {
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/meta'
+  method='GET'
+  title='アプリケーションメタ情報を取得'
+  name='#meta'
+/>
+<Row>
+  <Col>
+  このアプリケーションのツールのアイコンを取得するために使用されます
+  ### クエリ
+    <Properties>
+
+   <Property name='user' type='string' key='user'>
+        ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
+    </Property>
+      </Properties>
+  ### 応答
+  - `tool_icons`(object[string]) ツールアイコン
+    - `tool_name` (string)
+      - `icon` (object|string)
+        - (object) アイコンオブジェクト
+          - `background` (string) 背景色（16進数形式）
+          - `content`(string) 絵文字
+        - (string) アイコンのURL
+  </Col>
+  <Col>
+  <CodeGroup title="リクエスト" tag="GET" label="/meta" targetCode={`curl -X GET '${props.appDetail.api_base_url}/meta?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/meta?user=abc-123' \
+    -H 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+    "tool_icons": {
+        "dalle2": "https://cloud.dify.ai/console/api/workspaces/current/tool-provider/builtin/dalle/icon",
+        "api_tool": {
+            "background": "#252525",
+            "content": "\ud83d\ude01"
+        }
+    }
+  }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
