@@ -55,7 +55,7 @@ class ToolEngine:
             # check if this tool has only one parameter
             parameters = [
                 parameter
-                for parameter in tool.get_runtime_parameters() or []
+                for parameter in tool.get_runtime_parameters()
                 if parameter.form == ToolParameter.ToolParameterForm.LLM
             ]
             if parameters and len(parameters) == 1:
