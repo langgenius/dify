@@ -1,12 +1,12 @@
 {
   "name": "dify-web",
-  "version": "0.11.1",
+  "version": "0.11.2",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
   },
   "scripts": {
-    "dev": "next dev",
+    "dev": "NODE_OPTIONS='--inspect' next dev",
     "build": "next build",
     "start": "cp -r .next/static .next/standalone/.next/static && cp -r public .next/standalone/public && cross-env PORT=$npm_config_port HOSTNAME=$npm_config_host node .next/standalone/server.js",
     "lint": "next lint",
@@ -44,9 +44,8 @@
     "@sentry/utils": "^7.54.0",
     "@svgdotjs/svg.js": "^3.2.4",
     "@tailwindcss/typography": "^0.5.15",
-    "@tanstack/react-query": "^5.59.20",
-    "@tanstack/react-query-devtools": "^5.59.20",
-    "@types/hast": "^3.0.4",
+    "@tanstack/react-query": "^5.60.5",
+    "@tanstack/react-query-devtools": "^5.60.5",
     "ahooks": "^3.8.1",
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.5.1",

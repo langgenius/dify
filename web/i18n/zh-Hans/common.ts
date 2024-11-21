@@ -27,6 +27,7 @@ const translation = {
     lineBreak: '换行',
     sure: '我确定',
     download: '下载',
+    viewDetails: '查看详情',
     delete: '删除',
     settings: '设置',
     setup: '设置',
@@ -601,6 +602,10 @@ const translation = {
     deleteTip: '标签正在使用中，是否删除？',
     created: '标签创建成功',
     failed: '标签创建失败',
+  },
+  license: {
+    expiring: '许可证还有 1 天到期',
+    expiring_plural: '许可证还有 {{count}} 天到期',
   },
 }
 

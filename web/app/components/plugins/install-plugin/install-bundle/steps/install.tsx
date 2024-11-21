@@ -5,7 +5,7 @@ import type { Dependency, InstallStatusResponse, Plugin } from '../../../types'
 import Button from '@/app/components/base/button'
 import { RiLoader2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import InstallByDSLList from './install-multi'
+import InstallMulti from './install-multi'
 import { useInstallFromMarketplaceAndGitHub } from '@/service/use-plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 const i18nPrefix = 'plugin.installModal'
@@ -58,7 +58,10 @@ const Install: FC<Props> = ({
     },
   })
   const handleInstall = () => {
-    installFromMarketplaceAndGitHub(allPlugins.filter((_d, index) => selectedIndexes.includes(index)))
+    installFromMarketplaceAndGitHub({
+      payload: allPlugins.filter((_d, index) => selectedIndexes.includes(index)),
+      plugin: selectedPlugins,
+    })
   }
   return (
     <>
@@ -67,7 +70,7 @@ const Install: FC<Props> = ({
           <p>{t(`${i18nPrefix}.${selectedPluginsNum > 1 ? 'readyToInstallPackages' : 'readyToInstallPackage'}`, { num: selectedPluginsNum })}</p>
         </div>
         <div className='w-full p-2 rounded-2xl bg-background-section-burn space-y-1'>
-          <InstallByDSLList
+          <InstallMulti
             allPlugins={allPlugins}
             selectedPlugins={selectedPlugins}
             onSelect={handleSelect}

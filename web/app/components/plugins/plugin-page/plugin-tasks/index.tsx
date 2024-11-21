@@ -119,7 +119,7 @@ const PluginTasks = () => {
             </div>
           </Tooltip>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-10'>
+        <PortalToFollowElemContent className='z-[11]'>
           <div className='p-1 pb-2 w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
             <div className='flex items-center px-2 pt-1 h-7 system-sm-semibold-uppercase'>
               {t('plugin.task.installedError', { errorLength: errorPlugins.length })}

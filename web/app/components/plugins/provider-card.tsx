@@ -19,13 +19,11 @@ import { useBoolean } from 'ahooks'
 type Props = {
   className?: string
   payload: Plugin
-  onSuccess: () => void
 }
 
 const ProviderCard: FC<Props> = ({
   className,
   payload,
-  onSuccess,
 }) => {
   const { t } = useTranslation()
   const [isShowInstallFromMarketplace, {
@@ -42,7 +40,7 @@ const ProviderCard: FC<Props> = ({
         <Icon src={payload.icon} />
         <div className="ml-3 w-0 grow">
           <div className="flex items-center h-5">
-            <Title title={label[language]} />
+            <Title title={label[language] || label.en_US} />
             {/* <RiVerifiedBadgeLine className="shrink-0 ml-0.5 w-4 h-4 text-text-accent" /> */}
           </div>
           <div className='mb-1 flex justify-between items-center h-4'>
@@ -54,7 +52,7 @@ const ProviderCard: FC<Props> = ({
           </div>
         </div>
       </div>
-      <Description className='mt-3' text={payload.brief[language]} descriptionLineRows={2}></Description>
+      <Description className='mt-3' text={payload.brief[language] || payload.brief.en_US} descriptionLineRows={2}></Description>
       <div className='mt-3 flex space-x-0.5'>
         {payload.tags.map(tag => (
           <Badge key={tag.name} text={tag.name} />
@@ -86,10 +84,7 @@ const ProviderCard: FC<Props> = ({
             manifest={payload as any}
             uniqueIdentifier={payload.latest_package_identifier}
             onClose={hideInstallFromMarketplace}
-            onSuccess={() => {
-              onSuccess()
-              hideInstallFromMarketplace()
-            }}
+            onSuccess={() => hideInstallFromMarketplace()}
           />
         )
       }

@@ -18,7 +18,8 @@ import type {
 } from '@/types/workflow'
 import { removeAccessToken } from '@/app/components/share/utils'
 import type { FetchOptionType, ResponseError } from './fetch'
-import { ContentType, base, baseOptions, getPublicToken } from './fetch'
+import { ContentType, base, baseOptions, getAccessToken } from './fetch'
+import { asyncRunSafe } from '@/utils'
 const TIME_OUT = 100000
 
 export type IOnDataMoreInfo = {
@@ -253,14 +254,7 @@ const baseFetch = base
 
 export const upload = (options: any, isPublicAPI?: boolean, url?: string, searchParams?: string): Promise<any> => {
   const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  let token = ''
-  if (isPublicAPI) {
-    token = getPublicToken()
-  }
-  else {
-    const accessToken = localStorage.getItem('console_token') || ''
-    token = accessToken
-  }
+  const token = getAccessToken(isPublicAPI)
   const defaultOptions = {
     method: 'POST',
     url: (url ? `${urlPrefix}${url}` : `${urlPrefix}/files/upload`) + (searchParams || ''),
@@ -351,6 +345,9 @@ export const ssePost = (
   if (body)
     options.body = JSON.stringify(body)
 
+  const accessToken = getAccessToken(isPublicAPI)
+  options.headers!.set('Authorization', `Bearer ${accessToken}`)
+
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^(2|3)\d{2}$/.test(String(res.status))) {
@@ -398,54 +395,78 @@ export const ssePost = (
 }
 
 // base request
-export const request = <T>(url: string, options = {}, otherOptions: IOtherOptions = {}) => {
-  return new Promise<T>((resolve, reject) => {
-    baseFetch<T>(url, options, otherOptions).then(resolve).catch((errResp) => {
-      if (errResp?.status === 401) {
-        return refreshAccessTokenOrRelogin(TIME_OUT).then(() => {
-          baseFetch<T>(url, options, otherOptions).then(resolve).catch(reject)
-        }).catch(() => {
-          const {
-            isPublicAPI = false,
-            silent,
-          } = otherOptions
-          const bodyJson = errResp.json()
-          if (isPublicAPI) {
-            return bodyJson.then((data: ResponseError) => {
-              if (data.code === 'web_sso_auth_required')
-                requiredWebSSOLogin()
-
-              if (data.code === 'unauthorized') {
-                removeAccessToken()
-                globalThis.location.reload()
-              }
-
-              return Promise.reject(data)
-            })
-          }
-          const loginUrl = `${globalThis.location.origin}/signin`
-          bodyJson.then((data: ResponseError) => {
-            if (data.code === 'init_validate_failed' && IS_CE_EDITION && !silent)
-              Toast.notify({ type: 'error', message: data.message, duration: 4000 })
-            else if (data.code === 'not_init_validated' && IS_CE_EDITION)
-              globalThis.location.href = `${globalThis.location.origin}/init`
-            else if (data.code === 'not_setup' && IS_CE_EDITION)
-              globalThis.location.href = `${globalThis.location.origin}/install`
-            else if (location.pathname !== '/signin' || !IS_CE_EDITION)
-              globalThis.location.href = loginUrl
-            else if (!silent)
-              Toast.notify({ type: 'error', message: data.message })
-          }).catch(() => {
-            // Handle any other errors
-            globalThis.location.href = loginUrl
-          })
-        })
+export const request = async<T>(url: string, options = {}, otherOptions?: IOtherOptions) => {
+  try {
+    const otherOptionsForBaseFetch = otherOptions || {}
+    const [err, resp] = await asyncRunSafe<T>(baseFetch(url, options, otherOptionsForBaseFetch))
+    if (err === null)
+      return resp
+    const errResp: Response = err as any
+    if (errResp.status === 401) {
+      const [parseErr, errRespData] = await asyncRunSafe<ResponseError>(errResp.json())
+      const loginUrl = `${globalThis.location.origin}/signin`
+      if (parseErr) {
+        globalThis.location.href = loginUrl
+        return Promise.reject(err)
       }
-      else {
-        reject(errResp)
+      // special code
+      const { code, message } = errRespData
+      // webapp sso
+      if (code === 'web_sso_auth_required') {
+        requiredWebSSOLogin()
+        return Promise.reject(err)
       }
-    })
-  })
+      if (code === 'unauthorized_and_force_logout') {
+        localStorage.removeItem('console_token')
+        localStorage.removeItem('refresh_token')
+        globalThis.location.reload()
+        return Promise.reject(err)
+      }
+      const {
+        isPublicAPI = false,
+        silent,
+      } = otherOptionsForBaseFetch
+      if (isPublicAPI && code === 'unauthorized') {
+        removeAccessToken()
+        globalThis.location.reload()
+        return Promise.reject(err)
+      }
+      if (code === 'init_validate_failed' && IS_CE_EDITION && !silent) {
+        Toast.notify({ type: 'error', message, duration: 4000 })
+        return Promise.reject(err)
+      }
+      if (code === 'not_init_validated' && IS_CE_EDITION) {
+        globalThis.location.href = `${globalThis.location.origin}/init`
+        return Promise.reject(err)
+      }
+      if (code === 'not_setup' && IS_CE_EDITION) {
+        globalThis.location.href = `${globalThis.location.origin}/install`
+        return Promise.reject(err)
+      }
+
+      // refresh token
+      const [refreshErr] = await asyncRunSafe(refreshAccessTokenOrRelogin(TIME_OUT))
+      if (refreshErr === null)
+        return baseFetch<T>(url, options, otherOptionsForBaseFetch)
+      if (location.pathname !== '/signin' || !IS_CE_EDITION) {
+        globalThis.location.href = loginUrl
+        return Promise.reject(err)
+      }
+      if (!silent) {
+        Toast.notify({ type: 'error', message })
+        return Promise.reject(err)
+      }
+      globalThis.location.href = loginUrl
+      return Promise.reject(err)
+    }
+    else {
+      return Promise.reject(err)
+    }
+  }
+  catch (error) {
+    console.error(error)
+    return Promise.reject(error)
+  }
 }
 
 // request methods

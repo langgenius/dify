@@ -116,6 +116,8 @@ const translation = {
     cancel: '取消',
     back: '返回',
     next: '下一步',
+    pluginLoadError: '插件加载错误',
+    pluginLoadErrorDesc: '此插件将不会被安装',
   },
   installFromGitHub: {
     installPlugin: '从 GitHub 安装插件',

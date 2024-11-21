@@ -77,7 +77,7 @@ const OperationDropdown: FC<Props> = ({
               className='px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'
             >{t('plugin.detailPanel.operation.checkUpdate')}</div>
           )}
-          {source === PluginSource.marketplace && (
+          {(source === PluginSource.marketplace || source === PluginSource.github) && (
             <a href={detailUrl} target='_blank' className='flex items-center px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>
               <span className='grow'>{t('plugin.detailPanel.operation.viewDetail')}</span>
               <RiArrowRightUpLine className='shrink-0 w-3.5 h-3.5 text-text-tertiary' />

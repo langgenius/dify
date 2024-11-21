@@ -88,7 +88,7 @@ class AppService:
             except (ProviderTokenNotInitError, LLMBadRequestError):
                 model_instance = None
             except Exception as e:
-                logging.exception(e)
+                logging.exception(f"Get default model instance failed, tenant_id: {tenant_id}")
                 model_instance = None
 
             if model_instance:

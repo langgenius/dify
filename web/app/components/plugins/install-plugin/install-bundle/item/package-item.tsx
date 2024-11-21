@@ -5,6 +5,7 @@ import type { Plugin } from '../../../types'
 import type { PackageDependency } from '../../../types'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import LoadedItem from './loaded-item'
+import LoadingError from '../../base/loading-error'
 
 type Props = {
   checked: boolean
@@ -17,6 +18,9 @@ const PackageItem: FC<Props> = ({
   checked,
   onCheckedChange,
 }) => {
+  if (!payload.value?.manifest)
+    return <LoadingError />
+
   const plugin = pluginManifestToCardPluginProps(payload.value.manifest)
   return (
     <LoadedItem

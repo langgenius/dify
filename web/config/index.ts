@@ -274,4 +274,4 @@ export const DISABLE_UPLOAD_IMAGE_AS_ICON = process.env.NEXT_PUBLIC_DISABLE_UPLO
 
 export const GITHUB_ACCESS_TOKEN = process.env.NEXT_PUBLIC_GITHUB_ACCESS_TOKEN || globalThis.document?.body?.getAttribute('data-public-github-access-token') || ''
 
-export const SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS = '.difypkg,.bundle'
+export const SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS = '.difypkg,.difybndl'

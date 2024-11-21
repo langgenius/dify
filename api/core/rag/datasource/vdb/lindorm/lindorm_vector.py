@@ -81,7 +81,7 @@ class LindormVectorStore(BaseVector):
                                                   "ids": batch_ids}, _source=False)
                 return {doc["_id"] for doc in existing_docs["docs"] if doc["found"]}
             except Exception as e:
-                logger.exception(f"Error fetching batch {batch_ids}: {e}")
+                logger.exception(f"Error fetching batch {batch_ids}")
                 return set()
 
         @retry(stop=stop_after_attempt(3), wait=wait_fixed(60))
@@ -99,7 +99,7 @@ class LindormVectorStore(BaseVector):
                 )
                 return {doc["_id"] for doc in existing_docs["docs"] if doc["found"]}
             except Exception as e:
-                logger.exception(f"Error fetching batch {batch_ids}: {e}")
+                logger.exception(f"Error fetching batch ids: {batch_ids}")
                 return set()
 
         if ids is None:
@@ -187,7 +187,7 @@ class LindormVectorStore(BaseVector):
                 logger.warning(
                     f"Index '{self._collection_name}' does not exist. No deletion performed.")
         except Exception as e:
-            logger.exception(f"Error occurred while deleting the index: {e}")
+            logger.exception(f"Error occurred while deleting the index: {self._collection_name}")
             raise e
 
     def text_exists(self, id: str) -> bool:
@@ -213,7 +213,7 @@ class LindormVectorStore(BaseVector):
             response = self._client.search(
                 index=self._collection_name, body=query)
         except Exception as e:
-            logger.exception(f"Error executing search: {e}")
+            logger.exception(f"Error executing vector search, query: {query}")
             raise
 
         docs_and_scores = []

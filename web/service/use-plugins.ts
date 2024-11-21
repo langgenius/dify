@@ -2,10 +2,14 @@ import { useCallback, useState } from 'react'
 import type {
   DebugInfo as DebugInfoTypes,
   Dependency,
+  GitHubItemAndMarketPlaceDependency,
   InstallPackageResponse,
   InstalledPluginListResponse,
+  PackageDependency,
   Permissions,
+  Plugin,
   PluginTask,
+  PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
   VersionListResponse,
   uploadGitHubResponse,
@@ -115,25 +119,53 @@ export const useInstallFromMarketplaceAndGitHub = ({
   onSuccess?: (res: { success: boolean }[]) => void
 }) => {
   return useMutation({
-    mutationFn: (payload: Dependency[]) => {
-      return Promise.all(payload.map(async (item) => {
+    mutationFn: (data: {
+      payload: Dependency[],
+      plugin: Plugin[],
+    }) => {
+      const { payload, plugin } = data
+      return Promise.all(payload.map(async (item, i) => {
         try {
           if (item.type === 'github') {
+            const data = item as GitHubItemAndMarketPlaceDependency
+            let pluginId = ''
+            // From local bundle don't have data.value.github_plugin_unique_identifier
+            if (!data.value.github_plugin_unique_identifier) {
+              const { unique_identifier } = await post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
+                body: {
+                  repo: data.value.repo!,
+                  version: data.value.release! || data.value.version!,
+                  package: data.value.packages! || data.value.package!,
+                },
+              })
+              pluginId = unique_identifier
+            }
             await post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
               body: {
-                repo: item.value.repo!,
-                version: item.value.version!,
-                package: item.value.package!,
-                plugin_unique_identifier: item.value.github_plugin_unique_identifier!,
+                repo: data.value.repo!,
+                version: data.value.release! || data.value.version!,
+                package: data.value.packages! || data.value.package!,
+                plugin_unique_identifier: data.value.github_plugin_unique_identifier! || pluginId,
               },
             })
-            return ({ success: true })
           }
-          await post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
-            body: {
-              plugin_unique_identifiers: [item.value.plugin_unique_identifier!],
-            },
-          })
+          if (item.type === 'marketplace') {
+            const data = item as GitHubItemAndMarketPlaceDependency
+
+            await post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
+              body: {
+                plugin_unique_identifiers: [data.value.plugin_unique_identifier! || plugin[i]?.plugin_id],
+              },
+            })
+          }
+          if (item.type === 'package') {
+            const data = item as PackageDependency
+            await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
+              body: {
+                plugin_unique_identifiers: [data.value.unique_identifier],
+              },
+            })
+          }
           return ({ success: true })
         }
         // eslint-disable-next-line unused-imports/no-unused-vars
@@ -217,6 +249,25 @@ export const useFetchPluginsInMarketPlaceByIds = (unique_identifiers: string[]) 
         unique_identifiers,
       },
     }),
+    enabled: unique_identifiers?.filter(i => !!i).length > 0,
+    retry: 0,
+  })
+}
+
+export const useFetchPluginsInMarketPlaceByInfo = (infos: Record<string, any>[]) => {
+  return useQuery({
+    queryKey: [NAME_SPACE, 'fetchPluginsInMarketPlaceByInfo', infos],
+    queryFn: () => postMarketplace<{ data: PluginsFromMarketplaceByInfoResponse }>('/plugins/versions/batch', {
+      body: {
+        plugin_tuples: infos.map(info => ({
+          org: info.organization,
+          name: info.plugin,
+          version: info.version,
+        })),
+      },
+    }),
+    enabled: infos?.filter(i => !!i).length > 0,
+    retry: 0,
   })
 }
 

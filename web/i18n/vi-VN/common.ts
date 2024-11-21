@@ -591,6 +591,10 @@ const translation = {
     uploadFromComputerUploadError: 'Tải lên tệp không thành công, vui lòng tải lên lại.',
     uploadFromComputerReadError: 'Đọc tệp không thành công, vui lòng thử lại.',
   },
+  license: {
+    expiring_plural: 'Hết hạn sau {{count}} ngày',
+    expiring: 'Hết hạn trong một ngày',
+  },
 }
 
 export default translation

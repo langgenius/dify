@@ -7,6 +7,7 @@ import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import Badge from '@/app/components/base/badge'
 import InstallBundle from '@/app/components/plugins/install-plugin/install-bundle'
 import { useBoolean } from 'ahooks'
+import LoadingError from '@/app/components/plugins/install-plugin/base/loading-error'
 
 const PluginList = () => {
   const pluginList = [toolNotion, extensionDallE, modelGPT4, customTool]
@@ -16,6 +17,7 @@ const PluginList = () => {
 
   return (
     <div className='pb-3 bg-white'>
+      <LoadingError />
       {isShow && (
         <InstallBundle
           onClose={hide}
@@ -35,21 +37,21 @@ const PluginList = () => {
                 github_plugin_unique_identifier: 'yixiao0/test:0.0.1@3592166c87afcf944b4f13f27467a5c8f9e00bd349cb42033a072734a37431b4',
               },
             },
-            {
-              type: 'github',
-              value: {
-                package: 'dify-test.difypkg',
-                repo: 'WTW0313/dify-test',
-                version: '0.0.5-beta.2',
-                github_plugin_unique_identifier: 'wtw0313/dify-test:0.0.1@1633daa043b47155d4228e2db7734245fd6d3e20ba812e5c02ce69fc1e3038f4',
-              },
-            },
-            {
-              type: 'marketplace',
-              value: {
-                plugin_unique_identifier: 'langgenius/openai:0.0.2@7baee9635a07573ea192621ebfdacb39db466fa691e75255beaf48bf41d44375',
-              },
-            },
+            // {
+            //   type: 'github',
+            //   value: {
+            //     package: 'dify-test.difypkg',
+            //     repo: 'WTW0313/dify-test',
+            //     release: '0.0.5-beta.2',
+            //     github_plugin_unique_identifier: 'wtw0313/dify-test:0.0.1@1633daa043b47155d4228e2db7734245fd6d3e20ba812e5c02ce69fc1e3038f4',
+            //   },
+            // },
+            // {
+            //   type: 'marketplace',
+            //   value: {
+            //     plugin_unique_identifier: 'langgenius/openai:0.0.2@7baee9635a07573ea192621ebfdacb39db466fa691e75255beaf48bf41d44375',
+            //   },
+            // },
           ]} />
       )
       }

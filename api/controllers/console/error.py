@@ -52,8 +52,8 @@ class AccountBannedError(BaseHTTPException):
     code = 400
 
 
-class NotAllowedRegister(BaseHTTPException):
-    error_code = "unauthorized"
+class AccountNotFound(BaseHTTPException):
+    error_code = "account_not_found"
     description = "Account not found."
     code = 400
 
@@ -86,3 +86,9 @@ class NoFileUploadedError(BaseHTTPException):
     error_code = "no_file_uploaded"
     description = "Please upload your file."
     code = 400
+
+
+class UnauthorizedAndForceLogout(BaseHTTPException):
+    error_code = "unauthorized_and_force_logout"
+    description = "Unauthorized and force logout."
+    code = 401

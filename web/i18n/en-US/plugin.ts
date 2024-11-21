@@ -116,6 +116,8 @@ const translation = {
     cancel: 'Cancel',
     back: 'Back',
     next: 'Next',
+    pluginLoadError: 'Plugin load error',
+    pluginLoadErrorDesc: 'This plugin will not be installed',
   },
   installFromGitHub: {
     installPlugin: 'Install plugin from GitHub',

@@ -9,7 +9,7 @@ import {
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import type { PluginDetail } from '../types'
-import { PluginSource } from '../types'
+import { PluginSource, PluginType } from '../types'
 import Description from '../card/base/description'
 import Icon from '../card/base/card-icon'
 import Title from '../card/base/title'
@@ -30,6 +30,7 @@ import { Github } from '@/app/components/base/icons/src/public/common'
 import { uninstallPlugin } from '@/service/plugins'
 import { useGetLanguage } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
 
@@ -38,7 +39,7 @@ const i18nPrefix = 'plugin.action'
 type Props = {
   detail: PluginDetail
   onHide: () => void
-  onUpdate: () => void
+  onUpdate: (isDelete?: boolean) => void
 }
 
 const DetailHeader = ({
@@ -50,6 +51,7 @@ const DetailHeader = ({
   const locale = useGetLanguage()
   const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
+  const { refreshModelProviders } = useProviderContext()
 
   const {
     installation_id,
@@ -61,7 +63,7 @@ const DetailHeader = ({
     meta,
     plugin_id,
   } = detail
-  const { author, name, label, description, icon, verified } = detail.declaration
+  const { author, category, name, label, description, icon, verified } = detail.declaration
   const isFromGitHub = source === PluginSource.github
   const isFromMarketplace = source === PluginSource.marketplace
 
@@ -76,6 +78,14 @@ const DetailHeader = ({
 
     return false
   }, [isFromMarketplace, latest_version, version])
+
+  const detailUrl = useMemo(() => {
+    if (isFromGitHub)
+      return `https://github.com/${meta!.repo}`
+    if (isFromMarketplace)
+      return `${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`
+    return ''
+  }, [author, isFromGitHub, isFromMarketplace, meta, name])
 
   const [isShowUpdateModal, {
     setTrue: showUpdateModal,
@@ -139,9 +149,11 @@ const DetailHeader = ({
     hideDeleting()
     if (res.success) {
       hideDeleteConfirm()
-      onUpdate()
+      onUpdate(true)
+      if (category === PluginType.model)
+        refreshModelProviders()
     }
-  }, [hideDeleteConfirm, hideDeleting, installation_id, showDeleting, onUpdate])
+  }, [showDeleting, installation_id, hideDeleting, hideDeleteConfirm, onUpdate, category, refreshModelProviders])
 
   // #plugin TODO# used in apps
   // const usedInApps = 3
@@ -225,7 +237,7 @@ const DetailHeader = ({
             onInfo={showPluginInfo}
             onCheckVersion={handleUpdate}
             onRemove={showDeleteConfirm}
-            detailUrl={`${MARKETPLACE_URL_PREFIX}/plugin/${author}/${name}`}
+            detailUrl={detailUrl}
           />
           <ActionButton onClick={onHide}>
             <RiCloseLine className='w-4 h-4' />

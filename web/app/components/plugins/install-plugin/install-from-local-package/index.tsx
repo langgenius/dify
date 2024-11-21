@@ -28,7 +28,7 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
   const [manifest, setManifest] = useState<PluginDeclaration | null>(null)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
-  const isBundle = file.name.endsWith('.bundle')
+  const isBundle = file.name.endsWith('.difybndl')
   const [dependencies, setDependencies] = useState<Dependency[]>([])
 
   const getTitle = useCallback(() => {

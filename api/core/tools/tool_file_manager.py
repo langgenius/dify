@@ -98,7 +98,7 @@ class ToolFileManager:
             response.raise_for_status()
             blob = response.content
         except Exception as e:
-            logger.exception(f"Failed to download file from {file_url}: {e}")
+            logger.exception(f"Failed to download file from {file_url}")
             raise
 
         mimetype = guess_type(file_url)[0] or "octet/stream"

@@ -4,7 +4,7 @@ import React, { useEffect } from 'react'
 import type { GitHubItemAndMarketPlaceDependency, Plugin } from '../../../types'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import { useUploadGitHub } from '@/service/use-plugins'
-import Loading from './loading'
+import Loading from '../../base/loading'
 import LoadedItem from './loaded-item'
 
 type Props = {
@@ -25,8 +25,8 @@ const Item: FC<Props> = ({
   const info = dependency.value
   const { data, error } = useUploadGitHub({
     repo: info.repo!,
-    version: info.version!,
-    package: info.package!,
+    version: info.release! || info.version!,
+    package: info.packages! || info.package!,
   })
   const [payload, setPayload] = React.useState<Plugin | null>(null)
   useEffect(() => {

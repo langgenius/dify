@@ -310,13 +310,25 @@ export type UninstallPluginResponse = {
 export type PluginsFromMarketplaceResponse = {
   plugins: Plugin[]
 }
+export type PluginsFromMarketplaceByInfoResponse = {
+  list: {
+    plugin: Plugin
+    version: {
+      plugin_name: string
+      plugin_org: string
+      unique_identifier: string
+    }
+  }[]
+}
 
 export type GitHubItemAndMarketPlaceDependency = {
   type: 'github' | 'marketplace' | 'package'
   value: {
     repo?: string
-    version?: string
-    package?: string
+    version?: string // from app DSL
+    package?: string // from app DSL
+    release?: string // from local package. same to the version
+    packages?: string // from local package. same to the package
     github_plugin_unique_identifier?: string
     marketplace_plugin_unique_identifier?: string
     plugin_unique_identifier?: string

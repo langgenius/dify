@@ -9,10 +9,10 @@ from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
 from extensions.ext_database import db
 from models.model import DifySetup
-from services.feature_service import FeatureService
+from services.feature_service import FeatureService, LicenseStatus
 from services.operation_service import OperationService
 
-from .error import NotInitValidateError, NotSetupError
+from .error import NotInitValidateError, NotSetupError, UnauthorizedAndForceLogout
 
 
 def account_initialization_required(view):
@@ -143,6 +143,18 @@ def setup_required(view):
             raise NotInitValidateError()
         elif dify_config.EDITION == "SELF_HOSTED" and not db.session.query(DifySetup).first():
             raise NotSetupError()
+
+        return view(*args, **kwargs)
+
+    return decorated
+
+
+def enterprise_license_required(view):
+    @wraps(view)
+    def decorated(*args, **kwargs):
+        settings = FeatureService.get_system_features()
+        if settings.license.status in [LicenseStatus.INACTIVE, LicenseStatus.EXPIRED, LicenseStatus.LOST]:
+            raise UnauthorizedAndForceLogout("Your license is invalid. Please contact your administrator.")
 
         return view(*args, **kwargs)
 

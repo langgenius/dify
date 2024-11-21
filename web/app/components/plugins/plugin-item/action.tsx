@@ -55,7 +55,7 @@ const Action: FC<Props> = ({
 
   const handleFetchNewVersion = async () => {
     const fetchedReleases = await fetchReleases(author, pluginName)
-    if (fetchReleases.length === 0) return
+    if (fetchedReleases.length === 0) return
     const { needUpdate, toastProps } = checkForUpdates(fetchedReleases, meta!.version)
     Toast.notify(toastProps)
     if (needUpdate) {

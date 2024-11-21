@@ -18,7 +18,6 @@ export const useAllToolProviders = () => {
   return useQuery({
     queryKey: useAllToolProvidersKey,
     queryFn: () => get<Collection[]>('/workspaces/current/tool-providers'),
-    initialData: [],
   })
 }
 

@@ -4,10 +4,11 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Dependency, GitHubItemAndMarketPlaceDependency, PackageDependency, Plugin } from '../../../types'
 import MarketplaceItem from '../item/marketplace-item'
 import GithubItem from '../item/github-item'
-import { useFetchPluginsInMarketPlaceByIds } from '@/service/use-plugins'
+import { useFetchPluginsInMarketPlaceByIds, useFetchPluginsInMarketPlaceByInfo } from '@/service/use-plugins'
 import produce from 'immer'
 import { useGetState } from 'ahooks'
 import PackageItem from '../item/package-item'
+import LoadingError from '../../base/loading-error'
 
 type Props = {
   allPlugins: Dependency[]
@@ -22,9 +23,25 @@ const InstallByDSLList: FC<Props> = ({
   onSelect,
   onLoadedAllPlugin,
 }) => {
-  const { isLoading: isFetchingMarketplaceData, data: marketplaceRes } = useFetchPluginsInMarketPlaceByIds(allPlugins.filter(d => d.type === 'marketplace').map(d => d.value.plugin_unique_identifier!))
+  const { isLoading: isFetchingMarketplaceDataFromDSL, data: marketplaceFromDSLRes } = useFetchPluginsInMarketPlaceByIds(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value.plugin_unique_identifier!))
+  const { isLoading: isFetchingMarketplaceDataFromLocal, data: marketplaceResFromLocalRes } = useFetchPluginsInMarketPlaceByInfo(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value!))
+  const [plugins, setPlugins, getPlugins] = useGetState<(Plugin | undefined)[]>((() => {
+    const hasLocalPackage = allPlugins.some(d => d.type === 'package')
+    if (!hasLocalPackage)
+      return []
 
-  const [plugins, setPlugins, getPlugins] = useGetState<Plugin[]>([])
+    const _plugins = allPlugins.map((d) => {
+      if (d.type === 'package') {
+        return {
+          ...(d as any).value.manifest,
+          plugin_id: (d as any).value.unique_identifier,
+        }
+      }
+
+      return undefined
+    })
+    return _plugins
+  })())
 
   const [errorIndexes, setErrorIndexes] = useState<number[]>([])
 
@@ -53,21 +70,50 @@ const InstallByDSLList: FC<Props> = ({
   }, [allPlugins])
 
   useEffect(() => {
-    if (!isFetchingMarketplaceData && marketplaceRes?.data.plugins && marketplaceRes?.data.plugins.length > 0) {
-      const payloads = marketplaceRes?.data.plugins
-
+    if (!isFetchingMarketplaceDataFromDSL && marketplaceFromDSLRes?.data.plugins) {
+      const payloads = marketplaceFromDSLRes?.data.plugins
+      const failedIndex: number[] = []
       const nextPlugins = produce(getPlugins(), (draft) => {
         marketPlaceInDSLIndex.forEach((index, i) => {
-          draft[index] = payloads[i]
+          if (payloads[i])
+            draft[index] = payloads[i]
+          else
+            failedIndex.push(index)
         })
       })
       setPlugins(nextPlugins)
-      // marketplaceRes?.data.plugins
+      if (failedIndex.length > 0)
+        setErrorIndexes([...errorIndexes, ...failedIndex])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFetchingMarketplaceData])
+  }, [isFetchingMarketplaceDataFromDSL])
 
-  const isLoadedAllData = allPlugins.length === plugins.length && plugins.every(p => !!p)
+  useEffect(() => {
+    if (!isFetchingMarketplaceDataFromLocal && marketplaceResFromLocalRes?.data.list) {
+      const payloads = marketplaceResFromLocalRes?.data.list
+      const failedIndex: number[] = []
+      const nextPlugins = produce(getPlugins(), (draft) => {
+        marketPlaceInDSLIndex.forEach((index, i) => {
+          if (payloads[i]) {
+            const item = payloads[i]
+            draft[index] = {
+              ...item.plugin,
+              plugin_id: item.version.unique_identifier,
+            }
+          }
+          else {
+            failedIndex.push(index)
+          }
+        })
+      })
+      setPlugins(nextPlugins)
+      if (failedIndex.length > 0)
+        setErrorIndexes([...errorIndexes, ...failedIndex])
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isFetchingMarketplaceDataFromLocal])
+
+  const isLoadedAllData = (plugins.filter(p => !!p).length + errorIndexes.length) === allPlugins.length
   useEffect(() => {
     if (isLoadedAllData)
       onLoadedAllPlugin()
@@ -76,7 +122,7 @@ const InstallByDSLList: FC<Props> = ({
 
   const handleSelect = useCallback((index: number) => {
     return () => {
-      onSelect(plugins[index], index)
+      onSelect(plugins[index]!, index)
     }
   }, [onSelect, plugins])
   return (
@@ -84,7 +130,7 @@ const InstallByDSLList: FC<Props> = ({
       {allPlugins.map((d, index) => {
         if (errorIndexes.includes(index)) {
           return (
-            <div key={index}>error</div>
+            <LoadingError key={index} />
           )
         }
         if (d.type === 'github') {

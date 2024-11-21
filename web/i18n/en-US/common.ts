@@ -27,6 +27,7 @@ const translation = {
     lineBreak: 'Line break',
     sure: 'I\'m sure',
     download: 'Download',
+    viewDetails: 'View Details',
     delete: 'Delete',
     settings: 'Settings',
     setup: 'Setup',
@@ -601,6 +602,10 @@ const translation = {
     deleteTip: 'The tag is being used, delete it?',
     created: 'Tag created successfully',
     failed: 'Tag creation failed',
+  },
+  license: {
+    expiring: 'Expiring in one day',
+    expiring_plural: 'Expiring in {{count}} days',
   },
 }
 

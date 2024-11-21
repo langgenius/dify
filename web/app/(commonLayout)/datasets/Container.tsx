@@ -27,6 +27,7 @@ import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { useAppContext } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
+
 import { useQuery } from '@tanstack/react-query'
 
 const Container = () => {
@@ -49,7 +50,7 @@ const Container = () => {
   const containerRef = useRef<HTMLDivElement>(null)
   const { data } = useQuery(
     {
-      queryKey: ['datasetApiBaseInfo', activeTab],
+      queryKey: ['datasetApiBaseInfo'],
       queryFn: () => fetchDatasetApiBaseUrl('/datasets/api-base-info'),
       enabled: activeTab !== 'dataset',
     },

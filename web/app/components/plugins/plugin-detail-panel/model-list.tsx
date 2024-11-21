@@ -21,7 +21,7 @@ const ModelList = () => {
           <div key={model.model} className='h-6 py-1 flex items-center'>
             <ModelIcon
               className='shrink-0 mr-2'
-              provider={currentPluginDetail.declaration.model}
+              provider={(model as any).provider}
               modelName={model.model}
             />
             <ModelName

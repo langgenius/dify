@@ -407,6 +407,7 @@ const translation = {
       },
       binaryFileVariable: 'Variable de fichier binaire',
       type: 'Type',
+      extractListPlaceholder: 'Entrez l’index de l’élément de liste, tapez \'/\' insérer la variable',
     },
     code: {
       inputVars: 'Variables de saisie',
@@ -618,6 +619,7 @@ const translation = {
       limit: 'Haut N',
       orderBy: 'Trier par',
       filterConditionKey: 'Clé de condition de filtre',
+      extractsCondition: 'Extraire l’élément N',
     },
   },
   tracing: {

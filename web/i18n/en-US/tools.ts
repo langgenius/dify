@@ -154,6 +154,7 @@ const translation = {
     placeholder: 'Select a tool...',
     auth: 'AUTHORIZATION',
   },
+  noTools: 'No tools found',
 }
 
 export default translation
