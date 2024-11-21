@@ -1,10 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
-import { useBoolean, useHover } from 'ahooks'
-import {
-  RiSearchLine,
-} from '@remixicon/react'
+import { useHover } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import { type NodeOutPutVar, type ValueSelector, type Var, VarType } from '@/app/components/workflow/types'
@@ -15,9 +12,10 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import Input from '@/app/components/base/input'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { checkKeys } from '@/utils/var'
+import { FILE_STRUCT } from '@/app/components/workflow/constants'
 
 type ObjectChildrenProps = {
   nodeId: string
@@ -27,6 +25,7 @@ type ObjectChildrenProps = {
   onChange: (value: ValueSelector, item: Var) => void
   onHovering?: (value: boolean) => void
   itemWidth?: number
+  isSupportFileVar?: boolean
 }
 
 type ItemProps = {
@@ -37,6 +36,7 @@ type ItemProps = {
   onChange: (value: ValueSelector, item: Var) => void
   onHovering?: (value: boolean) => void
   itemWidth?: number
+  isSupportFileVar?: boolean
 }
 
 const Item: FC<ItemProps> = ({
@@ -47,8 +47,10 @@ const Item: FC<ItemProps> = ({
   onChange,
   onHovering,
   itemWidth,
+  isSupportFileVar,
 }) => {
-  const isObj = itemData.type === VarType.object && itemData.children && itemData.children.length > 0
+  const isFile = itemData.type === VarType.file
+  const isObj = ([VarType.object, VarType.file].includes(itemData.type) && itemData.children && itemData.children.length > 0)
   const isSys = itemData.variable.startsWith('sys.')
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')
@@ -80,6 +82,9 @@ const Item: FC<ItemProps> = ({
   }, [isHovering])
   const handleChosen = (e: React.MouseEvent) => {
     e.stopPropagation()
+    if (!isSupportFileVar && isFile)
+      return
+
     if (isSys || isEnv || isChatVar) { // system variable | environment variable | conversation variable
       onChange([...objPath, ...itemData.variable.split('.')], itemData)
     }
@@ -98,35 +103,35 @@ const Item: FC<ItemProps> = ({
           ref={itemRef}
           className={cn(
             isObj ? ' pr-1' : 'pr-[18px]',
-            isHovering && (isObj ? 'bg-primary-50' : 'bg-gray-50'),
+            isHovering && (isObj ? 'bg-primary-50' : 'bg-state-base-hover'),
             'relative w-full flex items-center h-6 pl-3  rounded-md cursor-pointer')
           }
           onClick={handleChosen}
         >
           <div className='flex items-center w-0 grow'>
-            {!isEnv && !isChatVar && <Variable02 className='shrink-0 w-3.5 h-3.5 text-primary-500' />}
+            {!isEnv && !isChatVar && <Variable02 className='shrink-0 w-3.5 h-3.5 text-text-accent' />}
             {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
             {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
             {!isEnv && !isChatVar && (
-              <div title={itemData.variable} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{itemData.variable}</div>
+              <div title={itemData.variable} className='ml-1 w-0 grow truncate text-text-secondary system-sm-medium'>{itemData.variable}</div>
             )}
             {isEnv && (
-              <div title={itemData.variable} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{itemData.variable.replace('env.', '')}</div>
+              <div title={itemData.variable} className='ml-1 w-0 grow truncate text-text-secondary system-sm-medium'>{itemData.variable.replace('env.', '')}</div>
             )}
             {isChatVar && (
-              <div title={itemData.des} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{itemData.variable.replace('conversation.', '')}</div>
+              <div title={itemData.des} className='ml-1 w-0 grow truncate text-text-secondary system-sm-medium'>{itemData.variable.replace('conversation.', '')}</div>
             )}
           </div>
-          <div className='ml-1 shrink-0 text-xs font-normal text-gray-500 capitalize'>{itemData.type}</div>
+          <div className='ml-1 shrink-0 text-xs font-normal text-text-tertiary capitalize'>{itemData.type}</div>
           {isObj && (
-            <ChevronRight className='ml-0.5 w-3 h-3 text-gray-500' />
+            <ChevronRight className={cn('ml-0.5 w-3 h-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
           )}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{
         zIndex: 100,
       }}>
-        {isObj && (
+        {(isObj && !isFile) && (
           // eslint-disable-next-line @typescript-eslint/no-use-before-define
           <ObjectChildren
             nodeId={nodeId}
@@ -136,6 +141,20 @@ const Item: FC<ItemProps> = ({
             onChange={onChange}
             onHovering={setIsChildrenHovering}
             itemWidth={itemWidth}
+            isSupportFileVar={isSupportFileVar}
+          />
+        )}
+        {isFile && (
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          <ObjectChildren
+            nodeId={nodeId}
+            title={title}
+            objPath={[...objPath, itemData.variable]}
+            data={FILE_STRUCT}
+            onChange={onChange}
+            onHovering={setIsChildrenHovering}
+            itemWidth={itemWidth}
+            isSupportFileVar={isSupportFileVar}
           />
         )}
       </PortalToFollowElemContent>
@@ -151,6 +170,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
   onChange,
   onHovering,
   itemWidth,
+  isSupportFileVar,
 }) => {
   const currObjPath = objPath
   const itemRef = useRef(null)
@@ -195,6 +215,7 @@ const ObjectChildren: FC<ObjectChildrenProps> = ({
             itemData={v}
             onChange={onChange}
             onHovering={setIsChildrenHovering}
+            isSupportFileVar={isSupportFileVar}
           />
         ))
       }
@@ -206,15 +227,19 @@ type Props = {
   hideSearch?: boolean
   searchBoxClassName?: string
   vars: NodeOutPutVar[]
+  isSupportFileVar?: boolean
   onChange: (value: ValueSelector, item: Var) => void
   itemWidth?: number
+  maxHeightClass?: string
 }
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
   searchBoxClassName,
   vars,
+  isSupportFileVar,
   onChange,
   itemWidth,
+  maxHeightClass,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -244,40 +269,21 @@ const VarReferenceVars: FC<Props> = ({
     }
   })
 
-  const [isFocus, {
-    setFalse: setBlur,
-    setTrue: setFocus,
-  }] = useBoolean(false)
   return (
     <>
       {
         !hideSearch && (
           <>
-            <div
-              className={cn(searchBoxClassName, isFocus && 'shadow-sm bg-white', 'mb-2 mx-1 flex items-center px-2 rounded-lg bg-gray-100 ')}
-              onClick={e => e.stopPropagation()}
-            >
-
-              <RiSearchLine className='shrink-0 ml-[1px] mr-[5px] w-3.5 h-3.5 text-gray-400' />
-              <input
+            <div className={cn('mb-2 mx-1', searchBoxClassName)} onClick={e => e.stopPropagation()}>
+              <Input
+                showLeftIcon
+                showClearIcon
                 value={searchText}
-                className='grow px-0.5 py-[7px] text-[13px] text-gray-700 bg-transparent appearance-none outline-none caret-primary-600 placeholder:text-gray-400'
                 placeholder={t('workflow.common.searchVar') || ''}
                 onChange={e => setSearchText(e.target.value)}
-                onFocus={setFocus}
-                onBlur={setBlur}
+                onClear={() => setSearchText('')}
                 autoFocus
               />
-              {
-                searchText && (
-                  <div
-                    className='flex items-center justify-center ml-[5px] w-[18px] h-[18px] cursor-pointer'
-                    onClick={() => setSearchText('')}
-                  >
-                    <XCircle className='w-[14px] h-[14px] text-gray-400' />
-                  </div>
-                )
-              }
             </div>
             <div className='h-[0.5px] bg-black/5 relative left-[-4px]' style={{
               width: 'calc(100% + 8px)',
@@ -287,13 +293,13 @@ const VarReferenceVars: FC<Props> = ({
       }
 
       {filteredVars.length > 0
-        ? <div className='max-h-[85vh] overflow-y-auto'>
+        ? <div className={cn('max-h-[85vh] overflow-y-auto', maxHeightClass)}>
 
           {
             filteredVars.map((item, i) => (
               <div key={i}>
                 <div
-                  className='leading-[22px] px-3 text-xs font-medium text-gray-500 uppercase truncate'
+                  className='leading-[22px] px-3 text-text-tertiary system-xs-medium-uppercase truncate'
                   title={item.title}
                 >{item.title}</div>
                 {item.vars.map((v, j) => (
@@ -305,6 +311,7 @@ const VarReferenceVars: FC<Props> = ({
                     itemData={v}
                     onChange={onChange}
                     itemWidth={itemWidth}
+                    isSupportFileVar={isSupportFileVar}
                   />
                 ))}
               </div>))

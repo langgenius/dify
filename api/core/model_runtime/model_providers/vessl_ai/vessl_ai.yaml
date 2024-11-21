@@ -1,0 +1,56 @@
+provider: vessl_ai
+label:
+  en_US: VESSL AI
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.png
+background: "#F1EFED"
+help:
+  title:
+    en_US: How to deploy VESSL AI LLM Model Endpoint
+  url:
+    en_US: https://docs.vessl.ai/guides/get-started/llama3-deployment
+supported_model_types:
+  - llm
+configurate_methods:
+  - customizable-model
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+    placeholder:
+      en_US: Enter model name
+  credential_form_schemas:
+    - variable: endpoint_url
+      label:
+        en_US: Endpoint Url
+      type: text-input
+      required: true
+      placeholder:
+        en_US: Enter VESSL AI service endpoint url
+    - variable: api_key
+      required: true
+      label:
+        en_US: API Key
+      type: secret-input
+      placeholder:
+        en_US: Enter VESSL AI secret key
+    - variable: mode
+      show_on:
+        - variable: __model_type
+          value: llm
+      label:
+        en_US: Completion Mode
+      type: select
+      required: false
+      default: chat
+      placeholder:
+        en_US: Select completion mode
+      options:
+        - value: completion
+          label:
+            en_US: Completion
+        - value: chat
+          label:
+            en_US: Chat

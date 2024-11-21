@@ -7,22 +7,29 @@ logger = logging.getLogger(__name__)
 
 
 class UnstructuredXmlExtractor(BaseExtractor):
-    """Load msg files.
+    """Load xml files.
 
 
     Args:
         file_path: Path to the file to load.
     """
 
-    def __init__(self, file_path: str, api_url: str):
+    def __init__(self, file_path: str, api_url: str, api_key: str):
         """Initialize with file path."""
         self._file_path = file_path
         self._api_url = api_url
+        self._api_key = api_key
 
     def extract(self) -> list[Document]:
-        from unstructured.partition.xml import partition_xml
+        if self._api_url:
+            from unstructured.partition.api import partition_via_api
 
-        elements = partition_xml(filename=self._file_path, xml_keep_tags=True)
+            elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
+        else:
+            from unstructured.partition.xml import partition_xml
+
+            elements = partition_xml(filename=self._file_path, xml_keep_tags=True)
+
         from unstructured.chunking.title import chunk_by_title
 
         chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)

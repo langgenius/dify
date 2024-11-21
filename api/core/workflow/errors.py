@@ -1,4 +1,4 @@
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 
 
 class WorkflowNodeRunFailedError(Exception):

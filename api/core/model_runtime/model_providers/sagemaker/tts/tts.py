@@ -159,7 +159,7 @@ class SageMakerText2SpeechModel(TTSModel):
 
         return self._tts_invoke_streaming(model_type, payload, sagemaker_endpoint)
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

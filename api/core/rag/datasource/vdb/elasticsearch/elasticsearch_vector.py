@@ -9,11 +9,11 @@ from elasticsearch import Elasticsearch
 from flask import current_app
 from pydantic import BaseModel, model_validator
 
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -142,7 +142,7 @@ class ElasticSearchVector(BaseVector):
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         query_str = {"match": {Field.CONTENT_KEY.value: query}}
-        results = self._client.search(index=self._collection_name, query=query_str)
+        results = self._client.search(index=self._collection_name, query=query_str, size=kwargs.get("top_k", 4))
         docs = []
         for hit in results["hits"]["hits"]:
             docs.append(
@@ -178,6 +178,7 @@ class ElasticSearchVector(BaseVector):
                         Field.VECTOR.value: {  # Make sure the dimension is correct here
                             "type": "dense_vector",
                             "dims": dim,
+                            "index": True,
                             "similarity": "cosine",
                         },
                         Field.METADATA_KEY.value: {

@@ -4,14 +4,14 @@ from unittest import mock
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.segments import ArrayStringVariable, StringVariable
-from core.workflow.entities.node_entities import UserFrom
+from core.variables import ArrayStringVariable, StringVariable
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.variable_assigner import VariableAssignerNode, WriteMode
+from models.enums import UserFrom
 from models.workflow import WorkflowType
 
 DEFAULT_NODE_ID = "node_id"

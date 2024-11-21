@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.9.2",
+  "version": "0.11.2",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -42,6 +42,8 @@
     "@svgdotjs/svg.js": "^3.2.4",
     "@tailwindcss/line-clamp": "^0.4.4",
     "@tailwindcss/typography": "^0.5.9",
+    "@tanstack/react-query": "^5.60.5",
+    "@tanstack/react-query-devtools": "^5.60.5",
     "ahooks": "^3.7.5",
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.3.2",
@@ -62,9 +64,10 @@
     "lamejs": "^1.2.1",
     "lexical": "^0.16.0",
     "lodash-es": "^4.17.21",
-    "mermaid": "10.4.0",
+    "mermaid": "10.9.3",
+    "mime": "^4.0.4",
     "negotiator": "^0.6.3",
-    "next": "^14.1.1",
+    "next": "^14.2.10",
     "pinyin-pro": "^3.23.0",
     "qrcode.react": "^3.1.0",
     "qs": "^6.11.1",

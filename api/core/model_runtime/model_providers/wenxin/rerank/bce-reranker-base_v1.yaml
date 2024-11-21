@@ -1,0 +1,8 @@
+model: bce-reranker-base_v1
+model_type: rerank
+model_properties:
+  context_size: 4096
+pricing:
+  input: '0.0005'
+  unit: '0.001'
+  currency: RMB

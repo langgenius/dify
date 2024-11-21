@@ -272,7 +272,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   }
   return (
     <Panel
-      className="mt-4"
+      className="mt-2"
       headerIcon={
         <VarIcon className='w-4 h-4 text-primary-500' />
       }

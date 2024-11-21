@@ -54,11 +54,8 @@ const DebugAndPreview = () => {
   return (
     <div
       className={cn(
-        'flex flex-col w-[420px] rounded-l-2xl h-full border border-black/2',
+        'flex flex-col w-[420px] bg-chatbot-bg rounded-l-2xl h-full border border-components-panel-border border-r-0 shadow-xl',
       )}
-      style={{
-        background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',
-      }}
     >
       <div className='shrink-0 flex items-center justify-between px-4 pt-3 pb-2 text-text-primary system-xl-semibold'>
         <div className='h-8'>{t('workflow.common.debugAndPreview').toLocaleUpperCase()}</div>
@@ -88,6 +85,7 @@ const DebugAndPreview = () => {
                   <RiEqualizer2Line className='w-4 h-4' />
                 </ActionButton>
               </Tooltip>
+              {expanded && <div className='absolute z-10 bottom-[-17px] right-[5px] w-3 h-3 bg-components-panel-on-panel-item-bg border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle rotate-45'/>}
             </div>
           )}
           <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
@@ -105,6 +103,7 @@ const DebugAndPreview = () => {
           showConversationVariableModal={showConversationVariableModal}
           onConversationModalHide={() => setShowConversationVariableModal(false)}
           showInputsFieldsPanel={expanded}
+          onHide={() => setExpanded(false)}
         />
       </div>
     </div>

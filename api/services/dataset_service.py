@@ -4,7 +4,7 @@ import logging
 import random
 import time
 import uuid
-from typing import Optional
+from typing import Any, Optional
 
 from flask_login import current_user
 from sqlalchemy import func
@@ -151,6 +151,7 @@ class DatasetService:
     def create_empty_dataset(
         tenant_id: str,
         name: str,
+        description: Optional[str],
         indexing_technique: Optional[str],
         account: Account,
         permission: Optional[str] = None,
@@ -169,6 +170,7 @@ class DatasetService:
             )
         dataset = Dataset(name=name, indexing_technique=indexing_technique)
         # dataset = Dataset(name=name, provider=provider, config=config)
+        dataset.description = description
         dataset.created_by = account.id
         dataset.updated_by = account.id
         dataset.tenant_id = tenant_id
@@ -684,7 +686,7 @@ class DocumentService:
     def save_document_with_dataset_id(
         dataset: Dataset,
         knowledge_config: KnowledgeConfig,
-        account: Account,
+        account: Account | Any,
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
     ):
@@ -746,7 +748,9 @@ class DocumentService:
         if knowledge_config.original_document_id:
             document = DocumentService.update_document_with_dataset_id(dataset, knowledge_config, account)
             documents.append(document)
+            batch = document.batch
         else:
+            batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
             # save process rule
             if not dataset_process_rule:
                 process_rule = knowledge_config.process_rule
@@ -766,164 +770,166 @@ class DocumentService:
                     )
                 db.session.add(dataset_process_rule)
                 db.session.commit()
-            position = DocumentService.get_documents_position(dataset.id)
-            document_ids = []
-            duplicate_document_ids = []
-            if knowledge_config.data_source.info_list.data_source_type == "upload_file":
-                upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
-                for file_id in upload_file_list:
-                    file = (
-                        db.session.query(UploadFile)
-                        .filter(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
-                        .first()
-                    )
-
-                    # raise error if file not found
-                    if not file:
-                        raise FileNotExistsError()
-
-                    file_name = file.name
-                    data_source_info = {
-                        "upload_file_id": file_id,
-                    }
-                    # check duplicate
-                    if knowledge_config.duplicate:
-                        document = Document.query.filter_by(
-                            dataset_id=dataset.id,
-                            tenant_id=current_user.current_tenant_id,
-                            data_source_type="upload_file",
-                            enabled=True,
-                            name=file_name,
-                        ).first()
-                        if document:
-                            document.dataset_process_rule_id = dataset_process_rule.id
-                            document.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
-                            document.created_from = created_from
-                            document.doc_form = knowledge_config.doc_form
-                            document.doc_language = knowledge_config.doc_language
-                            document.data_source_info = json.dumps(data_source_info)
-                            document.batch = batch
-                            document.indexing_status = "waiting"
-                            db.session.add(document)
-                            documents.append(document)
-                            duplicate_document_ids.append(document.id)
-                            continue
-                    document = DocumentService.build_document(
-                        dataset,
-                        dataset_process_rule.id,
-                        knowledge_config.data_source.info_list.data_source_type,
-                        knowledge_config.doc_form,
-                        knowledge_config.doc_language,
-                        data_source_info,
-                        created_from,
-                        position,
-                        account,
-                        file_name,
-                        batch,
-                    )
-                    db.session.add(document)
-                    db.session.flush()
-                    document_ids.append(document.id)
-                    documents.append(document)
-                    position += 1
-            elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
-                notion_info_list = knowledge_config.data_source.info_list.notion_info_list
-                exist_page_ids = []
-                exist_document = {}
-                documents = Document.query.filter_by(
-                    dataset_id=dataset.id,
-                    tenant_id=current_user.current_tenant_id,
-                    data_source_type="notion_import",
-                    enabled=True,
-                ).all()
-                if documents:
-                    for document in documents:
-                        data_source_info = json.loads(document.data_source_info)
-                        exist_page_ids.append(data_source_info["notion_page_id"])
-                        exist_document[data_source_info["notion_page_id"]] = document.id
-                for notion_info in notion_info_list:
-                    workspace_id = notion_info["workspace_id"]
-                    data_source_binding = DataSourceOauthBinding.query.filter(
-                        db.and_(
-                            DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
-                            DataSourceOauthBinding.provider == "notion",
-                            DataSourceOauthBinding.disabled == False,
-                            DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+            lock_name = "add_document_lock_dataset_id_{}".format(dataset.id)
+            with redis_client.lock(lock_name, timeout=600):
+                position = DocumentService.get_documents_position(dataset.id)
+                document_ids = []
+                duplicate_document_ids = []
+                if knowledge_config.data_source.info_list.data_source_type == "upload_file":
+                    upload_file_list = knowledge_config.data_source.info_list.file_info_list.file_ids
+                    for file_id in upload_file_list:
+                        file = (
+                            db.session.query(UploadFile)
+                            .filter(UploadFile.tenant_id == dataset.tenant_id, UploadFile.id == file_id)
+                            .first()
                         )
-                    ).first()
-                    if not data_source_binding:
-                        raise ValueError("Data source binding not found.")
-                    for page in notion_info["pages"]:
-                        if page["page_id"] not in exist_page_ids:
-                            data_source_info = {
-                                "notion_workspace_id": workspace_id,
-                                "notion_page_id": page["page_id"],
-                                "notion_page_icon": page["page_icon"],
-                                "type": page["type"],
-                            }
-                            document = DocumentService.build_document(
-                                dataset,
-                                dataset_process_rule.id,
-                                knowledge_config.data_source.info_list.data_source_type,
-                                knowledge_config.doc_form,
-                                knowledge_config.doc_language,
-                                data_source_info,
-                                created_from,
-                                position,
-                                account,
-                                page["page_name"],
-                                batch,
-                            )
-                            db.session.add(document)
-                            db.session.flush()
-                            document_ids.append(document.id)
-                            documents.append(document)
-                            position += 1
-                        else:
-                            exist_document.pop(page["page_id"])
-                # delete not selected documents
-                if len(exist_document) > 0:
-                    clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
-            elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
-                website_info = knowledge_config.data_source.info_list.website_info_list
-                urls = website_info.urls
-                for url in urls:
-                    data_source_info = {
-                        "url": url,
-                        "provider": website_info.provider,
-                        "job_id": website_info.job_id,
-                        "only_main_content": website_info.only_main_content,
-                        "mode": "crawl",
-                    }
-                    if len(url) > 255:
-                        document_name = url[:200] + "..."
-                    else:
-                        document_name = url
-                    document = DocumentService.build_document(
-                        dataset,
-                        dataset_process_rule.id,
-                        knowledge_config.data_source.info_list.data_source_type,
-                        knowledge_config.doc_form,
-                        knowledge_config.doc_language,
-                        data_source_info,
-                        created_from,
-                        position,
-                        account,
-                        document_name,
-                        batch,
-                    )
-                    db.session.add(document)
-                    db.session.flush()
-                    document_ids.append(document.id)
-                    documents.append(document)
-                    position += 1
-            db.session.commit()
 
-            # trigger async task
-            if document_ids:
-                document_indexing_task.delay(dataset.id, document_ids)
-            if duplicate_document_ids:
-                duplicate_document_indexing_task.delay(dataset.id, duplicate_document_ids)
+                        # raise error if file not found
+                        if not file:
+                            raise FileNotExistsError()
+
+                        file_name = file.name
+                        data_source_info = {
+                            "upload_file_id": file_id,
+                        }
+                        # check duplicate
+                        if knowledge_config.duplicate:
+                            document = Document.query.filter_by(
+                                dataset_id=dataset.id,
+                                tenant_id=current_user.current_tenant_id,
+                                data_source_type="upload_file",
+                                enabled=True,
+                                name=file_name,
+                            ).first()
+                            if document:
+                                document.dataset_process_rule_id = dataset_process_rule.id
+                                document.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                                document.created_from = created_from
+                                document.doc_form = knowledge_config.doc_form
+                                document.doc_language = knowledge_config.doc_language
+                                document.data_source_info = json.dumps(data_source_info)
+                                document.batch = batch
+                                document.indexing_status = "waiting"
+                                db.session.add(document)
+                                documents.append(document)
+                                duplicate_document_ids.append(document.id)
+                                continue
+                        document = DocumentService.build_document(
+                            dataset,
+                            dataset_process_rule.id,
+                            knowledge_config.data_source.info_list.data_source_type,
+                            knowledge_config.doc_form,
+                            knowledge_config.doc_language,
+                            data_source_info,
+                            created_from,
+                            position,
+                            account,
+                            file_name,
+                            batch,
+                        )
+                        db.session.add(document)
+                        db.session.flush()
+                        document_ids.append(document.id)
+                        documents.append(document)
+                        position += 1
+                elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
+                    notion_info_list = knowledge_config.data_source.info_list.notion_info_list
+                    exist_page_ids = []
+                    exist_document = {}
+                    documents = Document.query.filter_by(
+                        dataset_id=dataset.id,
+                        tenant_id=current_user.current_tenant_id,
+                        data_source_type="notion_import",
+                        enabled=True,
+                    ).all()
+                    if documents:
+                        for document in documents:
+                            data_source_info = json.loads(document.data_source_info)
+                            exist_page_ids.append(data_source_info["notion_page_id"])
+                            exist_document[data_source_info["notion_page_id"]] = document.id
+                    for notion_info in notion_info_list:
+                        workspace_id = notion_info["workspace_id"]
+                        data_source_binding = DataSourceOauthBinding.query.filter(
+                            db.and_(
+                                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                                DataSourceOauthBinding.provider == "notion",
+                                DataSourceOauthBinding.disabled == False,
+                                DataSourceOauthBinding.source_info["workspace_id"] == f'"{workspace_id}"',
+                            )
+                        ).first()
+                        if not data_source_binding:
+                            raise ValueError("Data source binding not found.")
+                        for page in notion_info["pages"]:
+                            if page["page_id"] not in exist_page_ids:
+                                data_source_info = {
+                                    "notion_workspace_id": workspace_id,
+                                    "notion_page_id": page["page_id"],
+                                    "notion_page_icon": page["page_icon"],
+                                    "type": page["type"],
+                                }
+                                document = DocumentService.build_document(
+                                    dataset,
+                                    dataset_process_rule.id,
+                                    knowledge_config.data_source.info_list.data_source_type,
+                                    knowledge_config.doc_form,
+                                    knowledge_config.doc_language,
+                                    data_source_info,
+                                    created_from,
+                                    position,
+                                    account,
+                                    page["page_name"],
+                                    batch,
+                                )
+                                db.session.add(document)
+                                db.session.flush()
+                                document_ids.append(document.id)
+                                documents.append(document)
+                                position += 1
+                            else:
+                                exist_document.pop(page["page_id"])
+                    # delete not selected documents
+                    if len(exist_document) > 0:
+                        clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
+                elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
+                    website_info = knowledge_config.data_source.info_list.website_info_list
+                    urls = website_info.urls
+                    for url in urls:
+                        data_source_info = {
+                            "url": url,
+                            "provider": website_info.provider,
+                            "job_id": website_info.job_id,
+                            "only_main_content": website_info.only_main_content,
+                            "mode": "crawl",
+                        }
+                        if len(url) > 255:
+                            document_name = url[:200] + "..."
+                        else:
+                            document_name = url
+                        document = DocumentService.build_document(
+                            dataset,
+                            dataset_process_rule.id,
+                            knowledge_config.data_source.info_list.data_source_type,
+                            knowledge_config.doc_form,
+                            knowledge_config.doc_language,
+                            data_source_info,
+                            created_from,
+                            position,
+                            account,
+                            document_name,
+                            batch,
+                        )
+                        db.session.add(document)
+                        db.session.flush()
+                        document_ids.append(document.id)
+                        documents.append(document)
+                        position += 1
+                db.session.commit()
+
+                # trigger async task
+                if document_ids:
+                    document_indexing_task.delay(dataset.id, document_ids)
+                if duplicate_document_ids:
+                    duplicate_document_indexing_task.delay(dataset.id, duplicate_document_ids)
 
         return documents, batch
 
@@ -989,9 +995,6 @@ class DocumentService:
             raise NotFound("Document not found")
         if document.display_status != "available":
             raise ValueError("Document is not available")
-        # update document name
-        if document_data.get("name"):
-            document.name = document_data["name"]
         # save process rule
         if document_data.get("process_rule"):
             process_rule = document_data["process_rule"]
@@ -1068,6 +1071,10 @@ class DocumentService:
             document.data_source_type = document_data["data_source"]["type"]
             document.data_source_info = json.dumps(data_source_info)
             document.name = file_name
+
+        # update document name
+        if document_data.get("name"):
+            document.name = document_data["name"]
         # update document to be waiting
         document.indexing_status = "waiting"
         document.completed_at = None
@@ -1377,9 +1384,13 @@ class SegmentService:
                 created_by=current_user.id,
             )
             if document.doc_form == "qa_model":
+                segment_document.word_count += len(args["answer"])
                 segment_document.answer = args["answer"]
 
             db.session.add(segment_document)
+            # update document word count
+            document.word_count += segment_document.word_count
+            db.session.add(document)
             db.session.commit()
 
             # save vector index
@@ -1398,6 +1409,7 @@ class SegmentService:
     @classmethod
     def multi_create_segment(cls, segments: list, document: Document, dataset: Dataset):
         lock_name = "multi_add_segment_lock_document_id_{}".format(document.id)
+        increment_word_count = 0
         with redis_client.lock(lock_name, timeout=600):
             embedding_model = None
             if dataset.indexing_technique == "high_quality":
@@ -1416,6 +1428,7 @@ class SegmentService:
             pre_segment_data_list = []
             segment_data_list = []
             keywords_list = []
+            position = max_position + 1 if max_position else 1
             for segment_item in segments:
                 content = segment_item["content"]
                 doc_id = str(uuid.uuid4())
@@ -1423,14 +1436,17 @@ class SegmentService:
                 tokens = 0
                 if dataset.indexing_technique == "high_quality" and embedding_model:
                     # calc embedding use tokens
-                    tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+                    if document.doc_form == "qa_model":
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment_item["answer"]])
+                    else:
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
                 segment_document = DocumentSegment(
                     tenant_id=current_user.current_tenant_id,
                     dataset_id=document.dataset_id,
                     document_id=document.id,
                     index_node_id=doc_id,
                     index_node_hash=segment_hash,
-                    position=max_position + 1 if max_position else 1,
+                    position=position,
                     content=content,
                     word_count=len(content),
                     tokens=tokens,
@@ -1441,15 +1457,20 @@ class SegmentService:
                 )
                 if document.doc_form == "qa_model":
                     segment_document.answer = segment_item["answer"]
+                    segment_document.word_count += len(segment_item["answer"])
+                increment_word_count += segment_document.word_count
                 db.session.add(segment_document)
                 segment_data_list.append(segment_document)
+                position += 1
 
                 pre_segment_data_list.append(segment_document)
                 if "keywords" in segment_item:
                     keywords_list.append(segment_item["keywords"])
                 else:
                     keywords_list.append(None)
-
+            # update document word count
+            document.word_count += increment_word_count
+            db.session.add(document)
             try:
                 # save vector index
                 VectorService.create_segments_vector(keywords_list, pre_segment_data_list, dataset, document.doc_form)
@@ -1489,10 +1510,14 @@ class SegmentService:
             else:
                 raise ValueError("Can't update disabled segment")
         try:
+            word_count_change = segment.word_count
             content = args.content
             if segment.content == content:
+                segment.word_count = len(content)
                 if document.doc_form == "qa_model":
                     segment.answer = args.answer
+                    segment.word_count += len(args.answer)
+                word_count_change = segment.word_count - word_count_change
                 if args.keywords:
                     segment.keywords = args.keywords
                 segment.enabled = True
@@ -1500,20 +1525,13 @@ class SegmentService:
                 segment.disabled_by = None
                 db.session.add(segment)
                 db.session.commit()
-                # update segment index task, parent child index don't have keywords
-                if args.keywords and document.doc_form != IndexType.PARENT_CHILD_INDEX:
-                    keyword = Keyword(dataset)
-                    keyword.delete_by_ids([segment.index_node_id])
-                    document = RAGDocument(
-                        page_content=segment.content,
-                        metadata={
-                            "doc_id": segment.index_node_id,
-                            "doc_hash": segment.index_node_hash,
-                            "document_id": segment.document_id,
-                            "dataset_id": segment.dataset_id,
-                        },
-                    )
-                    keyword.add_texts([document], keywords_list=[args.keywords])
+                # update document word count
+                if word_count_change != 0:
+                    document.word_count = max(0, document.word_count + word_count_change)
+                    db.session.add(document)
+                # update segment index task
+                if segment_update_entity.enabled:
+                    VectorService.create_segments_vector([args.keywords], [segment], dataset)
                 if document.doc_form == IndexType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
                     # regenerate child chunks
                     # get embedding model instance
@@ -1557,7 +1575,10 @@ class SegmentService:
                     )
 
                     # calc embedding use tokens
-                    tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
+                    if document.doc_form == "qa_model":
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment.answer])
+                    else:
+                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])
                 segment.content = content
                 segment.index_node_hash = segment_hash
                 segment.word_count = len(content)
@@ -1572,6 +1593,12 @@ class SegmentService:
                 segment.disabled_by = None
                 if document.doc_form == "qa_model":
                     segment.answer = args.answer
+                    segment.word_count += len(args.answer)
+                word_count_change = segment.word_count - word_count_change
+                # update document word count
+                if word_count_change != 0:
+                    document.word_count = max(0, document.word_count + word_count_change)
+                    db.session.add(document)
                 db.session.add(segment)
                 db.session.commit()
                 if document.doc_form == IndexType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
@@ -1630,6 +1657,9 @@ class SegmentService:
             redis_client.setex(indexing_cache_key, 600, 1)
             delete_segment_from_index_task.delay([segment.index_node_id], dataset.id, document.id)
         db.session.delete(segment)
+        # update document word count
+        document.word_count -= segment.word_count
+        db.session.add(document)
         db.session.commit()
 
     @classmethod
@@ -1824,7 +1854,7 @@ class SegmentService:
             db.session.rollback()
             raise ChildChunkIndexingError(str(e))
         return sorted(new_child_chunks + update_child_chunks, key=lambda x: x.position)
-    
+
     @classmethod
     def update_child_chunk(
         cls,

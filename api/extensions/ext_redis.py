@@ -1,9 +1,12 @@
 import redis
+from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
 from redis.sentinel import Sentinel
 
+from configs import dify_config
 
-class RedisClientWrapper(redis.Redis):
+
+class RedisClientWrapper:
     """
     A wrapper class for the Redis client that addresses the issue where the global
     `redis_client` variable cannot be updated when a new Redis instance is returned
@@ -43,37 +46,43 @@ redis_client = RedisClientWrapper()
 def init_app(app):
     global redis_client
     connection_class = Connection
-    if app.config.get("REDIS_USE_SSL"):
+    if dify_config.REDIS_USE_SSL:
         connection_class = SSLConnection
 
     redis_params = {
-        "username": app.config.get("REDIS_USERNAME"),
-        "password": app.config.get("REDIS_PASSWORD"),
-        "db": app.config.get("REDIS_DB"),
+        "username": dify_config.REDIS_USERNAME,
+        "password": dify_config.REDIS_PASSWORD,
+        "db": dify_config.REDIS_DB,
         "encoding": "utf-8",
         "encoding_errors": "strict",
         "decode_responses": False,
     }
 
-    if app.config.get("REDIS_USE_SENTINEL"):
+    if dify_config.REDIS_USE_SENTINEL:
         sentinel_hosts = [
-            (node.split(":")[0], int(node.split(":")[1])) for node in app.config.get("REDIS_SENTINELS").split(",")
+            (node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")
         ]
         sentinel = Sentinel(
             sentinel_hosts,
             sentinel_kwargs={
-                "socket_timeout": app.config.get("REDIS_SENTINEL_SOCKET_TIMEOUT", 0.1),
-                "username": app.config.get("REDIS_SENTINEL_USERNAME"),
-                "password": app.config.get("REDIS_SENTINEL_PASSWORD"),
+                "socket_timeout": dify_config.REDIS_SENTINEL_SOCKET_TIMEOUT,
+                "username": dify_config.REDIS_SENTINEL_USERNAME,
+                "password": dify_config.REDIS_SENTINEL_PASSWORD,
             },
         )
-        master = sentinel.master_for(app.config.get("REDIS_SENTINEL_SERVICE_NAME"), **redis_params)
+        master = sentinel.master_for(dify_config.REDIS_SENTINEL_SERVICE_NAME, **redis_params)
         redis_client.initialize(master)
+    elif dify_config.REDIS_USE_CLUSTERS:
+        nodes = [
+            ClusterNode(host=node.split(":")[0], port=int(node.split.split(":")[1]))
+            for node in dify_config.REDIS_CLUSTERS.split(",")
+        ]
+        redis_client.initialize(RedisCluster(startup_nodes=nodes, password=dify_config.REDIS_CLUSTERS_PASSWORD))
     else:
         redis_params.update(
             {
-                "host": app.config.get("REDIS_HOST"),
-                "port": app.config.get("REDIS_PORT"),
+                "host": dify_config.REDIS_HOST,
+                "port": dify_config.REDIS_PORT,
                 "connection_class": connection_class,
             }
         )

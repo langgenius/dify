@@ -37,6 +37,8 @@ import type {
 import { useToastContext } from '@/app/components/base/toast'
 import { changeLanguage } from '@/i18n/i18next-config'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
+import { InputVarType } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
 
 export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
@@ -127,7 +129,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
-    return (appParams?.user_input_form || []).filter((item: any) => item.paragraph || item.select || item['text-input'] || item.number).map((item: any) => {
+    return (appParams?.user_input_form || []).filter((item: any) => !item.external_data_tool).map((item: any) => {
       if (item.paragraph) {
         return {
           ...item.paragraph,
@@ -147,6 +149,20 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         }
       }
 
+      if (item['file-list']) {
+        return {
+          ...item['file-list'],
+          type: 'file-list',
+        }
+      }
+
+      if (item.file) {
+        return {
+          ...item.file,
+          type: 'file',
+        }
+      }
+
       return {
         ...item['text-input'],
         type: 'text-input',
@@ -157,7 +173,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     const conversationInputs: Record<string, any> = {}
 
     inputsForms.forEach((item: any) => {
-      conversationInputs[item.variable] = item.default || ''
+      conversationInputs[item.variable] = item.default || null
     })
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
@@ -206,21 +222,38 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
 
   const { notify } = useToastContext()
   const checkInputsRequired = useCallback((silent?: boolean) => {
-    if (inputsForms.length) {
-      for (let i = 0; i < inputsForms.length; i += 1) {
-        const item = inputsForms[i]
-
-        if (item.required && !newConversationInputsRef.current[item.variable]) {
-          if (!silent) {
-            notify({
-              type: 'error',
-              message: t('appDebug.errorMessage.valueOfVarRequired', { key: item.variable }),
-            })
-          }
+    let hasEmptyInput = ''
+    let fileIsUploading = false
+    const requiredVars = inputsForms.filter(({ required }) => required)
+    if (requiredVars.length) {
+      requiredVars.forEach(({ variable, label, type }) => {
+        if (hasEmptyInput)
           return
+
+        if (fileIsUploading)
+          return
+
+        if (!newConversationInputsRef.current[variable] && !silent)
+          hasEmptyInput = label as string
+
+        if ((type === InputVarType.singleFile || type === InputVarType.multiFiles) && newConversationInputsRef.current[variable] && !silent) {
+          const files = newConversationInputsRef.current[variable]
+          if (Array.isArray(files))
+            fileIsUploading = files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)
+          else
+            fileIsUploading = files.transferMethod === TransferMethod.local_file && !files.uploadedId
         }
-      }
-      return true
+      })
+    }
+
+    if (hasEmptyInput) {
+      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }) })
+      return false
+    }
+
+    if (fileIsUploading) {
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+      return
     }
 
     return true
@@ -377,6 +410,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     setShowConfigPanelBeforeChat,
     setShowNewConversationItemInList,
     newConversationInputs,
+    newConversationInputsRef,
     handleNewConversationInputsChange,
     inputsForms,
     handleNewConversation,

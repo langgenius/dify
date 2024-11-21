@@ -5,7 +5,6 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
-import useSWR from 'swr'
 
 // Components
 import ExternalAPIPanel from '../../components/datasets/external-api/external-api-panel'
@@ -14,11 +13,11 @@ import DatasetFooter from './DatasetFooter'
 import ApiServer from './ApiServer'
 import Doc from './Doc'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
-import SearchInput from '@/app/components/base/search-input'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import Button from '@/app/components/base/button'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
+import SearchInput from '@/app/components/base/search-input'
 
 // Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
@@ -28,6 +27,8 @@ import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { useAppContext } from '@/context/app-context'
 import { useExternalApiPanel } from '@/context/external-api-panel-context'
+// eslint-disable-next-line import/order
+import { useQuery } from '@tanstack/react-query'
 
 const Container = () => {
   const { t } = useTranslation()
@@ -47,7 +48,13 @@ const Container = () => {
     defaultTab: 'dataset',
   })
   const containerRef = useRef<HTMLDivElement>(null)
-  const { data } = useSWR(activeTab === 'dataset' ? null : '/datasets/api-base-info', fetchDatasetApiBaseUrl)
+  const { data } = useQuery(
+    {
+      queryKey: ['datasetApiBaseInfo'],
+      queryFn: () => fetchDatasetApiBaseUrl('/datasets/api-base-info'),
+      enabled: activeTab !== 'dataset',
+    },
+  )
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')

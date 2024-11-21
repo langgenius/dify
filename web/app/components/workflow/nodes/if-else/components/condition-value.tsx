@@ -3,11 +3,12 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ComparisonOperator } from '../types'
+import { ComparisonOperator } from '../types'
 import {
   comparisonOperatorNotRequireValue,
   isComparisonOperatorNeedTranslate,
 } from '../utils'
+import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../default'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import cn from '@/utils/classnames'
@@ -15,16 +16,18 @@ import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow
 
 type ConditionValueProps = {
   variableSelector: string[]
+  labelName?: string
   operator: ComparisonOperator
-  value: string
+  value: string | string[]
 }
 const ConditionValue = ({
   variableSelector,
+  labelName,
   operator,
   value,
 }: ConditionValueProps) => {
   const { t } = useTranslation()
-  const variableName = isSystemVar(variableSelector) ? variableSelector.slice(0).join('.') : variableSelector.slice(1).join('.')
+  const variableName = labelName || (isSystemVar(variableSelector) ? variableSelector.slice(0).join('.') : variableSelector.slice(1).join('.'))
   const operatorName = isComparisonOperatorNeedTranslate(operator) ? t(`workflow.nodes.ifElse.comparisonOperator.${operator}`) : operator
   const notHasValue = comparisonOperatorNotRequireValue(operator)
   const isEnvVar = isENV(variableSelector)
@@ -32,6 +35,9 @@ const ConditionValue = ({
   const formatValue = useMemo(() => {
     if (notHasValue)
       return ''
+
+    if (Array.isArray(value)) // transfer method
+      return value[0]
 
     return value.replace(/{{#([^#]*)#}}/g, (a, b) => {
       const arr: string[] = b.split('.')
@@ -41,6 +47,23 @@ const ConditionValue = ({
       return `{{${arr.slice(1).join('.')}}}`
     })
   }, [notHasValue, value])
+
+  const isSelect = operator === ComparisonOperator.in || operator === ComparisonOperator.notIn
+  const selectName = useMemo(() => {
+    if (isSelect) {
+      const name = [...FILE_TYPE_OPTIONS, ...TRANSFER_METHOD].filter(item => item.value === (Array.isArray(value) ? value[0] : value))[0]
+      return name
+        ? t(`workflow.nodes.ifElse.optionName.${name.i18nKey}`).replace(/{{#([^#]*)#}}/g, (a, b) => {
+          const arr: string[] = b.split('.')
+          if (isSystemVar(arr))
+            return `{{${b}}}`
+
+          return `{{${arr.slice(1).join('.')}}}`
+        })
+        : ''
+    }
+    return ''
+  }, [isSelect, t, value])
 
   return (
     <div className='flex items-center px-1 h-6 rounded-md bg-workflow-block-parma-bg'>
@@ -65,7 +88,7 @@ const ConditionValue = ({
       </div>
       {
         !notHasValue && (
-          <div className='truncate text-xs text-text-secondary' title={formatValue}>{formatValue}</div>
+          <div className='truncate text-xs text-text-secondary' title={formatValue}>{isSelect ? selectName : formatValue}</div>
         )
       }
     </div>

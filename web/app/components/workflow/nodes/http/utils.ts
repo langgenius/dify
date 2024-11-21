@@ -1,5 +1,21 @@
-import type { HttpNodeType } from './types'
+import { type BodyPayload, BodyPayloadValueType } from './types'
 
-export const checkNodeValid = (payload: HttpNodeType) => {
-  return true
+export const transformToBodyPayload = (old: string, hasKey: boolean): BodyPayload => {
+  if (!hasKey) {
+    return [
+      {
+        type: BodyPayloadValueType.text,
+        value: old,
+      },
+    ]
+  }
+  const bodyPayload = old.split('\n').map((item) => {
+    const [key, value] = item.split(':')
+    return {
+      key: key || '',
+      type: BodyPayloadValueType.text,
+      value: value || '',
+    }
+  })
+  return bodyPayload
 }

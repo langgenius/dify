@@ -1,0 +1,37 @@
+identity:
+  name: embedding
+  author: gitee_ai
+  label:
+    en_US: embedding
+  icon: icon.svg
+description:
+  human:
+    en_US: Generate word embeddings using Serverless-supported models (compatible with OpenAI)
+  llm: This tool is used to generate word embeddings from text input.
+parameters:
+  - name: model
+    type: string
+    required: true
+    in: path
+    description:
+      en_US: Supported Embedding (compatible with OpenAI) interface models
+    enum:
+      - bge-m3
+      - bge-large-zh-v1.5
+      - bge-small-zh-v1.5
+    label:
+      en_US: Service Model
+      zh_Hans: 服务模型
+    default: bge-m3
+    form: form
+  - name: inputs
+    type: string
+    required: true
+    label:
+      en_US: Input Text
+      zh_Hans: 输入文本
+    human_description:
+      en_US: The text input used to generate embeddings.
+      zh_Hans: 用于生成词向量的输入文本。
+    llm_description: This text input will be used to generate embeddings.
+    form: llm

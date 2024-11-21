@@ -35,7 +35,8 @@ class VannaTool(BuiltinTool):
         password = tool_parameters.get("password", "")
         port = tool_parameters.get("port", 0)
 
-        vn = VannaDefault(model=model, api_key=api_key)
+        base_url = self.runtime.credentials.get("base_url", None)
+        vn = VannaDefault(model=model, api_key=api_key, config={"endpoint": base_url})
 
         db_type = tool_parameters.get("db_type", "")
         if db_type in {"Postgres", "MySQL", "Hive", "ClickHouse"}:

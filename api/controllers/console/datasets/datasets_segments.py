@@ -21,6 +21,7 @@ from controllers.console.wraps import (
     account_initialization_required,
     cloud_edition_billing_knowledge_limit_check,
     cloud_edition_billing_resource_check,
+    setup_required,
 )
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
@@ -535,7 +536,7 @@ class ChildChunkAddApi(Resource):
         except ChildChunkIndexingServiceError as e:
             raise ChildChunkIndexingError(str(e))
         return {"data": marshal(child_chunks, child_chunk_fields)}, 200
-    
+
 class ChildChunkUpdateApi(Resource):
     @setup_required
     @login_required
@@ -578,8 +579,8 @@ class ChildChunkUpdateApi(Resource):
             SegmentService.delete_child_chunk(child_chunk, dataset)
         except ChildChunkDeleteIndexServiceError as e:
             raise ChildChunkDeleteIndexError(str(e))
-        return {"result": "success"}, 200    
-    
+        return {"result": "success"}, 200
+
     @setup_required
     @login_required
     @account_initialization_required

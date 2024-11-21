@@ -88,6 +88,11 @@ module.exports = {
       fontSize: {
         '2xs': '0.625rem',
       },
+      backgroundImage: {
+        'chatbot-bg': 'var(--color-chatbot-bg)',
+        'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
+        'workflow-process-bg': 'var(--color-workflow-process-bg)',
+      },
     },
   },
   plugins: [
