@@ -37,9 +37,9 @@ class PluginService:
             manifests = {
                 manifest.plugin_id: manifest for manifest in marketplace.batch_fetch_plugin_manifests(plugin_ids)
             }
-        except Exception as e:
+        except Exception:
             manifests = {}
-            logger.exception(f"failed to fetch plugin manifests: {e}")
+            logger.exception("failed to fetch plugin manifests")
 
         for plugin in plugins:
             if plugin.source == PluginInstallationSource.Marketplace:
