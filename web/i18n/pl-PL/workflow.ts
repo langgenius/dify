@@ -407,6 +407,7 @@ const translation = {
       },
       type: 'Typ',
       binaryFileVariable: 'Binarna zmienna pliku',
+      extractListPlaceholder: 'Wprowadź indeks elementu listy, wpisz "/" wstaw zmienną',
     },
     code: {
       inputVars: 'Zmienne wejściowe',
@@ -618,6 +619,7 @@ const translation = {
       filterCondition: 'Stan filtra',
       filterConditionComparisonValue: 'Wartość warunku filtru',
       selectVariableKeyPlaceholder: 'Wybierz klucz zmiennej podrzędnej',
+      extractsCondition: 'Wyodrębnij element N',
     },
   },
   tracing: {

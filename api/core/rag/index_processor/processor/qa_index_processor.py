@@ -18,6 +18,7 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.extract_processor import ExtractProcessor
 from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import Document
+from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
 from models.dataset import Dataset
 
@@ -53,11 +54,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                     document_node.metadata["doc_hash"] = hash
                     # delete Splitter character
                     page_content = document_node.page_content
-                    if page_content.startswith(".") or page_content.startswith("。"):
-                        page_content = page_content[1:]
-                    else:
-                        page_content = page_content
-                    document_node.page_content = page_content
+                    document_node.page_content = remove_leading_symbols(page_content)
                     split_documents.append(document_node)
             all_documents.extend(split_documents)
         for i in range(0, len(all_documents), 10):
@@ -159,7 +156,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
             except Exception as e:
-                logging.exception(e)
+                logging.exception("Failed to format qa document")
 
             all_qa_documents.extend(format_documents)
 

@@ -72,7 +72,10 @@ class DefaultModelApi(Resource):
                     model=model_setting["model"],
                 )
             except Exception as ex:
-                logging.exception(f"{model_setting['model_type']} save error: {ex}")
+                logging.exception(
+                    f"Failed to update default model, model type: {model_setting['model_type']},"
+                    f" model:{model_setting.get('model')}"
+                )
                 raise ex
 
         return {"result": "success"}
@@ -156,7 +159,10 @@ class ModelProviderModelApi(Resource):
                         credentials=args["credentials"],
                     )
                 except CredentialsValidateFailedError as ex:
-                    logging.exception(f"save model credentials error: {ex}")
+                    logging.exception(
+                        f"Failed to save model credentials, tenant_id: {tenant_id},"
+                        f" model: {args.get('model')}, model_type: {args.get('model_type')}"
+                    )
                     raise ValueError(str(ex))
 
         return {"result": "success"}, 200

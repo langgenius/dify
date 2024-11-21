@@ -49,7 +49,7 @@ class ToolFileMessageTransformer:
                         meta=message.meta.copy() if message.meta is not None else {},
                     )
                 except Exception as e:
-                    logger.exception(e)
+                    logger.exception(f"Failed to download image from {url}")
                     yield ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.TEXT,
                         message=ToolInvokeMessage.TextMessage(
