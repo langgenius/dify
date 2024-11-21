@@ -268,6 +268,10 @@ class AppService:
         :param enable_site: enable site status
         :return: App instance
         """
+
+        if not current_user.is_admin:
+            return app
+
         if enable_site == app.enable_site:
             return app
 
