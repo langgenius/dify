@@ -10,6 +10,8 @@ import LabelFilter from '@/app/components/tools/labels/filter'
 import Input from '@/app/components/base/input'
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import Empty from '@/app/components/plugins/marketplace/empty'
+import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
+import WorkflowToolEmpty from '@/app/components/tools/add-tool-modal/empty'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
@@ -82,10 +84,11 @@ const ProviderList = () => {
             />
           </div>
         </div>
-        {filteredCollectionList.length > 0 && (
+        {(filteredCollectionList.length > 0 || activeTab !== 'builtin') && (
           <div className={cn(
             'relative grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0',
           )}>
+            {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
             {filteredCollectionList.map(collection => (
               <div
                 key={collection.id}
@@ -109,13 +112,14 @@ const ProviderList = () => {
                 />
               </div>
             ))}
+            {!filteredCollectionList.length && activeTab === 'workflow' && <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'><WorkflowToolEmpty /></div>}
           </div>
         )}
-        {!filteredCollectionList.length && (
+        {!filteredCollectionList.length && activeTab === 'builtin' && (
           <Empty lightCard text={t('tools.noTools')} className='px-12' />
         )}
         {
-          enable_marketplace && (
+          enable_marketplace && activeTab === 'builtin' && (
             <Marketplace
               onMarketplaceScroll={() => {
                 containerRef.current?.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })
