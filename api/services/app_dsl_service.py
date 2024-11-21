@@ -286,13 +286,14 @@ class AppDslService:
             panding_data = PendingData.model_validate_json(panding_data)
             data = yaml.safe_load(panding_data.yaml_content)
 
+            app = None
             if "app_id" in data and "tenant_id" in data:
                 stmt = select(App).where(App.id == data["app_id"], App.tenant_id == data["tenant_id"])
                 app = self._session.scalar(stmt)
 
             # Create or update app
             app = self._create_or_update_app(
-                app=None,
+                app=app,
                 data=data,
                 account=account,
                 name=panding_data.name,
