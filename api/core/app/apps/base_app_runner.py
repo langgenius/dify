@@ -64,7 +64,7 @@ class AppRunner:
             ):
                 max_tokens = (
                     model_config.parameters.get(parameter_rule.name)
-                    or model_config.parameters.get(parameter_rule.use_template)
+                    or model_config.parameters.get(parameter_rule.use_template or "")
                 ) or 0
 
         if model_context_tokens is None:
@@ -111,7 +111,7 @@ class AppRunner:
             ):
                 max_tokens = (
                     model_config.parameters.get(parameter_rule.name)
-                    or model_config.parameters.get(parameter_rule.use_template)
+                    or model_config.parameters.get(parameter_rule.use_template or "")
                 ) or 0
 
         if model_context_tokens is None:
@@ -291,8 +291,8 @@ class AppRunner:
         :param agent: agent
         :return:
         """
-        model = None
-        prompt_messages = []
+        model: str = ""
+        prompt_messages: list[PromptMessage] = []
         text = ""
         usage = None
         for result in invoke_result:
@@ -350,7 +350,7 @@ class AppRunner:
             app_id=app_id,
             tenant_id=tenant_id,
             app_config=app_generate_entity.app_config,
-            inputs=inputs,
+            inputs=dict(inputs),
             query=query or "",
             message_id=message_id,
             trace_manager=app_generate_entity.trace_manager,

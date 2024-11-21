@@ -5,7 +5,7 @@ import uuid
 from collections.abc import Generator, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
 from copy import copy, deepcopy
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from flask import Flask, current_app
 
@@ -129,6 +129,7 @@ class GraphEngine:
     def run(self) -> Generator[GraphEngineEvent, None, None]:
         # trigger graph run start event
         yield GraphRunStartedEvent()
+        stream_processor: Optional[Union[EndStreamProcessor, AnswerStreamProcessor]] = None
 
         try:
             if self.init_params.workflow_type == WorkflowType.CHAT:
@@ -321,7 +322,7 @@ class GraphEngine:
 
                 if any(edge.run_condition for edge in edge_mappings):
                     # if nodes has run conditions, get node id which branch to take based on the run condition results
-                    condition_edge_mappings = {}
+                    condition_edge_mappings: dict[str, list[GraphEdge]] = {}
                     for edge in edge_mappings:
                         if edge.run_condition:
                             run_condition_hash = edge.run_condition.hash
@@ -335,7 +336,8 @@ class GraphEngine:
                             continue
 
                         edge = sub_edge_mappings[0]
-
+                        if not edge.run_condition:
+                            continue
                         result = ConditionManager.get_condition_handler(
                             init_params=self.init_params,
                             graph=self.graph,

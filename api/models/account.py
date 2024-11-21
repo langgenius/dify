@@ -16,7 +16,7 @@ class AccountStatus(str, enum.Enum):
     CLOSED = "closed"
 
 
-class Account(UserMixin, db.Model):   # type: ignore[name-defined]
+class Account(UserMixin, db.Model):  # type: ignore[name-defined]
     __tablename__ = "accounts"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="account_pkey"), db.Index("account_email_idx", "email"))
 
@@ -206,7 +206,7 @@ class TenantAccountJoinRole(enum.Enum):
     DATASET_OPERATOR = "dataset_operator"
 
 
-class TenantAccountJoin(db.Model):   # type: ignore[name-defined]
+class TenantAccountJoin(db.Model):  # type: ignore[name-defined]
     __tablename__ = "tenant_account_joins"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tenant_account_join_pkey"),
@@ -225,7 +225,7 @@ class TenantAccountJoin(db.Model):   # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class AccountIntegrate(db.Model):   # type: ignore[name-defined]
+class AccountIntegrate(db.Model):  # type: ignore[name-defined]
     __tablename__ = "account_integrates"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="account_integrate_pkey"),
@@ -242,7 +242,7 @@ class AccountIntegrate(db.Model):   # type: ignore[name-defined]
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class InvitationCode(db.Model):   # type: ignore[name-defined]
+class InvitationCode(db.Model):  # type: ignore[name-defined]
     __tablename__ = "invitation_codes"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="invitation_code_pkey"),
