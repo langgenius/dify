@@ -257,36 +257,36 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
                 workflow_node_execution = self._handle_node_execution_start(workflow_run=workflow_run, event=event)
 
-                response = self._workflow_node_start_to_stream_response(
+                node_start_response = self._workflow_node_start_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
                 )
 
-                if response:
-                    yield response
+                if node_start_response:
+                    yield node_start_response
             elif isinstance(event, QueueNodeSucceededEvent):
                 workflow_node_execution = self._handle_workflow_node_execution_success(event)
 
-                response = self._workflow_node_finish_to_stream_response(
+                node_success_response = self._workflow_node_finish_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
                 )
 
-                if response:
-                    yield response
+                if node_success_response:
+                    yield node_success_response
             elif isinstance(event, QueueNodeFailedEvent | QueueNodeInIterationFailedEvent):
                 workflow_node_execution = self._handle_workflow_node_execution_failed(event)
 
-                response = self._workflow_node_finish_to_stream_response(
+                node_failed_response = self._workflow_node_finish_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution,
                 )
 
-                if response:
-                    yield response
+                if node_failed_response:
+                    yield node_failed_response
             elif isinstance(event, QueueParallelBranchRunStartedEvent):
                 if not workflow_run:
                     raise Exception("Workflow run not initialized.")

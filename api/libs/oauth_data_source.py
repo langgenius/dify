@@ -2,7 +2,7 @@ import datetime
 import urllib.parse
 
 import requests
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 
 from extensions.ext_database import db
 from models.source import DataSourceOauthBinding

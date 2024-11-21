@@ -2,7 +2,7 @@ import datetime
 import uuid
 
 import pandas as pd
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 from sqlalchemy import or_
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound

@@ -4,7 +4,7 @@ from typing import Optional
 
 import requests
 from flask import current_app, redirect, request
-from flask_restful import Resource
+from flask_restful import Resource  # type: ignore
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config

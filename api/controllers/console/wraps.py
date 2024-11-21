@@ -3,7 +3,7 @@ import os
 from functools import wraps
 
 from flask import abort, request
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 
 from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError

@@ -114,7 +114,7 @@ class DatabaseConfig:
         default="postgresql",
     )
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
         db_extras = (
@@ -152,7 +152,7 @@ class DatabaseConfig:
         default=False,
     )
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
         return {
@@ -190,7 +190,7 @@ class CeleryConfig(DatabaseConfig):
         default=0.1,
     )
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def CELERY_RESULT_BACKEND(self) -> str | None:
         return (
@@ -199,7 +199,7 @@ class CeleryConfig(DatabaseConfig):
             else self.CELERY_BROKER_URL
         )
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def BROKER_USE_SSL(self) -> bool:
         return self.CELERY_BROKER_URL.startswith("rediss://") if self.CELERY_BROKER_URL else False

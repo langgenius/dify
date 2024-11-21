@@ -9,7 +9,7 @@ import uuid
 from typing import Optional, cast
 
 from flask import Flask, current_app
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 from sqlalchemy.orm.exc import ObjectDeletedError
 
 from configs import dify_config

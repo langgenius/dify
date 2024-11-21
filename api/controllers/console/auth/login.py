@@ -1,8 +1,8 @@
 from typing import cast
 
-import flask_login
+import flask_login  # type: ignore
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restful import Resource, reqparse  # type: ignore
 
 import services
 from constants.languages import languages

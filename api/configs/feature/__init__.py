@@ -238,7 +238,7 @@ class HttpConfig(BaseSettings):
         default="",
     )
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def CONSOLE_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_CONSOLE_CORS_ALLOW_ORIGINS.split(",")
@@ -249,7 +249,7 @@ class HttpConfig(BaseSettings):
         default="*",
     )
 
-    @computed_field
+    @computed_field  # type: ignore
     @property
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")

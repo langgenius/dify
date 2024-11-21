@@ -14,7 +14,7 @@ if not dify_config.DEBUG:
 import json
 
 from flask import Flask, Response, request
-from flask_cors import CORS
+from flask_cors import CORS  # type: ignore
 from werkzeug.exceptions import Unauthorized
 
 import contexts

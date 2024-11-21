@@ -1,5 +1,5 @@
 import pytz
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
 from core.tools.tool_manager import ToolManager

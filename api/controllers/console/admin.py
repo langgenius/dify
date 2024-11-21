@@ -1,7 +1,7 @@
 from functools import wraps
 
 from flask import request
-from flask_restful import Resource, reqparse
+from flask_restful import Resource, reqparse  # type: ignore
 from werkzeug.exceptions import NotFound, Unauthorized
 
 from configs import dify_config

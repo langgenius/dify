@@ -2,7 +2,7 @@ import datetime
 import json
 
 import requests
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 
 from core.helper import encrypter
 from core.rag.extractor.firecrawl.firecrawl_app import FirecrawlApp

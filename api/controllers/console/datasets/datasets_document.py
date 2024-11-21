@@ -3,8 +3,8 @@ from argparse import ArgumentTypeError
 from datetime import datetime, timezone
 
 from flask import request
-from flask_login import current_user
-from flask_restful import Resource, fields, marshal, marshal_with, reqparse
+from flask_login import current_user  # type: ignore
+from flask_restful import Resource, fields, marshal, marshal_with, reqparse  # type: ignore
 from sqlalchemy import asc, desc
 from transformers.hf_argparser import string_to_bool
 from werkzeug.exceptions import Forbidden, NotFound

@@ -6,7 +6,7 @@ import time
 import uuid
 from typing import Any, Optional
 
-from flask_login import current_user
+from flask_login import current_user  # type: ignore
 from sqlalchemy import func
 from werkzeug.exceptions import NotFound
 

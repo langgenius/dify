@@ -210,7 +210,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     parent_parallel_id=event.parent_parallel_id,
                     parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     start_at=event.route_node_state.start_at,
-                    inputs=event.route_node_state.node_run_result.inputs
+                    inputs=cast(dict[str, Any], event.route_node_state.node_run_result.inputs)
                     if event.route_node_state.node_run_result
                     else {},
                     process_data=event.route_node_state.node_run_result.process_data
@@ -237,7 +237,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     parent_parallel_id=event.parent_parallel_id,
                     parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     start_at=event.route_node_state.start_at,
-                    inputs=event.route_node_state.node_run_result.inputs
+                    inputs=cast(dict[str, Any], event.route_node_state.node_run_result.inputs)
                     if event.route_node_state.node_run_result
                     else {},
                     process_data=event.route_node_state.node_run_result.process_data
@@ -267,7 +267,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     parent_parallel_id=event.parent_parallel_id,
                     parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     start_at=event.route_node_state.start_at,
-                    inputs=event.route_node_state.node_run_result.inputs
+                    inputs=cast(dict[str, Any], event.route_node_state.node_run_result.inputs)
                     if event.route_node_state.node_run_result
                     else {},
                     process_data=event.route_node_state.node_run_result.process_data

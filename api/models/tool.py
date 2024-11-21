@@ -17,7 +17,7 @@ class ToolProviderName(Enum):
         raise ValueError(f"No matching enum found for value '{value}'")
 
 
-class ToolProvider(db.Model):
+class ToolProvider(db.Model):  # type: ignore[name-defined]
     __tablename__ = "tool_providers"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tool_provider_pkey"),

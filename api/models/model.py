@@ -24,7 +24,7 @@ from .account import Account, Tenant
 from .types import StringUUID
 
 
-class DifySetup(db.Model):
+class DifySetup(db.Model):  # type: ignore[name-defined]
     __tablename__ = "dify_setups"
     __table_args__ = (db.PrimaryKeyConstraint("version", name="dify_setup_pkey"),)
 
@@ -59,7 +59,7 @@ class IconType(Enum):
     EMOJI = "emoji"
 
 
-class App(db.Model):
+class App(db.Model):  # type: ignore[name-defined]
     __tablename__ = "apps"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="app_pkey"), db.Index("app_tenant_id_idx", "tenant_id"))
 
@@ -215,7 +215,7 @@ class App(db.Model):
         return tags or []
 
 
-class AppModelConfig(db.Model):
+class AppModelConfig(db.Model):  # type: ignore[name-defined]
     __tablename__ = "app_model_configs"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="app_model_config_pkey"), db.Index("app_app_id_idx", "app_id"))
 
@@ -462,7 +462,7 @@ class AppModelConfig(db.Model):
         return new_app_model_config
 
 
-class RecommendedApp(db.Model):
+class RecommendedApp(db.Model):  # type: ignore[name-defined]
     __tablename__ = "recommended_apps"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="recommended_app_pkey"),
@@ -490,7 +490,7 @@ class RecommendedApp(db.Model):
         return app
 
 
-class InstalledApp(db.Model):
+class InstalledApp(db.Model):  # type: ignore[name-defined]
     __tablename__ = "installed_apps"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="installed_app_pkey"),
@@ -519,7 +519,7 @@ class InstalledApp(db.Model):
         return tenant
 
 
-class Conversation(db.Model):
+class Conversation(db.Model):  # type: ignore[name-defined]
     __tablename__ = "conversations"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="conversation_pkey"),
@@ -710,7 +710,7 @@ class Conversation(db.Model):
         return self.override_model_configs is not None
 
 
-class Message(db.Model):
+class Message(db.Model):  # type: ignore[name-defined]
     __tablename__ = "messages"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_pkey"),
@@ -1044,7 +1044,7 @@ class Message(db.Model):
         )
 
 
-class MessageFeedback(db.Model):
+class MessageFeedback(db.Model):  # type: ignore[name-defined]
     __tablename__ = "message_feedbacks"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_feedback_pkey"),
@@ -1071,7 +1071,7 @@ class MessageFeedback(db.Model):
         return account
 
 
-class MessageFile(db.Model):
+class MessageFile(db.Model):  # type: ignore[name-defined]
     __tablename__ = "message_files"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_file_pkey"),
@@ -1114,7 +1114,7 @@ class MessageFile(db.Model):
     )
 
 
-class MessageAnnotation(db.Model):
+class MessageAnnotation(db.Model):  # type: ignore[name-defined]
     __tablename__ = "message_annotations"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_annotation_pkey"),
@@ -1145,7 +1145,7 @@ class MessageAnnotation(db.Model):
         return account
 
 
-class AppAnnotationHitHistory(db.Model):
+class AppAnnotationHitHistory(db.Model):  # type: ignore[name-defined]
     __tablename__ = "app_annotation_hit_histories"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="app_annotation_hit_histories_pkey"),
@@ -1183,7 +1183,7 @@ class AppAnnotationHitHistory(db.Model):
         return account
 
 
-class AppAnnotationSetting(db.Model):
+class AppAnnotationSetting(db.Model):  # type: ignore[name-defined]
     __tablename__ = "app_annotation_settings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="app_annotation_settings_pkey"),
@@ -1231,7 +1231,7 @@ class AppAnnotationSetting(db.Model):
         return collection_binding_detail
 
 
-class OperationLog(db.Model):
+class OperationLog(db.Model):  # type: ignore[name-defined]
     __tablename__ = "operation_logs"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="operation_log_pkey"),
@@ -1268,7 +1268,7 @@ class EndUser(UserMixin, db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class Site(db.Model):
+class Site(db.Model):  # type: ignore[name-defined]
     __tablename__ = "sites"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="site_pkey"),
@@ -1325,7 +1325,7 @@ class Site(db.Model):
         return dify_config.APP_WEB_URL or request.url_root.rstrip("/")
 
 
-class ApiToken(db.Model):
+class ApiToken(db.Model):  # type: ignore[name-defined]
     __tablename__ = "api_tokens"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="api_token_pkey"),
@@ -1352,7 +1352,7 @@ class ApiToken(db.Model):
             return result
 
 
-class UploadFile(db.Model):
+class UploadFile(db.Model):  # type: ignore[name-defined]
     __tablename__ = "upload_files"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="upload_file_pkey"),
@@ -1416,7 +1416,7 @@ class UploadFile(db.Model):
         self.source_url = source_url
 
 
-class ApiRequest(db.Model):
+class ApiRequest(db.Model):  # type: ignore[name-defined]
     __tablename__ = "api_requests"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="api_request_pkey"),
@@ -1433,7 +1433,7 @@ class ApiRequest(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class MessageChain(db.Model):
+class MessageChain(db.Model):  # type: ignore[name-defined]
     __tablename__ = "message_chains"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_chain_pkey"),
@@ -1448,7 +1448,7 @@ class MessageChain(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
 
-class MessageAgentThought(db.Model):
+class MessageAgentThought(db.Model):  # type: ignore[name-defined]
     __tablename__ = "message_agent_thoughts"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_agent_thought_pkey"),
@@ -1560,7 +1560,7 @@ class MessageAgentThought(db.Model):
                 return dict.fromkeys(tools, self.observation)
 
 
-class DatasetRetrieverResource(db.Model):
+class DatasetRetrieverResource(db.Model):  # type: ignore[name-defined]
     __tablename__ = "dataset_retriever_resources"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_retriever_resource_pkey"),
@@ -1587,7 +1587,7 @@ class DatasetRetrieverResource(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
 
-class Tag(db.Model):
+class Tag(db.Model):  # type: ignore[name-defined]
     __tablename__ = "tags"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tag_pkey"),
@@ -1605,7 +1605,7 @@ class Tag(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class TagBinding(db.Model):
+class TagBinding(db.Model):  # type: ignore[name-defined]
     __tablename__ = "tag_bindings"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tag_binding_pkey"),
@@ -1621,7 +1621,7 @@ class TagBinding(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class TraceAppConfig(db.Model):
+class TraceAppConfig(db.Model):  # type: ignore[name-defined]
     __tablename__ = "trace_app_config"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tracing_app_config_pkey"),

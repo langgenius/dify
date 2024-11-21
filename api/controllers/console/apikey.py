@@ -1,5 +1,5 @@
-import flask_restful
-from flask_login import current_user
+import flask_restful  # type: ignore
+from flask_login import current_user  # type: ignore
 from flask_restful import Resource, fields, marshal_with
 from werkzeug.exceptions import Forbidden
 
