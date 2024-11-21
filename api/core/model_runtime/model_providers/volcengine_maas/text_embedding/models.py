@@ -22,7 +22,7 @@ def get_model_config(credentials: dict) -> ModelConfig:
         return ModelConfig(
             properties=ModelProperties(
                 context_size=int(credentials.get("context_size", 0)),
-                max_chunks=int(credentials.get("max_chunks", 0)),
+                max_chunks=int(credentials.get("max_chunks", 1)),
             )
         )
     return model_configs
