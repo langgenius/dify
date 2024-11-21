@@ -20,7 +20,7 @@ import {
   DescriptionInput,
   TitleInput,
 } from './components/title-description-input'
-import ErrorHandle from './components/error-handle'
+import ErrorHandleOnPanel from './components/error-handle/error-handle-on-panel'
 import { useResizePanel } from './hooks/use-resize-panel'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -170,7 +170,10 @@ const BasePanel: FC<BasePanelProps> = ({
         </div>
         {
           hasErrorHandleNode(data.type) && (
-            <ErrorHandle />
+            <ErrorHandleOnPanel
+              id={id}
+              data={data}
+            />
           )
         }
         {

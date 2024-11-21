@@ -1,5 +1,5 @@
-export enum errorHandleTypeEnum {
+export enum ErrorHandleTypeEnum {
   none = 'none',
-  failBranch = 'failBranch',
-  defaultValue = 'defaultValue',
+  failBranch = 'fail-branch',
+  defaultValue = 'default-value',
 }

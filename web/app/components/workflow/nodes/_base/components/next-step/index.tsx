@@ -14,6 +14,8 @@ import type {
 import { BlockEnum } from '../../../../types'
 import Line from './line'
 import Container from './container'
+import { hasErrorHandleNode } from '@/app/components/workflow/utils'
+import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
 type NextStepProps = {
   selectedNode: Node
@@ -28,7 +30,15 @@ const NextStep = ({
   const branches = useMemo(() => {
     return data._targetBranches || []
   }, [data])
-  const nodeWithBranches = data.type === BlockEnum.IfElse || data.type === BlockEnum.QuestionClassifier
+  const nodeWithBranches = useMemo(() => {
+    if (data.type === BlockEnum.IfElse || data.type === BlockEnum.QuestionClassifier)
+      return true
+
+    if (hasErrorHandleNode(data.type) && data.error_strategy === ErrorHandleTypeEnum.failBranch)
+      return true
+
+    return false
+  }, [data.type, data.error_strategy])
   const edges = useEdges()
   const outgoers = getOutgoers(selectedNode as Node, store.getState().getNodes(), edges)
   const connectedEdges = getConnectedEdges([selectedNode] as Node[], edges).filter(edge => edge.source === selectedNode!.id)

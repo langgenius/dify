@@ -24,6 +24,7 @@ import {
   useNodesReadOnly,
   useToolIcon,
 } from '../../hooks'
+import { hasErrorHandleNode } from '../../utils'
 import { useNodeIterationInteractions } from '../iteration/use-interactions'
 import type { IterationNodeType } from '../iteration/types'
 import {
@@ -32,6 +33,7 @@ import {
 } from './components/node-handle'
 import NodeResizer from './components/node-resizer'
 import NodeControl from './components/node-control'
+import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
 import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -223,6 +225,14 @@ const BaseNode: FC<BaseNodeProps> = ({
             <div className='grow pl-1 pr-1 pb-1'>
               {cloneElement(children, { id, data })}
             </div>
+          )
+        }
+        {
+          hasErrorHandleNode(data.type) && (
+            <ErrorHandleOnNode
+              id={id}
+              data={data}
+            />
           )
         }
         {

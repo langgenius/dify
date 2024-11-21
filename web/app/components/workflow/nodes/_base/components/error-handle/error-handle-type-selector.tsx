@@ -3,7 +3,7 @@ import {
   RiArrowDownSLine,
   RiCheckLine,
 } from '@remixicon/react'
-import { errorHandleTypeEnum } from './types'
+import { ErrorHandleTypeEnum } from './types'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -12,8 +12,8 @@ import {
 import Button from '@/app/components/base/button'
 
 type ErrorHandleTypeSelectorProps = {
-  value: errorHandleTypeEnum
-  onSelected: (value: errorHandleTypeEnum) => void
+  value: ErrorHandleTypeEnum
+  onSelected: (value: ErrorHandleTypeEnum) => void
 }
 const ErrorHandleTypeSelector = ({
   value,
@@ -22,17 +22,17 @@ const ErrorHandleTypeSelector = ({
   const [open, setOpen] = useState(false)
   const options = [
     {
-      value: errorHandleTypeEnum.none,
+      value: ErrorHandleTypeEnum.none,
       label: 'None',
       description: 'The node will stop running if an exception occurs and is not handled',
     },
     {
-      value: errorHandleTypeEnum.defaultValue,
+      value: ErrorHandleTypeEnum.defaultValue,
       label: 'Default Value',
       description: 'When an error occurs, specify a static output content',
     },
     {
-      value: errorHandleTypeEnum.failBranch,
+      value: ErrorHandleTypeEnum.failBranch,
       label: 'Fail Branch',
       description: 'When an error occurs, it will execute the exception branch',
     },
