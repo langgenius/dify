@@ -41,11 +41,11 @@ def update_clusters(tidb_serverless_list: list[TidbAuthBinding]):
             items = tidb_serverless_list[i : i + 20]
             TidbService.batch_update_tidb_serverless_cluster_status(
                 items,
-                dify_config.TIDB_PROJECT_ID,
-                dify_config.TIDB_API_URL,
-                dify_config.TIDB_IAM_API_URL,
-                dify_config.TIDB_PUBLIC_KEY,
-                dify_config.TIDB_PRIVATE_KEY,
+                dify_config.TIDB_PROJECT_ID or "",
+                dify_config.TIDB_API_URL or "",
+                dify_config.TIDB_IAM_API_URL or "",
+                dify_config.TIDB_PUBLIC_KEY or "",
+                dify_config.TIDB_PRIVATE_KEY or "",
             )
     except Exception as e:
         click.echo(click.style(f"Error: {e}", fg="red"))

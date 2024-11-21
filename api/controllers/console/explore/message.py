@@ -2,7 +2,7 @@ import logging
 
 from flask_login import current_user  # type: ignore
 from flask_restful import marshal_with, reqparse  # type: ignore
-from flask_restful.inputs import int_range
+from flask_restful.inputs import int_range  # type: ignore
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services

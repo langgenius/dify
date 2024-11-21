@@ -1,3 +1,5 @@
+from typing import Any
+
 import flask_restful  # type: ignore
 from flask_login import current_user  # type: ignore
 from flask_restful import Resource, fields, marshal_with
@@ -35,10 +37,10 @@ def _get_resource(resource_id, tenant_id, resource_model):
 class BaseApiKeyListResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
-    resource_type = None
-    resource_model = None
-    resource_id_field = None
-    token_prefix = None
+    resource_type: str | None = None
+    resource_model: Any = None
+    resource_id_field: str | None = None
+    token_prefix: str | None = None
     max_keys = 10
 
     @marshal_with(api_key_list)
@@ -86,9 +88,9 @@ class BaseApiKeyListResource(Resource):
 class BaseApiKeyResource(Resource):
     method_decorators = [account_initialization_required, login_required, setup_required]
 
-    resource_type = None
-    resource_model = None
-    resource_id_field = None
+    resource_type: str | None = None
+    resource_model: Any = None
+    resource_id_field: str | None = None
 
     def delete(self, resource_id, api_key_id):
         resource_id = str(resource_id)

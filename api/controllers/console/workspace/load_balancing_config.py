@@ -37,7 +37,7 @@ class LoadBalancingCredentialsValidateApi(Resource):
         model_load_balancing_service = ModelLoadBalancingService()
 
         result = True
-        error = None
+        error = ""
 
         try:
             model_load_balancing_service.validate_load_balancing_credentials(
@@ -86,7 +86,7 @@ class LoadBalancingConfigCredentialsValidateApi(Resource):
         model_load_balancing_service = ModelLoadBalancingService()
 
         result = True
-        error = None
+        error = ""
 
         try:
             model_load_balancing_service.validate_load_balancing_credentials(

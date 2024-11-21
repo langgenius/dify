@@ -60,16 +60,27 @@ from .datasets import (
 )
 
 # Import explore controllers
+# FIXME maybe import error herr need to check
 from .explore import (
-    audio,
-    completion,
-    conversation,
+    audio as audio_explore,
+)
+from .explore import (
+    completion as completion_explore,
+)
+from .explore import (
+    conversation as conversation_explore,
+)
+from .explore import (
     installed_app,
-    message,
     parameter,
     recommended_app,
     saved_message,
-    workflow,
+)
+from .explore import (
+    message as message_explore,
+)
+from .explore import (
+    workflow as workflow_explore,
 )
 
 # Import tag controllers

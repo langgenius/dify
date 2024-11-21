@@ -1,4 +1,4 @@
-from flask_restful import fields
+from flask_restful import fields  # type: ignore
 
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField

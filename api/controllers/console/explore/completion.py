@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timezone
 
 from flask_login import current_user  # type: ignore
-from flask_restful import reqparse
+from flask_restful import reqparse  # type: ignore
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services

@@ -3,11 +3,11 @@ import os
 from configs import dify_config
 
 if not dify_config.DEBUG:
-    from gevent import monkey
+    from gevent import monkey  # type: ignore
 
     monkey.patch_all()
 
-    import grpc.experimental.gevent
+    import grpc.experimental.gevent  # type: ignore
 
     grpc.experimental.gevent.init_gevent()
 

@@ -2,7 +2,7 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
-import yaml
+import yaml  # type: ignore
 from packaging import version
 
 from core.helper import ssrf_proxy

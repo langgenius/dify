@@ -308,7 +308,7 @@ class ModelProviderModelValidateApi(Resource):
         model_provider_service = ModelProviderService()
 
         result = True
-        error = None
+        error = ""
 
         try:
             model_provider_service.model_credentials_validate(

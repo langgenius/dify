@@ -6,7 +6,7 @@ from flask import request
 from flask_login import current_user  # type: ignore
 from flask_restful import Resource, fields, marshal, marshal_with, reqparse  # type: ignore
 from sqlalchemy import asc, desc
-from transformers.hf_argparser import string_to_bool
+from transformers.hf_argparser import string_to_bool  # type: ignore
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services

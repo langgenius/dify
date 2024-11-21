@@ -1,6 +1,6 @@
 from flask import request
 from flask_login import current_user  # type: ignore
-from flask_restful import Resource, marshal_with
+from flask_restful import Resource, marshal_with  # type: ignore
 
 import services
 from configs import dify_config
