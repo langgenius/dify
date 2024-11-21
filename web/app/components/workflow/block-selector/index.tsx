@@ -158,6 +158,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             onActiveTabChange={handleActiveTabChange}
             onSelect={handleSelect}
             searchText={searchText}
+            tags={tags}
             availableBlocksTypes={availableBlocksTypes}
             noBlocks={noBlocks}
           />

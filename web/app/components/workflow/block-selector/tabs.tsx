@@ -13,6 +13,7 @@ export type TabsProps = {
   activeTab: TabsEnum
   onActiveTabChange: (activeTab: TabsEnum) => void
   searchText: string
+  tags: string[]
   onSelect: (type: BlockEnum, tool?: ToolDefaultValue) => void
   availableBlocksTypes?: BlockEnum[]
   noBlocks?: boolean
@@ -20,6 +21,7 @@ export type TabsProps = {
 const Tabs: FC<TabsProps> = ({
   activeTab,
   onActiveTabChange,
+  tags,
   searchText,
   onSelect,
   availableBlocksTypes,
@@ -68,6 +70,7 @@ const Tabs: FC<TabsProps> = ({
           <AllTools
             searchText={searchText}
             onSelect={onSelect}
+            tags={tags}
             buildInTools={buildInTools}
             customTools={customTools}
             workflowTools={workflowTools}
