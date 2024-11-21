@@ -27,6 +27,9 @@ class SlidesGeneratorTool(BuiltinTool):
         FAILURE = "FAILURE"
         REVOKED = "REVOKED"
         SUCCESS = "SUCCESS"
+        PENDING = "PENDING"
+        RECEIVED = "RECEIVED"
+        STARTED = "STARTED"
 
     @dataclass
     class PresentationRequest:
@@ -96,6 +99,16 @@ class SlidesGeneratorTool(BuiltinTool):
             download_url = await self._wait_for_completion(session, task_id)
             return download_url
 
+    async def _fetch_presentation(
+        self,
+        session: aiohttp.ClientSession,
+        download_url: str,
+    ) -> bytes:
+        """Fetch the presentation file from the download URL"""
+        async with session.get(download_url, timeout=self.timeout) as response:
+            response.raise_for_status()
+            return await response.read()
+
     def _invoke(
         self,
         user_id: str,
@@ -130,7 +143,18 @@ class SlidesGeneratorTool(BuiltinTool):
             # Run the asynchronous slide generation
             try:
                 download_url = await self._generate_slides(plain_text, length, theme)
-                return self.create_text_message(download_url)
+
+                # Fetch the presentation file
+                async with aiohttp.ClientSession() as session:
+                    presentation_bytes = await self._fetch_presentation(session, download_url)
+
+                return [
+                    self.create_text_message("Presentation generated successfully"),
+                    self.create_blob_message(
+                        blob=presentation_bytes,
+                        meta={"mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation"},
+                    ),
+                ]
             except Exception as e:
                 return [self.create_text_message(f"An error occurred: {str(e)}")]
 
