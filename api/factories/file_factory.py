@@ -166,10 +166,9 @@ def _build_from_remote_url(
 
 
 def _get_remote_file_info(url: str):
-    mime_type = mimetypes.guess_type(url)[0] or ""
     file_size = -1
     filename = url.split("/")[-1].split("?")[0] or "unknown_file"
-    mime_type = mime_type or mimetypes.guess_type(filename)[0]
+    mime_type = mimetypes.guess_type(filename)[0] or ""
 
     resp = ssrf_proxy.head(url, follow_redirects=True)
     if resp.status_code == httpx.codes.OK:

@@ -1130,8 +1130,8 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         base_model_schema = model_map[base_model]
 
         base_model_schema_features = base_model_schema.features or []
-        base_model_schema_model_properties = base_model_schema.model_properties or {}
-        base_model_schema_parameters_rules = base_model_schema.parameter_rules or []
+        base_model_schema_model_properties = base_model_schema.model_properties
+        base_model_schema_parameters_rules = base_model_schema.parameter_rules
 
         entity = AIModelEntity(
             model=model,

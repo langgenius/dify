@@ -366,6 +366,8 @@ services:
   redis:
     image: redis:6-alpine
     restart: always
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-difyai123456}
     volumes:
       # Mount the redis data directory to the container.
       - ./volumes/redis/data:/data
