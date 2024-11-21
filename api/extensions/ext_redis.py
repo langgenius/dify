@@ -61,8 +61,8 @@ def init_app(app):
     }
 
     cache_config = {
-        'CACHE_TYPE': 'redis',
-        'CACHE_DEFAULT_TIMEOUT': 3600,
+        "CACHE_TYPE": "redis",
+        "CACHE_DEFAULT_TIMEOUT": 3600,
     }
 
     if dify_config.REDIS_USE_SENTINEL:
@@ -81,9 +81,11 @@ def init_app(app):
         redis_client.initialize(master)
 
         # Configure cache for Sentinel
-        cache_config.update({
-            'CACHE_REDIS_URL': f"redis://{dify_config.REDIS_SENTINEL_USERNAME}:{dify_config.REDIS_SENTINEL_PASSWORD}@{sentinel_hosts[0][0]}:{sentinel_hosts[0][1]}/{dify_config.REDIS_DB}?sentinel={dify_config.REDIS_SENTINEL_SERVICE_NAME}"
-        })
+        cache_config.update(
+            {
+                "CACHE_REDIS_URL": f"redis://{dify_config.REDIS_SENTINEL_USERNAME}:{dify_config.REDIS_SENTINEL_PASSWORD}@{sentinel_hosts[0][0]}:{sentinel_hosts[0][1]}/{dify_config.REDIS_DB}?sentinel={dify_config.REDIS_SENTINEL_SERVICE_NAME}"
+            }
+        )
     elif dify_config.REDIS_USE_CLUSTERS:
         nodes = [
             ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))
@@ -94,9 +96,9 @@ def init_app(app):
         # Flask-Caching doesn't directly support RedisCluster
         # Consider alternative caching libraries or a fallback
         app.logger.warning("Flask-Caching does not directly support Redis clusters. Ensure compatibility.")
-        cache_config.update({
-            'CACHE_REDIS_URL': f"redis://{dify_config.REDIS_CLUSTERS.split(',')[0]}/{dify_config.REDIS_DB}"
-        })
+        cache_config.update(
+            {"CACHE_REDIS_URL": f"redis://{dify_config.REDIS_CLUSTERS.split(',')[0]}/{dify_config.REDIS_DB}"}
+        )
     else:
         redis_params.update(
             {
@@ -109,12 +111,14 @@ def init_app(app):
         redis_client.initialize(redis.Redis(connection_pool=pool))
 
         # Configure cache for standalone Redis
-        cache_config.update({
-            'CACHE_REDIS_HOST': dify_config.REDIS_HOST,
-            'CACHE_REDIS_PORT': dify_config.REDIS_PORT,
-            'CACHE_REDIS_PASSWORD': dify_config.REDIS_PASSWORD,
-            'CACHE_REDIS_DB': dify_config.REDIS_DB,
-        })
+        cache_config.update(
+            {
+                "CACHE_REDIS_HOST": dify_config.REDIS_HOST,
+                "CACHE_REDIS_PORT": dify_config.REDIS_PORT,
+                "CACHE_REDIS_PASSWORD": dify_config.REDIS_PASSWORD,
+                "CACHE_REDIS_DB": dify_config.REDIS_DB,
+            }
+        )
 
     cache.init_app(app, config=cache_config)
 

@@ -1,9 +1,9 @@
 import flask_restful
-from api.controllers.service_api.wraps import get_api_token_from_db
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with
 from werkzeug.exceptions import Forbidden
 
+from controllers.service_api.wraps import get_api_token_from_db
 from extensions.ext_database import db
 from extensions.ext_redis import cache
 from libs.helper import TimestampField
