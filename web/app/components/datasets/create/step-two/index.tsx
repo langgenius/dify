@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/20/solid'
-import { RocketLaunchIcon } from '@heroicons/react/24/outline'
 import {
   RiArrowLeftLine,
   RiCloseLine,
@@ -51,7 +50,6 @@ import { useDatasetDetailContext } from '@/context/dataset-detail'
 import I18n from '@/context/i18n'
 import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import Tooltip from '@/app/components/base/tooltip'
 import { useDefaultModel, useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { LanguagesSupported } from '@/i18n/language'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
@@ -639,23 +637,7 @@ const StepTwo = ({
 
   return (
     <div className='flex w-full h-full'>
-      <div ref={scrollRef} className='relative h-full w-full overflow-y-scroll'>
-        <div className={cn(s.pageHeader, scrolled && s.fixed, isMobile && '!px-6')}>
-          <span>{t('datasetCreation.steps.two')}</span>
-          {(isMobile || !showPreview) && (
-            <Button
-              className='border-[0.5px] !h-8 hover:outline hover:outline-[0.5px] hover:outline-gray-300 text-gray-700 font-medium bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]'
-              onClick={setShowPreview}
-            >
-              <Tooltip>
-                <div className="flex flex-row items-center">
-                  <RocketLaunchIcon className="h-4 w-4 mr-1.5 stroke-[1.8px]" />
-                  <span className="text-[13px]">{t('datasetCreation.stepTwo.previewTitleButton')}</span>
-                </div>
-              </Tooltip>
-            </Button>
-          )}
-        </div>
+      <div className='relative h-full w-full overflow-y-scroll'>
         <div className={cn(s.form, isMobile && '!px-4')}>
           <div className={s.label}>{t('datasetCreation.stepTwo.segmentation')}</div>
           <div className='max-w-[640px]'>
@@ -906,7 +888,7 @@ const StepTwo = ({
                     <MessageChatSquare className='w-4 h-4' />
                   </div>
                   <div className='grow mx-3'>
-                    <div className='mb-[2px] text-md font-medium text-gray-900'>{t('datasetCreation.stepTwo.QATitle')}</div>
+                    <div className='mb-0.5 text-md font-medium text-gray-900'>{t('datasetCreation.stepTwo.QATitle')}</div>
                     <div className='inline-flex items-center text-[13px] leading-[18px] text-gray-500'>
                       <span className='pr-1'>{t('datasetCreation.stepTwo.QALanguage')}</span>
                       <LanguageSelect currentLanguage={docLanguage} onSelect={handleSelect} disabled={isLanguageSelectDisabled} />

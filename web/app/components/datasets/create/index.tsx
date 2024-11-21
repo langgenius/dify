@@ -6,6 +6,7 @@ import { ModelTypeEnum } from '../../header/account-setting/model-provider-page/
 import StepOne from './step-one'
 import StepTwo from './step-two'
 import StepThree from './step-three'
+import { Topbar } from './top-bar'
 import { DataSourceType } from '@/models/datasets'
 import type { CrawlOptions, CrawlResultItem, DataSet, FileItem, createDocumentResponse } from '@/models/datasets'
 import { fetchDataSource } from '@/service/common'
@@ -119,6 +120,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   return (
     <div className='flex flex-col' style={{ height: 'calc(100vh - 56px)' }}>
       <div className="grow bg-white">
+        <Topbar activeStepIndex={step - 1} />
         <div className={step === 1 ? 'block h-full' : 'hidden'}>
           <StepOne
             hasConnection={hasConnection}
