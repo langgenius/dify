@@ -16,7 +16,7 @@ from .node_data import VariableOperatorData, WriteMode
 
 class VariableOperatorNode(BaseNode[VariableOperatorData]):
     _node_data_cls: type[BaseNodeData] = VariableOperatorData
-    _node_type: NodeType = NodeType.VARIABLE_OPERATOR
+    _node_type = NodeType.VARIABLE_OPERATOR
 
     def _run(self) -> NodeRunResult:
         # Should be String, Number, Object, ArrayString, ArrayNumber, ArrayObject
