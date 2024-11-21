@@ -1,0 +1,2 @@
+class VariableOperatorNodeError(Exception):
+    pass

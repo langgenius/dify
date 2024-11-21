@@ -19,6 +19,6 @@ class NodeType(str, Enum):
     ITERATION = "iteration"
     ITERATION_START = "iteration-start"  # Fake start node for iteration.
     PARAMETER_EXTRACTOR = "parameter-extractor"
-    CONVERSATION_VARIABLE_ASSIGNER = "assigner"
+    VARIABLE_OPERATOR = "assigner"
     DOCUMENT_EXTRACTOR = "document-extractor"
     LIST_OPERATOR = "list-operator"

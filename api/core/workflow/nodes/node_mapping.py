@@ -16,7 +16,7 @@ from core.workflow.nodes.start import StartNode
 from core.workflow.nodes.template_transform import TemplateTransformNode
 from core.workflow.nodes.tool import ToolNode
 from core.workflow.nodes.variable_aggregator import VariableAggregatorNode
-from core.workflow.nodes.variable_assigner import VariableAssignerNode
+from core.workflow.nodes.variable_operator import VariableOperatorNode
 
 node_type_classes_mapping: dict[NodeType, type[BaseNode]] = {
     NodeType.START: StartNode,
@@ -35,7 +35,7 @@ node_type_classes_mapping: dict[NodeType, type[BaseNode]] = {
     NodeType.ITERATION: IterationNode,
     NodeType.ITERATION_START: IterationStartNode,
     NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode,
-    NodeType.CONVERSATION_VARIABLE_ASSIGNER: VariableAssignerNode,
+    NodeType.VARIABLE_OPERATOR: VariableOperatorNode,
     NodeType.DOCUMENT_EXTRACTOR: DocumentExtractorNode,
     NodeType.LIST_OPERATOR: ListOperatorNode,
 }

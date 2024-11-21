@@ -11,7 +11,7 @@ class WriteMode(str, Enum):
     CLEAR = "clear"
 
 
-class VariableAssignerData(BaseNodeData):
+class VariableOperatorData(BaseNodeData):
     title: str = "Variable Assigner"
     desc: Optional[str] = "Assign a value to a variable"
     assigned_variable_selector: Sequence[str]
