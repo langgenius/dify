@@ -17,9 +17,9 @@ class DuGuangTool(BuiltinTool):
     """
 
     def _invoke(
-            self,
-            user_id: str,
-            tool_parameters: dict[str, Any],
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         image_url = tool_parameters.get("image_url", "").strip()
         if not image_url:
@@ -27,15 +27,9 @@ class DuGuangTool(BuiltinTool):
         ocr_result = self._ocr_image_url(image_url)
         return self.create_text_message(ocr_result)
 
-    def _ocr_image_url(
-            self,
-            image_url: str
-    ) -> str:
+    def _ocr_image_url(self, image_url: str) -> str:
         client = self._create_client()
-        recognize_request = ocr_model.RecognizeAdvancedRequest(
-            url=image_url,
-            need_rotate=False
-        )
+        recognize_request = ocr_model.RecognizeAdvancedRequest(url=image_url, need_rotate=False)
         try:
             result = client.recognize_advanced_with_options(recognize_request, util_models.RuntimeOptions())
             return self._parse_result(result)
@@ -49,7 +43,7 @@ class DuGuangTool(BuiltinTool):
             access_key_id=access_key_id,
             access_key_secret=access_key_secret,
         )
-        config.endpoint = 'ocr-api.cn-hangzhou.aliyuncs.com'
+        config.endpoint = "ocr-api.cn-hangzhou.aliyuncs.com"
         return ocrClient(config)
 
     def _parse_result(self, result: ocr_model.RecognizeAdvancedResponse) -> str:
