@@ -303,10 +303,10 @@ class WorkflowService:
         new_app = workflow_converter.convert_to_workflow(
             app_model=app_model,
             account=account,
-            name=args.get("name"),
-            icon_type=args.get("icon_type"),
-            icon=args.get("icon"),
-            icon_background=args.get("icon_background"),
+            name=args.get("name", "Default Name"),
+            icon_type=args.get("icon_type", "emoji"),
+            icon=args.get("icon", "🤖"),
+            icon_background=args.get("icon_background", "#FFEAD5"),
         )
 
         return new_app
