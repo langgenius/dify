@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, ClassVar
 
 from duckduckgo_search import DDGS
 
@@ -10,6 +10,17 @@ class DuckDuckGoVideoSearchTool(BuiltinTool):
     """
     Tool for performing a video search using DuckDuckGo search engine.
     """
+
+    IFRAME_TEMPLATE: ClassVar[str] = """
+<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; \
+max-width: 100%; border-radius: 8px;">
+    <iframe
+        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
+        src="{src}"
+        frameborder="0"
+        allowfullscreen>
+    </iframe>
+</div>"""
 
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> list[ToolInvokeMessage]:
         query_dict = {
@@ -26,6 +37,9 @@ class DuckDuckGoVideoSearchTool(BuiltinTool):
         # Remove None values to use API defaults
         query_dict = {k: v for k, v in query_dict.items() if v is not None}
 
+        # Get proxy URL from parameters
+        proxy_url = tool_parameters.get("proxy_url", "").strip()
+
         response = DDGS().videos(**query_dict)
 
         # Create HTML result with embedded iframes
@@ -36,20 +50,21 @@ class DuckDuckGoVideoSearchTool(BuiltinTool):
             title = res.get("title", "")
             embed_html = res.get("embed_html", "")
             description = res.get("description", "")
+            content_url = res.get("content", "")
 
-            # Modify iframe to be responsive
-            if embed_html:
-                # Replace fixed dimensions with responsive wrapper and iframe
-                embed_html = """
-<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; \
-max-width: 100%; border-radius: 8px;">
-    <iframe
-        style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"
-        src="{src}"
-        frameborder="0"
-        allowfullscreen>
-    </iframe>
-</div>""".format(src=res.get("embed_url", ""))
+            # Handle TED.com videos
+            if not embed_html and "ted.com/talks" in content_url:
+                embed_url = content_url.replace("www.ted.com", "embed.ted.com")
+                if proxy_url:
+                    embed_url = f"{proxy_url}{embed_url}"
+                embed_html = self.IFRAME_TEMPLATE.format(src=embed_url)
+
+            # Original YouTube/other platform handling
+            elif embed_html:
+                embed_url = res.get("embed_url", "")
+                if proxy_url and embed_url:
+                    embed_url = f"{proxy_url}{embed_url}"
+                embed_html = self.IFRAME_TEMPLATE.format(src=embed_url)
 
             markdown_result += f"{title}\n\n"
             markdown_result += f"{embed_html}\n\n"

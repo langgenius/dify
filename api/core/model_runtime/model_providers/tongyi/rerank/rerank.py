@@ -65,6 +65,8 @@ class GTERerankModel(RerankModel):
         )
 
         rerank_documents = []
+        if not response.output:
+            return RerankResult(model=model, docs=rerank_documents)
         for _, result in enumerate(response.output.results):
             # format document
             rerank_document = RerankDocument(
