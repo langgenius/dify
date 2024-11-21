@@ -77,7 +77,6 @@ const PluginPage = ({
       if (packageId) {
         const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
         const { plugin } = data
-        // TODO: wait api return current plugin version
         setManifest({
           ...plugin,
           icon: `${marketplaceApiPrefix}/plugins/${plugin.org}/${plugin.name}/icon`,

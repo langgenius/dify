@@ -80,7 +80,7 @@ const Installed: FC<Props> = ({
     return (<>{
       payload.latest_version === toInstallVersion || !supportCheckInstalled
         ? (
-          <Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.latest_version}</Badge>
+          <Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version || payload.latest_version}</Badge>
         )
         : (
           <>
