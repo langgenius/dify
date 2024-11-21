@@ -1,3 +1,4 @@
+import inspect
 import json
 import logging
 from collections.abc import Callable, Generator
@@ -139,7 +140,8 @@ class BasePluginManager:
                 self._handle_plugin_daemon_error(error.error_type, error.message, error.args)
             raise ValueError(f"{rep.message}, code: {rep.code}")
         if rep.data is None:
-            raise ValueError("got empty data from plugin daemon")
+            frame = inspect.currentframe()
+            raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
 
         return rep.data
 
@@ -178,7 +180,8 @@ class BasePluginManager:
                     self._handle_plugin_daemon_error(error.error_type, error.message, error.args)
                 raise ValueError(f"plugin daemon: {rep.message}, code: {rep.code}")
             if rep.data is None:
-                raise ValueError("got empty data from plugin daemon")
+                frame = inspect.currentframe()
+                raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
             yield rep.data
 
     def _handle_plugin_daemon_error(self, error_type: str, message: str, args: Optional[dict] = None):
