@@ -1,13 +1,14 @@
 import asyncio
-import aiohttp
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Any, Dict, Optional, Union
+from typing import Any, Optional, Union
+
+import aiohttp
+from pydantic import ConfigDict
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.tool.builtin_tool import BuiltinTool
-from pydantic import ConfigDict
 
 
 class SlidesGeneratorTool(BuiltinTool):
@@ -17,18 +18,14 @@ class SlidesGeneratorTool(BuiltinTool):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    headers: Optional[Dict[str, str]] = None
+    headers: Optional[dict[str, str]] = None
     base_url: Optional[str] = None
     timeout: Optional[aiohttp.ClientTimeout] = None
     poll_interval: Optional[int] = None
 
     class TaskState(Enum):
         FAILURE = "FAILURE"
-        PENDING = "PENDING"
-        RECEIVED = "RECEIVED"
-        RETRY = "RETRY"
         REVOKED = "REVOKED"
-        STARTED = "STARTED"
         SUCCESS = "SUCCESS"
 
     @dataclass
@@ -41,7 +38,7 @@ class SlidesGeneratorTool(BuiltinTool):
         self,
         session: aiohttp.ClientSession,
         request: PresentationRequest,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Generate a new presentation asynchronously"""
         async with session.post(
             f"{self.base_url}/presentation/generate",
@@ -56,7 +53,7 @@ class SlidesGeneratorTool(BuiltinTool):
         self,
         session: aiohttp.ClientSession,
         task_id: str,
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         """Get the status of a task asynchronously"""
         async with session.get(
             f"{self.base_url}/task_status/{task_id}",
@@ -114,16 +111,12 @@ class SlidesGeneratorTool(BuiltinTool):
 
             # Ensure runtime and credentials
             if not self.runtime or not self.runtime.credentials:
-                raise ToolProviderCredentialValidationError(
-                    "Tool runtime or credentials are missing"
-                )
+                raise ToolProviderCredentialValidationError("Tool runtime or credentials are missing")
 
             # Get API key from credentials
             api_key = self.runtime.credentials.get("slidespeak_api_key")
             if not api_key:
-                raise ToolProviderCredentialValidationError(
-                    "SlideSpeak API key is missing"
-                )
+                raise ToolProviderCredentialValidationError("SlideSpeak API key is missing")
 
             # Set configuration
             self.headers = {
@@ -139,9 +132,7 @@ class SlidesGeneratorTool(BuiltinTool):
                 download_url = await self._generate_slides(plain_text, length, theme)
                 return self.create_text_message(download_url)
             except Exception as e:
-                return [
-                    self.create_text_message(f"An error occurred: {str(e)}")
-                ]
+                return [self.create_text_message(f"An error occurred: {str(e)}")]
 
         # Run the asynchronous code synchronously
         result = asyncio.run(async_invoke())
