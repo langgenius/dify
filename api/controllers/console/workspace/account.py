@@ -14,7 +14,7 @@ from controllers.console.workspace.error import (
     InvalidInvitationCodeError,
     RepeatPasswordNotMatchError,
 )
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from extensions.ext_database import db
 from fields.member_fields import account_fields
 from libs.helper import TimestampField, timezone
@@ -79,6 +79,7 @@ class AccountProfileApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(account_fields)
+    @enterprise_license_required
     def get(self):
         return current_user
 

@@ -810,6 +810,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   <Col>
     对会话进行重命名，会话名称用于显示在支持多会话的客户端上。
 
+    ### Path
+    - `conversation_id` (string) 会话 ID
+
     ### Request Body
 
     <Properties>
@@ -833,10 +836,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \
+    curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{

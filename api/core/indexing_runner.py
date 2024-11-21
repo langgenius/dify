@@ -29,6 +29,8 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
+from core.tools.utils.text_processing_utils import remove_leading_symbols
+from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -278,6 +280,19 @@ class IndexingRunner:
                 if len(preview_texts) < 5:
                     preview_texts.append(document.page_content)
 
+                # delete image files and related db records
+                image_upload_file_ids = get_image_upload_file_ids(document.page_content)
+                for upload_file_id in image_upload_file_ids:
+                    image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
+                    try:
+                        storage.delete(image_file.key)
+                    except Exception:
+                        logging.exception(
+                            "Delete image_files failed while indexing_estimate, \
+                                          image_upload_file_is: {}".format(upload_file_id)
+                        )
+                    db.session.delete(image_file)
+
         if doc_form and doc_form == "qa_model":
             if len(preview_texts) > 0:
                 # qa model document
@@ -500,11 +515,7 @@ class IndexingRunner:
                     document_node.metadata["doc_hash"] = hash
                     # delete Splitter character
                     page_content = document_node.page_content
-                    if page_content.startswith(".") or page_content.startswith("。"):
-                        page_content = page_content[1:]
-                    else:
-                        page_content = page_content
-                    document_node.page_content = page_content
+                    document_node.page_content = remove_leading_symbols(page_content)
 
                     if document_node.page_content:
                         split_documents.append(document_node)
@@ -554,7 +565,7 @@ class IndexingRunner:
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
             except Exception as e:
-                logging.exception(e)
+                logging.exception("Failed to format qa document")
 
             all_qa_documents.extend(format_documents)
 

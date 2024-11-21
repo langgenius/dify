@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, PositiveInt
 
 
 class AnalyticdbConfig(BaseModel):
@@ -40,3 +40,11 @@ class AnalyticdbConfig(BaseModel):
         description="The password for accessing the specified namespace within the AnalyticDB instance"
         " (if namespace feature is enabled).",
     )
+    ANALYTICDB_HOST: Optional[str] = Field(
+        default=None, description="The host of the AnalyticDB instance you want to connect to."
+    )
+    ANALYTICDB_PORT: PositiveInt = Field(
+        default=5432, description="The port of the AnalyticDB instance you want to connect to."
+    )
+    ANALYTICDB_MIN_CONNECTION: PositiveInt = Field(default=1, description="Min connection of the AnalyticDB database.")
+    ANALYTICDB_MAX_CONNECTION: PositiveInt = Field(default=5, description="Max connection of the AnalyticDB database.")

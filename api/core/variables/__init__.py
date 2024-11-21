@@ -17,6 +17,7 @@ from .segments import (
 from .types import SegmentType
 from .variables import (
     ArrayAnyVariable,
+    ArrayFileVariable,
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
@@ -58,4 +59,5 @@ __all__ = [
     "ArrayStringSegment",
     "FileSegment",
     "FileVariable",
+    "ArrayFileVariable",
 ]

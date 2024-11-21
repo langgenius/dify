@@ -27,11 +27,11 @@ class RerankModelRunner(BaseRerankRunner):
         :return:
         """
         docs = []
-        doc_id = set()
+        doc_ids = set()
         unique_documents = []
         for document in documents:
-            if document.provider == "dify" and document.metadata["doc_id"] not in doc_id:
-                doc_id.add(document.metadata["doc_id"])
+            if document.provider == "dify" and document.metadata["doc_id"] not in doc_ids:
+                doc_ids.add(document.metadata["doc_id"])
                 docs.append(document.page_content)
                 unique_documents.append(document)
             elif document.provider == "external":
