@@ -36,7 +36,7 @@ const ProviderList = () => {
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
   }
-  const { data: collectionList, refetch } = useAllToolProviders()
+  const { data: collectionList = [], refetch } = useAllToolProviders()
   const filteredCollectionList = useMemo(() => {
     return collectionList.filter((collection) => {
       if (collection.type !== activeTab)
