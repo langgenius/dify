@@ -27,6 +27,7 @@ const translation = {
     lineBreak: '换行',
     sure: '我确定',
     download: '下载',
+    viewDetails: '查看详情',
     delete: '删除',
     settings: '设置',
     setup: '设置',

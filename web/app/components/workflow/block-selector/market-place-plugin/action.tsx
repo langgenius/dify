@@ -11,15 +11,20 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import cn from '@/utils/classnames'
+import { MARKETPLACE_URL_PREFIX } from '@/config'
 
 type Props = {
   open: boolean
   onOpenChange: (v: boolean) => void
+  author: string
+  name: string
 }
 
 const OperationDropdown: FC<Props> = ({
   open,
   onOpenChange,
+  author,
+  name,
 }) => {
   const { t } = useTranslation()
   const openRef = useRef(open)
@@ -50,8 +55,7 @@ const OperationDropdown: FC<Props> = ({
       <PortalToFollowElemContent className='z-[9999]'>
         <div className='w-[112px] p-1 bg-components-panel-bg-blur rounded-xl border-[0.5px] border-components-panel-border shadow-lg'>
           <div className='px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>{t('common.operation.download')}</div>
-          {/* Wait marketplace */}
-          {/* <div className='px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>{t('common.operation.viewDetail')}</div> */}
+          <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`} target='_blank' className='block px-3 py-1.5 rounded-lg text-text-secondary system-md-regular cursor-pointer hover:bg-state-base-hover'>{t('common.operation.viewDetails')}</a>
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

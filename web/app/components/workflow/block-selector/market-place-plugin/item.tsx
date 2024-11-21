@@ -57,6 +57,8 @@ const Item: FC<Props> = ({
           <Action
             open={open}
             onOpenChange={setOpen}
+            author={payload.org}
+            name={payload.name}
           />
         </div>
         {isShowInstallModal && (

@@ -142,7 +142,7 @@ const PluginItem: FC<Props> = ({
           }
           {source === PluginSource.marketplace
             && <>
-              <a href={`${MARKETPLACE_URL_PREFIX}/plugin/${author}/${name}`} target='_blank' className='flex items-center gap-0.5'>
+              <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${author}/${name}`} target='_blank' className='flex items-center gap-0.5'>
                 <div className='text-text-tertiary system-2xs-medium-uppercase'>{t('plugin.from')} <span className='text-text-secondary'>marketplace</span></div>
                 <RiArrowRightUpLine className='w-3 h-3' />
               </a>

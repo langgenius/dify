@@ -27,6 +27,7 @@ const translation = {
     lineBreak: 'Line break',
     sure: 'I\'m sure',
     download: 'Download',
+    viewDetails: 'View Details',
     delete: 'Delete',
     settings: 'Settings',
     setup: 'Setup',
