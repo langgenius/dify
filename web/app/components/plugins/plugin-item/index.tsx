@@ -22,6 +22,7 @@ import cn from '@/utils/classnames'
 import { API_PREFIX, MARKETPLACE_URL_PREFIX } from '@/config'
 import { useLanguage } from '../../header/account-setting/model-provider-page/hooks'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
+import { useInvalidateAllToolProviders } from '@/service/use-tools'
 import { useCategories } from '../hooks'
 import { useProviderContext } from '@/context/provider-context'
 
@@ -40,6 +41,7 @@ const PluginItem: FC<Props> = ({
   const currentPluginID = usePluginPageContext(v => v.currentPluginID)
   const setCurrentPluginID = usePluginPageContext(v => v.setCurrentPluginID)
   const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const invalidateAllToolProviders = useInvalidateAllToolProviders()
   const { refreshModelProviders } = useProviderContext()
 
   const {
@@ -59,8 +61,10 @@ const PluginItem: FC<Props> = ({
 
   const handleDelete = () => {
     invalidateInstalledPluginList()
-    if (category === PluginType.model)
+    if (PluginType.model.includes(category))
       refreshModelProviders()
+    if (PluginType.tool.includes(category))
+      invalidateAllToolProviders()
   }
   return (
     <div

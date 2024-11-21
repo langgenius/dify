@@ -7,7 +7,7 @@ import type { InstallState } from '@/app/components/plugins/types'
 import { useGitHubReleases } from '../hooks'
 import { convertRepoToUrl, parseGitHubUrl } from '../utils'
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
-import { InstallStepFromGitHub } from '../../types'
+import { InstallStepFromGitHub, PluginType } from '../../types'
 import Toast from '@/app/components/base/toast'
 import SetURL from './steps/setURL'
 import SelectPackage from './steps/selectPackage'
@@ -15,6 +15,8 @@ import Installed from '../base/installed'
 import Loaded from './steps/loaded'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { useTranslation } from 'react-i18next'
+import { useUpdateModelProviders } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useInvalidateAllToolProviders } from '@/service/use-tools'
 
 const i18nPrefix = 'plugin.installFromGitHub'
 
@@ -28,6 +30,8 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
   const { t } = useTranslation()
   const { getIconUrl } = useGetIcon()
   const { fetchReleases } = useGitHubReleases()
+  const updateModelProviders = useUpdateModelProviders()
+  const invalidateAllToolProviders = useInvalidateAllToolProviders()
   const [state, setState] = useState<InstallState>({
     step: updatePayload ? InstallStepFromGitHub.selectPackage : InstallStepFromGitHub.setUrl,
     repoUrl: updatePayload?.originalPackageInfo?.repo
@@ -63,7 +67,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
       return t(`${i18nPrefix}.installFailed`)
 
     return updatePayload ? t(`${i18nPrefix}.updatePlugin`) : t(`${i18nPrefix}.installPlugin`)
-  }, [state.step])
+  }, [state.step, t, updatePayload])
 
   const handleUrlSubmit = async () => {
     const { isValid, owner, repo } = parseGitHubUrl(state.repoUrl)
@@ -111,8 +115,14 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
 
   const handleInstalled = useCallback(() => {
     setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.installed }))
+    if (!manifest)
+      return
+    if (PluginType.model.includes(manifest.category))
+      updateModelProviders()
+    if (PluginType.tool.includes(manifest.category))
+      invalidateAllToolProviders()
     onSuccess()
-  }, [onSuccess])
+  }, [invalidateAllToolProviders, manifest, onSuccess, updateModelProviders])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     setState(prevState => ({ ...prevState, step: InstallStepFromGitHub.installFailed }))
@@ -142,7 +152,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
       closable
     >
       <div className='flex pt-6 pl-6 pb-3 pr-14 items-start gap-2 self-stretch'>
-        <div className='flex flex-col items-start gap-1 flex-grow'>
+        <div className='flex flex-col items-start gap-1 grow'>
           <div className='self-stretch text-text-primary title-2xl-semi-bold'>
             {getTitle()}
           </div>

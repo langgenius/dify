@@ -21,6 +21,10 @@ export const useAllToolProviders = () => {
   })
 }
 
+export const useInvalidateAllToolProviders = () => {
+  return useInvalid(useAllToolProvidersKey)
+}
+
 const useAllBuiltInToolsKey = [NAME_SPACE, 'builtIn']
 export const useAllBuiltInTools = () => {
   return useQuery<ToolWithProvider[]>({
