@@ -153,6 +153,7 @@ const translation = {
     label: '工具',
     placeholder: '选择一个工具...',
   },
+  noTools: '没有工具',
 }
 
 export default translation

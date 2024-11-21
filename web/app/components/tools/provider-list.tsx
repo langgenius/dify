@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Collection } from './types'
 import Marketplace from './marketplace'
@@ -9,7 +9,7 @@ import TabSliderNew from '@/app/components/base/tab-slider-new'
 import LabelFilter from '@/app/components/tools/labels/filter'
 import Input from '@/app/components/base/input'
 import ProviderDetail from '@/app/components/tools/provider/detail'
-import Empty from '@/app/components/tools/add-tool-modal/empty'
+import Empty from '@/app/components/plugins/marketplace/empty'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
@@ -50,12 +50,6 @@ const ProviderList = () => {
   }, [activeTab, tagFilterValue, keywords, collectionList])
 
   const [currentProvider, setCurrentProvider] = useState<Collection | undefined>()
-  useEffect(() => {
-    if (currentProvider && collectionList.length > 0) {
-      const newCurrentProvider = collectionList.find(collection => collection.id === currentProvider.id)
-      setCurrentProvider(newCurrentProvider)
-    }
-  }, [collectionList, currentProvider])
 
   return (
     <div className='relative flex overflow-hidden bg-gray-100 shrink-0 h-0 grow'>
@@ -88,34 +82,38 @@ const ProviderList = () => {
             />
           </div>
         </div>
-        <div className={cn(
-          'relative grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0',
-        )}>
-          {filteredCollectionList.map(collection => (
-            <div
-              key={collection.id}
-              onClick={() => setCurrentProvider(collection)}
-            >
-              <Card
-                className={cn(
-                  'border-[1.5px] border-transparent cursor-pointer',
-                  currentProvider?.id === collection.id && 'border-components-option-card-option-selected-border',
-                )}
-                hideCornerMark
-                payload={{
-                  ...collection,
-                  brief: collection.description,
-                } as any}
-                footer={
-                  <CardMoreInfo
-                    tags={collection.labels}
-                  />
-                }
-              />
-            </div>
-          ))}
-          {!filteredCollectionList.length && <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'><Empty /></div>}
-        </div>
+        {filteredCollectionList.length > 0 && (
+          <div className={cn(
+            'relative grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0',
+          )}>
+            {filteredCollectionList.map(collection => (
+              <div
+                key={collection.id}
+                onClick={() => setCurrentProvider(collection)}
+              >
+                <Card
+                  className={cn(
+                    'border-[1.5px] border-transparent cursor-pointer',
+                    currentProvider?.id === collection.id && 'border-components-option-card-option-selected-border',
+                  )}
+                  hideCornerMark
+                  payload={{
+                    ...collection,
+                    brief: collection.description,
+                  } as any}
+                  footer={
+                    <CardMoreInfo
+                      tags={collection.labels}
+                    />
+                  }
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        {!filteredCollectionList.length && (
+          <Empty lightCard text={t('tools.noTools')} className='px-12' />
+        )}
         {
           enable_marketplace && (
             <Marketplace
