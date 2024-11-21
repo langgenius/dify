@@ -57,6 +57,30 @@ class ContinueOnErrorTestHelper:
         return node
 
     @staticmethod
+    def get_error_status_code_http_node(error_strategy: str = "fail-branch", default_value: dict | None = None):
+        """Helper method to create a http node configuration"""
+        node = {
+            "id": "node",
+            "data": {
+                "type": "http-request",
+                "title": "HTTP Request",
+                "desc": "",
+                "variables": [],
+                "method": "get",
+                "url": "https://api.github.com/issues",
+                "authorization": {"type": "no-auth", "config": None},
+                "headers": "",
+                "params": "",
+                "body": {"type": "none", "data": []},
+                "timeout": {"max_connect_timeout": 0, "max_read_timeout": 0, "max_write_timeout": 0},
+                "error_strategy": error_strategy,
+            },
+        }
+        if default_value:
+            node["data"]["default_value"] = default_value
+        return node
+
+    @staticmethod
     def get_tool_node(error_strategy: str = "fail-branch", default_value: dict | None = None):
         """Helper method to create a tool node configuration"""
         node = {
@@ -406,3 +430,112 @@ def test_llm_node_fail_branch_continue_on_error():
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
     assert any(isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "LLM request failed"} for e in events)
     assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
+
+
+def test_status_code_error_http_node_fail_branch_continue_on_error():
+    """Test HTTP node with fail-branch error strategy"""
+    graph_config = {
+        "edges": FAIL_BRANCH_EDGES,
+        "nodes": [
+            {"data": {"title": "Start", "type": "start", "variables": []}, "id": "start"},
+            {
+                "data": {"title": "success", "type": "answer", "answer": "http execute successful"},
+                "id": "success",
+            },
+            {
+                "data": {"title": "error", "type": "answer", "answer": "http execute failed"},
+                "id": "error",
+            },
+            ContinueOnErrorTestHelper.get_error_status_code_http_node(),
+        ],
+    }
+
+    graph_engine = ContinueOnErrorTestHelper.create_test_graph_engine(graph_config)
+    events = list(graph_engine.run())
+
+    assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
+    assert any(isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "http execute failed"} for e in events)
+    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
+
+
+def test_variable_pool_error_type_variable():
+    graph_config = {
+        "edges": FAIL_BRANCH_EDGES,
+        "nodes": [
+            {"data": {"title": "Start", "type": "start", "variables": []}, "id": "start"},
+            {
+                "data": {"title": "success", "type": "answer", "answer": "http execute successful"},
+                "id": "success",
+            },
+            {
+                "data": {"title": "error", "type": "answer", "answer": "http execute failed"},
+                "id": "error",
+            },
+            ContinueOnErrorTestHelper.get_error_status_code_http_node(),
+        ],
+    }
+
+    graph_engine = ContinueOnErrorTestHelper.create_test_graph_engine(graph_config)
+    list(graph_engine.run())
+    error_message = graph_engine.graph_runtime_state.variable_pool.get(["node", "error_message"])
+    error_type = graph_engine.graph_runtime_state.variable_pool.get(["node", "error_type"])
+    assert error_message.value == "Request failed with status code 404"
+    assert error_type.value == "HTTPResponseCodeError"
+
+
+def test_continue_on_error_link_fail_branch():
+    success_code = """
+    def main() -> dict:
+        return {
+            "result": 1 / 1,
+        }
+    """
+    graph_config = {
+        "edges": [
+            *FAIL_BRANCH_EDGES,
+            {
+                "id": "start-source-code-target",
+                "source": "start",
+                "target": "code",
+                "sourceHandle": "source",
+            },
+            {
+                "id": "code-source-error-target",
+                "source": "code",
+                "target": "error",
+                "sourceHandle": "source",
+            },
+        ],
+        "nodes": [
+            {"data": {"title": "Start", "type": "start", "variables": []}, "id": "start"},
+            {
+                "data": {"title": "success", "type": "answer", "answer": "http execute successful"},
+                "id": "success",
+            },
+            {
+                "data": {"title": "error", "type": "answer", "answer": "http execute failed"},
+                "id": "error",
+            },
+            ContinueOnErrorTestHelper.get_code_node(code=success_code),
+            {
+                "id": "code",
+                "data": {
+                    "outputs": {"result": {"type": "number"}},
+                    "title": "code",
+                    "variables": [],
+                    "code_language": "python3",
+                    "code": "\n".join([line[4:] for line in success_code.split("\n")]),
+                    "type": "code",
+                },
+            },
+        ],
+    }
+
+    graph_engine = ContinueOnErrorTestHelper.create_test_graph_engine(graph_config)
+    events = list(graph_engine.run())
+    assert any(
+        isinstance(e, GraphRunSucceededEvent)
+        and e.outputs == {"answer": "http execute successful\nhttp execute failed"}
+        for e in events
+    )
+    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 2

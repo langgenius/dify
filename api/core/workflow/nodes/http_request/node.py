@@ -67,6 +67,21 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
 
             response = http_executor.invoke()
             files = self.extract_files(url=http_executor.url, response=response)
+            if not response.response.is_success and self.should_continue_on_error:
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    outputs={
+                        "status_code": response.status_code,
+                        "body": response.text if not files else "",
+                        "headers": response.headers,
+                        "files": files,
+                    },
+                    process_data={
+                        "request": http_executor.to_log(),
+                    },
+                    error=f"Request failed with status code {response.status_code}",
+                    error_type="HTTPResponseCodeError",
+                )
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={

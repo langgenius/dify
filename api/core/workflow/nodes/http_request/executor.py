@@ -21,6 +21,7 @@ from .entities import (
 from .exc import (
     AuthorizationConfigError,
     FileFetchError,
+    HttpRequestNodeError,
     InvalidHttpMethodError,
     ResponseSizeError,
 )
@@ -208,8 +209,10 @@ class Executor:
             "follow_redirects": True,
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
-
-        response = getattr(ssrf_proxy, self.method)(**request_args)
+        try:
+            response = getattr(ssrf_proxy, self.method)(**request_args)
+        except ssrf_proxy.MaxRetriesExceededError as e:
+            raise HttpRequestNodeError(str(e))
         return response
 
     def invoke(self) -> Response:
