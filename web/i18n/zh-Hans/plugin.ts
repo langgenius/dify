@@ -94,6 +94,7 @@ const translation = {
   },
   installModal: {
     installPlugin: '安装插件',
+    installComplete: '安装完成',
     installedSuccessfully: '安装成功',
     installedSuccessfullyDesc: '插件已成功安装。',
     uploadFailed: '上传失败',

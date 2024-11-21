@@ -34,9 +34,7 @@ const InstallBundle: FC<Props> = ({
     if (step === InstallStep.uploadFailed)
       return t(`${i18nPrefix}.uploadFailed`)
     if (step === InstallStep.installed)
-      return t(`${i18nPrefix}.installedSuccessfully`)
-    if (step === InstallStep.installFailed)
-      return t(`${i18nPrefix}.installFailed`)
+      return t(`${i18nPrefix}.installComplete`)
 
     return t(`${i18nPrefix}.installPlugin`)
   }, [step, t])
