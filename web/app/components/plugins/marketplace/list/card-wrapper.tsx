@@ -48,19 +48,19 @@ const CardWrapper = ({
             <div className='hidden absolute bottom-0 group-hover:flex items-center space-x-2 px-4 pt-8 pb-4 w-full bg-gradient-to-tr from-[#f9fafb] to-[rgba(249,250,251,0)] rounded-b-xl'>
               <Button
                 variant='primary'
-                className='flex-1'
+                className='w-[calc(50%-4px)]'
                 onClick={showInstallFromMarketplace}
               >
                 {t('plugin.detailPanel.operation.install')}
               </Button>
-              <Button
-                className='flex-1'
-              >
-                <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${plugin.org}/${plugin.name}?language=${localeFromLocale}`} target='_blank' className='flex items-center gap-0.5'>
+              <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${plugin.org}/${plugin.name}?language=${localeFromLocale}`} target='_blank' className='block flex-1 shrink-0 w-[calc(50%-4px)]'>
+                <Button
+                  className='w-full gap-0.5'
+                >
                   {t('plugin.detailPanel.operation.detail')}
                   <RiArrowRightUpLine className='ml-1 w-4 h-4' />
-                </a>
-              </Button>
+                </Button>
+              </a>
             </div>
           )
         }
@@ -94,27 +94,6 @@ const CardWrapper = ({
           />
         }
       />
-      {
-        showInstallButton && (
-          <div className='hidden absolute bottom-0 group-hover:flex items-center space-x-2 px-4 pt-8 pb-4 w-full bg-gradient-to-tr from-[#f9fafb] to-[rgba(249,250,251,0)] rounded-b-xl'>
-            <Button
-              variant='primary'
-              className='flex-1'
-              onClick={showInstallFromMarketplace}
-            >
-              {t('plugin.detailPanel.operation.install')}
-            </Button>
-            <Button
-              className='flex-1'
-            >
-              <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${plugin.org}/${plugin.name}`} target='_blank' className='flex items-center gap-0.5'>
-                {t('plugin.detailPanel.operation.detail')}
-                <RiArrowRightUpLine className='ml-1 w-4 h-4' />
-              </a>
-            </Button>
-          </div>
-        )
-      }
     </a>
   )
 }
