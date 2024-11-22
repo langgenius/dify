@@ -20,9 +20,9 @@ from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
-IMPORT_INFO_REDIS_KEY_PREFIX = "import_info:"
+IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 IMPORT_INFO_REDIS_EXPIRY = 180  # 3 minutes
-CURRENT_DSL_VERSION = "0.1.3"  # Moved from app_dsl_service
+CURRENT_DSL_VERSION = "0.2.0"
 
 
 class ImportMode(str, Enum):
