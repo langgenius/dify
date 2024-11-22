@@ -408,7 +408,7 @@ class DefaultBlockConfigApi(Resource):
         filters = None
         if args.get("q"):
             try:
-                filters = json.loads(args.get("q"))
+                filters = json.loads(args.get("q", ""))
             except json.JSONDecodeError:
                 raise ValueError("Invalid filters")
 
