@@ -1,6 +1,7 @@
 from abc import ABC
+from collections.abc import Sequence
 from enum import Enum
-from typing import Optional
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -57,6 +58,7 @@ class PromptMessageContentType(Enum):
     IMAGE = "image"
     AUDIO = "audio"
     VIDEO = "video"
+    DOCUMENT = "document"
 
 
 class PromptMessageContent(BaseModel):
@@ -101,13 +103,20 @@ class ImagePromptMessageContent(PromptMessageContent):
     detail: DETAIL = DETAIL.LOW
 
 
+class DocumentPromptMessageContent(PromptMessageContent):
+    type: PromptMessageContentType = PromptMessageContentType.DOCUMENT
+    encode_format: Literal["base64"]
+    mime_type: str
+    data: str
+
+
 class PromptMessage(ABC, BaseModel):
     """
     Model class for prompt message.
     """
 
     role: PromptMessageRole
-    content: Optional[str | list[PromptMessageContent]] = None
+    content: Optional[str | Sequence[PromptMessageContent]] = None
     name: Optional[str] = None
 
     def is_empty(self) -> bool:
