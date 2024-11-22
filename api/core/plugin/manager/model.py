@@ -11,10 +11,11 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
     PluginDaemonInnerError,
+    PluginLLMNumTokensResponse,
     PluginModelProviderEntity,
     PluginModelSchemaEntity,
-    PluginNumTokensResponse,
     PluginStringResultResponse,
+    PluginTextEmbeddingNumTokensResponse,
     PluginVoicesResponse,
 )
 from core.plugin.manager.base import BasePluginManager
@@ -201,7 +202,7 @@ class PluginModelManager(BasePluginManager):
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/llm/num_tokens",
-            type=PluginNumTokensResponse,
+            type=PluginLLMNumTokensResponse,
             data=jsonable_encoder(
                 {
                     "user_id": user_id,
@@ -284,7 +285,7 @@ class PluginModelManager(BasePluginManager):
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/text_embedding/num_tokens",
-            type=PluginNumTokensResponse,
+            type=PluginTextEmbeddingNumTokensResponse,
             data=jsonable_encoder(
                 {
                     "user_id": user_id,

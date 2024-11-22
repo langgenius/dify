@@ -235,7 +235,7 @@ class ModelInstance:
             model=self.model,
             credentials=self.credentials,
             texts=texts,
-        )
+        )[0]  # TODO: fix this, this is only for temporary compatibility with old
 
     def invoke_rerank(
         self,
