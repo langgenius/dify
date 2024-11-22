@@ -129,6 +129,7 @@ const translation = {
     parameters: 'parameters',
     string: 'string',
     number: 'number',
+    file: 'file',
     required: 'Required',
     infoAndSetting: 'Info & Settings',
   },

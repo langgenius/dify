@@ -106,6 +106,16 @@ const SettingBuiltInTool: FC<Props> = ({
     return valid
   })()
 
+  const getType = (type: string) => {
+    if (type === 'number-input')
+      return t('tools.setBuiltInTools.number')
+    if (type === 'text-input')
+      return t('tools.setBuiltInTools.string')
+    if (type === 'file')
+      return t('tools.setBuiltInTools.file')
+    return type
+  }
+
   const infoUI = (
     <div className=''>
       {infoSchemas.length > 0 && (
@@ -114,7 +124,9 @@ const SettingBuiltInTool: FC<Props> = ({
             <div key={index} className='py-1'>
               <div className='flex items-center gap-2'>
                 <div className='text-text-secondary code-sm-semibold'>{item.label[language]}</div>
-                <div className='text-text-tertiary system-xs-regular'>{item.type === 'number-input' ? t('tools.setBuiltInTools.number') : t('tools.setBuiltInTools.string')}</div>
+                <div className='text-text-tertiary system-xs-regular'>
+                  {getType(item.type)}
+                </div>
                 {item.required && (
                   <div className='text-text-warning-secondary system-xs-medium'>{t('tools.setBuiltInTools.required')}</div>
                 )}
