@@ -99,6 +99,8 @@ const translation = {
     featuresDescription: 'Покращення взаємодії з користувачем веб-додатку',
     fileUploadTip: 'Функції завантаження зображень були оновлені для завантаження файлів.',
     ImageUploadLegacyTip: 'Тепер ви можете створювати змінні типу файлу у початковій формі. У майбутньому ми більше не підтримуватимемо функцію завантаження зображень.',
+    importWarning: 'Обережність',
+    importWarningDetails: 'Різниця у версіях DSL може впливати на певні функції',
   },
   env: {
     envPanelTitle: 'Змінні середовища',
@@ -408,6 +410,10 @@ const translation = {
       type: 'Тип',
       binaryFileVariable: 'Змінна двійкового файлу',
       extractListPlaceholder: 'Введіть індекс елемента списку, введіть \'/\' вставити змінну',
+      curl: {
+        title: 'Імпорт з cURL',
+        placeholder: 'Вставте сюди рядок cURL',
+      },
     },
     code: {
       inputVars: 'Вхідні змінні',

@@ -77,6 +77,7 @@ const translation = {
     requestBody: 'Request Body',
     pathParams: 'Path Params',
     query: 'Query',
+    toc: '內容',
   },
   regenerate: '重新生成',
 }
