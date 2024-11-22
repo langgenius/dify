@@ -1,0 +1,31 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.monolith.oceanplanning.carrierpremium.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierPremiumProto";
+option java_package = "com.flexport.monolith.oceanplanning.carrierpremium.v1";
+option ruby_package = "Flexport::Monolith::OceanPlanning::CarrierPremium::V1";
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+
+// Premium carrier services have additional features or guarantees, such as "No Roll" or
+// "Fast Rail Discharge". While we don't currently model what attributes the premium service has,
+// the names and slugs are used within Flexport to identify the specific type of service requested.
+message CarrierPremium {
+  string fid = 1;
+  // Service display name, eg. "SEA Priority GO".
+  string name = 2;
+  // Service slug, eg. "sea_priority_go".
+  string slug = 3;
+  // Carrier operating this service.
+  string carrier_fid = 4;
+  // Service operation start time.
+  // If empty (eg. year=0), the premium service has no known start date.
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate available_start_date = 5;
+  // Service operation end time.
+  // If empty (eg. year=0), the premium service has no known end date.
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate available_end_date = 6;
+}

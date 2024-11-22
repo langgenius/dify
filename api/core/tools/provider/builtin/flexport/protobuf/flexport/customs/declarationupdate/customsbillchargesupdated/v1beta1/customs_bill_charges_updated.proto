@@ -1,0 +1,46 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.declarationupdate.customsbillchargesupdated.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsBillChargesUpdatedProto";
+option java_package = "com.flexport.customs.declarationupdate.customsbillchargesupdated.v1beta1";
+option ruby_package = "Flexport::Customs::DeclarationUpdate::CustomsBillChargesUpdated::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+import "google/type/money.proto";
+
+// Customs Bill Charges have been updated.
+message CustomsBillChargesUpdated {
+  string shipment_fid = 1;
+  string required_declaration_fid = 2;
+  string external_event_fid = 3;
+  string idempotency_id = 4;
+  repeated CustomsBillLineItem customs_bill_line_items = 5;
+  string duty_bill_filename = 6;
+  google.protobuf.Timestamp occurred_at_time = 7;
+}
+
+// A single entry on the Customs Bill.
+message CustomsBillLineItem {
+  uint32 line_item_index = 1;
+  repeated CustomsBillCharge customs_charges = 2;
+}
+
+// A Customs charge.
+message CustomsBillCharge {
+  string type = 1;
+  google.type.Money charge_amount = 3;
+  ChargeStatus status = 4;
+}
+
+// The status of the charge: whether or not it can be invoiced,
+// or if we don't have enough information to decide.
+enum ChargeStatus {
+  CHARGE_STATUS_INVALID = 0;
+  CHARGE_STATUS_INVOICEABLE = 1;
+  CHARGE_STATUS_NOT_INVOICEABLE = 2;
+  CHARGE_STATUS_INDETERMINATE = 3;
+}

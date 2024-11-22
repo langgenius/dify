@@ -1,0 +1,24 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.authorization.proservesandboxallowlist.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ProserveSandboxAllowlistApiProto";
+option java_package = "com.flexport.authorization.proservesandboxallowlist.v1beta1";
+option ruby_package = "Flexport::Authorization::ProserveSandboxAllowlist::V1Beta1";
+
+import "flexport/authorization/v1/common.proto";
+
+// Provides data for the proserve sandbox allowlist.
+service ProserveSandboxAllowlistAPI {
+  // Returns all proserve sandbox allowlist entities.
+  rpc GetProserveSandboxAllowlistEntities(GetProserveSandboxAllowlistEntitiesRequest) returns (GetProserveSandboxAllowlistEntitiesResponse);
+}
+
+message GetProserveSandboxAllowlistEntitiesRequest {}
+
+message GetProserveSandboxAllowlistEntitiesResponse {
+  repeated flexport.authorization.v1.ProserveSandboxAllowlistEntity entities = 1;
+}

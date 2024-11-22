@@ -1,0 +1,31 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanHouseBillOfLadingReleaseTypeChangedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// House Bill Of Lading release type changed event.
+message OceanHouseBillOfLadingReleaseTypeChanged {
+  // The applicable bill of lading
+  string bill_of_lading_fid = 1;
+  //
+  // When an ocean House Bill of Lading is issued to a shipper,
+  // Flexport NVOCC cannot release cargo to the consignee until the bill is "released".
+  // For a standard HBL, this can happen in two ways per
+  // https://flexport.atlassian.net/wiki/spaces/KB/pages/130056466/BL+Guide+-+House+Bill+of+Lading+Release+Process
+  OceanHouseBillOfLadingReleaseType release_type = 2;
+  string bill_of_lading_number = 3;
+}
+
+// Type of release, e.g. "Hold for Telex Release" or "Endorsed Originals".
+enum OceanHouseBillOfLadingReleaseType {
+  OCEAN_HOUSE_BILL_OF_LADING_RELEASE_TYPE_INVALID = 0;
+  OCEAN_HOUSE_BILL_OF_LADING_RELEASE_TYPE_UNSET = 1;
+  OCEAN_HOUSE_BILL_OF_LADING_RELEASE_TYPE_HOLD_FOR_TELEX = 2;
+  OCEAN_HOUSE_BILL_OF_LADING_RELEASE_TYPE_MAIL_COPY = 3;
+}

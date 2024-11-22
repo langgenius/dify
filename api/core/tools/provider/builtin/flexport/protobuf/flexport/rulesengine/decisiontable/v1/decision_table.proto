@@ -1,0 +1,19 @@
+// TEAM: workflow_platform
+
+syntax = "proto3";
+
+package flexport.rulesengine.decisiontable.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DecisionTableProto";
+option java_package = "com.flexport.rulesengine.decisiontable.v1";
+option ruby_package = "Flexport::RulesEngine::DecisionTable::V1";
+
+// DecisionTable.
+message DecisionTable {
+  string function = 1;
+  string file_object_id = 2 [deprecated = true];
+  string name = 3;
+  string description = 4;
+  string file_object_fid = 5;
+}

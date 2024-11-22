@@ -1,0 +1,21 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.filters.v1;
+
+import "flexport/assignment/enums/v1/reason.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ReasonFilterProto";
+option java_package = "com.flexport.assignment.filters.v1";
+option ruby_package = "Flexport::Assignment::Filters::V1";
+
+// Filters to only reasons that match any of the provided values.
+message ReasonFilter {
+  repeated flexport.assignment.enums.v1.Reason matches_any = 1;
+  //
+  // Whether to apply negation to the filter so that values matching the filter are excluded.
+  // Defaults to false, ie values matching the filter are included.
+  bool negated = 2;
+}

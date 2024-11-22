@@ -1,0 +1,38 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.offering.insurance.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "InsuranceProto";
+option java_package = "com.flexport.catalog.offering.insurance.v1";
+option ruby_package = "Flexport::Catalog::Offering::Insurance::V1";
+
+import "flexport/catalog/enums/v1/enums.proto";
+
+// Enum for insurance regions (app/constants/rates/insurance_regions).
+enum InsuranceRegionDto {
+  INSURANCE_REGION_DTO_INVALID = 0;
+  INSURANCE_REGION_DTO_GLOBAL = 1;
+  INSURANCE_REGION_DTO_WESTERN_EUROPE_FAR_EAST_NORTH_AMERICA_INDIA = 2;
+  INSURANCE_REGION_DTO_MIDDLE_EAST_AFRICA = 3;
+  INSURANCE_REGION_DTO_WEST_INDIES_CENTRAL_SOUTH_AMERICA = 4;
+  INSURANCE_REGION_DTO_AUSTRALIA_NEW_ZEALAND = 5;
+  INSURANCE_REGION_DTO_RUSSIA_CIS_COUNTRIES = 6;
+  INSURANCE_REGION_DTO_BLACKLIST_COUNTRIES = 7;
+}
+
+// Insurance attributes.
+message InsuranceAttributesDto {
+  catalog.enums.v1.TransportationModeDto transportation_mode = 1;
+  repeated catalog.enums.v1.BookingModesDto booking_modes = 2;
+  InsuranceRegionDto region = 3;
+}
+
+// Insurance query attributes.
+message InsuranceQueryAttributesDto {
+  repeated catalog.enums.v1.TransportationModeDto transportation_modes = 1;
+  repeated catalog.enums.v1.BookingModesDto booking_modes = 2;
+  repeated InsuranceRegionDto regions = 3;
+}

@@ -1,0 +1,25 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanConsolDevanDateUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/executioncoordinator/types/enums/v1/date_type.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+
+// An ocean consol devan date has been updated.
+message OceanConsolDevanDateUpdated {
+  // The date value.
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime date_or_date_time = 1;
+  // The date type.
+  flexport.executioncoordinator.types.enums.v1.DateType date_type = 2;
+  // Where the cargo was deconsolidated.
+  string address_fid = 3;
+  // Which specific container was deconsolidated (where applicable).
+  string container_fid = 4;
+}

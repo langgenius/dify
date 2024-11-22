@@ -1,0 +1,25 @@
+// TEAM: pricing_opportunities
+
+syntax = "proto3";
+
+package flexport.pricingrequests.migration.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "MigrationApiProto";
+option java_package = "com.flexport.pricingrequests.migration.v1beta1";
+option ruby_package = "Flexport::PricingRequests::Migration::V1Beta1";
+
+// Specialized methods that encompass moving data from the monolith to the Pricing Requests NIS outside of normal business logic rules.
+service MigrationAPI {
+  // Tell the NIS to pull up-to-date Bid data specified by the fid.
+  rpc SyncBid(SyncBidRequest) returns (SyncBidResponse);
+}
+
+message SyncBidRequest {
+  string fid = 1;
+}
+
+message SyncBidResponse {
+  bool success = 1;
+  repeated string errors = 2;
+}

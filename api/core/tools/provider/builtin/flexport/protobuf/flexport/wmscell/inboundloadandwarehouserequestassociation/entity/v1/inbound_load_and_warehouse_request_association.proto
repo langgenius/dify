@@ -1,0 +1,15 @@
+// TEAM: lumina
+
+syntax = "proto3";
+
+package flexport.wmscell.inboundloadandwarehouserequestassociation.entity.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "InboundLoadAndWarehouseRequestAssociationEntityProto";
+option java_package = "com.flexport.wmscell.inboundloadandwarehouserequestassociation.entity.v1";
+
+message InboundLoadAndWarehouseRequestAssociationEntity {
+  string id = 1;
+  string load_pk = 2;
+  string warehouse_request_pk = 3;
+}

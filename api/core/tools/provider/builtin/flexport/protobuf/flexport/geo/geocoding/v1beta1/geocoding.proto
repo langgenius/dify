@@ -1,0 +1,23 @@
+// TEAM: application_framework
+
+syntax = "proto3";
+
+package flexport.geo.geocoding.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "GeocodingProto";
+option java_package = "com.flexport.geo.geocoding.v1beta1";
+option ruby_package = "Flexport::Geo::Geocoding::V1Beta1";
+
+// A geographic coordinate, containing the longitude and latitude values.
+message Coordinate {
+  double latitude = 1;
+  double longitude = 2;
+}
+
+// A component filter for a geocode request. In a geocoding response, the Google Geocoding API
+// can return address results restricted to a specific area.
+message ComponentFilter {
+  string component = 1;
+  string value = 2;
+}

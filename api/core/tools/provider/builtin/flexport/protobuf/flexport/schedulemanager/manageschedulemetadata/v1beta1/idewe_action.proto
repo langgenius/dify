@@ -1,0 +1,23 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.schedulemanager.manageschedulemetadata.v1beta1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "IdeweActionProto";
+option java_package = "com.flexport.schedulemanager.manageschedulemetadata.v1beta1";
+option ruby_package = "Flexport::ScheduleManager::ManageScheduleMetadata::V1Beta1";
+
+// Metadata details for some process/action outcome during Manage Schedule/IDEWE evaluation in Schedule Manager.
+message IdeweAction {
+  string fid = 1;
+  string action = 2;
+  google.protobuf.Timestamp timestamp = 3;
+  google.protobuf.Struct details = 20;
+  // Associated objects (e.g. TrackedCtdc) this action has Many-to-Many association with
+  google.protobuf.Struct objects = 30;
+}

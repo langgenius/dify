@@ -1,0 +1,18 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.schedulemanager.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SuggestionTypeProto";
+option java_package = "com.flexport.schedulemanager.types.enums.v1";
+option ruby_package = "Flexport::ScheduleManager::Types::Enums::V1";
+
+// suggestion type from heuristic_api to prevent circular dependency
+enum SuggestionType {
+  SUGGESTION_TYPE_INVALID = 0;
+  SUGGESTION_TYPE_DWELL = 1;
+  SUGGESTION_TYPE_DEVAN = 2;
+  SUGGESTION_TYPE_TRANSIT = 3;
+}

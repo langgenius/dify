@@ -1,0 +1,35 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.monolith.oceanops.v1beta1;
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierVgmApiProto";
+option java_package = "com.flexport.monolith.oceanops.v1beta1";
+option ruby_package = "Flexport::Monolith::OceanOps::V1Beta1";
+
+service CarrierVgmAPI {
+  rpc CreateVgmTerminalUpdate(CreateVgmTerminalUpdateRequest) returns (CreateVgmTerminalUpdateResponse);
+}
+
+message CreateVgmTerminalUpdateRequest {
+  TerminalSource terminal_update_source = 1;
+  string container_number = 2;
+  string vgm_weight = 3;
+  string vgm_unit = 4;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime vgm_submitted_datetime = 5;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime vgm_accepted_datetime = 6;
+  string so_number = 7;
+}
+
+message CreateVgmTerminalUpdateResponse {
+  string error = 1;
+}
+
+enum TerminalSource {
+  TERMINAL_SOURCE_INVALID = 0;
+  TERMINAL_SOURCE_PTW = 1;
+}

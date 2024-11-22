@@ -1,0 +1,19 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.documentflow.documentdigitization.enums.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AuditResultsProto";
+option java_package = "com.flexport.documentflow.documentdigitization.enums.v1beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentDigitization::Enums::V1Beta1";
+
+// audit results for feedback
+enum AuditResults {
+  AUDIT_RESULTS_INVALID = 0;
+
+  AUDIT_RESULTS_UNKNOWN = 1;
+  AUDIT_RESULTS_FAILED = 2;
+  AUDIT_RESULTS_PASSED = 3;
+}

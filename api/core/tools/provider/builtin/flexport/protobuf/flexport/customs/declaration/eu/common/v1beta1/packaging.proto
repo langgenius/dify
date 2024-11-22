@@ -1,0 +1,34 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.declaration.eu.common.v1beta1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.declaration.eu.common.v1beta1";
+option ruby_package = "Flexport::Customs::Declaration::EU::Common::V1Beta1";
+
+// Packaging describes the type and number of packages.
+// [Data Element: 18 06 000 000]
+message Packaging {
+  // The package type code of the smallest external packing unit is to be declared in accordance with
+  // United Nations Economic Commission for Europe (UN/ECE) Recommendation 21.
+  //
+  // This enum is not exhaustive.
+  enum Type {
+    TYPE_INVALID = 0;
+    TYPE_PX = 1; // Pallet.
+    TYPE_CT = 2; // Carton.
+    TYPE_BG = 3; // Bag.
+    TYPE_BA = 4; // Barrel.
+    TYPE_CR = 5; // Crate.
+    TYPE_RO = 6; // Roll.
+    TYPE_PK = 7; // Package.
+  }
+  // [Data Element: 18 06 003 000]
+  Type type = 1;
+  // [Data Element: 18 06 004 000]
+  uint32 number_of_packages = 2;
+  // Free text description of any marks and numbers on transport units or packages.
+  // [Data Element: 18 06 054 000]
+  string shipping_marks = 3;
+}

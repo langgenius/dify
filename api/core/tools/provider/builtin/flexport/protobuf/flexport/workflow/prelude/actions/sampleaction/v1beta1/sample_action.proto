@@ -1,0 +1,89 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.prelude.actions.sampleaction.v1beta1;
+
+import "flexport/workflow/prelude/options/v1/options.proto";
+import "google/protobuf/any.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SampleActionProto";
+option java_package = "com.flexport.workflow.prelude.actions.sampleaction.v1beta1";
+option ruby_package = "Flexport::Workflow::Prelude::Actions::SampleAction::V1Beta1";
+
+// A Sample Action, for test only.
+message SampleAction {
+  option (flexport.workflow.prelude.options.v1.event_log).topic = "<topic>";
+  // option (flexport.workflow.prelude.options.v1.event_log).partition_key = "";
+  option (flexport.workflow.prelude.options.v1.event_log).backpack_field = "payload.event_details";
+  option (flexport.workflow.prelude.options.v1.wp_action).name = "Sample Action";
+  option (flexport.workflow.prelude.options.v1.wp_action).icon = "action";
+  option (flexport.workflow.prelude.options.v1.wp_action).resource_key = "flx::workflow:wp_action:sample_action";
+  string tag = 1;
+  Payload payload = 2;
+}
+
+// Payload.
+message Payload {
+  oneof event_details {
+    Greet greet = 1 [
+      (flexport.workflow.prelude.options.v1.backpack_wp_action).icon = "greet",
+      (flexport.workflow.prelude.options.v1.backpack_wp_action).name = "Greet",
+      (flexport.workflow.prelude.options.v1.backpack_wp_action).resource_key = "flx::workflow:wp_action:sample/greet"
+    ];
+    SendSlack send_slack = 2 [
+      (flexport.workflow.prelude.options.v1.backpack_wp_action).icon = "slack",
+      (flexport.workflow.prelude.options.v1.backpack_wp_action).name = "Send a Slack message",
+      (flexport.workflow.prelude.options.v1.backpack_wp_action).resource_key = "flx::workflow:wp_action:send_slack"
+    ];
+    Greet send_daily_ci_pi_remider = 3 [
+      (flexport.workflow.prelude.options.v1.backpack_wp_action).icon = "reminder",
+      (flexport.workflow.prelude.options.v1.backpack_wp_action).name = "Send daily CI PI reminder",
+      (flexport.workflow.prelude.options.v1.backpack_wp_action).resource_key = "sample_reminder",
+      // only for testing the workaround
+      deprecated = true
+    ];
+    NotAction no_action = 4;
+  }
+}
+
+// Greet.
+message Greet {
+  string name = 1;
+}
+
+// SendSlack.
+message SendSlack {
+  string channel = 1;
+  string message = 2;
+}
+
+// NoAction.
+message NotAction {
+  option (flexport.workflow.prelude.options.v1.event_log).topic = "<topic>";
+  // option (flexport.workflow.prelude.options.v1.event_log).partition_key = "";
+}
+
+// PartitionKeyAction.
+message PartitionKeyAction {
+  option (flexport.workflow.prelude.options.v1.event_log).topic = "<partition-topic>";
+  option (flexport.workflow.prelude.options.v1.event_log).partition_key = "sub_message.field1 + \"-\" + sub_message.field2";
+  option (flexport.workflow.prelude.options.v1.wp_action).name = "Partition Action";
+  option (flexport.workflow.prelude.options.v1.wp_action).icon = "action";
+  option (flexport.workflow.prelude.options.v1.wp_action).resource_key = "flx::workflow:wp_action:partition";
+  // SubMessage.
+  message SubMessage {
+    string field1 = 1;
+    int32 field2 = 2;
+  }
+  SubMessage sub_message = 1;
+}
+
+// AnyAction.
+message AnyAction {
+  option (flexport.workflow.prelude.options.v1.event_log).topic = "<partition-topic>";
+  option (flexport.workflow.prelude.options.v1.event_log).partition_key = "sub_message.field1 + \"-\" + sub_message.field2";
+  option (flexport.workflow.prelude.options.v1.event_log).backpack_field = "any";
+  google.protobuf.Any any = 1;
+}

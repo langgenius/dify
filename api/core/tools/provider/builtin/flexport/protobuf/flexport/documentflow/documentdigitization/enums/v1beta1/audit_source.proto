@@ -1,0 +1,20 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.documentflow.documentdigitization.enums.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AuditSourceProto";
+option java_package = "com.flexport.documentflow.documentdigitization.enums.v1beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentDigitization::Enums::V1Beta1";
+
+// updater type
+enum AuditSource {
+  AUDIT_SOURCE_INVALID = 0;
+
+  // update cause by LLM prompt version update
+  AUDIT_SOURCE_LLM_UPDATE = 1;
+  AUDIT_SOURCE_OPERATOR = 2;
+  AUDIT_SOURCE_DATA_SERVICE = 3;
+}

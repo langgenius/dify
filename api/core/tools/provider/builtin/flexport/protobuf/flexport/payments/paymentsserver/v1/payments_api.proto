@@ -1,0 +1,136 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.payments.paymentsserver.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PaymentsApiProto";
+option java_package = "com.flexport.payments.paymentsserver.v1";
+option ruby_package = "Flexport::Payments::PaymentsServer::V1";
+
+import "flexport/payments/bill/v1beta1/bill.proto";
+import "flexport/payments/exchangerate/v1/exchange_rate_dto.proto";
+import "flexport/payments/netsuitecompanyentity/v1beta1/netsuite_company_entity.proto";
+import "google/api/annotations.proto";
+import "google/api/httpbody.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// The protocol for all payments api.
+service PaymentsAPI {
+  // Get the latest exchange rate dto.
+  rpc GetCurrentExchangeRate(GetCurrentExchangeRateRequest) returns (GetCurrentExchangeRateResponse);
+  // Get the latest exchange rate dto before a specific time, return the exchange rate with earliest time otherwise.
+  rpc GetExchangeRateAsOf(GetExchangeRateAsOfRequest) returns (GetExchangeRateAsOfResponse);
+  // Get exchange rate dto with core database id.
+  rpc FindExchangeRate(FindExchangeRateRequest) returns (FindExchangeRateResponse);
+  // Fetch new exchange rate from openexchangerate api.
+  rpc FetchAndStoreExchangeRate(FetchAndStoreExchangeRateRequest) returns (FetchAndStoreExchangeRateResponse);
+  // DEPRECATED Processes a stripe webhook.
+  rpc StripeWebhook(StripeWebhookRequest) returns (StripeWebhookResponse) {
+    option (google.api.http) = {
+      post: "/v1/stripe/webhook"
+      body: "body"
+    };
+  }
+  // Processes a stripe webhook from our disbursements account.
+  rpc StripeDisbursementsWebhook(StripeDisbursementsWebhookRequest) returns (StripeDisbursementsWebhookResponse) {
+    option (google.api.http) = {
+      post: "/v1/stripe/disbursements_webhook"
+      body: "body"
+    };
+  }
+  // Get netsuite company entity.
+  rpc GetNetsuiteCompanyEntity(GetNetsuiteCompanyEntityRequest) returns (GetNetsuiteCompanyEntityResponse);
+  // Get count of bills.
+  rpc GetBillCount(GetBillCountRequest) returns (GetBillCountResponse);
+  // Get bills.
+  rpc GetBills(GetBillsRequest) returns (GetBillsResponse);
+  // Get a company entity fid.
+  rpc GetCompanyEntityFidByBankAccountNumber(GetCompanyEntityFidByBankAccountNumberRequest) returns (GetCompanyEntityFidByBankAccountNumberResponse);
+  // Save an exchange rate
+  rpc SaveExchangeRate(SaveExchangeRateRequest) returns(SaveExchangeRateResponse);
+}
+
+message SaveExchangeRateRequest {
+  google.protobuf.Timestamp effective_at = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  int32 core_id = 4;
+  map<string, float> rates = 5;
+}
+
+message SaveExchangeRateResponse {}
+
+message GetCurrentExchangeRateRequest {}
+
+message GetCurrentExchangeRateResponse {
+  flexport.payments.exchangerate.v1.ExchangeRateDto exchange_rate = 1;
+}
+
+message GetExchangeRateAsOfRequest {
+  google.protobuf.Timestamp time = 1;
+}
+
+message GetExchangeRateAsOfResponse {
+  flexport.payments.exchangerate.v1.ExchangeRateDto exchange_rate = 1;
+}
+
+message FindExchangeRateRequest {
+  int32 id = 1;
+}
+
+message FindExchangeRateResponse {
+  flexport.payments.exchangerate.v1.ExchangeRateDto exchange_rate = 1;
+}
+
+message FetchAndStoreExchangeRateRequest {}
+
+message FetchAndStoreExchangeRateResponse {}
+
+message StripeWebhookRequest {
+  google.api.HttpBody body = 1;
+}
+
+message StripeWebhookResponse {}
+
+message StripeDisbursementsWebhookRequest {
+  google.api.HttpBody body = 1;
+}
+
+message StripeDisbursementsWebhookResponse {}
+
+message GetNetsuiteCompanyEntityRequest {
+  string company_entity_fid = 1;
+}
+
+message GetNetsuiteCompanyEntityResponse {
+  flexport.payments.netsuitecompanyentity.v1beta1.NetsuiteCompanyEntity entity = 1;
+}
+
+message GetBillCountRequest {
+  flexport.payments.bill.v1beta1.BillFilters filters = 1;
+}
+
+message GetBillCountResponse {
+  int32 count = 1;
+}
+
+message GetBillsRequest {
+  flexport.payments.bill.v1beta1.BillFilters filters = 1;
+}
+
+message GetBillsResponse {
+  repeated flexport.payments.bill.v1beta1.Bill results = 1;
+}
+
+message GetCompanyEntityFidByBankAccountNumberRequest {
+  string vendor_fid = 1;
+  string currency_code = 2;
+  repeated string bank_account_numbers = 3;
+}
+
+message GetCompanyEntityFidByBankAccountNumberResponse {
+  google.protobuf.StringValue company_entity_fid = 1;
+}

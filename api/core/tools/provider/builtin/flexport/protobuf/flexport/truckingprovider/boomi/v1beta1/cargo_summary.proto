@@ -1,0 +1,19 @@
+// TEAM: trucking
+
+syntax = "proto3";
+
+package flexport.truckingprovider.boomi.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoSummaryProto";
+option java_package = "com.flexport.truckingprovider.boomi.v1beta1";
+option ruby_package = "Flexport::TruckingProvider::Boomi::V1Beta1";
+
+// Summarized Cargo details.
+message CargoSummary {
+  string slac = 1;
+  // string for weight and volume to avoid floating point rounding
+  string weight = 2;
+  string volume = 3;
+  bool metric_units = 4;
+}

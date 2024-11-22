@@ -1,0 +1,55 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.customerconsignment.v1beta1;
+
+import "flexport/executioncoordinator/customerconsignment/v1beta1/customer_consignment.proto";
+import "flexport/executioncoordinator/customerconsignment/v1beta1/customer_consignment_measurement.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomerConsignmentApiProto";
+option java_package = "com.flexport.executioncoordinator.customerconsignment.v1beta1";
+option ruby_package = "Flexport::ExecutionCoordinator::CustomerConsignment::V1Beta1";
+
+// An API for interacting with CustomerConsignment entities.
+service CustomerConsignmentAPI {
+  // Get customer consignment based on external_reference_id and external_company_entity_fid.
+  rpc GetCustomerConsignment(GetCustomerConsignmentRequest) returns (GetCustomerConsignmentResponse);
+  rpc GetCustomerConsignments(GetCustomerConsignmentsRequest) returns (GetCustomerConsignmentsResponse);
+  // Create a customer consignment. Behavior is upsert based on the combination of reference id and .
+  rpc CreateCustomerConsignment(CreateCustomerConsignmentRequest) returns (CreateCustomerConsignmentResponse);
+}
+
+// The request for GetCustomerConsignment.
+message GetCustomerConsignmentRequest {
+  string external_reference_id = 1;
+  string external_company_entity_fid = 2;
+}
+
+// The response for GetCustomerConsignment.
+message GetCustomerConsignmentResponse {
+  CustomerConsignment customer_consignment = 1;
+  repeated CustomerConsignmentMeasurement customer_consignment_measurements = 2;
+}
+
+// The request for GetCustomerConsignments.
+message GetCustomerConsignmentsRequest {
+  repeated string fids = 1;
+}
+
+// The response for GetCustomerConsignments.
+message GetCustomerConsignmentsResponse {
+  repeated CustomerConsignment customer_consignments = 1 [deprecated=true];
+  repeated GetCustomerConsignmentResponse responses = 2;
+}
+
+// The request for CreateCustomerConsignment.
+message CreateCustomerConsignmentRequest {
+  CustomerConsignment customer_consignment = 1;
+}
+
+// The response for GetCustomerConsignment.
+message CreateCustomerConsignmentResponse {
+  CustomerConsignment customer_consignment = 1;
+}

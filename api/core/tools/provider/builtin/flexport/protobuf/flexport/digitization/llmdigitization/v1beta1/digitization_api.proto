@@ -1,0 +1,104 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.digitization.llmdigitization.v1beta1;
+
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DigitizationAPIProto";
+option java_package = "com.flexport.digitization.llmdigitization.v1beta1";
+option ruby_package = "Flexport::Digitization::LLMDigitization::V1Beta1";
+
+// An API for using LLMs to digitize core documents.
+service DigitizationAPI {
+  // Creates a new digitization request
+  rpc CreateDigitization(CreateDigitizationRequest) returns (CreateDigitizationResponse);
+  // Retrieves a digitized document
+  rpc GetDigitization(GetDigitizationRequest) returns (GetDigitizationResponse);
+  // Creates a new feedback
+  rpc CreateFeedback(CreateFeedbackRequest) returns (CreateFeedbackResponse);
+}
+
+message CreateDigitizationRequest {
+  // Name of the extractor instance
+  string extractor_name = 1;
+  // Core document_fid
+  string document_fid = 2;
+  // Unique fid of file in storage
+  string file_object_fid = 3;
+}
+
+message CreateDigitizationResponse {
+  // Request id of the digitization
+  string job_id = 1;
+  // Shipment id the document is attached to
+  string shipment_fid = 2;
+  // Unique fid of file in storage
+  string file_object_fid = 3;
+  // Unique fid of document in Core
+  string document_fid = 4;
+  // Name of the extractor instance
+  string extractor_name = 5;
+  // Digitized fields from the document according to
+  // the extractor's JSON schema attributes
+  google.protobuf.Struct response_annotation = 6;
+}
+
+message GetDigitizationRequest {
+  // Unique request/job id of the digitization job
+  string job_id = 1;
+}
+
+message GetDigitizationResponse {
+  // Request id of the digitization
+  string job_id = 1;
+  // Shipment id the document is attached to
+  string shipment_fid = 2;
+  // Unique fid of file in storage
+  string file_object_fid = 3;
+  // Unique fid of document in Core
+  string document_fid = 4;
+  // Name of the extractor instance
+  string extractor_name = 5;
+  // Digitized fields from the document according to
+  // the extractor's JSON schema attributes
+  google.protobuf.Struct response_annotation = 6;
+}
+
+message CreateFeedbackRequest {
+  // Name of the associated extractor instance
+  string extractor_name = 1;
+  // Unique fid of document in Core
+  string document_fid = 2;
+  // Unique fid of file in storage
+  string file_object_fid = 3;
+  // K,V pairs of annotated fields from text according to extractor schema
+  google.protobuf.Struct ground_truth = 4;
+  // Ground truth auditing
+  google.protobuf.Struct field_audits = 5;
+  // Source version of feedback
+  string source = 6;
+  // Associate digitization task id
+  string digitization_task_id = 7;
+  // Status of audit (unknown, passed, failed)
+  AuditStatus is_audit_passed = 8;
+}
+
+message CreateFeedbackResponse {
+  // Status message for the request success/failure
+  string message = 1;
+}
+
+enum AuditStatus {
+  // Default value
+  AUDIT_STATUS_INVALID = 0;
+
+  // Passed validation
+  AUDIT_STATUS_PASSED = 1;
+  // Failed validation
+  AUDIT_STATUS_FAILED = 2;
+  // Unknown validation status
+  AUDIT_STATUS_UNKNOWN = 3;
+}

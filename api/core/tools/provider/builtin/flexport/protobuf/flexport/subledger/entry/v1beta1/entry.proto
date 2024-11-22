@@ -1,0 +1,29 @@
+// TEAM: cost_capture
+
+syntax = "proto3";
+
+package flexport.subledger.entry.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "EntryProto";
+option java_package = "com.flexport.subledger.entry.v1beta1";
+option ruby_package = "Flexport::Subledger::Entry::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Subledger entry context attributes record.
+message ContextAttributesDto {
+  string json = 6;
+}
+
+// Subledger entry record.
+message EntryDto {
+  google.protobuf.StringValue fid = 1;
+  string account_fid = 2;
+  google.protobuf.StringValue transaction_fid = 3;
+  sint64 amount_micros = 4;
+  string currency_code = 5;
+  ContextAttributesDto context_attributes = 6;
+  google.protobuf.Timestamp created_at_time = 7;
+}

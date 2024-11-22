@@ -1,0 +1,20 @@
+// TEAM: client_order
+
+syntax = "proto3";
+
+package flexport.commerce.facts.testrepository.fragments.fragmentfacts.v1beta1;
+
+import "flexport/commerce/facts/codegen/options/v1/options.proto";
+import "flexport/commerce/facts/contracts/options/v1/options.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FragmentFactsProto";
+option java_package = "com.flexport.commerce.facts.testrepository.fragments.fragmentfacts.v1beta1";
+option ruby_package = "Flexport::Commerce::Facts::TestRepository::Fragments::FragmentFacts::V1Beta1";
+
+message FragmentFacts {
+  option (flexport.commerce.facts.contracts.options.v1.fragment).repository_name = "testrepository";
+  option (flexport.commerce.facts.contracts.options.v1.fragment).packages = "fragmentfacts";
+  option (flexport.commerce.facts.codegen.options.v1.message_codegen).type_name = "FragmentFacts";
+  option (flexport.commerce.facts.codegen.options.v1.message_codegen).union_sub_packages = true;
+}

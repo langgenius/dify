@@ -1,0 +1,18 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.workflow.email.models.freightrelease.v1beta1;
+
+import "flexport/workflow/email/models/attachment/v1beta1/attachment.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FreightReleaseProto";
+option java_package = "com.flexport.workflow.email.models.freightrelease.v1beta1";
+option ruby_package = "Flexport::Workflow::Email::Models::FreightRelease::V1Beta1";
+
+message FreightRelease {
+  string email_subject = 1;
+  repeated flexport.workflow.email.models.attachment.v1beta1.Attachment attachments = 2;
+  string email_body = 3;
+}

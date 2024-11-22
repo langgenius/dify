@@ -1,0 +1,51 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.offering.drayage.v2beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DrayageProto";
+option java_package = "com.flexport.catalog.offering.drayage.v2beta1";
+option ruby_package = "Flexport::Catalog::Offering::Drayage::V2Beta1";
+
+import "flexport/catalog/containercounts/v1/container_counts.proto";
+import "flexport/catalog/enums/v1/enums.proto";
+import "flexport/catalog/location/v1/location.proto";
+import "flexport/catalog/servicearea/v1/service_area.proto";
+import "google/protobuf/wrappers.proto";
+
+// Drayage attributes.
+message DrayageAttributesDto {
+  google.protobuf.Int64Value carrier_id = 1;
+  google.protobuf.StringValue direction = 2;
+  google.protobuf.Int64Value port_id = 3;
+  oneof service_area {
+    google.protobuf.Int64Value service_area_id = 4;
+    catalog.servicearea.v1.ServiceAreaDistanceDto distance_from_port = 5;
+  }
+  google.protobuf.Int64Value facility_id = 6;
+  google.protobuf.Int32Value transit_time_min_days = 7;
+  google.protobuf.Int32Value transit_time_max_days = 8;
+  repeated catalog.enums.v1.EquipmentDto equipments = 9;
+  google.protobuf.StringValue contract_notes = 10;
+}
+
+// Drayage query attributes.
+message DrayageQueryAttributesDto {
+  repeated int64 carrier_ids = 1;
+  repeated google.protobuf.StringValue direction = 2;
+  repeated int64 port_ids = 3;
+  repeated google.protobuf.BoolValue nearby_ports = 4;
+  repeated int64 service_area_ids = 5;
+  // When provided, matches with offerings whose service areas include any of the same geo bounds.
+  repeated int64 geobound_ids = 6;
+  // When provided, matches with offerings whose service areas include this location.
+  // If the location includes a radius, any nearby offerings where the service area intersects with
+  // the circle defined by this point and radius are also included.
+  // Required when sorting by distance. Offerings which do not service this location are ordered
+  // based on the proximity of their service area to this location.
+  catalog.location.v1.LocationDto location = 7;
+  repeated int64 facility_ids = 8;
+  catalog.containercounts.v1.ContainerCountsDto container_counts = 9;
+}

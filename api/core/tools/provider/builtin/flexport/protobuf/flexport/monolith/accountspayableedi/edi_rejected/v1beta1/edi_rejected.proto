@@ -1,0 +1,28 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.monolith.accountspayableedi.edirejected.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "EdiRejectedProto";
+option java_package = "com.flexport.monolith.accountspayableedi.edirejected.v1beta1";
+option ruby_package = "Flexport::Monolith::AccountsPayableEDI::EDIRejected::V1Beta1";
+
+import "flexport/monolith/accountspayableedi/v1beta1/accounts_payable_edi.proto";
+import "google/protobuf/timestamp.proto";
+
+// Event emitted upon request for edi from proserv and xml edi is uploaded to
+// StorageService.
+message EDIRejected {
+  flexport.monolith.accountspayableedi.v1beta1.AccountsPayableEDI edi = 1;
+  repeated Issue errors = 2;
+  repeated Issue warnings = 3;
+  google.protobuf.Timestamp received_at_time = 4;
+}
+
+// Errors that indicate rejection reasons.
+message Issue {
+  int64 code = 1;
+  string details = 2;
+}

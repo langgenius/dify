@@ -1,0 +1,35 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.financediscrepancy.chargereview.discrepancyupdated.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FinanceDiscrepancyChargeReviewDiscrepancyUpdatedProto";
+option java_package = "com.flexport.financediscrepancy.chargereview.discrepancyupdated.v1beta1";
+option ruby_package = "Flexport::FinanceDiscrepancy::ChargeReview::DiscrepancyUpdated::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+
+// An update to the status of a charge review item discrepancy.
+message DiscrepancyUpdated {
+  // Flexport resource identifier for the charge review.
+  string charge_review_fid = 1;
+  // Flexport resource identifier for the charge review item.
+  string charge_review_item_fid = 2;
+  // Flexport resource identifier for the corresponding discrepancy.
+  string charge_review_item_discrepancy_fid = 3;
+  // Timestamp at which the discrepancy was marked as resolved.
+  google.protobuf.Timestamp resolved_at_time = 4;
+  // Flexport resource identifier of the user who resolved the discrepancy.
+  string resolved_by_user_fid = 5;
+  // The status of the discrepancy.
+  DiscrepancyStatus discrepancy_status = 6;
+}
+
+// Discrepancy Resolution Enum.
+enum DiscrepancyStatus {
+  DISCREPANCY_STATUS_INVALID = 0;
+  DISCREPANCY_STATUS_OFFERING_CORRECTED = 1;
+  DISCREPANCY_STATUS_DISAGREE = 2;
+}

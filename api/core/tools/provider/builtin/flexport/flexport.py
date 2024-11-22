@@ -7,31 +7,23 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 class FlexportProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
-            
-            FlexportGrpcTool().fork_tool_runtime(
-                runtime={
-                    "credentials": credentials,
-                }
-            ).invoke(
-                user_id='',
+            # Validate gRPC tool
+            grpc_tool = FlexportGrpcTool(credentials=credentials)
+            grpc_tool.invoke(
+                user_id="",
                 tool_parameters={
-                    "proto_content": "test",
-                    "service": "test",
-                    "method": "test",
-                    "method_parameters": "test", 
+                    "host": "localhost:50051",
+                    "service": "flexport.actionlog.action.v1beta1.ActionService",
+                    "method": "GetAction",
+                    "method_parameters": '{"id": "test"}',
                 },
             )
 
-            FlexportGrpahqlTool().fork_tool_runtime(
-                runtime={
-                    "credentials": credentials,
-                }
-            ).invoke(
-                user_id='',
-                tool_parameters={
-                    "query": "test",
-                    "result_type": "link"
-                },
+            # Validate GraphQL tool
+            graphql_tool = FlexportGrpahqlTool(credentials=credentials)
+            graphql_tool.invoke(
+                user_id="",
+                tool_parameters={"query": "test", "result_type": "link"},
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

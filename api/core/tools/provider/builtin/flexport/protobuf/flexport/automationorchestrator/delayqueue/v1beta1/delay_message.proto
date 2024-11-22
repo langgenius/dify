@@ -1,0 +1,29 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.automationorchestrator.delayqueue.v1beta1;
+
+import "flexport/automationorchestrator/delayqueue/enums/v1beta1/message_status.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DelayEventProto";
+option java_package = "com.flexport.automationorchestrator.delayqueue.v1beta1";
+option ruby_package = "Flexport::AutomationOrchestrator::DelayQueue::V1Beta1";
+
+message DelayMessage {
+  string id = 1;
+
+  optional string topic_fid = 11; // for associate message with entity
+  optional string deduplicate_key = 12; // unique by topic fid, must appear with topic fid
+
+  string topic = 21; // will be set as default message attribution
+  string message_body = 22;
+  map<string, string> message_attributions = 23; // optional, e.g. message type
+  google.protobuf.Timestamp schedule_at = 24; // NOTICE: nanos will be ignored
+
+  optional enums.v1beta1.MessageStatus status = 30;
+  optional google.protobuf.Timestamp created_at = 31;
+  optional google.protobuf.Timestamp updated_at = 32;
+}

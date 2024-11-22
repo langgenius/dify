@@ -1,0 +1,18 @@
+// TEAM: flexport_os
+
+syntax = "proto3";
+
+package flexport.os.network.addresscreated.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AddressCreatedProto";
+option java_package = "com.flexport.os.network.addresscreated.v1";
+option ruby_package = "Flexport::OS::Network::AddressCreated::V1";
+
+import "flexport/os/v1/network/address/v1/address.proto";
+
+// Indicates an Address record was created in Core.
+message AddressCreated {
+  string address_fid = 1;
+  flexport.os.network.address.v1.Address address = 2;
+}

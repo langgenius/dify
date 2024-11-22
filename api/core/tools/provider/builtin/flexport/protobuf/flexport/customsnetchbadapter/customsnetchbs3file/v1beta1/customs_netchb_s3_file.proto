@@ -1,0 +1,21 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsnetchbadapter.customsnetchbs3file.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsNetchbS3FileProto";
+option java_package = "com.flexport.customsnetchbadapter.customsnetchbs3file.v1beta1";
+option ruby_package = "Flexport::CustomsNetchbAdapter::CustomsNetchbS3File::V1Beta1";
+
+message CustomsNetchbS3File {
+  string event_type = 1;
+  string region = 2;
+  string bucket_name = 3;
+  string absolute_path = 4;
+  string key = 5;
+  optional string version_id = 6;
+  int64 size = 7;
+  string sequencer = 8;
+}

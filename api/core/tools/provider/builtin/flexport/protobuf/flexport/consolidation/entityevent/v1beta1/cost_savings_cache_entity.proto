@@ -1,0 +1,24 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.consolidation.entityevent.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CostSavingsCacheEntityProto";
+option java_package = "com.flexport.consolidation.entityevent.v1beta1";
+option ruby_package = "Flexport::Consolidation::EntityEvent::V1Beta1";
+
+// Proto message for Cost Savings Cache object.
+message CostSavingsCacheEntity {
+  int32 id = 1;
+  float fcl_cost = 2;
+  float lcl_cost = 3;
+  int32 shipment_id = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+  string offering_sources = 7;
+}
+

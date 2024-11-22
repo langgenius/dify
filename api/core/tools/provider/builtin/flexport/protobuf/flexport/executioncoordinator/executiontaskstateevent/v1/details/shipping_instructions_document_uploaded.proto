@@ -1,0 +1,15 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShippingInstructionsDocumentUploadedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// A shipping instructions document has been uploaded.
+message ShippingInstructionsDocumentUploaded {
+  string document_fid = 1;
+}

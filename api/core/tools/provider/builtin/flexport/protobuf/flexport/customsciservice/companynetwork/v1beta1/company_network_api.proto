@@ -1,0 +1,43 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsciservice.companynetwork.v1beta1;
+
+import "flexport/customsciservice/commercialinvoice/v1beta1/commercial_invoice.proto";
+import "google/protobuf/wrappers.proto";
+import "google/rpc/status.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CompanyNetworkApiProto";
+option java_package = "com.flexport.customsciservice.companynetwork.v1beta1";
+option ruby_package = "Flexport::CustomsCiService::CompanyNetwork::V1Beta1";
+
+// Provides the Network data related to a CommercialInvoice
+service CompanyNetworkAPI {
+  // Returns a list of Company FIDs or Location FIDs that match the given list of addresses.
+  // A CompanyEntity record or a Location record will be created if no match is found.
+  rpc GetOrCreateNetworkEntities(GetOrCreateNetworkEntitiesRequest) returns (GetOrCreateNetworkEntitiesResponse);
+}
+
+message GetOrCreateNetworkEntitiesRequest {
+  string client_fid = 1;
+  repeated InvolvedPartyDetails involved_parties_details = 2;
+  google.protobuf.BoolValue is_related_parties = 3;
+}
+
+message GetOrCreateNetworkEntitiesResponse {
+  repeated InvolvedPartyToNetworkEntity involved_party_to_network_entities = 1;
+  google.rpc.Status status = 2;
+}
+
+message InvolvedPartyToNetworkEntity {
+  uint32 involved_party_id = 1;
+  google.protobuf.StringValue network_entity_fid = 2;
+}
+
+message InvolvedPartyDetails {
+  google.protobuf.StringValue mid = 1;
+  google.protobuf.StringValue external_ref = 2;
+  flexport.customsciservice.commercialinvoice.v1beta1.CommercialInvoiceInvolvedParty involved_party = 3;
+}

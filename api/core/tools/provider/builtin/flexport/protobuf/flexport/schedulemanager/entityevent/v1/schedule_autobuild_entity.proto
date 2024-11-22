@@ -1,0 +1,27 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.schedulemanager.entityevent.v1;
+
+import "flexport/executioncoordinator/types/enums/v1/entry_point.proto";
+import "flexport/schedulemanager/types/enums/v1/autobuild_schedule_result_code.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ScheduleAutobuildEntityProto";
+option java_package = "com.flexport.schedulemanager.entityevent.v1";
+option ruby_package = "Flexport::ScheduleManager::EntityEvent::V1";
+
+// DEPRECATED
+message ScheduleAutobuildEntity {
+  option deprecated = true;
+
+  string shipment_fid = 1;
+  flexport.executioncoordinator.types.enums.v1.EntryPoint entry_point = 2;
+  bool is_auto_cascaded = 3;
+  repeated string cargo_transit_date_changed_event_fids = 4;
+  string full_cargo_transit_date_changed_fid = 5;
+  flexport.schedulemanager.types.enums.v1.AutobuildScheduleResultCode autobuild_schedule_result_code = 6;
+  string itinerary_fid = 7;
+  uint32 itinerary_revision = 8;
+}

@@ -1,0 +1,540 @@
+// TEAM: customs_gateway
+
+syntax = "proto3";
+
+package flexport.inboundimportersecurityfiling.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "InboundImporterSecurityFilingProto";
+option java_package = "com.flexport.inboundimportersecurityfiling.v1beta1";
+option ruby_package = "Flexport::InboundImporterSecurityFiling::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+
+// This is our internal representation of an Internal Security Filing. Though it maps fairly closely to the CATAIR format
+// specified by US Customs and Border Patrol in this document, it is _not_ a CATAIR message. It is an internal representation
+// that may be mapped to from various external message formats.
+
+// An Importer Security Filing received from an external party.
+// Not to be confused with the Customs ISF, which Flexport transmits to USCBP.
+message InboundImporterSecurityFiling {
+  string fid = 1;
+  string execution_order_fid = 2;
+  int32 revision = 3;
+  google.protobuf.Timestamp updated_at_time = 4;
+  InboundImporterSecurityFilingPayload data = 5;
+}
+
+// The actual Inbound ISF data.
+message InboundImporterSecurityFilingPayload {
+  Header header = 1;
+  ShipmentInformation shipment_information = 2;
+  // List of bill numbers associated with the shipment.
+  repeated BillNumber shipment_bill_numbers = 3;
+  // List of additional identifiers associated with this ISF.
+  repeated ReferenceIdentifier reference_identifiers = 4;
+  repeated Entity entities = 5;
+  // Note that this also exists on the Entity message.
+  repeated HarmonizedTariffSchedule harmonized_tariff_schedule = 6;
+  FrobShipmentInformation frob_shipment_information = 7;
+  string uploaded_by_fid = 8;
+}
+
+// Context related to an Importer Security Filing.
+message Header {
+  SubmissionType isf_submission_type = 1;
+  // The type of shipment being submitted.
+  ShipmentType shipment_type = 2;
+  Action action_code = 3;
+  ActionReason action_reason_code = 4;
+  oneof importer_identifier {
+    string employer_identification_number = 5;
+    string cbp_assigned_number = 6;
+    SocialSecurityCard social_security_card = 7;
+    string standard_carrier_alpha_code_scac = 8;
+    Passport passport = 9;
+    string uncategorized_tax_id = 10;
+  }
+  ModeOfTransport mode_of_transport = 11;
+  // Standard Carrier Alpha Code. The SCAC of the vessel operator that is transporting the container.
+  string scac = 12;
+  // Identification number of the party whose bond is being obligated for the ISF.
+  string bond_holder = 13;
+  // The activity of the bond being used.
+  BondActivity bond_activity_code = 14;
+  // The bond type.
+  BondType bond_type = 15;
+  // The type of ISF being submitted.
+  enum SubmissionType {
+    SUBMISSION_TYPE_INVALID = 0;
+    SUBMISSION_TYPE_ISF_10 = 1;
+    SUBMISSION_TYPE_ISF_5 = 2;
+    SUBMISSION_TYPE_CHANGE_ISF_5_TO_ISF_10 = 3;
+    SUBMISSION_TYPE_CHANGE_ISF_10_TO_ISF_5 = 4;
+  }
+  // The type of shipment this ISF refers to.
+  enum ShipmentType {
+    SHIPMENT_TYPE_INVALID = 0;
+    SHIPMENT_TYPE_STANDARD_OR_REGULAR_FILINGS = 1;
+    SHIPMENT_TYPE_TO_ORDER_SHIPMENTS = 2;
+    SHIPMENT_TYPE_HOUSEHOLD_GOODS_PERSONAL_EFFECTS_HHG_PE = 3;
+    SHIPMENT_TYPE_MILITARY_GOVERNMENT = 4;
+    SHIPMENT_TYPE_DIPLOMATIC_SHIPMENT = 5;
+    SHIPMENT_TYPE_CARNET = 6;
+    SHIPMENT_TYPE_US_GOODS_RETURNED = 7;
+    SHIPMENT_TYPE_FTZ_SHIPMENTS = 8;
+    SHIPMENT_TYPE_INTERNATIONAL_MAIL_SHIPMENTS = 9;
+    SHIPMENT_TYPE_OUTER_CONTINENTAL_SHELF_SHIPMENTS = 10;
+    SHIPMENT_TYPE_INFORMAL = 11;
+  }
+  // Whether this is a new ISF, a deletion, or a replacement.
+  enum Action {
+    ACTION_INVALID = 0;
+    ACTION_ADD = 1;
+    ACTION_DELETE = 2;
+    ACTION_REPLACE = 3;
+  }
+  // Action reason code.
+  enum ActionReason {
+    ACTION_REASON_INVALID = 0;
+    ACTION_REASON_COMPLETE_TRANSACTION = 1;
+    ACTION_REASON_FLEXIBLE_RANGE = 2;
+    ACTION_REASON_FLEXIBLE_TIMING = 3;
+    ACTION_REASON_FLEXIBLE_RANGE_AND_TIMING = 4;
+  }
+  // The mode of transport that this shipment will be arriving upon.
+  enum ModeOfTransport {
+    MODE_OF_TRANSPORT_INVALID = 0;
+    MODE_OF_TRANSPORT_VESSEL_NON_CONTAINER = 1;
+    MODE_OF_TRANSPORT_VESSEL_CONTAINER = 2;
+  }
+  // The activity of the bond being used.
+  enum BondActivity {
+    BOND_ACTIVITY_INVALID = 0;
+    BOND_ACTIVITY_IMPORTER_OR_BROKER = 1;
+    BOND_ACTIVITY_CUSTODIAN_OF_BONDED_MERCHANDISE = 2;
+    BOND_ACTIVITY_INTERNATIONAL_CARRIER = 3;
+    BOND_ACTIVITY_FOREIGN_TRADE_ZONE_OPERATOR = 4;
+    BOND_ACTIVITY_ISF_BOND = 5;
+  }
+  // The type of the bond being used.
+  enum BondType {
+    BOND_TYPE_INVALID = 0;
+    BOND_TYPE_CONTINUOUS = 1;
+    BOND_TYPE_SINGLE_TRANSACTION = 2;
+  }
+}
+
+// Shipment information.
+message ShipmentInformation {
+  ShipmentSubType shipment_sub_type = 1;
+  // Monetary Value in whole US dollars.
+  int32 estimated_value = 2;
+  // Smallest external packaging unit.
+  int32 estimated_quantity = 3;
+  // The unit of measure for the estimated quantity.
+  UnitOfMeasure quantity_unit = 4;
+  // Weight in kilos or pounds.
+  int32 estimated_weight = 5;
+  WeightUnit weight_unit = 6;
+  // The sub-type of the shipment associated with this ISF.
+  enum ShipmentSubType {
+    SHIPMENT_SUB_TYPE_INVALID = 0;
+    SHIPMENT_SUB_TYPE_SECTION_321 = 1;
+    SHIPMENT_SUB_TYPE_INFORMAL = 2;
+    SHIPMENT_SUB_TYPE_GENERAL_NOTE_3E = 3;
+  }
+  // The unit of measure for the estimated_quantity field.
+  enum UnitOfMeasure {
+    UNIT_OF_MEASURE_INVALID = 0;
+    UNIT_OF_MEASURE_ALTERNATING_CURRENT = 1;
+    UNIT_OF_MEASURE_AEROSOL = 2;
+    UNIT_OF_MEASURE_AMPOULE_NONPROTECTED = 3;
+    UNIT_OF_MEASURE_AMPOULE_PROTECTED = 4;
+    UNIT_OF_MEASURE_AMERICAN_SOCIETY_FOR_TESTING_MATERIALS = 5;
+    UNIT_OF_MEASURE_ATOMIZER = 6;
+    UNIT_OF_MEASURE_ALLERGY_UNITS = 7;
+    UNIT_OF_MEASURE_BARREL = 8;
+    UNIT_OF_MEASURE_BIOEQUIVALENT_ALLERGY_UNITS = 9;
+    UNIT_OF_MEASURE_BOBBIN = 10;
+    UNIT_OF_MEASURE_BARRELS = 11;
+    UNIT_OF_MEASURE_BOTTLE_CRATE_BOTTLE_RACK = 12;
+    UNIT_OF_MEASURE_BOARD = 13;
+    UNIT_OF_MEASURE_BUNDLE = 14;
+    UNIT_OF_MEASURE_BALLOON_NONPROTECTED = 15;
+    UNIT_OF_MEASURE_BAG = 16;
+    UNIT_OF_MEASURE_BUNCH = 17;
+    UNIT_OF_MEASURE_BIN = 18;
+    UNIT_OF_MEASURE_BUCKET = 19;
+    UNIT_OF_MEASURE_BASKET = 20;
+    UNIT_OF_MEASURE_BALE_COMPRESSED = 21;
+    UNIT_OF_MEASURE_BALE_NONCOMPRESSED = 22;
+    UNIT_OF_MEASURE_BOTTLE_NONPROTECTED_CYLINDRICAL = 23;
+    UNIT_OF_MEASURE_BOLUSES_DOSAGE = 24;
+    UNIT_OF_MEASURE_BALLOON_PROTECTED = 25;
+    UNIT_OF_MEASURE_BOTTLE_PROTECTED_CYLINDRICAL = 26;
+    UNIT_OF_MEASURE_BOUQUET_OF_FLOWERS = 27;
+    UNIT_OF_MEASURE_BAR = 28;
+    UNIT_OF_MEASURE_BOTTLE_NONPROTECTED_BULBOUS = 29;
+    UNIT_OF_MEASURE_BOLT = 30;
+    UNIT_OF_MEASURE_BUTT = 31;
+    UNIT_OF_MEASURE_BOTTLE_PROTECTED_BULBOUS = 32;
+    UNIT_OF_MEASURE_BOX = 33;
+    UNIT_OF_MEASURE_BOARD_IN_BUNDLE_BUNCH_TRUSS = 34;
+    UNIT_OF_MEASURE_BARS_IN_BUNDLE_BUNCH_TRUSS = 35;
+    UNIT_OF_MEASURE_CELSIUS = 36;
+    UNIT_OF_MEASURE_CAN_RECTANGULAR = 37;
+    UNIT_OF_MEASURE_CAGE = 38;
+    UNIT_OF_MEASURE_CAPSULES_DOSAGE = 39;
+    UNIT_OF_MEASURE_CARAT = 40;
+    UNIT_OF_MEASURE_BEER_CRATE = 41;
+    UNIT_OF_MEASURE_CUBIC_CENTIMETER = 42;
+    UNIT_OF_MEASURE_CARCASSES = 43;
+    UNIT_OF_MEASURE_CREEL = 44;
+    UNIT_OF_MEASURE_COFFER = 45;
+    UNIT_OF_MEASURE_CUBIC_FEET_VOLUME = 46;
+    UNIT_OF_MEASURE_CENTIGRAMS = 47;
+    UNIT_OF_MEASURE_CONTENT_GRAM = 48;
+    UNIT_OF_MEASURE_CHEST = 49;
+    UNIT_OF_MEASURE_CHURN = 50;
+    UNIT_OF_MEASURE_CANISTER = 51;
+    UNIT_OF_MEASURE_COFFIN = 52;
+    UNIT_OF_MEASURE_CASK = 53;
+    UNIT_OF_MEASURE_CONTENT_KILOGRAM = 54;
+    UNIT_OF_MEASURE_COIL = 55;
+    UNIT_OF_MEASURE_CENTIMETERS = 56;
+    UNIT_OF_MEASURE_SQUARE_CENTIMETERS = 57;
+    UNIT_OF_MEASURE_CUBIC_CENTIMETERS = 58;
+    UNIT_OF_MEASURE_CARBOY_NONPROTECTED = 59;
+    UNIT_OF_MEASURE_COMBO_BINS = 60;
+    UNIT_OF_MEASURE_CONTAINER = 61;
+    UNIT_OF_MEASURE_CARBOY_PROTECTED = 62;
+    UNIT_OF_MEASURE_CRATE = 63;
+    UNIT_OF_MEASURE_CASE = 64;
+    UNIT_OF_MEASURE_CARTON = 65;
+    UNIT_OF_MEASURE_CENTILITER = 66;
+    UNIT_OF_MEASURE_CONTENT_TON = 67;
+    UNIT_OF_MEASURE_CARTRIDGE = 68;
+    UNIT_OF_MEASURE_CUP = 69;
+    UNIT_OF_MEASURE_CURIE = 70;
+    UNIT_OF_MEASURE_COVER = 71;
+    UNIT_OF_MEASURE_CAN_CYLINDRICAL = 72;
+    UNIT_OF_MEASURE_CLEAN_YIELD = 73;
+    UNIT_OF_MEASURE_CUBIC_YARDS_VOLUME = 74;
+    UNIT_OF_MEASURE_CLEAN_YIELD_GRAM = 75;
+    UNIT_OF_MEASURE_CLEAN_YIELD_KILOGRAM = 76;
+    UNIT_OF_MEASURE_CYLINDER = 77;
+    UNIT_OF_MEASURE_CANVAS = 78;
+    UNIT_OF_MEASURE_DENIER = 79;
+    UNIT_OF_MEASURE_DIRECT_CURRENT = 80;
+    UNIT_OF_MEASURE_DEGREE = 81;
+    UNIT_OF_MEASURE_DEMIJOHN_NONPROTECTED = 82;
+    UNIT_OF_MEASURE_DOZEN = 83;
+    UNIT_OF_MEASURE_DEMIJOHN_PROTECTED = 84;
+    UNIT_OF_MEASURE_DOZEN_PIECES = 85;
+    UNIT_OF_MEASURE_DOZEN_PAIRS = 86;
+    UNIT_OF_MEASURE_DRUM = 87;
+    UNIT_OF_MEASURE_ENVELOPE = 88;
+    UNIT_OF_MEASURE_FIBER_M = 89;
+    UNIT_OF_MEASURE_FRUIT_CRATE = 90;
+    UNIT_OF_MEASURE_FRAMED_CRATE = 91;
+    UNIT_OF_MEASURE_FIRKIN = 92;
+    UNIT_OF_MEASURE_FIBERS = 93;
+    UNIT_OF_MEASURE_FLASK = 94;
+    UNIT_OF_MEASURE_FOOTLOCKER = 95;
+    UNIT_OF_MEASURE_OUNCES_FLUID_VOLUME = 96;
+    UNIT_OF_MEASURE_FILMPACK = 97;
+    UNIT_OF_MEASURE_FRAME = 98;
+    UNIT_OF_MEASURE_FEET_LENGTH = 99;
+    UNIT_OF_MEASURE_GRAM = 100;
+    UNIT_OF_MEASURE_USVOLUME = 101;
+    UNIT_OF_MEASURE_GAS_BOTTLE = 102;
+    UNIT_OF_MEASURE_GIQABECQUEREL = 103;
+    UNIT_OF_MEASURE_GIRDER = 104;
+    UNIT_OF_MEASURE_GROSS = 105;
+    UNIT_OF_MEASURE_GROSS_LINES = 106;
+    UNIT_OF_MEASURE_GROSS_VEHICLE_WEIGHT = 107;
+    UNIT_OF_MEASURE_GIRDERS_IN_BUNDLE_BUNCH_TRUSS = 108;
+    UNIT_OF_MEASURE_HOGSHEAD = 109;
+    UNIT_OF_MEASURE_HAMPER = 110;
+    UNIT_OF_MEASURE_HUNDREDS = 111;
+    UNIT_OF_MEASURE_HERTZ = 112;
+    UNIT_OF_MEASURE_INCH = 113;
+    UNIT_OF_MEASURE_INGOT = 114;
+    UNIT_OF_MEASURE_INTERNAL_REVENUE_CODE = 115;
+    UNIT_OF_MEASURE_INGOTS_IN_BUNDLE_BUNCH_TRUSS = 116;
+    UNIT_OF_MEASURE_JERRICAN_RECTANGULAR = 117;
+    UNIT_OF_MEASURE_JUG = 118;
+    UNIT_OF_MEASURE_JAR = 119;
+    UNIT_OF_MEASURE_JUTEBAG = 120;
+    UNIT_OF_MEASURE_NUMBER_OF_JEWELS = 121;
+    UNIT_OF_MEASURE_JERRICAN_CYLINDRICAL = 122;
+    UNIT_OF_MEASURE_ONE_THOUSAND = 123;
+    UNIT_OF_MEASURE_KILOCALORIES = 124;
+    UNIT_OF_MEASURE_KEG = 125;
+    UNIT_OF_MEASURE_ONE_THOUSAND_GRAMS_KILOGRAM = 126;
+    UNIT_OF_MEASURE_KILOHERTZ = 127;
+    UNIT_OF_MEASURE_KIT = 128;
+    UNIT_OF_MEASURE_KILOLITER = 129;
+    UNIT_OF_MEASURE_ONE_THOUSAND_METERS = 130;
+    UNIT_OF_MEASURE_ONE_THOUSAND_SQUARE_METERS = 131;
+    UNIT_OF_MEASURE_ONE_THOUSAND_CUBIC_METERS = 132;
+    UNIT_OF_MEASURE_KILONEWTONS = 133;
+    UNIT_OF_MEASURE_KILOPASCAL = 134;
+    UNIT_OF_MEASURE_ONE_THOUSAND_STANDARD_BRICK = 135;
+    UNIT_OF_MEASURE_KILOVOLT_AMPERES = 136;
+    UNIT_OF_MEASURE_KILOVOLT_AMPERES_REACTIVE = 137;
+    UNIT_OF_MEASURE_KILOWATTS = 138;
+    UNIT_OF_MEASURE_KILOWATT_HOURS = 139;
+    UNIT_OF_MEASURE_LITER = 140;
+    UNIT_OF_MEASURE_POUNDS_WEIGHT_AVDP = 141;
+    UNIT_OF_MEASURE_LOG = 142;
+    UNIT_OF_MEASURE_LINEAR = 143;
+    UNIT_OF_MEASURE_LINEAR_METERS = 144;
+    UNIT_OF_MEASURE_LOGS_IN_BUNDLE_BUNCH_TRUSS = 145;
+    UNIT_OF_MEASURE_METERS = 146;
+    UNIT_OF_MEASURE_SQUARE_METERS = 147;
+    UNIT_OF_MEASURE_CUBIC_METERS = 148;
+    UNIT_OF_MEASURE_MULTI_PLY_BAG = 149;
+    UNIT_OF_MEASURE_MEGABECQUEREL = 150;
+    UNIT_OF_MEASURE_MILLICURIE = 151;
+    UNIT_OF_MEASURE_MICROGRAMS = 152;
+    UNIT_OF_MEASURE_MILLIGRAM = 153;
+    UNIT_OF_MEASURE_MEGAHERTZ = 154;
+    UNIT_OF_MEASURE_MILLILITER = 155;
+    UNIT_OF_MEASURE_MILK_CRATE = 156;
+    UNIT_OF_MEASURE_MILLIMETERS = 157;
+    UNIT_OF_MEASURE_SQUARE_MILLIMETERS = 158;
+    UNIT_OF_MEASURE_CUBIC_MILLIMETERS = 159;
+    UNIT_OF_MEASURE_MEGAPASCAL = 160;
+    UNIT_OF_MEASURE_MULTIWALL_SACK = 161;
+    UNIT_OF_MEASURE_MAT = 162;
+    UNIT_OF_MEASURE_MATCHBOX = 163;
+    UNIT_OF_MEASURE_UNPACKED_OR_UNPACKAGED = 164;
+    UNIT_OF_MEASURE_NUMBER = 165;
+    UNIT_OF_MEASURE_NEST = 166;
+    UNIT_OF_MEASURE_NET = 167;
+    UNIT_OF_MEASURE_OZONE_DEPLETION_EQUIVALENT = 168;
+    UNIT_OF_MEASURE_OUNCES_WEIGHT_AVDP = 169;
+    UNIT_OF_MEASURE_PACKET = 170;
+    UNIT_OF_MEASURE_PALLET = 171;
+    UNIT_OF_MEASURE_PARCEL = 172;
+    UNIT_OF_MEASURE_PIECES = 173;
+    UNIT_OF_MEASURE_PROOF = 174;
+    UNIT_OF_MEASURE_PROOF_GALLON = 175;
+    UNIT_OF_MEASURE_PROOF_LITER = 176;
+    UNIT_OF_MEASURE_PLATE = 177;
+    UNIT_OF_MEASURE_PITCHER = 178;
+    UNIT_OF_MEASURE_PIPE = 179;
+    UNIT_OF_MEASURE_PACK = 180;
+    UNIT_OF_MEASURE_PACKAGE = 181;
+    UNIT_OF_MEASURE_PAIL = 182;
+    UNIT_OF_MEASURE_PLANK = 183;
+    UNIT_OF_MEASURE_PROTEIN_NITROGEN_UNITS = 184;
+    UNIT_OF_MEASURE_POUCH = 185;
+    UNIT_OF_MEASURE_PAIRS = 186;
+    UNIT_OF_MEASURE_POT = 187;
+    UNIT_OF_MEASURE_PINTS_LIQUID_US_VOLUME = 188;
+    UNIT_OF_MEASURE_PLANT_UNIT = 189;
+    UNIT_OF_MEASURE_TRAY_OR_TRAY_PACK = 190;
+    UNIT_OF_MEASURE_PLATES_IN_BUNDLE_BUNCH_TRUSS = 191;
+    UNIT_OF_MEASURE_PLANKS_OR_PIPES_IN_BUNDLE_BUNCH_TRUSS = 192;
+    UNIT_OF_MEASURE_QUARTS_LIQUID_US_VOLUME = 193;
+    UNIT_OF_MEASURE_ROD = 194;
+    UNIT_OF_MEASURE_RING = 195;
+    UNIT_OF_MEASURE_REEL = 196;
+    UNIT_OF_MEASURE_ROLL = 197;
+    UNIT_OF_MEASURE_REVOLUTIONS_PER_MINUTE = 198;
+    UNIT_OF_MEASURE_REDNET = 199;
+    UNIT_OF_MEASURE_RODS_IN_BUNDLE_BUNCH_TRUSS = 200;
+    UNIT_OF_MEASURE_SACK = 201;
+    UNIT_OF_MEASURE_STANDARD_BRICK_EQUIVALENT = 202;
+    UNIT_OF_MEASURE_SHALLOW_CRATE = 203;
+    UNIT_OF_MEASURE_SPINDLE = 204;
+    UNIT_OF_MEASURE_SEA_CHEST = 205;
+    UNIT_OF_MEASURE_SQ_FEET_AREA = 206;
+    UNIT_OF_MEASURE_SACHET = 207;
+    UNIT_OF_MEASURE_SKELETON_CASE = 208;
+    UNIT_OF_MEASURE_SLIPSHEET = 209;
+    UNIT_OF_MEASURE_SHELF = 210;
+    UNIT_OF_MEASURE_SHEETMETAL = 211;
+    UNIT_OF_MEASURE_SQUARE = 212;
+    UNIT_OF_MEASURE_SQ_INCHES_AREA = 213;
+    UNIT_OF_MEASURE_STEM_TO_BE_DEPRECATED = 214;
+    UNIT_OF_MEASURE_SHEET = 215;
+    UNIT_OF_MEASURE_STEM = 216;
+    UNIT_OF_MEASURE_SHORT_TON_2000_LB_WEIGHT = 217;
+    UNIT_OF_MEASURE_SUITCASE = 218;
+    UNIT_OF_MEASURE_SUPPOSITORIES_DOSAGE = 219;
+    UNIT_OF_MEASURE_SHRINKWRAPPED = 220;
+    UNIT_OF_MEASURE_SYRINGE = 221;
+    UNIT_OF_MEASURE_SQ_YARDS_AREA = 222;
+    UNIT_OF_MEASURE_SHEETS_IN_BUNDLE_BUNCH_TRUSS = 223;
+    UNIT_OF_MEASURE_METRIC_TON = 224;
+    UNIT_OF_MEASURE_TABLETS_DOSAGE = 225;
+    UNIT_OF_MEASURE_TUB = 226;
+    UNIT_OF_MEASURE_TEA_CHEST = 227;
+    UNIT_OF_MEASURE_TUBE_COLLAPSIBLE = 228;
+    UNIT_OF_MEASURE_TANK_RECTANGULAR = 229;
+    UNIT_OF_MEASURE_TIN = 230;
+    UNIT_OF_MEASURE_TUN = 231;
+    UNIT_OF_MEASURE_LONG_TON = 232;
+    UNIT_OF_MEASURE_OUNCESTROYAPOTHWGT = 233;
+    UNIT_OF_MEASURE_TRUNK = 234;
+    UNIT_OF_MEASURE_TRUSS = 235;
+    UNIT_OF_MEASURE_TUBE = 236;
+    UNIT_OF_MEASURE_TOWER = 237;
+    UNIT_OF_MEASURE_TANK_CYLINDRICAL = 238;
+    UNIT_OF_MEASURE_TUBES_IN_BUNDLE_BUNCH_TRUSS = 239;
+    UNIT_OF_MEASURE_VOLTS = 240;
+    UNIT_OF_MEASURE_VAT = 241;
+    UNIT_OF_MEASURE_BULK_GAS_AT_1031_MBAR_AND_15_DEGREES_CELSIUS = 242;
+    UNIT_OF_MEASURE_VIAL = 243;
+    UNIT_OF_MEASURE_BULK_LIQUID = 244;
+    UNIT_OF_MEASURE_BULK_SOLID_LARGE_PARTICLES_NODULES = 245;
+    UNIT_OF_MEASURE_VACUUM_PACKED = 246;
+    UNIT_OF_MEASURE_BULK_LIQUIFIED_GAS_AT_NORMAL_TEMPERATURE = 247;
+    UNIT_OF_MEASURE_BULK_SOLID_GRANULAR_PARTICLES_GRAINS = 248;
+    UNIT_OF_MEASURE_BULK_SOLID_FINE_PARTICLES_POWDERS = 249;
+    UNIT_OF_MEASURE_WATTS = 250;
+    UNIT_OF_MEASURE_WICKER_BOTTLE = 251;
+    UNIT_OF_MEASURE_WINE_GALLON = 252;
+    UNIT_OF_MEASURE_WINE_LITER = 253;
+    UNIT_OF_MEASURE_WEIGHT = 254;
+    UNIT_OF_MEASURE_YARDS_LENGTH = 255;
+  }
+  // The unit for the estimated_weight field.
+  enum WeightUnit {
+    WEIGHT_UNIT_INVALID = 0;
+    WEIGHT_UNIT_KILOGRAM = 1;
+    WEIGHT_UNIT_POUND = 2;
+  }
+}
+
+// Shipment bill number.
+message BillNumber {
+  oneof bill_number {
+    string ocean_bill_of_lading_number = 1;
+    string house_bill_of_lading_number = 2;
+  }
+}
+
+// Reference identifier.
+message ReferenceIdentifier {
+  oneof identifier {
+    string us_cbp_entry_number = 1;
+    string carnet_issuing_country_code_and_carnet_number = 2;
+    string master_bill_of_lading_number = 3;
+    string bond_reference_number = 4;
+    string surety_code = 5;
+    string user_defined_reference_number = 6;
+    string full_name_of_isf_filer = 7;
+  }
+}
+
+// An ISF entity – e.g. manufacturer, selling party, etc.
+message Entity {
+  // The name of the entity.
+  string name = 1;
+  // The type of entity.
+  EntityType entity_type = 2;
+  // The type of identifier in the entity_identifier field.
+  oneof entity_identifier {
+    string employer_identification_number = 3;
+    string cbp_assigned_number = 4;
+    string cbp_encrypted_consignee_id = 5;
+    SocialSecurityCard social_security_card = 6;
+    string duns_number = 7;
+    string dns_plus_4_number = 8;
+    string firms_code = 9;
+    Passport passport = 10;
+    string uncategorized_tax_id = 11;
+  }
+  repeated EntityAddress address = 12;
+  EntityGeographicArea geographic_area = 13;
+  // Note that this also exists on the root-level ISF object. Only relevant for manufacturers.
+  repeated HarmonizedTariffSchedule harmonized_tariff_schedule = 14;
+  // Type of entity.
+  enum EntityType {
+    ENTITY_TYPE_INVALID = 0;
+    ENTITY_TYPE_MANUFACTURER_SUPPLIER = 1;
+    ENTITY_TYPE_SELLING_PARTY = 2;
+    ENTITY_TYPE_BUYING_PARTY = 3;
+    ENTITY_TYPE_SHIP_TO_PARTY = 4;
+    ENTITY_TYPE_SCHEDULED_CONTAINER_STUFFING_LOCATION = 5;
+    ENTITY_TYPE_CONSOLIDATOR = 6;
+    ENTITY_TYPE_BOOKING_PARTY = 7;
+    ENTITY_TYPE_CONSIGNEE = 8;
+    ENTITY_TYPE_IMPORTER_OF_RECORD = 9;
+  }
+  // Entity Address.
+  message EntityAddress {
+    AddressComponent address_component_1 = 1;
+    AddressComponent address_component_2 = 2;
+    // An address component.
+    message AddressComponent {
+      oneof address_component {
+        string street_number = 1;
+        string street_name = 2;
+        string po_box_number = 3;
+        string building_name = 4;
+        string apartment_number = 5;
+        string suite_number = 6;
+        string unstructured_street_address = 7;
+        string association_name = 8;
+        string pier = 9;
+        string wing = 10;
+        string floor_number = 11;
+        string room = 12;
+        string unit = 13;
+        string cross_street = 14;
+        string building_number = 15;
+      }
+    }
+  }
+  // Entity Geographic Area.
+  message EntityGeographicArea {
+    // The city portion of the address where the entity is located.
+    string city_name = 1;
+    // ISO subdivision code - https://service.unece.org/trade/locode/2022-1%20SubdivisionCodes.htm
+    string country_sub_entity_code = 2;
+    // Postal code (i.e. ZIP code in USA.)
+    string postal_code = 3;
+    // The International Standards Organization (ISO) country code representing the country portion of the address.
+    string country_code = 4;
+  }
+}
+
+// Harmonized Tariff Schedule.
+message HarmonizedTariffSchedule {
+  string harmonized_number = 1;
+  string country_of_origin = 2;
+}
+
+// FROB Shipment Information.
+message FrobShipmentInformation {
+  LocationType foreign_port_of_unlading_type = 1;
+  string foreign_port_of_unlading = 2;
+  LocationType place_of_delivery_type = 3;
+  string place_of_delivery = 4;
+  // Type of location code.
+  enum LocationType {
+    LOCATION_TYPE_INVALID = 0;
+    LOCATION_TYPE_SCHEDULE_K = 1;
+    LOCATION_TYPE_UNLOC = 2;
+  }
+}
+
+// The social security card of an importer or entity.
+message SocialSecurityCard {
+  string date_of_birth = 1;
+  string social_security_number = 2;
+}
+
+// The passport of an importer or entity.
+message Passport {
+  string passport_number = 1;
+  // Two-character country of issuance code.
+  string country_of_issuance = 2;
+  string date_of_birth = 3;
+}

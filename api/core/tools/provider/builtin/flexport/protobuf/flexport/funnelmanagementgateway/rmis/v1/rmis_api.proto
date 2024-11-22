@@ -1,0 +1,84 @@
+// TEAM: trucking_carriers
+
+syntax = "proto3";
+
+package flexport.funnelmanagementgateway.rmis.v1;
+
+import "flexport/funnelmanagementgateway/rmis/v1/rmis.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RmisApiProto";
+option java_package = "com.flexport.funnelmanagementgateway.api.rmis.v1";
+option ruby_package = "Flexport::FunnelManagementGateway::Api::Rmis::V1";
+
+// RMIS API Service.
+service RmisAPI {
+  // Get a carrier from RMIS.
+  rpc GetCarrier(RmisAPIGetCarrierRequest) returns (RmisAPIGetCarrierResponse);
+  // Attach or detach a carrier from our RMIS account.
+  rpc AttachCarrier(RmisAPIAttachCarrierRequest) returns (RmisAPIAttachCarrierResponse);
+  // Gets the contents of documents linked to a carrier.
+  rpc GetCarrierDocument(RmisAPIGetCarrierDocumentRequest) returns (RmisAPIGetCarrierDocumentResponse);
+  // Fetch carriers with updates.
+  rpc FetchCarriersWithUpdates(RmisAPIFetchCarriersWithUpdatesRequest) returns (RmisAPIFetchCarriersWithUpdatesResponse);
+  // Clear delta API of updates that have been processed.
+  rpc ClearCarriersWithUpdates(RmisAPIClearCarriersWithUpdatesRequest) returns (RmisAPIClearCarriersWithUpdatesResponse);
+}
+
+message RmisAPIGetCarrierRequest {
+  RmisCarrierQueryType query_type = 1;
+  string query_id = 2;
+}
+
+message RmisAPIGetCarrierResponse {
+  string data = 1;
+}
+
+message RmisAPIAttachCarrierRequest {
+  RmisCarrierQueryType query_type = 1;
+  string query_id = 2;
+  RmisCarrierAttachMode attach_mode = 3;
+}
+
+message RmisAPIAttachCarrierResponse {
+  string data = 1;
+}
+
+message RmisAPIGetCarrierDocumentRequest {
+  string rmis_insured_id = 1;
+  RmisCarrierDocumentType document_type = 2;
+  string document_id = 3;
+}
+
+message RmisAPIGetCarrierDocumentResponse {
+  string data = 1;
+}
+
+message RmisAPIFetchCarriersWithUpdatesRequest {
+  int32 max_results = 1;
+}
+
+message RmisAPIFetchCarriersWithUpdatesResponse {
+  // List of Insured IDs for carriers with updates.
+  repeated string insd_ids = 1;
+  // Timestamp returned from RMIS used in the clear
+  string time_stamp_string = 2;
+}
+
+message RmisAPIClearCarriersWithUpdatesRequest {
+  // List of Insured IDs for carriers with updates that have been processed.
+  repeated string insd_ids = 1;
+  // Timestamp returned from RMIS in fetch.
+  // Clears all updates from the delta API up to and including this timestamp.
+  string time_stamp_string = 2;
+}
+
+message RmisAPIClearCarriersWithUpdatesResponse {
+  repeated ClearedCarrierStatus cleared_carrier_statuses = 1;
+}
+
+message ClearedCarrierStatus {
+  string insd_id = 1;
+  google.protobuf.BoolValue success = 2;
+}

@@ -1,0 +1,55 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.exceptionmanagement.grpc.monolithexception.v1beta1;
+
+import "flexport/exceptionmanagement/types/v1beta1/operational_exception.proto";
+import "flexport/exceptionmanagement/types/v1beta1/operational_exception_type.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MonolithExceptionApiProto";
+option java_package = "com.flexport.exceptionmanagement.grpc.monolithexception.v1beta1";
+option ruby_package = "Flexport::ExceptionManagement::Grpc::MonolithException::V1Beta1";
+
+// An API for fetching DomainAgnostic related data to NIS
+service MonolithExceptionAPI {
+  // Get the first quote accepted at times for a list of shipment fids.
+  rpc SubstituteShipmentInfo(SubstituteShipmentInfoRequest) returns (SubstituteShipmentInfoResponse);
+
+  rpc VisibleParties(VisiblePartiesRequest) returns (VisiblePartiesResponse);
+
+  rpc ExceptionEventCallback(ExceptionEventCallbackRequest) returns (ExceptionEventCallbackResponse);
+}
+
+// The request containing a shipment fid and a list of string templates.
+message SubstituteShipmentInfoRequest {
+  string shipment_fid = 1;
+  repeated string templates = 2;
+}
+
+// The response containing a list of substituted context data
+message SubstituteShipmentInfoResponse {
+  repeated string contents = 1;
+}
+
+message VisiblePartiesRequest {
+  // supported: flexport, client, shipper, consignee, trucker, origin_agent, destination_agent, warehouse
+  repeated string slugs = 1;
+  string shipment_fid = 2;
+}
+
+message VisiblePartiesResponse {
+  repeated string company_fids = 1;
+}
+
+message ExceptionEventCallbackRequest {
+  oneof event {
+    flexport.exceptionmanagement.types.v1beta1.ExtendedOperationalException created_exception = 1;
+    flexport.exceptionmanagement.types.v1beta1.ExtendedOperationalException updated_exception = 2;
+    flexport.exceptionmanagement.types.v1beta1.OperationalExceptionType created_exception_type = 3;
+    flexport.exceptionmanagement.types.v1beta1.OperationalExceptionType updated_exception_type = 4;
+  }
+}
+
+message ExceptionEventCallbackResponse {}

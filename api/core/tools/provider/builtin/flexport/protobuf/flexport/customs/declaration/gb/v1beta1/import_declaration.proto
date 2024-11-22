@@ -1,0 +1,387 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.declaration.gb.v1beta1;
+
+import "flexport/customs/declaration/gb/v1beta1/addition_deduction.proto";
+import "flexport/customs/declaration/gb/v1beta1/detail_additional_information.proto";
+import "flexport/customs/declaration/gb/v1beta1/import_declaration_item.proto";
+import "flexport/customs/declaration/gb/v1beta1/involved_party.proto";
+import "flexport/customs/declaration/gb/v1beta1/previous_document.proto";
+import "flexport/os/v1/types/incoterm/v1/incoterm.proto";
+import "google/protobuf/wrappers.proto";
+import "google/type/money.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.declaration.gb.v1beta1";
+option ruby_package = "Flexport::Customs::Declaration::GB::V1Beta1";
+
+// ImportDeclaration represents the set of required data elements for a declaration
+// in CDS for importing into the UK.
+//
+// For more information reference the CDS Declaration Completion Instructions for Imports:
+// https://www.gov.uk/government/publications/cds-uk-trade-tariff-volume-3-import-declaration-completion-guide
+//
+// Next tag number: 63.
+message ImportDeclaration {
+  reserved 1 to 10; // Reserved for future use.
+
+  enum Category {
+    CATEGORY_INVALID = 0;
+
+    // Declaration for release for free circulation and special procedure: specific use (end use).
+    CATEGORY_H1 = 1;
+
+    // Special procedure: storage (customs warehousing).
+    CATEGORY_H2 = 2;
+
+    // Special procedure: specific use (temporary admission).
+    CATEGORY_H3 = 3;
+
+    // Special procedure: processing (inward processing).
+    CATEGORY_H4 = 4;
+
+    // Declaration for the introduction of goods in the context of trade
+    // with Special Fiscal Territories or Territories with which the EU has formed a Customs Union.
+    CATEGORY_H5 = 5;
+
+    // Customs declaration for release for free circulation in respect of a consignment which benefits
+    // from a relief from import duty in accordance with Article 23(1) or Article 25(1) of Regulation (EC) No 1186/2009.
+    CATEGORY_H7 = 6;
+
+    // Import simplified declaration with regular use (DE 1/2 codes C&F).
+    CATEGORY_I1CF = 7;
+
+    // Import simplified declaration on an occasional basis (DE 1/2 codes B&E).
+    CATEGORY_I1BE = 8;
+  }
+
+  Category category = 11;
+
+  // A declaration consist of a header and a collection of items.
+  // Items describes the individual items of this declaration.
+  repeated ImportDeclarationItem items = 12;
+
+  /*
+     Group 1: Message Information (including Procedure Codes).
+     https://www.gov.uk/government/publications/cds-uk-trade-tariff-volume-3-import-declaration-completion-guide/group-1-message-information-including-procedure-codes
+  */
+
+  enum Type {
+    TYPE_INVALID = 0;
+
+    // For trade with countries and territories situated outside of the Customs Territory of the Union.
+    // For placing non-Union goods under a customs procedure in the context of trade between Member States.
+    TYPE_IM = 1;
+
+    // All the goods being declared are from a Special Fiscal Territory of the EU or a territory with which the EU has formed a Customs Union.
+    TYPE_CO = 2;
+  }
+
+  Type type = 13; // [Data Element 1/1]
+
+  // Used to indicate both the type of declaration and if the goods have arrived or not at the goods location.
+  enum AdditionalType {
+    ADDITIONAL_TYPE_INVALID = 0;
+
+    // Standard customs declaration.
+    // Goods arrived.
+    ADDITIONAL_TYPE_A = 1;
+
+    // Simplified declaration on an occasional basis.
+    // Goods arrived.
+    ADDITIONAL_TYPE_B = 2;
+
+    // Simplified declaration with regular use (pre-authorised).
+    // Goods arrived.
+    ADDITIONAL_TYPE_C = 3;
+
+    // Standard customs declaration.
+    // Goods not arrived (pre-lodged).
+    ADDITIONAL_TYPE_D = 4;
+
+    // Simplified declaration on an occasional basis.
+    // Goods not arrived (pre-lodged).
+    ADDITIONAL_TYPE_E = 5;
+
+    // Simplified declaration with regular use (pre-authorised).
+    // Goods not arrived (pre-lodged).
+    ADDITIONAL_TYPE_F = 6;
+
+    // Supplementary declaration covered by types C and F.
+    // Goods arrived.
+    ADDITIONAL_TYPE_Y = 7;
+
+    // Supplementary declarations for Entry in Declarants Records.
+    // Goods arrived.
+    ADDITIONAL_TYPE_Z = 8;
+  }
+
+  // [Data Element 1/2]
+  AdditionalType additional_type = 14;
+
+  // [Data Element 1/8]
+  string signature = 15;
+
+  // [Data Element 1/9]
+  uint32 total_number_of_items = 16;
+
+  /*
+     Group 2: References of Messages, Document, Certificates and Authorisations.
+     https://www.gov.uk/government/publications/cds-uk-trade-tariff-volume-3-import-declaration-completion-guide/group-2-references-of-messages-document-certificates-and-authorisations
+  */
+
+  // References to previous documents.
+  // This Data Element is present both on the header and individual line items.
+  // [Data Element 2/1]
+  repeated PreviousDocument previous_documents = 17;
+
+  // Addition Information [Data Element 2/2].
+  DetailAdditionalInformation additional_information = 18;
+
+  // Unique Consignment Reference. String with max 35 alphanumerics.
+  // [Data Element 2/4]
+  string ucr = 19;
+
+  // Client reference or flex-id. String with max 22 alphanumerics.
+  // [Data Element 2/5]
+  string lrn = 20;
+
+  // Deferment Account Numbers (DANs) of the deferment accounts to be used to:
+  // Defer the payment of the customs duty and other charges (for example, excise duty), or;
+  // Provide a deferred deposit.
+  //
+  // All the duty and tax may be deferred to the importer’s, declarant’s or representative’s account, or alternatively,
+  // the VAT and non-VAT charges can be split between the two different deferment accounts.
+  //
+  // [Data Element 2/6]
+  string first_deferred_payment_accounts = 21;
+  // [Data Element 2/6]
+  string second_deferred_payment_account = 22;
+
+  // Reserved for future use: Identification of Warehouse.
+  // [Data Element 2/7].
+  reserved 23;
+
+  /*
+     Group 3: Parties
+     https://www.gov.uk/government/publications/cds-uk-trade-tariff-volume-3-import-declaration-completion-guide/group-3-parties
+  */
+
+  // [Data Element 3/1]
+  optional InvolvedParty exporter = 24;
+
+  // [Data Element 3/2]
+  google.protobuf.StringValue exporter_eori = 25;
+
+  // [Data Element 3/15]
+  optional InvolvedParty importer = 26;
+
+  // [Data Element 3/16]
+  google.protobuf.StringValue importer_eori = 27;
+
+  // [Data Element 3/17]
+  optional InvolvedParty declarant = 28;
+
+  // [Data Element 3/18]
+  google.protobuf.StringValue declarant_eori = 29;
+
+  // [Data Element 3/19]
+  optional InvolvedParty representative = 30;
+
+  // [Data Element 3/20]
+  google.protobuf.StringValue representative_eori = 31;
+
+  enum RepresentativeStatusCode {
+    REPRESENTATIVE_STATUS_CODE_INVALID = 0;
+    REPRESENTATIVE_STATUS_CODE_DIRECT = 2;
+    REPRESENTATIVE_STATUS_CODE_INDIRECT = 3;
+  }
+
+  // [Data Element 3/21]
+  RepresentativeStatusCode representative_status_code = 32;
+
+  // [Data Element 3/24]
+  optional InvolvedParty seller = 33;
+
+  // [Data Element 3/25]
+  google.protobuf.StringValue seller_eori = 34;
+
+  // [Data Element 3/26]
+  optional InvolvedParty buyer = 35;
+
+  // [Data Element 3/27]
+  google.protobuf.StringValue buyer_eori = 36;
+
+  // [Data Element 3/37]
+  repeated AdditionalSupplyChainActorIdNumber additional_supply_chain_actor_ids = 37;
+
+  // [Date Element 3/39]
+  repeated HolderAuthorisationIdNumber holder_authorisation_ids = 38;
+
+  // [Date Element 3/40]
+  optional AdditionalFiscalReferencesIdNumber additional_fiscal_id = 39;
+
+  /*
+     Group 4: Valuation Information and Taxes
+     https://www.gov.uk/government/publications/cds-uk-trade-tariff-volume-3-import-declaration-completion-guide/group-4-valuation-information-and-taxes
+  */
+
+  // [Data Element 4/1]
+  flexport.os.v1.types.incoterm.v1.Incoterm delivery_terms = 40;
+
+  // [Data Element 4/9]
+  repeated AdditionDeduction additions_deductions = 41;
+
+  // [Data Element 4/10] [Data Element 4/11]
+  google.type.Money total_amount_invoiced = 42;
+
+  // Reserved for future use: Exchange Rate.
+  // [Data Element 4/15]
+  reserved 43;
+
+  /*
+     Group 5: Dates, Times, Periods, Places, Countries and Regions.
+     https://www.gov.uk/government/publications/cds-uk-trade-tariff-volume-3-import-declaration-completion-guide/group-5-dates-times-periods-places-countries-and-regions
+  */
+
+  // [Data Element 5/8]
+  string destination_country_code = 44;
+
+  // [Data Element 5/14]
+  string dispatch_country_code = 45;
+
+  // Reserved due deprecation of string-based location_of_goods.
+  // Use location_of_goods instead.
+  reserved 46;
+
+  // [Data Element 5/23]
+  // The location where the goods may be examined. This location shall be precise enough to allow customs to carry out the physical control of the goods.
+  message LocationOfGoods {
+    string country_code = 1;
+
+    enum Type {
+      TYPE_INVALID = 0;
+      TYPE_A = 1; // Designated location.
+      TYPE_B = 2; // Authorized place.
+      TYPE_C = 3; // Approved place.
+      TYPE_D = 4; // Other.
+    }
+
+    Type type = 2;
+
+    enum QualifierOfIdentification {
+      QUALIFIER_OF_IDENTIFICATION_INVALID = 0;
+      QUALIFIER_OF_IDENTIFICATION_T = 1; // Postcode address.
+      QUALIFIER_OF_IDENTIFICATION_U = 2; // UN/LOCODE.
+      QUALIFIER_OF_IDENTIFICATION_V = 3; // Customs office identifier.
+      QUALIFIER_OF_IDENTIFICATION_W = 4; // GNSS coordinates.
+      QUALIFIER_OF_IDENTIFICATION_X = 5; // EORI number.
+      QUALIFIER_OF_IDENTIFICATION_Y = 6; // Authorisation number.
+      QUALIFIER_OF_IDENTIFICATION_Z = 7; // Address.
+    }
+
+    QualifierOfIdentification qualifier_of_identification = 3;
+
+    string identification = 4;
+    string additional_identification = 5;
+  }
+
+  LocationOfGoods location_of_goods = 61;
+
+  // Reserved for future use: Place of Loading.
+  // [Data Element 5/21]
+  reserved 47;
+
+  // Reserved for future use: Location of Goods.
+  // [Data Element 5/23]
+  reserved 48;
+
+  // Reserved for future use: Customs Office of Presentation.
+  // [Data Element 5/26]
+  reserved 49;
+
+  // [Data Element 5/27]
+  google.protobuf.StringValue supervising_customs_office = 50;
+
+  /*
+     Group 6: Goods Identification
+     https://www.gov.uk/government/publications/cds-uk-trade-tariff-volume-3-import-declaration-completion-guide/group-6-goods-identification
+  */
+
+  // The gross mass, expressed in kilograms.
+  // [Data Element 6/5]
+  google.protobuf.FloatValue total_gross_mass = 62;
+
+  // [Data Element 6/18]
+  uint32 total_packages = 51;
+
+  /*
+     Group 7: Transport Information (Modes, Means and Equipment)
+     https://www.gov.uk/government/publications/cds-uk-trade-tariff-volume-3-import-declaration-completion-guide/group-7-transport-information-modes-means-and-equipment
+  */
+
+  // [Data Element 7/2]
+  google.protobuf.BoolValue transported_in_container = 52;
+
+  enum ModeOfTransport {
+    MODE_OF_TRANSPORT_INVALID = 0;
+    MODE_OF_TRANSPORT_MARITIME = 1;
+    MODE_OF_TRANSPORT_RAIL = 2;
+    MODE_OF_TRANSPORT_ROAD = 3;
+    MODE_OF_TRANSPORT_AIR = 4;
+    MODE_OF_TRANSPORT_POSTAL = 5;
+    MODE_OF_TRANSPORT_RORO = 6;
+    MODE_OF_TRANSPORT_FIXED_INSTALLATIONS = 7;
+    MODE_OF_TRANSPORT_INLAND_WATERWAY = 8;
+    MODE_OF_TRANSPORT_UNKNOWN = 9;
+  }
+
+  // The relevant Union code from the list below for the mode of transport used to arrive at the EU external border.
+  // [Data Element 7/4]
+  ModeOfTransport mode_of_transport_border = 53;
+
+  // [Data Element 7/5]
+  optional ModeOfTransport mode_of_transport_inland = 54;
+
+  message IdentityOfMeansOfTransport {
+    enum Type {
+      TYPE_INVALID = 0;
+      TYPE_IMO_SHIP_ID = 10;
+      TYPE_VESSEL_NAME = 11;
+      TYPE_WAGON_NUMBER = 20;
+      TYPE_ROAD_VEHICLE_REGISTRATION = 30;
+      TYPE_IATA_FLIGHT_NUMBER = 40;
+      TYPE_AIRCRAFT_REGISTRATION = 41;
+      TYPE_ENI_CODE = 80;
+      TYPE_NAME_INLAND_WATERWAY_VESSEL = 81;
+    }
+
+    Type type = 1;
+    string id = 2;
+  }
+
+  // [Data Element 7/9]
+  IdentityOfMeansOfTransport identity_means_of_transport = 55;
+
+  // [Data Element 7/10]
+  repeated string container_id_numbers = 56;
+
+  // Nationality of active means of transport crossing the border.
+  // [Data Element 7/15]
+  string transport_means_country_code = 57;
+
+  /*
+     Group 8: Other Data Elements (Statistical Data, Guarantees and Tariff Related Data)
+     https://www.gov.uk/government/publications/cds-uk-trade-tariff-volume-3-import-declaration-completion-guide/group-8-other-data-elements-statistical-data-guarantees-and-tariff-related-data
+  */
+
+  // [Data Element 8/2]
+  repeated string guarantee_type = 58;
+
+  // [Data Element 8/3]
+  repeated string guarantee_reference = 59;
+
+  // [Data Element 8/5]
+  google.protobuf.StringValue nature_of_transaction = 60;
+}

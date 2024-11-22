@@ -1,0 +1,18 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.booking.userdefinedmetadata.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "UserDefinedMetadataProto";
+option java_package = "com.flexport.booking.userdefinedmetadata.v1beta1";
+option ruby_package = "Flexport::Booking::UserDefinedMetadata::V1Beta1";
+
+// User defined metadata for booking.
+message UserDefinedMetadata {
+  // The label for the metadata
+  string label = 1;
+  // The values for the metadata
+  repeated string values = 2;
+}

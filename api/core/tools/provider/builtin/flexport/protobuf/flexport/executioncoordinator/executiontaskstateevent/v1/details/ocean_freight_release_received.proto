@@ -1,0 +1,24 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanFreightReleaseReceivedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+// A freight release has been received, signifying that freight charges have been paid for. The average time
+// it takes for ocean carriers to share releases varies, but it must be available at least 1 day before the ETA
+message OceanFreightReleaseReceived {
+  string document_fid = 1;
+  // The Master Bill Of Lading corresponding to the freight release
+  string master_bill_of_lading_fid = 2;
+  string container_fid = 3;
+  // The date time the container was released from carrier.
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime released_date_time = 4;
+  string address_fid = 5;
+}

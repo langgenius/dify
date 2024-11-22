@@ -1,0 +1,49 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.authorization.domainmapping.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DomainMappingEventsProto";
+option java_package = "com.flexport.authorization.domainmapping.v1beta1";
+option ruby_package = "Flexport::Authorization::DomainMapping::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+
+// Domain mappings are mappings from one resource to another resource that specifies
+// their relationship, e.g. User (Actor) -belongs to-> Company.
+//
+// Domain mapping slug conventions:
+// Slugs are used to specify the type of the domain mapping. These follow the following format:
+// <PUBLISHING SERVICE>:<FROM RESOURCE TYPE>:<RELATIONSHIP TYPE>:<TO RESOURCE TYPE>:<VERSION>
+// Examples:
+// - monolith:user:is_employee_of:company:v1
+// - monolith:company:has_a:company_entity:v1
+// - execution_coordinator:execution_order:has_consignee:company_entity:v1beta1
+// - execution_coordinator:execution_order:is_associated_with:shipment:v1beta1
+//
+// Note: All parts are camel_case
+
+// This event is published immediately after a domain mapping is added.
+message DomainMappingAdded {
+  string from_fid = 1;
+  string to_fid = 2;
+  string slug = 3;
+  google.protobuf.Timestamp expired_time = 4;
+}
+
+// This event is published immediately after a domain mapping is removed.
+message DomainMappingRemoved {
+  string from_fid = 1;
+  string to_fid = 2;
+  string slug = 3;
+}
+
+// This event should be published once every 24 hours for every domain mapping that exists.
+message DomainMappingSnapshotted {
+  string from_fid = 1;
+  string to_fid = 2;
+  string slug = 3;
+  google.protobuf.Timestamp expired_time = 4;
+}

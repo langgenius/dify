@@ -1,0 +1,17 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.payments.prepayment.prepaymentclosed.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PrepaymentClosedProto";
+option java_package = "com.flexport.payments.prepayment.prepaymentclosed.v1";
+option ruby_package = "Flexport::Payments::Prepayment::PrepaymentClosed::V1";
+
+import "flexport/payments/prepayment/v1/prepayment.proto";
+
+// A prepayment was closed.
+message PrepaymentClosed {
+  flexport.payments.prepayment.v1.Prepayment prepayment = 1;
+}

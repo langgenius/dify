@@ -1,0 +1,45 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.filingservice.filingorder.v1beta1;
+
+import "flexport/customs/filingservice/filingorder/v1beta1/enums.proto";
+import "flexport/customs/filingservice/filingorder/v1beta1/filing_service.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FilingOrderProto";
+option java_package = "com.flexport.customs.filingservice.filingorder.v1beta1";
+option ruby_package = "Flexport::Customs::FilingService::FilingOrder::V1Beta1";
+
+// A filing order represents the customs order placed by the customer.
+message FilingOrder {
+  string fid = 1;
+  repeated string external_refs = 2;
+  string client_fid = 3;
+  string shipment_fid = 4;
+  ModeOfTransport mode_of_transport = 5;
+  optional google.protobuf.Timestamp estimated_time_of_departure = 6;
+  string origin_port_fid = 7;
+  string destination_port_fid = 8;
+  OrderStatus status = 9;
+  bool is_deleted = 10;
+  bool export_clearance_service = 11;
+  bool pre_departure_authorization_service = 12;
+  bool import_customs_clearance_service = 13;
+  bool inbond_transfer_service = 14;
+  optional google.protobuf.Timestamp estimated_time_of_arrival = 15;
+  optional string mbl_number = 16;
+  repeated string hbl_numbers = 17;
+  bool commercial_invoice_digitization_service = 18;
+  bool product_classification_service = 19;
+
+  repeated FilingService filing_services = 32;
+
+  google.protobuf.Timestamp created_at = 20;
+  google.protobuf.Timestamp updated_at = 21;
+  // The version of the filing order.
+  google.protobuf.Int64Value generation = 22;
+}

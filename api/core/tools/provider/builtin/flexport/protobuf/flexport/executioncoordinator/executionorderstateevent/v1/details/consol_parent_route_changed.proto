@@ -1,0 +1,21 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ConsolParentRouteChangedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "flexport/executioncoordinator/types/routeshape/v1/route_shape.proto";
+
+// When the route of a consol parent shipment has been updated, we will publish the route
+// changes of consol related shipment nodes:
+// (node) -> (consol_node) -> (node) -> (deconsol_node) -> (node)
+//           |           consol parent route          |.
+message ConsolParentRouteChanged {
+  flexport.executioncoordinator.types.routeshape.v1.RouteShape old_route_shape = 1;
+  flexport.executioncoordinator.types.routeshape.v1.RouteShape new_route_shape = 2;
+}

@@ -1,0 +1,180 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.forwardingshippingdoc.housebilloflading.v1beta1;
+
+import "flexport/forwardingshippingdoc/housebilloflading/v1beta1/house_bill_of_lading.proto";
+import "google/protobuf/timestamp.proto";
+import "google/type/date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "HouseBillOfLadingApiProto";
+option java_package = "com.flexport.forwardingshippingdoc.housebilloflading.v1beta1";
+option ruby_package = "Flexport::ForwardingShippingDoc::HouseBillOfLading::V1Beta1";
+
+service HouseBillOfLadingAPI {
+  rpc GetHouseBillOfLadingByFid(GetHouseBillOfLadingByFidRequest) returns (GetHouseBillOfLadingByFidResponse);
+
+  rpc GetHouseBillOfLadingsByShipmentFid(GetHouseBillOfLadingsByShipmentFidRequest) returns (GetHouseBillOfLadingsByShipmentFidResponse);
+
+  rpc UpdateHouseBillOfLading(UpdateHouseBillOfLadingRequest) returns (UpdateHouseBillOfLadingResponse);
+
+  rpc CreateHouseBillOfLading(CreateHouseBillOfLadingRequest) returns (CreateHouseBillOfLadingResponse);
+
+  rpc DeleteHouseBillOfLading(DeleteHouseBillOfLadingRequest) returns (DeleteHouseBillOfLadingResponse);
+
+  rpc DuplicateHouseBillOfLading(DuplicateHouseBillOfLadingRequest) returns (DuplicateHouseBillOfLadingResponse);
+
+  rpc GenerateTelexReleaseDocument(GenerateTelexReleaseDocumentRequest) returns (GenerateTelexReleaseDocumentResponse);
+}
+
+message UpdateHouseBillOfLadingRequest {
+  string house_bill_of_lading_fid = 1;
+  string user_fid = 2;
+  HouseBillOfLadingChanges house_bill_of_lading_changes = 3;
+}
+
+message UpdateHouseBillOfLadingResponse {
+  flexport.forwardingshippingdoc.housebilloflading.v1beta1.HouseBillOfLading house_bill_of_lading = 1;
+}
+
+message GetHouseBillOfLadingByFidRequest {
+  string house_bill_of_lading_fid = 1;
+}
+
+message GetHouseBillOfLadingByFidResponse {
+  flexport.forwardingshippingdoc.housebilloflading.v1beta1.HouseBillOfLading house_bill_of_lading = 1;
+}
+
+message GetHouseBillOfLadingsByShipmentFidRequest {
+  string shipment_fid = 1;
+}
+
+message GetHouseBillOfLadingsByShipmentFidResponse {
+  repeated flexport.forwardingshippingdoc.housebilloflading.v1beta1.HouseBillOfLading house_bill_of_ladings = 1;
+}
+
+message CreateHouseBillOfLadingRequest {
+  string shipment_fid = 1;
+  string user_fid = 2;
+  string ams_reference_number = 3;
+  flexport.forwardingshippingdoc.housebilloflading.v1beta1.TransmissionMode transmission_mode = 4;
+  optional flexport.forwardingshippingdoc.housebilloflading.v1beta1.ReleaseMethod release_method = 5;
+}
+
+message CreateHouseBillOfLadingResponse {
+  flexport.forwardingshippingdoc.housebilloflading.v1beta1.HouseBillOfLading house_bill_of_lading = 1;
+}
+
+message DeleteHouseBillOfLadingRequest {
+  string house_bill_of_lading_fid = 1;
+  string user_fid = 2;
+  optional string reason = 3;
+  optional string additional_details = 4;
+}
+
+message DeleteHouseBillOfLadingResponse {}
+
+message DuplicateHouseBillOfLadingRequest {
+  string house_bill_of_lading_fid = 1;
+  string shipment_fid = 2;
+  string user_fid = 3;
+}
+
+message DuplicateHouseBillOfLadingResponse {
+  HouseBillOfLading house_bill_of_lading = 1;
+}
+
+message GenerateTelexReleaseDocumentRequest {
+  string house_bill_of_lading_fid = 1;
+  string user_fid = 2;
+}
+
+message GenerateTelexReleaseDocumentResponse {
+  string document_fid = 1;
+}
+
+message HouseBillOfLadingChanges {
+  // HBL owned data
+  optional string ams_reference_number = 1;
+  optional flexport.forwardingshippingdoc.housebilloflading.v1beta1.TransmissionMode transmission_mode = 2;
+  optional flexport.forwardingshippingdoc.housebilloflading.v1beta1.ReleaseMethod release_method = 3;
+  optional string agent_reference_number = 4;
+  optional flexport.forwardingshippingdoc.housebilloflading.v1beta1.FreightPaymentTerm freight_payment_term = 5;
+  optional string special_instructions = 6;
+
+  // RouteSchedule
+  optional RouteScheduleChanges route_schedule_changes = 7;
+
+  // Document
+  optional DocumentChanges document_changes = 8;
+
+  // Involved Parties
+  optional InvolvedPartyChanges involved_party_changes = 9;
+
+  // Cargo
+  optional CargoChanges cargo_changes = 10;
+
+  // Container Cargos
+  repeated ContainerCargoChanges container_cargo_changes = 11 [deprecated = true];
+  //  container_cargo_changes_wrapper is used to fully-overwrite container_assignments
+  //  If you don't want to update container_assignments, please unset this field
+  //  If you want to delete all existed container_assignments, please set container_assignment_wrapper to empty list
+  //  All in all, please include all container_assignment you want to keep or update in this field
+  optional ContainerCargoChangesWrapper container_cargo_changes_wrapper = 12;
+}
+
+message DocumentChanges {
+  optional string loi_for_telex_release_document_fid = 1;
+}
+
+message RouteScheduleChanges {
+  optional string port_of_loading_fid = 1;
+  optional string port_of_unloading_fid = 2;
+  optional string vessel_fid = 3;
+  optional string voyage_tracking_number = 4;
+  optional string carrier_fid = 5;
+  optional string place_of_pickup = 6;
+  optional string pre_carriage_by = 7;
+  optional string free_trade_zone_number = 8;
+  optional google.protobuf.Timestamp laden_on_board_at = 9;
+  optional string first_domestic_port_for_ams_fid = 10;
+  optional string last_foreign_port_for_ams_fid = 11;
+  optional google.type.Date estimated_date_of_unloading_for_ams_override = 12;
+  optional string first_domestic_port_for_aci_fid = 13;
+  optional string last_foreign_port_for_aci_fid = 14;
+}
+
+message InvolvedPartyChanges {
+  optional string formatted_exporter_address = 1;
+  optional string formatted_consignee_address = 2;
+  optional string formatted_destination_agent_address = 3;
+  optional string formatted_notify_party_address = 4;
+  optional string shipper_entity_fid = 5;
+  optional string exporter_address_fid = 6;
+  optional string consignee_address_fid = 7;
+}
+
+message CargoChanges {
+  optional string total_weight = 1;
+  optional string total_volume = 2;
+  optional string declared_value = 3;
+  optional string package_summary = 4;
+  optional string description_of_goods = 5;
+  optional string marks_and_numbers = 6;
+}
+
+message ContainerCargoChanges {
+  string container_fid = 1;
+  string gross_weight = 2;
+  string volume = 3;
+  int32 slac_quantity = 4;
+  flexport.forwardingshippingdoc.housebilloflading.v1beta1.SlacUnit slac_unit = 5;
+  optional string cargo_description = 6;
+  optional string marks_and_numbers = 7;
+}
+
+message ContainerCargoChangesWrapper {
+  repeated ContainerCargoChanges container_cargo_changes = 1;
+}

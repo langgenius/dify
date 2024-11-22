@@ -6,55 +6,55 @@ identity: # 工具的基本信息
     zh_Hans:  Flexport Grpc # 中文标签
 description: # 描述，用于前端展示
   human: # 用于前端展示的介绍，支持多语言
-    en_US: A tool for executing GRPC requests. Input should be a GRPC request.
-    zh_Hans: 一个用于执行GRPC请求的工具。输入应该是一个GRPC请求。
-  llm:  call Flexport GRPC method.  # 传递给 LLM 的介绍，为了使得LLM更好理解这个工具，我们建议在这里写上关于这个工具尽可能详细的信息，让 LLM 能够理解并使用这个工具
+    en_US: A tool for executing Flexport GRPC requests to specific services.
+    zh_Hans: 用于执行Flexport GRPC请求的工具，支持特定的服务。
+  llm: |
+    A tool for making gRPC calls to Flexport services. 
+    The tool automatically loads all available services from the generated proto files.
+    
+    Example usage:
+    host: "localhost:50051"
+    service: "flexport.actionlog.action.v1beta1.ActionService"
+    method: "GetAction"
+    method_parameters: {"id": "123"}
+    
+    Note: Use the error messages to see available services and methods if needed.
+
 parameters: # 参数列表
-  - name: proto_content # 参数名称
+  - name: host # 参数名称
     type: string # 参数类型
     required: true # 是否必填
     label: # 参数标签
-      en_US: proto file content # 英文标签
-      zh_Hans: proto 文件内容 # 中文标签
+      en_US: Host Address # 英文标签
+      zh_Hans: 服务器地址 # 中文标签
     human_description: # 用于前端展示的介绍，支持多语言
-      en_US: proto_content
-      zh_Hans: proto 文件内容
-    llm_description: proto 文件内容 # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+      en_US: The host address of the gRPC server (e.g. localhost:50051)
+      zh_Hans: gRPC服务器地址（例如 localhost:50051）
+    llm_description: The host address and port of the gRPC server
     form: form # 表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
 
-  - name: service # 参数名称
-    type: string # 参数类型
+  - name: service_method # 参数名称
+    type: select # 使用select类型
     required: true # 是否必填
     label: # 参数标签
-      en_US: rpc service # 英文标签
-      zh_Hans: rpc service # 中文标签
+      en_US: Service and Method # 英文标签
+      zh_Hans: 服务和方法 # 中文标签
     human_description: # 用于前端展示的介绍，支持多语言
-      en_US: proto_content
-      zh_Hans: 调用的grpc的service,不要忘记包名
-    llm_description: rpc service  # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+      en_US: Select the gRPC service and method to call
+      zh_Hans: 选择要调用的gRPC服务和方法
+    llm_description: The full service name and method to call
     form: form # 表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
-  
-  - name: method # 参数名称
-    type: string # 参数类型
-    required: true # 是否必填
-    label: # 参数标签
-      en_US: rpc method # 英文标签
-      zh_Hans: rpc method # 中文标签
-    human_description: # 用于前端展示的介绍，支持多语言
-      en_US: rpc method
-      zh_Hans: 调用的grpc的method
-    llm_description: rpc method  # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
-    form: form # 表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
+    options: []  # 选项会在运行时动态生成
 
   - name: method_parameters # 参数名称
     type: string # 参数类型
     required: true # 是否必填
     label: # 参数标签
-      en_US: method parameters # 英文标签
-      zh_Hans: method parameters # 中文标签
+      en_US: Method Parameters # 英文标签
+      zh_Hans: 方法参数 # 中文标签
     human_description: # 用于前端展示的介绍，支持多语言
-      en_US: method parameters
-      zh_Hans: method parameters
-    llm_description: method parameters  # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+      en_US: JSON string of parameters for the method
+      zh_Hans: 方法参数的JSON字符串
+    llm_description: JSON formatted string containing the parameters for the method call
     form: llm # 表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
 

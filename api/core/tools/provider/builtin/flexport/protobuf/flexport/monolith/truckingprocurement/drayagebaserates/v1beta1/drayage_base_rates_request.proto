@@ -1,0 +1,30 @@
+// TEAM: trucking_pricing_rate_management
+
+syntax = "proto3";
+
+package flexport.monolith.truckingprocurement.drayagebaserates.v1beta1;
+
+import "flexport/monolith/truckingprocurement/rates/v1beta1/enums.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DrayageBaseRatesRequest";
+option java_package = "com.flexport.monolith.truckingprocurement.drayagebaserates.v1beta1";
+option ruby_package = "Flexport::Monolith::TruckingProcurement::DrayageBaseRates::V1Beta1";
+
+message GetDrayageBaseRatesRequest {
+  repeated DrayageBaseRatesRequestItem requests = 1;
+}
+
+message DrayageBaseRatesRequestItem {
+  // uuid to correlate the response
+  string uuid = 1;
+  string carrier_fid = 2;
+  flexport.monolith.truckingprocurement.rates.v1beta1.TruckingRateDriverType driver_type = 3;
+  flexport.monolith.truckingprocurement.rates.v1beta1.TruckingRateHaulType haul_type = 4;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate pickup_date = 5;
+  string origin_address_fid = 6;
+  string destination_address_fid = 7;
+  string partner_fid = 8;
+  string client_fid = 9;
+}

@@ -1,0 +1,34 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.monolith.oceanconsol.shipmentinfo.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MonolithShipmentInfoAPIProto";
+option java_package = "com.flexport.monolith.oceanconsol.shipmentinfo.v1beta1";
+option ruby_package = "Flexport::Monolith::OceanConsol::Shipmentinfo::V1Beta1";
+
+// API for getting shipment information in the monolith.
+// NOTE: Decidated to be used for Consol Overview Migration, may be deprecated anytime!
+service MonolithShipmentInfoAPI {
+  rpc GetShipmentInfo(GetShipmentInfoRequest) returns (GetShipmentInfoResponse);
+}
+
+message ShipmentInfo {
+  string shipment_fid = 1;
+  bool is_lcl = 2;
+  google.protobuf.Timestamp deleted_at = 3;
+  google.protobuf.Timestamp archived_at = 4;
+  bool wants_flexport_freight = 5;
+}
+
+message GetShipmentInfoRequest {
+  repeated string shipment_fid = 1;
+}
+
+message GetShipmentInfoResponse {
+  repeated ShipmentInfo shipment_info = 1;
+}

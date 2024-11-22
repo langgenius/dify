@@ -1,0 +1,27 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.workflow.email.models.bookingconfirmation.v1beta1;
+
+import "flexport/workflow/email/models/attachment/v1beta1/attachment.proto";
+import "flexport/workflow/email/models/region/v1beta1/region.proto";
+import "flexport/workflow/email/models/scac/v1beta1/scac.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BookingConfirmationProto";
+option java_package = "com.flexport.workflow.email.models.bookingconfirmation.v1beta1";
+option ruby_package = "Flexport::Workflow::Email::Models::BookingConfirmation::V1Beta1";
+
+// Booking confirmation email business data type.
+message BookingConfirmation {
+  //
+  flexport.workflow.email.models.region.v1beta1.Region region = 1;
+  flexport.workflow.email.models.scac.v1beta1.Scac scac = 2;
+  string booking_number = 3;
+  string flxcb_number = 4;
+  repeated flexport.workflow.email.models.attachment.v1beta1.Attachment attachments = 5;
+  string so_number = 6 [deprecated = true];
+  string reference_number = 7;
+  string message_id = 8;
+}

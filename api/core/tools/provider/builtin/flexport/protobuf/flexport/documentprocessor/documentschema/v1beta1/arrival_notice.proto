@@ -1,0 +1,95 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentprocessor.documentschema.v1beta1;
+
+import "flexport/documentprocessor/documentschema/v1beta1/document_field.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ArrivalNoticeProto";
+option java_package = "com.flexport.documentprocessor.documentschema.v1beta1";
+option ruby_package = "Flexport::DocumentProcessor::DocumentSchema::V1Beta1";
+
+// Next ID: 9
+message ArrivalNoticeContainer {
+  // Container number
+  DocumentField container_number = 1;
+  // Seal number
+  DocumentField seal_number = 2;
+  // Container type, E.g. 40HC
+  DocumentField container_type = 3;
+  // Total Container Cartons
+  DocumentField total_container_cartons = 4;
+  // Gross weight
+  DocumentField gross_weight = 5;
+  // Gross weight unit type, E.g. LBS
+  DocumentField gross_weight_unit_type = 6;
+  // Volume / Measurement
+  DocumentField volume = 7;
+  // Volume / Measurement unit type
+  DocumentField volume_unit_type = 8;
+}
+
+// The schema used for all Arrival Notice document types.
+// Reference: https://docs.google.com/spreadsheets/d/1d08vu9e7qb81sF_l1ywqEZZ5vTwMTeqncdWK7Cf8Z0Y/edit#gid=928444668
+// Next ID: 81
+message ArrivalNotice {
+  // FIRMS Code
+  repeated DocumentField firms_codes = 80;
+  // Gross Weight
+  DocumentField gross_weight = 19;
+  // Total Cartons
+  DocumentField total_cartons = 46;
+  // Total Container Cartons
+  DocumentField total_container_cartons = 47;
+  // MBL number
+  DocumentField mbl_number = 56;
+  // Container number
+  repeated DocumentField container_numbers = 79;
+  // Carrier SCAC
+  DocumentField carrier_scac = 58;
+  // Commodity Description
+  DocumentField commodity_description = 59;
+  // Consignee (master) Name & Address
+  DocumentField consignee_master_name_and_address = 60;
+  // Destination Agent
+  DocumentField destination_agent = 61;
+  // ETA (Place of Delivery)
+  DocumentField eta_place_of_delivery = 62;
+  // ETA (Port of Discharge)
+  DocumentField eta_port_of_discharge = 63;
+  // Inbound Transit (IT) Number
+  DocumentField it_number = 64;
+  // Issue Date / Print Date
+  DocumentField issue_date = 65;
+  // Mother Vessel
+  DocumentField mother_vessel = 66;
+  // Notify Party
+  DocumentField notify_party = 67;
+  // Pickup Location
+  DocumentField pickup_location = 68;
+  // Piece Count
+  DocumentField piece_count = 69;
+  // Place of Receipt
+  DocumentField place_of_receipt = 70;
+  // Port of Discharge
+  DocumentField port_of_discharge = 71;
+  // Port of Loading
+  DocumentField port_of_loading = 72;
+  // Shipper (master) Name & Address
+  DocumentField shipper_master_name_and_address = 73;
+  // Unit types
+  DocumentField unit_type = 74;
+  // Vendor Wordmark
+  DocumentField vendor_wordmark = 75;
+  // Voyage Number
+  DocumentField voyage_number = 76;
+  // Waybill
+  DocumentField waybill = 77;
+
+  // List of Container Entities
+  repeated ArrivalNoticeContainer containers = 78;
+
+  reserved 1 to 18, 20 to 45, 48 to 55, 57;
+}

@@ -1,0 +1,26 @@
+// TEAM: wingstop
+
+syntax = "proto3";
+
+package flexport.airsupply.allotment.v1beta1;
+
+import "flexport/airsupply/allotment/v1beta1/allotment.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AllotmentApiProto";
+option java_package = "com.flexport.airsupply.allotment.v1beta1";
+option ruby_package = "Flexport::AirSupply::Allotment::V1Beta1";
+
+// This service is used by an NIS to retrieve Allotment entities from the air supply engine db.
+service AllotmentAPI {
+  // Returns allotment entities for given fids.
+  rpc ListAllotments(ListAllotmentsRequest) returns (ListAllotmentsResponse);
+}
+
+message ListAllotmentsRequest {
+  repeated string allotment_fids = 1;
+}
+
+message ListAllotmentsResponse {
+  repeated Allotment allotments = 1;
+}

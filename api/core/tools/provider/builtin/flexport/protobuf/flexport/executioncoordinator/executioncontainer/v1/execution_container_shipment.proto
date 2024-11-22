@@ -1,0 +1,19 @@
+// TEAM: sutro
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executioncontainer.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionContainerShipmentProto";
+option java_package = "com.flexport.executioncoordinator.executioncontainer.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionContainer::V1";
+
+message ExecutionContainerShipment {
+  int64 id = 1;
+  // Execution Order Fid
+  string ec_entity_fid = 2;
+  string ec_entity_type = 3;
+  string flex_id = 4;
+  string fid = 5;
+}

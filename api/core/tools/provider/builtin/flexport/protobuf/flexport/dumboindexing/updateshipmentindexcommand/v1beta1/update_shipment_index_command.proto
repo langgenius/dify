@@ -1,0 +1,40 @@
+// TEAM: application_framework
+
+syntax = "proto3";
+
+package flexport.dumboindexing.updateshipmentindexcommand.v1beta1;
+
+import "flexport/dumboindexing/accesscontrol/v1beta1/access_control.proto";
+import "flexport/dumboindexing/clientshipmentexceptions/v1beta1/client_shipment_exceptions.proto";
+import "flexport/dumboindexing/clientusershipmentassignments/v1beta1/client_user_shipment_assignments.proto";
+import "flexport/dumboindexing/clientworkflow/v1beta1/client_workflow.proto";
+import "flexport/dumboindexing/customsproducts/v1beta1/customs_products.proto";
+import "flexport/dumboindexing/derivedshipment/v1beta1/derived_shipment.proto";
+import "flexport/dumboindexing/filtergroups/v2beta1/shipment_filter_group.proto";
+import "flexport/dumboindexing/forwardername/v1beta1/forwarder_name.proto";
+import "flexport/dumboindexing/purchaseorderbooking/v1beta1/purchase_order_booking.proto";
+import "flexport/dumboindexing/rulebasedshipmentuseraccess/v1beta1/rule_based_shipment_user_access.proto";
+import "flexport/dumboindexing/userdefinedmetadata/v1beta1/user_defined_metadata.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "UpdateShipmentIndexCommandProto";
+option java_package = "com.flexport.dumboindexing.updateshipmentindexcommand.v1beta1";
+option ruby_package = "Flexport::DumboIndexing::UpdateShipmentIndexCommand::V1Beta1";
+
+// Command event, informs the indexing service that it should update the shipment index for a given fid.
+message UpdateShipmentIndexCommand {
+  string shipment_fid = 1;
+  oneof update {
+    flexport.dumboindexing.derivedshipment.v1beta1.DerivedShipment derived_shipment = 2;
+    flexport.dumboindexing.purchaseorderbooking.v1beta1.PurchaseOrderBooking purchase_order_booking = 3;
+    flexport.dumboindexing.accesscontrol.v1beta1.AccessControl access_control = 4;
+    flexport.dumboindexing.rulebasedshipmentuseraccess.v1beta1.RuleBasedShipmentUserAccess rbsua = 5;
+    flexport.dumboindexing.customsproducts.v1beta1.CustomsProducts products = 6;
+    flexport.dumboindexing.clientusershipmentassignments.v1beta1.ClientUserShipmentAssignments client_user_shipment_assignments = 7;
+    flexport.dumboindexing.userdefinedmetadata.v1beta1.UserDefinedMetadata user_defined_metadata = 8;
+    flexport.dumboindexing.clientshipmentexceptions.v1beta1.ClientShipmentExceptions client_shipment_exceptions = 9;
+    flexport.dumboindexing.clientworkflow.v1beta1.ClientWorkflow client_workflow = 10;
+    flexport.dumboindexing.forwardername.v1beta1.ForwarderName forwarder_name = 11;
+    flexport.dumboindexing.filtergroups.v2beta1.ShipmentFilterGroup shipment_filter_group = 12;
+  }
+}

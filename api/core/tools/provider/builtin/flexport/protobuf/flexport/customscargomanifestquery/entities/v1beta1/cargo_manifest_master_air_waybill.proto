@@ -1,0 +1,34 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customscargomanifestquery.entities.v1beta1;
+
+import "flexport/customscargomanifestquery/entities/v1beta1/cargo_manifest_house_air_waybill.proto";
+import "flexport/customscargomanifestquery/entities/v1beta1/cargo_manifest_master_air_waybill_part.proto";
+import "flexport/customscargomanifestquery/enums/v1beta1/customs_cargo_manifest_bill_of_lading_type.proto";
+import "flexport/customscargomanifestquery/enums/v1beta1/customs_cargo_manifest_mode_of_transportation.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoManifestMasterAirWaybillProto";
+option java_package = "com.flexport.customscargomanifestquery.entities.v1beta1";
+option ruby_package = "Flexport::CustomsCargoManifestQuery::Entities::V1Beta1";
+
+message CargoManifestMasterAirWaybill {
+  string master_bill_number = 1;
+  int32 manifest_quantity = 2;
+  optional int32 amended_quantity = 3;
+  string firms_code = 4;
+  string firms_trip_number = 5;
+
+  repeated CargoManifestHouseAirWaybill house_bills = 6;
+  repeated CargoManifestMasterAirWaybillPart parts = 7;
+
+  google.protobuf.Timestamp last_retrieved_at = 8;
+
+  flexport.customscargomanifestquery.enums.v1beta1.CustomsCargoManifestBillOfLadingType bill_of_lading_type = 9;
+  flexport.customscargomanifestquery.enums.v1beta1.CustomsCargoManifestModeOfTransportation mode_of_transportation = 10;
+
+  string issuer_code = 11;
+}

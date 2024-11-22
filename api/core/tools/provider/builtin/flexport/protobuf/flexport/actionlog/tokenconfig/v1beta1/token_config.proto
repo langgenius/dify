@@ -1,0 +1,75 @@
+// TEAM: application_framework
+
+syntax = "proto3";
+
+package flexport.actionlog.tokenconfig.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TokenConfigProto";
+option java_package = "com.flexport.actionlog.tokenconfig.v1beta1";
+option ruby_package = "Flexport::ActionLog::TokenConfig::V1Beta1";
+
+//To understand the semantic meanings off all these protobufs, see token_generation.proto
+
+// The list of actors or targets to scope by.
+message EntitiesTokenConfig {
+  repeated EntityTokenConfig entities = 1;
+}
+
+// The information on an entity needed by the ActionLog NIS to scope actions.
+// ActionLog scopes the actions to actions with this entity participating in it.
+message EntityTokenConfig {
+  string entity_id = 1;
+  string type = 2;
+  string display_name = 3;
+}
+
+// The list of property scopes needed by the ActionLog NIS to scope actions.
+message PropertiesArrayTokenConfig {
+  repeated PropertiesTokenConfig array_of_property_maps = 1;
+}
+
+// A property scope that tells how to scope actions by the properties on that action.
+message PropertiesTokenConfig {
+  map<string, PropertyValue> properties_map = 1;
+}
+
+// This message represents the value of a particular property in the scope.
+// ActionLog scopes all actions to those that have this value as the value of a property on the action.
+message PropertyValue {
+  PropertyType property_type = 1;
+  // We allow clients t
+  oneof property_value {
+    string string_value = 2;
+    int64 integer_value = 3;
+    bool boolean_value = 4;
+    // While properties on your Action also have floats, we don't allow clients
+    // to scope Actions where they property of an action is a float value. This is due to the imprecision of floats in arithmetic and logical testing operations
+
+  }
+}
+
+// This defines a filter on the token that informs the <ActionLog..> react component to render a filter.
+message FilterTokenConfig {
+  string label = 1;
+  FilterType filter_type = 2;
+}
+
+// Legal allowed predetermined filter types.
+enum FilterType {
+  FILTER_TYPE_INVALID = 0;
+  FILTER_TYPE_ACTION_FILTER = 1;
+  FILTER_TYPE_ACTOR_FILTER = 2;
+  FILTER_TYPE_TARGET_FILTER = 3;
+  FILTER_TYPE_OCCURRED_AT_FILTER = 4;
+  // ActionLog doesn't support property filters as off the moment.
+
+}
+
+// A property scope can only have integer, string or boolean properties.
+enum PropertyType {
+  PROPERTY_TYPE_INVALID = 0;
+  PROPERTY_TYPE_STRING_VALUE = 1;
+  PROPERTY_TYPE_INTEGER_VALUE = 2;
+  PROPERTY_TYPE_BOOLEAN_VALUE = 3;
+}

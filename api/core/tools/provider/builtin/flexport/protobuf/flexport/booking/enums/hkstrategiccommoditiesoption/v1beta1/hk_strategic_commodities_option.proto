@@ -1,0 +1,21 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.booking.enums.hkstrategiccommoditiesoption.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "HkStrategicCommoditiesOptionProto";
+option java_package = "com.flexport.booking.enums.hkstrategiccommoditiesoption.v1beta1";
+option ruby_package = "Flexport::Booking::Enums::HkStrategicCommoditiesOption::V1Beta1";
+
+// Whether the booking includes items that may be classified as "strategic
+// commodities" in Hong Kong. Strategic commodities are defined in "Schedules
+// to the Import and Export (Strategic Commodities) Regulations, Chapter 60G,
+// Laws of Hong Kong."
+enum HkStrategicCommoditiesOption {
+  HK_STRATEGIC_COMMODITIES_OPTION_INVALID = 0;
+  HK_STRATEGIC_COMMODITIES_OPTION_YES = 1;
+  HK_STRATEGIC_COMMODITIES_OPTION_NO = 2;
+  HK_STRATEGIC_COMMODITIES_OPTION_NOTSURE = 3;
+}

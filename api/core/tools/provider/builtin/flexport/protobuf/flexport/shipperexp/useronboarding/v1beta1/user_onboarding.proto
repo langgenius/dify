@@ -1,0 +1,23 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.shipperexp.useronboarding.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "UserOnboardingProto";
+option java_package = "com.flexport.shipperexp.useronboarding.v1beta1";
+option ruby_package = "Flexport::ShipperExp::UserOnboarding::V1Beta1";
+
+import "flexport/shipperexp/asyncjobvalues/v1beta1/async_job_values.proto";
+import "flexport/shipperexp/shipperonboarding/v1beta1/shipper_onboarding.proto";
+import "google/protobuf/timestamp.proto";
+
+// A message contains a user onboarding info.
+message UserOnboardingSubmitted {
+  string invitation_token = 1;
+  string token = 2;
+  google.protobuf.Timestamp submitted_at_time = 3;
+  flexport.shipperexp.shipperonboarding.v1beta1.UserInfo user_info = 4;
+  flexport.shipperexp.asyncjobvalues.v1beta1.AsyncJobValues async_job_values = 5;
+}

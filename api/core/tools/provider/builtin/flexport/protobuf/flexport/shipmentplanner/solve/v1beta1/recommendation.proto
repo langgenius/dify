@@ -1,0 +1,23 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.shipmentplanner.solve.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RecommendationProto";
+option java_package = "com.flexport.shipmentPlanner.solve.v1beta1";
+option ruby_package = "Flexport::ShipmentPlanner::Solve::V1Beta1";
+
+message ShipmentRecommendation {
+  string shipment_fid = 1;
+  repeated EdgeRecommendation recommendation = 2;
+}
+
+message EdgeRecommendation {
+  string inventory_fid = 1;
+  google.protobuf.Timestamp start = 2;
+  int32 duration_seconds = 3;
+}

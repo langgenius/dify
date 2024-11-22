@@ -1,0 +1,17 @@
+// TEAM: application_framework
+
+syntax = "proto3";
+
+package flexport.dumboindexing.rulebasedshipmentuseraccess.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RuleBasedShipmentUserAccessProto";
+option java_package = "com.flexport.dumboindexing.rulebasedshipmentuseraccess.v1beta1";
+option ruby_package = "Flexport::DumboIndexing::RuleBasedShipmentUserAccess::V1Beta1";
+
+// Denormalized data for rule based shipment user access that supports the shipment index.
+message RuleBasedShipmentUserAccess {
+  //
+  // A list of users who should have access to view a shipment via rbsua.
+  repeated string rbsua_viewing_users = 1;
+}

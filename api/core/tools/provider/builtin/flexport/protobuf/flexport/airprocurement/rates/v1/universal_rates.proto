@@ -1,0 +1,767 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.airprocurement.rates.v1;
+
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+import "flexport/os/v1/types/incoterm/v1/incoterm.proto";
+import "flexport/procurement/rates/v1/universal_rates.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "UniversalRatesProto";
+option java_package = "com.flexport.airprocurement.rates.v1";
+option ruby_package = "Flexport::AirProcurement::Rates::V1";
+
+// A collection of rate items (each rate item is a line item) that all apply together.
+message Rate {
+  repeated BundleReason bundle_reasons = 1;
+  repeated RateItem rate_items = 2;
+  string fid = 3;
+}
+
+// A reason these rates were bundled together; could be that they share a carrier, or that they only apply to one company etc.
+message BundleReason {
+  oneof bundle_reason {
+    CarrierBundleReason carrier = 1;
+    ServiceLevelBundleReason service_level = 2;
+    PartnerBundleReason partner = 3;
+    NacBundleReason nac = 4;
+    RouteBundleReason route = 5;
+    MasterBillOfLadingBundleReason master_bill_of_lading = 6;
+    ServiceStringBundleReason service_string = 7;
+    CommodityBundleReason commodity = 8;
+    VesselBundleReason vessel = 9;
+    VoyageBundleReason voyage = 10;
+    GoodsClassificationBundleReason goods_classification = 11;
+    ShipmentBundleReason shipment = 12;
+  }
+}
+
+// If rates were bundled because of a carrier, this bundle reason is the common carrier.
+message CarrierBundleReason {
+  string carrier_fid = 1;
+}
+
+// If rates were bundled because of a partner, this bundle reason is the common partner.
+message PartnerBundleReason {
+  string partner_fid = 1;
+}
+
+// If rates were bundled because of an expediency, this bundle reason is the common expediency.
+message ExpediencyBundleReason {
+  Expediency expediency = 1;
+}
+
+// If rates were bundled because of service level, this bundle reason is the common service level.
+message ServiceLevelBundleReason {
+  Expediency expediency = 1;
+  repeated string carrier_premium_service_fids = 2 [deprecated = true];
+  string carrier_premium_service_fid = 3;
+}
+
+// If rates were bundled because of a particular client nac, this bundle reason is the common client.
+message NacBundleReason {
+  string client_fid = 1;
+}
+
+// A rate bundle reason that possible routes are applicable to.
+message RouteBundleReason {
+  repeated Route possible_routes = 1 [deprecated = true];
+  Route route = 2;
+}
+
+// A rate bundle reason that BoL numbers are applicable to.
+message MasterBillOfLadingBundleReason {
+  repeated string bill_numbers = 1 [deprecated = true];
+  string bill_number = 2;
+}
+
+// A rate bundle reason that service strings are applicable to.
+message ServiceStringBundleReason {
+  repeated string service_strings = 1 [deprecated = true];
+  string service_string = 2;
+}
+
+// A rate bundle reason that commodity names are applicable to.
+message CommodityBundleReason {
+  repeated string commodity_names = 1 [deprecated = true];
+  string commodity_name = 2;
+}
+
+// A rate bundle reason that vessel names are applicable to.
+message VesselBundleReason {
+  repeated string vessel_names = 1 [deprecated = true];
+  string vessel_name = 2;
+}
+
+// A rate bundle reason that voyage numbers are applicable to.
+message VoyageBundleReason {
+  repeated string voyage_numbers = 1 [deprecated = true];
+  string voyage_number = 2;
+}
+
+// A rate bundle reason that applicability and dangerous goods classification are applicable to.
+message GoodsClassificationBundleReason {
+  GoodsClassificationApplicability applicability = 1;
+  repeated DangerousGoodsClassification dangerous_goods_classification = 2 [deprecated = true];
+  DangerousGoodsClassification dg_classification = 3;
+}
+
+// If rates were bundled because of a shipment, this bundle reason is the common shipment_fid.
+message ShipmentBundleReason {
+  string shipment_fid = 1;
+}
+
+// Enum representing expediencies.
+enum Expediency {
+  EXPEDIENCY_INVALID = 0;
+  EXPEDIENCY_STANDARD = 1;
+  EXPEDIENCY_DEFERRED = 2;
+  EXPEDIENCY_EXPRESS = 3;
+  EXPEDIENCY_PREMIUM_EXPRESS = 4;
+}
+
+// Applicable charge type of a rate item.
+enum ApplicableType {
+  APPLICABLE_TYPE_INVALID = 0;
+  APPLICABLE_TYPE_UNKNOWN = 1;
+  APPLICABLE_TYPE_DESTINATION = 2;
+  APPLICABLE_TYPE_FREIGHT = 3;
+  APPLICABLE_TYPE_ORIGIN = 4;
+}
+
+// A rate item that can be used to move cargo.
+message RateItem {
+  string fid = 1;
+  repeated Term terms = 2;
+  string charge_code_fid = 3 [deprecated = true];
+  PricingStructure pricing_structure = 4;
+  RateItemMeta rate_item_metadata = 5;
+  // Needs to revisit rate_fid field to decouple api response from SOA
+  // Rate fid will be supported only when we do publish rate item to SOA
+  string rate_fid = 6;
+  // Needs to revisit bundle_reasons field to decouple api response from SOA
+  // Bundle reasons will be supported only when we do publish rate item to SOA
+  repeated BundleReason bundle_reasons = 7;
+  flexport.procurement.rates.v1.ChargeCode charge_code = 8;
+  SourceInfo source_info = 9;
+  ApplicableType applicable_type = 10;
+  string charge_group_fid = 11;
+}
+
+// A term that defines when a rate is applicable.
+message Term {
+  oneof term {
+    TransportModeTerm mode = 1;
+    ValidityTerm validity = 2;
+    CarrierTerm carrier = 3;
+    PartnerTerm partner = 4;
+    RouteTerm route = 5;
+    ClientTerm client = 6;
+    ContainerTerm container = 7;
+    CommodityTerm commodity = 8;
+    ServiceStringTerm service_string = 9;
+    VesselTerm vessel = 10;
+    VoyageTerm voyage = 11;
+    MasterBillOfLadingTerm master_bill_of_lading = 12;
+    // Deprecated, use GoodsClassificationTerm instead.
+    DangerousGoodsClassificationTerm dangerous_goods_classification = 13 [deprecated = true];
+    AdditionalLineItemTerm additional_line_item = 14;
+    ShipmentTerm shipment = 15;
+    ServiceLevelTerm service_level = 16;
+    FlightTerm flight = 17;
+    GoodsClassificationTerm goods_classification = 18;
+    BupTerm bup = 19;
+    ContractTerm contract = 20;
+    CapacityTerm capacity = 21;
+    IncotermTerm incoterm = 22;
+    IncludedChargesTerm included_charges = 23;
+    ExcludedChargesTerm excluded_charges = 24;
+    OriginAgentCompanyEntityTerm origin_agent_company_entity = 25;
+  }
+}
+
+// Meta data about a given Rate.
+message RateItemMeta {
+  SourceInfo source_info = 1 [deprecated = true];
+  string miscellaneous_json = 2;
+  InternalProviderSourceInfo internal_provider_source_info = 3;
+  ApplicableType applicable_type = 4;
+}
+
+// Information about the data source from which a charge originated.
+message SourceInfo {
+  Source source = 1;
+  // A vendor/source charge name
+  string source_charge_name = 2;
+}
+
+// Information about the data source from which a rate item originated.
+message InternalProviderSourceInfo {
+  string fid = 1;
+  string label = 2;
+}
+
+// Data source for a rate.
+enum Source {
+  SOURCE_INVALID = 0;
+  SOURCE_TARIFF = 1;
+  SOURCE_TARIFF_ADDITIONAL = 2;
+  SOURCE_LINE_ITEM_ADDITIONAL = 3;
+  SOURCE_VATOS = 4;
+  SOURCE_CONDITIONAL_TARIFF = 5;
+  SOURCE_UNKNOWN = 6;
+  SOURCE_VATOS_PROVIDER = 7;
+  SOURCE_ECOSYSTEM = 8;
+  SOURCE_AIR_RATE_SHEET = 9;
+  SOURCE_AIR_CONTRACT = 10;
+  SOURCE_AIR_ALLOTMENT = 11;
+  SOURCE_RPM = 12;
+  SOURCE_PPS = 13;
+  SOURCE_PPS_GUIDELINE = 14;
+}
+
+// A pricing structure that is used to calculate a charge amount.
+message PricingStructure {
+  oneof pricing_structure {
+    FlatPricingStructure flat = 1;
+    PerUnitPricingStructure per_unit = 2;
+    PerVolumeUnitPricingStructure per_volume_unit = 3;
+    PerWeightUnitPricingStructure per_weight_unit = 4;
+    PerChargeableWeightUnitPricingStructure per_chargeable_weight_unit = 5;
+    PerTimeUnitPricingStructure per_time_unit = 6;
+    PerWMUnitPricingStructure per_wm_unit = 7;
+    RateBreakPricingStructure rate_break = 8;
+    PercentOfTotalPricingStructure percent_of_total = 9;
+    PerWMUnitV2PricingStructure per_wm_unit_v2 = 10;
+    PerUnitAmountPricingStructure per_unit_amount = 11;
+  }
+}
+
+// The mode of transport.
+enum TransportMode {
+  TRANSPORT_MODE_INVALID = 0;
+  TRANSPORT_MODE_OCEAN = 1;
+  TRANSPORT_MODE_AIR = 2;
+  TRANSPORT_MODE_TRUCKING = 3;
+}
+
+// A monetary amount.
+message Amount {
+  string currency_code = 1;
+  string micros = 2;
+}
+
+// Specifies which transport mode a rate is applicable to.
+message TransportModeTerm {
+  TransportMode mode = 1;
+}
+
+// Specifies the date range a rate is valid for.
+message ValidityTerm {
+  Date validity_start = 1;
+  Date validity_end = 2;
+}
+
+// A calendar date without a timezone.
+message Date {
+  // A common era year.
+  int32 year = 1;
+  // The month number (January = 1, December = 12, and so on).
+  int32 month = 2;
+  // The day of the month.
+  int32 day = 3;
+}
+
+// Specifies a carrier a rate applies to.
+message CarrierTerm {
+  string carrier_fid = 1;
+}
+
+// Specifies a freight partner a rate applies for.
+message PartnerTerm {
+  string partner_fid = 1;
+}
+
+// Specifies the route cargo must take for a rate to apply.
+message RouteTerm {
+  Location origin = 1;
+  Location destination = 2;
+  repeated Route possible_routes = 3 [deprecated = true];
+  Route route = 4;
+  Location rate_over_location = 5;
+  string route_term_fid = 6;
+}
+
+// A route that cargo can take.
+message Route {
+  repeated Location stops = 1;
+}
+
+// The location type.
+enum LocationType {
+  LOCATION_TYPE_INVALID = 0;
+  LOCATION_TYPE_UNKNOWN = 1;
+  LOCATION_TYPE_ORIGIN = 2;
+  LOCATION_TYPE_VIA_ORIGIN = 3;
+  LOCATION_TYPE_VIA_DESTINATION = 4;
+  LOCATION_TYPE_DESTINATION = 5;
+}
+
+// A location.
+message Location {
+  string address_fid = 1;
+  LocationType location_type = 2;
+  // TODO: support other location types without fids (ZIP etc.)
+}
+
+// Specifies a client a rate is applicable for.
+message ClientTerm {
+  repeated string client_fids = 1 [deprecated = true];
+  string client_fid = 2;
+}
+
+// Specifies an ISO6346 shipping container a rate applies to.
+message ContainerTerm {
+  string iso_container_code = 1;
+  double gross_weight_in_kg = 2;
+}
+
+// Specifies the shipped commodity a rate is applicable for.
+message CommodityTerm {
+  // Specifies the commodity.
+  message Commodity {
+    string code_fid = 1;
+    string name = 2;
+    string description = 3;
+  }
+  repeated Commodity commodities = 1 [deprecated = true];
+  Commodity commodity = 2;
+}
+
+// The valid service string for the rate.
+message ServiceStringTerm {
+  repeated string service_strings = 1 [deprecated = true];
+  string service_string = 2;
+}
+
+// Specifies a vessel a rate is applicable for.
+message VesselTerm {
+  repeated string vessel_names = 1 [deprecated = true];
+  string vessel_name = 2;
+}
+
+// Specifies a voyage a rate is applicable for.
+message VoyageTerm {
+  repeated string voyage_numbers = 1 [deprecated = true];
+  string voyage_number = 2;
+}
+
+// Specifies a master bill of lading a rate is applicable for.
+message MasterBillOfLadingTerm {
+  repeated string bill_numbers = 1 [deprecated = true];
+  string bill_number = 2;
+}
+
+// Specifies a dg classification a rate is applicable for.
+message DangerousGoodsClassificationTerm {
+  string imo_class = 1;
+}
+
+// Enum representing the goods classification applicability.
+enum GoodsClassificationApplicability {
+  GOODS_CLASSIFICATION_APPLICABILITY_INVALID = 0;
+  GOODS_CLASSIFICATION_APPLICABILITY_NON_DANGEROUS = 1;
+  GOODS_CLASSIFICATION_APPLICABILITY_DANGEROUS = 2;
+  GOODS_CLASSIFICATION_APPLICABILITY_DANGEROUS_AND_NON_DANGEROUS = 3;
+}
+
+// Enum representing the dangerous goods class.
+enum DangerousGoodsClass {
+  DANGEROUS_GOODS_CLASS_INVALID = 0;
+  DANGEROUS_GOODS_CLASS_ANY = 1;
+  DANGEROUS_GOODS_CLASS_EXPLOSIVES = 2;
+  DANGEROUS_GOODS_CLASS_GASES = 3;
+  DANGEROUS_GOODS_CLASS_FLAMMABLE_LIQUIDS = 4;
+  DANGEROUS_GOODS_CLASS_FLAMMABLE_SOLIDS = 5;
+  DANGEROUS_GOODS_CLASS_OXIDIZING_ORGANIC_PEROXIDES = 6;
+  DANGEROUS_GOODS_CLASS_TOXIC_INFECTIOUS_SUBSTANCES = 7;
+  DANGEROUS_GOODS_CLASS_RADIOACTIVE = 8;
+  DANGEROUS_GOODS_CLASS_CORROSIVES = 9;
+  DANGEROUS_GOODS_CLASS_MISCELLANEOUS = 10;
+  DANGEROUS_GOODS_CLASS_LITHIUM_BATTERIES = 11;
+  DANGEROUS_GOODS_CLASS_NON_LITHIUM_BATTERIES = 12;
+}
+
+// Enum representing the dangerous goods division(subclass).
+enum DangerousGoodsDivision {
+  DANGEROUS_GOODS_DIVISION_INVALID = 0;
+  DANGEROUS_GOODS_DIVISION_MASS_EXPLOSION_HAZARD = 1;
+  DANGEROUS_GOODS_DIVISION_PROJECTION_HAZARD = 2;
+  DANGEROUS_GOODS_DIVISION_FIRE_HAZARD = 3;
+  DANGEROUS_GOODS_DIVISION_IGNITION_HAZARD = 4;
+  DANGEROUS_GOODS_DIVISION_INSENSITIVE_MASS_EXPLOSION_HAZARD = 5;
+  DANGEROUS_GOODS_DIVISION_INSENSITIVE_NO_EXPLOSION_HAZARD = 6;
+  DANGEROUS_GOODS_DIVISION_FLAMMABLE_GASES = 7;
+  DANGEROUS_GOODS_DIVISION_NON_FLAMMABLE_NON_TOXIC_GASES = 8;
+  DANGEROUS_GOODS_DIVISION_TOXIC_GASES = 9;
+  DANGEROUS_GOODS_DIVISION_FLAMMABLE_SOLIDS = 10;
+  DANGEROUS_GOODS_DIVISION_SPONTANEOUS_COMBUSTION = 11;
+  DANGEROUS_GOODS_DIVISION_WATER_FLAMMABLE_GASES = 12;
+  DANGEROUS_GOODS_DIVISION_OXIDIZING_SUBSTANCES = 13;
+  DANGEROUS_GOODS_DIVISION_ORGANIC_PEROXIDES = 14;
+  DANGEROUS_GOODS_DIVISION_TOXIC_SUBSTANCES = 15;
+  DANGEROUS_GOODS_DIVISION_INFECTIOUS_SUBSTANCES = 16;
+  DANGEROUS_GOODS_DIVISION_ANY = 17;
+}
+
+// The dangerous goods classification.
+message DangerousGoodsClassification {
+  DangerousGoodsClass dangerous_goods_class = 1;
+  DangerousGoodsDivision dangerous_goods_division = 2;
+}
+
+// Specifies a goods classification a rate is applicable for.
+message GoodsClassificationTerm {
+  GoodsClassificationApplicability applicability = 1;
+  // Empty if applicability is NON_DANGEROUS.
+  repeated DangerousGoodsClassification dangerous_goods_classifications = 2 [deprecated = true];
+  // Empty if applicability is NON_DANGEROUS.
+  DangerousGoodsClassification dangerous_goods_classification = 3;
+}
+
+// The additional line item name.
+enum AdditionalLineItemName {
+  ADDITIONAL_LINE_ITEM_NAME_INVALID = 0;
+  ADDITIONAL_LINE_ITEM_NAME_OVER_PIVOT = 1;
+}
+
+// Specifies info about addition line item name this rate is applicable for.
+message AdditionalLineItemTerm {
+  AdditionalLineItemName additional_line_item_name_enum = 1;
+}
+
+// Specifies the shipment this rate is applicable for.
+message ShipmentTerm {
+  string shipment_fid = 1;
+}
+
+// Specifies the expediency this rate is applicable for.
+message ExpediencyTerm {
+  Expediency expediency = 1;
+  string service_name = 2;
+}
+
+// Specifies the service level this rate is applicable for.
+message ServiceLevelTerm {
+  Expediency expediency = 1;
+  repeated string carrier_premium_service_fids = 2 [deprecated = true];
+  string carrier_premium_service_fid = 3;
+}
+
+// Specifies the flights this rate is applicable for.
+message FlightTerm {
+  repeated string flight_numbers = 1 [deprecated = true];
+  repeated string flight_sequence_numbers = 2;
+}
+
+// Specifies the bups this rate applies to.
+message BupTerm {
+  BupType bup_type = 1;
+}
+
+// Specifies the CompanyEntityFid of the OriginAgent
+message OriginAgentCompanyEntityTerm {
+  string origin_agent_company_entity_fid = 1;
+}
+// Specifies the contract this rate is applicable for.
+message ContractTerm {
+  string contract_number = 1;
+  string contract_amendment_number = 2;
+  ContractType contract_type = 3;
+  string contract_issuer_company_entity_fid = 4;
+}
+
+// Contract types.
+enum ContractType {
+  CONTRACT_TYPE_INVALID = 0;
+  CONTRACT_TYPE_PARTNER_FIXED_CONTRACT = 1;
+  CONTRACT_TYPE_NAC_PROCUREMENT = 2;
+  CONTRACT_TYPE_CHARTER = 3;
+  CONTRACT_TYPE_SPOT = 4;
+  CONTRACT_TYPE_HARD_BSA = 5;
+  CONTRACT_TYPE_SOFT_BSA = 6;
+  CONTRACT_TYPE_UNKNOWN = 7;
+}
+
+// Specifies the capacities between which this rate item applies.
+message CapacityTerm {
+  int32 lower_bound_percent_capacity = 1;
+  int32 upper_bound_percent_capacity = 2;
+}
+
+// Incoterm ... term
+message IncotermTerm {
+  flexport.os.v1.types.incoterm.v1.Incoterm incoterm_type = 1;
+  bool charge_occurs_on_every_standard_shipment_under_this_term = 2;
+}
+
+// List of charges included in the price of the rate item.
+// Ex: Air MF can sometimes include fuel surcharge and/or security surcharge
+// Ex: Ocean FCL MF can include Alameda, Panama Canal, etc.
+message IncludedChargesTerm {
+  repeated flexport.procurement.rates.v1.ChargeCode included_charges = 1;
+}
+
+// List of charges excluded in the price of the rate item.
+// Ex: Air MF can sometimes exclude fuel surcharge and/or security surcharge
+// Ex: Ocean FCL MF can exclude Alameda, Panama Canal, etc.
+message ExcludedChargesTerm {
+  repeated flexport.procurement.rates.v1.ChargeCode excluded_charges = 1;
+}
+
+// BUP types.
+enum BupType {
+  BUP_TYPE_INVALID = 0;
+  BUP_TYPE_SINGLE_BUP = 1;
+  BUP_TYPE_MIXED_BUP = 2;
+  BUP_TYPE_LOOSE_CARGO = 3;
+}
+
+// The unit of time.
+enum TimeUnit {
+  TIME_UNIT_INVALID = 0;
+  TIME_UNIT_PER_HOUR = 1;
+}
+
+message RoundFunction {
+  RoundingMode rounding_mode = 1;
+  // Number of decimals to round to, default = 0
+  int32 decimals = 2;
+  // Base for rounding, decimals = 0 and base = 0.5
+  // would give results divisible by 0.5 (e.g. 0.5, 1.0, 1.5 etc)
+  google.protobuf.StringValue base = 3;
+}
+
+// Definitions: https://docs.oracle.com/javase/8/docs/api/java/math/BigDecimal.html
+enum RoundingMode {
+  ROUNDING_MODE_INVALID = 0;
+  ROUNDING_MODE_HALF_UP = 1;
+  ROUNDING_MODE_HALF_DOWN = 2;
+  ROUNDING_MODE_CEILING = 3;
+}
+
+message UnitType {
+  oneof unit_type {
+    flexport.os.v1.types.cargo.v1.CargoUnit cargo_unit = 1;
+    flexport.os.v1.types.cargo.v1.CargoVolumeUnit volume_unit = 2;
+    flexport.os.v1.types.cargo.v1.CargoWeightUnit weight_unit = 3;
+  }
+}
+
+// A price that is used to calculate a charge amount.
+message Price {
+  oneof price {
+    FlatPrice flat_price = 1;
+    PerCargoUnitPrice per_cargo_unit_price = 2;
+    PerVolumeUnitPrice per_volume_unit_price = 3;
+    PerWeightUnitPrice per_weight_unit_price = 4;
+    PerChargeableWeightUnitPrice per_chargeable_weight_unit_price = 5;
+    PerTimeUnitPrice per_time_unit_price = 6;
+    PerWMUnitPrice per_wm_unit_price = 7;
+    PercentOfTotalPrice percent_of_total_price = 8;
+    PerWMUnitV2Price per_wm_unit_v2_price = 9;
+    PerUnitAmountPrice per_unit_amount_price = 10;
+  }
+}
+
+// A flat price that applies to a rate.
+message FlatPrice {
+  Amount amount = 1;
+}
+
+// A per cargo unit price that applies to a rate.
+message PerCargoUnitPrice {
+  Amount amount_per_unit = 1;
+  flexport.os.v1.types.cargo.v1.CargoUnit cargo_unit = 2;
+}
+
+// A per volume unit price that applies to a rate.
+message PerVolumeUnitPrice {
+  Amount amount_per_unit = 1;
+  flexport.os.v1.types.cargo.v1.CargoVolumeUnit volume_unit = 2;
+}
+
+// A per weight unit price that applies to a rate.
+message PerWeightUnitPrice {
+  Amount amount_per_unit = 1;
+  flexport.os.v1.types.cargo.v1.CargoWeightUnit weight_unit = 2;
+}
+
+// A per chargeable weight unit price that applies to a rate.
+message PerChargeableWeightUnitPrice {
+  Amount amount_per_unit = 1;
+  flexport.os.v1.types.cargo.v1.CargoWeightUnit chargeable_weight_unit = 2;
+}
+
+// A per time unit price that applies to a rate.
+message PerTimeUnitPrice {
+  Amount amount_per_unit = 1;
+  TimeUnit time_unit = 2;
+}
+
+// A per volume or weight measure price that applies to a rate.
+// Ex: For a shipment with 2500 kgs and 3 cbm and a rate of $10 per W/M where W = 500kgs and M = 0.5 cbm, then:
+// weight_unit = KG, volume_unit = CBM, weight_basis_amount = 500, volume_basis_amount = 0.5, amount_per_unit = $10
+// with calculations as follows: max(2500 kgs / 500 kgs, 3 cbm / 0.5 cbm) * $10 = max(5, 6) * $10 = $60.
+// The standard for Ocean LCL is usually 1000 kgs and 1 cbm.
+message PerWMUnitPrice {
+  Amount amount_per_unit = 1;
+  flexport.os.v1.types.cargo.v1.CargoWeightUnit weight_unit = 2;
+  flexport.os.v1.types.cargo.v1.CargoVolumeUnit volume_unit = 3;
+  // A numerical value represented by a string to avoid loss of precision.
+  string weight_basis_amount = 4;
+  // A numerical value represented by a string to avoid loss of precision.
+  string volume_basis_amount = 5;
+}
+
+// A per volume or weight measure price that applies to a rate.
+// Ex: For a shipment with 2500 kgs and 3 cbm and a rate of $10 per W/M where W = 500kgs and M = 1/2 cbm, then:
+// weight_unit = KG, volume_unit = CBM, weight_denominator_amount = 500, volume_denominator_amount = 1
+// weight_numerator_amount = 1, volume_numerator_amount = 2, amount_per_unit = $10
+// with calculations as follows: max((2500 * 1) kgs / 500 kgs, (3 * 2) cbm / 1 cbm) * $10 = max(5, 6) * $10 = $60.
+// If the minimum_units is set to 10, then the calculation would be max(10, max(5,6)) * $10 = $100.
+// The unit result rounding function would be applied to the result of the max function, and the final result rounding
+// function would be applied to the final result, i.e. round(max(5,6)) * $10 with unit result rounding
+// and round(max(5,6) * $10) for the final result rounding.
+message PerWMUnitV2Price {
+  Amount amount_per_unit = 1;
+  flexport.os.v1.types.cargo.v1.CargoWeightUnit weight_unit = 2;
+  flexport.os.v1.types.cargo.v1.CargoVolumeUnit volume_unit = 3;
+  int32 weight_denominator_amount = 4;
+  int32 volume_denominator_amount = 5;
+  int32 weight_numerator_amount = 6;
+  int32 volume_numerator_amount = 7;
+  // Specify a rounding rule for the result before rate is applied, e.g. ceil($60.2) = $61
+  RoundFunction unit_result_rounding_function = 8;
+  // Specify a rounding rule for the result, e.g. ceil($60.2) = $61
+  RoundFunction final_result_rounding_function = 9;
+  // Minimum units used for price calculation
+  int32 minimum_units = 10;
+}
+
+// A percent of total price that applies to a rate.
+message PercentOfTotalPrice {
+  string percent = 1;
+}
+
+// Per unit amount price that applies to a rate.
+message PerUnitAmountPrice {
+  // The unit type that the price applies to.
+  UnitType unit_type = 1;
+  // The price per unit.
+  Amount price_per_unit_amount = 2;
+  // Per every X units.
+  int32 per_unit_amount = 3;
+  // The minimum unit amount that must be met for the price to apply.
+  int32 minimum_unit_amount = 4;
+  // Rounding function to apply to the result of the price calculation.
+  RoundFunction round_function = 5;
+}
+
+// A flat pricing structure that always applies to a rate.
+message FlatPricingStructure {
+  FlatPrice price = 1;
+}
+
+// A per-cargo-unit pricing structure that always applies to a rate.
+message PerUnitPricingStructure {
+  PerCargoUnitPrice price = 1;
+  Amount min_amount = 2;
+  Amount max_amount = 3;
+}
+
+// A per-volume-unit pricing structure that always applies to a rate (e.g. per cbm).
+message PerVolumeUnitPricingStructure {
+  PerVolumeUnitPrice price = 1;
+  Amount min_amount = 2;
+  Amount max_amount = 3;
+}
+
+// A per-weight-unit pricing structure that always applies to a rate (eg per kg).
+message PerWeightUnitPricingStructure {
+  PerWeightUnitPrice price = 1;
+  Amount min_amount = 2;
+  Amount max_amount = 3;
+}
+
+// A gross or volumetric weight pricing structure that always applies to a rate.
+message PerChargeableWeightUnitPricingStructure {
+  PerChargeableWeightUnitPrice price = 1;
+  Amount min_amount = 2;
+  Amount max_amount = 3;
+}
+
+// A per-time-unit pricing structure that always applies to a rate (eg per hour).
+message PerTimeUnitPricingStructure {
+  PerTimeUnitPrice price = 1;
+  Amount min_amount = 2;
+  Amount max_amount = 3;
+}
+
+// A weight or measure pricing structure that always applies to a rate.
+message PerWMUnitPricingStructure {
+  PerWMUnitPrice price = 1;
+  Amount min_amount = 2;
+  Amount max_amount = 3;
+}
+
+// A weight or measure pricing structure that always applies to a rate.
+message PerWMUnitV2PricingStructure {
+  PerWMUnitV2Price price = 1;
+  Amount min_amount = 2;
+  Amount max_amount = 3;
+}
+
+// The rate break units.
+enum RateBreakUnit {
+  RATE_BREAK_UNIT_INVALID = 0;
+  RATE_BREAK_UNIT_KG = 1;
+  RATE_BREAK_UNIT_CHARGEABLE_KG = 2;
+}
+
+// The rate break.
+message RateBreak {
+  // The min of the break e.g. 45 would be min break amount in 45-100.
+  int32 min_break_amount = 1;
+  google.protobuf.Int32Value max_break_amount = 2;
+  Price price = 3;
+}
+
+// A rate break pricing structure that always applies to a rate.
+message RateBreakPricingStructure {
+  Amount min_amount = 1;
+  Amount max_amount = 2;
+  RateBreakUnit break_unit = 3;
+  repeated RateBreak rate_breaks = 4;
+}
+
+// A percent of total pricing structure that always applies to a rate.
+message PercentOfTotalPricingStructure {
+  Amount min_amount = 1;
+  Amount max_amount = 2;
+  PercentOfTotalPrice price = 3;
+}
+
+// A per-unit-amount pricing structure that always applies to a rate.
+// Ex: If we have a shipment that is 95 kg and the rate is $10 per every 100 kg, then
+// we would set the unit type to weight_unit with kg as the unit, the price_per_unit_amount to $10,
+// the per_unit_amount to 100, and the round function to ROUNDING_MODE_CEILING.
+// The result would be $10 * ceil(95 / 100) = $10 * 1 = $10.
+message PerUnitAmountPricingStructure {
+  PerUnitAmountPrice price = 1;
+  Amount min_amount = 2;
+  Amount max_amount = 3;
+}

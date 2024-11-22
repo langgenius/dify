@@ -1,0 +1,25 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billing.review.events.v1beta1;
+
+import "flexport/billing/review/events/v1beta1/review_metadata.proto";
+import "flexport/billing/review/v1beta1/rejection_reason.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ReviewRejectedProto";
+option java_package = "com.flexport.billing.review.events.v1beta1";
+option ruby_package = "Flexport::Billing::Review::Events::V1Beta1";
+
+// Event emitted when a Review is rejected.
+message ReviewRejected {
+  string review_fid = 1;
+  google.protobuf.Timestamp rejected_at_time = 2;
+  billing.review.events.v1beta1.ReviewMetadata metadata = 3;
+  string primary_document_fid = 4;
+  google.protobuf.StringValue rejected_by_fid = 5;
+  billing.review.v1beta1.RejectionReason rejection_reason = 6;
+}

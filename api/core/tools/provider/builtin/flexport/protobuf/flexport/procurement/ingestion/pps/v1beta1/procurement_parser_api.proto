@@ -1,0 +1,107 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.ingestion.pps.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ProcurementParserApiProto";
+option java_package = "com.flexport.procurement.ingestion.pps.v1beta1";
+option ruby_package = "Flexport::Procurement::Ingestion::Pps::V1Beta1";
+
+service ProcurementParserAPI {
+  rpc StartParse(StartParseRequest) returns (StartParseResponse) {}
+  rpc GetParseOutput(GetParseOutputRequest) returns (GetParseOutputResponse) {}
+  rpc GetParseStatus(GetParseStatusRequest) returns (GetParseStatusResponse) {}
+  rpc QueryParsers(QueryParsersRequest) returns (QueryParsersResponse) {}
+}
+
+enum ParseMethod {
+  PARSE_METHOD_INVALID = 0;
+  PARSE_METHOD_SCRIPT = 1;
+  PARSE_METHOD_HYBRID_AI_SCRIPT = 2;
+}
+
+message StartParseRequest {
+  bytes contract_file = 1;
+  string contract_id = 2;
+  string method = 3 [deprecated = true];
+  optional string mime_type = 4;
+  optional bool debug_mode = 5;
+  optional int64 contract_parse_id = 6 [deprecated = true];
+  optional bool snappied = 7;
+  optional ParseMethod parse_method = 8;
+}
+
+message StartParseResponse {
+  enum RequestResult {
+    REQUEST_RESULT_INVALID = 0;
+    REQUEST_RESULT_OK = 1;
+    REQUEST_RESULT_FAIL = 2;
+  }
+
+  int64 parse_id = 1;
+  RequestResult result = 2;
+}
+
+message GetParseStatusRequest {
+  int64 parse_id = 1;
+}
+
+message GetParseStatusResponse {
+  enum RequestResult {
+    REQUEST_RESULT_INVALID = 0;
+    REQUEST_RESULT_OK = 1;
+    REQUEST_RESULT_FAIL = 2;
+  }
+
+  string status = 1;
+  int64 start_time = 2;
+  int64 end_time = 3;
+  int64 cur_duration = 4;
+  RequestResult result = 5;
+  string error_message = 6;
+}
+
+message GetParseOutputRequest {
+  int64 parse_id = 1;
+}
+
+message ParseOutputItem {
+  string output_type = 1;
+  bytes data = 2;
+}
+
+message GetParseOutputResponse {
+  enum RequestResult {
+    REQUEST_RESULT_INVALID = 0;
+    REQUEST_RESULT_OK = 1;
+    REQUEST_RESULT_FAIL = 2;
+  }
+
+  repeated ParseOutputItem outputs = 1;
+  RequestResult result = 2;
+  repeated string missing_mappings = 3;
+  optional string global_validity_date = 4;
+}
+
+message ParserDetailsItem {
+  string method = 1;
+  string contract_id = 2;
+  string friendly_name = 3;
+}
+
+message QueryParsersRequest {
+  optional string query_string = 1;
+}
+
+message QueryParsersResponse {
+  enum RequestResult {
+    REQUEST_RESULT_INVALID = 0;
+    REQUEST_RESULT_OK = 1;
+    REQUEST_RESULT_FAIL = 2;
+  }
+
+  repeated ParserDetailsItem parsers = 1;
+  RequestResult result = 2;
+}

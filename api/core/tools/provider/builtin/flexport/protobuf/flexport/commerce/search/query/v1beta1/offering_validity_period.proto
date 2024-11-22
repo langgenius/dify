@@ -1,0 +1,17 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.commerce.search.query.v1beta1;
+
+import "flexport/catalog/date/v1/date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OfferingValidityPeriodProto";
+option java_package = "com.flexport.commerce.search.query.v1beta1";
+option ruby_package = "Flexport::Commerce::Search::Query::V1Beta1";
+
+message OfferingValidityPeriod {
+  catalog.date.v1.DateDto start_utc = 1;
+  catalog.date.v1.DateDto end_utc = 2;
+}

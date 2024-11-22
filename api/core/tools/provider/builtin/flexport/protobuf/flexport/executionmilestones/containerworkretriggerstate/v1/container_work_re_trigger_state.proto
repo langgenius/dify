@@ -1,0 +1,56 @@
+// TEAM: sutro
+
+syntax = "proto3";
+
+package flexport.executionmilestones.containerworkretriggerstate.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerWorkReTriggerStateProto";
+option java_package = "com.flexport.executionmilestones.containerworkretriggerstate.v1";
+option ruby_package = "Flexport::ExecutionMilestones::containerworkretriggerstate::V1";
+
+// Represent the state of re-triggering container related work for an operator. These are mapped
+// by a work item type. This state comes in handy when we want to automatically re-trigger
+// a work item for an operator every day when it is not complete. Typically the work item
+// is "complete" by filing an exception and this is automatically surfaced the next day.
+// The work item is only truly complete until the actual data expectation is satisfied.
+// At the time of writing this, there are 2 known work items that would benefit from such a
+// schema: Container Ready for Pickup and Input Empty Container Return Date. The sutro team
+// is also exploring the possibility of building a domain system specific to destination port
+// coordination. Eventually when such a system comes into existence, we expect this specific
+// state in the EMS to be deprecated and moved into the Port Coordination service.
+message ContainerWorkReTriggerState {
+  // Map a work item type (eg: import_confirm_ready_for_pickup_from_port)
+  // to a container work state.
+  map<string, ContainerWorkState> state_by_work_item_type = 1;
+}
+
+// Represents the state of a container for a given container work item type.
+message ContainerWorkState {
+  // Map a container_fid to all possible exceptions filed by operators.
+  map<string, ExceptionsByTime> exceptions_for_containers = 1;
+
+  // Map a container_fid to the dates an operator manually marked this work item
+  // as complete by filing an exception.
+  map<string, OperatorDidWorkByTime> operator_did_work = 2;
+
+  // We need to add these as messages because proto doesn't support
+  // nested maps.
+  message ExceptionsByTime {
+    // map of exceptions by WallTimeDate, as WallTimeDate is not supported as map key.
+    // need to get seconds and cast to int64
+    map<int64, Exceptions> exception_by_time = 1;
+  }
+
+  message OperatorDidWorkByTime {
+    // map of operator_did_work by WallTimeDate
+    map<int64, bool> operator_did_work_by_time = 1;
+    // map of operator fid by WallTimeDate
+    map<int64, string> operator_fid_by_time = 2;
+  }
+
+  // Represent a list of exceptions for a given date filed by an operator.
+  message Exceptions {
+    repeated string exception = 1;
+  }
+}

@@ -1,0 +1,14 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.smb.globalconveyorbelt.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "GlobalConveyorBeltProto";
+option java_package = "com.flexport.smb.globalconveyorbelt.v1beta1";
+option ruby_package = "Flexport::Smb::GlobalConveyorBelt::V1Beta1";
+
+message GlobalConveyorBeltOffering {
+  string uuid = 1;
+}

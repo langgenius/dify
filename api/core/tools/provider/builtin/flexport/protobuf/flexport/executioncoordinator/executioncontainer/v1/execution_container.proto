@@ -1,0 +1,126 @@
+// TEAM: sutro
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executioncontainer.v1;
+
+import "flexport/executioncoordinator/executioncontainer/v1/container_activity_post.proto";
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionContainerProto";
+option java_package = "com.flexport.executioncoordinator.executioncontainer.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionContainer::V1";
+
+message ExecutionContainer {
+  int64 id = 1;
+  string container_number = 2;
+  string seal_number = 3;
+  string pick_up_code = 4;
+  string iso_code = 5;
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerType container_type = 6;
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerSize container_size = 7;
+  // This is NOT the shipment_id. This is the dbid of the execution_container_shipment.
+  // To get the shipment_id, you can reference the flex_id field on the execution_container_shipment.
+  int64 shipment_id = 8;
+  string reference_code = 9;
+  // The fid of the container this execution container refers to.
+  string fid = 10;
+  repeated ContainerActivityPost container_activity_posts = 11;
+  ContainerStatus container_status = 12;
+  string gross_weight = 13 [deprecated = true];
+  repeated LockContainerEditReason lock_container_edit_reasons = 14;
+  // The fid of this execution container.
+  string execution_container_fid = 15;
+  string execution_container_shipment_fid = 16;
+  string pick_up_code_updated_by_fid = 17;
+
+  // New container attributes added to the execution container should use the ContainerAttribute wrapper
+  // to allow for user/automation attribution.
+  ContainerAttributeString pickup_number = 18;
+  ContainerAttributeString empty_return_location = 19 [deprecated = true];
+  ContainerAttributeString empty_return_reference = 20 [deprecated = true];
+  ContainerAttributeInteger total_pallet_count = 21;
+  ContainerAttributeInteger total_carton_count = 22;
+  google.protobuf.Timestamp created_at = 23;
+  google.protobuf.Timestamp updated_at = 24;
+  // The cargo attributes for the container.
+  ContainerWeight gross_weight_attribute = 25;
+  ContainerVolume volume = 26;
+  ContainerQuantity quantity = 27;
+  string empty_return_location_fid = 28;
+  string empty_pickup_location_fid = 29;
+}
+
+message ContainerAttributeStringValue {
+  string value = 1;
+  int64 updated_at = 2;
+  string updated_by_fid = 3;
+}
+
+message ContainerAttributeString {
+  string value = 1;
+  ContainerAttributeStringValue user_value = 2;
+  ContainerAttributeStringValue automation_value = 3;
+}
+
+message ContainerAttributeIntegerValue {
+  google.protobuf.Int32Value value = 1;
+  int64 updated_at = 2;
+  string updated_by_fid = 3;
+}
+
+message ContainerAttributeInteger {
+  google.protobuf.Int32Value value = 1;
+  ContainerAttributeIntegerValue user_value = 2;
+  ContainerAttributeIntegerValue automation_value = 3;
+}
+
+message ContainerWeight {
+  ContainerAttributeStringValue value = 1;
+  flexport.os.v1.types.cargo.v1.CargoWeightUnit unit = 2;
+  ContainerRevisionSource revision_source = 3;
+}
+
+message ContainerVolume {
+  ContainerAttributeStringValue value = 1;
+  flexport.os.v1.types.cargo.v1.CargoVolumeUnit unit = 2;
+  ContainerRevisionSource revision_source = 3;
+}
+
+message ContainerQuantity {
+  ContainerAttributeIntegerValue value = 1;
+  flexport.os.v1.types.cargo.v1.CargoUnit unit = 2;
+  ContainerRevisionSource revision_source = 3;
+}
+
+enum ContainerStatus {
+  CONTAINER_STATUS_INVALID = 0;
+  CONTAINER_STATUS_ON_VESSEL = 1;
+  CONTAINER_STATUS_NOT_AVAILABLE = 2;
+  CONTAINER_STATUS_ON_HOLD = 3;
+  CONTAINER_STATUS_AVAILABLE = 4;
+  CONTAINER_STATUS_GATED_OUT = 5;
+}
+
+enum LockContainerEditReason {
+  LOCK_CONTAINER_EDIT_REASON_INVALID = 0;
+  LOCK_CONTAINER_EDIT_REASON_TRUCKING_DELIVERY_ORDER_SENT = 1;
+  LOCK_CONTAINER_EDIT_REASON_OCEAN_HBL_DRAFT_APPROVED = 2;
+  LOCK_CONTAINER_EDIT_REASON_SHIPPER_SHIPPING_INSTRUCTIONS_CHANGED = 3;
+}
+
+enum ContainerRevisionSource {
+  CONTAINER_REVISION_SOURCE_INVALID = 0;
+  CONTAINER_REVISION_SOURCE_SHIPPING_DOCUMENTS = 1;
+  CONTAINER_REVISION_SOURCE_CONTAINER_CARD = 2;
+  CONTAINER_REVISION_SOURCE_WAREHOUSE = 3;
+  CONTAINER_REVISION_SOURCE_TRUCKING = 4;
+  CONTAINER_REVISION_SOURCE_VISIBILITY = 5;
+  CONTAINER_REVISION_SOURCE_SHIPMENT_CONTROLLER = 6;
+  CONTAINER_REVISION_SOURCE_ORIGIN_AUTOMATION = 7;
+  CONTAINER_REVISION_SOURCE_SHIPPER_SHIPPING_INSTRUCTIONS = 8;
+  CONTAINER_REVISION_SOURCE_OCEAN_HOUSE_BILL_OF_LADING = 9;
+}

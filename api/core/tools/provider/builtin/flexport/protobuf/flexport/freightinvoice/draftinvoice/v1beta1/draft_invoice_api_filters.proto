@@ -1,0 +1,21 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.freightinvoice.draftinvoice.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DraftInvoiceApiFiltersProto";
+option java_package = "com.flexport.freightinvoice.draftinvoice.v1beta1";
+option ruby_package = "Flexport::FreightInvoice::DraftInvoice::V1Beta1";
+
+import "google/protobuf/wrappers.proto";
+
+// Set of filters to select draft invoices.
+message DraftInvoiceApiFilters {
+  google.protobuf.StringValue invoiceable_fid_wrapper = 1;
+  google.protobuf.StringValue invoicing_entity_fid_wrapper = 2;
+  google.protobuf.StringValue receiving_entity_fid_wrapper = 3;
+  google.protobuf.BoolValue voided_wrapper = 4;
+  google.protobuf.BoolValue shared_wrapper = 5;
+}

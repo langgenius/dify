@@ -1,0 +1,20 @@
+// TEAM: trucking_pricing_rate_management
+
+syntax = "proto3";
+
+package flexport.monolith.truckingprocurement.rates.v1beta1;
+
+import "flexport/network/v1beta1/address.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RateRequestPickup";
+option java_package = "com.flexport.monolith.truckingprocurement.rates.v1beta1";
+option ruby_package = "Flexport::Monolith::TruckingProcurement::Rates::V1Beta1";
+
+message PickupInfo {
+  network.v1beta1.Address address = 1;
+  optional google.protobuf.StringValue client_fid = 2;
+  google.protobuf.Timestamp pickup_time = 3;
+}

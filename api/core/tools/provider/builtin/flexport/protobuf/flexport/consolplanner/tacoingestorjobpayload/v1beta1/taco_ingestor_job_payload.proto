@@ -1,0 +1,16 @@
+// TEAM: trucking_planning
+
+syntax = "proto3";
+
+package flexport.consolplanner.tacoingestorjobpayload.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TacoIngestorJobPayloadProto";
+option java_package = "com.flexport.consolplanner.tacoingestorjobpayload.v1beta1";
+option ruby_package = "Flexport::ConsolPlanner::TacoIngestorJobPayload::V1Beta1";
+
+// Payload for csv parsing background job.
+message TacoIngestorJobPayload {
+  string filename = 1;
+  string user_fid = 2;
+}

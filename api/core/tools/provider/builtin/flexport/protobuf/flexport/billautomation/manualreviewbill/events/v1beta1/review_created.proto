@@ -1,0 +1,20 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billautomation.manualreviewbill.events.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ReviewCreatedProto";
+option java_package = "com.flexport.billautomation.manualreviewbill.events.v1beta1";
+option ruby_package = "Flexport::BillAutomation::ManualReviewBill::Events::V1Beta1";
+
+import "flexport/billautomation/manualreviewbill/v1beta1/manual_review_bill.proto";
+import "google/protobuf/timestamp.proto";
+
+// Event emitted when a ManualReviewBill is created.
+message ReviewCreated {
+  flexport.billautomation.manualreviewbill.v1beta1.ManualReviewBill manual_review_bill = 1;
+  google.protobuf.Timestamp created_at_time = 2;
+  string attachment_fingerprint = 3;
+}

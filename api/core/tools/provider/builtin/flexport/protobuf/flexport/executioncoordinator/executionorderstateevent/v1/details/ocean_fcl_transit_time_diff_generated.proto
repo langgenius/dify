@@ -1,0 +1,17 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanFclTransitTimeDiffGeneratedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "flexport/executioncoordinator/types/transittimediff/v1/ocean_fcl_transit_time_diff.proto";
+
+// An event emitted after shipment delivery comparing the predicted vs actual transit times.
+message OceanFclTransitTimeDiffGenerated {
+  repeated flexport.executioncoordinator.types.transittimediff.v1.OceanFclTransitTimeDiff transit_time_diffs = 1;
+}

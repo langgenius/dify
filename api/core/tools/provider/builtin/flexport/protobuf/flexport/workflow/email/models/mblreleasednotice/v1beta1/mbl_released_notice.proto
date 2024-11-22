@@ -1,0 +1,45 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.workflow.email.models.mblreleasednotice.v1beta1;
+
+import "flexport/workflow/prelude/options/v1/options.proto";
+import "flexport/workflow/email/models/scac/v1beta1/scac.proto";
+import "flexport/workflow/email/models/region/v1beta1/region.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MblReleasedNoticeProto";
+option java_package = "com.flexport.workflow.email.models.mblreleasednotice.v1beta1";
+option ruby_package = "Flexport::Workflow::Email::Models::MblReleasedNotice::V1Beta1";
+
+// Mbl released notice received event.
+message MblReleasedNotice {
+  option (flexport.workflow.prelude.options.v1.wp_event).name = "Master bill of lading released notice";
+  option (flexport.workflow.prelude.options.v1.wp_event).description = "This event will be triggered when the mbl released notice email is received and the business data is successfully extracted.";
+  option (flexport.workflow.prelude.options.v1.wp_event).resource_key = "mbl_number_or_booking_number";
+  //
+  // Mbl number or booking number.
+  string mbl_number_or_booking_number = 1;
+  // should deprecate region and attachment to use the unified types
+  Region region = 2;
+  repeated Attachment attachments = 3;
+  flexport.workflow.email.models.scac.v1beta1.Scac scac = 4;
+  flexport.workflow.email.models.region.v1beta1.Region email_region = 5;
+}
+
+// Region.
+enum Region {
+  REGION_INVALID = 0;
+  REGION_PRE = 1;
+  REGION_PRS = 2;
+  REGION_EMEA = 3;
+  REGION_NAM = 4;
+}
+
+// Attachment.
+message Attachment {
+  string name = 1;
+  string storage_fid = 2;
+  string content_type = 3;
+}

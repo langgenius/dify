@@ -1,0 +1,30 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.isf.v1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.isf.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Isf::V1";
+
+message IsfBondInformation {
+  string bond_holder_number = 1;
+  IsfBondActivityType bond_activity_code = 2;
+  IsfBondType bond_type = 3;
+}
+
+enum IsfBondActivityType {
+  ISF_BOND_ACTIVITY_TYPE_INVALID = 0;
+  ISF_BOND_ACTIVITY_TYPE_IMPORTER_OR_BROKER = 1;
+  ISF_BOND_ACTIVITY_TYPE_CUSTODIAN_OF_BONDED_MERCHANDISE = 2;
+  ISF_BOND_ACTIVITY_TYPE_INTERNATIONAL_CARRIER = 3;
+  ISF_BOND_ACTIVITY_TYPE_FOREIGN_TRADE_ZONE_OPERATOR = 4;
+  ISF_BOND_ACTIVITY_TYPE_ISF_BOND = 5;
+}
+
+enum IsfBondType {
+  ISF_BOND_TYPE_INVALID = 0;
+  ISF_BOND_TYPE_CONTINUOUS = 1;
+  ISF_BOND_TYPE_SINGLE_TRANSACTION = 2;
+}

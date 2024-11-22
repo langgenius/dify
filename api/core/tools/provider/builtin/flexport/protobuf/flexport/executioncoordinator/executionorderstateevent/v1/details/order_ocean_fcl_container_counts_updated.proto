@@ -1,0 +1,23 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OrderOceanFclContainerCountsUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+
+// The container counts of an Execution Order (FCL execution offering) has changed.
+message OrderOceanFclContainerCountsUpdated {
+  //
+  // The revision number of the ExecutionOrder in which this info was updated.
+  uint32 revision = 1;
+  //
+
+  repeated flexport.os.v1.types.cargo.v1.Iso6346ContainerSize old_container_sizes = 2;
+  repeated flexport.os.v1.types.cargo.v1.Iso6346ContainerSize new_container_sizes = 3;
+}

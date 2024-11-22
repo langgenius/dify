@@ -1,0 +1,49 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.rate.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RateApiProto";
+option java_package = "com.flexport.catalog.rate.v1";
+option ruby_package = "Flexport::Catalog::Rate::V1";
+
+import "flexport/catalog/rate/v1/rate.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/wrappers.proto";
+
+// The rate service definition.
+service RateAPI {
+  // Evaluates cost and sell rates.
+  rpc EvaluateRates(EvaluateRatesRequest) returns (EvaluateRatesResponse) {
+    option (google.api.http) = {
+      post: "/v1/evaluate_rates"
+    };
+  }
+  // Calculate the selling rate for a given cost rate.
+  rpc CalculateSellRate(CalculateSellRateRequest) returns (CalculateSellRateResponse);
+}
+
+message EvaluateRatesRequest {
+  repeated EvaluateRatesRequestItem items = 1;
+  SharedVariables variables = 2;
+  google.protobuf.StringValue currency_code = 3;
+  map<string, string> exchange_rates = 4;
+}
+
+message EvaluateRatesResponse {
+  repeated EvaluateRatesResponseItem items = 1;
+  google.protobuf.StringValue total_cost_amount = 3;
+  google.protobuf.StringValue total_sell_amount = 4;
+  google.protobuf.StringValue currency_code = 2;
+}
+
+message CalculateSellRateRequest {
+  RateDto cost_rate = 1;
+  RateDto relative_rate = 2;
+}
+
+message CalculateSellRateResponse {
+  RateDto sell_rate = 1;
+}

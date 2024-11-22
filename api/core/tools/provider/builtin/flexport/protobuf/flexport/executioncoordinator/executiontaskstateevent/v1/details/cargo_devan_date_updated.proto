@@ -1,0 +1,26 @@
+// TEAM: warehousing
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoDevanDateUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/executioncoordinator/types/enums/v1/date_type.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+
+// This event indicates that a cargo has been devanned at a warehouse.
+// In some cases cargo can't be deconsolidated due to customs so that is when we emit this event.
+message CargoDevanDateUpdated {
+  // The date value.
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime date_or_date_time = 1;
+  // The date type.
+  flexport.executioncoordinator.types.enums.v1.DateType date_type = 2;
+  // Where the cargo was deconsolidated.
+  string address_fid = 3;
+  // Which specific container was deconsolidated (where applicable).
+  string container_fid = 4;
+}

@@ -1,0 +1,30 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.inboundimportersecurityfiling.inboundisfsync.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "InboundIsfSyncApiProto";
+option java_package = "com.flexport.inboundimportersecurityfiling.inboundisfsync.v1beta1";
+option ruby_package = "Flexport::InboundImporterSecurityFiling::InboundIsfSync::V1Beta1";
+
+import "flexport/inboundimportersecurityfiling/typedinboundimportersecurityfiling/v1beta1/typed_inbound_importer_security_filing.proto";
+
+// The API for writing back to engines/inbound_importer_security_filing from customs-isf-service.
+service InboundIsfSyncAPI {
+  // Upsert an inbound importer security filing.
+  rpc Upsert(UpsertRequest) returns (UpsertResponse);
+}
+
+// This message represents a desire to propagate an ISF from customs-isf-service to the monorail's inbound_isf_engine.
+message UpsertRequest {
+  flexport.inboundimportersecurityfiling.typedinboundimportersecurityfiling.v1beta1.TypedInboundImporterSecurityFiling isf = 1;
+  string nis_fid = 2;
+}
+
+// This message is the response from a InboundIsfNisWriteBackRequest.
+message UpsertResponse {
+  // TypedInboundImporterSecurityFiling contains InboundImporterSecurityFiling which has the core fid for the ISF.
+  flexport.inboundimportersecurityfiling.typedinboundimportersecurityfiling.v1beta1.TypedInboundImporterSecurityFiling isf = 1;
+}

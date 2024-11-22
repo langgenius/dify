@@ -1,0 +1,39 @@
+// TEAM: unified_subledger
+
+syntax = "proto3";
+
+package flexport.usl.archive.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "JoborderProto";
+option java_package = "com.flexport.usl.archive.v1beta1";
+option ruby_package = "Flexport::USL::Archive::V1Beta1";
+
+// JobOrderDto represent a single service contracted - It can be
+// a Shipment, it may be some customs service, insurance or some other
+// service. Presently this maps to a FLEX-<id>, but we have several things
+// that are not being properly handled.
+message JobOrderDto {
+  reserved 8; // persisted_in_execution_coordinator_time field is removed
+
+  string job_order_fid = 1;
+  string description = 2;
+  string type = 5;
+  map<string, string> metadata = 13;
+  // Time at which this job order was updated / this job order version was created
+  google.protobuf.Timestamp updated_at_time = 14;
+  string lineage_id = 98;
+  string record_id = 99;
+}
+
+// Basic information about the status of the job order.
+enum JobOrderStage {
+  JOB_ORDER_STAGE_INVALID = 0;
+  JOB_ORDER_STAGE_QUOTED = 1;
+  JOB_ORDER_STAGE_PLANNED = 10;
+  JOB_ORDER_STAGE_STARTING = 20;
+  JOB_ORDER_STAGE_IN_PROGRESS = 30;
+  JOB_ORDER_STAGE_COMPLETED = 40;
+}

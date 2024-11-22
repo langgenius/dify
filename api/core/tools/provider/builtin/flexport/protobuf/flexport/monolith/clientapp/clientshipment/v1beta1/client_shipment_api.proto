@@ -1,0 +1,60 @@
+// TEAM: client_app
+
+syntax = "proto3";
+
+package flexport.monolith.clientapp.clientshipment.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ClientShipmentApiProto";
+option java_package = "com.flexport.monolith.clientapp.clientshipment.v1beta1";
+option ruby_package = "Flexport::Monolith::ClientApp::ClientShipment::V1Beta1";
+
+// This API sync the client shipment data back to monorail.
+service ClientShipmentAPI {
+  // Upsert the flex_id to client_shipment_fid mapping in the monorail client_shipment_cache table.
+  rpc UpsertClientShipmentFidCache(UpsertClientShipmentFidCacheRequest) returns (UpsertClientShipmentFidCacheResponse);
+  // Check if an mbl corresponds to an existing active 3PL shipment.
+  rpc CheckForMonorailShipment(CheckForMonorailShipmentRequest) returns (CheckForMonorailShipmentResponse);
+  // Delete the archived/deleted shipments in monorail.
+  rpc DeleteClientShipment(DeleteClientShipmentRequest) returns (DeleteClientShipmentResponse);
+}
+
+// The request message for sync client shipment's flex id back to monorail.
+message UpsertClientShipmentFidCacheRequest {
+  // The client shipment fid from Client Freight Data Service.
+  string client_shipment_fid = 1;
+  // The flex_id of the client shipment, e.g. FLEX-123456.
+  string flex_id = 2;
+}
+
+// The response message for UpsertClientShipmentFidCache API (empty).
+message UpsertClientShipmentFidCacheResponse {}
+
+// The request message for CheckForMonorailShipment API.
+message CheckForMonorailShipmentRequest {
+  // The MBL of the 3PL shipment. MBL must start with a SCAC code of length 4 and contain bill number code after SCAC code
+  // e.g. SCAC1234567.
+  string mbl_number = 1;
+  // The client fid.
+  string client_fid = 2;
+}
+
+// The response message for CheckForMonorailShipment API.
+message CheckForMonorailShipmentResponse {
+  // The check result
+  oneof result {
+    bool has_active_shipment = 1;
+    string error_message = 2;
+  }
+}
+
+// Either client shipment fid or flex id must be provided.
+message DeleteClientShipmentRequest {
+  // The client shipment fid from Client Freight Data Service.
+  string client_shipment_fid = 1;
+  // The flex_id of the client shipment, e.g. FLEX-123456.
+  string flex_id = 2;
+}
+
+// The response message for DeleteClientShipment API (empty).
+message DeleteClientShipmentResponse {}

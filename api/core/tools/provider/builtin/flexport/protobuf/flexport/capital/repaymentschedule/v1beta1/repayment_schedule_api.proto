@@ -1,0 +1,308 @@
+// TEAM: capital
+
+syntax = "proto3";
+
+package flexport.capital.repaymentschedule.v1beta1;
+
+import "flexport/capital/repaymentschedule/v1beta1/repayment_schedule.proto";
+import "flexport/capital/shared/v1beta1/error_result.proto";
+import "flexport/capital/shared/v1beta1/page_info.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RepaymentScheduleApiProto";
+option java_package = "com.flexport.capital.repaymentschedule.v1beta1";
+option ruby_package = "Flexport::Capital::RepaymentSchedule::V1Beta1";
+
+service RepaymentScheduleAPI {
+  rpc CreateRepaymentSchedules(CreateRepaymentSchedulesRequest) returns (CreateRepaymentSchedulesResponse);
+
+  rpc GetRepaymentSchedule(GetRepaymentScheduleRequest) returns (GetRepaymentScheduleResponse);
+  rpc GetRepaymentSchedules(GetRepaymentSchedulesRequest) returns (GetRepaymentSchedulesResponse);
+  rpc GetRepaymentSchedulesPage(GetRepaymentSchedulesPageRequest) returns (GetRepaymentSchedulesPageResponse);
+
+  rpc GetRepaymentSchedulePayments(GetRepaymentSchedulePaymentsRequest) returns (GetRepaymentSchedulePaymentsResponse);
+  rpc GetRepaymentScheduleRefunds(GetRepaymentScheduleRefundsRequest) returns (GetRepaymentScheduleRefundsResponse);
+
+  rpc UpdateRepaymentScheduleInvoice(UpdateRepaymentScheduleInvoiceRequest) returns (UpdateRepaymentScheduleInvoiceResponse);
+
+  rpc ApplyPayment(ApplyPaymentRequest) returns (ApplyPaymentResponse);
+  rpc ApplyRefund(ApplyRefundRequest) returns (ApplyRefundResponse);
+  rpc UnapplyPayment(UnapplyPaymentRequest) returns (UnapplyPaymentResponse);
+  rpc UnapplyPaymentByFid(UnapplyPaymentByFidRequest) returns (UnapplyPaymentByFidResponse);
+
+  rpc BackfillRepaymentSchedules(BackfillRepaymentSchedulesRequest) returns (BackfillRepaymentSchedulesResponse);
+  rpc UpdateRepaymentScheduleLinkage(UpdateRepaymentScheduleLinkageRequest) returns (UpdateRepaymentScheduleLinkageResponse);
+
+  rpc UnsafeUpdateRepaymentSchedulePayment(UnsafeUpdateRepaymentSchedulePaymentRequest) returns (UnsafeUpdateRepaymentSchedulePaymentResponse);
+  rpc UnsafeCreateRepaymentSchedulePayment(UnsafeCreateRepaymentSchedulePaymentRequest) returns (UnsafeCreateRepaymentSchedulePaymentResponse);
+  rpc UnsafeRemoveRepaymentSchedulePayment(UnsafeRemoveRepaymentSchedulePaymentRequest) returns (UnsafeRemoveRepaymentSchedulePaymentResponse);
+
+  rpc UnsafeUpdateRepaymentScheduleRefund(UnsafeUpdateRepaymentScheduleRefundRequest) returns (UnsafeUpdateRepaymentScheduleRefundResponse);
+  rpc UnsafeCreateRepaymentScheduleRefund(UnsafeCreateRepaymentScheduleRefundRequest) returns (UnsafeCreateRepaymentScheduleRefundResponse);
+  rpc UnsafeRemoveRepaymentScheduleRefund(UnsafeRemoveRepaymentScheduleRefundRequest) returns (UnsafeRemoveRepaymentScheduleRefundResponse);
+
+  rpc UnsafeUpdateRepaymentSchedule(UnsafeUpdateRepaymentScheduleRequest) returns (UnsafeUpdateRepaymentScheduleResponse);
+  rpc UnsafeCreateRepaymentSchedule(UnsafeCreateRepaymentScheduleRequest) returns (UnsafeCreateRepaymentScheduleResponse);
+  rpc UnsafeRemoveRepaymentSchedule(UnsafeRemoveRepaymentScheduleRequest) returns (UnsafeRemoveRepaymentScheduleResponse);
+}
+
+message CreateRepaymentSchedulesRequest {
+  repeated RepaymentSchedule repayment_schedules = 1;
+}
+
+message CreateRepaymentSchedulesResponse {
+  repeated string schedule_ids = 1;
+  // An optional message indicating the result
+  string message = 2;
+}
+
+message GetRepaymentScheduleRequest {
+  string schedule_id = 1;
+}
+
+message GetRepaymentScheduleResponse {
+  flexport.capital.repaymentschedule.v1beta1.RepaymentSchedule repayment_schedule = 1;
+  // An optional message indicating the result
+  string message = 2;
+}
+
+message GetRepaymentSchedulesRequest {
+  string client_id = 1;
+  string loan_id = 2;
+}
+
+message GetRepaymentSchedulesResponse {
+  repeated flexport.capital.repaymentschedule.v1beta1.RepaymentSchedule repayment_schedules = 1;
+  // An optional message indicating the result
+  string message = 2;
+}
+
+message GetRepaymentSchedulesPageRequest {
+  flexport.capital.repaymentschedule.v1beta1.RepaymentScheduleFilters filters = 1;
+  google.protobuf.Int32Value count = 2;
+  google.protobuf.StringValue cursor = 3;
+}
+
+message GetRepaymentSchedulesPageResponse {
+  repeated flexport.capital.repaymentschedule.v1beta1.RepaymentSchedule repayment_schedules = 1;
+  flexport.capital.shared.v1beta1.PageInfo page_info = 2;
+}
+
+message GetRepaymentSchedulePaymentsRequest {
+  string repayment_schedule_fid = 1;
+}
+
+message GetRepaymentSchedulePaymentsResponse {
+  repeated flexport.capital.repaymentschedule.v1beta1.Payment payments = 1;
+}
+
+message GetRepaymentScheduleRefundsRequest {
+  string repayment_schedule_fid = 1;
+}
+
+message GetRepaymentScheduleRefundsResponse {
+  repeated flexport.capital.repaymentschedule.v1beta1.Refund refunds = 1;
+}
+
+message UpdateRepaymentScheduleInvoiceRequest {
+  string schedule_id = 1;
+  string invoice_id = 2;
+  string existing_invoice_id = 3;
+  string invoice_fid = 4;
+}
+
+message UpdateRepaymentScheduleInvoiceResponse {
+  bool success = 1;
+  // An optional message indicating the result
+  string message = 2;
+}
+
+message UpdateRepaymentScheduleLinkageRequest {
+  string old_invoice_id = 1;
+  string new_invoice_id = 2;
+  int64 amount = 3;
+  string due_date = 4;
+  bool dry_run = 5;
+  int64 paid_amount = 6;
+  int64 principle = 7;
+  int64 fee = 8;
+  int64 amount_usd = 9;
+  int64 paid_amount_usd = 10;
+  int64 principal_amount_usd = 11;
+  int64 fee_amount_usd = 12;
+  string exchange_rate = 13;
+  string currency_code = 15;
+  string new_invoice_fid = 16;
+}
+
+message UpdateRepaymentScheduleLinkageResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+message ApplyPaymentRequest {
+  string invoice_id = 1;
+  int64 amount = 2;
+  int64 payment_id = 3;
+  string currency_code = 4;
+}
+
+message ApplyPaymentResponse {
+  bool success = 1;
+  flexport.capital.repaymentschedule.v1beta1.RepaymentStatus new_status = 2;
+  string message = 3;
+}
+
+message UnapplyPaymentRequest {
+  string invoice_id = 1;
+  int64 payment_id = 2;
+}
+
+message UnapplyPaymentResponse {
+  bool success = 1;
+  flexport.capital.repaymentschedule.v1beta1.RepaymentStatus new_status = 2;
+  string message = 3;
+}
+
+message UnapplyPaymentByFidRequest {
+  string payment_fid = 1;
+}
+
+message UnapplyPaymentByFidResponse {
+  bool success = 1;
+  flexport.capital.repaymentschedule.v1beta1.RepaymentStatus new_status = 2;
+  string message = 3;
+}
+
+message ApplyRefundRequest {
+  string invoice_id = 1;
+  int64 amount = 2;
+  int64 refund_id = 3;
+  int64 payment_id = 4;
+  string currency_code = 5;
+}
+
+message ApplyRefundResponse {
+  bool success = 1;
+  flexport.capital.repaymentschedule.v1beta1.RepaymentStatus new_status = 2;
+  string message = 3;
+}
+
+message BackfillRepaymentSchedulesRequest {
+  repeated flexport.capital.repaymentschedule.v1beta1.RepaymentSchedule repayment_schedules = 1;
+  bool dry_run = 2;
+  bool override = 3;
+}
+
+message BackfillRepaymentSchedulesResponse {
+  repeated string schedule_ids = 1;
+  // An optional message indicating the result
+  string message = 2;
+}
+
+message UnsafeUpdateRepaymentSchedulePaymentRequest {
+  string payment_fid = 1;
+  google.protobuf.FieldMask field_mask = 2;
+  flexport.capital.repaymentschedule.v1beta1.Payment payment = 3;
+}
+
+message UnsafeUpdateRepaymentSchedulePaymentResponse {
+  oneof result {
+    flexport.capital.repaymentschedule.v1beta1.Payment success_result = 1;
+    flexport.capital.shared.v1beta1.ErrorResult failure_result = 2;
+  }
+}
+
+message UnsafeCreateRepaymentSchedulePaymentRequest {
+  flexport.capital.repaymentschedule.v1beta1.Payment payment = 1;
+}
+
+message UnsafeCreateRepaymentSchedulePaymentResponse {
+  oneof result {
+    flexport.capital.repaymentschedule.v1beta1.Payment success_result = 1;
+    flexport.capital.shared.v1beta1.ErrorResult failure_result = 2;
+  }
+}
+
+message UnsafeRemoveRepaymentSchedulePaymentRequest {
+  string payment_fid = 1;
+}
+
+message UnsafeRemoveRepaymentSchedulePaymentResponse {
+  oneof result {
+    google.protobuf.StringValue success_result = 1;
+    flexport.capital.shared.v1beta1.ErrorResult failure_result = 2;
+  }
+}
+
+message UnsafeUpdateRepaymentScheduleRefundRequest {
+  string refund_fid = 1;
+  google.protobuf.FieldMask field_mask = 2;
+  flexport.capital.repaymentschedule.v1beta1.Refund refund = 3;
+}
+
+message UnsafeUpdateRepaymentScheduleRefundResponse {
+  oneof result {
+    flexport.capital.repaymentschedule.v1beta1.Refund success_result = 1;
+    flexport.capital.shared.v1beta1.ErrorResult failure_result = 2;
+  }
+}
+
+message UnsafeCreateRepaymentScheduleRefundRequest {
+  flexport.capital.repaymentschedule.v1beta1.Refund refund = 1;
+}
+
+message UnsafeCreateRepaymentScheduleRefundResponse {
+  oneof result {
+    flexport.capital.repaymentschedule.v1beta1.Refund success_result = 1;
+    flexport.capital.shared.v1beta1.ErrorResult failure_result = 2;
+  }
+}
+
+message UnsafeRemoveRepaymentScheduleRefundRequest {
+  string refund_fid = 1;
+}
+
+message UnsafeRemoveRepaymentScheduleRefundResponse {
+  oneof result {
+    google.protobuf.StringValue success_result = 1;
+    flexport.capital.shared.v1beta1.ErrorResult failure_result = 2;
+  }
+}
+
+message UnsafeUpdateRepaymentScheduleRequest {
+  string repayment_schedule_fid = 1;
+  google.protobuf.FieldMask field_mask = 2;
+  flexport.capital.repaymentschedule.v1beta1.RepaymentSchedule repayment_schedule = 3;
+}
+
+message UnsafeUpdateRepaymentScheduleResponse {
+  oneof result {
+    flexport.capital.repaymentschedule.v1beta1.RepaymentSchedule success_result = 1;
+    flexport.capital.shared.v1beta1.ErrorResult failure_result = 2;
+  }
+}
+
+message UnsafeCreateRepaymentScheduleRequest {
+  flexport.capital.repaymentschedule.v1beta1.RepaymentSchedule repayment_schedule = 1;
+}
+
+message UnsafeCreateRepaymentScheduleResponse {
+  oneof result {
+    flexport.capital.repaymentschedule.v1beta1.RepaymentSchedule success_result = 1;
+    flexport.capital.shared.v1beta1.ErrorResult failure_result = 2;
+  }
+}
+
+message UnsafeRemoveRepaymentScheduleRequest {
+  string repayment_schedule_fid = 1;
+}
+
+message UnsafeRemoveRepaymentScheduleResponse {
+  oneof result {
+    google.protobuf.StringValue success_result = 1;
+    flexport.capital.shared.v1beta1.ErrorResult failure_result = 2;
+  }
+}

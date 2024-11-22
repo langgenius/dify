@@ -1,0 +1,38 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsdocumentservice.imageextraction.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ImageExtractionAPIProto";
+option java_package = "com.flexport.customsdocumentservice.imageextraction.v1beta1";
+option ruby_package = "Flexport::CustomsDocumentService::ImageExtraction::V1Beta1";
+
+// An API for extracting product images from a CI/PL document
+service ImageExtractionAPI {
+  // Extract product image pages from CI/PL document and upload to google drive
+  rpc ExtractImage(ExtractImageRequest) returns (ExtractImageResponse);
+}
+
+message ExtractImageRequest {
+  string document_fid = 1;
+
+  // The google drive folder id to upload the image.
+  // The service account this server is using MUST have access to this
+  //   folder.
+  string google_drive_folder_id = 2;
+
+  string client_id = 3;
+
+  // The prefix of uploaded files as they show up in google drive.
+  string file_prefix = 4;
+}
+
+message ExtractImageResponse {
+  repeated string google_drive_urls = 1;
+  bool success = 2;
+
+  // Error message if success is false. Otherwise, may contain other information
+  string message = 3;
+}

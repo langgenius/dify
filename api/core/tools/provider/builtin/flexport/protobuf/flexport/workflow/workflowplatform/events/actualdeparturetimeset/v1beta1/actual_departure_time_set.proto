@@ -1,0 +1,43 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.workflowplatform.events.actualdeparturetimeset.v1beta1;
+
+import "flexport/rulesengine/options/v1/options.proto";
+import "flexport/workflow/prelude/options/v1/options.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ActualDepartureTimeSetProto";
+option java_package = "com.flexport.workflow.workflowplatform.events.actualdeparturetimeset.v1beta1";
+option ruby_package = "Flexport::Workflow::WorkflowPlatform::Events::ActualDepartureTimeSet::V1Beta1";
+
+// Actual departure time set.
+message ActualDepartureTimeSet {
+  option (flexport.workflow.prelude.options.v1.wp_event).name = "Actual Departure Time Set";
+  option (flexport.workflow.prelude.options.v1.wp_event).description = "This event will be triggered when a shipment actual departure time is set.";
+  string shipment_fid = 1;
+  repeated int64 origin_agent_ids = 2 [
+    (flexport.rulesengine.options.v1.algolia_index).extra_fields = "id",
+    (flexport.rulesengine.options.v1.algolia_index).extra_fields = "legal_name",
+    (flexport.rulesengine.options.v1.algolia_index).index_name = "CompanyEntity",
+    (flexport.rulesengine.options.v1.algolia_index).label_field = "legal_name",
+    (flexport.rulesengine.options.v1.algolia_index).value_field = "id"
+  ];
+  // Ocean Shipment Container Type.
+  enum ContainerType {
+    option (flexport.rulesengine.options.v1.enum_description) = "Container type";
+    CONTAINER_TYPE_INVALID = 0;
+    CONTAINER_TYPE_FCL = 1;
+    CONTAINER_TYPE_LCL = 2;
+  }
+  ContainerType container_type = 3 [
+    (flexport.rulesengine.options.v1.field_description) = "Type of Ocean Shipment Container.",
+    (flexport.rulesengine.options.v1.field_title) = "Container Type"
+  ];
+  int64 client_id = 4 [
+    (flexport.rulesengine.options.v1.algolia_index).extra_fields = "id",
+    (flexport.rulesengine.options.v1.algolia_index).index_name = "Client",
+    (flexport.rulesengine.options.v1.algolia_index).value_field = "id"
+  ];
+}

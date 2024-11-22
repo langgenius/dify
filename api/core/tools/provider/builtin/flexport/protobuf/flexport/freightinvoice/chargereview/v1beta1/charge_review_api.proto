@@ -1,0 +1,26 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.freightinvoice.chargereview.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ChargeReviewApiProto";
+option java_package = "com.flexport.freightinvoice.chargereview.v1beta1";
+option ruby_package = "Flexport::FreightInvoice::ChargeReview::V1Beta1";
+
+import "flexport/freightinvoice/chargereview/v1beta1/charge_review.proto";
+
+// API for charge review.
+service ChargeReviewAPI {
+  // Fetch a charge review.
+  rpc GetChargeReview(GetChargeReviewRequest) returns (GetChargeReviewResponse);
+}
+
+message GetChargeReviewRequest {
+  string shipment_fid = 1;
+}
+
+message GetChargeReviewResponse {
+  flexport.freightinvoice.chargereview.v1beta1.ChargeReview charge_review = 1;
+}

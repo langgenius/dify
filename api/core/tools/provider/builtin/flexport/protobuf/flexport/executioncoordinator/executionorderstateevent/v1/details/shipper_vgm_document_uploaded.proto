@@ -1,0 +1,27 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipperVgmDocumentUploadedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// Verified Gross Mass (VGM) document has been uploaded by the shipper to Flexport.
+//
+// A "Verified Gross Mass Declaration" (VGM) is a document required by the Safety of Life at Sea
+// commission. It is required to have the numbers and gross weight of each sealed/packed container
+// in a shipment.
+//
+// Flexport receives VGM data from the shipper. It then transmits the VGM data to the ocean carrier.
+// Shippers can submit VGM data either as a PDF or via a structured form. See PR comment [0] for
+// details about how the monolith handles these interactions and http://go/ocean-fcl-lifecycle for
+// a full walkthrough of ocean FCL documents.
+message ShipperVgmDocumentUploaded {
+  string document_fid = 1;
+  string document_memo = 4;
+}
+
+// [0] https://github.flexport.io/flexport/flexport/pull/87368#issuecomment-290251

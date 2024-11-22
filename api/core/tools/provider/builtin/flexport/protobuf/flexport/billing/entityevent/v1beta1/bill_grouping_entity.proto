@@ -1,0 +1,22 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billing.entityevent.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BillGroupingEntityProto";
+option java_package = "com.flexport.billing.entityevent.v1beta1";
+option ruby_package = "Flexport::Billing::EntityEvent::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// The BillGrouping entity object.
+message BillGroupingEntity {
+  string fid = 1;
+  string vendor_fid = 2;
+  google.protobuf.Timestamp created_at_time = 3;
+  google.protobuf.Timestamp updated_at_time = 4;
+  google.protobuf.StringValue bill_number = 5;
+}

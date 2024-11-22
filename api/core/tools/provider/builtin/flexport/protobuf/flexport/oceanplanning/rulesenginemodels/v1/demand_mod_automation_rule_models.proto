@@ -1,0 +1,22 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.oceanplanning.rulesenginemodels.v1;
+
+import "flexport/monolith/oceanplanning/exceptions/v1/ocean_planning_exception_api.proto";
+import "flexport/oceanplanning/fulfillmenttask/v2beta1/fulfillment_task.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DemandModAutomationRuleProto";
+option java_package = "com.flexport.oceanplanning.rulesenginemodels.v1";
+
+message DemandModAutomationRequest {
+  flexport.oceanplanning.fulfillmenttask.v2beta1.OceanPlanningFulfillmentTask fulfillment_task = 1;
+  repeated flexport.monolith.oceanplanning.exceptions.v1.FindActiveExceptionsForShipmentFidWithExceptionCategoryResponse.OceanPlanningExceptionWithCategory open_exceptions = 2;
+}
+
+message DemandModAutomationResponse {
+  bool is_automatable = 1;
+  string rule_description = 2;
+}

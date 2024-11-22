@@ -1,0 +1,45 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.documentprocessor.structureddata.v1beta1;
+
+import "flexport/document_processor/structured_data/v1beta1/sections.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "StructuredDataProto";
+option java_package = "com.flexport.documentprocessor.structureddata.v1beta1";
+option ruby_package = "Flexport::DocumentProcessor::StructuredData::V1Beta1";
+
+// A versioned StructuredData record.
+message StructuredData {
+  // Required. The FID for the underlying DB record.
+  string fid = 1;
+  // Required. The FID for the associated Document DB record.
+  string document_fid = 2;
+  // Required. A revision number for the structured document data.
+  int64 revision_number = 3;
+  // The actual structured data representation of the document.
+  DocumentData document_data = 4;
+  // The digitization method for the document data.
+  DigitizationMethod digitization_method = 5;
+}
+
+enum DigitizationMethod {
+  DIGITIZATION_METHOD_INVALID = 0;
+  DIGITIZATION_METHOD_UNKNOWN = 1;
+  DIGITIZATION_METHOD_API = 2;
+  DIGITIZATION_METHOD_OCR = 3;
+  DIGITIZATION_METHOD_MANUAL = 4;
+  DIGITIZATION_METHOD_NOT_DIGITIZED = 5;
+}
+
+// Represents DocumentData within the StructuredData record.
+message DocumentData {
+  // The header section of the document data.
+  HeaderSection header = 1;
+  // A repeating body or detail section of the document data.
+  repeated DetailSection details = 2;
+  // The footer or summary section of the document data.
+  SummarySection summary = 3;
+}

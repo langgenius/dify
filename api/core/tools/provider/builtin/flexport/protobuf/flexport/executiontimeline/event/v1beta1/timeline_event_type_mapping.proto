@@ -1,0 +1,23 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executiontimeline.event.v1beta1;
+
+import "flexport/executiontimeline/event/v1beta1/ec_event_types.proto";
+import "flexport/executiontimeline/event/v1beta1/timeline_event.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TimelineEventTypeMappingProto";
+option java_package = "com.flexport.executiontimeline.event.v1beta1";
+option ruby_package = "Flexport::ExecutionTimeline::Event::V1Beta1";
+
+message TimelineEventTypeMapping {
+  int64 id = 1;
+  string fid = 2;
+  ExecutionCoordinatorEventType ec_event_type = 3;
+  TimelineEventTypeCategory timeline_event_type_category = 4;
+  google.protobuf.Timestamp created_at_time = 5;
+  google.protobuf.Timestamp updated_at_time = 6;
+}

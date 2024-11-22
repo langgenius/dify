@@ -1,0 +1,24 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.prelude.workfloweventtriggered.v1beta1;
+
+import "flexport/workflow/prelude/options/v1/options.proto";
+import "google/protobuf/any.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "WorkflowEventTriggeredProto";
+option java_package = "com.flexport.workflow.prelude.workfloweventtriggered.v1beta1";
+option ruby_package = "Flexport::Workflow::Prelude::WorkflowEventTriggered::V1Beta1";
+
+// This event is an envelope that wraps around data ingestion
+// WorkflowEventTriggered to carry additional information about the event.
+message WorkflowEventTriggered {
+  option (flexport.workflow.prelude.options.v1.wp_message_key) = "message_key";
+
+  // The entity payload
+  google.protobuf.Any payload = 1;
+
+  string message_key = 2;
+}

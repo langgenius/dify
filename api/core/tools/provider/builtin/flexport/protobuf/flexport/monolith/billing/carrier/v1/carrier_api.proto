@@ -1,0 +1,48 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.monolith.billing.carrier.v1;
+
+import "flexport/monolith/billing/carrier/v1/carrier.proto";
+import "flexport/monolith/billing/carrier/v1/carrier_billing_sources.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierApiProto";
+option java_package = "com.flexport.monolith.billing.carrier.v1";
+option ruby_package = "Flexport::Monolith::Billing::Carrier::V1";
+
+// APIs to retrieve carrier entities.
+service CarrierAPI {
+  // Get carrier for a given fid (Flexport Resource Identifiers).
+  rpc GetCarrier(GetCarrierRequest) returns (GetCarrierResponse) {
+    option deprecated = true;
+  }
+  // Get stats on billing sources for a given list of carrier fids.
+  rpc GetCarrierBillingSources(GetCarrierBillingSourcesRequest) returns (GetCarrierBillingSourcesResponse);
+}
+
+message GetCarrierBillingSourcesRequest {
+  // List of carrier fids
+  repeated string carrier_fids = 1;
+  // The start date (inclusive)
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate start_date = 3;
+  // The end date (inclusive)
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate end_date = 4;
+}
+
+message GetCarrierBillingSourcesResponse {
+  // List of carriers and the counts for billing sources
+  repeated CarrierBillingSourcesResult results = 1;
+}
+
+message GetCarrierRequest {
+  option deprecated = true;
+  string company_fid = 1;
+}
+
+message GetCarrierResponse {
+  option deprecated = true;
+  CarrierDTO carrier = 1;
+}

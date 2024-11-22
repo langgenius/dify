@@ -1,0 +1,49 @@
+// TEAM: network_entities
+
+syntax = "proto3";
+
+package flexport.network.v1beta1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ClientProto";
+option java_package = "com.flexport.network.v1beta1";
+option ruby_package = "Flexport::Network::V1Beta1";
+
+// A close analogue of the Client ActiveRecord model.
+message Client {
+  int32 id = 1;
+  string fid = 2;
+  google.protobuf.StringValue name = 3;
+  google.protobuf.Int32Value company_id = 4;
+  google.protobuf.StringValue company_fid = 5;
+  ClientStatus status = 6;
+  ClientSegment segment = 7;
+  google.protobuf.Int32Value default_invoicing_entity_id = 8;
+  google.protobuf.StringValue default_invoicing_entity_fid = 9;
+  google.protobuf.StringValue l2_line_of_business = 10;
+  google.protobuf.StringValue l3_line_of_business = 11;
+}
+
+// The type of the Address.
+enum ClientStatus {
+  CLIENT_STATUS_INVALID = 0;
+  CLIENT_STATUS_LEAD = 1;
+  CLIENT_STATUS_TEST = 2;
+  CLIENT_STATUS_DEMO = 3;
+  CLIENT_STATUS_ACTIVE = 4;
+  CLIENT_STATUS_CHURNED = 5;
+  CLIENT_STATUS_DEACTIVATED = 6;
+}
+
+// The type of the segment.
+enum ClientSegment {
+  CLIENT_SEGMENT_INVALID = 0;
+  CLIENT_SEGMENT_EMERGING = 1;
+  CLIENT_SEGMENT_SMB = 2;
+  CLIENT_SEGMENT_MID_MARKET = 3;
+  CLIENT_SEGMENT_NOT_QUALIFIED = 4;
+  CLIENT_SEGMENT_UNKNOWN = 5;
+  CLIENT_SEGMENT_ENTERPRISE = 6;
+}

@@ -1,0 +1,294 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionplan.v1;
+
+import "flexport/executioncoordinator/autotagger/v1beta1/core_derived_param.proto";
+import "flexport/executioncoordinator/executionplan/v1/execution_plan.proto";
+import "flexport/executioncoordinator/executionplan/v1/nullable_execution_plan.proto";
+import "flexport/executioncoordinator/executiontask/v1/execution_task.proto";
+import "flexport/executioncoordinator/types/enums/v1/node_tag.proto";
+import "flexport/executioncoordinator/types/query/v1/filters.proto";
+import "flexport/executioncoordinator/types/query/v1/order_by.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionPlanApiProto";
+option java_package = "com.flexport.executioncoordinator.executionplan.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionPlan::V1";
+
+// This file: http://go/ep-api-proto
+//
+// An API for interacting with ExecutionPlans. See execution_plan.proto for entity details.
+service ExecutionPlanAPI {
+  // Retrieves an ExecutionPlan.
+  rpc GetExecutionPlan(GetExecutionPlanRequest) returns (GetExecutionPlanResponse);
+  // Retrieves all revisions of an ExecutionPlan.
+  rpc ListExecutionPlanRevisions(ListExecutionPlanRevisionsRequest) returns (ListExecutionPlanRevisionsResponse);
+  // Creates or updates an ExecutionPlan. Idempotent.
+  rpc UpsertExecutionPlan(UpsertExecutionPlanRequest) returns (UpsertExecutionPlanResponse);
+  // Retrieves ExecutionPlans in batch.
+  rpc BatchGetExecutionPlans(BatchGetExecutionPlansRequest) returns (BatchGetExecutionPlansResponse);
+  // Creates RouteShapeNode and RouteShapeLeg fids for use with UpsertExecutionPlan.
+  rpc CreateRouteShapeFids(CreateRouteShapeFidsRequest) returns (CreateRouteShapeFidsResponse);
+  // Gets Inbound ExecutionTasks for a place given that it's the first place for an ET.
+  rpc GetInboundExecutionTasks(GetInboundExecutionTasksRequest) returns (GetInboundExecutionTasksResponse);
+  // Retrieves all ExecutionPlans that match a filter.
+  rpc ListExecutionPlans(ListExecutionPlansRequest) returns (ListExecutionPlansResponse);
+
+  //
+  // A list of batch updates to ExecutionTasks for a particular ExecutionPlan.  In other words, this will update
+  // ExecutionTasks on an ExecutionPlan, and allows for multiple ExecutionPlans to be updated.  This is useful
+  // for multiple shipments on a consolidation requiring an atomic update on one or more of their ExecutionTasks.
+  rpc BatchUpdateExecutionTasks(BatchUpdateExecutionTasksRequest) returns (BatchUpdateExecutionTasksResponse);
+}
+
+// The request message for GetExecutionPlan.
+message GetExecutionPlanRequest {
+  oneof identifier {
+    string execution_order_fid = 1;
+    string shipment_fid = 3;
+  }
+  //
+  // Specific revision to get, if any. The default value (0) returns the current revision.
+  uint32 revision = 4;
+  //
+  // Whether to include tasks whose planning status was set to "cancelled" as part of the
+  // ExecutionPlan revision. Defaults to false, such that only active (ie non-cancelled)
+  // tasks are included in the response.
+  bool include_cancelled_tasks = 2;
+}
+
+// The response message for GetExecutionPlan.
+// If the request identifier was a shipment_fid and the shipment_fid has no
+// corresponding ExecutionOrder entity (yet), then an empty response is returned.
+message GetExecutionPlanResponse {
+  ExecutionPlan execution_plan = 1;
+}
+
+// The request message for ListExecutionPlanRevisions.
+message ListExecutionPlanRevisionsRequest {
+  oneof identifier {
+    string execution_order_fid = 1;
+    string shipment_fid = 2;
+  }
+  //
+  // Whether to include tasks whose planning status was set to "cancelled" as part of the
+  // ExecutionPlan revisions. Defaults to false, such that only active (ie non-cancelled)
+  // tasks for each revision are included in the response.
+  bool include_cancelled_tasks = 3;
+  //
+  // The revision filter, if specified, will return only the revisions that falls into the filter range.
+  message RevisionFilter {
+    // The minimum revision number to include in the response.
+    google.protobuf.UInt32Value min_revision = 1;
+    // The maximum revision number to include in the response.
+    google.protobuf.UInt32Value max_revision = 2;
+  }
+  RevisionFilter revision_filter = 4;
+}
+
+// The response message for ListExecutionPlanRevisions.
+// If the request identifier was a shipment_fid and the shipment_fid has no
+// corresponding ExecutionOrder entity (yet), then an empty list is returned.
+message ListExecutionPlanRevisionsResponse {
+  repeated flexport.executioncoordinator.executionplan.v1.ExecutionPlan revisions = 1;
+}
+
+// A request message containing an ExecutionPlan to upsert.
+message UpsertExecutionPlanRequest {
+  //
+  // Identifier of the associated ExecutionOrder.
+  string execution_order_fid = 1;
+  //
+  // Source of the request to change the ExecutionPlan. This field is required.
+  // - The field subsystem MUST be specified. Should be whoever's making the request. Honors system.
+  // - The fields user_fid and notes MAY be specified.
+  flexport.executioncoordinator.executionplan.v1.ExecutionPlanRevisionSource revision_source = 5;
+  //
+  // Revision number of the current ExecutionPlan that the request intends to replace.
+  // - If the revision number of the currently persisted ExecutionPlan differs, then the request
+  //   is rejected.
+  // - This restriction is designed to ensure that subplanners don't make conflicting edits. It will
+  //   not scale to many subplanners constantly replanning, but it should ensure data integrity for
+  //   the near term as we get the EC-NIS up and running.
+  int32 based_on_plan_revision = 3;
+  //
+  // The new ExecutionPlan. Only the execution_tasks field from this submessage is used as part
+  // of the upsert; the other fields are taken directly from the request or generated by the EC-NIS.
+  // For the execution_tasks field:
+  // - All ExecutionTasks in the existing ExecutionPlan revision MUST be present.
+  // - To cancel an ExecutionTask, include it with planning status set to "cancelled".
+  // - To create a new ExecutionTask, include it with an empty fid field.
+  // - Tasks that were cancelled in the previous plan revision may be omitted entirely or included
+  //   with planning_status set to "cancelled". They will be ignored either way.
+  // For the other fields:
+  // - The revision_source and execution_order_fid are overridden by the values on the top-level
+  //   request message you are currently reading about. This behavior helps ensure these fields
+  //   are explicitly set by the API client (rather than just left as-is in the current plan).
+  // - The revision (number) and revision_created_time will be set by the EC-NIS
+  flexport.executioncoordinator.executionplan.v1.ExecutionPlan execution_plan = 4;
+  //
+  // Map of node fid and its associated itinerary based node tags. This field represents a mapping
+  // between the nodes present in a shipment and the tags associated with each of the nodes.
+  // This field is only used during EP Extract as a temporary workaround. Do not use it during any other
+  // EP Upsert calls.
+  map<string, ItineraryNodeTags> node_fid_to_itinerary_node_tags = 6;
+  //
+  // Additional optional params required for running auto tagger
+  flexport.executioncoordinator.autotagger.v1beta1.CoreDerivedParam core_derived_param = 7;
+}
+
+// The response message containing the current (possibly new) ExecutionPlan for the ExecutionOrder.
+//
+// Its value depends on whether the ExecutionPlan in the request represented a semantic change
+// compared to the existing ExecutionPlan. A semantic change involves any of:
+//
+// - Creating a new ExecutionTask.
+// - Changing params, planning_status, or automated_replanning_enabled of an existing ExecutionTask.
+//   (A cancellation of an existing ExecutionTask involves changes its planning_status.)
+//
+// Note that a change to a revision_source is NOT considered a semantic change unless there are
+// changes to the ExecutionTask values themselves.
+//
+// If there is a semantic change to the ExecutionPlan, then:
+//
+// - Newly created tasks will have fids assigned.
+// - Previously existing tasks with changes will have their task revision number increased.
+// - Previously existing tasks with planning status newly set to "cancelled" will be included.
+// - Existing tasks with no changes will be returned as they were prior to the upsert, _without
+//   their task revision number increased_.
+//
+// If there is no semantic change to the ExecutionPlan, then:
+//
+// - The plan revision number will *not* increase.
+// - Existing tasks will be returned, including any tasks that were newly cancelled when
+//   the previous revision was created _even if they were omitted in the current request_.
+//
+message UpsertExecutionPlanResponse {
+  flexport.executioncoordinator.executionplan.v1.ExecutionPlan execution_plan = 1;
+}
+
+// The request message for BatchGetExecutionPlans.
+message BatchGetExecutionPlansRequest {
+  // Only one of the lists may be populated, otherwise INVALID_ARGUMENT error is returned.
+  repeated string execution_order_fids = 1;
+  repeated string shipment_fids = 2;
+}
+
+// The response message for BatchGetExecutionPlans.
+// The order of the returned results matches the order of the fid list in the request.
+// If there is no ExecutionPlan for the execution_order_fid or shipment_fid, a placeholder
+// default value will be included at the relevant index in the response so that ordering is preserved.
+// In other words, execution_order_execution_tasks.size in the response will always equal
+// shipment_fids.size or execution_order_fids.size in the request, and the ordering will be consistent.
+message BatchGetExecutionPlansResponse {
+  repeated NullableExecutionPlan nullable_execution_plans = 1;
+}
+
+// Request for CreateRouteShapeFids.
+message CreateRouteShapeFidsRequest {
+  oneof identifier {
+    string execution_plan_fid = 1;
+    string execution_order_fid = 2;
+    string shipment_fid = 3;
+  }
+  // The number of leg fids to create.
+  uint32 leg_count = 10;
+  // The number of node fids to create.
+  uint32 node_count = 11;
+}
+
+// Response for CreateRouteShapeFids.
+message CreateRouteShapeFidsResponse {
+  repeated string node_fids = 1;
+  repeated string leg_fids = 2;
+}
+
+// Request for GetInboundExecutionTasks.
+message GetInboundExecutionTasksRequest {
+  string execution_task_fid = 4;
+}
+
+// Response for GetInboundExecutionTasks.
+message GetInboundExecutionTasksResponse {
+  repeated flexport.executioncoordinator.executiontask.v1.ExecutionTask execution_tasks = 1;
+}
+
+// The request message containing the query to retrieve ExecutionPlans for.
+message ListExecutionPlansRequest {
+  //
+  // The maximum number of entries to return. Defaults to 100, with a maximum limit of 10000.
+  // If the value provided exceeds 10000, then 10000 will be used as the limit.
+  uint32 limit = 1;
+  //
+  // All filters are "ANDed" together.
+  flexport.executioncoordinator.types.query.v1.StringFilter destination_agent_fid = 2;
+  flexport.executioncoordinator.types.query.v1.StringFilter origin_agent_fid = 3;
+  flexport.executioncoordinator.types.query.v1.StringFilter primary_agent_fid = 4;
+  flexport.executioncoordinator.types.query.v1.StringFilter order_status = 5;
+  //
+  // The order of the results. Default is undefined.
+  flexport.executioncoordinator.types.query.v1.OrderBy order_by = 6;
+}
+
+// The response message containing the ExecutionPlans for the provided query.
+message ListExecutionPlansResponse {
+  repeated flexport.executioncoordinator.executionplan.v1.ExecutionPlan execution_plans = 1;
+}
+
+// The request message for BatchUpdateExecutionTasks.
+//
+// CAUTION:
+//  Given the nature of batch operations, it may be more common to run into max message size limits.
+//  We currently do not support streaming of batched updates, therefore management of batched updates that
+//  surpass the message size limits is left up to the calling system.  In other words, the client of this
+//  request may have to call BatchUpdateExecutionTasks multiple times to avoid hitting max message size limits.
+//  The consequence of this is that only each API call is atomic, therefore the client must do the proper bookkeeping
+//  to determine what has been updated vs what needs to be updated across multiple calls to BatchUpdateExecutionTasks.
+message BatchUpdateExecutionTasksRequest {
+  //
+  // Source of the request to change the ExecutionPlans. This field is required.
+  // - The field subsystem MUST be specified. Should be whoever's making the request. Honors system.
+  // - The fields user_fid and notes MAY be specified.
+  flexport.executioncoordinator.executionplan.v1.ExecutionPlanRevisionSource revision_source = 1;
+
+  //
+  // List of ExecutionTasks for a particular ExecutionPlan that should be updated.  If any ExecutionTask update fails,
+  // the entire RPC operation update fails -- in other words this operation is atomic.
+  repeated ExecutionPlanTasksUpdate execution_plan_updates = 2;
+}
+
+message ExecutionPlanTasksUpdate {
+  //
+  // The FID of the ExecutionOrder of the ExecutionPlan that should be updated.
+  string execution_order_fid = 1;
+
+  //
+  // Revision number of the current ExecutionPlan that the request intends to replace.
+  // - If the revision number of the currently persisted ExecutionPlan differs, then the request
+  //   is rejected.
+  // - This restriction is designed to ensure that subplanners don't make conflicting edits. It will
+  //   not scale to many subplanners constantly replanning
+  int32 based_on_plan_revision = 2;
+
+  //
+  // The set of ExecutionTasks to be updated.  This will fully replace the existing
+  // ExecutionTask.  If the ExecutionTask does not exist, the update will fail.
+  repeated flexport.executioncoordinator.executiontask.v1.ExecutionTask execution_tasks = 3;
+}
+
+// The response message for BatchUpdateExecutionTasks
+message BatchUpdateExecutionTasksResponse {
+  //
+  // The list of ExecutionTask FIDs that were updated.  The FIDs will match one for one the supplied
+  // execution_task_updates list on the BatchUpdateExecutionTasksRequest.
+  repeated string execution_task_updated_fids = 1;
+}
+
+message ItineraryNodeTags {
+  //
+  // list of Itinerary based NodeTags.
+  repeated flexport.executioncoordinator.types.enums.v1.NodeTag itinerary_node_tags = 1;
+}

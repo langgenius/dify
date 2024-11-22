@@ -1,0 +1,31 @@
+// TEAM: network_entities
+
+// DEPRECATED. See protobuf/flexport/network/v1beta1/network_api.proto instead.
+
+syntax = "proto3";
+
+package flexport.monolith.networkentities.companyentity.v1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CompanyEntityProto";
+option java_package = "com.flexport.monolith.networkentities.companyentity.v1";
+option ruby_package = "Flexport::Monolith::NetworkEntities::CompanyEntity::V1";
+
+// Part of the Company entity as represented in the monolith DB.
+message CompanyEntityDTO {
+  int32 id = 1;
+  string fid = 2;
+  google.protobuf.StringValue company_fid = 3;
+  google.protobuf.StringValue legal_name = 4;
+  google.protobuf.StringValue business_registration_country_code = 5;
+  google.protobuf.StringValue mailing_address_fid = 6;
+  google.protobuf.StringValue physical_address_fid = 7;
+  google.protobuf.StringValue client_fid = 8;
+  google.protobuf.Int32Value client_id = 9;
+  google.protobuf.StringValue doing_business_as = 10;
+  // Core has an "is_primary" flag, although inaccurate, is still used to determine
+  // the display-name of a company/client.
+  bool legacy_is_primary = 11;
+}

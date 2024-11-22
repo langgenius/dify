@@ -1,0 +1,19 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.autoasn.events.queryshipmentrequested.v1beta1;
+
+import "flexport/workflow/prelude/models/flowableprocessfilter/v1beta1/flowable_process_filter.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "QueryShipmentRequestedProto";
+option java_package = "com.flexport.workflow.autoasn.events.queryshipmentrequested.v1beta1";
+option ruby_package = "Flexport::Workflow::AutoAsn::Events::QueryShipmentRequested::V1Beta1";
+
+// Query Shipment Requested. Send this event to Core in WorkflowEngine to query shipment information.
+message QueryShipmentRequested {
+  string client_fid = 1;
+  string shipment_fid = 2;
+  flexport.workflow.prelude.models.flowableprocessfilter.v1beta1.FlowableProcessFilter flowable_process_filter = 4;
+}

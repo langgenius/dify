@@ -1,0 +1,36 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.debug.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DebugApiProto";
+option java_package = "com.flexport.quoting.debug.v1beta1";
+option ruby_package = "Flexport::Quoting::Debug::V1Beta1";
+
+import "flexport/quoting/debug/v1beta1/debug_carrier.proto";
+
+// Services only needed for testing/debugging.
+service DebugAPI {
+  // Calls `CoreNetworkDataClient` to pull carriers from core's internal-api.
+  rpc GetCarriers(GetCarriersRequest) returns (GetCarriersResponse);
+  // Endpoint that can be used to test anything.
+  rpc TestStuff(TestStuffRequest) returns (TestStuffResponse);
+}
+
+// Self-explanatory.
+message GetCarriersRequest {
+  repeated uint64 dbids = 1;
+}
+
+// Self-explanatory.
+message GetCarriersResponse {
+  repeated flexport.quoting.debug.v1beta1.DebugCarrier carriers = 1;
+}
+
+// Self-explanatory.
+message TestStuffRequest {}
+
+// Self-explanatory.
+message TestStuffResponse {}

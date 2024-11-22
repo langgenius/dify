@@ -1,0 +1,21 @@
+// TEAM: trucking_planning
+
+syntax = "proto3";
+
+package flexport.monolith.trucking.truckingschedule.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "Enums";
+option java_package = "com.flexport.monolith.trucking.truckingschedule.v1beta1";
+option ruby_package = "Flexport::Monolith::Trucking::TruckingSchedule::V1Beta1";
+
+// How much to return about each schedule.
+enum TruckingScheduleView {
+  // Not specified, equivalent to NO_RATES.
+  TRUCKING_SCHEDULE_VIEW_INVALID = 0;
+  // Just return the schedules, rates array will be empty for each schedule.
+  TRUCKING_SCHEDULE_VIEW_NO_RATES = 1;
+  // Return schedules and their rates.
+  // Rate lookup is a relatively slow operation.
+  TRUCKING_SCHEDULE_VIEW_WITH_RATES = 2;
+}

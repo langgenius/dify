@@ -1,0 +1,20 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customscargomanifestquery.enums.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsCargoManifestIdentifierTypeProto";
+option java_package = "com.flexport.customscargomanifestquery.enums.v1beta1";
+option ruby_package = "Flexport::CustomsCargoManifestQuery::Enums::V1Beta1";
+
+enum CustomsCargoManifestIdentifierType {
+  CUSTOMS_CARGO_MANIFEST_IDENTIFIER_TYPE_INVALID = 0;
+  // Currently, netchb XML uses 1 param for master and house ocean bill, but seperating it seems to be better
+  // in case it changes or CBP works differently
+  CUSTOMS_CARGO_MANIFEST_IDENTIFIER_TYPE_MASTER_OCEAN_BILL_NUMBER = 1;
+  CUSTOMS_CARGO_MANIFEST_IDENTIFIER_TYPE_MASTER_AIR_WAYBILL_NUMBER = 2;
+  CUSTOMS_CARGO_MANIFEST_IDENTIFIER_TYPE_MASTER_BILL_OF_LADING = 3;
+  // Eventually, we need to support ocean house bill, HAWB and maybe inbond number
+}

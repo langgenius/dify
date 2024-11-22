@@ -1,0 +1,26 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.publishing.v1;
+
+import "flexport/assignment/enums/v1/assignee_type.proto";
+import "flexport/assignment/enums/v1/responsibility.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AssignableObjectAssignmentsChangedProto";
+option java_package = "com.flexport.assignment.publishing.v1";
+option ruby_package = "Flexport::Assignment::Publishing::V1";
+
+// Populates the latest assignments for a given assignable object(Work Item)
+message AssignableObjectAssignmentsChanged {
+  string idempotency_key = 1;
+  string assignable_fid = 2;
+  repeated AssignmentInfo assignments = 3;
+}
+
+message AssignmentInfo {
+  string assignee_fid = 1;
+  flexport.assignment.enums.v1.AssigneeType assignee_type = 2;
+  flexport.assignment.enums.v1.Responsibility responsibility = 3;
+}

@@ -1,0 +1,47 @@
+// TEAM: cost_capture
+
+syntax = "proto3";
+
+package flexport.financialledger.servicecostedevent.v1beta1;
+
+import "flexport/financialvisibility/common/v1beta1/common.proto";
+import "flexport/financialvisibility/supplyservice/v1beta1/supply_service.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ServiceCostedEventProto";
+option java_package = "com.flexport.financialledger.servicecostedevent.v1beta1";
+option ruby_package = "Flexport::FinancialLedger::ServiceCostedEvent::V1Beta1";
+
+message ServiceCostedEvent {
+  reserved 9;
+  flexport.financialledger.supplyservice.v1beta1.ExternalIdentifier identifier = 1;
+  flexport.financialledger.supplyservice.v1beta1.SupplyMode mode = 2;
+  string vendor_entity_fid = 3;
+  repeated flexport.financialledger.supplyservice.v1beta1.ExternalReferenceParametersDto external_references = 4;
+  repeated ShipmentAllocation shipment_allocation = 5;
+  repeated CostLineItem cost = 6;
+  // Consolidation Benefit Ratio,
+  // https://flexport.atlassian.net/wiki/spaces/EN/pages/2246869006/Consolidation+Benefit+Ratio+CBR
+  google.protobuf.FloatValue consolidation_benefit_ratio = 7;
+  string business_update_reason = 8;
+  flexport.financialledger.supplyservice.v1beta1.Category category = 10;
+  google.protobuf.FloatValue utilization_factor = 11;
+  string purchase_order_id = 12;
+  flexport.financialvisibility.common.v1beta1.Milestone milestone = 13;
+}
+
+message CostLineItem {
+  reserved 4;
+  string charge_code_fid = 1;
+  string currency = 2;
+  sint64 amount_micros = 3;
+  flexport.financialledger.supplyservice.v1beta1.Category category = 5;
+  string name = 6;
+  string charge_group_fid = 7;
+}
+
+message ShipmentAllocation {
+  string shipment_fid = 1;
+  float factor = 2;
+}

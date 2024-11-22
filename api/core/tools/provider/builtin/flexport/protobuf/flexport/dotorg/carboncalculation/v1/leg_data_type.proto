@@ -1,0 +1,81 @@
+// TEAM: dot_org
+
+syntax = "proto3";
+
+package flexport.dotorg.carboncalculation.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "LegDataTypeProto";
+option java_package = "com.flexport.dotorg.carboncalculation.v1";
+option ruby_package = "Flexport::DotOrg::CarbonCalculation::V1";
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+
+// Leg data that will be used for both flexport and third party shipments.
+message LegDataType {
+  oneof id {
+    string unique_identifier_id = 1;
+    string leg_fid = 2;
+  }
+  CarbonCalculationTransportationMode transportation_mode = 3;
+  string version = 5;
+  string tkm = 6;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate delivery_date = 7;
+  string origin_fid = 8;
+  string destination_fid = 9;
+  string approximate_distance_gcd = 10;
+  int32 leg_order = 11;
+  string origin_city = 112;
+  string destination_city = 13;
+  string origin_zip = 14;
+  string destination_zip = 15;
+  string origin_port = 16;
+  string destination_port = 17;
+  string origin_country = 18;
+  string destination_country = 19;
+  string distance_in_km = 20;
+  double teus = 21;
+  double weight_in_tonnes = 22;
+  repeated string skus = 23;
+  string supplier = 24;
+  string carrier = 25;
+  bool is_inland = 26;
+  bool is_reefer = 27;
+  TruckingServiceType trucking_service_type = 28;
+  string fuel_type = 29;
+  FlightType flight_type = 30;
+  string tonnes_of_co2 = 31;
+  bool is_lcl = 32;
+  // only applicable for NonFlexportShipment CSV-row-level legs
+  string row_number = 33;
+}
+
+// Transportation mode for each leg.
+enum CarbonCalculationTransportationMode {
+  CARBON_CALCULATION_TRANSPORTATION_MODE_INVALID = 0;
+  CARBON_CALCULATION_TRANSPORTATION_MODE_OCEAN = 1;
+  CARBON_CALCULATION_TRANSPORTATION_MODE_AIR = 2;
+  CARBON_CALCULATION_TRANSPORTATION_MODE_TRUCK = 3;
+  CARBON_CALCULATION_TRANSPORTATION_MODE_RAIL = 4;
+}
+
+// Flight type for air legs of a shipment.
+enum FlightType {
+  FLIGHT_TYPE_INVALID = 0;
+  FLIGHT_TYPE_FREIGHTER = 1;
+  FLIGHT_TYPE_BELLY_FREIGHTER = 2;
+  FLIGHT_TYPE_UNKNOWN = 3;
+}
+
+// Trucking service type for truck legs of a shipment.
+enum TruckingServiceType {
+  TRUCKING_SERVICE_TYPE_INVALID = 0;
+  TRUCKING_SERVICE_TYPE_FTL = 1;
+  TRUCKING_SERVICE_TYPE_LTL = 2;
+  TRUCKING_SERVICE_TYPE_DRAYAGE = 3;
+  TRUCKING_SERVICE_TYPE_CARTAGE = 4;
+  TRUCKING_SERVICE_TYPE_LAST_MILE = 5;
+  TRUCKING_SERVICE_TYPE_AIRPORT_TRANSFER = 6;
+  TRUCKING_SERVICE_TYPE_AIR_CARTAGE = 7;
+  TRUCKING_SERVICE_TYPE_REEFER = 8;
+}

@@ -1,0 +1,17 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.monolith.classificationmaindata.hscode.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "HsCodeProto";
+option java_package = "com.flexport.monolith.classificationmaindata.hscode.v1beta1";
+option ruby_package = "Flexport::Monolith::ClassificationMainData::HsCode::V1Beta1";
+
+// HsCode Definition
+message HsCode {
+  int32 id = 1;
+  string code = 2;
+  string description = 3;
+}

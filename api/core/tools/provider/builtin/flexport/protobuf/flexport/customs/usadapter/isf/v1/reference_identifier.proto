@@ -1,0 +1,25 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.isf.v1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.isf.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Isf::V1";
+
+message ReferenceIdentifier {
+  ReferenceIdentifierType reference_type = 1;
+  string reference_identifier = 2;
+}
+
+enum ReferenceIdentifierType {
+  REFERENCE_IDENTIFIER_TYPE_INVALID = 0;
+  REFERENCE_IDENTIFIER_TYPE_US_CBP_ENTRY_NUMBER = 1;
+  REFERENCE_IDENTIFIER_TYPE_CARNET_ISSUING_COUNTRY_CODE_AND_CARNET_NUMBER = 2;
+  REFERENCE_IDENTIFIER_TYPE_MASTER_BILL_OF_LADING_NUMBER = 3;
+  REFERENCE_IDENTIFIER_TYPE_BOND_REFERENCE_NUMBER = 4;
+  REFERENCE_IDENTIFIER_TYPE_SURETY_CODE = 5;
+  REFERENCE_IDENTIFIER_TYPE_USER_DEFINED_REFERENCE_NUMBER = 6;
+  REFERENCE_IDENTIFIER_TYPE_FULL_NAME_ISF_FILER = 7;
+}

@@ -1,0 +1,26 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.airprovider.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RouteTermReadApiProto";
+option java_package = "com.flexport.procurement.airprovider.v1";
+option ruby_package = "Flexport::Procurement::AirProvider::V1";
+
+import "flexport/procurement/airprovider/v1/route_term.proto";
+
+// This service is used to read RouteTerms for backfills.
+service RouteTermReadAPI {
+  // Find route terms by original air procurement term dbids during a backfill.
+  rpc FindRouteTermsByOriginalAirProcurementTermDbids(FindRouteTermsByOriginalAirProcurementTermDbidsRequest) returns (FindRouteTermsByOriginalAirProcurementTermDbidsResponse);
+}
+
+message FindRouteTermsByOriginalAirProcurementTermDbidsRequest {
+  repeated string original_air_procurement_term_dbids = 1;
+}
+
+message FindRouteTermsByOriginalAirProcurementTermDbidsResponse {
+  repeated RouteTerm route_terms = 1;
+}

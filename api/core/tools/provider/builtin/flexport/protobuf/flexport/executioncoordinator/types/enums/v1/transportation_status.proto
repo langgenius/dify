@@ -1,0 +1,28 @@
+// TEAM: sutro
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TransportationStatusProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// Represents the list of known transportation statuses consistent with Shipment.rb.
+enum TransportationStatus {
+  TRANSPORTATION_STATUS_INVALID = 0;
+  TRANSPORTATION_STATUS_SHIPPER_LOCATION = 1;
+  TRANSPORTATION_STATUS_ORIGIN_STOP_OFF = 2;
+  TRANSPORTATION_STATUS_IN_TRANSIT_TO_DEPARTURE_PORT = 3;
+  TRANSPORTATION_STATUS_DEPARTURE_PORT = 4;
+  TRANSPORTATION_STATUS_IN_TRANSIT_TO_INTERMEDIARY_PORT = 5;
+  TRANSPORTATION_STATUS_INTERMEDIARY_PORT = 6;
+  TRANSPORTATION_STATUS_IN_TRANSIT_TO_ARRIVAL_PORT = 7;
+  TRANSPORTATION_STATUS_ARRIVAL_PORT = 8;
+  TRANSPORTATION_STATUS_DECONSOLIDATION = 9;
+  TRANSPORTATION_STATUS_DESTINATION_STOP_OFF = 10;
+  TRANSPORTATION_STATUS_IN_TRANSIT_TO_FINAL_DESTINATION = 11;
+  TRANSPORTATION_STATUS_FINAL_DESTINATION = 12;
+  TRANSPORTATION_STATUS_GATED_OUT = 13;
+}

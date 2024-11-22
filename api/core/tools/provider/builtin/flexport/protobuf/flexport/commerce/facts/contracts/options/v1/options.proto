@@ -1,0 +1,110 @@
+// TEAM: client_order
+
+syntax = "proto3";
+
+package flexport.commerce.facts.contracts.options.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OptionsProto";
+option java_package = "com.flexport.commerce.facts.contracts.options.v1";
+option ruby_package = "Flexport::Commerce::Facts::Contracts::Options::V1";
+
+// A repository of CommerceFacts.
+message Repository {
+  // A unique name for this repository.
+  string name = 1;
+}
+
+// A Fragment to Repository.
+message Fragment {
+  // The name of repository that the fragment belongs to
+  string repository_name = 1;
+  // A list of packages to collect fields.
+  repeated string packages = 2;
+  // Whether the collected fields could overlap with other fragments, default to true.
+  optional bool exclusive = 3;
+}
+
+// The awareness of change of CommerceFactsValidator and CommerceFactsSubscriber.
+enum ChangeAwareness {
+  CHANGE_AWARENESS_INVALID = 0;
+  // Only when data is changed.
+  CHANGE_AWARENESS_CHANGED = 1;
+  // When observing fields are matched.
+  CHANGE_AWARENESS_MATCHED = 2;
+  // Always.
+  CHANGE_AWARENESS_ALWAYS = 3;
+}
+
+// The action interested by CommerceFactsValidator.
+enum ValidatorAction {
+  VALIDATOR_ACTION_INVALID = 0;
+  // Create.
+  VALIDATOR_ACTION_CREATE = 1;
+  // Update.
+  VALIDATOR_ACTION_UPDATE = 2;
+  // Cancel.
+  VALIDATOR_ACTION_CANCEL = 3;
+}
+
+// A validator to CommerceFacts.
+message Validator {
+  // The name of repository
+  string repository_name = 1;
+  // A list of packages to collect fields.
+  repeated string packages = 2;
+
+  // The awareness of change of this validator.
+  ChangeAwareness change_awareness = 3;
+
+  // The names for ServiceLookup of the validator services
+  // which implement CommerceFactsValidatorAPI for sub facts.
+  repeated string services = 4;
+
+  repeated ValidatorAction actions = 5;
+}
+
+// A subscriber to CommerceFacts.
+message Subscriber {
+  // The name of repository
+  string repository_name = 1;
+  // A list of packages to collect fields.
+  repeated string packages = 2;
+
+  // The awareness of change of this subscriber.
+  ChangeAwareness change_awareness = 3;
+
+  // The name of the FSM topic.
+  string topic = 4;
+}
+
+// Codegen options for Message.
+message MessageCodegen {
+  string type_name = 1;
+  bool union_sub_packages = 2;
+}
+
+extend google.protobuf.MessageOptions {
+  Repository repository = 8000;
+  Fragment fragment = 8001;
+  Validator validator = 8002;
+  Subscriber subscriber = 8003;
+  MessageCodegen message_codegen = 8004;
+}
+
+// Codegen options for Enum.
+message EnumCodegen {
+  string type_name = 1;
+}
+
+extend google.protobuf.EnumOptions {
+  EnumCodegen enum_codegen = 8000;
+}
+
+extend google.protobuf.FieldOptions {
+  // The package that this field belongs to.
+  string package = 8000;
+  repeated string packages = 8001;
+}

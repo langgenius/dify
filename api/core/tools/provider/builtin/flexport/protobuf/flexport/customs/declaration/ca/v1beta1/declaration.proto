@@ -1,0 +1,309 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.declaration.ca.v1beta1;
+
+import "google/type/date.proto";
+import "google/type/money.proto";
+
+option java_package = "com.flexport.customs.declaration.ca.v1beta1";
+option ruby_package = "Flexport::Customs::Declaration::CA::V1Beta1";
+
+message CaImportDeclaration {
+  string filing_reference_fid = 1;
+
+  string client_business_number = 2;
+
+  string bill_of_lading = 3;
+
+  Declaration declaration = 4;
+}
+
+message Declaration {
+  TransportInfo transport_info = 1;
+
+  google.type.Money freight_charges = 2;
+
+  string importer_id = 3;
+
+  ReleaseLocation release_location = 4;
+
+  repeated GoodsShipment good_shipments = 5;
+
+  // References to documents submitted by other parties to CBSA. For example, Cargo Control Numbers
+  repeated AdditionalDocument additional_documents = 6;
+}
+
+message AdditionalDocument {
+  string id = 1;
+  string type = 2;
+}
+
+message GoodsShipment {
+  Entity seller = 1;
+  Entity buyer = 2;
+
+  // Date the Shipment began their continuous and uninterrupted journey to Canada.
+  // See https://www.cbsa-asfc.gc.ca/publications/dm-md/d13/d13-3-4-eng.html for more information.
+  // Note that the naming is copied from the CBSA API. While the name implies it is a dateTime it is actually a date.
+  google.type.Date exit_date_time = 3;
+
+  ExportInfo export_info = 4;
+
+  string po_number = 5;
+
+  double mass = 6;
+  MassUnit mass_unit = 7;
+
+  repeated Commodity commodities = 8;
+
+  google.type.Date estimated_arrival_date = 9;
+
+  Country country_of_origin = 10;
+}
+
+enum MassUnit {
+  MASS_UNIT_INVALID = 0;
+  MASS_UNIT_GRAMS = 1;
+  MASS_UNIT_KILOGRAMS = 2;
+  MASS_UNIT_MILLIGRAMS = 3;
+  MASS_UNIT_POUNDS = 4;
+  //Mass is also used for volumes
+  MASS_UNIT_CENTILITERS = 5;
+  MASS_UNIT_LITERS = 6;
+  MASS_UNIT_MILLILITERS = 7;
+}
+
+message Commodity {
+  int32 sequence = 1;
+  string description = 2;
+  string product_number = 3;
+  google.type.Date exit_date_time = 4;
+  Quantity quantity = 5;
+
+  repeated Classification classifications = 6;
+
+  Country origin = 7;
+
+  // Canada version of Special Program Indicator, so it determines if the goods are subject to a FTA
+  TariffTreatment tariff_treatment = 8;
+
+  google.type.Money unit_price = 9;
+
+  repeated Adjustment adjustments = 10;
+
+  // A 2 digit code, the first digit is a related party indicator, the second digit how the goods are valued
+  int32 vfd_code = 11;
+
+  google.type.Money total_price = 12;
+
+  repeated string container_numbers = 13;
+}
+
+enum TariffTreatment {
+  TARIFF_TREATMENT_INVALID = 0;
+  TARIFF_TREATMENT_NONE = 1;
+  TARIFF_TREATMENT_MOST_FAVOURED = 2;
+  TARIFF_TREATMENT_GENERAL = 3;
+  TARIFF_TREATMENT_AUSTRALIA = 4;
+  TARIFF_TREATMENT_NEW_ZEALAND = 5;
+  TARIFF_TREATMENT_COMMON_WEALTH = 7;
+  TARIFF_TREATMENT_LEAST_DEVELOPED = 8;
+  TARIFF_TREATMENT_GENERAL_PREFERENCE = 9;
+  TARIFF_TREATMENT_US = 10;
+  TARIFF_TREATMENT_MEXICO = 11;
+  TARIFF_TREATMENT_MEXICO_US = 12;
+  TARIFF_TREATMENT_ISRAEL = 13;
+  TARIFF_TREATMENT_CHILE = 14;
+  TARIFF_TREATMENT_COSTA_RICA = 21;
+  TARIFF_TREATMENT_ICELAND = 22;
+  TARIFF_TREATMENT_NORWAY = 23;
+  TARIFF_TREATMENT_SWITZERLAND = 24;
+  TARIFF_TREATMENT_PERU = 25;
+  TARIFF_TREATMENT_COLOMBIA = 26;
+  TARIFF_TREATMENT_JORDAN = 27;
+  TARIFF_TREATMENT_PANAMA = 28;
+  TARIFF_TREATMENT_HONDURAS = 29;
+  TARIFF_TREATMENT_SOUTH_KOREA = 30;
+  TARIFF_TREATMENT_EUROPE = 31;
+  TARIFF_TREATMENT_UKRAINE = 32;
+  TARIFF_TREATMENT_TRANS_PACIFIC = 33;
+  TARIFF_TREATMENT_UNITED_KINGDOM = 34;
+}
+
+message Adjustment {
+  string type = 1;
+  google.type.Money adjustment = 2;
+}
+
+message Classification {
+  string hts_code = 1;
+  string binding_tariff_reference_id = 2;
+}
+
+message Quantity {
+  double quantity = 1;
+  string unit = 2 [deprecated = true];
+  UnitOfMeasure unit_typed = 3;
+}
+
+message Entity {
+  string name = 1;
+  Address address = 2;
+  string phone_number = 3;
+  optional string reference = 4;
+}
+
+message Address {
+  string city = 1;
+  string country_code = 2;
+  string address_line = 3;
+  string post_code = 4;
+  string post_office_box_id = 5;
+  ProvinceCode province_code = 6;
+}
+
+enum ProvinceCode {
+  PROVINCE_CODE_INVALID = 0;
+  PROVINCE_CODE_AB = 1;
+  PROVINCE_CODE_AK = 2;
+  PROVINCE_CODE_AL = 3;
+  PROVINCE_CODE_AR = 4;
+  PROVINCE_CODE_AS = 5;
+  PROVINCE_CODE_AZ = 6;
+  PROVINCE_CODE_BC = 7;
+  PROVINCE_CODE_CA = 8;
+  PROVINCE_CODE_CO = 9;
+  PROVINCE_CODE_CT = 10;
+  PROVINCE_CODE_DC = 11;
+  PROVINCE_CODE_DE = 12;
+  PROVINCE_CODE_FL = 13;
+  PROVINCE_CODE_GA = 14;
+  PROVINCE_CODE_GU = 15;
+  PROVINCE_CODE_HI = 16;
+  PROVINCE_CODE_IA = 17;
+  PROVINCE_CODE_ID = 18;
+  PROVINCE_CODE_IL = 19;
+  PROVINCE_CODE_IN = 20;
+  PROVINCE_CODE_KS = 21;
+  PROVINCE_CODE_KY = 22;
+  PROVINCE_CODE_LA = 23;
+  PROVINCE_CODE_MA = 24;
+  PROVINCE_CODE_MB = 25;
+  PROVINCE_CODE_MD = 26;
+  PROVINCE_CODE_ME = 27;
+  PROVINCE_CODE_MI = 28;
+  PROVINCE_CODE_MN = 29;
+  PROVINCE_CODE_MO = 30;
+  PROVINCE_CODE_MP = 31;
+  PROVINCE_CODE_MS = 32;
+  PROVINCE_CODE_MT = 33;
+  PROVINCE_CODE_NB = 34;
+  PROVINCE_CODE_NC = 35;
+  PROVINCE_CODE_ND = 36;
+  PROVINCE_CODE_NE = 37;
+  PROVINCE_CODE_NH = 38;
+  PROVINCE_CODE_NJ = 39;
+  PROVINCE_CODE_NL = 40;
+  PROVINCE_CODE_NM = 41;
+  PROVINCE_CODE_NS = 42;
+  PROVINCE_CODE_NT = 43;
+  PROVINCE_CODE_NU = 44;
+  PROVINCE_CODE_NV = 45;
+  PROVINCE_CODE_NY = 46;
+  PROVINCE_CODE_OH = 47;
+  PROVINCE_CODE_OK = 48;
+  PROVINCE_CODE_ON = 49;
+  PROVINCE_CODE_OR = 50;
+  PROVINCE_CODE_PA = 51;
+  PROVINCE_CODE_PE = 52;
+  PROVINCE_CODE_PR = 53;
+  PROVINCE_CODE_QC = 54;
+  PROVINCE_CODE_RI = 55;
+  PROVINCE_CODE_SC = 56;
+  PROVINCE_CODE_SD = 57;
+  PROVINCE_CODE_SK = 58;
+  PROVINCE_CODE_TN = 59;
+  PROVINCE_CODE_TX = 60;
+  PROVINCE_CODE_UM = 61;
+  PROVINCE_CODE_UT = 62;
+  PROVINCE_CODE_VA = 63;
+  PROVINCE_CODE_VI = 64;
+  PROVINCE_CODE_VT = 65;
+  PROVINCE_CODE_WA = 66;
+  PROVINCE_CODE_WI = 67;
+  PROVINCE_CODE_WV = 68;
+  PROVINCE_CODE_WY = 69;
+  PROVINCE_CODE_YT = 70;
+}
+
+message ExportInfo {
+  Country country_of_export = 1;
+  optional string us_export_office = 3;
+}
+
+message Country {
+  string code = 1;
+  //For certain countries (e.g. the US), the region code is required
+  optional string region_code = 2;
+}
+
+message TransportInfo {
+  string carrier_id = 1;
+
+  TransportMode transport_mode = 2;
+
+  string unloading_location_code = 3;
+}
+
+message ReleaseLocation {
+  string id = 1;
+  repeated Warehouse warehouses = 2;
+}
+
+message Warehouse {
+  string id = 1;
+  string type_code = 2;
+  string role_code = 3;
+}
+
+enum TransportMode {
+  TRANSPORT_MODE_INVALID = 0;
+  TRANSPORT_MODE_HIGHWAY = 1;
+  TRANSPORT_MODE_POSTAL = 2;
+  TRANSPORT_MODE_RAIL = 3;
+  TRANSPORT_MODE_PIPELINE = 4;
+  TRANSPORT_MODE_HANDCARRIEDGOODS = 5;
+  TRANSPORT_MODE_MARINE = 6;
+  TRANSPORT_MODE_ELECTRICALGRID = 7;
+  TRANSPORT_MODE_AIR = 8;
+}
+
+// Types of units of measure accepted by CBSA. Note that CanData has more UOMs than this list. However they should be
+// converted to one of these UOMs before being sent to CBSA.
+enum UnitOfMeasure {
+  UNIT_OF_MEASURE_INVALID = 0;
+  UNIT_OF_MEASURE_CARATS = 1;
+  UNIT_OF_MEASURE_DOZEN = 2;
+  UNIT_OF_MEASURE_GRAMS = 3;
+  UNIT_OF_MEASURE_GROSS = 4;
+  UNIT_OF_MEASURE_HECTOLITERS = 5;
+  UNIT_OF_MEASURE_KILOGRAMS = 6;
+  UNIT_OF_MEASURE_KILOGRAMS_NAMED_SUBSTANCE = 7;
+  UNIT_OF_MEASURE_KILOGRAMS_AIR_DRY = 8;
+  UNIT_OF_MEASURE_LITERS_PURE_ALCOHOL = 9;
+  UNIT_OF_MEASURE_LITERS = 10;
+  UNIT_OF_MEASURE_MEGABECQUERELS = 11;
+  UNIT_OF_MEASURE_THOUSANDS = 12;
+  UNIT_OF_MEASURE_SQUARE_METERS = 13;
+  UNIT_OF_MEASURE_CUBIC_METERS = 14;
+  UNIT_OF_MEASURE_METERS = 15;
+  UNIT_OF_MEASURE_MEGAWATT_HOURS = 16;
+  UNIT_OF_MEASURE_PACKAGES = 17;
+  UNIT_OF_MEASURE_NUMBER = 18;
+  UNIT_OF_MEASURE_PAIRS = 19;
+  UNIT_OF_MEASURE_SETS = 20;
+  UNIT_OF_MEASURE_THOUSAND_CUBIC_METERS = 21;
+  UNIT_OF_MEASURE_TONNES = 22;
+  UNIT_OF_MEASURE_TONNES_AIR_DRY = 23;
+}

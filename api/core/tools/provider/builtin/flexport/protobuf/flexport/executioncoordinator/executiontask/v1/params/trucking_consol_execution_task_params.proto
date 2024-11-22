@@ -1,0 +1,50 @@
+// TEAM: trucking
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+import "flexport/executioncoordinator/executioncargo/v1/execution_cargo.proto";
+import "flexport/executioncoordinator/types/cartageinfo/v1/cartage_info.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingConsolExecutionTaskParamsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+// Parameters for an ExecutionTask for cargo to be consolidated and moved by truck.
+message TruckingConsolExecutionTaskParams {
+  string origin_fid = 1;
+  string destination_fid = 2;
+  //
+  // The port terminals involved in this task, if any. Should only be specified if the related
+  // origin or destination is a port. Sometimes this value may be a CFS rather than an actual port
+  // terminal if the main freight carrier eg makes cargo available for pickup at an offsite CFS.
+  string origin_terminal_fid = 12;
+  string destination_terminal_fid = 13;
+  //
+  repeated TruckingConsolCargoParams cargo_params = 6;
+  google.protobuf.BoolValue requires_additional_tracking = 7;
+  string carrier_fid = 10;
+  string freight_partner_fid = 11;
+  string broker_fid = 15;
+  //
+  // Details about picking up or dropping off at airports, if any.
+  flexport.executioncoordinator.types.cartageinfo.v1.CartageInfo cartage_info = 14;
+}
+
+// The params for each subset of cargo moved as part of the trucking consol task.
+message TruckingConsolCargoParams {
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime departure_estimate = 5 [deprecated = true];
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime arrival_estimate = 6 [deprecated = true];
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 3;
+  // The Tracking number field is used primarily to record carrier PRO numbers or
+  // Delivery Reference Numbers on the leg-level. The DRNs are often required for our
+  // truckers to schedule delivery appointments and are required upon actual delivery
+  // of the goods. PRO numbers are used for internal users to keep track of milestones
+  // associated with a particular leg, if that leg is handled by a trucker with their
+  // own tracking system.
+  string tracking_number = 4;
+}

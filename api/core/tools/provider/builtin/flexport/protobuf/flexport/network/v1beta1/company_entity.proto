@@ -1,0 +1,68 @@
+// TEAM: network_entities
+
+syntax = "proto3";
+
+package flexport.network.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CompanyEntityProto";
+option java_package = "com.flexport.network.v1beta1";
+option ruby_package = "Flexport::Network::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// A close analogue of the Network::CompanyEntity ActiveRecord model.
+message CompanyEntity {
+  int32 id = 1;
+  string fid = 2;
+  google.protobuf.StringValue legal_name = 3;
+  google.protobuf.Int32Value company_id = 8;
+  google.protobuf.StringValue company_fid = 4;
+  google.protobuf.Int32Value physical_address_id = 9;
+  google.protobuf.StringValue physical_address_fid = 5;
+  google.protobuf.Int32Value mailing_address_id = 10;
+  google.protobuf.StringValue mailing_address_fid = 6;
+  bool is_primary = 7;
+  google.protobuf.StringValue business_registered_in = 11;
+  google.protobuf.StringValue business_registration_country_code = 12;
+  google.protobuf.StringValue country_tax_id = 13;
+  google.protobuf.StringValue tax_id_type = 14;
+  google.protobuf.StringValue agent_iata_code = 15;
+  google.protobuf.StringValue company_type = 16;
+  google.protobuf.StringValue doing_business_as = 17;
+  google.protobuf.StringValue duns_number = 18;
+  google.protobuf.StringValue eori_number = 19;
+  bool eori_resident_entity = 20;
+  google.protobuf.StringValue fcc_number = 21;
+  google.protobuf.StringValue us_dot_number = 22;
+  google.protobuf.StringValue usci_number = 23;
+  google.protobuf.Int32Value netsuite_id = 24;
+  google.protobuf.StringValue tax_id = 25;
+  google.protobuf.Timestamp created_at = 26;
+  google.protobuf.Timestamp updated_at = 27;
+  google.protobuf.Timestamp archived_at = 28;
+  google.protobuf.Int32Value billable_entity_default_id = 29;
+  google.protobuf.StringValue billable_entity_default_fid = 30;
+  google.protobuf.StringValue default_invoicing_currency_code = 31;
+  bool agree_dg_declaration = 32;
+  google.protobuf.StringValue base64_uuid = 33;
+  bool compliant_for_destination_agent = 34;
+  bool compliant_for_origin_agent = 35;
+  google.protobuf.Timestamp date_formed = 36;
+  google.protobuf.Timestamp deleted_at = 37;
+  google.protobuf.Int32Value hk_known_shipper_status = 38;
+  google.protobuf.Timestamp hk_known_shipper_status_expiration = 39;
+  google.protobuf.StringValue hk_ra_number = 40;
+  bool is_subject_to_export_control = 41;
+  google.protobuf.StringValue kc_responsible_person = 42;
+  google.protobuf.StringValue mc_number = 43;
+  google.protobuf.StringValue qcc_key_no = 45;
+  google.protobuf.StringValue registered_address_in_business_license = 46;
+  google.protobuf.StringValue registered_name_in_business_license = 47;
+  google.protobuf.StringValue registration_number_of_business_license = 48;
+  google.protobuf.Int64Value invoicing_entity_default_id = 49;
+  google.protobuf.StringValue encrypted_tax_id_iv = 50;
+  google.protobuf.StringValue encrypted_tax_id = 51;
+  google.protobuf.StringValue invoicing_currency_default_id = 52;
+}

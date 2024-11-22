@@ -1,0 +1,28 @@
+// TEAM: ocean_sailing_schedules
+
+syntax = "proto3";
+
+package flexport.monolith.oceansailing.portroute.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PortRouteApiProto";
+option java_package = "com.flexport.monolith.oceansailing.portroute.v1beta1";
+option ruby_package = "Flexport::Monolith::OceanSailing::PortRoute::V1Beta1";
+
+import "flexport/monolith/oceansailing/portroute/v1beta1/port_route.proto";
+
+// This service is used by any NIS to retrieve a Port Route from monolith DB.
+// Production readiness: https://docs.google.com/document/d/188NiLVa1j91uz98nn-Ovf5MSMUWNRfvx6pDTVGDYvno/edit#
+service PortRouteAPI {
+  // Get port route entity for a given origin port fid (Flexport Resource Identifiers) and destination port fid.
+  rpc GetPortRouteByPortPair(GetPortRouteByPortPairRequest) returns (GetPortRouteByPortPairResponse);
+}
+
+message GetPortRouteByPortPairRequest {
+  string origin_port_fid = 1;
+  string destination_port_fid = 2;
+}
+
+message GetPortRouteByPortPairResponse {
+  PortRoute port_route = 1;
+}

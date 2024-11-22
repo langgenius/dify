@@ -1,0 +1,43 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.documents.types.v1beta1;
+
+import "flexport/documents/enums/v1beta1/membership_type.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DocumentTypeVisibilityProto";
+option java_package = "com.flexport.documents.types.v1beta1";
+option ruby_package = "Flexport::Documents::Types::V1Beta1";
+
+message DocumentTypeVisibility {
+  string documentable_type = 1;
+  bool uniq_on_documentable = 2;
+  UploadableControl uploadable_control = 3;
+  ViewableControl viewable_control = 4;
+  EditableControl editable_control = 5;
+}
+
+message UploadableControl {
+  bool all_user = 1;
+  repeated UploadableControlRule rules = 2;
+}
+
+message UploadableControlRule {
+  repeated string uploader_roles = 1;
+  repeated flexport.documents.enums.v1beta1.MembershipType uploader_company_member_list = 2;
+}
+
+message ViewableControl {
+  bool executor_always_viewable = 1;
+  repeated ViewableControlRule rules = 2;
+}
+
+message ViewableControlRule {
+  repeated flexport.documents.enums.v1beta1.MembershipType default_viewable_member_list = 1;
+}
+
+message EditableControl {
+  bool executor_always_editable = 1;
+}

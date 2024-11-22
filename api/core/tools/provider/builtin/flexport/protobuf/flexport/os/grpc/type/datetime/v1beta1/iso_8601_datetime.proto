@@ -1,0 +1,56 @@
+// TEAM: flexport_os
+// TODO https://flexport.atlassian.net/browse/FPOSINF-619 Use original instead of this copy
+// Copyright 2020 Flexport Corp.
+//
+// All rights reserved
+
+syntax = "proto3";
+
+package flexport.os.grpc.type.datetime.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "Iso8601DatetimeProto";
+option java_package = "com.flexport.os.grpc.type.datetime.v1beta1";
+option ruby_package = "Flexport::OS::Grpc::Type::DateTime::V1Beta1";
+
+import "google/protobuf/wrappers.proto";
+
+// A date time formatted following the ISO-8601 format.
+// @ref https://en.wikipedia.org/wiki/ISO_8601
+message Iso8601Datetime {
+  google.protobuf.StringValue date_time = 1;
+}
+
+// A local date time formatted following the ISO-8601 format (no timezone part).
+// @ref https://en.wikipedia.org/wiki/ISO_8601
+message Iso8601DatetimeWallTime {
+  oneof by {
+    //wall date time defined as ISO string (in format of<YY-MM-DDTHH:MM:SS>)
+    //wall time should be provided in user timezone, not timezone is stored in DA
+    //for wall time
+    google.protobuf.StringValue date_time_wall_time = 1;
+    //Wall date time defined as Date only (usage example is opening date or
+    // regulations start date when no time is specified)
+    google.protobuf.StringValue date = 2;
+    //Wall date time defined as Time only (usage example is opening time)
+    google.protobuf.StringValue time = 3;
+  }
+}
+
+// A duration formatted following the ISO-8601 format.
+// @ref https://en.wikipedia.org/wiki/ISO_8601
+message Iso8601Duration {
+  google.protobuf.StringValue duration = 1;
+}
+
+// A Time interval formatted following the ISO-8601 format.
+// @ref https://en.wikipedia.org/wiki/ISO_8601
+message Iso8601Interval {
+  google.protobuf.StringValue interval = 1;
+}
+
+// A Repeated Internval according to ISO_8601.
+// @ref https://en.wikipedia.org/wiki/ISO_8601
+message Iso8601RepeatingInterval {
+  google.protobuf.StringValue interval = 1;
+}

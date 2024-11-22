@@ -1,0 +1,19 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.payments.payment.paymentlineitem.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PaymentLineItemProto";
+option java_package = "com.flexport.payments.payment.paymentlineitem.v1beta1";
+option ruby_package = "Flexport::Payments::Payment::PaymentLineItem::V1Beta1";
+
+import "flexport/payments/payment/surchargeitem/v1beta1/surcharge_item.proto";
+
+// A portion of a payment applied to an individual invoice.
+message PaymentLineItem {
+  int64 total_amount_micros = 1;
+  int32 payment_line_item_id = 2;
+  flexport.payments.payment.surchargeitem.v1beta1.SurchargeItem surcharge_item = 3;
+}

@@ -1,0 +1,20 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.escalationengine.v1;
+
+import "flexport/customs/escalationengine/v1/escalation_engine_api.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EscalationEngineRequestProto";
+option java_package = "com.flexport.customs.escalationengine.v1";
+option ruby_package = "Flexport::Customs::EscalationEngine::V1";
+
+// Kafka API. Message key should be reference_fid.
+message EscalationEngineRequest {
+  oneof request {
+    EscalateRequest escalate_request = 1;
+    DeescalateRequest deescalate_request = 2;
+  }
+}

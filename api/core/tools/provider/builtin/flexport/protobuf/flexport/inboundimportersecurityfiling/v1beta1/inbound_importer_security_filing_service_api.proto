@@ -1,0 +1,80 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.inboundimportersecurityfiling.v1beta1;
+
+import "flexport/inboundimportersecurityfiling/v1beta1/inbound_importer_security_filing.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "InboundImporterSecurityFilingServiceApiProto";
+option java_package = "com.flexport.inboundimportersecurityfiling.v1beta1";
+option ruby_package = "Flexport::InboundImporterSecurityFiling::V1Beta1";
+
+// The API for the Inbound Importer Security Filing Engine.
+service InboundImporterSecurityFilingServiceAPI {
+  // Upsert an inbound importer security filing.
+  rpc UpsertInboundImporterSecurityFiling(UpsertInboundImporterSecurityFilingRequest) returns (UpsertInboundImporterSecurityFilingResponse);
+  // Get all importer security filings given an execution order fid.
+  rpc GetInboundImporterSecurityFilings(GetInboundImporterSecurityFilingsRequest) returns (GetInboundImporterSecurityFilingsResponse);
+  // Attach an importer security filing to an execution order
+  rpc AttachInboundIsfToEo(AttachInboundIsfToEoRequest) returns (AttachInboundIsfToEoResponse);
+  // Get an importer security filing given a stable id
+  rpc GetInboundIsfByStableId(GetInboundIsfByStableIdRequest) returns (GetInboundIsfByStableIdResponse);
+}
+
+message UpsertInboundImporterSecurityFilingRequest {
+  repeated flexport.inboundimportersecurityfiling.v1beta1.InboundImporterSecurityFilingPayload isfs_to_upsert = 1;
+  InboundImporterSecurityFilingSourceType isf_source = 2;
+  string client_id = 3; // using string like TypedInboundImporterSecurityFiling
+}
+
+message UpsertInboundImporterSecurityFilingResult {
+  flexport.inboundimportersecurityfiling.v1beta1.InboundImporterSecurityFiling isf = 1;
+  UpsertInboundImporterSecurityFilingStatus status = 2;
+}
+
+message UpsertInboundImporterSecurityFilingResponse {
+  reserved 1;
+  repeated UpsertInboundImporterSecurityFilingResult results = 2;
+}
+
+message GetInboundImporterSecurityFilingsRequest {
+  string eo_fid = 1;
+}
+
+message GetInboundImporterSecurityFilingsResponse {
+  repeated InboundImporterSecurityFiling isfs = 1;
+}
+
+message AttachInboundIsfToEoRequest {
+  string inbound_isf_fid = 1;
+  string eo_fid = 2;
+}
+
+message AttachInboundIsfToEoResponse {
+  InboundImporterSecurityFiling isf = 1;
+}
+
+message GetInboundIsfByStableIdRequest {
+  string stable_id = 1;
+  string client_fid = 2;
+}
+
+message GetInboundIsfByStableIdResponse {
+  InboundImporterSecurityFiling isf = 1;
+}
+
+enum InboundImporterSecurityFilingSourceType {
+  INBOUND_IMPORTER_SECURITY_FILING_SOURCE_TYPE_INVALID = 0;
+  INBOUND_IMPORTER_SECURITY_FILING_SOURCE_TYPE_STANDARD_TEMPLATE = 1;
+  INBOUND_IMPORTER_SECURITY_FILING_SOURCE_TYPE_EDI = 2;
+  INBOUND_IMPORTER_SECURITY_FILING_SOURCE_TYPE_NON_STANDARD_TEMPLATE = 3;
+  INBOUND_IMPORTER_SECURITY_FILING_SOURCE_TYPE_API = 4;
+}
+
+enum UpsertInboundImporterSecurityFilingStatus {
+  UPSERT_INBOUND_IMPORTER_SECURITY_FILING_STATUS_INVALID = 0;
+  UPSERT_INBOUND_IMPORTER_SECURITY_FILING_STATUS_SUCCESS = 1;
+  UPSERT_INBOUND_IMPORTER_SECURITY_FILING_STATUS_NOOP = 2;
+}

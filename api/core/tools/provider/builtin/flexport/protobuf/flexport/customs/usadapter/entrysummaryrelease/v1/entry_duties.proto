@@ -1,0 +1,64 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.entrysummaryrelease.v1;
+
+import "flexport/customs/usadapter/entrysummaryrelease/v1/tariff.proto";
+import "google/type/date.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.entrysummaryrelease.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::EntrySummaryRelease::V1";
+
+message EntryDuties {
+  string filer_code = 1;
+  string entry_number = 2;
+  string filing_id = 3;
+  string reference = 4;
+  repeated LineItemDuty line_item_duty = 5;
+}
+
+message LineItemDuty {
+  string invoice_number = 1;
+  string line_item_number = 2;
+  Tariff tariff = 3;
+  CalculatedDuty duty = 4;
+}
+
+message CalculatedDuty {
+  string duty = 1;
+  string p1_specific_rate = 2;
+  string p2_ad_valorem_rate = 3;
+  string p3_other_rate = 4;
+  DutyComputationCode duty_computation_code = 5;
+  // Import date of the entry
+  // Tariff codes' duty calculation is based on this date
+  google.type.Date duty_calculated_at_import_date = 6;
+}
+
+// Codes from Appendix F: Duty Calculation
+enum DutyComputationCode {
+  DUTY_COMPUTATION_CODE_INVALID = 0;
+  DUTY_COMPUTATION_CODE_0_FREE = 1;
+  DUTY_COMPUTATION_CODE_1_SPECIFIC_QUANTITY_1 = 2;
+  DUTY_COMPUTATION_CODE_2_SPECIFIC_QUANTITY_2 = 3;
+  DUTY_COMPUTATION_CODE_3_MULTIPLE_SPECIFIC = 4;
+  DUTY_COMPUTATION_CODE_4_COMPOUND_QUANTITY_1 = 5;
+  DUTY_COMPUTATION_CODE_5_COMPOUND_QUANTITY_2 = 6;
+  DUTY_COMPUTATION_CODE_6_SPEFIC_COMPOUND = 7;
+  DUTY_COMPUTATION_CODE_7_AD_VALOREM = 8;
+  // There is no duty computation code 8
+  DUTY_COMPUTATION_CODE_9_DERIVED = 9;
+  DUTY_COMPUTATION_CODE_A_FUNC_AD_VALOREM = 10;
+  DUTY_COMPUTATION_CODE_B_SPECIC_FUNC_AD_VALOREM = 11;
+  // Spefic spefic is not a typo, its just the name of the calculation function
+  DUTY_COMPUTATION_CODE_C_SPECIC_SPEFIC = 12;
+  DUTY_COMPUTATION_CODE_D_COMPOUNT_QUANTITY_3 = 13;
+  DUTY_COMPUTATION_CODE_E_SPECIFIC_COMPOUND_QUANTITY_3 = 14;
+  DUTY_COMPUTATION_CODE_F_SPECIFIC_PYROTECHNICS = 15;
+  DUTY_COMPUTATION_CODE_J_SPECIFIC_SUGAR_QUANTITY_3_2 = 16;
+  DUTY_COMPUTATION_CODE_K_SPECIFIC_SUGAR_QUANTITY_2_1 = 17;
+  // Refer to tariff schedule for duty calculation for code X
+  DUTY_COMPUTATION_CODE_X_NOT_AVALIABLE = 18;
+}

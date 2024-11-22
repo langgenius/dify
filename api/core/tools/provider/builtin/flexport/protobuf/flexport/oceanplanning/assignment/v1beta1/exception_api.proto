@@ -1,0 +1,27 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.oceanplanning.assignment.v1beta1;
+
+import "flexport/monolith/oceanplanning/exceptions/v1/ocean_planning_exception_entity.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ExceptionApiProto";
+option java_package = "com.flexport.oceanplanning.assignment.v1beta1";
+option ruby_package = "Flexport::OceanPlanning::Assignment::V1Beta1";
+
+// An API for working with Assignment Exceptions.
+service ExceptionAPI {
+  // Determine and execute what the right action is given an exception type.
+  rpc TriageException(TriageExceptionRequest) returns (TriageExceptionResponse);
+}
+
+// The request for ValidateOceanProducts.
+message TriageExceptionRequest {
+  // A list of Ocean Product names to validate.
+  flexport.monolith.oceanplanning.exceptions.v1.OceanPlanningExceptionWithCategory exception_with_category = 1;
+}
+
+// Does not have a response.
+message TriageExceptionResponse {}

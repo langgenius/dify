@@ -1,0 +1,29 @@
+// TEAM: service_platform
+// TODO - retire this proto.
+
+syntax = "proto3";
+
+package flexport.serviceplatform.sample.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SampleApiProto";
+option java_package = "com.flexport.serviceplatform.sample.v1";
+option ruby_package = "Flexport::ServicePlatform::Sample::V1";
+
+// The greeting service definition.
+service SampleAPI {
+  // Does nothing, used for load testing.
+  rpc DoNothing(DoNothingRequest) returns (DoNothingResponse);
+  // Throw exception.
+  rpc ThrowException(ThrowExceptionRequest) returns (ThrowExceptionResponse);
+}
+
+message DoNothingRequest {}
+
+message DoNothingResponse {}
+
+message ThrowExceptionRequest {
+  string shipment_id = 1;
+}
+
+message ThrowExceptionResponse {}

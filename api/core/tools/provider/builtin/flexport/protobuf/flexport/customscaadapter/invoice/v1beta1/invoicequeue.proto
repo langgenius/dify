@@ -1,0 +1,19 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customscaadapter.invoice.v1beta1;
+
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "InvoiceQueueProto";
+option java_package = "com.flexport.customscaadapter.invoice.v1beta1";
+option ruby_package = "Flexport::CustomsCaAdapter::Invoice::V1Beta1";
+
+// Used for internal queue processing in canada adapter
+message InvoiceQueue {
+  // Single invoice object we get from CANdata queue invoice endpoint
+  google.protobuf.Struct invoice = 1 [deprecated = true];
+  string invoice_json = 2;
+  bool is_healing_message = 3;
+}

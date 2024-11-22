@@ -1,0 +1,36 @@
+// TEAM: smb_scone
+
+syntax = "proto3";
+
+package flexport.monolith.smb.v1beta1;
+
+
+option java_multiple_files = true;
+option java_outer_classname = "CainValidationApiProto";
+option java_package = "com.flexport.monolith.smb.v1beta1";
+option ruby_package = "Flexport::Monolith::Smb::V1Beta1";
+
+service CainValidationAPI {
+  rpc ValidateCain(ValidateCainRequest) returns (ValidateCainResponse);
+  rpc GetCainValidation(GetCainValidationRequest) returns (GetCainValidationResponse);
+}
+
+message ValidateCainRequest {
+  string client_fid = 1;
+  string user_fid = 2;
+  string cain = 3;
+}
+
+message ValidateCainResponse {
+  bool is_verified = 1;
+  repeated string errors = 2;
+}
+
+message GetCainValidationRequest {
+  string client_fid = 1;
+}
+
+message GetCainValidationResponse {
+  bool is_verified = 1;
+  repeated string errors = 2;
+}

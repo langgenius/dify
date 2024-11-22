@@ -1,0 +1,39 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontasksnapshot.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionTaskSnapshotApiProto";
+option java_package = "com.flexport.executioncoordinator.executiontasksnapshot.v1beta1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskSnapshot::V1Beta1";
+
+// Get the latest snapshot of an execution task.
+service ExecutionTaskSnapshotAPI {
+  // Retrieves the snapshot of an ocean fcl execution task.
+  rpc GetOceanFclTaskSnapshot(GetOceanFclTaskSnapshotRequest) returns (GetOceanFclTaskSnapshotResponse);
+  // Retrieves snapshots of some ocean fcl execution tasks.
+  rpc GetOceanFclTaskSnapshots(GetOceanFclTaskSnapshotsRequest) returns (GetOceanFclTaskSnapshotsResponse);
+}
+
+// The request message containing the execution task fid.
+message GetOceanFclTaskSnapshotRequest {
+  // The fid of the execution task.
+  string execution_task_fid = 1;
+}
+
+// The response message containing the current snapshot of the execution task.
+message GetOceanFclTaskSnapshotResponse {
+  repeated string attached_carrier_booking_fids = 1;
+}
+
+message GetOceanFclTaskSnapshotsRequest {
+  // The fid of the execution tasks.
+  repeated string execution_task_fids = 1;
+}
+
+// The response message containing the current snapshot of execution tasks.
+message GetOceanFclTaskSnapshotsResponse {
+  repeated GetOceanFclTaskSnapshotResponse snapshots = 1;
+}

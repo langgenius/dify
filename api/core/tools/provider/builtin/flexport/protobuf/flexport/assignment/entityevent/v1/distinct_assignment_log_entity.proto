@@ -1,0 +1,35 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.entityevent.v1;
+
+import "flexport/assignment/enums/v1/assignable_type.proto";
+import "flexport/assignment/enums/v1/assignee_type.proto";
+import "flexport/assignment/enums/v1/evaluation_type.proto";
+import "flexport/assignment/enums/v1/log_type.proto";
+import "flexport/assignment/enums/v1/reason.proto";
+import "flexport/assignment/enums/v1/responsibility.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DistinctAssignmentLogEntityProto";
+option java_package = "com.flexport.assignment.entityevent.v1";
+option ruby_package = "Flexport::Assignment::EntityEvent::V1";
+
+// History records of distinct assignments.
+message DistinctAssignmentLogEntity {
+  // DB id
+  uint64 id = 1;
+  flexport.assignment.enums.v1.AssignableType assignable_type = 2;
+  string assignable_fid = 3;
+  string assignee_fid = 4;
+  flexport.assignment.enums.v1.Responsibility responsibility = 5;
+  flexport.assignment.enums.v1.Reason reason = 6;
+  uint64 setting_id = 7;
+  flexport.assignment.enums.v1.LogType log_type = 8;
+  flexport.assignment.enums.v1.EvaluationType evaluation_type = 9;
+  uint64 action_log_id = 10;
+  google.protobuf.Timestamp created_at_time = 11;
+  flexport.assignment.enums.v1.AssigneeType assignee_type = 12;
+}

@@ -1,0 +1,26 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.originops.grpcserver.bulkaction.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BulkActionProto";
+option java_package = "com.flexport.originops.grpcserver.bulkaction.v1";
+option ruby_package = "Flexport::OriginOps::GRpcServer::BulkAction::V1";
+
+// The status of a operation.
+enum OperationStatus {
+  OPERATION_STATUS_INVALID = 0;
+  OPERATION_STATUS_CREATED = 1;
+  OPERATION_STATUS_PENDING = 2;
+  OPERATION_STATUS_SUCCESS = 3;
+  OPERATION_STATUS_FAIL = 4;
+}
+
+// The data structure to indicate an instance of operation.
+message UpdateOperationRunStatusDescriptor {
+  string resource_id = 1;
+  OperationStatus status = 2;
+  string error_message = 3;
+}

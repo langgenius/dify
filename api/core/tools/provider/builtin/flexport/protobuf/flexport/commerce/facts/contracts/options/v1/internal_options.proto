@@ -1,0 +1,17 @@
+// TEAM: client_order
+
+syntax = "proto3";
+
+package flexport.commerce.facts.contracts.options.v1;
+
+import "google/protobuf/descriptor.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "InternalOptionsProto";
+option java_package = "com.flexport.commerce.facts.contracts.options.v1";
+option ruby_package = "Flexport::Commerce::Facts::Contracts::Options::V1";
+
+extend google.protobuf.MessageOptions {
+  // The full name of the message of the source repository.
+  string repository_full_name = 8100;
+}

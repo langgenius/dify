@@ -1,0 +1,38 @@
+// TEAM: trucking_planning
+
+syntax = "proto3";
+
+package flexport.truckingplanning.truckingoption.v1beta1;
+
+import "flexport/airprocurement/costcalculator/v1/find_cost.proto";
+import "flexport/financialvisibility/netrevenue/v1/net_revenue.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingOptionProto";
+option java_package = "com.flexport.truckingplanning.truckingoption.v1beta1";
+
+message TruckingOptions {
+  repeated TruckingOption options = 1;
+}
+
+message TruckingOption {
+  TruckingOptionType type = 1;
+  uint64 transit_minutes = 2;
+  flexport.financialvisibility.netrevenue.v1.CostRecord net_revenue_cost_record = 4;
+  TruckingOptionRateFoundStatus rate_found_status = 5;
+
+  flexport.airprocurement.costcalculator.v1.CostRecord cost_record = 3 [deprecated = true];
+}
+
+enum TruckingOptionType {
+  TRUCKING_OPTION_TYPE_INVALID = 0;
+  TRUCKING_OPTION_TYPE_FAST = 1;
+  TRUCKING_OPTION_TYPE_SLOW = 2;
+}
+
+enum TruckingOptionRateFoundStatus {
+  TRUCKING_OPTION_RATE_FOUND_STATUS_INVALID = 0;
+  TRUCKING_OPTION_RATE_FOUND_STATUS_FOUND = 1;
+  TRUCKING_OPTION_RATE_FOUND_STATUS_FALLBACK = 2;
+  TRUCKING_OPTION_RATE_FOUND_STATUS_NOT_FOUND = 3;
+}

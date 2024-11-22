@@ -1,0 +1,19 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.payments.payment.surchargeitem.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SurchargeItemProto";
+option java_package = "com.flexport.payments.payment.surchargeitem.v1beta1";
+option ruby_package = "Flexport::Payments::Payment::SurchargeItem::V1Beta1";
+
+// A surcharge fee on payment line item.
+message SurchargeItem {
+  int32 surcharge_item_id = 1;
+  int64 amount_micros = 2;
+  string description = 3;
+  string name = 4;
+  bool refunded = 5;
+}

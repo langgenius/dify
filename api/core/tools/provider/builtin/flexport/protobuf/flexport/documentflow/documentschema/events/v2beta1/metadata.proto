@@ -1,0 +1,41 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentflow.documentschema.events.v2beta1;
+
+import "flexport/documentflow/documentschema/common/v1beta1/digitization_solution.proto";
+import "flexport/workflow/email/models/carrier/v1beta1/carrier.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MetadataProto";
+option java_package = "com.flexport.documentflow.documentschema.events.v2beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentSchema::Events::V2Beta1";
+
+// NextID: 16
+message Metadata {
+  string storage_fid = 1;
+
+  string transcription_job_fid = 2;
+  flexport.documentflow.documentschema.common.v1beta1.DigitizationSolution digitization_solution = 3;
+
+  // received_at is the timestamp when the document becomes available in the Document's system
+  google.protobuf.Timestamp received_at = 4;
+  // transcribed_at is the timestamp generated in the backend service when the PDF gets digitized
+  google.protobuf.Timestamp transcribed_at = 5;
+
+  string flex_id = 6;
+  string shipment_fid = 7; // can be shipment FID or derived shipment FID
+  string submitted_by_fid = 8; // user who submitted the form
+  string source = 9;
+  string link_to_source_document = 10;
+
+  // FR carrier extracted from email
+  flexport.workflow.email.models.carrier.v1beta1.Carrier carrier = 11;
+  // FR MBL number extracted from email
+  string mbl_number = 12;
+  string scac_code = 13;
+  string document_sub_type = 14;
+  int64 document_id = 15;
+}

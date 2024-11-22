@@ -1,0 +1,70 @@
+// TEAM: smb_shipex
+
+syntax = "proto3";
+
+package flexport.smb.smbbooking.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SmbBookingApi";
+option java_package = "com.flexport.smb.smbbooking.v1beta1";
+option ruby_package = "Flexport::Smb::SmbBooking::V1Beta1";
+
+// API for SmbBooking data
+service SmbBookingAPI {
+  // Find SmbBooking data for FLexId/ShippingPlanId request.
+  rpc GetSmbBooking(GetSmbBookingRequest) returns (GetSmbBookingResponse);
+
+  // List SmbBookings for a given client. If the client does not exist, return empty response. Pagination is not implemented. The only use case for now is to determine if a client has at least one smb booking.
+  rpc ListSmbBookingsByClient(ListSmbBookingsByClientRequest) returns (ListSmbBookingsByClientResponse);
+}
+
+message GetSmbBookingRequest {
+  string shipping_plan_id_or_flex_id = 1 [deprecated = true];
+  // Repeated list of ShipmentFids, eg ["flx::core:shipment:dbid/123", "flx::core:shipment:dbid/456", ...]
+  ShipmentFidsList shipment_fid_list = 2;
+}
+
+message ShipmentFidsList {
+  repeated string shipment_fids = 1;
+}
+
+message GetSmbBookingResponse {
+  SmbBookingInfo booking_info = 1 [deprecated = true];
+  // key used: shipment_fid
+  map<string, SmbBookingInfo> bookings_by_shipment_fids = 2;
+}
+
+message SmbBookingInfo {
+  string uuid = 1;
+  string shipping_plan_id = 2;
+  ClientOrder client_order = 3;
+  BookingType booking_type = 4;
+  bool is_flexport_plus = 5;
+}
+
+enum BookingType {
+  BOOKING_TYPE_INVALID = 0;
+  BOOKING_TYPE_FREIGHT_ONLY = 1;
+  BOOKING_TYPE_FREIGHT_AND_FULFILLMENT_RS = 2;
+  BOOKING_TYPE_DIRECT_TO_FBA_PREP = 3;
+  BOOKING_TYPE_DIRECT_TO_FBA_NO_PREP = 4;
+  BOOKING_TYPE_DTC = 5;
+}
+
+message ClientOrder {
+  string fid = 1;
+  ClientOrderDemandFacts demand_facts = 2;
+}
+
+// TODO: Add fields for Flexport Plus flags
+message ClientOrderDemandFacts {
+  string name = 1;
+}
+
+message ListSmbBookingsByClientRequest {
+  string client_fid = 1;
+}
+
+message ListSmbBookingsByClientResponse {
+  repeated SmbBookingInfo smb_bookings = 1;
+}

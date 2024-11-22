@@ -1,0 +1,28 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.inboundimportersecurityfiling.inboundisfupdated.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "InboundIsfUpdatedProto";
+option java_package = "com.flexport.inboundimportersecurityfiling.inboundisfupdated.v1beta1";
+option ruby_package = "Flexport::InboundImporterSecurityFiling::InboundISFUpdated::V1Beta1";
+
+import "flexport/inboundimportersecurityfiling/v1beta1/inbound_importer_security_filing.proto";
+import "flexport/inboundimportersecurityfiling/v1beta1/inbound_importer_security_filing_service_api.proto";
+
+// This event represents an update to an Inbound Importer Security Filing.
+message InboundIsfUpdated {
+  InboundIsfUpdateType update_type = 1;
+  flexport.inboundimportersecurityfiling.v1beta1.InboundImporterSecurityFiling inbound_importer_security_filing = 2;
+  flexport.inboundimportersecurityfiling.v1beta1.InboundImporterSecurityFilingSourceType source_type = 3;
+}
+
+// The type of update that happened on the Inbound Importer Security Filing.
+enum InboundIsfUpdateType {
+  INBOUND_ISF_UPDATE_TYPE_INVALID = 0;
+  INBOUND_ISF_UPDATE_TYPE_DOCUMENT_UPLOADED = 1;
+  INBOUND_ISF_UPDATE_TYPE_EXECUTION_ORDER_UPDATED = 2;
+  INBOUND_ISF_UPDATE_TYPE_DELETED = 3;
+}

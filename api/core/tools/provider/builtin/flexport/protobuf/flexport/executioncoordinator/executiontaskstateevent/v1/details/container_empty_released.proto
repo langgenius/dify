@@ -1,0 +1,25 @@
+// TEAM: Visibility
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerEmptyReleasedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// The time that the carrier released the empty container to the shipper.
+message ContainerEmptyReleased {
+  //
+  // Container fid.
+  string container_fid = 1;
+  //
+  // The fid of the immutable address instance this event relates to.
+  string address_fid = 2;
+  //
+  // The time that the empty container was released to the shipper
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate empty_released = 3;
+}

@@ -1,0 +1,36 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+import "flexport/executioncoordinator/types/enums/v1/trucking_accessorial.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingAccessorialChargeIncurredProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// Trucking carrier has reported an accessorial charge.
+message TruckingAccessorialChargeIncurred {
+  string cargo_fid = 1;
+  string destination_address_fid = 2;
+  // The accessorial charge occurrence.
+  string accessorial_charge_fid = 3;
+  // The type of accessorial charge that was incurred.
+  flexport.executioncoordinator.types.enums.v1.TruckingAccessorial accessorial_type = 4;
+  // A description of the charge.
+  string accessorial_description = 5;
+  // A message attached to the charge.
+  TruckingAccessorialMessage message = 6;
+  // A list of documents to be attached to the line item
+  repeated string file_object_fids = 7;
+}
+
+// A message to attach to the accessorial charge shipment event.
+message TruckingAccessorialMessage {
+  // The body of the message.
+  string body = 1;
+  // The messaging API token used to send the message.
+  string token = 2;
+}

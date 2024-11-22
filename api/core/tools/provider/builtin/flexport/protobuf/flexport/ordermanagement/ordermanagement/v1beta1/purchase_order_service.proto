@@ -1,0 +1,103 @@
+// TEAM: order_management
+
+syntax = "proto3";
+
+package flexport.ordermanagement.ordermanagement.v1beta1;
+
+import "flexport/ordermanagement/ordermanagement/v1beta1/purchase_order.proto";
+import "flexport/ordermanagement/ordermanagement/v1beta1/purchase_order_line_item.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PurchaseOrderServiceProto";
+option java_package = "com.flexport.ordermanagement.ordermanagement.v1beta1";
+option ruby_package = "Flexport::OrderManagement::OrderManagement::V1Beta1";
+
+// Grpc endpoint for Order Management Service
+service PurchaseOrderServiceAPI {
+  // Updates the purchase order specified in the request if it exists, creates it if it doesn't
+  rpc UpsertPurchaseOrder(UpsertPurchaseOrderRequest) returns (UpsertPurchaseOrderResponse) {}
+
+  // Returns a list of purchase orders given a query parameter
+  rpc ListPurchaseOrders(ListPurchaseOrdersRequest) returns (ListPurchaseOrdersResponse) {}
+
+  // Returns a list of purchase order line items given a query parameter
+  rpc ListPurchaseOrderLineItems(ListPurchaseOrderLineItemsRequest) returns (ListPurchaseOrderLineItemsResponse) {}
+}
+
+// Query parameter for ListPurchaseOrders
+message UpsertPurchaseOrderRequest {
+  // Purchase order to be upserted
+  UpsertPurchaseOrderParameter upsert_purchase_order_parameter = 1;
+
+  // The FID of a monorail purchase order
+  // Example: flx::core:purchase_order:dbid/123
+  // This field is required for update requests
+  string purchase_order_fid = 2;
+
+  // The created_at timestamp of the purchase order in postgres
+  google.protobuf.Timestamp created_at_postgres = 3;
+
+  // The updated_at timestamp of the purchase order in postgres
+  google.protobuf.Timestamp updated_at_postgres = 4;
+
+  // The deleted_at timestamp of the purchase order in postgres
+  google.protobuf.Timestamp deleted_at_postgres = 5;
+
+  // The version id of the purchase order in monorail
+  uint32 purchase_order_version_postgres_id = 6;
+
+  // The archived_at timestamp of the purchase order in postgres
+  google.protobuf.Timestamp archived_at_postgres = 7;
+}
+
+// Response for UpsertPurchaseOrder
+message UpsertPurchaseOrderResponse {
+  // Purchase order representation object
+  PurchaseOrder purchase_order = 1;
+
+  // Error message if upsert fails
+  repeated string error_messages = 2;
+}
+
+// Query parameter for ListPurchaseOrders
+message ListPurchaseOrdersRequest {
+  // Query parameter for ListPurchaseOrders
+  PurchaseOrderQuery purchase_order_query = 1;
+}
+
+// Response for ListPurchaseOrders
+message ListPurchaseOrdersResponse {
+  // Purchase order representation object
+  repeated PurchaseOrder purchase_orders = 1;
+
+  // Pagination: the previous page number
+  uint32 prev = 2;
+
+  // Pagination: the next page number
+  uint32 next = 3;
+
+  // Total number of records that matches the query filters
+  uint32 total_count = 4;
+}
+
+// Query parameter for ListPurchaseOrderLineItems
+message ListPurchaseOrderLineItemsRequest {
+  // Query parameter for ListPurchaseOrderLineItems
+  PurchaseOrderLineItemQuery purchase_order_line_item_query = 1;
+}
+
+// Purchase order line item to be returned from a query
+message ListPurchaseOrderLineItemsResponse {
+  // Purchase order line item representation object
+  repeated PurchaseOrderLineItem purchase_order_line_items = 1;
+
+  // Pagination: the previous page number
+  uint32 prev = 2;
+
+  // Pagination: the next page number
+  uint32 next = 3;
+
+  // Total number of records that matches the query filters
+  uint32 total_count = 4;
+}

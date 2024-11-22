@@ -1,0 +1,103 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.carriershippingdoc.masterbilloflading.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MasterBillOfLadingApiProto";
+option java_package = "com.flexport.carriershippingdoc.masterbilloflading.v1beta1";
+option ruby_package = "Flexport::CarrierShippingDoc::MasterBillOfLading::V1Beta1";
+
+service MasterBillOfLadingAPI {
+  rpc GetMasterBillOfLadingList(GetMasterBillOfLadingListRequest) returns (GetMasterBillOfLadingListResponse);
+
+  rpc UpdateMasterBillOfLading(UpdateMasterBillOfLadingRequest) returns (UpdateMasterBillOfLadingResponse);
+
+  rpc PutMasterBillOfLading(PutMasterBillOfLadingRequest) returns (PutMasterBillOfLadingResponse);
+}
+
+message GetMasterBillOfLadingListRequest {
+  message StringList {
+    repeated string values = 1;
+  }
+  message Int32List {
+    repeated int32 values = 1;
+  }
+  oneof identifier {
+    StringList execution_task_fid = 1;
+    StringList shipment_fid = 2;
+    StringList master_bill_of_lading_number = 3;
+    Int32List master_bill_of_lading_id = 4;
+  }
+}
+
+message GetMasterBillOfLadingListResponse {
+  repeated MasterBillOfLading master_bill_of_ladings = 1;
+}
+
+// MBL only has three required fields, shipment_id, bill_number, and transmission mode.
+message MasterBillOfLading {
+  int32 id = 1;
+  string master_bill_of_lading_number = 2;
+  optional string execution_task_fid = 3;
+  TransmissionMode transmission_mode = 4;
+  optional ReleaseMethod release_method = 5;
+
+  optional string carrier_fid = 6;
+  string shipment_fid = 7;
+  optional string place_of_delivery_fid = 8;
+  optional string place_of_receipt_fid = 9;
+  optional string port_of_loading_fid = 10;
+  optional string port_of_unloading_fid = 11;
+
+  // User Refs
+  optional string draft_approved_by_fid = 12;
+  optional string created_by_fid = 13;
+  optional string updated_by_fid = 14;
+
+  // Document Refs
+  optional string draft_document_fid = 15;
+  optional string document_fid = 16;
+  optional string release_document_fid = 17;
+
+  // DateTime
+  google.protobuf.Timestamp archived_at = 18;
+  google.protobuf.Timestamp draft_approved_at = 19;
+  google.protobuf.Timestamp released_at = 20;
+  google.protobuf.Timestamp created_at = 21;
+  google.protobuf.Timestamp updated_at = 22;
+}
+
+enum TransmissionMode {
+  TRANSMISSION_MODE_INVALID = 0;
+  TRANSMISSION_MODE_STRAIGHT = 1;
+  TRANSMISSION_MODE_ORIGINAL = 2;
+  TRANSMISSION_MODE_EXPRESS = 3;
+}
+
+enum ReleaseMethod {
+  RELEASE_METHOD_INVALID = 0;
+  RELEASE_METHOD_UNSPECIFIED = 1;
+  RELEASE_METHOD_MAIL_COPY = 2;
+  RELEASE_METHOD_HOLD_FOR_TELEX = 3;
+}
+
+message UpdateMasterBillOfLadingRequest {
+  MasterBillOfLading input = 1;
+}
+
+message UpdateMasterBillOfLadingResponse {
+  optional MasterBillOfLading master_bill_of_lading = 1;
+  repeated string errors = 2;
+}
+
+message PutMasterBillOfLadingRequest {
+  repeated MasterBillOfLading master_bill_of_ladings = 1;
+}
+
+message PutMasterBillOfLadingResponse {
+  repeated string errors = 1;
+}

@@ -1,0 +1,46 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.productlibrary.products.v1beta1;
+
+import "flexport/customs/productlibrary/products/countryspecific/us/v1beta1/us_specific.proto";
+import "flexport/customs/productlibrary/regulations/v1beta1/measure.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TariffProto";
+option java_package = "com.flexport.customs.productlibrary.products.v1beta1";
+option ruby_package = "Flexport::Customs::ProductLibrary::Products::V1Beta1";
+
+message Tariff {
+  // Base HS code, special codes, exclusions - including any separators,
+  // E.g. 9608.99.40.00
+  string hs_code = 1;
+
+  // The valid from/to dates will be provided on a best-effort basis.
+  // We currently do not have this information, but we are working on
+  // being able to provide it.
+  google.protobuf.Timestamp valid_from = 2;
+  google.protobuf.Timestamp valid_to = 3;
+
+  // The units of measure which must be provided for the Product. In the
+  // US, two UoM's are fairly common - e.g. count and kg. Three UoM's
+  // are very rare, but they do exist.
+  flexport.customs.productlibrary.regulations.v1beta1.Measure unit_of_measure1 = 4;
+  flexport.customs.productlibrary.regulations.v1beta1.Measure unit_of_measure2 = 5;
+  flexport.customs.productlibrary.regulations.v1beta1.Measure unit_of_measure3 = 6;
+
+  // NOTE: Deprecated because a tariff should only have one country specific info.
+  repeated CountrySpecific country_specific_infos = 8 [deprecated = true];
+
+  // All country specific info like PGAs, fees and whatever any present
+  // or future country may invent will be stored here.
+  CountrySpecific country_specific_info = 9;
+
+  message CountrySpecific {
+    oneof info {
+      flexport.customs.productlibrary.products.countryspecific.us.v1beta1.USSpecific us_specific = 1;
+    }
+  }
+}

@@ -1,0 +1,21 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.booking.sync.types.core.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "HsCodeProto";
+option java_package = "com.flexport.booking.sync.types.core.v1beta1";
+option ruby_package = "Flexport::Booking::Sync::Types::Core::V1Beta1";
+
+import "google/protobuf/wrappers.proto";
+
+// Product classification information.
+message HsCode {
+  google.protobuf.StringValue code = 1;
+  google.protobuf.StringValue country_code = 2;
+  google.protobuf.StringValue description = 3;
+  google.protobuf.StringValue description_for_export_customs = 4;
+  google.protobuf.StringValue description_for_export_customs_locale = 5;
+}

@@ -1,0 +1,40 @@
+// TEAM: trucking_pricing_rate_management
+
+syntax = "proto3";
+
+package flexport.monolith.truckingprocurement.drayagebaserates.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DrayageBaseRatesResponse";
+option java_package = "com.flexport.monolith.truckingprocurement.drayagebaserates.v1beta1";
+option ruby_package = "Flexport::Monolith::TruckingProcurement::DrayageBaseRates::V1Beta1";
+
+message GetDrayageBaseRatesResponse {
+  // the string key here == uuid from the request
+  map<string, Rate> rates = 1;
+}
+
+message Rate {
+  oneof rate {
+    DrayageBaseRate success_result = 1;
+    NoRate failure_result = 2;
+  }
+}
+
+message DrayageBaseRate {
+  sint64 amount_micros = 1;
+  // ISO 4217 three letter currency code
+  string currency_code = 2;
+}
+
+message NoRate {
+  RateMatchFailReason reason = 1;
+}
+
+enum RateMatchFailReason {
+  RATE_MATCH_FAIL_REASON_INVALID = 0;
+  RATE_MATCH_FAIL_REASON_ADDRESS_INVALID = 1;
+  RATE_MATCH_FAIL_REASON_ZONE_MAPPING_FAILED = 2;
+  RATE_MATCH_FAIL_REASON_NO_RATE_IN_DB = 3;
+  RATE_MATCH_FAIL_REASON_ERROR = 4;
+}

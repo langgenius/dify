@@ -1,0 +1,22 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.clientrisk.creditblocked.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CreditBlockedApiProto";
+option java_package = "com.flexport.clientrisk.creditblocked.v1beta1";
+option ruby_package = "Flexport::ClientRisk::CreditBlocked::V1Beta1";
+
+service CreditBlockedAPI {
+    rpc GetCreditBlocked(GetCreditBlockedRequest) returns (GetCreditBlockedResponse);
+}
+
+message GetCreditBlockedRequest {
+    string company_fid = 1;
+}
+
+message GetCreditBlockedResponse {
+    bool blocked = 1;
+}

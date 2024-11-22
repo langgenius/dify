@@ -1,0 +1,470 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.commerce.merchandising.catalog.data_authority.offering.v1beta1;
+
+import "flexport/commerce/merchandising/catalog/data_authority/configuration/v1beta1/attribute.proto";
+import "flexport/commerce/merchandising/catalog/data_authority/offering/v1beta1/charge.proto";
+import "flexport/commerce/merchandising/catalog/data_authority/offering/v1beta1/offering.proto";
+import "google/protobuf/field_mask.proto";
+import "google/rpc/status.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.commerce.merchandising.catalog.dataauthority.offering.v1beta1";
+option ruby_package = "Flexport::Commerce::Merchandising::Catalog::DataAuthority::Offering::V1Beta1";
+
+// Offering API is a set of CRUD+ operations for managing Offerings.
+service OfferingAPI {
+  // Create an offering for a product.
+  // Note that the uniqueness of the offerings are internally managed by the service.
+  rpc CreateOffering(CreateOfferingRequest) returns (CreateOfferingResponse) {
+    option deprecated = true;
+  }
+
+  // Update the availability attributes on the offering.
+  rpc UpdateAvailability(UpdateAvailabilityRequest) returns (UpdateAvailabilityResponse);
+
+  // Update the fulfillment related attributes on the offering.
+  rpc UpdateFulfillmentContext(UpdateFulfillmentContextRequest) returns (UpdateFulfillmentContextResponse);
+
+  // Update the offering status, currently enable/disable the offering.
+  rpc UpdateOfferingStatus(UpdateOfferingStatusRequest) returns (UpdateOfferingStatusResponse);
+
+  // Update the transit time attributes on the offering.
+  // This is a "partial" patch on the offering, the attributes are merged on top of offering attributes.
+  rpc UpdateTransitTime(UpdateTransitTimeRequest) returns (UpdateTransitTimeResponse);
+
+  // Update the offering attributes. Only fields specified in the mask are updated. See https://cloud.google.com/apis/design/standard_methods#update.
+  rpc UpdateOffering(UpdateOfferingRequest) returns (UpdateOfferingResponse) {
+    option deprecated = true;
+  }
+
+  // Get an offering by Fid.
+  // - For versioned Fid, return offering with specified version
+  // - For un-versioned Fid, return offering with latest version
+  rpc GetOfferingByFid(GetOfferingByFidRequest) returns (GetOfferingByFidResponse);
+
+  // Retrieve the offerings by a given filter criteria.
+  // This API support different use cases than search; the query patterns are limited.
+  // - Find offerings by configuration_fid
+  // - Find offerings by configuration_fid and client_fid
+  rpc ListOfferings(ListOfferingsRequest) returns (ListOfferingsResponse);
+
+  // Batch get the offerings by Fids.
+  rpc BatchGetOffering(BatchGetOfferingRequest) returns (BatchGetOfferingResponse);
+
+  // Batch upsert the offerings.
+  // The API is designed for stateless clients; for services manages the lifecycle, it is recommended to use
+  // Create/Update which makes a clearer semantic.
+  // For singular creation, set the element to one.
+  // The offerings are either:
+  // - Created if no offering exists for same product distinct key and offering criteria
+  // - Updated if an matched offering exists and attributes differs
+  // - No-op if an matched offering exists and attributes are the same
+  // - Failed, the failure messages are included in result
+  rpc BatchUpsertOffering(BatchUpsertOfferingRequest) returns (BatchUpsertOfferingResponse);
+
+  // Update the offering status in Batch, see UpdateOfferingStatus.
+  // The Batch API is for offerings that status are changed by rules in a batch.
+  rpc BatchUpdateOfferingStatus(BatchUpdateOfferingStatusRequest) returns (BatchUpdateOfferingStatusResponse);
+
+  // Force publishes the search events for offering matching the criteria.
+  // - This is an internal operational tool to sync the data.
+  rpc BatchPublishSearchEvents(BatchPublishSearchEventsRequest) returns (BatchPublishSearchEventsResponse);
+
+  // Update the offering restriction on the offering. If the offering restriction is not set, the offering restriction will be removed.
+  rpc UpdateOfferingRestriction(UpdateOfferingRestrictionRequest) returns (UpdateOfferingRestrictionResponse);
+
+  // An internal API to sync the monolith offering to CDA.
+  // When an offering in monolith become inactive or archived, this API is called to remove the corresponding schedule from CDA.
+  // This API only applies on the "latest" offering and may create a new version of the offering.
+  rpc RemovePricingWindow(RemovePricingWindowRequest) returns (RemovePricingWindowResponse);
+
+  // An internal API to "reserve" a offeringId from an archived monolith offering.
+  // For the archived offerings before the initial version of the offering, it is not possible to modify the "history" of the offering;
+  // Instead, this API only checks the existence of the matched offering, and creates a "placeholder" if missing.
+  // Pricing and other detailed information are not included.
+  rpc GetOrCreateOfferingFid(GetOrCreateOfferingFidRequest) returns (GetOrCreateOfferingFidResponse);
+
+  // An API to currently handle the upsert flow during catalog migration
+  // This API has different flow comparing with batchUpsertOffering, DO NOT MIX USE THOSE TWO!
+  // Flow for this API:
+  // 1. internally call the logic of GetOrCreateOfferingFid to reserve a cda offering fid
+  // 2. make call to createServiceOffering to create offering in legacy catalog
+  // 3. waiting for the grpc createServiceOffering call response
+  // 4. return result based on step 3 result
+  rpc UpsertSingleOffering(UpsertSingleOfferingRequest) returns (UpsertSingleOfferingResponse);
+
+  // An API to create offering in legacy catalog
+  rpc UpsertServiceOffering(UpsertServiceOfferingRequest) returns (UpsertServiceOfferingResponse);
+}
+
+message UpsertServiceOfferingRequest {
+  // See Offering.configuration_fid
+  string configuration_fid = 1;
+  // See Offering.status
+  optional OfferingStatus status = 2;
+  // See Offering.attributes
+  repeated flexport.commerce.merchandising.catalog.data_authority.configuration.v1beta1.Attribute attributes = 3;
+  // See Offering.client_fid
+  optional string client_fid = 4;
+  // See Offering.pricing_policies
+  repeated PricingPolicy pricing_policies = 5;
+  // See Offering.fulfillment_context
+  optional FulfillmentContext fulfillment_context = 6;
+  // See Offering.availability
+  optional Availability availability = 7;
+  // See Offering.bundle_components
+  optional BundleOfferingFids bundle_offering_fids = 8;
+  // The restriction for offering. See Offering.restriction
+  optional Restriction restriction = 9;
+  // Pricing Availability UUID
+  optional string pricing_availability_uuid = 10;
+  // service offering uuids
+  repeated string service_offering_uuids = 11;
+}
+
+message UpsertServiceOfferingResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+}
+
+message UpsertSingleOfferingRequest {
+  // See Offering.configuration_fid
+  string configuration_fid = 1;
+  // See Offering.status
+  optional OfferingStatus status = 2;
+  // See Offering.attributes
+  repeated flexport.commerce.merchandising.catalog.data_authority.configuration.v1beta1.Attribute attributes = 3;
+  // See Offering.client_fid
+  optional string client_fid = 4;
+  // See Offering.pricing_policies
+  repeated PricingPolicy pricing_policies = 5;
+  // See Offering.fulfillment_context
+  optional FulfillmentContext fulfillment_context = 6;
+  // See Offering.availability
+  optional Availability availability = 7;
+  // See Offering.bundle_components
+  optional BundleOfferingFids bundle_offering_fids = 8;
+  // The restriction for offering. See Offering.restriction
+  optional Restriction restriction = 9;
+  // Pricing Availability UUID
+  optional string pricing_availability_uuid = 10;
+}
+
+message UpsertSingleOfferingResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+  // The created or matched offering fid.
+  string offering_fid = 2;
+}
+
+message CreateOfferingRequest {
+  // See Offering.product_fid
+  string product_fid = 1;
+  // See Offering.status
+  optional OfferingStatus status = 2;
+  // See Offering.client_fid
+  optional string client_fid = 3;
+  // See Offering.attributes
+  repeated flexport.commerce.merchandising.catalog.data_authority.configuration.v1beta1.Attribute attributes = 4;
+  // See Offering.metadata
+  OfferingMetadata metadata = 5;
+  // See Offering.pricing_policies
+  repeated PricingPolicy pricing_policies = 6;
+  // See Offering.fulfillment_context
+  FulfillmentContext fulfillment_context = 7;
+  // See Offering.availability
+  optional Availability availability = 8;
+
+  optional Restriction restriction = 9;
+  // See Offering.pricing_availability_uuid
+  optional string pricing_availability_uuid = 10;
+}
+
+message UpdateOfferingRequest {
+  // Offering to update. The offering should have a valid fid, otherwise the request will fail.
+  optional Offering offering = 1;
+
+  // The fields to update. See https://developers.google.com/protocol-buffers/docs/reference/google.protobuf#fieldmask.
+  optional google.protobuf.FieldMask update_mask = 2;
+}
+
+message UpdateOfferingResponse {
+  // Rich status object with error code, error message, and error details.
+  optional google.rpc.Status status = 1;
+  // The updated offering.
+  optional Offering offering = 2;
+}
+
+message UpdateOfferingRestrictionRequest {
+  // The non-versioned Offering fid.
+  optional string offering_fid = 1;
+
+  // The offering restriction to set on the offering. If it is not set, the offering restriction will be removed.
+  optional Restriction restriction = 2;
+}
+
+message UpdateOfferingRestrictionResponse {
+  // The updated offering.
+  optional Offering offering = 1;
+}
+
+message CreateOfferingResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+  // The offering that was created.
+  Offering offering = 2;
+}
+
+message GetOfferingByFidRequest {
+  // The versioned or non-versioned offering fid; if version is not provided, latest is assumed.
+  string offering_fid = 1;
+}
+
+message GetOfferingByFidResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+  // The offering that matches given fid.
+  optional Offering offering = 2;
+}
+
+message UpdatePricingRequest {
+  // The non-versioned Offering fid.
+  string offering_fid = 1;
+  // The pricing policies to update.
+  // Note that the pricing schedules will be merged.
+  repeated PricingPolicy pricing_policies = 2;
+}
+
+message UpdatePricingResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+  // The updated offering.
+  optional Offering offering = 2;
+}
+
+message UpdateAvailabilityRequest {
+  // The non-versioned Offering fid.
+  string offering_fid = 1;
+  // The availability to set on the offering
+  Availability availability = 2;
+  // The availability UUID
+  optional string pricing_availability_uuid = 3;
+}
+
+message UpdateAvailabilityResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+  // The updated offering.
+  optional Offering offering = 2;
+}
+
+message UpdateFulfillmentContextRequest {
+  // The non-versioned Offering fid.
+  string offering_fid = 1;
+  // The updated offering.
+  FulfillmentContext fulfillment_context = 2;
+}
+
+message UpdateFulfillmentContextResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+  optional Offering offering = 2;
+}
+
+message UpdateOfferingStatusRequest {
+  // See Offering.configuration_fid
+  string offering_fid = 1;
+  // Set the offering status to ACTIVE or INACTIVE.
+  OfferingStatus status = 2;
+}
+
+message UpdateOfferingStatusResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+  // The updated offering.
+  optional Offering offering = 2;
+}
+
+message UpdateTransitTimeRequest {
+  // The non-versioned Offering fid.
+  string offering_fid = 1;
+  // Request ID field to ensure uniqueness of request.
+  optional string request_id = 2;
+  // ALL Transit Time attributes.
+  repeated flexport.commerce.merchandising.catalog.data_authority.configuration.v1beta1.Attribute attributes = 5;
+}
+
+message UpdateTransitTimeResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+  optional Offering offering = 2;
+}
+
+message UpsertOfferingRequest {
+  // The request_id provided by client to match the batch result.
+  string request_id = 1;
+  // See Offering.configuration_fid
+  string configuration_fid = 2;
+  // See Offering.status
+  optional OfferingStatus status = 3;
+  // See Product.distinct_key
+  // When not provided, distinct_key is generated based on productId configuration.
+  optional string product_distinct_key = 4;
+  // See Offering.attributes
+  repeated flexport.commerce.merchandising.catalog.data_authority.configuration.v1beta1.Attribute attributes = 5;
+  // See Offering.client_fid
+  optional string client_fid = 6;
+  // See Offering.pricing_policies
+  repeated PricingPolicy pricing_policies = 7;
+  // See Offering.fulfillment_context
+  optional FulfillmentContext fulfillment_context = 8;
+  // See Offering.availability
+  optional Availability availability = 9;
+  // See Offering.bundle_components
+  optional BundleOfferingFids bundle_offering_fids = 10;
+  // The restriction for offering. See Offering.restriction
+  optional Restriction restriction = 11;
+  // Pricing Availability UUID
+  optional string pricing_availability_uuid = 12;
+}
+
+message UpsertOfferingResult {
+  // The request_id provided in request item.
+  // This value is to link the request and response.
+  string request_id = 1;
+  // Status of a singular operation.
+  // If succeeded, the status will be "OK". otherwise the errors are embedded in the status.
+  google.rpc.Status status = 2;
+  // The offering that was upserted.
+  Offering offering = 3;
+}
+
+message GetOfferingResult {
+  // Status of a singular operation.
+  // If succeeded, the status will be "OK". otherwise the errors are embedded in the status.
+  google.rpc.Status status = 1;
+
+  oneof result {
+    // The offering that was fetched.
+    Offering offering = 2;
+
+    // The offering fids that are failed of fetching.
+    string failed_offering_fid = 3;
+  }
+}
+
+message BatchGetOfferingRequest {
+  repeated string offering_fids = 1;
+}
+
+message BatchGetOfferingResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+
+  // The offerings returned from this batch.
+  repeated GetOfferingResult get_offering_results = 2;
+}
+
+message BatchUpsertOfferingRequest {
+  // The requested items.
+  // The initial limit for each batch is 100.
+  repeated UpsertOfferingRequest upsert_requests = 1;
+
+  // If true, the response will include child offerings in bundle_components.
+  // Otherwise, only the bundle_offering_fids are returned.
+  optional bool return_bundle_components = 2;
+}
+
+message BatchUpsertOfferingResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+
+  // The results of the upsert offering. The request and response objects are linked by request_id.
+  repeated UpsertOfferingResult upsert_results = 2;
+}
+
+message BatchUpdateOfferingStatusRequest {
+  repeated UpdateOfferingStatusRequest requests = 1;
+}
+
+message BatchUpdateOfferingStatusResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+
+  // The results of the upsert offering. The request and response objects are linked by request_id.
+  repeated UpdateOfferingStatusResponse results = 2;
+}
+
+message ListOfferingsRequest {
+  // See Offering.configuration_fid
+  optional string configuration_fid = 1;
+  // See Offering.product_fid
+  optional string product_fid = 2;
+  // See Offering.client_fid
+  optional string client_fid = 3;
+  // See Offering.status
+  optional OfferingStatus status = 4;
+  // The pagination token returned from previous ListOfferingsResponse.
+  optional string page_token = 10;
+  // The pagination page size in the request.
+  optional int32 page_size = 11;
+}
+
+message ListOfferingsResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+  // The offerings returned from this batch.
+  repeated Offering offerings = 2;
+  // The pagination token to retrieve the next page of offerings.
+  optional string next_page_token = 3;
+}
+
+message BatchPublishSearchEventsRequest {
+  // The offering fids to publish search events.
+  // Max batch size: 100
+  repeated string offering_fids = 1;
+}
+
+message BatchPublishSearchEventsResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+
+  // The offerings events that are successfully published.
+  repeated string succeeded_offering_fids = 2;
+  // The offering events that are failed to publish.
+  repeated string failed_offering_fids = 3;
+}
+
+message RemovePricingWindowRequest {
+  // Non-versioned offering fid.
+  string offering_fid = 1;
+  // See PricingSchedule.source_id
+  string pricing_schedule_source_id = 2;
+}
+
+message RemovePricingWindowResponse {
+  // Rich status object with error code, error message, and error details.
+  google.rpc.Status status = 1;
+
+  // The updated offering instance if no error.
+  optional Offering offering = 2;
+}
+
+message GetOrCreateOfferingFidRequest {
+  // The request_id for tracing, typically the core offering uuid.
+  string request_id = 1;
+  // See Offering.configuration_fid
+  string configuration_fid = 2;
+  // See Offering.attributes
+  repeated flexport.commerce.merchandising.catalog.data_authority.configuration.v1beta1.Attribute attributes = 3;
+  // See Offering.client_fid
+  optional string client_fid = 4;
+}
+
+message GetOrCreateOfferingFidResponse {
+  // The created or matched offering fid.
+  string offering_fid = 1;
+}

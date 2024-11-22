@@ -1,0 +1,55 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.restrictedcountry.rpc.v1beta1;
+
+import "flexport/compliance/restrictedcountry/constant/v1beta1/hit_status.proto";
+import "flexport/compliance/restrictedcountry/constant/v1beta1/set_at_stage.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RestrictedCountryApiProto";
+option java_package = "com.flexport.compliance.restrictedcountry.rpc.v1beta1";
+option ruby_package = "Flexport::Compliance::RestrictedCountry::Rpc::V1Beta1";
+
+// Restricted Country Api.
+service RestrictedCountryAPI {
+  // Request to get the list of restricted country hits given a shipment fid
+  rpc GetRestrictedCountryHits(GetRestrictedCountryHitsRequest) returns (GetRestrictedCountryHitsResponse);
+  // Request to update the status of a hit
+  rpc UpdateHitStatus(UpdateHitStatusRequest) returns (UpdateHitStatusResponse);
+}
+
+message GetRestrictedCountryHitsRequest {
+  // The shipment fid we are requesting to get the hits for
+  string shipment_fid = 1;
+}
+
+message GetRestrictedCountryHitsResponse {
+  repeated RestrictedCountryHit restricted_country_hits = 1;
+}
+
+message RestrictedCountryHit {
+  // The hit status of the restricted country hit
+  flexport.compliance.restrictedcountry.constant.v1beta1.HitStatus hit_status = 1;
+  // The time stamp the given hit status was set at
+  google.protobuf.Timestamp set_at = 2;
+}
+
+message UpdateHitStatusRequest {
+  // The shipment fid of the hit
+  string shipment_fid = 1;
+  // The country code associated with the hit
+  string country_code = 2;
+  // The hit status we want to set the hit to
+  flexport.compliance.restrictedcountry.constant.v1beta1.HitStatus hit_status = 3;
+  // The user id of the individual making the update call
+  string user_id = 4;
+  // The stage at which the hit is currently at
+  flexport.compliance.restrictedcountry.constant.v1beta1.SetAtStage set_at_stage = 5;
+  // If the quote or shipment is still active
+  bool is_active = 6;
+}
+
+message UpdateHitStatusResponse {}

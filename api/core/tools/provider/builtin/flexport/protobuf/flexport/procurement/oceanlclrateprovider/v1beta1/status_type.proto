@@ -1,0 +1,17 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.oceanlclrateprovider.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "StatusTypeProto";
+option java_package = "com.flexport.procurement.oceanlclrateprovider.v1beta1";
+option ruby_package = "Flexport::Procurement::OceanLclRateProvider::V1Beta1";
+
+// Status at the end of the service request.
+enum StatusType {
+  STATUS_TYPE_INVALID = 0;
+  STATUS_TYPE_SUCCESS = 1;
+  STATUS_TYPE_FAILURE = 2;
+}

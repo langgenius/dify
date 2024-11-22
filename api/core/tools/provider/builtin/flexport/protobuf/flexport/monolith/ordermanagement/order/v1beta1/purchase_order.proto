@@ -1,0 +1,60 @@
+// TEAM: order_management
+
+syntax = "proto3";
+
+package flexport.monolith.ordermanagement.order.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PurchaseOrderProto";
+option java_package = "com.flexport.monolith.ordermanagement.order.v1beta1";
+option ruby_package = "Flexport::Monolith::OrderManagement::Order::V1Beta1";
+
+import "flexport/monolith/ordermanagement/order/v1beta1/enums.proto";
+import "flexport/monolith/ordermanagement/order/v1beta1/lineitem.proto";
+import "flexport/os/v1/types/incoterm/v1/incoterm.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "google/protobuf/timestamp.proto";
+
+// Order record, more detail: https://docs.google.com/document/d/1s_Y4f3PHXjV6HC6YyICf70U0vkK-QHcKmzxLEOoBbrI/edit#.
+message PurchaseOrder {
+  string name = 1;
+  string fid = 2;
+  string buyer_entity_fid = 3;
+  string seller_entity_fid = 4;
+  OrderClass order_class = 5;
+  google.protobuf.Timestamp created_time = 6;
+  // created by user fid.
+  string created_by_fid = 7;
+  google.protobuf.Timestamp version_created_at_time = 8;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate cargo_ready_date = 9;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate must_arrive_date = 10;
+  string destination_port_fid = 11;
+  string origin_port_fid = 12;
+  FreightPaymentTerm freight_payment_terms = 13;
+  flexport.os.v1.types.incoterm.v1.Incoterm incoterm = 14;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate issue_date = 15;
+  string memo = 16;
+  string order_type = 17;
+  OrderPriority priority = 18;
+  OrderStatus status = 19;
+  TransportationMode transportation_mode = 20;
+  string currency_code = 21;
+  string origin_location_fid = 22;
+  repeated string destination_location_fids = 23;
+  VersionSource version_source = 24;
+  repeated OrderParty parties = 25;
+  repeated OrderLineItem line_items = 26;
+}
+
+// Version creation detail.
+message VersionSource {
+  string user_fid = 1;
+  VersionCreateMethodType method_type = 2;
+}
+
+// Order party detail.
+message OrderParty {
+  string location_fid = 1;
+  string company_entity_fid = 2;
+  OrderRole role = 3;
+}

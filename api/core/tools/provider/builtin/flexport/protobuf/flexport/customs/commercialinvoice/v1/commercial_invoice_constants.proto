@@ -1,0 +1,21 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.commercialinvoice.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CommercialInvoiceConstantsProto";
+option java_package = "com.flexport.customs.commercialinvoice.v1";
+option ruby_package = "Flexport::Customs::CommercialInvoice::V1";
+
+// Commercial invoice line item source type
+enum CILineItemSourceType {
+  CI_LINE_ITEM_SOURCE_TYPE_INVALID = 0;
+  CI_LINE_ITEM_SOURCE_TYPE_CORE_API = 1;
+  CI_LINE_ITEM_SOURCE_TYPE_CI_SERVICE_API = 2;
+  CI_LINE_ITEM_SOURCE_TYPE_CI_SERVICE_INTEGRATION = 3;
+  CI_LINE_ITEM_SOURCE_TYPE_CUSTOMS_TRANSCRIPTION = 4;
+  CI_LINE_ITEM_SOURCE_TYPE_MANUAL = 5;
+  CI_LINE_ITEM_SOURCE_TYPE_MANUAL_V2 = 6;
+}

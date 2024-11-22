@@ -1,0 +1,39 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.transittimes.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TransitTimesApiProto";
+option java_package = "com.flexport.quoting.transittimes.v1";
+option ruby_package = "Flexport::Quoting::TransitTimes::V1";
+
+import "flexport/quoting/core_quote/v1/corequote.proto";
+
+// The transit times api definition.
+service TransitTimesAPI {
+  // Get transit time prediction.
+  rpc GetTransitTimePrediction(GetTransitTimePredictionRequest) returns (GetTransitTimePredictionResponse);
+}
+
+// GetTransitTimePrediction
+message GetTransitTimePredictionRequest {
+  flexport.quoting.corequote.v1.CoreQuote quote = 1;
+  string cargo_ready_date = 2;
+}
+
+message GetTransitTimePredictionResponse {
+  int32 origin_days = 1;
+  int32 port_to_port_days = 2;
+  int32 destination_days = 3;
+  int32 origin_dwell_days = 4;
+  int32 destination_dwell_days = 5;
+  string source = 6;
+  string cargo_ready_date = 7;
+  int32 consolidation_days = 8;
+  int32 deconsolidation_days = 9;
+  int32 transit_time_min = 10;
+  int32 transit_time_max = 11;
+  int32 point_estimate = 12;
+}

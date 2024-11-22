@@ -1,0 +1,50 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.shipperexp.originvgmsubmission.v1;
+
+import "flexport/executioncoordinator/types/originvgmsubmission/v1/origin_vgm_submission.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OriginVgmSubmissionApiProto";
+option java_package = "com.flexport.shipperexp.originvgmsubmission.v1";
+option ruby_package = "Flexport::ShipperExp::OriginVgmSubmission::V1";
+
+// Origin vgm submission service.
+service OriginVgmSubmissionAPI {
+  // List origin vgm submissions by carrier booking fid.
+  rpc ListOriginVgmSubmissions(ListOriginVgmSubmissionsRequest) returns (ListOriginVgmSubmissionsResponse);
+  // Delete origin vgm submission.
+  rpc DeleteOriginVgmSubmission(DeleteOriginVgmSubmissionRequest) returns (DeleteOriginVgmSubmissionResponse);
+  // Create origin VGM draft.this gRPC endpoint is just for debug tool.
+  rpc CreateOriginVgmSubmission(CreateOriginVgmSubmissionRequest) returns (CreateOriginVgmSubmissionResponse);
+}
+
+message ListOriginVgmSubmissionsRequest {
+  // Carrier booking fid
+  string carrier_booking_fid = 1;
+  // Shipment fid
+  string shipment_fid = 2;
+}
+
+message ListOriginVgmSubmissionsResponse {
+  repeated flexport.executioncoordinator.types.originvgmsubmission.v1.OriginVgmSubmission origin_vgm_submissions = 1;
+}
+
+message DeleteOriginVgmSubmissionRequest {
+  string fid = 1;
+}
+
+message DeleteOriginVgmSubmissionResponse {}
+
+message CreateOriginVgmSubmissionRequest {
+  // Shipment fid
+  string shipment_fid = 1;
+  string carrier_booking_fid = 2;
+  string submitting_company_entity_fid = 3;
+  string submitted_by_fid = 4;
+  flexport.executioncoordinator.types.originvgmsubmission.v1.VgmValue vgm_value = 5;
+}
+
+message CreateOriginVgmSubmissionResponse {}

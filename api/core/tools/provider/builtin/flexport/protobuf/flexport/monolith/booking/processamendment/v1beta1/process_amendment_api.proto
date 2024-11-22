@@ -1,0 +1,52 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.monolith.booking.processamendment.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ProcessAmendmentApiProto";
+option java_package = "com.flexport.monolith.booking.processamendment.v1beta1";
+option ruby_package = "Flexport::Monolith::Booking::ProcessAmendment::V1Beta1";
+
+import "flexport/booking/bookingamendmentdiff/v1beta1/booking_amendment_diff.proto";
+
+// This service is used internally for the booking service to send a message to core
+// to apply or reject a booking amendment.
+service ProcessAmendmentAPI {
+  // Close the approval action items for OA and client parties when amendment is applied.
+  rpc ApplyAmendment(ApplyAmendmentRequest) returns (ApplyAmendmentResponse);
+  // Close approval action items for OA and client parties when amendment is rejected.
+  rpc RejectAmendment(RejectAmendmentRequest) returns (RejectAmendmentResponse);
+  // Create an approval action item when a order proposal is created that needs manual approval.
+  rpc CreateApprovalNeededActionItem(CreateApprovalNeededActionItemRequest) returns (CreateApprovalNeededActionItemResponse);
+}
+
+message ApplyAmendmentRequest {
+  // the message contains ids for reference and the change/diff of the booking about to make
+  string booking_fid = 1;
+  string order_proposal_fid = 2;
+  string order_proposal_created_by_fid = 3;
+  flexport.booking.bookingamendmentdiff.v1beta1.BookingAmendmentDiff booking_amendment_diff = 4;
+}
+
+message ApplyAmendmentResponse {}
+
+message RejectAmendmentRequest {
+  // the message contains ids for reference and the change/diff of the booking about to make
+  string booking_fid = 1;
+  string order_proposal_fid = 2;
+}
+
+message RejectAmendmentResponse {}
+
+message CreateApprovalNeededActionItemRequest {
+  // the verdict message contains booking fid order proposal id
+  // and the change/diff of the booking about to make
+  string booking_fid = 1;
+  string order_proposal_fid = 2;
+  string order_proposal_created_by_fid = 3;
+  flexport.booking.bookingamendmentdiff.v1beta1.BookingAmendmentDiff booking_amendment_diff = 4;
+}
+
+message CreateApprovalNeededActionItemResponse {}

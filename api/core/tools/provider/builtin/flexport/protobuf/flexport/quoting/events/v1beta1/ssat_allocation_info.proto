@@ -1,0 +1,22 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.events.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SsatAllocationInfoProto";
+option java_package = "com.flexport.quoting.events.v1beta1";
+option ruby_package = "Flexport::Quoting::Events::V1Beta1";
+
+message SsatAllocationInfo {
+  SsatAllocation current_allocation = 1;
+}
+
+message SsatAllocation {
+  string cda_offering_fid = 1;
+  int32 year = 2;
+  int32 week = 3;
+  int32 teu_count = 4;
+  string allocation_id = 5;
+}

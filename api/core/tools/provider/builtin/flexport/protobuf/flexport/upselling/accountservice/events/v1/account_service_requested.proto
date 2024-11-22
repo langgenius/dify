@@ -1,0 +1,34 @@
+// TEAM: client_app
+
+syntax = "proto3";
+
+package flexport.upselling.accountservice.events.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "UpsellingAccountServiceEventsProto";
+option java_package = "com.flexport.upselling.accountservice.events.v1";
+option ruby_package = "Flexport::Upselling::AccountService::Events::V1";
+
+//This musst be kept in sync with the constants in Upselling::Accountservicess
+enum AccountServiceType {
+  ACCOUNT_SERVICE_TYPE_INVALID = 0;
+  ACCOUNT_SERVICE_TYPE_INSURANCE = 1;
+  ACCOUNT_SERVICE_TYPE_TRADE_ADVISORY = 2;
+  ACCOUNT_SERVICE_TYPE_CARBON = 3;
+  ACCOUNT_SERVICE_TYPE_DUTY_DRAWBACK = 4;
+  ACCOUNT_SERVICE_TYPE_IMPACT_DASH_PROGRAMS = 5;
+  ACCOUNT_SERVICE_TYPE_EXTENDED_TERMS = 6;
+  ACCOUNT_SERVICE_TYPE_TRADE_FINANCING = 7;
+  ACCOUNT_SERVICE_TYPE_FREIGHT_SERVICE = 8;
+  ACCOUNT_SERVICE_TYPE_PRODUCT_DONATIONS = 9;
+  ACCOUNT_SERVICE_TYPE_BUYERS_CONSOLIDATION = 10;
+}
+
+message AccountServiceRequested {
+  AccountServiceType account_service_type = 1;
+  google.protobuf.Timestamp requested_at_time = 2;
+  string client_fid = 3;
+  string requester_fid = 4;
+}

@@ -1,0 +1,20 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RailContainerTrainNumberProvidedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// The train number for a container was provided.
+//
+// Sources of data:
+// - track_and_trace engine's RailTrainNumberProvided simple PubSub event from Rail Inc.
+message RailContainerTrainNumberProvided {
+  string container_fid = 3;
+  string container_number = 1;
+  string train_number = 2;
+}

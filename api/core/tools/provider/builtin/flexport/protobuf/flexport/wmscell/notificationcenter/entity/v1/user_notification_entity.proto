@@ -1,0 +1,15 @@
+// TEAM: lumina
+
+syntax = "proto3";
+
+package flexport.wmscell.notificationcenter.entity.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "UserNotificationEntityProto";
+option java_package = "com.flexport.wmscell.notificationcenter.entity.v1";
+
+message UserNotificationEntity {
+  string user_id = 1;
+  string notification_id = 2;
+  repeated string user_notification_state = 3;
+}

@@ -1,0 +1,28 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billing.entityevent.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "VendorEntityProto";
+option java_package = "com.flexport.billing.entityevent.v1beta1";
+option ruby_package = "Flexport::Billing::EntityEvent::V1Beta1";
+
+// The Vendor entity object.
+message VendorEntity {
+  string vendor_fid = 1;
+  repeated string vendor_procurement_lead_fids = 2;
+  repeated VendorEntityEntity vendor_entities = 3;
+  google.protobuf.Timestamp created_at_time = 4;
+  google.protobuf.Timestamp updated_at_time = 5;
+}
+
+// The VendorEntity entity object.
+message VendorEntityEntity {
+  string vendor_entity_fid = 1;
+  google.protobuf.Int32Value touchless_percentage = 2;
+}

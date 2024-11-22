@@ -1,0 +1,33 @@
+// TEAM: trucking
+
+syntax = "proto3";
+
+package flexport.monolith.truckingprocurement.rates.v1beta1;
+
+import "flexport/monolith/truckingprocurement/rates/v1beta1/cartage_rates_request.proto";
+import "flexport/monolith/truckingprocurement/rates/v1beta1/drayage_rates_request.proto";
+import "flexport/monolith/truckingprocurement/rates/v1beta1/ftl_rates_request.proto";
+import "flexport/monolith/truckingprocurement/rates/v1beta1/rates_response_item.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "Rates";
+option java_package = "com.flexport.monolith.truckingprocurement.rates.v1beta1";
+option ruby_package = "Flexport::Monolith::TruckingProcurement::Rates::V1Beta1";
+
+service RatesAPI {
+  rpc GetFtlRates(GetFtlRatesRequest) returns (GetFtlRatesResponse);
+  rpc GetDrayageRates(GetDrayageRatesRequest) returns (GetDrayageRatesResponse);
+  rpc GetCartageRates(GetCartageRatesRequest) returns (GetCartageRatesResponse);
+}
+
+message GetFtlRatesResponse {
+  repeated RatesResponseItem carrier_rates = 1;
+}
+
+message GetCartageRatesResponse {
+  repeated RatesResponseItem carrier_rates = 1;
+}
+
+message GetDrayageRatesResponse {
+  repeated RatesResponseItem carrier_rates = 1;
+}

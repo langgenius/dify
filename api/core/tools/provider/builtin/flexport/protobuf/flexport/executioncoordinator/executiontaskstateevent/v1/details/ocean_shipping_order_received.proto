@@ -1,0 +1,18 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanShippingOrderReceivedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// A shipping order document has been received.
+// The document provides information about the space that was released by the carrier after the booking is confirmed.
+
+// Represents an uploaded shipping order.
+message OceanShippingOrderReceived {
+  string document_fid = 1;
+}

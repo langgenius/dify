@@ -1,0 +1,18 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ChecklistItemStatusProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// This represents the actioned checklist item's state.
+enum ChecklistItemStatus {
+  CHECKLIST_ITEM_STATUS_INVALID = 0;
+  CHECKLIST_ITEM_STATUS_DEFAULT = 1;
+  CHECKLIST_ITEM_STATUS_VERIFIED = 2;
+  CHECKLIST_ITEM_STATUS_FLAGGED = 3;
+}

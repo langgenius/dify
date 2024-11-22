@@ -1,0 +1,38 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.airprocurement.airprovider.v2;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ContractOperationEventProto";
+option java_package = "com.flexport.airprocurement.airprovider.v2";
+option ruby_package = "Flexport::AirProcurement::AirProvider::V2";
+
+message AirContractCreated {
+  string contract_identifier = 1;
+  // Epoch time when the operation occurred
+  google.protobuf.Timestamp created_time = 2;
+}
+
+message AirContractUpdated {
+  string contract_identifier = 1;
+  // Epoch time when the operation occurred
+  google.protobuf.Timestamp updated_time = 2;
+  AirContractDetails old_contract_details = 3;
+  AirContractDetails new_contract_details = 4;
+}
+
+message AirContractArchived {
+  string contract_identifier = 1;
+  // Epoch time when the operation occurred
+  google.protobuf.Timestamp archived_time = 2;
+}
+
+message AirContractDetails {
+  string contract_identifier = 1;
+  string contract_issuer_company_entity_fid = 2;
+  string origin_agent_company_entity_fid = 3;
+}

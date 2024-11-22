@@ -1,0 +1,15 @@
+// TEAM: customs_gateway
+
+syntax = "proto3";
+
+package flexport.commercialinvoiceengine.commercialinvoicedeleted.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CommercialInvoiceDeletedProto";
+option java_package = "com.flexport.commercialinvoiceengine.commercialinvoicedeleted.v1beta1";
+option ruby_package = "Flexport::CommercialInvoiceEngine::CommercialInvoiceDeleted::V1Beta1";
+
+// A commercial invoice has been deleted.
+message CommercialInvoiceDeleted {
+  string commercial_invoice_fid = 1;
+}

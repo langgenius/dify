@@ -1,0 +1,19 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.cmq.entities.v1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.cmq.entities.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Cmq::V1";
+
+message ErrorMessage {
+  string identifier = 1;
+  string narrative_message = 2;
+  string inbond_number = 3;
+  string master_bill_number_issuer_code = 4;
+  string master_bill_number = 5;
+  string air_waybill_number = 6;
+  string house_air_waybill_number = 7;
+}

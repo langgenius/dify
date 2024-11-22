@@ -1,0 +1,17 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billing.review.v1beta1;
+
+import "flexport/billing/entityevent/v1beta1/review_entity.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ReviewApprovalResultProto";
+option java_package = "com.flexport.billing.review.v1beta1";
+option ruby_package = "Flexport::Billing::Review::V1Beta1";
+
+// A result response from approving a review.
+message ReviewApprovalResult {
+  repeated flexport.billing.entityevent.v1beta1.ValidationErrorValue errors = 1;
+}

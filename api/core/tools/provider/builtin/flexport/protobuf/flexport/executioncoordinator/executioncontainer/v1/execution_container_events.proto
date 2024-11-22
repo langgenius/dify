@@ -1,0 +1,63 @@
+// TEAM: sutro
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executioncontainer.v1;
+
+import "flexport/executioncoordinator/executioncontainer/v1/execution_container.proto";
+import "flexport/executioncoordinator/executioncontainer/v1/execution_container_shipment.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionContainerEventsProto";
+option java_package = "com.flexport.executioncoordinator.executioncontainer.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionContainer::V1";
+
+// Kinesis event emitted by the ExecutionCoordinator, when an ExecutionContainer has been created.
+message ExecutionContainerCreated {
+  flexport.executioncoordinator.executioncontainer.v1.ExecutionContainer execution_container = 1;
+  flexport.executioncoordinator.executioncontainer.v1.ExecutionContainerShipment container_shipment = 2;
+  string created_by_fid = 3;
+}
+
+// Kinesis event emitted by the ExecutionCoordinator, when an ExecutionContainer has been changed.
+message ExecutionContainerChanged {
+  flexport.executioncoordinator.executioncontainer.v1.ExecutionContainer execution_container = 1;
+  flexport.executioncoordinator.executioncontainer.v1.ExecutionContainer old_execution_container = 2;
+  flexport.executioncoordinator.executioncontainer.v1.ExecutionContainerShipment container_shipment = 3;
+  string created_by_fid = 4;
+}
+
+// Kinesis event emitted by the ExecutionCoordinator, when an ExecutionContainer has been deleted.
+message ExecutionContainerDeleted {
+  flexport.executioncoordinator.executioncontainer.v1.ExecutionContainer execution_container = 1;
+  flexport.executioncoordinator.executioncontainer.v1.ExecutionContainerShipment container_shipment = 2;
+  string created_by_fid = 3;
+}
+
+enum ContainerEventActivityType {
+  CONTAINER_EVENT_ACTIVITY_TYPE_INVALID = 0;
+  CONTAINER_EVENT_ACTIVITY_TYPE_CREATED = 1;
+  CONTAINER_EVENT_ACTIVITY_TYPE_STATUS = 2;
+  CONTAINER_EVENT_ACTIVITY_TYPE_PICKUP_CODE = 3;
+  CONTAINER_EVENT_ACTIVITY_TYPE_REFERENCE_CODE = 4;
+  CONTAINER_EVENT_ACTIVITY_TYPE_SEAL_NUMBER = 5;
+  CONTAINER_EVENT_ACTIVITY_TYPE_CONTAINER_DEVAN_DATE = 6;
+  CONTAINER_EVENT_ACTIVITY_TYPE_CONTAINER_DISCHARGE_DATE = 7;
+  CONTAINER_EVENT_ACTIVITY_TYPE_CONTAINER_EMPTY_CONTAINER_RETURN_DATE = 8;
+  CONTAINER_EVENT_ACTIVITY_TYPE_CONTAINER_LAST_FREE_DAY = 9;
+  CONTAINER_EVENT_ACTIVITY_TYPE_AVAILABLE_FOR_PICKUP_DATE = 10;
+  CONTAINER_EVENT_ACTIVITY_TYPE_EMPTY_AVAILABLE_FOR_PICKUP_DATE = 11;
+  CONTAINER_EVENT_ACTIVITY_TYPE_CONTAINER_LAST_FREE_DAY_DETENTION = 12;
+  CONTAINER_EVENT_ACTIVITY_TYPE_DRAYAGE_WAREHOUSE_VISIT_TYPE = 13;
+  CONTAINER_EVENT_ACTIVITY_TYPE_CONTAINER_LADEN_ON_BOARD_DATE = 14;
+  CONTAINER_EVENT_ACTIVITY_TYPE_EMPTY_RELEASE_DATE = 15;
+  CONTAINER_EVENT_ACTIVITY_TYPE_EARLIEST_RETURN_DATE = 16;
+  CONTAINER_EVENT_ACTIVITY_TYPE_READY_FOR_PICKUP = 17;
+  CONTAINER_EVENT_ACTIVITY_TYPE_EMPTY_CONTAINER_PICKUP_DATE = 18;
+  CONTAINER_EVENT_ACTIVITY_TYPE_CFS_LAST_FREE_DAY = 19;
+  CONTAINER_EVENT_ACTIVITY_TYPE_GROSS_WEIGHT = 20;
+  CONTAINER_EVENT_ACTIVITY_TYPE_VOLUME = 21;
+  CONTAINER_EVENT_ACTIVITY_TYPE_QUANTITY = 22;
+  CONTAINER_EVENT_ACTIVITY_TYPE_EMPTY_RETURN_LOCATION = 23;
+  CONTAINER_EVENT_ACTIVITY_TYPE_EMPTY_PICKUP_LOCATION = 24;
+}

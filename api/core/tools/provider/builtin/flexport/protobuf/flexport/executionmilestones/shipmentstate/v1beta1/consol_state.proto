@@ -1,0 +1,88 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executionmilestones.shipmentstate.v1beta1;
+
+import "flexport/executionmilestones/customsdeclarationstate/v1beta1/customs_declaration_state.proto";
+import "flexport/executionmilestones/shipmentstate/v1beta1/carrier_booking_shipment_state.proto";
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ConsolStateProto";
+option java_package = "com.flexport.executionmilestones.shipmentstate.v1beta1";
+option ruby_package = "Flexport::ExecutionMilestones::ShipmentState::V1Beta1";
+
+// The state to store consol shipment info.
+// Note: By design we should not add more attributes at the root of ConsolState.
+// Please add more attributes to either insourced_shipment or outsourced_shipment.
+message ConsolState {
+  //
+  // The **current** shipment is either insourced or outsourced
+  oneof current_shipment {
+    ConsolStateInsourcedShipment insourced_shipment = 1;
+    ConsolStateOutsourcedShipment outsourced_shipment = 2;
+  }
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime cfs_cutoff_close_time = 3;
+}
+
+// Next protobuf number: 7
+message ConsolStateInsourcedShipment {
+  //
+  // For insourced shipment:
+  // When **current** shipment is a parent shipment, the linked shipment stores its child shipments info
+  // When **current** shipment is a child shipment, the linked shipment stores its parent shipment info
+  oneof linked_shipment {
+    ConsolStateInsourcedParentShipment parent_shipment = 1;
+    ConsolStateInsourcedChildShipmentsList child_shipments_list = 2;
+  }
+  //
+  // Attributes below applies to the current shipment, NOT linked shipment
+
+
+  //
+  // Child-level CFS cutoff date
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime cfs_cutoff_close_time = 3 [deprecated = true];
+  //
+  // Child-level attached to parent-level shipment time.
+  //
+  // This timestamp will be extracted from ExecutionPlan's revision_created_time
+  // when revision_source is PlanUpserter.PLAN_UPSERTER_CONSOLIDATION and
+  // PlanningProcess.PLANNING_PROCESS_CONSOLIDATION_FORM
+  // See more in go/lcl-initial-schedule-wis-tech-design
+  google.protobuf.Timestamp attached_to_parent_time = 4;
+}
+
+message ConsolStateInsourcedParentShipment {
+  string parent_shipment_fid = 1;
+  //
+  // Parent-level Carrier SI cutoff date
+  // Child shipment doesn't have carrier SI, and its shipper SI is same with parent shipment shipper SI.
+  // See: CarrierBookingExtractUtils.getEarliestSiCutOff
+  google.protobuf.Timestamp parent_earliest_carrier_si_cutoff_time = 2;
+  //
+  // Parent-level Carrier booking extracts list
+  // See: ForwardingState.CarrierBookingShipmentState
+  repeated ConsolStateInsourcedParentCarrierBookingExtract parent_carrier_booking_extracts = 3;
+}
+
+// See: CarrierBookingExtract in carrier_booking_shipment_state.proto
+message ConsolStateInsourcedParentCarrierBookingExtract {
+  string fid = 1;
+  google.protobuf.Timestamp attached_at = 2;
+  CarrierBookingStatus status_enum = 10;
+}
+
+message ConsolStateInsourcedChildShipmentsList {
+  repeated ConsolStateInsourcedChildShipment child_shipments = 1;
+}
+
+message ConsolStateInsourcedChildShipment {
+  string child_shipment_fid = 1;
+  flexport.executionmilestones.customsdeclarationstate.v1beta1.CustomsDeclarationState customs_declaration_state = 2;
+}
+
+message ConsolStateOutsourcedShipment {
+  string coloader_fid = 1;
+}

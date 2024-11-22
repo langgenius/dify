@@ -1,0 +1,263 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsworkflowinstrumentation.customsworkflowevent.v1beta1;
+
+import "flexport/customs/productlibrary/regulations/v1beta1/country_code.proto";
+import "flexport/customsworkflowinstrumentation/enums/customsexceptiontype/v1beta1/customs_exception_type.proto";
+import "flexport/customsworkflowinstrumentation/enums/documenttype/v1beta1/document_type.proto";
+import "flexport/executioncoordinator/derivedshipment/v1/derived_shipment.proto";
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsWorkflowEventDataProto";
+option java_package = "com.flexport.customsworkflowinstrumentation.customsworkflowevent.v1beta1";
+option ruby_package = "Flexport::CustomsWorkflowInstrumentation::CustomsWorkflowEvent::V1Beta1";
+
+message CustomsWorkflowEventData {
+  oneof data {
+    CiCreatedData ci_created_data = 1;
+    CiMarkedCompleteData ci_marked_complete_data = 2;
+    CiUpdatedData ci_updated_data = 3;
+    CustomsDeclarationUpdatedData customs_declaration_updated_data = 4;
+    CustomsLineItemsAllocatedData customs_line_items_allocated_data = 5;
+    CustomsLineItemsClassifiedData customs_line_items_classified_data = 6;
+    PgaProfilesUpdatedData pga_profiles_updated_data = 7;
+    CbpTransmissionFailedData cbp_transmission_failed_data = 8;
+    DocumentArchivedData document_archived_data = 9;
+    DocumentTypeChangedData document_type_changed_data = 10;
+    DocumentUnarchivedData document_unarchived_data = 11;
+    DocumentUploadedData document_uploaded_data = 12;
+    EntryTransmittedDirectlyToCbpData entry_transmitted_directly_to_cbp_data = 13;
+    EntryTransmittedToNetChbData entry_transmitted_to_net_chb_data = 14;
+    ExceptionCancelledData exception_cancelled_data = 15;
+    ExceptionCreatedData exception_created_data = 16;
+    ExceptionReopenedData exception_reopened_data = 17;
+    ExceptionResolvedData exception_resolved_data = 18;
+    ReplyMadeInExceptionThreadData reply_made_in_exception_thread_data = 19;
+    IsfAmendedManuallyData isf_amended_manually_data = 20;
+    IsfCreatedFromShipperIsfData isf_created_from_shipper_isf_data = 21;
+    IsfCreatedManuallyData isf_created_manually_data = 22;
+    IsfDeletedData isf_deleted_data = 23;
+    IsfReceiptGeneratedData isf_receipt_generated_data = 24;
+    IsfStatusUpdatedPerResponseFromCbpData isf_status_updated_per_response_from_cbp_data = 25;
+    IsfSubmittedAutomaticallyData isf_submitted_automatically_data = 26;
+    IsfSubmittedManuallyData isf_submitted_manually_data = 27;
+    ModeOfTransportUpdated mode_of_transport_updated = 28;
+    NetChbEntryLogReceivedData net_chb_entry_log_received_data = 29;
+    NetChbTransmissionFailedData net_chb_transmission_failed_data = 30;
+    OceanHblDeletedData ocean_hbl_deleted_data = 31;
+    OceanHblGeneratedData ocean_hbl_generated_data = 32;
+    OceanMblReceivedData ocean_mbl_received_data = 33;
+    RouteShapeUpdatedData route_shape_updated_data = 34;
+    CustomsOnlyFlagChangedData customs_only_flag_changed_data = 35;
+    ShipmentCreatedData shipment_created_data = 36;
+    DigitizeCiStartedData digitize_ci_started_data = 37;
+    EntryLinesValidationCompletedData entry_lines_validation_completed_data = 38;
+    EntryLinesValidationRevertedData entry_lines_validation_reverted_data = 39;
+    EntryMarkedAsNotPreparedData entry_marked_as_not_prepared_data = 40;
+    EntryMarkedAsPreparedData entry_marked_as_prepared_data = 41;
+    InvoiceChargesVerificationDoneData invoice_charges_verification_done_data = 42;
+    InvoiceChargesVerificationCancelledData invoice_charges_verification_cancelled_data = 43;
+    ManifestInfoValidationCompletedData manifest_info_validation_completed_data = 44;
+    ManifestInfoValidationRevertedData manifest_info_validation_reverted_data = 45;
+    RouteInfoValidationCompletedData route_info_validation_completed_data = 46;
+    RouteInfoValidationRevertedData route_info_validation_reverted_data = 47;
+    SetShipmentCustomsClearedData set_shipment_customs_cleared_data = 48;
+    UnsetShipmentCustomsClearedData unset_shipment_customs_cleared_data = 49;
+    CustomsEntryCreationData customs_entry_creation_data = 50;
+  }
+}
+
+message CiCreatedData {
+  string commercial_invoice_fid = 1;
+  string document_fid = 2;
+}
+
+message CiMarkedCompleteData {
+  string commercial_invoice_fid = 1;
+  repeated string commercial_invoice_line_items_fids = 2;
+}
+
+message CiUpdatedData {
+  string commercial_invoice_fid = 1;
+  string document_fid = 2;
+}
+
+message CustomsDeclarationUpdatedData {
+  bool is_completed = 1;
+  string status = 2;
+}
+
+message CustomsLineItemsAllocatedData {
+  int32 commercial_invoice_line_item_count = 1;
+  int32 unclassified_line_item_count = 3;
+  google.protobuf.Struct pga_line_item_counts = 2;
+}
+
+message CustomsLineItemsClassifiedData {
+  int32 commercial_invoice_line_item_count = 1;
+  int32 unclassified_line_item_count = 3;
+  google.protobuf.Struct pga_line_item_counts = 2;
+}
+
+message PgaProfilesUpdatedData {
+  int32 commercial_invoice_line_item_count = 1;
+  int32 unclassified_line_item_count = 3;
+  google.protobuf.Struct pga_line_item_counts = 2;
+}
+
+message CbpTransmissionFailedData {
+  string entry_number = 1;
+  bool is_mpf = 2;
+}
+
+message DocumentArchivedData {
+  string document_fid = 1;
+  flexport.customsworkflowinstrumentation.enums.documenttype.v1beta1.DocumentType document_type = 2;
+}
+
+message DocumentTypeChangedData {
+  string document_fid = 1;
+  flexport.customsworkflowinstrumentation.enums.documenttype.v1beta1.DocumentType old_document_type = 2;
+  flexport.customsworkflowinstrumentation.enums.documenttype.v1beta1.DocumentType new_document_type = 3;
+}
+
+message DocumentUnarchivedData {
+  string document_fid = 1;
+  flexport.customsworkflowinstrumentation.enums.documenttype.v1beta1.DocumentType document_type = 2;
+}
+
+message DocumentUploadedData {
+  string document_fid = 1;
+  flexport.customsworkflowinstrumentation.enums.documenttype.v1beta1.DocumentType document_type = 2;
+}
+
+message EntryTransmittedDirectlyToCbpData {
+  string entry_number = 1;
+  bool is_mpf = 2;
+}
+
+message EntryTransmittedToNetChbData {
+  string entry_number = 1;
+  bool is_mpf = 2;
+}
+
+message ExceptionCancelledData {
+  string exception_fid = 1;
+  flexport.customsworkflowinstrumentation.enums.customsexceptiontype.v1beta1.CustomsExceptionType exception_type = 2;
+}
+
+message ExceptionCreatedData {
+  string exception_fid = 1;
+  flexport.customsworkflowinstrumentation.enums.customsexceptiontype.v1beta1.CustomsExceptionType exception_type = 2;
+}
+
+message ExceptionReopenedData {
+  string exception_fid = 1;
+  flexport.customsworkflowinstrumentation.enums.customsexceptiontype.v1beta1.CustomsExceptionType exception_type = 2;
+}
+
+message ExceptionResolvedData {
+  string exception_fid = 1;
+  flexport.customsworkflowinstrumentation.enums.customsexceptiontype.v1beta1.CustomsExceptionType exception_type = 2;
+}
+
+message ReplyMadeInExceptionThreadData {
+  string exception_fid = 1;
+  flexport.customsworkflowinstrumentation.enums.customsexceptiontype.v1beta1.CustomsExceptionType exception_type = 2;
+}
+
+message IsfAmendedManuallyData {
+  string isf_fid = 1;
+}
+
+message IsfCreatedFromShipperIsfData {
+  string isf_fid = 1;
+  int32 shipper_isf_id = 2;
+}
+
+message IsfCreatedManuallyData {
+  string isf_fid = 1;
+}
+
+message IsfDeletedData {
+  string isf_fid = 1;
+}
+
+message IsfReceiptGeneratedData {
+  string isf_fid = 1;
+}
+
+message IsfStatusUpdatedPerResponseFromCbpData {
+  string isf_status = 1; // could be an enum
+  string isf_filing_number = 2;
+  string isf_fid = 3;
+}
+
+message IsfSubmittedAutomaticallyData {
+  string ingestion_flow_type = 1; // could be an enum
+  string isf_fid = 2;
+}
+
+message IsfSubmittedManuallyData {
+  string isf_fid = 1;
+}
+
+message ModeOfTransportUpdated {
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipmentTransportMode mode_of_transport = 1;
+}
+
+message NetChbEntryLogReceivedData {
+  string entry_number = 1;
+  bool is_mpf = 2;
+}
+
+message NetChbTransmissionFailedData {
+  string entry_number = 1;
+  bool is_mpf = 2;
+}
+
+message OceanHblDeletedData {
+  string bill_of_lading_fid = 1;
+  string bill_of_lading_number = 2;
+}
+
+message OceanHblGeneratedData {
+  string bill_of_lading_fid = 1;
+  string bill_of_lading_number = 2;
+  string document_fid = 3;
+}
+
+message OceanMblReceivedData {
+  string document_fid = 1;
+  string master_bill_of_lading_number = 2;
+  string transmission_mode = 3; // could be an enum
+}
+
+message RouteShapeUpdatedData {
+  flexport.customs.productlibrary.regulations.v1beta1.CountryCode country_of_import = 1;
+  flexport.customs.productlibrary.regulations.v1beta1.CountryCode fmc_port_of_unloading_country = 2;
+}
+
+message CustomsOnlyFlagChangedData {
+  bool is_customs_only = 1;
+}
+
+message CustomsEntryCreationData {}
+
+message ShipmentCreatedData {}
+message DigitizeCiStartedData {}
+message EntryLinesValidationCompletedData {}
+message EntryLinesValidationRevertedData {}
+message EntryMarkedAsNotPreparedData {}
+message EntryMarkedAsPreparedData {}
+message InvoiceChargesVerificationDoneData {}
+message InvoiceChargesVerificationCancelledData {}
+message ManifestInfoValidationCompletedData {}
+message ManifestInfoValidationRevertedData {}
+message RouteInfoValidationCompletedData {}
+message RouteInfoValidationRevertedData {}
+message SetShipmentCustomsClearedData {}
+message UnsetShipmentCustomsClearedData {}

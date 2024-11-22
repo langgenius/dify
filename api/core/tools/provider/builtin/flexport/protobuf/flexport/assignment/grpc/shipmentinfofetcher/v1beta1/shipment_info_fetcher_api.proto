@@ -1,0 +1,41 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.grpc.shipmentinfofetcher.v1beta1;
+
+import "flexport/assignment/grpc/shipmentinfofetcher/v1beta1/shipment_first_quote_accepted_at.proto";
+import "flexport/assignment/grpc/shipmentinfofetcher/v1beta1/shipment_quote_status.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentInfoFetcherApiProto";
+option java_package = "com.flexport.assignment.grpc.shipmentinfofetcher.v1beta1";
+option ruby_package = "Flexport::Assignment::Grpc::ShipmentInfoFetcher::V1Beta1";
+
+// An API for fetching shipment info.
+service ShipmentInfoFetcherAPI {
+  // Get the first quote accepted at times for a list of shipment fids.
+  rpc ListFirstQuoteAcceptedAt(ListFirstQuoteAcceptedAtRequest) returns (ListFirstQuoteAcceptedAtResponse);
+  // Get the quote status for a list of shipment fids.
+  rpc ListQuoteStatus(ListQuoteStatusRequest) returns (ListQuoteStatusResponse);
+}
+
+// The request containing a list of shipment fids.
+message ListFirstQuoteAcceptedAtRequest {
+  repeated string shipment_fids = 1;
+}
+
+// The response containing a list of first_accepted_at_time.
+message ListFirstQuoteAcceptedAtResponse {
+  repeated flexport.assignment.grpc.shipmentinfofetcher.v1beta1.ShipmentFirstQuoteAcceptedAt results = 1;
+}
+
+// The request containing a list of shipment fids.
+message ListQuoteStatusRequest {
+  repeated string shipment_fids = 1;
+}
+
+// The response containing a list of quote_status.
+message ListQuoteStatusResponse {
+  repeated flexport.assignment.grpc.shipmentinfofetcher.v1beta1.ShipmentQuoteStatus results = 1;
+}

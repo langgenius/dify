@@ -1,0 +1,49 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.oceanplanning.fulfillmenttask.v2beta1;
+
+import "flexport/oceanplanning/fulfillmenttask/v2beta1/fulfillment_task.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FulfillmentTaskApiProto";
+option java_package = "com.flexport.oceanplanning.fulfillmenttask.v2beta1";
+option ruby_package = "Flexport::OceanPlanning::FulfillmentTask::V2Beta1";
+
+// The carrier constraint service grpc API end point.
+service FulfillmentTaskAPI {
+  // Get all of the in progress fulfillment task for FMT by origin and destination region slug
+  rpc GetInProgressFulfillmentTasksForFmt(GetInProgressFulfillmentTasksForFmtRequest) returns (GetInProgressFulfillmentTasksForFmtResponse);
+
+  // Get current fulfillment status for a shipment
+  rpc GetFulfillmentStatus(GetFulfillmentStatusRequest) returns (GetFulfillmentStatusResponse);
+}
+
+// The request message containing the region name.
+message GetInProgressFulfillmentTasksForFmtRequest {
+  string origin_region_slug = 1;
+  string destination_region_slug = 2;
+}
+
+message GetInProgressFulfillmentTasksForFmtResponse {
+  repeated OceanPlanningFulfillmentTask fulfillment_tasks = 1;
+}
+
+message GetFulfillmentStatusRequest {
+  string shipment_fid = 1;
+}
+
+message GetFulfillmentStatusResponse {
+  OceanPlanningFulfillmentTaskStatus status = 1;
+}
+
+// A message that's emitted when a fulfillment task is created.
+message FulfillmentTaskCreated {
+  OceanPlanningFulfillmentTask fulfillment_task = 1;
+}
+
+// A message that's emitted when a fulfillment task is updated.
+message FulfillmentTaskUpdated {
+  OceanPlanningFulfillmentTask fulfillment_task = 1;
+}

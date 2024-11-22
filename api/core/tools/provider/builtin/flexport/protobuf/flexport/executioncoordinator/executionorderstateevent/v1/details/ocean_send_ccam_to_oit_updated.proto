@@ -1,0 +1,22 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanSendCcamToOitUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "google/protobuf/timestamp.proto";
+
+// Emitted when an email is sent to OIT. This should be emitted upon a successful email API call.
+//
+// The main purpose of emitting this event is that EMS can consume a single EOSE and then "Submit CCAM to OIT"
+// WI re-calculation can be triggered.
+message OceanSendCcamToOitUpdated {
+  string shipment_fid = 1;
+  google.protobuf.Timestamp last_sent_time = 2;
+  repeated string attachment_document_fid = 3;
+}

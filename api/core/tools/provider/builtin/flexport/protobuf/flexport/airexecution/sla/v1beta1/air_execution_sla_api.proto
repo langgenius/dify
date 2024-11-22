@@ -1,0 +1,51 @@
+// TEAM: wingstop
+
+syntax = "proto3";
+
+package flexport.airexecution.sla.v1beta1;
+
+import "flexport/airexecution/sla/v1beta1/air_execution_sla.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AirExecutionSlaApiProto";
+option java_package = "com.flexport.airexecution.sla.v1beta1";
+option ruby_package = "Flexport::AirExecution::Sla::V1Beta1";
+
+// This service is used by an NIS to get the air execution sla.
+service AirExecutionSlaAPI {
+  // Returns the execution sla for the giving criteria.
+  rpc GetAirExecutionSla(GetAirExecutionSlaRequest) returns (GetAirExecutionSlaResponse);
+  // Lists the execution sla for the giving criteria.
+  rpc ListAirExecutionSla(ListAirExecutionSlaRequest) returns (ListAirExecutionSlaResponse);
+}
+
+message GetAirExecutionSlaRequest {
+  string shipper_address_fid = 1;
+  string origin_cfs_fid = 2;
+  string origin_airport_fid = 3;
+  string destination_airport_fid = 4;
+  string destination_cfs_fid = 5;
+  string consignee_address_fid = 6;
+  ServiceTier service_tier = 7;
+}
+
+message GetAirExecutionSlaResponse {
+  AirExecutionSla air_execution_sla = 1;
+}
+
+message ListAirExecutionSlaRequest {
+  message ListAirExecutionSlaParams {
+    string shipper_address_fid = 1;
+    string origin_cfs_fid = 2;
+    string origin_airport_fid = 3;
+    string destination_airport_fid = 4;
+    string destination_cfs_fid = 5;
+    string consignee_address_fid = 6;
+    ServiceTier service_tier = 7;
+  }
+  repeated ListAirExecutionSlaParams params = 1;
+}
+
+message ListAirExecutionSlaResponse {
+  repeated AirExecutionSla air_execution_sla = 1;
+}

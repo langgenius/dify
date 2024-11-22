@@ -1,0 +1,64 @@
+// TEAM: flexport_os
+
+syntax = "proto3";
+
+package flexport.os.v1.types.walltimedatetime.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "WallTimeDateTimeProto";
+option java_package = "com.flexport.os.v1.types.walltimedatetime.v1";
+option ruby_package = "Flexport::OS::V1::Types::WallTimeDateTime::V1";
+
+// A datetime as perceived by a user in a timezone.
+//
+// The term "wall time" refers to the definition here:
+// https://www.w3.org/International/articles/definitions-time
+//
+// Use this message type only when you are certain that (1) the value you want to represent is a
+// specific date and time AND (2) you want to represent time _as perceived by a user_ rather
+// than an absolute time relative to epoch.
+//
+// Example use case:
+//
+// - Warehouse empty container pickup availability. The value could represent a future date time
+//   ("the warehouse staff is expecting to have the empty ready for pickup at 9am on Monday") or
+//   a past date time ("the container was made available to pick up at 2pm today").
+//
+// Consider using google.protobuf.Timestamp instead to represent:
+//
+// - Historic system-level events such as "created_at" for an entity or "sent_at" for a system
+//   message. These times should be represented relative to epoch rather than with a timezone.
+//   If IANA timezone offsets change, that should not impact the times of these events.
+//
+// Consider using WallTimeDateOrDateTime instead to represent:
+//
+// - Values that could be _either_ a specific datetime _or_ a date (example: a pickup could be
+//   scheduled for March 1st and actually happen at 3:30PM on March 1st.)
+//
+// For more background, see http://go/datetimes.
+//
+// Note that this value cannot be used to represent a "date or date time" value. It always
+// refers to a specific point in wall time in the timezone. For example, if hours, minutes,
+// seconds, and nanos are omitted, then the message refers to midnight on the year, month, and day.
+// That is, the message does not mean "any time during the day on this year, month, day".
+//
+message WallTimeDateTime {
+  // Year of date. From 1 on.
+  int32 year = 1;
+  // Month of year. From 1 to 12.
+  int32 month = 2;
+  // Day of month. From 1 to 31; must be valid for that year and month.
+  int32 day = 3;
+  // Hours of day, in 24 hour format. From 0 to 23.
+  int32 hours = 4;
+  // Minutes of hour. From 0 to 59.
+  int32 minutes = 5;
+  // Seconds of minute. Usually from 0 to 59.
+  int32 seconds = 6;
+  // Fractions of a second in nanoseconds. From 0 to 999,999,999.
+  int32 nanos = 7;
+  // The IANA timezone identifier for the location of this date (e.g. America/Los_Angeles).
+  string timezone = 8;
+  // Optional. The IANA timezone db version used by the caller.
+  string timezone_version = 100;
+}

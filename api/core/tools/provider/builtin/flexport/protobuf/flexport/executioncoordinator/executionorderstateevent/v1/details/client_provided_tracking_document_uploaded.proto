@@ -1,0 +1,33 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ClientProvidedTrackingDocumentUploadedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// Enum representing the types of client-provided documents.
+enum TrackingDocumentType {
+  TRACKING_DOCUMENT_TYPE_INVALID = 0;
+  TRACKING_DOCUMENT_TYPE_MASTER_BILL_OF_LADING = 1;
+  TRACKING_DOCUMENT_TYPE_HOUSE_BILL_OF_LADING = 2;
+  TRACKING_DOCUMENT_TYPE_MASTER_AIR_WAY_BILL = 3;
+  TRACKING_DOCUMENT_TYPE_AIR_WAY_BILL = 4;
+  TRACKING_DOCUMENT_TYPE_TRUCKING_BILL_OF_LADING = 5;
+  TRACKING_DOCUMENT_TYPE_ARRIVAL_NOTICE = 6;
+}
+
+// When Flexport is providing freight services, some documents (e.g. documents issued by carriers)
+// are best modeled as ExecutionOrderStateEvents, since they represent progress towards our
+// fulfillment of freight services. However, on a “Customs Only” shipment we may need to track those
+// documents even though they aren’t technically coming from the carrier. The
+// ClientProvidedTrackingDocumentUploaded EOSE provides a home for client-provided instances of
+// these documents.
+message ClientProvidedTrackingDocumentUploaded {
+  string document_fid = 1;
+  TrackingDocumentType document_type = 2;
+  string document_memo = 4;
+}

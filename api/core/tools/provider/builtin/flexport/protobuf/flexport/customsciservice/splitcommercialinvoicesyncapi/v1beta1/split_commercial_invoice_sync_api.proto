@@ -1,0 +1,25 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsciservice.splitcommercialinvoicesyncapi.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SplitCommercialInvoiceSyncAPIProto";
+option java_package = "com.flexport.customsciservice.splitcommercialinvoicesyncapi.v1beta1";
+option ruby_package = "Flexport::CustomsCiService::SplitCommercialInvoiceSyncAPI::V1Beta1";
+
+// Once split CIs are successfully processed we will sync them to core in one job.
+service SplitCommercialInvoiceSyncAPI {
+  // If client_fid and invoice_numbers are passed to a SplitSyncToCore message, it will trigger a job to sync the CIs.
+  rpc SplitSyncToCore(SplitSyncToCoreRequest) returns (SplitSyncToCoreResponse);
+}
+
+message SplitSyncToCoreRequest {
+  string client_fid = 1;
+  repeated string invoice_numbers = 2;
+}
+
+message SplitSyncToCoreResponse {
+  bool successfully_enqueued = 1;
+}

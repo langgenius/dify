@@ -1,0 +1,29 @@
+// TEAM: lumina
+
+syntax = "proto3";
+
+package flexport.wmscell.userprofile.entity.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "UserProfileEntityProto";
+option java_package = "com.flexport.wmscell.userprofile.entity.v1";
+
+message UserProfileEntity {
+  string id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string email = 4;
+  string phone = 5;
+  string locale = 6;
+  string timezone = 7;
+  string status = 8;
+  google.protobuf.Timestamp created_at  = 9;
+  string created_by = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  string updated_by = 12;
+  string last_selected_warehouse = 13;
+  bool is_admin = 14;
+  string iam_id = 15;
+}

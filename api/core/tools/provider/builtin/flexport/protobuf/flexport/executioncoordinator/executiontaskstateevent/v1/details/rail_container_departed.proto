@@ -1,0 +1,35 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RailContainerDepartedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+// Equipment has departed from an in-transit railroad location other than the destination.
+// https://www.railinc.com/steelroads/Event_Sighting_Code.pdf
+//
+// Sources of data:
+// - track_and_trace engine's RailDeparted simple PubSub event from Rail Inc.
+//
+// This event is not currently emitted when OperationalRoute::Graph data changes for rail legs.
+// If you want rail container movements based on OperationalRoute::Graph data, use the derived
+// CargoTransitDateChanged events instead (which may be emitted upon this event being consumed
+// from Rail Inc, or may not if the Rail Inc update is rejected).
+message RailContainerDeparted {
+  string container_fid = 8;
+  string container_number = 1;
+  string latitude = 2;
+  string longitude = 3;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime sighting_time = 4;
+  string station_name = 5;
+  string state = 6;
+  // https://en.wikipedia.org/wiki/Standard_Point_Location_Code
+  string splc = 7;
+  string track_and_trace_event_fid = 9;
+}

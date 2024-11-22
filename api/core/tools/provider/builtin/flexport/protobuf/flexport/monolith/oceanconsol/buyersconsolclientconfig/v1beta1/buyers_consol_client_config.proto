@@ -1,0 +1,42 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.monolith.oceanconsol.buyersconsolclientconfig.v1beta1;
+
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BuyersConsolClientConfigProto";
+option java_package = "com.flexport.monolith.oceanconsol.buyersconsolclientconfig.v1beta1";
+option ruby_package = "Flexport::Monolith::OceanConsol::BuyersConsolClientConfig::V1Beta1";
+
+message BuyersConsolClientConfiguration {
+  string fid = 1;
+  string client_fid = 2;
+  // buffer days after the cargo ready date
+  int32 shipping_date_tolerance = 3;
+  // thresholds for container loading factor
+  repeated ContainerUtilizationThreshold container_utilization_thresholds = 4;
+  // lanes enabled for buyers consolidation
+  repeated Lane supported_lanes = 5 [deprecated = true];
+  // whether CLP approval is required by client or not
+  bool automated_clp_approval = 6;
+  // whether to submit notification to the client when CLP is approved
+  bool clp_submit_notification = 7;
+}
+
+message ContainerUtilizationThreshold {
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerSize container_type = 1;
+  float min_volume_percentage = 2 [deprecated = true];
+  float min_volume_cbm = 3;
+  float total_capacity_cbm = 4 [deprecated = true];
+  float max_volume_capacity_cbm = 5;
+  float max_weight_limitation_kg = 6;
+  repeated Lane supported_lanes = 7;
+}
+
+message Lane {
+  string origin_port_fid = 1;
+  string destination_port_fid = 2;
+}

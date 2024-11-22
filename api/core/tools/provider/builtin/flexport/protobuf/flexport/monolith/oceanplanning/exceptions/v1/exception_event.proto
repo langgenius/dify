@@ -1,0 +1,25 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.monolith.oceanplanning.exceptions.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ExceptionEventProto";
+option java_package = "com.flexport.monolith.oceanplanning.exceptions.v1";
+option ruby_package = "Flexport::Monolith::OceanPlanning::Exceptions::V1";
+
+import "google/protobuf/timestamp.proto";
+
+// Exception event record.
+message ExceptionEvent {
+  // This is the exception model within Ocean Planning
+  string ocean_planning_exception_fid = 1;
+  // This is the corresponding exception from Centralized Exception
+  string centralized_exception_fid = 2;
+  string event_type = 3;
+  google.protobuf.Timestamp occured_at_time = 4;
+  // JSON blob
+  // Ensure this data does not cross 1 MB in size
+  string additional_info = 5;
+}

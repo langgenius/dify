@@ -1,0 +1,20 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.grpc.v1;
+
+import "flexport/assignment/enums/v1/responsibility.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "LegacyAssignmentProto";
+option java_package = "com.flexport.assignment.grpc.v1";
+option ruby_package = "Flexport::Assignment::Grpc::V1";
+
+// Represent a legacy shipment assignment.
+message LegacyAssignment {
+  string assignable_fid = 1;
+  string assignee_fid = 2;
+  flexport.assignment.enums.v1.Responsibility responsibility = 3;
+  bool watcher = 4;
+}

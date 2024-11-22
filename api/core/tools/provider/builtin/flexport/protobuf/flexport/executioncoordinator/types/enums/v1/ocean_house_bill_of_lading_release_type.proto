@@ -1,0 +1,18 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanHouseBillOfLadingReleaseTypeProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// Type of release, e.g. "Hold for Telex Release" or "Endorsed Originals".
+enum OceanHouseBillOfLadingReleaseType {
+  OCEAN_HOUSE_BILL_OF_LADING_RELEASE_TYPE_INVALID = 0;
+  OCEAN_HOUSE_BILL_OF_LADING_RELEASE_TYPE_UNSET = 1;
+  OCEAN_HOUSE_BILL_OF_LADING_RELEASE_TYPE_HOLD_FOR_TELEX = 2;
+  OCEAN_HOUSE_BILL_OF_LADING_RELEASE_TYPE_MAIL_COPY = 3;
+}

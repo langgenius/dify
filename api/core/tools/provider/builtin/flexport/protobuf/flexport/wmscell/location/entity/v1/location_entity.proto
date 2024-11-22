@@ -1,0 +1,17 @@
+// TEAM: wms_bellevue
+
+syntax = "proto3";
+
+package flexport.wmscell.location.entity.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "LocationEntityProto";
+option java_package = "com.flexport.wmscell.location.entity.v1";
+
+message LocationEntity {
+  string id = 1;
+  string scannable_id = 2;
+  string type = 3;
+  string parent_location_id = 4;
+  string warehouse_code = 5;
+}

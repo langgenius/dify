@@ -1,0 +1,130 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.commercialinvoice.v1;
+
+import "flexport/customs/commercialinvoice/v1/commercial_invoice_condition.proto";
+import "flexport/customs/commercialinvoice/v1/commercial_invoice_constants.proto";
+import "flexport/customsciservice/constants/v1beta1/constants.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "google/type/decimal.proto";
+import "google/type/money.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CommercialInvoiceProto";
+option java_package = "com.flexport.customs.commercialinvoice.v1";
+option ruby_package = "Flexport::Customs::CommercialInvoice::V1";
+
+// Represents a commercial invoice object
+message CommercialInvoice {
+  string fid = 1;
+  string client_fid = 2;
+  string invoice_number = 3;
+
+  uint32 shipment_id = 4;
+  string shipment_ref = 5;
+  string document_fid = 6;
+
+  google.protobuf.Timestamp invoice_date = 7;
+  string currency_code = 8;
+
+  string terms_of_sale = 9;
+
+  google.protobuf.BoolValue is_related_parties = 10;
+
+  google.type.Money proration_amount = 11;
+  google.protobuf.Struct metadata = 12;
+  CISourceType source = 13;
+
+  repeated CommercialInvoiceLineItem line_items = 20;
+  repeated CommercialInvoiceInvolvedParty involved_parties = 21;
+  repeated ChargeAdjustment charge_adjustments = 22;
+  repeated CommercialInvoiceCondition conditions = 23;
+
+  google.protobuf.Timestamp created_at = 30;
+  google.protobuf.Timestamp updated_at = 31;
+  int32 generation = 32;
+
+  google.type.Decimal total_gross_weight = 33;
+  google.type.Decimal total_net_weight = 34;
+}
+
+// Represents a commercial invoice line item object
+message CommercialInvoiceLineItem {
+  string fid = 1;
+  string commercial_invoice_fid = 2;
+  google.protobuf.Int32Value document_line_number = 3;
+  google.protobuf.StringValue purchase_order_number = 4;
+  google.protobuf.StringValue container_number = 5;
+  google.protobuf.StringValue country_of_origin = 6;
+  google.protobuf.StringValue product_fid = 7;
+  google.protobuf.StringValue po_line_item_number = 8;
+
+  // quantity
+  flexport.customsciservice.constants.v1beta1.QuantityUnit quantity_unit_of_measure = 10;
+  int32 quantity = 11;
+
+  // prices
+  google.type.Money net_value = 20;
+  google.type.Money value = 21;
+  google.type.Money unit_price = 22;
+  google.type.Money first_sale_value = 23;
+  google.type.Money final_sale_value = 24;
+
+  // weights
+  flexport.customsciservice.constants.v1beta1.WeightUnit weight_unit_of_measure = 30;
+  google.protobuf.DoubleValue gross_weight = 31;
+  google.protobuf.DoubleValue net_weight = 32;
+  google.protobuf.DoubleValue net_net_weight = 33;
+
+  // volume
+  flexport.customsciservice.constants.v1beta1.VolumeUnit volume_unit_of_measure = 40;
+  google.protobuf.DoubleValue volume = 41;
+
+  string manufacturer_address_fid = 50 [deprecated = true];
+  google.protobuf.Struct metadata = 51;
+  google.protobuf.Timestamp created_at = 52;
+  google.protobuf.Timestamp updated_at = 53;
+  string manufacturer_location_fid = 54;
+
+  repeated ChargeAdjustment charge_adjustments = 60;
+
+  oneof special_program {
+    string special_program_code = 70;
+    bool eligible_for_special_program = 71;
+  }
+
+  // To be deprecated
+  flexport.customsciservice.constants.v1beta1.CILineItemSourceType source = 80;
+
+  CILineItemSourceType source_type = 81;
+}
+
+message CommercialInvoiceInvolvedParty {
+  string network_entity_fid = 1;
+  flexport.customsciservice.constants.v1beta1.InvolvedPartyType type = 2;
+}
+
+message ChargeAdjustment {
+  google.type.Decimal adjustment_value = 1;
+  google.protobuf.StringValue currency_code = 2;
+
+  flexport.customsciservice.constants.v1beta1.ChargeAdjustmentAppliedAs adjustment_applied_as = 3;
+  flexport.customsciservice.constants.v1beta1.ChargeAdjustmentCode adjustment_code = 4;
+
+  google.protobuf.StringValue client_defined_code = 5;
+
+  flexport.customsciservice.constants.v1beta1.ChargeAdjustmentAppliedTo adjustment_applied_to = 6;
+}
+
+// Possible CI Sources
+enum CISourceType {
+  CI_SOURCE_TYPE_INVALID = 0;
+  CI_SOURCE_TYPE_PUBLIC_API = 1;
+  CI_SOURCE_TYPE_ECOSYSTEM_INTEGRATION = 2;
+  CI_SOURCE_TYPE_CUSTOMS_TRANSCRIPTION = 3;
+  CI_SOURCE_TYPE_MANUALLY_DIGITIZED = 4;
+}

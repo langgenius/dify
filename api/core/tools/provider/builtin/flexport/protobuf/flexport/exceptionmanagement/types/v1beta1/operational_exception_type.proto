@@ -1,0 +1,76 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.exceptionmanagement.types.v1beta1;
+
+import "flexport/exceptionmanagement/enums/v1beta1/exception_active_status.proto";
+import "flexport/exceptionmanagement/enums/v1beta1/exception_priority.proto";
+import "flexport/exceptionmanagement/enums/v1beta1/exception_resolution_type.proto";
+import "flexport/exceptionmanagement/enums/v1beta1/exception_stage_field.proto";
+import "flexport/exceptionmanagement/enums/v1beta1/exception_target_type.proto";
+import "flexport/exceptionmanagement/enums/v1beta1/exception_transportation_mode.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OperationalExceptionTypeProto";
+option java_package = "com.flexport.exceptionmanagement.types.v1beta1";
+option ruby_package = "Flexport::ExceptionManagement::Types::V1Beta1";
+
+message RequiredFields {
+  repeated flexport.exceptionmanagement.enums.v1beta1.ExceptionStageField create_stage_fields = 1;
+  repeated flexport.exceptionmanagement.enums.v1beta1.ExceptionStageField update_stage_fields = 2;
+  repeated flexport.exceptionmanagement.enums.v1beta1.ExceptionStageField resolve_stage_fields = 3;
+}
+
+message ApplicableCriteria {
+  repeated flexport.exceptionmanagement.enums.v1beta1.ExceptionTransportationMode transportation_modes = 1;
+}
+
+message OperationalExceptionType {
+  string fid = 1;
+  string name = 2;
+  string slug = 3;
+  // Target type of exception type.
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionTargetType target_type = 4;
+  // Parties that can create this exception type.
+  repeated string creator_parties = 5;
+  // Parties that can view this exception type.
+  repeated string viewer_parties = 6;
+  // Status of exception type.
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionActiveStatus active_status = 7;
+  // Resolution type of exception type, e.g. ACTION_REQUIRED
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionResolutionType resolution_type = 8;
+  // SLA hours of exception type.
+  google.protobuf.Int32Value sla_hours = 9;
+  // E.g."ffa".
+  repeated string tags = 10;
+  // Currently it's exception-management internal use only.
+  google.protobuf.StringValue attr_options = 11;
+  google.protobuf.StringValue created_by_user_fid = 12;
+  google.protobuf.Timestamp created_at_time = 13;
+  google.protobuf.StringValue updated_by_user_fid = 14;
+  google.protobuf.Timestamp updated_at_time = 15;
+  //removed by OOM-6300
+  //google.protobuf.StringValue deleted_by_user_fid = 16;
+  //google.protobuf.Timestamp deleted_at_time = 17;
+  // Required fields of this exception type.
+  RequiredFields required_fields = 18;
+  // Applicable criteria of exception type, e.g. "{"transportation_modes": ["AIR"]}".
+  ApplicableCriteria applicable_criteria = 19;
+  // Default visible parties of exception.
+  repeated string default_visible_party_slugs = 20;
+  // Default external message of exception.
+  google.protobuf.StringValue default_external_message = 21;
+  // Default priority of exception.
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionPriority default_priority = 22;
+  // Default root cause of exception.
+  google.protobuf.StringValue default_root_cause = 23;
+  // Recommended use of exception type.
+  google.protobuf.StringValue recommended_use = 24;
+  // SOP of exception type.
+  google.protobuf.StringValue sop = 25;
+  // Latest revision of exception type.
+  uint32 revision = 26;
+}

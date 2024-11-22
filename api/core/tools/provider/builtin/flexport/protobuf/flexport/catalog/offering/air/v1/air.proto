@@ -1,0 +1,38 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.offering.air.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AirProto";
+option java_package = "com.flexport.catalog.offering.air.v1";
+option ruby_package = "Flexport::Catalog::Offering::Air::V1";
+
+import "flexport/catalog/enums/v1/enums.proto";
+import "google/protobuf/wrappers.proto";
+
+// Air attributes.
+message AirAttributesDto {
+  google.protobuf.Int64Value origin_id = 1;
+  google.protobuf.Int64Value destination_id = 2;
+  google.protobuf.Int64Value origin_warehouse_id = 3;
+  google.protobuf.Int64Value destination_warehouse_id = 4;
+  google.protobuf.Int64Value carrier_id = 5;
+  catalog.enums.v1.CommodityDto commodity = 6;
+  catalog.enums.v1.DangerousGoodsDto dangerous_goods = 7;
+  catalog.enums.v1.AirTierDto air_tier = 8;
+  google.protobuf.Int32Value transit_time_min_days = 9;
+  google.protobuf.Int32Value transit_time_max_days = 10;
+  google.protobuf.StringValue booking_code = 11;
+}
+
+// Air query attributes.
+message AirQueryAttributesDto {
+  repeated int64 origin_ids = 1;
+  repeated int64 destination_ids = 2;
+  repeated catalog.enums.v1.CommodityDto commodities = 3;
+  repeated catalog.enums.v1.DangerousGoodsDto dangerous_goods = 4;
+  repeated catalog.enums.v1.AirTierDto air_tiers = 5;
+  google.protobuf.FloatValue weight_kg = 6;
+}

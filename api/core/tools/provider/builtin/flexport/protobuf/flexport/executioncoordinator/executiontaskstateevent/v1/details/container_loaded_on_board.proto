@@ -1,0 +1,28 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerLoadedOnBoardProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/executioncoordinator/types/enums/v1/node_tag.proto";
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+// A container has been loaded onto an ocean vessel.
+message ContainerLoadedOnBoard {
+  string container_fid = 1;
+  // Fid of the port where the container was loaded on board.
+  string port_fid = 2;
+  // The datetime the container was loaded on board.
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime loaded_on_board_date = 3;
+  // Vessel name, e.g. "CMA CGM JULES VERNE"
+  string vessel_name = 4;
+  // The voyage tracking_number
+  string voyage_number = 5;
+  // Describe the place given by port_fid, if known.
+  repeated flexport.executioncoordinator.types.enums.v1.NodeTag node_tags = 10;
+}

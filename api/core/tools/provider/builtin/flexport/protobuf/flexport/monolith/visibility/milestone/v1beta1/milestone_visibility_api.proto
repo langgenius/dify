@@ -1,0 +1,33 @@
+// TEAM: visibility
+
+syntax = "proto3";
+
+package flexport.monolith.visibility.milestone.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "MilestoneVisibilityApiProto";
+option java_package = "com.flexport.monolith.visibility.milestone.v1beta1";
+option ruby_package = "Flexport::Monolith::Visibility::Milestone::V1Beta1";
+
+import "flexport/monolith/visibility/milestone/v1beta1/milestone_visibility.proto";
+
+// This is used by Original Ops and Destination Ops to check whether a milestone will be tracked by vis or not.
+service MilestoneVisibilityAPI {
+  // Through this service, the operations know which milestones will be updated automatically and which need to be updated manually.
+  rpc MilestoneAutomationStatus(MilestoneAutomationStatusRequest) returns (MilestoneAutomationStatusResponse);
+}
+
+// The milestone corresponding to each container is the same, and they all belong to the same shipment.
+message MilestoneAutomationStatusRequest {
+  string carrier_scac_code = 1;
+  // Matches the vessel fid from the monolith.
+  string ocean_vessel_fid = 2;
+  // List of container numbers for a shipment.
+  repeated string container_numbers = 3;
+  repeated AutomationMilestone milestones = 4;
+}
+
+// A batch results of Whether a shipment containers milestones can be automatically.
+message MilestoneAutomationStatusResponse {
+  repeated MilestoneAutomationStatus statuses = 1;
+}

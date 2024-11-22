@@ -1,0 +1,27 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.cargotracking.nl.events.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.cargotracking.nl.events.v1beta1";
+option ruby_package = "Flexport::Customs::CargoTracking::Nl::Events::V1Beta1";
+
+// InlandOperatorNominatedEvent is emitted when Inland Operators are nominated for one or 
+// more containers in a shipment.
+message InlandOperatorNominatedEvent {
+  // ID that can be used to identify the event
+  string id = 1;
+  string master_bill_of_lading_number = 2;
+  string shipment_fid = 3;
+  google.protobuf.Timestamp created_at = 4;
+  repeated InlandOperator inland_operators = 5;
+}
+
+message InlandOperator {
+  string container_number = 1;
+  string inland_operator_full_name = 2;
+}

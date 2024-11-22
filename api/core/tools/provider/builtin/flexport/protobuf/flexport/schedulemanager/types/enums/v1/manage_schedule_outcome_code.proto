@@ -1,0 +1,30 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.schedulemanager.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ManageScheduleOutcomeCodeProto";
+option java_package = "com.flexport.schedulemanager.types.enums.v1";
+option ruby_package = "Flexport::ScheduleManager::Types::Enums::V1";
+
+// Result Code summarizing the outcome of a Schedule Manager feature request.
+enum ManageScheduleOutcomeCode {
+  MANAGE_SCHEDULE_OUTCOME_CODE_INVALID = 0;
+  // Set/Read incoming dates and cascaded valid dates (if any).
+  MANAGE_SCHEDULE_OUTCOME_CODE_SUCCESS = 1;
+  // Set/Read fallback incoming dates but was unable to cascade dates (or perform Feature action):
+  //    e.g. Business logic ruled out automation, client/shipment has automation disabled, etc.
+  MANAGE_SCHEDULE_OUTCOME_CODE_FALLBACK_SUCCESS = 2;
+  // Determined no action to be taken:
+  //    e.g. Autobuild no longer relevant, proposed date changes already set in schedule, etc.
+  MANAGE_SCHEDULE_OUTCOME_CODE_NO_OP_SUCCESS = 3;
+  // Request has dryRun flag enabled. This differentiates SUCCESS for feature's being rolled out
+  MANAGE_SCHEDULE_OUTCOME_CODE_DRY_RUN_SUCCESS = 4;
+  // Incoming dates were rejected as they could/should not be set in the schedule.
+  //    Failed validations, but more likely the Leg Matching process (to assign a date change to a specific leg) failed.
+  MANAGE_SCHEDULE_OUTCOME_CODE_REJECTED = 5;
+  // Reserved for internal Schedule Manager exceptions (These should be rare).
+  MANAGE_SCHEDULE_OUTCOME_CODE_FAILED = 6;
+}

@@ -1,0 +1,47 @@
+// TEAM: ocean_allocations
+
+syntax = "proto3";
+
+package flexport.oceansupply.entityevent.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "InventoryAvailableChangeEntityProto";
+option java_package = "com.flexport.oceansupply.entityevent.v1beta1";
+option ruby_package = "Flexport::OceanSupply::EntityEvent::V1Beta1";
+
+// Records the change history of available TEUs on a particular Inventory.
+message InventoryAvailableChangeEntity {
+  google.protobuf.Timestamp created_time = 1;
+  google.protobuf.StringValue inventory_fid = 2;
+  google.protobuf.StringValue inventory_bucket_fid = 3;
+  // from_value, this is number of TEUs
+  google.protobuf.UInt32Value from_value = 4;
+  // to_value, this is number of TEUs
+  google.protobuf.UInt32Value to_value = 5;
+  google.protobuf.StringValue updated_by_fid = 6;
+  CapacityType capacity_type = 7;
+  AllocationType allocation_type = 8;
+  bool use_for_planning = 9;
+  google.protobuf.StringValue comment = 10;
+  bool is_prefilled = 11;
+}
+
+// This enum is used to track changes to inventory allocation for auditing.
+enum CapacityType {
+  CAPACITY_TYPE_INVALID = 0;
+  CAPACITY_TYPE_EXPECTED = 1;
+  CAPACITY_TYPE_REQUESTED = 2;
+  CAPACITY_TYPE_CONFIRMED = 3;
+  CAPACITY_TYPE_OTHER = 4;
+}
+
+// This enum is used to track changes to inventory allocation for auditing.
+enum AllocationType {
+  ALLOCATION_TYPE_INVALID = 0;
+  ALLOCATION_TYPE_HARD = 1;
+  ALLOCATION_TYPE_SOFT = 2;
+  ALLOCATION_TYPE_ADJUSTED = 3;
+}

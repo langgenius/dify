@@ -1,0 +1,21 @@
+// TEAM: data_platform
+
+syntax = "proto3";
+
+package flexport.dataeng.mockentity.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "MockEntityProto";
+option java_package = "com.flexport.dataeng.mockentity.v1";
+option ruby_package = "Flexport::DataEng::MockEntity::V1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Mock of an entity event that is sent in a data ingestion pipeline.
+message MockEntity {
+  google.protobuf.StringValue fid = 1;
+  google.protobuf.Timestamp created_time = 2;
+  google.protobuf.Timestamp updated_time = 3;
+  google.protobuf.StringValue message = 4;
+}

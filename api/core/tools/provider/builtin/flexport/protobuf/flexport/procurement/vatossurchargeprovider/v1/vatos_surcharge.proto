@@ -1,0 +1,133 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.vatossurchargeprovider.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "VatosSurchargeProto";
+option java_package = "com.flexport.procurement.vatossurchargeprovider.v1";
+option ruby_package = "Flexport::Procurement::VatosSurchargeProvider::V1";
+
+// Incoming data for a vatos surcharge.
+message VatosSurcharge {
+  string fid = 1;
+  // Unique rule-id. Build of ruletype prefix and surcharge id.
+  string surcharge_rule_id = 2;
+  // Long descriptive name for the surcharge.
+  string full_name = 3;
+  SurchargeType surcharge_type = 4;
+  TransportMode mode = 5;
+  string charge_code_fid = 6;
+  string carrier_fid = 7;
+  // Internal trade number - reference to trade table.
+  int64 trade_id = 8;
+  // Internal area number for the area of loading - reference to areas table,
+  // may be "0" for ANY.
+  int64 origin_area_id = 9;
+  // Name of the area of loading.
+  string origin_area_name = 10;
+  // Internal area number for the area of discharge - reference to areas table,
+  // may be "0" for ANY.
+  int64 destination_area_id = 11;
+  // Name of the area of discharged.
+  string destination_area_name = 12;
+  // Internal country number for the country of loading - reference to countries table,
+  // may be "0" for ANY.
+  int64 country_of_loading_id = 13;
+  // Name of the country of loading.
+  string country_of_loading_name = 14;
+  // Internal country number for the country of discharge- reference to countries table,
+  //  may be "0" for ANY.
+  int64 country_of_discharge_id = 15;
+  // Name of the country of discharge.
+  string country_of_discharge_name = 16;
+  // Internal port number - reference to vatosline_port table, may be "0" for ANY.
+  int64 port_of_loading_id = 17;
+  // UN/LOCODE of the port of loading.
+  string port_of_loading_un_locode = 18;
+  // Name of the port of loading.
+  string port_of_loading_name = 19;
+  // Internal port number - reference to vatosline_port table, may be "0" for ANY.
+  int64 port_of_discharge_id = 20;
+  // UN/LOCODE of the port of discharge.
+  string port_of_discharge_un_locode = 21;
+  // Name of the port of discharge.
+  string port_of_discharge_name = 22;
+  // "valid from" date for this surcharge, may be overridden by a newer surcharge
+  // or may last forever.
+  Date validity_start = 23;
+  // No end date if this surcharge has not expired yet or the date of the last day it was valid.
+  Date validity_end = 24;
+  string currency_code = 25;
+  // 20FT Surcharge amount, value may be a currency value or a percentage,
+  // 0 value may be used to "delete" older surcharges.
+  double value_ft_20 = 26;
+  // 40FT Surcharge amount, value may be a currency value or a percentage,
+  // 0 value may be used to "delete" older surcharges.
+  double value_ft_40 = 27;
+  // 40FT HC Surcharge amount, value may be a currency value or a percentage,
+  //  0 value may be used to "delete" older surcharges.
+  double value_hc_40 = 28;
+  // 45FT Surcharge amount, value may be a currency value or a percentage,
+  //  0 value may be used to "delete" older surcharges.
+  double value_ft_45 = 29;
+  // Optional
+  SurchargeClassificationType surcharge_classification_type = 30;
+  // Optional
+  SurchargeCategoryType surcharge_category_type = 31;
+  // Optional
+  // Naming code for the surcharge used by the carrier. Available in trade surcharges only
+  string carrier_ts_code = 32;
+  // Short codename for the surcharge.
+  string surcharge_code = 33;
+  // Company name of this carrier.
+  string carrier_name = 34;
+  // Official carrier code if present.
+  string carrier_scac = 35;
+}
+
+// The mode of transport.
+enum TransportMode {
+  TRANSPORT_MODE_INVALID = 0;
+  TRANSPORT_MODE_OCEAN = 1;
+}
+
+// A calendar date without a timezone.
+message Date {
+  // A common era year.
+  int32 year = 1;
+  // The month number (January = 1, December = 12, and so on).
+  int32 month = 2;
+  // The day of the month.
+  int32 day = 3;
+}
+
+// Surcharge Type.
+// May be "%"=Percent of the cargo rate, "Mandatory" for obligatoric surcharges
+// and "Conditional" for surcharges witch only apply if appropriate.
+enum SurchargeType {
+  SURCHARGE_TYPE_INVALID = 0;
+  SURCHARGE_TYPE_PERCENT_OF_THE_CARGO_RATE = 1;
+  SURCHARGE_TYPE_MANDATORY = 2;
+  SURCHARGE_TYPE_CONDITIONAL = 3;
+}
+
+// Surcharge Category Type.
+// Classifies the surcharge to be assigned "container" or "document".
+// Possible values are "Cntr" and "Doc".
+enum SurchargeCategoryType {
+  SURCHARGE_CATEGORY_TYPE_INVALID = 0;
+  SURCHARGE_CATEGORY_TYPE_CONTAINER = 1;
+  SURCHARGE_CATEGORY_TYPE_DOCUMENT = 2;
+}
+
+// Classification Type.
+// Classifies the surcharge to be general or assigned to loading or discharge activities.
+// Possible values are "General", "Loading" and "Discharge".
+enum SurchargeClassificationType {
+  SURCHARGE_CLASSIFICATION_TYPE_INVALID = 0;
+  SURCHARGE_CLASSIFICATION_TYPE_GENERAL = 1;
+  SURCHARGE_CLASSIFICATION_TYPE_LOADING = 2;
+  SURCHARGE_CLASSIFICATION_TYPE_DISCHARGE = 3;
+}

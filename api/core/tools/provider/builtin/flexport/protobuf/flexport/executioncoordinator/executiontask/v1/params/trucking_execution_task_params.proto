@@ -1,0 +1,23 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingExecutionTaskParamsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+import "flexport/executioncoordinator/executiontask/v1/params/drayage_execution_task_params.proto";
+import "flexport/executioncoordinator/executiontask/v1/params/trucking_consol_execution_task_params.proto";
+import "flexport/executioncoordinator/executiontask/v1/params/trucking_direct_execution_task_params.proto";
+
+// A wrapper message for TruckingExecutionTask parameters.
+message TruckingExecutionTaskParams {
+  oneof params {
+    DrayageExecutionTaskParams drayage = 1;
+    TruckingConsolExecutionTaskParams trucking_consol = 2;
+    TruckingDirectExecutionTaskParams trucking_direct = 3;
+  }
+}

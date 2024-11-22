@@ -1,0 +1,15 @@
+// TEAM: customs_gateway
+
+syntax = "proto3";
+
+package flexport.productdataengine.productdeleted.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ProductDeletedProto";
+option java_package = "com.flexport.productdataengine.productdeleted.v1beta1";
+option ruby_package = "Flexport::ProductDataEngine::ProductDeleted::V1Beta1";
+
+// A product has been deleted.
+message ProductDeleted {
+  string product_fid = 1;
+}

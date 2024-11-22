@@ -1,0 +1,95 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.payments.bill.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BillProto";
+option java_package = "com.flexport.payments.bill.v1beta1";
+option ruby_package = "Flexport::Payments::Bill::V1Beta1";
+
+// The goods bought by flexport which can be billed to us.
+enum Billable {
+  BILLABLE_INVALID = 0;
+  BILLABLE_SHIPMENT = 1;
+}
+
+// Details of what the payment is for.
+message Item {
+  string description = 1;
+  double price = 2;
+  string transportation_mode = 3;
+  int32 bill_id = 4;
+  int32 service_item_id = 5;
+  int32 core_id = 6;
+  int32 template_netsuite_id = 7;
+  ItemContext item_context = 8;
+}
+
+// Details of the bill item context.
+message ItemContext {
+  AllocationReferences allocation_references = 1;
+  int32 client_id = 2;
+  string client_name = 3;
+  string flex_id = 4;
+  int32 service_item_id = 5;
+  string transportation_mode = 6;
+  // In most cases this will be empty as a charge code was used
+  string template_fid = 7;
+  // If this is empty then this item likely used a template instead
+  string charge_code_fid = 8;
+  string vendor_bill_item_fid = 9;
+  string charge_group_fid = 10;
+  string blended_charge_code_fid = 11;
+}
+
+// Details of the bill item allocation.
+message AllocationReferences {
+  string shipment_fid = 1;
+}
+
+// A request to make an outgoing payment.
+message Bill {
+  string fid = 1;
+  Billable billable_type = 2;
+  string draft_bill_fid = 3;
+  google.protobuf.Timestamp due_date_time = 4;
+  bool is_vendor_credit = 5;
+  google.protobuf.Timestamp issued_at_time = 6;
+  string name = 7;
+  string netsuite_memo = 8;
+  string currency_code = 9;
+  int32 exchange_rate_id = 10;
+  int32 issuing_entity_id = 11;
+  int32 partner_id = 12;
+  int32 receiving_entity_id = 13;
+  repeated Item items = 14;
+  int32 core_id = 15;
+  google.protobuf.Timestamp pending_approval_at_time = 16;
+  google.protobuf.Timestamp paid_in_full_at_time = 17;
+  int32 netsuite_id = 18;
+  google.protobuf.Timestamp cancelled_at_time = 19;
+  google.protobuf.Timestamp voided_at_time = 20;
+  google.protobuf.Timestamp approved_at_time = 21;
+  bool should_sync_to_netsuite = 22;
+  google.protobuf.Timestamp created_at_time = 23;
+  int32 created_by_user_id = 24;
+  google.protobuf.Timestamp updated_at_time = 25;
+  int32 updated_by_user_id = 26;
+}
+
+// Filters for bill queries.
+message BillFilters {
+  repeated string fids = 1;
+  repeated string names = 2;
+  repeated string partner_ids = 3;
+  repeated string shipment_fids = 4;
+  google.protobuf.StringValue receiving_entity_id = 5;
+  repeated string partial_names = 6;
+  google.protobuf.Timestamp issued_at_start_time = 7;
+  google.protobuf.Timestamp issued_at_end_time = 8;
+}

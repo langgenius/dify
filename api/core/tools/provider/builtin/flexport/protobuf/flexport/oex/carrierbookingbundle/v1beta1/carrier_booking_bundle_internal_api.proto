@@ -1,0 +1,30 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.oex.carrierbookingbundle.v1beta1;
+
+import "flexport/oex/carrierbookingbundle/v1beta1/carrier_booking_bundle.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierBookingBundleInternalApiProto";
+option java_package = "com.flexport.oex.carrierbookingbundle.v1beta1";
+option ruby_package = "Flexport::OEX::CarrierBookingBundle::V1Beta1";
+
+// Internal API for Ocean Execution team to migrate data from Core to OEX NIS.
+service CarrierBookingBundleInternalAPI {
+  // Put CarrierBookingBundle for backfill.
+  rpc PutCarrierBookingBundle(PutCarrierBookingBundleRequest) returns (PutCarrierBookingBundleResponse) {
+    option idempotency_level = IDEMPOTENT;
+  }
+}
+
+message PutCarrierBookingBundleRequest {
+  CarrierBookingBundle carrier_booking_bundle = 1 [deprecated = true];
+  repeated CarrierBookingBundle carrier_booking_bundles = 2;
+}
+
+message PutCarrierBookingBundleResponse {
+  string carrier_booking_fid = 1 [deprecated = true];
+  repeated string carrier_booking_fids = 2;
+}

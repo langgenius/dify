@@ -1,0 +1,27 @@
+// TEAM: trucking
+
+syntax = "proto3";
+
+package flexport.truckingprovider.boomi.v1beta1;
+
+import "flexport/truckingprovider/boomi/v1beta1/cargo_summary.proto";
+import "flexport/truckingprovider/boomi/v1beta1/stop.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DeliveryOrderProto";
+option java_package = "com.flexport.truckingprovider.boomi.v1beta1";
+option ruby_package = "Flexport::TruckingProvider::Boomi::V1Beta1";
+
+// Load type.
+enum LoadType {
+  LOAD_TYPE_INVALID = 0;
+  LOAD_TYPE_TRUCKLOAD = 1;
+}
+
+// Trucking delivery order.
+message Load {
+  string id = 1;
+  LoadType type = 2;
+  CargoSummary cargo = 3;
+  repeated Stop stops = 4;
+}

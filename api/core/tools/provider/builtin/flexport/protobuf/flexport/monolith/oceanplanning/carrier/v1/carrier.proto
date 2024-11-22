@@ -1,0 +1,36 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.monolith.oceanplanning.carrier.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierProto";
+option java_package = "com.flexport.monolith.oceanplanning.carrier.v1";
+option ruby_package = "Flexport::Monolith::OceanPlanning::Carrier::V1";
+
+import "google/protobuf/wrappers.proto";
+
+// Type of vessels operated by the carrier.
+enum TransportationMode {
+  TRANSPORTATION_MODE_INVALID = 0;
+  TRANSPORTATION_MODE_AIR = 1;
+  TRANSPORTATION_MODE_OCEAN = 2;
+  TRANSPORTATION_MODE_TRUCK = 3;
+  TRANSPORTATION_MODE_RAIL = 4;
+}
+
+// Carriers are vessel operators for eg. air, ocean or trucking.
+message Carrier {
+  string fid = 1;
+  // SCAC is only applicable for ocean carriers.
+  google.protobuf.StringValue scac_code = 2;
+  // IATA is only applicable for air carriers.
+  google.protobuf.StringValue iata_code = 3;
+  // In core, each carrier is associated with a single transportation mode.
+  TransportationMode transportation_mode = 4;
+  // Company "display name" which is how we usually see the carrier in Core.
+  google.protobuf.StringValue name = 5;
+  // CargoSmart has a fixed ID for each carrier, which we need to reference when querying.
+  google.protobuf.Int32Value cargo_smart_id = 6;
+}

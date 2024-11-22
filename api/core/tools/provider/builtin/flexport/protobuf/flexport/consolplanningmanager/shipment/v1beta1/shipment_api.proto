@@ -1,0 +1,89 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.consolplanningmanager.shipment.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentApiProto";
+option java_package = "com.flexport.consolplanningmanager.shipment.v1beta1";
+option ruby_package = "Flexport::ConsolPlanningManager::Shipment::V1Beta1";
+
+// warning: this gRPC endpoint is working for backfill data to CPT and not power other usage.
+service ShipmentAPI {
+  rpc UpsertSupplyShipment(UpsertSupplyShipmentRequest) returns (UpsertSupplyShipmentResponse);
+  rpc UpsertDemandShipment(UpsertDemandShipmentRequest) returns (UpsertDemandShipmentResponse);
+}
+
+message UpsertSupplyShipmentRequest {
+  repeated GUpsertSupplyShipment shipments = 1;
+  bool skip_exist_shipments = 2;
+}
+
+message GUpsertSupplyShipment {
+  string fid = 1;
+  int32 consol_status = 2;
+  int32 clp_status = 3;
+  string pol = 4;
+  string pod = 5;
+  string final_port = 6;
+  google.protobuf.Timestamp estimated_departure_date = 7;
+  string client_fid = 8;
+  int32 shipment_business_service = 9;
+  repeated GContainer containers = 10;
+  google.protobuf.Timestamp si_cutoff_time = 11;
+  google.protobuf.Timestamp cy_cutoff_time = 12;
+  google.protobuf.Timestamp vgm_cutoff_time = 13;
+  google.protobuf.Timestamp last_possible_consolidation_date = 14;
+  google.protobuf.Timestamp first_possible_consolidation_date = 15;
+  string warehouse_fid = 16;
+  string carrier_fid = 17;
+  google.protobuf.Timestamp completed_at = 18;
+  google.protobuf.Timestamp deleted_at = 19;
+  google.protobuf.Timestamp archived_at = 20;
+  google.protobuf.Timestamp cfs_cutoff_time = 21;
+}
+
+message GContainer {
+  string number = 1;
+  string type = 2;
+  string size = 3;
+}
+
+message UpsertSupplyShipmentResponse {
+  bool success = 1;
+  repeated string processed_shipment_fids = 2;
+}
+
+message UpsertDemandShipmentRequest {
+  repeated GUpsertDemandShipment shipments = 1;
+  bool skip_exist_shipments = 2;
+}
+
+message GUpsertDemandShipment {
+  string shipment_fid = 1;
+  string supply_shipment_fid = 2;
+  bool frontloaded = 3;
+  string origin_port = 4;
+  string destination_port = 5;
+  google.protobuf.Timestamp crd = 6;
+  string client_fid = 7;
+  int32 shipment_business_service = 8;
+  google.protobuf.Timestamp last_possible_consolidation_date = 9;
+  google.protobuf.Timestamp first_possible_consolidation_date = 10;
+  string warehouse_fid = 11;
+  google.protobuf.Timestamp gate_in_date = 12;
+  int32 is_dangerous_goods = 13;
+  int32 dangerous_goods_review_status = 14;
+  int32 service_level = 15;
+  google.protobuf.Timestamp completed_at = 16;
+  google.protobuf.Timestamp deleted_at = 17;
+  google.protobuf.Timestamp archived_at = 18;
+}
+
+message UpsertDemandShipmentResponse {
+  bool success = 1;
+  repeated string processed_shipment_fids = 2;
+}

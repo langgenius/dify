@@ -1,0 +1,30 @@
+// TEAM: trucking
+
+syntax = "proto3";
+
+package flexport.truckingprovider.boomi.v1beta1;
+
+import "flexport/truckingprovider/boomi/v1beta1/address.proto";
+import "flexport/truckingprovider/boomi/v1beta1/cargo.proto";
+import "flexport/truckingprovider/boomi/v1beta1/stop_times.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "StopProto";
+option java_package = "com.flexport.truckingprovider.boomi.v1beta1";
+option ruby_package = "Flexport::TruckingProvider::Boomi::V1Beta1";
+
+// Customs Status.
+enum StopAction {
+  STOP_ACTION_INVALID = 0;
+  STOP_ACTION_PICKUP = 1;
+  STOP_ACTION_DROPOFF = 2;
+}
+
+// Represents a Stop on a load/route, picking up or dropping off cargo.
+message Stop {
+  int32 id = 1;
+  StopAction action = 2;
+  Address address = 3;
+  StopTimes time = 4;
+  repeated Cargo cargos = 5;
+}

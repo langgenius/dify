@@ -1,0 +1,44 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.storage.tag.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TagProto";
+option java_package = "com.flexport.storage.tag.v1beta1";
+option ruby_package = "Flexport::Storage::Tag::V1Beta1";
+
+// Represents a tag comprised of type, value, and file_object_fid. The value
+// in the tag must match the one specified in the tag type.
+message Tag {
+  string tag_type = 1;
+  string value = 2;
+  string file_object_fid = 3;
+}
+
+// Represents a tag type, which is registered with the system. A tag type belongs to a team
+// and/or namespace.
+// A tag type is associated with each tag, which must have a value that matches the specified
+// value in the tag type. Currently, we are only supporting string tags.
+message TagType {
+  // Specifies which types a tag can be.
+  enum ValueType {
+    // This is an invalid value type. Do not use.
+    VALUE_TYPE_INVALID = 0;
+    VALUE_TYPE_STRING = 1;
+  }
+  // A manually generated UUID that will be used to ensure the uniqueness of each tag type.
+  // Will be stored in the Tag record.
+  string id = 1;
+  // Formal name of the tag type, ie: "Shipment Fid".
+  string name = 2;
+  // Slug used to look up the tag_type, ie: "shipment_fid".
+  string slug = 3;
+  // Currently only supporting String tag types.
+  ValueType type = 4;
+  // The team that owns this tag.
+  string team = 5;
+  //The namespace that this tag belongs to.
+  string namespace = 6;
+}

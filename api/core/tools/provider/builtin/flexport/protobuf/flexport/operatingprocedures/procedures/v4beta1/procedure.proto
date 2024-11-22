@@ -1,0 +1,156 @@
+// TEAM: work_management
+
+syntax = "proto3";
+
+package flexport.operatingprocedures.procedures.v4beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ProcedureProto";
+option java_package = "com.flexport.operatingprocedures.procedures.v4beta1";
+option ruby_package = "Flexport::OperatingProcedures::Procedures::V4Beta1";
+
+// Represents an operating procedure.
+message Procedure {
+  string procedure_fid = 1;
+  string procedure_type = 2;
+  string client_fid = 3;
+  google.protobuf.Timestamp created_time = 4;
+  google.protobuf.Timestamp updated_time = 5;
+  google.protobuf.Timestamp deleted_time = 6;
+  string created_by_fid = 7;
+  google.protobuf.StringValue updated_by_fid = 8;
+  repeated Attribute criteria = 9;
+  repeated Attribute body = 10;
+  EmailSOPBody email_procedure_body = 11;
+  AutomationConfig automation_config = 12;
+}
+
+// Represents criteria or body attributes.
+message Attribute {
+  string key = 1;
+  repeated string values = 2;
+}
+
+// Represents a way of defining date with a milestone and an offset
+message AnchorDate {
+  ShipmentMilestoneDate milestone_date = 1;
+  AnchorOffset offset = 2;
+}
+
+// Represents the offset, with values and units (e.g. hours / days)
+message AnchorOffset {
+  int32 offset_value = 1;
+  AnchorOffsetUnit offset_unit = 2;
+}
+
+message AutomationConfig {
+  bool automatable = 1;
+  AnchorDate automation_due_date = 2;
+}
+
+// Represents the procedure body for a procedure pertaining to emails (i.e. ASN, AN, DO, PreAlert), which contains fields that
+// the email types have in common, as well as a field for the specific procedure fields for that kind of email SOP.
+message EmailSOPBody {
+  // Related to automation
+  bool email_required = 1;
+  bool automatable = 2;
+
+  // Shared email-related fields
+  repeated string recipients = 5;
+  repeated string cc_recipients = 6;
+  string email_template_fid = 7;
+  repeated string document_attachments = 8;
+
+  // DEPRECATED
+  // TODO: ATH-397 Deprecate all following fields
+  ShipmentMilestoneDate send_email_anchor_date = 3;
+  int32 send_email_anchor_offset = 9;
+  string send_email_anchor_offset_unit = 10;
+  AnchorOffsetUnit send_email_anchor_offset_unit_enum = 11;
+
+  // fields related to SLA and trigger
+  // e.g. "1 day after actual time arrival"
+  // "1" = offset; "day" = unit; "actual time arrival" = milestone_date
+  ShipmentMilestoneDate sla_milestone_date = 12;
+  int32 sla_timeline_offset = 13;
+  AnchorOffsetUnit sla_offset_unit = 14;
+  ShipmentMilestoneDate trigger_milestone_date = 15;
+  int32 trigger_timeline_offset = 16;
+  AnchorOffsetUnit trigger_offset_unit = 17;
+
+  // Fields unique to each email type
+  oneof email_procedure_body_details {
+    DOProcedureBody do_procedure_body = 101;
+    ANProcedureBody an_procedure_body = 102;
+    // TODO: ATH-397 Deprecate pre_alert_procedure_body
+    PreAlertProcedureBody pre_alert_procedure_body = 103;
+    ASNProcedureBody asn_procedure_body = 104;
+  }
+}
+
+// Represents the date to which we should anchor our SLA
+enum ShipmentMilestoneDate {
+  SHIPMENT_MILESTONE_DATE_INVALID = 0;
+  SHIPMENT_MILESTONE_DATE_PORT_OF_LOADING_DEPARTURE = 1;
+  SHIPMENT_MILESTONE_DATE_PORT_OF_UNLOADING_ARRIVAL = 2;
+  SHIPMENT_MILESTONE_DATE_CFS_ARRIVAL = 3;
+  SHIPMENT_MILESTONE_DATE_INLAND_PORT_ARRIVAL = 4;
+  SHIPMENT_MILESTONE_DATE_ESTIMATED_PORT_OF_LOADING_DEPARTURE = 5;
+  SHIPMENT_MILESTONE_DATE_ACTUAL_PORT_OF_LOADING_DEPARTURE = 6;
+  SHIPMENT_MILESTONE_DATE_ESTIMATED_PORT_OF_UNLOADING_ARRIVAL = 7;
+  SHIPMENT_MILESTONE_DATE_ACTUAL_PORT_OF_UNLOADING_ARRIVAL = 8;
+  SHIPMENT_MILESTONE_DATE_FINAL_PORT_ARRIVAL = 9;
+  SHIPMENT_MILESTONE_DATE_DESTINATION_CARGO_PICKUP_AVAILABILITY_TIME = 10;
+  SHIPMENT_MILESTONE_DATE_ACTUAL_DEPARTURE_TO_PORT_OF_UNLOADING = 11;
+  SHIPMENT_MILESTONE_DATE_OCEAN_CONTAINER_DISCHARGE = 12;
+}
+
+// Represents the units for sla and trigger dates
+enum AnchorOffsetUnit {
+  ANCHOR_OFFSET_UNIT_INVALID = 0;
+  ANCHOR_OFFSET_UNIT_HOURS = 1;
+  ANCHOR_OFFSET_UNIT_DAYS = 2;
+}
+
+// Represents the fields unique to the body of a DO procedure
+message DOProcedureBody {
+  repeated string additional_subscriber_fids = 1;
+  repeated string delivery_reference_number_tags = 2;
+  bool flexport_scheduled_delivery = 3;
+  int32 auto_send_rail_horizon = 4;
+  int32 auto_send_ltl_fba_horizon = 5;
+}
+
+// Represents the fields unique to the body of an AN procedure
+message ANProcedureBody {
+  string proof_of_import_customs_clearance = 1;
+  repeated DocumentExistenceItem document_existence = 2;
+}
+
+// TODO: ATH-397 Deprecate the following fields
+// Represents the fields unique to the body of a Pre-Alert procedure
+message PreAlertProcedureBody {
+  ShipmentMilestoneDate trigger_milestone_date = 1;
+  string trigger_offset_unit = 2;
+  int32 trigger_timeline_offset = 3;
+  AnchorOffsetUnit trigger_unit_enum = 4;
+}
+
+// Represents the fields unique to the body of an ASN procedure
+message ASNProcedureBody {
+  repeated DocumentExistenceItem document_existence = 1;
+  repeated string release_status = 2;
+  // TODO: ATH-397 Deprecate the following fields
+  ShipmentMilestoneDate trigger_milestone = 3;
+  string trigger_unit = 4;
+  int32 trigger_timeline = 5;
+  AnchorOffsetUnit trigger_unit_enum = 6;
+}
+
+// Represents the fields of document existence (i.e. ["commercial_invoice_packing_list", "commercial_invoice", "packing_list"])
+message DocumentExistenceItem {
+  repeated string documents = 1;
+}

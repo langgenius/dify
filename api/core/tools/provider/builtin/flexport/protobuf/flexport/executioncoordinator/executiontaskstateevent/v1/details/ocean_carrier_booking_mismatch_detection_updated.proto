@@ -1,0 +1,28 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanCarrierBookingMismatchDetectionUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// Carrier Booking mismatch is detected or changed
+message OceanCarrierBookingMismatchDetectionUpdated {
+  string carrier_booking_fid = 1;
+  OceanCarrierBookingMismatchType mismatch_type = 2;
+  // A map of incompatibility type to its error message
+  map<string, string> mismatch_details = 3;
+}
+
+// Represents the mismatch type of a carrier booking.
+enum OceanCarrierBookingMismatchType {
+  OCEAN_CARRIER_BOOKING_MISMATCH_TYPE_INVALID = 0;
+  OCEAN_CARRIER_BOOKING_MISMATCH_TYPE_WITH_SHIPMENT = 1;
+  OCEAN_CARRIER_BOOKING_MISMATCH_TYPE_WITH_FULFILLMENT_PLAN = 2;
+  OCEAN_CARRIER_BOOKING_MISMATCH_TYPE_WITH_SHIPPING_ORDER = 3;
+  OCEAN_CARRIER_BOOKING_MISMATCH_TYPE_AMONG_CARRIER_BOOKINGS = 4;
+  OCEAN_CARRIER_BOOKING_MISMATCH_TYPE_WITH_SAILING_SCHEDULE = 5;
+}

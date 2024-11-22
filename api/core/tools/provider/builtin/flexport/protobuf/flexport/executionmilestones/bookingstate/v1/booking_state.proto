@@ -1,0 +1,24 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executionmilestones.bookingstate.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BookingStateProto";
+option java_package = "com.flexport.executionmilestones.bookingstate.v1";
+option ruby_package = "Flexport::ExecutionMilestones::BookingState::V1";
+
+// Represent booking state.
+// Next ID: 7
+message BookingState {
+  bool require_booking_amendment_approval = 1;
+  string booking_amendment_accepted_by = 2;
+  google.protobuf.Timestamp created_at = 3;
+  // this field is deprecated, use is_verified_by_shipper instead
+  bool is_amended_by_shipper = 4 [deprecated = true];
+  string booking_amendment_fid = 5;
+  bool is_verified_by_shipper = 6;
+}

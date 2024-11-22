@@ -1,0 +1,23 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.carrierintegrationmanager.containerupdate.v1beta1;
+
+import "flexport/carrierintegrationmanager/containerupdate/v1beta1/container_update.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerUpdateApiProto";
+option java_package = "com.flexport.carrierintegrationmanager.containerupdate.v1beta1";
+
+service ContainerUpdateAPI {
+  rpc ListContainerUpdates(ListContainerUpdatesRequest) returns (ListContainerUpdatesResponse);
+}
+
+message ListContainerUpdatesRequest {
+  repeated string so_numbers = 1;
+}
+
+message ListContainerUpdatesResponse {
+  repeated ContainerUpdate container_updates = 1;
+}

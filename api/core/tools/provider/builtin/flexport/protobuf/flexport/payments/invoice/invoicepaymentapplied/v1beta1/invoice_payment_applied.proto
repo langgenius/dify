@@ -1,0 +1,27 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.payments.invoice.invoicepaymentapplied.v1beta1;
+
+import "flexport/payments/invoice/v1beta1/invoice.proto";
+import "flexport/payments/payment/paymentlineitem/v1beta1/payment_line_item.proto";
+import "flexport/payments/payment/v1beta1/payment.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "InvoicePaymentAppliedProto";
+option java_package = "com.flexport.payments.invoice.invoicepaymentapplied.v1beta1";
+option ruby_package = "Flexport::Payments::Invoice::InvoicePaymentApplied::V1Beta1";
+
+// A payment received from a client. It could be applied across multiple invoices.
+// We only include the payment line item for the invoice in question. And emit an event per invoice.
+message InvoicePaymentApplied {
+  flexport.payments.payment.paymentlineitem.v1beta1.PaymentLineItem line_item = 1;
+  flexport.payments.payment.v1beta1.Payment payment = 2;
+  string acting_user_fid = 7;
+  flexport.payments.invoice.v1beta1.Invoice invoice = 8;
+  int64 old_invoice_balance_micros = 9;
+  int64 new_invoice_balance_micros = 10;
+  google.protobuf.Int32Value acting_user_dbid = 11;
+}

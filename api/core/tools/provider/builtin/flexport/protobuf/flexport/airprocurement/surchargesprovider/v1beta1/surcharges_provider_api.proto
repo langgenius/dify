@@ -1,0 +1,32 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.airprocurement.surchargesprovider.v1beta1;
+
+import "flexport/airprocurement/surchargesprovider/v1beta1/od_charge.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SurchargesProviderApiProto";
+option java_package = "com.flexport.airprocurement.surchargesprovider.v1beta1";
+option ruby_package = "Flexport::AirProcurement::SurchargesProvider::V1Beta1";
+
+// This service is used to retrieve surcharges.
+service SurchargesProviderAPI {
+  // Find origin and destination charges matching a given request.
+  rpc FindODCharges(FindODChargesRequest) returns (FindODChargesResponse);
+}
+
+message FindODChargesRequest {
+  google.protobuf.Timestamp shipment_time = 1;
+  flexport.airprocurement.surchargesprovider.v1beta1.AppliesAt applies_at = 2;
+  string port_fid = 3;
+  string country_code = 4;
+  string partner_company_fid = 5;
+  flexport.airprocurement.surchargesprovider.v1beta1.Mode mode = 6;
+}
+
+message FindODChargesResponse {
+  repeated flexport.airprocurement.surchargesprovider.v1beta1.ODCharge charges = 1;
+}

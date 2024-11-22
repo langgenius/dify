@@ -1,0 +1,33 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.payments.invoice.invoicecredited.v1beta1;
+
+import "flexport/payments/invoice/v1beta1/invoice.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "InvoiceCreditedProto";
+option java_package = "com.flexport.payments.invoice.invoicecredited.v1beta1";
+option ruby_package = "Flexport::Payments::Invoice::InvoiceCredited::V1Beta1";
+
+// The details of the credit.
+message CreditMemo {
+  double amount = 1;
+  string currency_code = 2;
+  string reason = 3;
+  int32 broker_id = 4;
+  int32 draft_item_id = 5;
+  int32 netsuite_id = 6;
+}
+
+// A credit has been applied to an invoice.
+message InvoiceCredited {
+  flexport.payments.invoice.v1beta1.Invoice invoice = 1;
+  string acting_user_fid = 2;
+  int64 old_invoice_balance_micros = 3;
+  int64 new_invoice_balance_micros = 4;
+  CreditMemo memo = 5;
+  google.protobuf.Int32Value acting_user_dbid = 6;
+}

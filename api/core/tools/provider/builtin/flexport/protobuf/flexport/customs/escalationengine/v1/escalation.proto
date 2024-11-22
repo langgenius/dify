@@ -1,0 +1,112 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.escalationengine.v1;
+
+import "flexport/customs/escalationengine/v1/bill_of_lading_escalation.proto";
+import "flexport/customs/escalationengine/v1/commercial_invoice_escalation.proto";
+import "flexport/customs/escalationengine/v1/customs_filing_order_escalation.proto";
+import "flexport/customs/escalationengine/v1/customs_pre_order_escalation.proto";
+import "flexport/customs/escalationengine/v1/customs_route_escalation.proto";
+import "flexport/customs/escalationengine/v1/enums.proto";
+import "flexport/customs/escalationengine/v1/network_address_escalation.proto";
+import "flexport/customs/escalationengine/v1/network_company_entity_escalation.proto";
+import "flexport/customs/escalationengine/v1/product_library_escalation.proto";
+import "flexport/customs/escalationengine/v1/us_isf_filing_escalation.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EscalationProto";
+option java_package = "com.flexport.customs.escalationengine.v1";
+option ruby_package = "Flexport::Customs::EscalationEngine::V1";
+
+// An escalation is an issue that has been escalated to the escalation engine,
+// which will route it to a system that can solve it and track whether its revosolved
+// in time.
+message Escalation {
+  // Fid of the escalation
+  string fid = 1;
+  // Entity fid (Product/Order/CI/etc) with the issue
+  string reference_fid = 2;
+  // Escalation-type specific data
+  EscalationType parameters = 3;
+  // When the issue should be resolved
+  google.protobuf.Timestamp due_time = 4;
+
+  // All triggers that determined the current state of this escalation
+  repeated EscalationTrigger triggers = 5;
+
+  google.protobuf.Timestamp created_at_time = 11;
+  optional google.protobuf.Timestamp resolved_at_time = 12;
+}
+
+// A "trigger" for an escalation, a system that encountered a problem that needs resolving.
+// Closely related to an escalation request, see EscalationRequest message
+message EscalationTrigger {
+  // Client the escalation is for
+  string client_fid = 1;
+  // Order the escalation is for
+  string order_fid = 2;
+  // The system that made this escalation
+  string source_system = 3;
+
+  ModeOfTransport mode_of_transport = 4;
+  ServiceType service_type = 5;
+  string import_country = 6;
+
+  google.protobuf.Timestamp created_at_time = 11;
+  optional google.protobuf.Timestamp resolved_at_time = 12;
+}
+
+// Parameters for a specific escalation type.
+message EscalationType {
+  // A oneof of all different escalation types
+  // Try to maintain alphabetical order as best as possible
+  oneof entity_escalation {
+    //AdvanceShippingNoticeEscalation asn = 100;
+    BillOfLadingEscalation bol = 200;
+    CommercialInvoiceEscalation ci = 300;
+    CustomsFilingOrderEscalation cfo = 600;
+    CustomsPreOrderEscalation cpo = 700;
+    CustomsRouteEscalation customs_route = 750;
+    NetworkCompanyEntityEscalation network_company_entity = 800;
+    NetworkAddressEscalation network_address = 900;
+    UsIsfFilingEscalation isf = 2000;
+    ProductLibraryEscalation product = 2500;
+    //CommercialInvoiceOrPackingListEscalation ci_pl = 350;
+    //CommercialInvoiceOrPackingListLineItemEscalation ci_pl_item = 351;
+    //CustomsEntryEscalation entry = 500;
+    //HouseBillOfLadingEscalation hbl = 1200;
+    //MasterBillOfLadingEscalation mbl = 1500;
+    //PackingListEscalation pl = 1700;
+    //PackingListLineItemEscalation pl_item = 1701;
+  }
+}
+
+//message AdvanceShippingNoticeEscalation {}
+
+// Escalation that can be for either a CI or a PL
+//message CommercialInvoiceOrPackingListEscalation {}
+
+// Escalation that can be for either a CI or a PL line item
+//message CommercialInvoiceOrPackingListLineItemEscalation {}
+
+//message CustomsEntryEscalation {}
+
+//message CustomsFilingOrderEscalation {}
+
+// Escalation for only HBL (not MBL)
+//message HouseBillOfLadingEscalation {}
+
+// Escalation for only MBL (not HBL)
+//message MasterBillOfLadingEscalation {}
+
+// Escalation for PL or CI/PL
+//message PackingListEscalation {}
+
+// Escalation for PL or CI/PL line item
+//message PackingListLineItemEscalation {}
+
+// Product from product library escalation
+//message ProductEscalation {}

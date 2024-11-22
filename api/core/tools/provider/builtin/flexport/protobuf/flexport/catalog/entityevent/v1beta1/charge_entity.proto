@@ -1,0 +1,28 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.entityevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ChargeEntityProto";
+option java_package = "com.flexport.catalog.entityevent.v1";
+option ruby_package = "Flexport::Catalog::EntityEvent::V1Beta1";
+
+import "flexport/catalog/chargetype/v1/charge_type.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Data eng entity for Catalog charges.
+message ChargeEntity {
+  google.protobuf.StringValue offering_id = 1;
+  google.protobuf.Timestamp created_time = 2;
+  google.protobuf.Timestamp updated_time = 3;
+  flexport.catalog.chargetype.v1.ChargeTypeDto charge_type = 4;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate activation_date = 5;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate expiration_date = 6;
+  google.protobuf.StringValue rate = 7;
+  google.protobuf.StringValue client_markup_override_map = 8;
+  google.protobuf.StringValue segment_markup_override_map = 9;
+}

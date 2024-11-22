@@ -1,0 +1,196 @@
+// TEAM: network_entities
+
+syntax = "proto3";
+
+package flexport.network.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AddressProto";
+option java_package = "com.flexport.network.v1beta1";
+option ruby_package = "Flexport::Network::V1Beta1";
+
+import "flexport/network/v1beta1/entity_weekly_hours.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// A close analogue of the Network::Address ActiveRecord model.
+message Address {
+  int32 id = 1;
+  string fid = 2;
+  google.protobuf.StringValue name = 3;
+  google.protobuf.StringValue street_address = 4;
+  google.protobuf.StringValue street_address2 = 5;
+  google.protobuf.StringValue city = 6;
+  google.protobuf.StringValue state = 25;
+  google.protobuf.StringValue zip = 24;
+  google.protobuf.StringValue country_code = 7;
+  google.protobuf.StringValue localized_address = 33;
+  google.protobuf.Int32Value company_id = 8;
+  google.protobuf.StringValue company_fid = 9;
+  google.protobuf.Int32Value location_id = 11;
+  google.protobuf.StringValue location_fid = 12;
+  google.protobuf.Int32Value geo_bound_id = 31;
+  google.protobuf.StringValue geo_bound_fid = 32;
+  google.protobuf.DoubleValue lat = 13;
+  google.protobuf.DoubleValue lng = 14;
+  google.protobuf.StringValue subdivision_code = 15;
+  google.protobuf.StringValue country_name = 16;
+  google.protobuf.StringValue timezone = 17;
+  bool residential = 35;
+  bool needs_appointment = 22;
+  bool has_loading_dock = 28;
+  bool needs_help_unloading = 29;
+  google.protobuf.StringValue delivery_note = 23;
+  google.protobuf.StringValue autocomplete_text = 26;
+  google.protobuf.StringValue business_hours = 27;
+  google.protobuf.StringValue company_business_hours = 34;
+  google.protobuf.StringValue company_name = 30;
+  google.protobuf.StringValue hours = 36;
+  google.protobuf.Timestamp deactivated_at = 37;
+  google.protobuf.StringValue iata_code = 38;
+  google.protobuf.StringValue loc_code = 39;
+  bool mailing = 40;
+  bool physical = 41;
+  bool verified = 42;
+  google.protobuf.Int32Value searates_port_id = 43;
+  google.protobuf.Timestamp created_at = 44;
+  // Having all three of created_at, updated_at, and archived_at makes the protobuf library
+  // segfault when calling #inspect. Don't know why.
+  // google.protobuf.Timestamp updated_at = 45;
+  google.protobuf.Timestamp archived_at = 46;
+  AddressType type = 18;
+  oneof type_data {
+    FactoryData factory_data = 19;
+    PortData port_data = 20;
+    TerminalOrCfsData terminal_or_cfs_data = 21;
+  }
+  google.protobuf.Int64Value receiving_hours_id = 47;
+  EntityWeeklyHours receiving_hours = 48;
+}
+
+message ClientFidToAddresses {
+  string client_fid = 1;
+  repeated Address addresses = 2;
+}
+
+
+// The type of the Address.
+enum AddressType {
+  ADDRESS_TYPE_INVALID = 0;
+  ADDRESS_TYPE_NOT_SPECIFIED = 1;
+  ADDRESS_TYPE_FACTORY = 2;
+  ADDRESS_TYPE_PORT = 3;
+  ADDRESS_TYPE_TERMINAL_OR_CFS = 4;
+}
+
+// Extra data for factory-type addresses.
+message FactoryData {
+  google.protobuf.StringValue manufacturer_code = 1;
+  bool manufacturer_code_verified = 2;
+  bool manufacturer_code_accepted = 3;
+  repeated ManufacturerCodeVerification manufacturer_code_verification_history = 4;
+}
+
+// A manufacturer code verification history entry.
+message ManufacturerCodeVerification {
+  // The manufacturer code at the time
+  google.protobuf.StringValue mid = 1;
+  bool verified = 2;
+  google.protobuf.Timestamp time = 3;
+}
+
+// Extra data for port-type addresses.
+message PortData {
+  google.protobuf.StringValue port_name = 1;
+  // The US CBP code for seaports
+  google.protobuf.StringValue port_code = 2;
+  // The ICAO code for airports
+  google.protobuf.StringValue icao_code = 3;
+  // The UN/LOCODE code
+  google.protobuf.StringValue un_name = 4;
+  repeated string aliases = 5;
+  bool seaport = 6;
+  bool airport = 7;
+  bool railport = 8;
+  bool roadport = 9;
+  google.protobuf.Int32Value customs_district_code = 10;
+  repeated PortRegion port_regions = 11;
+}
+
+// PortRegion is a location-based grouping of ports
+message PortRegion {
+  google.protobuf.StringValue name = 1;
+}
+
+// Extra data for terminal-or-cfs-type addresses.
+message TerminalOrCfsData {
+  // The FIRMS code for terminals
+  google.protobuf.StringValue firms_code = 1;
+  google.protobuf.StringValue ftz_firms_code = 14;
+  google.protobuf.StringValue smdg_code = 11;
+  google.protobuf.StringValue ca_subloc_code = 6;
+  google.protobuf.StringValue ca_port_relation = 7;
+  google.protobuf.StringValue ca_warehouse_type = 15;
+  google.protobuf.Int32Value port_id = 9;
+  google.protobuf.StringValue port_fid = 10;
+  google.protobuf.StringValue port_code = 3;
+  bool emea_customs_bonded = 8;
+  FacilityType facility_type = 2;
+  CbpFacilityType cbp_facility_type = 12;
+  TerminalStatus status = 4;
+  WarehousePaymentPreference warehouse_payment_preference = 5;
+  google.protobuf.Int32Value customs_district_code = 13;
+  EntityWeeklyHours pickup_hours = 16;
+}
+
+// The type of the facility.
+enum FacilityType {
+  FACILITY_TYPE_INVALID = 0;
+  FACILITY_TYPE_NOT_SPECIFIED = 1;
+  FACILITY_TYPE_TERMINAL = 2;
+  FACILITY_TYPE_WAREHOUSE = 3;
+}
+
+// The CBP type of the facility.
+enum CbpFacilityType {
+  CBP_FACILITY_TYPE_INVALID = 0;
+  CBP_FACILITY_TYPE_NOT_SPECIFIED = 1;
+  CBP_FACILITY_TYPE_CANADA = 2;
+  CBP_FACILITY_TYPE_CUSTOMS_CONTAINER_STATION = 3;
+  CBP_FACILITY_TYPE_FOREIGN_TRADE_ZONE = 4;
+  CBP_FACILITY_TYPE_PIER = 5;
+  CBP_FACILITY_TYPE_BONDED_WAREHOUSE = 6;
+  CBP_FACILITY_TYPE_INSPECTION_FACILITY = 7;
+  CBP_FACILITY_TYPE_IMPORTER_PREMISES = 8;
+}
+
+// The status of the terminal.
+enum TerminalStatus {
+  TERMINAL_STATUS_INVALID = 0;
+  TERMINAL_STATUS_NOT_SPECIFIED = 1;
+  TERMINAL_STATUS_A = 2;
+  TERMINAL_STATUS_C = 3;
+  TERMINAL_STATUS_D = 4;
+  TERMINAL_STATUS_P = 5;
+  TERMINAL_STATUS_R = 6;
+  TERMINAL_STATUS_S = 7;
+  TERMINAL_STATUS_T = 8;
+  TERMINAL_STATUS_W = 9;
+}
+
+// Payment preference for warehouse.
+message WarehousePaymentPreference {
+  WarehousePaymentType payment_type = 1;
+  google.protobuf.StringValue credit_account_number = 2;
+}
+
+// Type of warehouse payment.
+enum WarehousePaymentType {
+  WAREHOUSE_PAYMENT_TYPE_INVALID = 0;
+  WAREHOUSE_PAYMENT_TYPE_OUTLAY = 1;
+  WAREHOUSE_PAYMENT_TYPE_CREDIT_ACCOUNT = 2;
+  WAREHOUSE_PAYMENT_TYPE_E_PIC = 3;
+  WAREHOUSE_PAYMENT_TYPE_PAY_CARGO = 4;
+  WAREHOUSE_PAYMENT_TYPE_CARGO_SPRINT = 5;
+  WAREHOUSE_PAYMENT_TYPE_WEB_PORTAL = 6;
+}

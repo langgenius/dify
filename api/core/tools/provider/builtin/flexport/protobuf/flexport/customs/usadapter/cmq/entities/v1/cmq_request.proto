@@ -1,0 +1,33 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.cmq.entities.v1;
+
+import "flexport/customs/usadapter/cmq/entities/v1/air_waybill_request.proto";
+import "flexport/customs/usadapter/cmq/entities/v1/bill_of_lading_request.proto";
+import "flexport/customs/usadapter/cmq/entities/v1/entry_request.proto";
+import "flexport/customs/usadapter/cmq/entities/v1/in_bond_request.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.cmq.entities.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Cmq::V1";
+
+message CmqRequest {
+  oneof request_type {
+    EntryRequest entry_request = 1;
+    InBondRequest in_bond_request = 2;
+    BillOfLadingRequest bill_of_lading_request = 3;
+    AirWaybillRequest air_waybill_request = 4;
+  }
+  bool request_for_related_bol_indicator = 5;
+  bool request_for_bol_and_entry_data_indicator = 6;
+  LimitOutputOption limit_output_option = 7;
+}
+
+enum LimitOutputOption {
+  LIMIT_OUTPUT_OPTION_INVALID = 0;
+  LIMIT_OUTPUT_OPTION_MOST_RECENT_NOTIFICATION = 1;
+  LIMIT_OUTPUT_OPTION_LAST_FIVE_NOTIFICATIONS = 2;
+  LIMIT_OUTPUT_OPTION_ALL_NOTIFICATIONS = 3;
+}

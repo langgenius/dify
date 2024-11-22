@@ -1,0 +1,54 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoReceivedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/executioncoordinator/executioncargo/v1/execution_cargo.proto";
+import "google/protobuf/wrappers.proto";
+
+// An event emitted when cargo is received at a warehouse. It contains cargo and customs
+// information related to the cargo that has arrived.
+//
+// This event contains a snapshot of all the cargo for this ExecutionTask
+// that has been received at a warehouse.
+//
+// If the cargo gates in to the warehouse in multiple steps, we will emit this event
+// multiple times. Each time the event is emitted it will contain the complete dimensions
+// of all the cargo that has been received at the warehouse up until the time at which
+// this event is emitted.
+//
+// Note: Treat the cargo information in this event as value objects.
+// Ignore the cargo_fids. They are not reused.
+message CargoReceived {
+  // Address of the warehouse that received the cargo.
+  string address_fid = 1;
+  //
+  // This snapshot represents the cargo associated with this ExecutionTask as it was received
+  // at a warehouse, before any transformations (palletization, release, etc).
+  repeated ReceivedCargo total_received_cargos = 3;
+  repeated ReceivedCargo total_current_cargos = 4 [deprecated = true];
+}
+
+// Description of cargo that has arrived with additional fields.
+message ReceivedCargo {
+  // ExecutionCargo for the received cargo.
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 1;
+  // Additional information about the received cargo.
+  oneof additional_info {
+    ChinaExportInfo china_export_info = 2;
+  }
+}
+
+// Information that is relevant for cargo that is being exported from China.
+message ChinaExportInfo {
+  // Total quantity that was declared to China's customs database
+  google.protobuf.Int32Value declared_quantity = 1;
+  // Total weight that was declared to China's customs database
+  string declared_weight_kg = 2;
+}

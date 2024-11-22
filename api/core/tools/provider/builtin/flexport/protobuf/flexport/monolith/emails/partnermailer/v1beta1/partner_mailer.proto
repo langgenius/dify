@@ -1,0 +1,42 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.monolith.emails.partnermailer.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PartnerMailerProto";
+option java_package = "com.flexport.monolith.emails.partnermailer.v1beta1";
+option ruby_package = "Flexport::Monolith::Emails::PartnerMailer::V1Beta1";
+
+service PartnerMailerAPI {
+  rpc GetDeliveryContactEmails(GetDeliveryContactEmailsRequest) returns (GetDeliveryContactEmailsResponse);
+  rpc GetDefaultCc(GetDefaultCcRequest) returns (GetDefaultCcResponse);
+  rpc IsCargoConfirmed(IsCargoConfirmedRequest) returns (IsCargoConfirmedResponse);
+}
+
+message GetDeliveryContactEmailsRequest {
+  string shipment_fid = 1;
+}
+
+message GetDeliveryContactEmailsResponse {
+  repeated string emails = 1;
+}
+
+message GetDefaultCcRequest {
+  string shipment_fid = 1;
+  string notification_type_slug = 2;
+  repeated string additional_cc = 3;
+}
+
+message GetDefaultCcResponse {
+  repeated string emails = 1;
+}
+
+message IsCargoConfirmedRequest {
+  string shipment_id = 1;
+}
+
+message IsCargoConfirmedResponse {
+  bool is_confirmed = 1;
+}

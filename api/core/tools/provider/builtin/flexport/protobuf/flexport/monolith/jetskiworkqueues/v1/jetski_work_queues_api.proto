@@ -1,0 +1,34 @@
+// TEAM: application_framework
+
+syntax = "proto3";
+
+package flexport.monolith.jetskiworkqueues.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "JetskiWorkQueuesApiProto";
+option java_package = "com.flexport.monolith.jetskiworkqueues.v1";
+option ruby_package = "Flexport::Monolith::JetskiWorkQueues::V1";
+
+import "google/protobuf/struct.proto";
+
+// This is the API for managing jetski related data.
+// Production readiness: https://docs.google.com/document/d/1Ul5N-wQFBvu1BpbRJeuos_fsgIvqXylMMTQpvWKsAKs
+service JetskiWorkQueuesAPI {
+  // Create or update a Jetski DataVector. If updating, the vector_data is shallow merged on top of
+  // the exising data.
+  rpc UpsertVector(UpsertVectorRequest) returns (UpsertVectorResponse);
+}
+
+message UpsertVectorRequest {
+  // The name of the vector as registered in engines/jetski_work_queues/app/constants/jetski_work_queues/constants/registered_vectors.rb
+  string vector_name = 1;
+  string source_resource_id = 2;
+  // The vector data to send. This is named info becuase "data" and "vector_data" are banned via
+  // lint rules.
+  google.protobuf.Struct info = 3;
+  // The event that triggered the this update. This is passed along with metrics and can be useful
+  // to filter by in some datadog dashboards. If you aren't sure what to put, use your service name.
+  string triggered_by = 4;
+}
+
+message UpsertVectorResponse {}

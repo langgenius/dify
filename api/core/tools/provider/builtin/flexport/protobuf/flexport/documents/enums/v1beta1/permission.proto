@@ -1,0 +1,18 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.documents.enums.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PermissionProto";
+option java_package = "com.flexport.documents.enums.v1beta1";
+option ruby_package = "Flexport::Documents::Enums::V1Beta1";
+
+enum Permission {
+  PERMISSION_INVALID = 0;
+  PERMISSION_NO_PERMISSION = 1;
+  PERMISSION_VIEWER = 2;
+  PERMISSION_EDITOR = 3;
+  PERMISSION_OWNER = 4;
+}

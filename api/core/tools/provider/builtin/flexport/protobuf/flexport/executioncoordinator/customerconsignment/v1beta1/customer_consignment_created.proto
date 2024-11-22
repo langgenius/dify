@@ -1,0 +1,18 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.customerconsignment.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomerConsignmentCreatedProto";
+option java_package = "com.flexport.executioncoordinator.customerconsignment.v1beta1";
+option ruby_package = "Flexport::ExecutionCoordinator::CustomerConsignment::V1Beta1";
+
+// A Customer Consignment has been created.
+message CustomerConsignmentCreated {
+  // The time the Customer Consignment was created.
+  google.protobuf.Timestamp created_time = 1;
+}

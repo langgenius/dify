@@ -1,0 +1,66 @@
+// TEAM: network_entities
+
+// DEPRECATED. See protobuf/flexport/network/v1beta1/network_api.proto instead.
+
+syntax = "proto3";
+
+package flexport.monolith.networkentities.companyentity.v1;
+
+import "flexport/monolith/networkentities/companyentity/v1/company_entity.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CompanyEntityApiProto";
+option java_package = "com.flexport.monolith.networkentities.companyentity.v1";
+option ruby_package = "Flexport::Monolith::NetworkEntities::CompanyEntity::V1";
+
+// This service is used by any NIS to retrieve CompanyEntity from monolith DB.
+// Initially it will be used by Finance team's lately extracted NIS.
+// Production readiness: https://docs.google.com/document/d/1u5ps7A5tS-Mj-hd3AT8A_tH4U5L1uNOzVQb-UdoFen0/edit#
+service CompanyEntityAPI {
+  // Get company entity for a given fid (Flexport Resource Identifiers).
+  rpc GetCompanyEntity(GetCompanyEntityRequest) returns (GetCompanyEntityResponse);
+  // Get all company entity for a given company_fid (Flexport Resource Identifiers).
+  rpc GetAllCompanyEntities(GetAllCompanyEntitiesRequest) returns (GetAllCompanyEntitiesResponse);
+  // Get company entity for a given external reference, account_id. Auto token is a place holder right now
+  rpc GetCompanyEntityByExternalRef(GetCompanyEntityByExternalRefRequest) returns (GetCompanyEntityByExternalRefResponse);
+  // Get company entities for a list of client FIDs.
+  //
+  // The primary operating company entity is returned for each client.
+  // The returned entities are in no particular order, and can be matched to the request using
+  // the [client_fid] field. Clients that were not found will not have a matching return entry.
+  rpc GetCompanyEntityByClient(GetCompanyEntityByClientRequest) returns (GetCompanyEntityByClientResponse);
+}
+
+message GetCompanyEntityRequest {
+  string company_entity_fid = 1;
+}
+
+message GetCompanyEntityResponse {
+  CompanyEntityDTO company_entity_dto = 1;
+}
+
+message GetAllCompanyEntitiesRequest {
+  string company_fid = 1;
+}
+
+message GetAllCompanyEntitiesResponse {
+  repeated CompanyEntityDTO company_entity_dtos = 1;
+}
+
+message GetCompanyEntityByExternalRefRequest {
+  string external_ref = 1;
+  string company_account_fid = 2;
+  string auth_token = 3;
+}
+
+message GetCompanyEntityByExternalRefResponse {
+  CompanyEntityDTO company_entity_dto = 1;
+}
+
+message GetCompanyEntityByClientRequest {
+  repeated string client_fids = 1;
+}
+
+message GetCompanyEntityByClientResponse {
+  repeated CompanyEntityDTO company_entity_dtos = 1;
+}

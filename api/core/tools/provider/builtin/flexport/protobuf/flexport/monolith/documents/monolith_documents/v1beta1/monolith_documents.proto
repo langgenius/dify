@@ -1,0 +1,146 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.monolith.documents.monolithdocuments.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MonolithDocumentsProto";
+option java_package = "com.flexport.monolith.documents.monolithdocuments.v1beta1";
+option ruby_package = "Flexport::Monolith::Documents::MonolithDocuments::V1Beta1";
+
+// Represents the file attachment.
+// if file_object_fid provided, controller will ignore content, content_type, and size fields
+message FileAttachment {
+  bytes content = 1;
+  string filename = 2;
+  string content_type = 3;
+  uint32 size = 4;
+  optional string file_object_fid = 5;
+}
+
+// A message that can be used to further refine a query.
+message DocumentQueryProperties {
+  google.protobuf.UInt64Value document_type_id = 1;
+  google.protobuf.StringValue attachment_filename = 2;
+  google.protobuf.BoolValue internal = 3;
+  google.protobuf.BoolValue ignored = 4;
+  google.protobuf.BoolValue archived = 5;
+}
+
+// A message that can be used to update a document's attributes.
+message DocumentUpdateProperties {
+  google.protobuf.UInt64Value document_type_id = 1;
+  google.protobuf.StringValue attachment_filename = 2;
+  google.protobuf.BoolValue internal = 3;
+  google.protobuf.BoolValue ignored = 4;
+  // A list of viewing party company ids.
+  message ViewingPartyIds {
+    repeated uint64 viewing_party_ids = 5;
+  }
+  ViewingPartyIds viewing_party_ids = 5;
+  google.protobuf.StringValue document_type = 6;
+}
+
+// A message containing information about the document.
+message DocumentResponse {
+  string fid = 1;
+  uint64 legacy_document_dbid = 2;
+  DocumentType document_type = 3;
+  string documentable_type = 4;
+  uint64 legacy_documentable_dbid = 5;
+  google.protobuf.StringValue name = 6;
+  google.protobuf.Timestamp created_at_time = 7;
+  google.protobuf.Timestamp archived_at_time = 8;
+  google.protobuf.Timestamp expires_at_time = 9;
+  google.protobuf.StringValue attachment_fingerprint = 10;
+  google.protobuf.StringValue attachment_filename = 11;
+  google.protobuf.BoolValue internal = 12;
+  google.protobuf.BoolValue ignored = 13;
+  repeated uint64 viewing_party_ids = 14;
+  google.protobuf.StringValue memo = 15;
+  uint64 file_size_in_bytes = 16;
+  string uploaded_by_user_fid = 17;
+  string uuid = 18;
+  string file_object_fid = 19;
+  google.protobuf.StringValue attachment_content_type = 20;
+}
+
+// A message containing information about the document type.
+message DocumentType {
+  uint64 legacy_dbid = 1;
+  string name = 2;
+  string slug = 3;
+}
+
+// A message for document created event.
+// Note: depending on the source of document upload, listen to DocumentUpdated event too.
+// Uploading a doc in Core initially creates an dummy document record with "unknown" document type and marked archived.
+// After user saves the form, the document record is updated with the correct document type and unarchived.
+// Doc Upload Flow diagram: https://flexport.atlassian.net/wiki/spaces/EN/pages/2640576684/Document+Upload+Flows
+message DocumentCreated {
+  string document_fid = 1;
+  Document document = 2;
+}
+
+// A message for document updated event. (filename, doc_type_slug, archived_by_user_fid, memo)
+message DocumentUpdated {
+  string document_fid = 1;
+  google.protobuf.Timestamp updated_at_time = 2;
+  repeated DocumentUpdatedAttribute updated_attributes = 3;
+  Document document = 4;
+}
+
+// A message for document deleted event.
+message DocumentDeleted {
+  string document_fid = 1;
+  google.protobuf.Timestamp deleted_at_time = 2;
+}
+
+// A message describing the updated attribute and its previous value + new value
+message DocumentUpdatedAttribute {
+  AttributeUpdated attribute_updated = 1;
+  string previous_value = 2;
+  string new_value = 3;
+}
+
+// Enums of updateable attributes
+enum AttributeUpdated {
+  ATTRIBUTE_UPDATED_INVALID = 0;
+  ATTRIBUTE_UPDATED_FILENAME = 1;
+  ATTRIBUTE_UPDATED_DOCUMENT_TYPE_SLUG = 2;
+  ATTRIBUTE_UPDATED_ARCHIVED_BY_USER_FID = 3;
+  ATTRIBUTE_UPDATED_DOCUMENT_MEMO = 4;
+  ATTRIBUTE_UPDATED_UNARCHIVED = 5;
+  ATTRIBUTE_UPDATED_FILE_OBJECT_FID = 6;
+}
+
+// A message about a document
+message Document {
+  string document_fid = 1;
+  string name = 2;
+  string document_type_slug = 3;
+  string document_memo = 4;
+  string uploaded_by_user_fid = 5;
+  google.protobuf.Timestamp created_at_time = 6;
+  string documentable_fid = 7;
+  string file_object_fid = 8;
+  google.protobuf.Timestamp archived_at_time = 9;
+  string archived_by_user_fid = 10;
+  string signed_by_user_fid = 11;
+  google.protobuf.Timestamp generated_at = 12;
+  google.protobuf.Timestamp signed_at = 13;
+  google.protobuf.Timestamp updated_at_time = 14;
+  repeated string viewing_party_fids = 15;
+}
+
+// A message about a document
+message DocumentViewingPartiesUpdated {
+  string document_fid = 1;
+  repeated string viewing_party_fids = 2;
+  repeated string viewing_party_fids_added = 3;
+  repeated string viewing_party_fids_removed = 4;
+}

@@ -1,0 +1,189 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.airshippingdoc.houseairwaybill.v1beta1;
+
+import "flexport/airshippingdoc/genericmodel/v1beta1/generic_model.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "HouseAirWaybillProto";
+option java_package = "com.flexport.airshippingdoc.houseairwaybill.v1beta1";
+option ruby_package = "Flexport::AirShippingDoc::HouseAirWaybill::V1Beta1";
+
+message HouseAirWaybill {
+  int32 id = 1;
+  google.protobuf.StringValue house_number = 2;
+  google.protobuf.StringValue master_air_waybill_number = 3;
+  flexport.airshippingdoc.genericmodel.v1beta1.InvolvedPartyInformation shipper = 4;
+  google.protobuf.StringValue shipper_addition_info = 5;
+  flexport.airshippingdoc.genericmodel.v1beta1.InvolvedPartyInformation consignee = 6;
+  google.protobuf.StringValue consignee_additional_info = 7;
+  IssuingAgent issuing_agent = 8;
+
+  flexport.airshippingdoc.genericmodel.v1beta1.Address destination_address = 9;
+
+  Port departure_port = 10;
+  Port destination_port = 11;
+
+  Cargo cargo = 12;
+
+  google.protobuf.StringValue document_uuid = 13;
+
+  google.protobuf.StringValue description_of_goods = 14;
+  google.protobuf.StringValue handling_info = 15;
+  google.protobuf.StringValue marks_and_labels = 16;
+  google.protobuf.StringValue chgs_code = 17;
+  google.protobuf.StringValue sci = 18;
+  google.protobuf.StringValue accounting_info = 19;
+  google.protobuf.StringValue assigned_station_code = 20;
+
+  ReviewStatuses dg_review_status = 21;
+
+  bool is_complete = 22;
+  bool is_on_sensitive_countries_hold = 23;
+
+  google.protobuf.StringValue total_rate = 24;
+  google.protobuf.FloatValue other_agent_charge = 25;
+  google.protobuf.FloatValue other_carrier_charge = 26;
+  google.protobuf.StringValue other_charges = 27;
+  google.protobuf.StringValue rate_per_charge = 28;
+  google.protobuf.FloatValue tax_charge = 29;
+  google.protobuf.FloatValue valuation_charge = 30;
+  google.protobuf.FloatValue weight_charge = 31;
+
+  google.protobuf.Timestamp last_saved = 32 [deprecated = true];
+
+  // newly added fields to keep align with persistence entity.
+  google.protobuf.StringValue airline_code_number = 33;
+  google.protobuf.StringValue serial_number = 34;
+  google.protobuf.StringValue logo = 35;
+  google.protobuf.StringValue contact_phone = 36;
+  google.protobuf.StringValue contact_email = 37;
+  google.protobuf.StringValue departure_airport_city = 38 [deprecated = true];
+  google.protobuf.StringValue first_arrival_airport_iata = 39;
+  google.protobuf.StringValue first_carrier_name = 40;
+  google.protobuf.StringValue second_arrival_airport_iata = 41;
+  google.protobuf.StringValue second_carrier_iata = 42;
+  google.protobuf.StringValue third_arrival_airport_iata = 43;
+  google.protobuf.StringValue third_carrier_iata = 44;
+  google.protobuf.StringValue destination_airport_city = 45 [deprecated = true];
+  google.protobuf.StringValue first_flight_with_date = 46;
+  google.protobuf.StringValue second_flight_with_date = 47;
+  google.protobuf.StringValue reference_code = 48;
+  google.protobuf.StringValue currency_code = 49;
+  google.protobuf.StringValue number_of_pieces = 50;
+  google.protobuf.StringValue gross_weight = 51;
+  google.protobuf.StringValue weight_unit = 52;
+  google.protobuf.StringValue chargable_weight = 53 [deprecated = true];
+
+  google.protobuf.Int32Value cargo_id = 54;
+  repeated google.protobuf.Int32Value cargo_receipt_ids = 55;
+  google.protobuf.StringValue nature_quantity_of_goods = 56;
+  google.protobuf.StringValue shipper_agent_signature = 57;
+  google.protobuf.StringValue carrier_agent_executed_on = 58;
+  google.protobuf.StringValue carrier_agent_executed_at = 59;
+  google.protobuf.StringValue carrier_agent_signature = 60;
+  google.protobuf.StringValue filename = 61;
+  google.protobuf.Timestamp created_at = 62;
+  bool created_by_origin_agent = 63;
+  google.protobuf.StringValue creator_address = 64;
+  bool draft_state = 65;
+
+  google.protobuf.Int32Value shipment_id = 66;
+  flexport.airshippingdoc.genericmodel.v1beta1.PaymentMethod other_payment = 67;
+  flexport.airshippingdoc.genericmodel.v1beta1.PaymentMethod wt_val_payment = 68;
+  google.protobuf.Timestamp updated_at = 69;
+  google.protobuf.StringValue bill_of_lading_id = 70;
+  google.protobuf.StringValue chargeable_weight = 71;
+}
+
+message IssuingAgent {
+  google.protobuf.StringValue iata_code = 1;
+  google.protobuf.StringValue selected_station_code = 2;
+  repeated IataCode possible_iata_codes = 3;
+  flexport.airshippingdoc.genericmodel.v1beta1.CompanyEntity company_entity = 4;
+  repeated flexport.airshippingdoc.genericmodel.v1beta1.CompanyEntity origin_agents = 5;
+  repeated IataCodeMetadata iata_code_metadata = 6;
+  google.protobuf.StringValue city = 7;
+  google.protobuf.Int32Value contact_id = 8;
+  google.protobuf.Int32Value address_id = 9;
+}
+
+message IataCode {
+  google.protobuf.StringValue city = 1;
+  google.protobuf.StringValue iata_code = 2;
+  google.protobuf.StringValue station_code = 3;
+}
+
+message IataCodeMetadata {
+  google.protobuf.Int32Value company_entity_id = 1;
+  google.protobuf.StringValue iata_code = 2;
+}
+
+message Port {
+  google.protobuf.StringValue iata_code = 1;
+  google.protobuf.StringValue port_name = 2;
+  google.protobuf.StringValue country_code = 3;
+  google.protobuf.StringValue city = 4;
+}
+
+message Cargo {
+  bool metric_units = 1;
+  google.protobuf.FloatValue volume = 2;
+  google.protobuf.FloatValue weight = 3;
+  google.protobuf.Int32Value slac = 4;
+  repeated ShippingUnit shipping_units = 5;
+  google.protobuf.Int32Value id = 6;
+}
+
+message ShippingUnit {
+  google.protobuf.Int32Value dbid = 1;
+  google.protobuf.Int32Value atomic_count = 2;
+  google.protobuf.Int32Value count = 3;
+  ShippingUnitType unit_type = 4;
+  google.protobuf.FloatValue height = 5;
+  google.protobuf.FloatValue width = 6;
+  google.protobuf.FloatValue length = 7;
+  google.protobuf.FloatValue weight = 8;
+  google.protobuf.FloatValue volume = 9;
+  bool weight_metric_units = 10;
+  bool volume_metric_units = 11;
+  bool dimension_metric_units = 12;
+}
+
+enum ShippingUnitType {
+  SHIPPING_UNIT_TYPE_INVALID = 0;
+  SHIPPING_UNIT_TYPE_BAG = 1;
+  SHIPPING_UNIT_TYPE_BALE = 2;
+  SHIPPING_UNIT_TYPE_BARREL = 3;
+  SHIPPING_UNIT_TYPE_BIN = 4;
+  SHIPPING_UNIT_TYPE_BOX = 5;
+  SHIPPING_UNIT_TYPE_BULK = 6;
+  SHIPPING_UNIT_TYPE_BUNDLE = 7;
+  SHIPPING_UNIT_TYPE_CARTON = 8;
+  SHIPPING_UNIT_TYPE_CASE = 9;
+  SHIPPING_UNIT_TYPE_CRATE = 10;
+  SHIPPING_UNIT_TYPE_DRUM = 11;
+  SHIPPING_UNIT_TYPE_PACKAGE = 12;
+  SHIPPING_UNIT_TYPE_PAIL = 13;
+  SHIPPING_UNIT_TYPE_PALLET = 14;
+  SHIPPING_UNIT_TYPE_PIECE = 15;
+  SHIPPING_UNIT_TYPE_ROLL = 16;
+  SHIPPING_UNIT_TYPE_SACK = 17;
+  SHIPPING_UNIT_TYPE_SET = 18;
+  SHIPPING_UNIT_TYPE_TOTE = 19;
+}
+
+enum ReviewStatuses {
+  REVIEW_STATUSES_INVALID = 0;
+  REVIEW_STATUSES_CARRIER_BOOKING_APPROVED = 1;
+  REVIEW_STATUSES_COMPLETE = 2;
+  REVIEW_STATUSES_DENIED = 3;
+  REVIEW_STATUSES_IN_PROGRESS = 4;
+  REVIEW_STATUSES_MISFLAGGED = 5;
+  REVIEW_STATUSES_NOT_APPLICABLE = 6;
+  REVIEW_STATUSES_PENDING = 7;
+}

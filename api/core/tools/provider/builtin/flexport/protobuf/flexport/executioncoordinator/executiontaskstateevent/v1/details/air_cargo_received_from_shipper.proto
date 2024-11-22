@@ -1,0 +1,32 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AirCargoReceivedFromShipperProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "google/protobuf/timestamp.proto";
+
+// This event indicates that a portion of cargo was received at a given origin port.
+message AirCargoReceivedFromShipper {
+  // Do not use. Use route_shape_leg_fid instead.
+  string cargo_fid = 1 [deprecated = true];
+  // Port of origin i.e. where the cargo was received.
+  string port_of_loading_fid = 2;
+  // The carrier operating the flight.
+  string carrier_fid = 3;
+  // Flight number e.g. DL1234.
+  string flight_number = 4;
+  // The nine-digit air waybill number.
+  string air_waybill_number = 5;
+  // When the cargo was received
+  google.protobuf.Timestamp received_at_time = 6;
+  //
+  // The leg that this cargo is for. If blank, this event applies
+  // to all legs/cargo on the execution task.
+  string route_shape_leg_fid = 7;
+}

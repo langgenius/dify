@@ -1,0 +1,71 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/exception/container_carrier_hold.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/exception/container_customs_hold.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/exception/container_demurrage_incurred.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/exception/container_discharge_delay.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/exception/container_empty_not_returned.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/exception/container_group_rolled.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/exception/container_hold_other.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/exception/container_terminal_departure_delay.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/exception/early_delivery_expected.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/exception/ocean_vessel_delay.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/exception/rail_delay.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/exception/schedule_estimated_date_conflicts_with_trucker_schedule.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/exception/warehouse_unable_to_include_children_in_consolidation.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionTaskExceptionFiledProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// An exception related to an ExecutionTask has occurred.
+message ExecutionTaskExceptionFiled {
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime date_of_exception = 1;
+  google.protobuf.Int32Value estimated_transit_time_impact = 2;
+  // TODO: root cause
+  // TODO: priority
+  // TODO: viewable by
+  string external_message = 3;
+  string internal_message = 4;
+  // Details about the exception, possibly with structured info within each exception proto.
+  oneof exception {
+    //
+    // Container-related holds.
+    ContainerCarrierHold container_carrier_hold = 101;
+    ContainerCustomsHold container_customs_hold = 102;
+    ContainerHoldOther container_hold_other = 103;
+    //
+    // Container-related delays.
+    ContainerDischargeDelay container_discharge_delay = 104;
+    ContainerTerminalDepartureDelay container_terminal_departure_delay = 105;
+    //
+    // Container-related deadlines.
+    ContainerDemurrageIncurred container_demurrage_incurred = 106;
+    ContainerEmptyNotReturned container_empty_not_returned = 107;
+    //
+    // Container group-related exceptions
+    ContainerGroupRolled container_group_rolled = 108;
+    //
+    // Scheduling exceptions.
+    ScheduleEstimatedDateConflictsWithTruckerSchedule schedule_estimated_date_conflicts_with_trucker_schedule = 110;
+    //
+    // Ocean-related exceptions.
+    OceanVesselDelay ocean_vessel_delay = 201;
+    //
+    // Rail-related exceptions.
+    RailDelay rail_delay = 301;
+    //
+    // General exceptions.
+    EarlyDeliveryExpected early_delivery_expected = 401;
+    //
+    // Consolidation exceptions.
+    WarehouseUnableToIncludeChildrenInConsolidation warehouse_unable_to_include_children_in_consolidation = 501;
+  }
+}

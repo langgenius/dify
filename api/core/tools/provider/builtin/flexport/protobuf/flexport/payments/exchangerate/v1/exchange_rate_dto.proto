@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package flexport.payments.exchangerate.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ExchangeRateDtoProto";
+option java_package = "com.flexport.payments.exchangerate.v1";
+option ruby_package = "Flexport::Payments::ExchangeRate::V1";
+
+import "google/protobuf/timestamp.proto";
+
+// Exchange rate dto with fields.
+message ExchangeRateDto {
+  map<string, double> rates = 1;
+  google.protobuf.Timestamp effective_at_time = 2;
+  int32 id = 3;
+}

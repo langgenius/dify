@@ -1,0 +1,27 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.schedulemanager.entityevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PostCarrierBookingInitialScheduleUpdatedProto";
+option java_package = "com.flexport.schedulemanager.entityevent.v1";
+option ruby_package = "Flexport::ScheduleManager::EntityEvent::V1";
+
+// DEPRECATED
+message PostCarrierBookingInitialScheduleUpdated {
+  option deprecated = true;
+
+  string shipment_fid = 1 [deprecated = true];
+  AutomationStatus automation_status = 2 [deprecated = true];
+}
+
+// DEPRECATED
+enum AutomationStatus {
+  option deprecated = true;
+
+  AUTOMATION_STATUS_INVALID = 0;
+  AUTOMATION_STATUS_CREATED = 1;
+  AUTOMATION_STATUS_FAILED = 2;
+}

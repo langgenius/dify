@@ -1,0 +1,51 @@
+// TEAM: revenue_management
+
+syntax = "proto3";
+
+package flexport.offerings.pricing.events.v2;
+
+import "flexport/offerings/pricing/v1/pricing.proto";
+import "google/protobuf/timestamp.proto";
+import "google/type/decimal.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PricingRecommendationsMetricsProto";
+option java_package = "com.flexport.offerings.pricing.events.v2";
+
+// Represents a collection of metrics that are used to track the performance of the GetPricingRecommendations API.
+// DS stands for Data Science.
+message PricingRecommendationsMetrics {
+  // The id of the pricing engine request associated with the request. This is required and should be unique for each request.
+  string pricing_engine_request_id = 1;
+  // The id of the shipment associated with the request if available.
+  optional string shipment_id = 2;
+  // The id of the quote associated with the request if available.
+  optional string quote_id = 3;
+  // The target OMDA markup percent for the given freight type.
+  // This is the value returned by the pricing engine.
+  // If specified 0.11 means 11% markup. 0.0973 means 9.73% markup.
+  // If not set, it means a target OMDA markup could not be found and default value (0.0) should be treated as null.
+  optional google.type.Decimal target_omda_markup = 4 [deprecated = true];
+  // The timestamp of the request
+  google.protobuf.Timestamp request_timestamp = 5;
+  // The target OMDA markup directly from the DS rule without any adjustments.
+  optional google.type.Decimal ds_omda_markup = 6;
+  // The pricing segment of the DS rule. This will be free text for now.
+  optional string ds_pricing_segment = 7;
+  // The unique identifier of the DS pricing rule. Will always be set if a DS rule is found.
+  // NOTE DS pricing rules are organized by locode/iata code pairs. Each pair can expand to multiple port fids (one locode might contain a sea port, rail port, etc.).
+  // Therefore this field is not guaranteed to be unique at the pricing engine level due to the expansion of locode/iata code pairs.
+  optional string ds_pricing_rule_uuid = 8;
+  // The match level of the pricing rule.
+  offerings.pricing.v1.MatchLevel match_level = 9;
+  // Map of guardrail types to guardrail messages.
+  // The key will be the string version of com.flexport.offerings.pricing.v1.GuardrailType (protobuf does not support enum keys).
+  map<string, offerings.pricing.v1.Guardrail> guardrails = 10;
+  // The tradelane associated with the request.
+  optional string tradelane = 11;
+  // The target OMDA markup percent for the given freight type.
+  // This is the value returned by the pricing engine.
+  // If specified 11 means 11% markup. 9.73 means 9.73% markup.
+  // If not set, it means a target OMDA markup could not be found and default value (0.0) should be treated as null.
+  optional google.type.Decimal target_omda_markup_percent = 12;
+}

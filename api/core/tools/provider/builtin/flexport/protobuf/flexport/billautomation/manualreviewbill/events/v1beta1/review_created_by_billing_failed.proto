@@ -1,0 +1,19 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billautomation.manualreviewbill.events.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ReviewCreatedByBillingFailedProto";
+option java_package = "com.flexport.billautomation.manualreviewbill.events.v1beta1";
+option ruby_package = "Flexport::BillAutomation::ManualReviewBill::Events::V1Beta1";
+
+// Event emitted when ManualReviewBill creation via Billing fails.
+message ReviewCreatedByBillingFailed {
+  string review_fid = 1;
+  google.protobuf.Timestamp failed_at_time = 2;
+  repeated string errors = 3;
+}

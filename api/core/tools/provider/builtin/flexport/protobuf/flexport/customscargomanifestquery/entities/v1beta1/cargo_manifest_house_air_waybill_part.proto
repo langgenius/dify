@@ -1,0 +1,29 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customscargomanifestquery.entities.v1beta1;
+
+import "flexport/customscargomanifestquery/entities/v1beta1/cargo_manifest_part_disposition.proto";
+import "flexport/customscargomanifestquery/entities/v1beta1/cargo_manifest_part_in_bond.proto";
+import "google/type/date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoManifestHouseAirWaybillPartProto";
+option java_package = "com.flexport.customscargomanifestquery.entities.v1beta1";
+option ruby_package = "Flexport::CustomsCargoManifestQuery::Entities::V1Beta1";
+
+message CargoManifestHouseAirWaybillPart {
+  string carrier_code = 1;
+  string flight_number = 2;
+  google.type.Date scheduled_arrival_date = 3;
+  string actual_port_of_unlading_or_import = 4;
+  string manifested_port_of_unlading_or_import = 5;
+  string part_indicator = 6;
+  int32 boarded_quantity = 7;
+
+  repeated CargoManifestPartDisposition dispositions = 8;
+  repeated CargoManifestPartInBond in_bonds = 9;
+
+  string master_part_indicator = 10;
+}

@@ -1,0 +1,16 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsworkflowinstrumentation.enums.producertype.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ProducerTypeProto";
+option java_package = "com.flexport.customsworkflowinstrumentation.enums.producertype.v1beta1";
+option ruby_package = "Flexport::CustomsWorkflowInstrumentation::Enums::ProducerType::V1Beta1";
+
+enum ProducerType {
+  PRODUCER_TYPE_INVALID = 0;
+  PRODUCER_TYPE_CORE_BACKEND = 1;
+  PRODUCER_TYPE_CUSTOMS_LOG_AGGREGATOR = 2;
+}

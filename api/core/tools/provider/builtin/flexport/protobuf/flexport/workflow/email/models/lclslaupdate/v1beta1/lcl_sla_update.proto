@@ -1,0 +1,16 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.workflow.email.models.lclslaupdate.v1beta1;
+
+import "flexport/workflow/email/models/attachment/v1beta1/attachment.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AttachmentProto";
+option java_package = "com.flexport.workflow.email.models.lclslaupdate.v1beta1";
+option ruby_package = "Flexport::Workflow::Email::Models::LclSlaUpdate::V1Beta1";
+
+message LclSlaUpdate {
+  repeated flexport.workflow.email.models.attachment.v1beta1.Attachment attachments = 1;
+}

@@ -1,0 +1,17 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerCarrierHoldProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// Container carrier hold.
+// Corresponds to exception slugs:
+// - container_carrier_hold
+message ContainerCarrierHold {
+  string container_fid = 1;
+}

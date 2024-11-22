@@ -1,0 +1,100 @@
+// TEAM: commerce_charges
+
+syntax = "proto3";
+
+package flexport.catalog.rateitem.v1;
+
+import "flexport/catalog/common/v1/warehouse.proto";
+import "flexport/catalog/rate/v1/rate.proto";
+import "flexport/monolith/catalog/v1beta1/core_service.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RateItemProto";
+option java_package = "com.flexport.catalog.rateitem.v1";
+option ruby_package = "Flexport::Catalog::RateItem::V1";
+
+service RateItemAPI {
+  // Gets the rates specified by the "Default ICC" and "Default Sell" as evaluated by the input attributes against all
+  // active rules in Charge Management https://core.flexport.com/marketplace/charge_management. A charge and its rates
+  // are returned only if the input matches the charge Applicability, and a rate branch is matched.
+  //
+  // This API currently only returns rates that are defined in the Charge Management UI, and will not return any rates
+  // that may be present on the input offering. It also does not filter any rates based on the date ranges in the
+  // matched rate branch.
+  rpc GetRateItems(GetRateItemsRequest) returns (GetRateItemsResponse);
+}
+
+message GetRateItemsRequest {
+  // Attributes for the Offering/Shipment/Client/Container fields on rule branches
+  optional OfferingContext offering_context = 1;
+  optional ShipmentContext shipment_context = 2;
+  optional ClientContext client_context = 3;
+  optional ContainerContext container_context = 4;
+}
+
+message GetRateItemsResponse {
+  // List of each charge matched and the associated rates
+  repeated RateItem rate_items = 1;
+}
+
+message OfferingContext {
+  // CDA offering FID is used to fetch all the offering attributes
+  optional google.protobuf.StringValue offering_fid = 1;
+}
+
+message ShipmentContext {
+  // Shipment sub-attributes, any attribute not present or not derivable from the input is not used in rule evaluation.
+  //
+  // IncludedServiceOfferingTypes and IncludedNacServiceOfferingTypes are currently derived from OfferingContext and
+  // only contains the input Offering type.
+  optional google.protobuf.Timestamp created_at_date = 1;
+  optional google.protobuf.Timestamp cargo_ready_date = 2;
+  optional google.protobuf.StringValue isf_filing_party_type = 3;
+  // Used to derive "DestinationAddresses" fields
+  optional string destination_address_fid = 4;
+  optional google.protobuf.Int32Value pricing_tier = 5;
+  optional google.protobuf.BoolValue want_delivery_service = 6;
+  repeated string dangerous_goods_divisions = 7;
+  optional google.protobuf.Timestamp business_event_date = 8;
+  optional google.protobuf.StringValue incoterm = 9;
+  optional google.protobuf.BoolValue flexport_import_customs = 10;
+  optional google.protobuf.BoolValue flexport_export_customs = 11;
+  optional google.protobuf.BoolValue in_bond_transit = 12;
+  optional google.protobuf.BoolValue flexport_freight = 13;
+  optional google.protobuf.DoubleValue chargeable_weight_in_kg = 14;
+  optional google.protobuf.BoolValue contains_hazmat = 15;
+  repeated string cargo_types = 16;
+  // Company FID of the destination agent, e.g. "flx::core:company:dbid/883"
+  optional google.protobuf.StringValue destination_agent = 17;
+  // Shipment FID is used for logging and debugging purposes
+  optional google.protobuf.StringValue shipment_fid = 18;
+  optional google.protobuf.BoolValue want_carbon_offset = 19;
+  reserved 20, 21;
+  // The warehouses on the shipment's itinerary
+  repeated catalog.common.v1.Warehouse warehouses = 22;
+}
+
+message ClientContext {
+  optional flexport.monolith.catalog.v1beta1.Client client = 1;
+}
+
+message ContainerContext {
+  optional google.protobuf.Timestamp gate_in_time = 1;
+  optional google.protobuf.Timestamp departure_time = 2;
+}
+
+message RateItem {
+  // Slug from https://core.flexport.com/service_item_templates => Service Charge Types. Vast majority are lower snake
+  // case of the title in Charge Management.
+  google.protobuf.StringValue charge_slug = 1;
+  // The specific Service Item Template for this charge and input offering combination
+  google.protobuf.StringValue service_item_template_id = 2;
+  catalog.rate.v1.RateDto cost_rate = 3;
+  catalog.rate.v1.RateDto sell_rate = 4;
+  // The earliest of the activation dates between the cost and sell rates
+  optional google.protobuf.Timestamp activation_date = 5;
+  // The latest of the expiration dates between the cost and sell rates
+  optional google.protobuf.Timestamp expiration_date = 6;
+}

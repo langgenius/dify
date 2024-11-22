@@ -1,0 +1,49 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.shipperexp.companyentitybasicinfo.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CompanyEntityBasicInfoProto";
+option java_package = "com.flexport.shipperexp.companyentitybasicinfo.v1beta1";
+option ruby_package = "Flexport::ShipperExp::CompanyEntityBasicInfo::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+
+// An client shipping info event for data ingestion.
+message CompanyEntityBasicInfoEntity {
+  string fid = 1;
+  string entity_fid = 2;
+  google.protobuf.Timestamp created_at_time = 3;
+  google.protobuf.Timestamp updated_at_time = 4;
+  bool is_trading_company = 5;
+  OriginService origin_service = 6;
+  repeated BolType bol_type = 7;
+  repeated CompanyEntityRole entity_role = 8;
+  string company_name_displayed_on_hbl = 9;
+}
+
+// BolType.
+enum BolType {
+  BOL_TYPE_INVALID = 0;
+  BOL_TYPE_HOLD_FOR_TELEX = 1;
+  BOL_TYPE_ORIGINAL_HARD_COPY = 2;
+  BOL_TYPE_SEA_WAYBILL = 3;
+  BOL_TYPE_STRAIGHT_BILL = 4;
+}
+
+// CompanyEntityRole.
+enum CompanyEntityRole {
+  COMPANY_ENTITY_ROLE_INVALID = 0;
+  COMPANY_ENTITY_ROLE_HBL_ENTITY = 1;
+  COMPANY_ENTITY_ROLE_BILLING_ENTITY = 2;
+}
+
+// OriginService.
+enum OriginService {
+  ORIGIN_SERVICE_INVALID = 0;
+  ORIGIN_SERVICE_INTERESTED = 1;
+  ORIGIN_SERVICE_NOT_INTERESTED = 2;
+  ORIGIN_SERVICE_NULL = 3;
+}

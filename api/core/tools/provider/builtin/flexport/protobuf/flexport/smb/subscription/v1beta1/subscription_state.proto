@@ -1,0 +1,17 @@
+// TEAM: smb
+
+syntax = "proto3";
+
+package flexport.smb.subscription.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SubscriptionStateProto";
+option java_package = "com.flexport.smb.subscription.v1beta1";
+
+enum SubscriptionState {
+  SUBSCRIPTION_STATE_INVALID = 0;
+  SUBSCRIPTION_STATE_ACTIVE = 1;
+  SUBSCRIPTION_STATE_ACTIVE_CANCELED = 2;
+  SUBSCRIPTION_STATE_PAUSED = 3;
+  SUBSCRIPTION_STATE_EXPIRED = 4;
+}

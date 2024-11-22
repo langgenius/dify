@@ -1,0 +1,282 @@
+// TEAM: ocean_allocations
+
+syntax = "proto3";
+
+package flexport.oceansupply.inventory.v1beta1;
+
+import "flexport/oceansupply/utils/v1beta1/filter.proto";
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "InventoryProto";
+option java_package = "com.flexport.oceansupply.inventory.v1beta1";
+option ruby_package = "Flexport::OceanSupply::V1Beta1";
+
+// An inventory bucket, which represents a set of conditions that apply to inventory we have.
+// See the java class for details about each column.
+message InventoryBucket {
+  string fid = 1;
+  string provider_fid = 2;
+  string receiver_fid = 3;
+  string carrier_fid = 4;
+  repeated string string_fids = 5 [deprecated = true];
+  repeated string contract_fids = 6;
+  repeated string client_fids = 7;
+  // See go/allocation-routes for a full explanation of origin_port_fids,
+  // pre_carriage_restriction, route_origin_port_fids etc.
+  repeated string origin_port_fids = 8;
+  repeated string destination_port_fids = 9;
+  repeated flexport.os.v1.types.cargo.v1.Iso6346ContainerSize equipment_sizes = 10;
+  string notes = 11;
+  repeated Inventory inventories = 12 [deprecated = true];
+  repeated string applicable_rate_types = 13;
+  // Legacy FMT allocation-IDs associated with this bucket.
+  repeated string allocation_ids = 14;
+  BaseportRestriction pre_carriage_restriction = 15;
+  BaseportRestriction on_carriage_restriction = 16;
+  string carrier_booking_instructions = 17;
+  bool is_premium = 18;
+  // AL-xxx allocation ID, assigned by ocean_supply.
+  string user_readable_id = 19;
+  repeated string string_names = 20;
+  int32 carrier_priority = 21;
+  string extra_loader_string_name = 22;
+  repeated string composite_strings = 23;
+  /**
+   * Most teu inventory is granted on a weekly basis, which is represented by the Inventory model
+   * where each one has a single week. However, sometimes (especially in BCO) you might have say 8
+   * teus of space for some lane over the whole life of the contract, which could be a year. This
+   * space rolls over week to week, so it's treated very differently than weekly inventory. We
+   * represent it with a single field on the bucket, with the intention that if a new contract is
+   * signed with a different yearly allocation then a new bucket would be created with its own
+   * value.
+   */
+  int32 rolling_teus = 24;
+  ServiceType service_type = 25;
+  // Allows specific ports to be excluded or included as viable origins of the OceanRoute.
+  // This corresponds to the origin in (origin, origin_via, destination_via, destination)
+  // eg: Wuhu->Shanghai->LA, Xiamen->Busan->LA, Ningbo->LA
+  // route origins are Wuhu, Xiamen, Ningbo.
+  // Whether the origin connecting leg is a feeder or transshipment does not impact the route origin.
+  // See go/allocation-routes for more details.
+  utils.v1beta1.Filter route_origin_port_fids = 26; // optional (default is exclude none)
+  // Allows specific ports to be excluded or included as viable final destination of the OceanRoute.
+  // This corresponds to the destination in (origin, origin_via, destination_via, destination)
+  // eg: Shanghai->LA->Chicago, Shanghai->Oakland
+  // route destinations are Chicago and Oakland.
+  // See go/allocation-routes for more details.
+  utils.v1beta1.Filter route_destination_port_fids = 27; // optional (default is exclude none)
+  /**
+   * When determining if a bucket is compatible with a route (context could be carrier space route,
+   * profile, carrier booking, etc) and specifically considering the service string aspect, if this
+   * field is true, then it is compatible. Otherwise, the bucket's list of strings should be used as
+   * it always has been. For buckets where this is true, we will still try to populate all feasible
+   * strings into the bucket's strings field, but that should be seen as derived information
+   * stemming from this field being true and our schedule data.
+   */
+  bool supports_all_strings = 28;
+}
+
+// Quantities and details for an InventoryBucket in a given time window (usually a week).
+message Inventory {
+  string fid = 1;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate window_start_date = 2;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate window_end_date = 3 [deprecated = true];
+  repeated string sailing_schedule_fids = 4;
+  // Total teus.
+  int32 available_teus = 5;
+  string confirming_authority = 6;
+  string notes = 7;
+  int32 carrier_week = 8;
+  int32 carrier_year = 9;
+  int32 assigned_teus = 10;
+  repeated string usage_fids = 11;
+  string contract_fid = 12;
+  // Number of remaining TEUs, after excluding reserved LCL TEUs.
+  int32 fcl_total_teus = 13;
+  // Number of remaining TEUs, after excluding assigned FCL TEUs and reserved LCL TEUs.
+  int32 fcl_remaining_teus = 14;
+  // FID of the parent bucket associated with this inventory.
+  string inventory_bucket_fid = 15;
+  // Timestamp of last update to this inventory
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime last_updated_timestamp = 16;
+  int32 lcl_reserved_teus = 17;
+  int32 iso_week = 18;
+  int32 iso_year = 19;
+}
+
+// An event that's emitted when a contract is marked as `migrated`.
+message ContractMigrationCreated {
+  string contract_fid = 1;
+  repeated InventoryBucket inventory_buckets = 2;
+}
+
+// An event that's emitted when the available teus for an inventory changes.
+message InventoryAvailableTeusUpdated {
+  string inventory_fid = 1;
+  int32 before_available_teus = 2;
+  int32 after_available_teus = 3;
+}
+
+// An event that's emitted when the total teus for an inventory changes.
+message InventoryTotalTeusUpdated {
+  string inventory_fid = 1;
+  int32 before_total_teus = 2;
+  int32 after_total_teus = 3;
+}
+
+// A message that's emitted when a new inventory is added.
+message InventoryAdded {
+  string inventory_fid = 1 [deprecated = true];
+  Inventory inventory = 2;
+}
+
+// A message that's emitted when an inventory is updated.
+message InventoryUpdated {
+  Inventory inventory = 1;
+}
+
+// A message that's emitted when an inventory is deleted.
+message InventoryDeleted {
+  string inventory_fid = 1;
+}
+
+// An event that's emitted when an inventory bucket changes.
+message InventoryBucketChanged {
+  string inventory_bucket_fid = 1;
+  InventoryBucket inventory_bucket = 2;
+}
+
+// A set of search crtieria when searching inventory.
+message InventorySearchClause {
+  // Backend will OR each individual [InventorySearchCriteria].
+  // For example, if one criteria in this list has (carrier A, string B) and another has
+  // (carrier C, string D), the search results will include buckets that have either
+  // (carrier A + string B) or (carrier C + string D).
+  repeated InventorySearchCriteria criteria = 1;
+}
+
+// Filters to use when searching for inventory buckets.
+message InventorySearchCriteria {
+  // Restrict results to buckets that have one of these carriers.
+  // Ignored if empty.
+  repeated string carrier_fids = 1;
+  // Restrict results to buckets that have one of these contracts.
+  // Ignored if empty.
+  repeated string contract_fids = 2;
+  // Restrict results to buckets that have one of these carrier-string FIDs.
+  // Ignored if empty.
+  // Use the string_names field instead
+  repeated string string_fids = 3 [deprecated = true];
+  // Restrict results to buckets that have premium options.
+  Trinary is_premium = 4;
+  // Restrict results to buckets that have these rate types.
+  // Ignored if empty.
+  repeated RateType rate_types = 5;
+  // Restrict results to buckets that have none of these carriers.
+  // Ignored if empty.
+  repeated string exclude_carrier_fids = 6;
+  // Restrict results to buckets that have none of these contracts.
+  // Ignored if empty.
+  repeated string exclude_contract_fids = 7;
+  // Restrict results to buckets that have none of these carrier-string FIDs.
+  // Ignored if empty.
+  // Use the exclude_string_names field instead
+  repeated string exclude_string_fids = 8 [deprecated = true];
+  // Restrict results to buckets that have these Origin Ports.
+  // Ignored if empty.
+  repeated string origin_port_fids = 9 [deprecated = true];
+  // Restrict results to buckets that have these Destination Ports.
+  // Ignored if empty.
+  repeated string destination_port_fids = 10 [deprecated = true];
+  // Restrict results to buckets with Baseport restrictions matching the Configuration.
+  // Ignored if null.
+  ConnectingLegConfiguration connecting_leg_configuration = 11;
+  // Restrict results to buckets that have one of these carrier-string names or extra-loader string names.
+  // Ignored if empty.
+  repeated string string_names = 12;
+  // Restrict results to buckets that have none of these carrier-string names or extra-loader string names.
+  // Ignored if empty.
+  repeated string exclude_string_names = 13;
+  // Restricts results to buckets based on the clients' NAC profiles.
+  // Ignored if empty.
+  repeated string client_fids = 14;
+}
+
+message ConnectingLegConfiguration {
+  bool include_origin_transshipments = 1;
+  bool include_origin_feeders = 2;
+  bool include_destination_ipis = 3;
+}
+
+// A boolean restriction that can take an "any" value, meaning either true
+// or false are both acceptable (ie. no restriction).
+enum Trinary {
+  TRINARY_INVALID = 0;
+  TRINARY_FALSE = 1;
+  TRINARY_TRUE = 2;
+  TRINARY_ANY = 3;
+}
+
+// Contract rate agreement.
+// Floating means the rate can change during the contract period.
+// Fixed stays constant for the duration of the contract.
+enum RateType {
+  RATE_TYPE_INVALID = 0;
+  RATE_TYPE_FLOATING = 1;
+  RATE_TYPE_FIXED = 2;
+}
+
+// A baseport/feeder port/IPI restriction for an allocation.
+enum BaseportRestriction {
+  BASEPORT_RESTRICTION_INVALID = 0;
+  BASEPORT_RESTRICTION_BASEPORT_REQUIRED = 1;
+  BASEPORT_RESTRICTION_BASEPORT_PROHIBITED = 2;
+  BASEPORT_RESTRICTION_NO_RESTRICTION = 3;
+}
+
+// Requested fulfillment region.
+enum FmtRegion {
+  // Default: Invalid, we will ignore check for region.
+  FMT_REGION_INVALID = 0;
+  FMT_REGION_PRS = 1;
+  FMT_REGION_PRE = 2;
+  FMT_REGION_PRN = 3;
+  FMT_REGION_TWN = 4;
+  FMT_REGION_ALL = 5;
+  FMT_REGION_XMN_FOC = 6;
+  FMT_REGION_SHA = 7;
+  FMT_REGION_NGB = 8;
+  FMT_REGION_VNM = 9;
+}
+
+// Requested fulfillemnt tradelane.
+enum FmtTradeLane {
+  // Default: Invalid, we will ignore check for tradelane.
+  FMT_TRADE_LANE_INVALID = 0;
+  FMT_TRADE_LANE_TPEB = 1;
+  FMT_TRADE_LANE_FEWB = 2;
+  FMT_TRADE_LANE_TPWB = 3;
+  FMT_TRADE_LANE_FEEB = 4;
+  FMT_TRADE_LANE_TAEB = 5;
+  FMT_TRADE_LANE_TAWB = 6;
+  FMT_TRADE_LANE_LATAM = 7;
+  FMT_TRADE_LANE_ISC = 8;
+  FMT_TRADE_LANE_ROW = 9;
+  FMT_TRADE_LANE_ALL = 10;
+}
+
+enum ServiceType {
+  SERVICE_TYPE_INVALID = 0;
+  SERVICE_TYPE_DOOR_DOOR = 1;
+  SERVICE_TYPE_DOOR_PORT = 2;
+  SERVICE_TYPE_PORT_DOOR = 3;
+  SERVICE_TYPE_PORT_PORT = 4;
+  SERVICE_TYPE_PORT_RAIL = 5;
+  SERVICE_TYPE_RAIL_DOOR = 6;
+  SERVICE_TYPE_RAIL_PORT = 7;
+  SERVICE_TYPE_RAIL_RAIL = 8;
+  SERVICE_TYPE_DOOR_RAIL = 9;
+}

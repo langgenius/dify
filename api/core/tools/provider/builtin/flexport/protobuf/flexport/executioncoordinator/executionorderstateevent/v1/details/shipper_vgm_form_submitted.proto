@@ -1,0 +1,57 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipperVgmFormSubmittedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+
+// Verified Gross Mass (VGM) form data has been submitted by the shipper to Flexport.
+// See shipper_vgm_document_uploaded.proto for context.
+message ShipperVgmFormSubmitted {
+  repeated ShipperVgmFormContainer containers = 1;
+  // Note that this value is only specified as a date (not a datetime) in the VGM form UI.
+  // https://github.flexport.io/flexport/flexport/pull/87368#discussion_r562840
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate date_of_declaration = 2;
+  string shipper_company_name = 3;
+  string verified_by_user_name = 4;
+}
+
+// Container-level VGM details.
+message ShipperVgmFormContainer {
+  string container_number = 1;
+  string shipping_order_number = 2;
+  string vgm_weight_kg = 5;
+  // There are two separate methods permitted by Safety Of Life At Sea (SOLAS) regulation for
+  // VGM calculation: https://www.marineinsight.com/guidelines/verified-gross-mass-vgm-for-shipping
+  oneof method {
+    ShipperVgmFormMethodOne method_one = 3;
+    ShipperVgmFormMethodTwo method_two = 4;
+  }
+}
+
+// Method one involves weighing of the packed/sealed container along with its cargo contents
+// using calibrated and certified weighing bridge equipment.
+message ShipperVgmFormMethodOne {
+  //
+  // The gross weight of the sealed/packed container.
+  string gross_weight_kg = 1;
+}
+
+// Method two involves requires weighing all the cargo items and contents of the container
+// including the packing material, securing equipment, pallets or dunnage individually and
+// adding those weights to the container's tare weight as shown on the container CSC plate.
+message ShipperVgmFormMethodTwo {
+  //
+  // The total weight of all cargo, packaging, and dunnage.
+  // TODO: Should this be split into separate weights for each of these?
+  string cargo_weight_kg = 1;
+  //
+  // The tare weight of the ocean container.
+  string tare_weight_kg = 2;
+}

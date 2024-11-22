@@ -1,0 +1,90 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.declaration.eu.common.v1beta1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.declaration.eu.common.v1beta1";
+option ruby_package = "Flexport::Customs::Declaration::EU::Common::V1Beta1";
+
+// [Data Element: 14 03 000 000]
+message DutyTax {
+  // [Data Element: 14 03 039 000]
+  TaxType tax_type = 1;
+  // [Data Element: 14 03 038 000]
+  MethodOfPayment method_of_payment = 2;
+  // [Data Element: 14 03 042 000]
+  double payable_tax_amount = 3;
+  // [Data Element: 14 03 040 000]
+  TaxBase tax_base = 4;
+}
+
+// [Data Element: 14 03 040 000]
+message TaxBase {
+  // [Data Element: 14 03 040 041]
+  double tax_rate = 1;
+  // [Data Element: 14 03 040 005]
+  string measurement_unit_code = 2;
+  // [Data Element: 14 03 040 006]
+  double quantity = 3;
+  // [Data Element: 14 03 040 014]
+  double amount = 4;
+  // [Data Element: 14 03 040 043]
+  double tax_amount = 5;
+}
+
+enum TaxType {
+  TAX_TYPE_INVALID = 0;
+  // Import duty
+  TAX_TYPE_A00 = 1;
+  // Definitive antidumping duties
+  TAX_TYPE_A30 = 2;
+  // Provisional antidumping duties
+  TAX_TYPE_A35 = 3;
+  // Definitive countervailing duties
+  TAX_TYPE_A40 = 4;
+  // Provisional countervailing duties
+  TAX_TYPE_A45 = 5;
+  // VAT
+  TAX_TYPE_B00 = 6;
+  //Export duty
+  TAX_TYPE_C00 = 7;
+  //Duties collected on behalf of other countries
+  TAX_TYPE_E00 = 8;
+}
+
+enum MethodOfPayment {
+  METHOD_OF_PAYMENT_INVALID = 0;
+  // Payment in cash
+  METHOD_OF_PAYMENT_A = 1;
+  // Payment by credit card
+  METHOD_OF_PAYMENT_B = 2;
+  // Payment by cheque
+  METHOD_OF_PAYMENT_C = 3;
+  // Other (e. g. direct debit to agent's cash account)
+  METHOD_OF_PAYMENT_D = 4;
+  // Deferred or postponed payment
+  METHOD_OF_PAYMENT_E = 5;
+  // Postponed payment — VAT system (Article 211 of Directive 2006/112/EC)
+  METHOD_OF_PAYMENT_G = 6;
+  // Electronic credit transfer
+  METHOD_OF_PAYMENT_H = 7;
+  //Payment through post office administration (postal consignments) or other public sector or government department
+  METHOD_OF_PAYMENT_J = 8;
+  // Excise credit or rebate
+  METHOD_OF_PAYMENT_K = 9;
+  // Guarantee lodged with Intervention Agency
+  METHOD_OF_PAYMENT_O = 10;
+  // From agent's cash account
+  METHOD_OF_PAYMENT_P = 11;
+  // Guarantee of the amount payable
+  METHOD_OF_PAYMENT_R = 12;
+  // Individual guarantee account
+  METHOD_OF_PAYMENT_S = 13;
+  // From agent's guarantee account
+  METHOD_OF_PAYMENT_T = 14;
+  // From agent's guarantee — standing authority
+  METHOD_OF_PAYMENT_U = 15;
+  // From agent's guarantee — individual authority
+  METHOD_OF_PAYMENT_V = 16;
+}

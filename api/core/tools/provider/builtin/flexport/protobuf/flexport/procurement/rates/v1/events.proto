@@ -1,0 +1,99 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.rates.v1;
+
+import "flexport/procurement/common/v1beta1/types.proto";
+import "flexport/procurement/rates/v1/rate_api.proto";
+import "flexport/procurement/rates/v1/rate_search_term_parameters.proto";
+import "flexport/procurement/rates/v1/universal_rates.proto";
+import "google/type/date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "EventsProto";
+option java_package = "com.flexport.procurement.rates.v1";
+option ruby_package = "Flexport::Procurement::Rates::V1";
+
+// Kinesis event specifying a contract route to update.
+message ContractRouteRatesUpdated {
+  string contract_number = 1;
+  string contract_fid = 2;
+  google.type.Date route_rate_start_date = 3;
+  google.type.Date route_rate_end_date = 4;
+  string origin_fid = 5;
+  string destination_fid = 6;
+  flexport.procurement.common.v1beta1.PortOption origin_via = 7;
+  flexport.procurement.common.v1beta1.PortOption destination_via = 8;
+  RateUpdateSource source = 9;
+}
+
+// Kinesis event specifying an ocean rate was requested.
+message OceanRatesRequested {
+  // See compressed_ocean_rates_requested_result_byte_string which is a byte string of OceanRatesRequestedResult.
+  OceanRatesRequest request = 1 [deprecated = true];
+  // See compressed_ocean_rates_requested_result_byte_string which is a byte string of OceanRatesRequestedResult.
+  repeated Rate portrix_rates = 2 [deprecated = true];
+  // See compressed_ocean_rates_requested_result_byte_string which is a byte string of OceanRatesRequestedResult.
+  repeated Rate fps_rates = 3 [deprecated = true];
+  bytes compressed_ocean_rates_requested_result_byte_string = 4;
+}
+
+// An ocean rate request result.
+message OceanRatesRequestedResult {
+  OceanRatesRequest request = 1;
+  repeated Rate portrix_rates = 2;
+  repeated Rate fps_rates = 3;
+}
+
+// An ocean rate request.
+message OceanRatesRequest {
+  // TermParameters with null values will be treated as a wildcard search,
+  // matching any Term value (i.e., no filter is applied on the Term).
+  TermParameters term_parameters = 1;
+  // Finds rates matching the given exclude origin charges flag
+  // (excluded match or without excluded origin charges).
+  bool exclude_origin_charges = 2;
+  // Finds rates matching the given exclude destination charges flag
+  // (excluded match or without excluded destination charges).
+  // (exact match).
+  bool exclude_destination_charges = 3;
+  string caller = 4;
+}
+
+// Kinesis event specifying a request to compare rates from different sources.
+message RateComparisonRequested {
+  // The identifier of the entity the request was made for.
+  // This could be a carrier_space_fid, shipment_fid, dbid, trace id, empty etc.
+  string entity_identifier = 1;
+  // The original unaltered request from the rate api.
+  FindRateRequest find_rate_request = 2;
+  // The rate api request with any adjustment applied such as contract, date, etc. No adjustments might have been applied.
+  FindRateRequest adjusted_find_rate_request = 3;
+  // The original find rate response from the adjusted request.
+  FindRateResponse find_rate_response = 4;
+  // Used to compare find rate responses from different sources based on the adjusted find rate request.
+  // These can come from different flows.
+  // The current use case is for comparing gsheet rate for planning vs what fps would normally return.
+  map<string, RateResult> source_to_find_rate_response_map = 5;
+  // The caller that triggered this event.
+  string caller = 6;
+}
+
+// A rate result.
+message RateResult {
+  // A find rate response.
+  FindRateResponse find_rate_response = 1;
+  // A map of the total amount micros for each container code in the find rate response.
+  // The total amount is in USD.
+  map<string, int64> container_code_to_total_amount_micros_map = 2;
+}
+
+// The source that this update came from.
+enum RateUpdateSource {
+  RATE_UPDATE_SOURCE_INVALID = 0;
+  RATE_UPDATE_SOURCE_PART_OF_FREIGHT_GOOGLE_SHEET = 1;
+  RATE_UPDATE_SOURCE_PORTRIX = 2;
+  RATE_UPDATE_SOURCE_PPS = 3;
+  RATE_UPDATE_SOURCE_FREIGHT_RATES = 4;
+}

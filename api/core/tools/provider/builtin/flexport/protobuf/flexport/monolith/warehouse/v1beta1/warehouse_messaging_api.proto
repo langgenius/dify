@@ -1,0 +1,66 @@
+// TEAM: lumina
+
+syntax = "proto3";
+
+package flexport.monolith.warehouse.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "WarehouseMessagingApiProto";
+option java_package = "com.flexport.monolith.warehouse.v1beta1";
+option ruby_package = "Flexport::Monolith::Warehouse::V1Beta1";
+
+message FetchWarehouseMessagesRequest {
+  string flex_id = 1;
+  optional MessageType type = 2;
+}
+
+message FetchWarehouseMessagesResponse {
+  string flex_id = 1;
+  repeated Message message = 2;
+}
+
+message Message {
+  string message_id = 1;
+  MessageType message_type = 2;
+  string flex_id = 3;
+  MessageUser creator = 4;
+  google.protobuf.Timestamp created_at = 5;
+  string body = 6;
+  repeated ViewingParty viewing_party = 7;
+  repeated Attachment attachment = 8;
+  string reply_to_id = 9;
+  string reply_root_id = 10;
+}
+
+enum MessageType {
+  MESSAGE_TYPE_INVALID = 0;
+  MESSAGE_TYPE_MESSAGE = 1;
+  MESSAGE_TYPE_EVENT = 2;
+  MESSAGE_TYPE_EXCEPTION = 3;
+}
+
+message MessageUser {
+  string id = 1;
+  string email = 2;
+  string name = 3;
+  string company_fid = 4;
+  string company_name = 5;
+  string role = 6;
+  string avatar = 7;
+}
+
+message ViewingParty {
+  string company_fid = 1;
+  string company_name = 2;
+}
+
+message Attachment {
+  string attachment_name = 1;
+  string attachment_url = 2;
+}
+
+service WarehouseMessagingAPI {
+  rpc FetchWarehouseMessages(FetchWarehouseMessagesRequest) returns (FetchWarehouseMessagesResponse);
+}

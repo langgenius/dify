@@ -1,0 +1,26 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.airprovider.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RouteTermWriteApiProto";
+option java_package = "com.flexport.procurement.airprovider.v1";
+option ruby_package = "Flexport::Procurement::AirProvider::V1";
+
+import "flexport/procurement/airprovider/v1/route_term.proto";
+
+// This service is used to write RouteTerms.
+service RouteTermWriteAPI {
+  // Write a given Route term.
+  rpc WriteRouteTerm(WriteRouteTermRequest) returns (WriteRouteTermResponse);
+}
+
+message WriteRouteTermRequest {
+  repeated RouteTerm route_terms = 1;
+}
+
+message WriteRouteTermResponse {
+  repeated RouteTerm route_terms = 1;
+}

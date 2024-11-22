@@ -1,0 +1,98 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.offering.v2beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OfferingApiProto";
+option java_package = "com.flexport.catalog.offering.v2beta1";
+option ruby_package = "Flexport::Catalog::Offering::V2Beta1";
+
+import "flexport/catalog/charge/v2beta1/charge.proto";
+import "flexport/catalog/containercounts/v1/container_counts.proto";
+import "flexport/catalog/date/v1/date.proto";
+import "flexport/catalog/enums/v2beta1/approximate_offering_count.proto";
+import "flexport/catalog/offering/v2beta1/offering.proto";
+import "google/protobuf/wrappers.proto";
+
+// The offering service definition.
+service OfferingAPI {
+  // Search for offerings for a specific client.
+  // This will only ever include active offerings and offerings which this client can use. The
+  // charges on the offerings are all tailored to the client (i.e. the sell rate is the sell rate
+  // for the client).
+  rpc ClientQueryOfferings(ClientQueryOfferingsRequest) returns (ClientQueryOfferingsResponse);
+  // Count the number of offerings for a specific client.
+  rpc CountClientOfferings(CountClientOfferingsRequest) returns (CountClientOfferingsResponse);
+  // Approximate the count of offerings for a specific client (accepts wide searches).
+  rpc CountApproximateClientOfferings(CountApproximateClientOfferingsRequest) returns (CountApproximateClientOfferingsResponse);
+  // Endpoint for re-pricing an offering by uuid.
+  rpc ClientRepriceOffering(ClientRepriceOfferingRequest) returns (ClientRepriceOfferingResponse);
+  // Endpoint for find successor offerings for re-quoting.
+  rpc FindSuccessorOfferings(FindSuccessorOfferingsRequest) returns (FindSuccessorOfferingsResponse);
+}
+
+message CountClientOfferingsRequest {
+  catalog.offering.v2beta1.ClientOfferingQueryAttributesDto attributes = 1;
+  catalog.charge.v2beta1.EvaluateChargesContext context = 2;
+}
+
+message CountClientOfferingsResponse {
+  int32 count = 1;
+}
+
+message CountApproximateClientOfferingsRequest {
+  catalog.offering.v2beta1.ClientOfferingQueryAttributesDto attributes = 1;
+}
+
+message CountApproximateClientOfferingsResponse {
+  catalog.enums.v2beta1.ApproximateOfferingCount approximate_count = 1;
+}
+
+message ClientQueryOfferingsRequest {
+  catalog.offering.v2beta1.ClientOfferingQueryAttributesDto attributes = 1;
+  catalog.charge.v2beta1.EvaluateChargesContext context = 2;
+  google.protobuf.Int32Value page = 3;
+  google.protobuf.Int32Value page_size = 4;
+  // This sort order is applied after sorting by shipment and client. All client queries prioritize
+  // offerings just for a shipment first (if provided), then any NAC offerings for the client, and
+  // then finally any FAK offerings which match the search criteria.
+  catalog.offering.v2beta1.SortByDto sort_by = 5;
+}
+
+message ClientQueryOfferingsResponse {
+  repeated catalog.offering.v2beta1.ClientOfferingDto offerings = 1;
+  // Total number of offerings matching the criteria not limited by the page size of the request.
+  int32 total_count = 2;
+}
+
+message ClientRepriceOfferingRequest {
+  google.protobuf.StringValue offering_fid = 1;
+  catalog.date.v1.DateDto on_date = 2;
+  catalog.charge.v2beta1.EvaluateChargesContext context = 3;
+}
+
+message ClientRepriceOfferingResponse {
+  catalog.offering.v2beta1.ClientOfferingDto offering = 1;
+}
+
+message FindSuccessorOfferingsRequest {
+  google.protobuf.StringValue offering_fid = 1;
+  // Every offering returned will have activation_date <= on_date <= expiration_date
+  catalog.date.v1.DateDto on_date = 2;
+  catalog.charge.v2beta1.EvaluateChargesContext context = 3;
+  catalog.containercounts.v1.ContainerCountsDto container_counts = 4;
+}
+
+message FindSuccessorOfferingsResponse {
+  // Offerings returned will have the same type, eg. ocean FCL
+  // The offerings returned here will not include the offering to be replaced.
+  // Will replicate Ordering from core:
+  // candidates = matches.sort_by do |candidate|
+  //        [candidate.expiration_time, candidate.activation_time]
+  //      end.reverse
+  // Quoting will still need to do filtering on carrier_contract.contract_number based on Quote.carrier_contract.
+  //  reference: app/services/requoting/successor_service_matcher.rb#serialize_and_validate_offerings
+  repeated catalog.offering.v2beta1.ClientOfferingDto offering = 1;
+}

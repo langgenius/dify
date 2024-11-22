@@ -1,0 +1,17 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.originops.airfulfillment.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AirFulfillmentProto";
+option java_package = "com.flexport.originops.airfulfillment.v1";
+option ruby_package = "Flexport::OriginOps::AirFulfillment::V1";
+
+// Represents the air fulfillment.
+message AirFulfillment {
+  string master_bill_number = 1;
+  int32 build_plans_count = 2;
+  repeated string build_plan_fids = 3;
+}

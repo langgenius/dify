@@ -1,0 +1,32 @@
+// TEAM: wingstop
+
+syntax = "proto3";
+
+package flexport.consolplanner.airplanningshipment.v1beta1;
+
+import "flexport/consolplanner/air/v1beta1/air_planning_shipment.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AirPlanningShipmentApiProto";
+option java_package = "com.flexport.consolplanner.airplanningshipment.v1beta1";
+option ruby_package = "Flexport::ConsolPlanner::AirPlanningShipment::V1Beta1";
+
+service AirPlanningShipmentAPI {
+  // retrieves an AirPlanningShipment
+  rpc GetAirPlanningShipment(GetAirPlanningShipmentRequest) returns (GetAirPlanningShipmentResponse);
+}
+
+// The request message for GetAirPlanningShipment.
+message GetAirPlanningShipmentRequest {
+  oneof identifier {
+    string air_planning_shipment_fid = 1;
+    string shipment_fid = 2;
+  }
+}
+
+// The response message for GetAirPlanningShipment.
+// If the request identifier was a shipment_fid and the shipment_fid has no
+// corresponding entity, then an empty response is returned.
+message GetAirPlanningShipmentResponse {
+  flexport.consolplanner.air.v1beta1.AirPlanningShipment air_planning_shipment = 1;
+}

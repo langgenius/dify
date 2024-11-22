@@ -1,0 +1,56 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.originops.ingestion.requireddocumentfeed.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RequiredDocumentFeedProto";
+option java_package = "com.flexport.originops.ingestion.requireddocumentfeed.v1";
+option ruby_package = "Flexport::OriginOps::Ingestion::RequiredDocumentFeed::V1";
+
+// The entity of required document that would be sent to looker.
+message RequiredDocumentFeed {
+  // ${shipment_id}-${document_type_abbr}-${document_suffix}
+  string identifier = 1;
+  string shipment_fid = 2;
+  string document_type_abbr = 3;
+  string document_type_slug = 4;
+  string uploaded_by_user_fid = 5;
+  google.protobuf.Timestamp actual_upload_time = 6;
+  google.protobuf.Timestamp expected_upload_time = 7;
+  DocumentAssignmentRole expected_assignment_role = 8;
+  DocumentAssignmentRole actual_assignment_role = 9;
+  DocumentSnoozeExceptionType snooze_exception_type = 10;
+  string snooze_comment = 11;
+  string snooze_by_user_fid = 12;
+  string snooze_at_time = 13 [deprecated = true];
+  google.protobuf.Timestamp snooze_until_time = 14;
+  repeated google.protobuf.Timestamp amended_date_time = 15;
+  google.protobuf.Timestamp snooze_by_user_at_time = 16;
+}
+
+// The exception type of why the user snooze the required document.
+enum DocumentSnoozeExceptionType {
+  DOCUMENT_SNOOZE_EXCEPTION_TYPE_INVALID = 0;
+  DOCUMENT_SNOOZE_EXCEPTION_TYPE_SHIPPER_WAITING_ON_CONSIGNEE = 1;
+  DOCUMENT_SNOOZE_EXCEPTION_TYPE_DOCUMENTS_HELD_FOR_SHIPPER_ORIGIN_CHARGE_PAYMENT = 2;
+  DOCUMENT_SNOOZE_EXCEPTION_TYPE_DOCUMENTS_HELD_BY_CARRIER_FOR_PAYMENT = 3;
+  DOCUMENT_SNOOZE_EXCEPTION_TYPE_REQUESTED_AND_WAITING_ON_SHIPPER = 4;
+  DOCUMENT_SNOOZE_EXCEPTION_TYPE_REQUESTED_AND_WAITING_ON_CONSIGNEE = 5;
+  DOCUMENT_SNOOZE_EXCEPTION_TYPE_REQUESTED_AND_WAITING_ON_CARRIER = 6;
+  DOCUMENT_SNOOZE_EXCEPTION_TYPE_SHIPPER_WILL_UPLOAD_DIRECTLY = 7;
+  DOCUMENT_SNOOZE_EXCEPTION_TYPE_CONSIGNEE_WILL_UPLOAD_DIRECTLY = 8;
+  DOCUMENT_SNOOZE_EXCEPTION_TYPE_OTHER = 9;
+}
+
+// The role that is expected to upload the required document.
+enum DocumentAssignmentRole {
+  DOCUMENT_ASSIGNMENT_ROLE_INVALID = 0;
+  DOCUMENT_ASSIGNMENT_ROLE_SHIPPER = 1;
+  DOCUMENT_ASSIGNMENT_ROLE_PARTNER = 2;
+  DOCUMENT_ASSIGNMENT_ROLE_FLEXPORT = 3;
+  DOCUMENT_ASSIGNMENT_ROLE_CONSIGNEE = 4;
+}

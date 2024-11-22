@@ -1,0 +1,32 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.freightrouting.entityevent.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RealtimeStitchingRecommendationEntityProto";
+option java_package = "com.flexport.freightrouting.entityevent.v1beta1";
+
+// Proto message for Realtime Stitching Recommendation object.
+message RealtimeStitchingRecommendationEntity {
+  uint64 id = 1;
+  google.protobuf.Int32Value quote_request_id = 2;
+  google.protobuf.Int32Value shipment_id = 3;
+  TransportationMode transportation_mode = 4;
+  string stitcher_request = 5; // json of stitcher request
+  string routes = 6; // json of routes recommended by stitcher
+  google.protobuf.Timestamp created_at = 7;
+  string stitcher_request_id = 8;
+  string offerings_evaluated = 9; // json of offerings considered by stitcher
+}
+
+enum TransportationMode {
+  TRANSPORTATION_MODE_INVALID = 0;
+  TRANSPORTATION_MODE_FCL = 1;
+  TRANSPORTATION_MODE_LCL = 2;
+  TRANSPORTATION_MODE_AIR = 3;
+}

@@ -1,0 +1,23 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.cmq.entities.v1;
+
+import "google/type/date.proto";
+import "google/type/timeofday.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.cmq.entities.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Cmq::V1";
+
+message Disposition {
+  google.type.TimeOfDay action_time = 1;
+  google.type.Date action_date = 2;
+  string code = 3;
+  string message = 4;
+  google.type.Date release_date = 5;
+  string release_origin = 6;
+  optional int32 quantity = 7;
+  optional int32 sequence = 8;
+}

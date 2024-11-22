@@ -1,0 +1,26 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.entityevent.v1;
+
+import "flexport/assignment/enums/v1/work_item_type.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MissingAssignmentEntityProto";
+option java_package = "com.flexport.assignment.entityevent.v1";
+option ruby_package = "Flexport::Assignment::EntityEvent::V1";
+
+// Represent an assignable object that is missing assigned under a particular organization unit.
+message MissingAssignmentEntity {
+  // DB id
+  uint64 id = 1;
+  string grain_fid = 2;
+  string wi_fid = 3;
+  google.protobuf.Timestamp created_at_time = 4;
+  google.protobuf.Timestamp resolved_at_time = 5;
+  google.protobuf.Timestamp updated_at_time = 6;
+  uint64 setting_id = 7;
+  flexport.assignment.enums.v1.WorkItemType work_item_type = 8;
+}

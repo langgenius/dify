@@ -1,0 +1,29 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.monolith.customs.events.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "IsfFilingUpdatedProto";
+option java_package = "com.flexport.monolith.customs.events.v1beta1";
+option ruby_package = "Flexport::Monolith::Customs::Events::V1Beta1";
+
+// This event represents an update to an ISF filing.
+message IsfFilingUpdated {
+  string shipment_fid = 1;
+  string isf_fid = 2;
+  IsfFilingStatus status = 3;
+  google.protobuf.Timestamp created_at = 4;
+  string created_by_fid = 5;
+}
+
+// TODO: add corresponding status for all status in isf_status
+enum IsfFilingStatus {
+  ISF_FILING_STATUS_INVALID = 0;
+  ISF_FILING_STATUS_FILED = 1;
+  ISF_FILING_STATUS_ACCEPTED = 2;
+  ISF_FILING_STATUS_OTHER = 3;
+}

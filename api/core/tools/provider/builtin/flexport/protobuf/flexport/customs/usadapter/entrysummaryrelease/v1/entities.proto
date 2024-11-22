@@ -1,0 +1,19 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.entrysummaryrelease.v1;
+
+import "flexport/customs/usadapter/entrysummaryrelease/v1/entity.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.entrysummaryrelease.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::EntrySummaryRelease::V1";
+
+message Entities {
+  Entity seller = 1;
+  Entity buyer = 2;
+  optional Entity ship_to_party = 3;
+  optional Entity consolidator = 4;
+  optional Entity container_stuffing_location = 5;
+}

@@ -1,0 +1,19 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionoffering.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OriginHandlingExecutionOfferingProto";
+option java_package = "com.flexport.executioncoordinator.executionoffering.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOffering::V1";
+
+// OriginHandlingExecutionOffering is a value-add offering for incurred payments at the origin.
+// It could include port fees, arranging bookings, warehousing and handling.
+// TODO(maxh): Figure out how this relates to origin trucking in transit offering.
+message OriginHandlingExecutionOffering {
+  //
+  // Freight partner responsible for origin booking.
+  string freight_partner_fid = 1;
+}

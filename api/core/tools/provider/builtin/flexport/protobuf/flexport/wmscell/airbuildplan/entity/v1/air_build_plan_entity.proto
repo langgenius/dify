@@ -1,0 +1,29 @@
+// TEAM: lumina
+
+syntax = "proto3";
+
+package flexport.wmscell.airbuildplan.entity.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AirBuildPlanEntityProto";
+option java_package = "com.flexport.wmscell.airbuildplan.entity.v1";
+
+message AirBuildPlanEntity {
+  string build_plan_number = 1;
+  string flight_number = 2;
+  google.protobuf.Timestamp flight_arrival_time = 3;
+  google.protobuf.Timestamp flight_departure_time = 4;
+  string origin = 5;
+  string destination = 6;
+  repeated string uld_type = 7;
+  repeated string flex_id = 8;
+  repeated string mawb = 9;
+  repeated string hawb = 10;
+  string warehouse_code = 11;
+  string version = 12;
+  string payload = 13;
+  google.protobuf.Timestamp created_at = 14;
+  google.protobuf.Timestamp updated_at = 15;
+}

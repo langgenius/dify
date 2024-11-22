@@ -1,0 +1,46 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.schedulemanager.manageschedulemetadata.v1beta1;
+
+import "flexport/schedulemanager/datechanges/v1/schedule_dates_change.proto";
+import "flexport/schedulemanager/types/enums/v1/manage_schedule_outcome_code.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ManagedDatesOutcomeProto";
+option java_package = "com.flexport.schedulemanager.manageschedulemetadata.v1beta1";
+option ruby_package = "Flexport::ScheduleManager::ManageScheduleMetadata::V1Beta1";
+
+// Contains details of a ManageSchedule request with the resulting outcome.
+message ManagedDatesOutcome {
+  // IDs
+  string shipment_fid = 1;
+  string manage_schedule_fid = 2;
+  string working_itinerary_revision = 3;
+  string result_itinerary_revision = 4;
+  string itinerary_revisions_diff = 5;
+
+  // Request Context/Metadata
+  string feature_name = 10;
+  string ingest_source = 11;
+  bool is_evaluate_only = 12;
+  flexport.schedulemanager.datechanges.v1.ScheduleDatesChangeMetadata dates_change_metadata = 15;
+
+  // Outcome/Result Codes
+  flexport.schedulemanager.types.enums.v1.ManageScheduleOutcomeCode outcome_code = 20;
+  string feature_result_code = 21;
+  string fallback_result_code = 22;
+  string pre_feature_result_code = 23;
+
+  // Result Details
+  google.protobuf.Struct dates_changes = 30;
+  google.protobuf.Struct cascade_details = 31;
+  google.protobuf.Struct error_messages = 32;
+  google.protobuf.Struct actualize_details = 33;
+
+  // Metadata
+  google.protobuf.Timestamp created_at = 50;
+}

@@ -1,0 +1,29 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.offering.oceanfcl.v2beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanFclProto";
+option java_package = "com.flexport.catalog.offering.oceanfcl.v2beta1";
+option ruby_package = "Flexport::Catalog::Offering::OceanFcl::V2Beta1";
+
+import "flexport/catalog/containercounts/v1/container_counts.proto";
+import "flexport/catalog/enums/v1/enums.proto";
+import "google/protobuf/wrappers.proto";
+
+// Ocean FCL query attributes.
+message OceanFclQueryAttributesDto {
+  repeated int64 origin_ids = 1;
+  google.protobuf.BoolValue nearby_origin_ports = 2;
+  repeated int64 destination_ids = 3;
+  google.protobuf.BoolValue nearby_destination_ports = 4;
+  repeated int64 origin_via_ids = 5;
+  repeated int64 destination_via_ids = 6;
+  repeated int64 carrier_ids = 7;
+  repeated catalog.enums.v1.CommodityDto commodities = 8;
+  repeated catalog.enums.v1.DangerousGoodsDto dangerous_goods = 9;
+  repeated catalog.enums.v1.OceanTierDto ocean_tiers = 10;
+  catalog.containercounts.v1.ContainerCountsDto container_counts = 11;
+}

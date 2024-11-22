@@ -1,0 +1,26 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.autoasn.events.queryshipmentresponded.v1beta1;
+
+import "flexport/workflow/autoasn/models/shipment/v1beta1/shipment.proto";
+import "flexport/workflow/prelude/models/flowableprocessfilter/v1beta1/flowable_process_filter.proto";
+import "flexport/workflow/prelude/options/v1/options.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "QueryShipmentRespondedProto";
+option java_package = "com.flexport.workflow.autoasn.events.queryshipmentresponded.v1beta1";
+option ruby_package = "Flexport::Workflow::AutoAsn::Events::QueryShipmentResponded::V1Beta1";
+
+// Query Shipment Responded.
+message QueryShipmentResponded {
+  option (flexport.workflow.prelude.options.v1.wp_event).name = "Query Shipment Responded";
+  option (flexport.workflow.prelude.options.v1.wp_event).description = "";
+  option (flexport.workflow.prelude.options.v1.wp_message_key) = "shipment.fid";
+  flexport.workflow.autoasn.models.shipment.v1beta1.Shipment shipment = 1;
+  google.protobuf.Timestamp event_time = 2;
+  flexport.workflow.prelude.models.flowableprocessfilter.v1beta1.FlowableProcessFilter flowable_process_filter = 3;
+  bool enable_asn_automation = 4;
+}

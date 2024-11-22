@@ -1,0 +1,33 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.monolith.autotagger.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "MonolithCoreDerivedParamApiProto";
+option java_package = "com.flexport.monolith.autotagger.v1beta1";
+option ruby_package = "Flexport::Monolith::AutoTagger::V1Beta1";
+
+// An API for reading core derived param info.
+service MonolithCoreDerivedParamAPI {
+  // Retrieves core derived param.
+  rpc GetMonolithCoreDerivedParam(GetMonolithCoreDerivedParamRequest) returns (GetMonolithCoreDerivedParamResponse);
+}
+
+message GetMonolithCoreDerivedParamRequest {
+  string fid = 1;
+}
+
+message GetMonolithCoreDerivedParamResponse {
+  // Fields 1 - 3 come from core service bundle
+  // Field 4 comes from core shipment model
+  // consolidation_cfs_id
+  string consolidation_cfs_id = 1;
+  // deconsolidation_cfs_id
+  string deconsolidation_cfs_id = 2;
+  // place_of_delivery_id
+  string place_of_delivery_id = 3;
+  // shipment_freight_service
+  string shipment_freight_service = 4;
+}

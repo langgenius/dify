@@ -1,0 +1,104 @@
+// TEAM: ocean_allocations
+
+syntax = "proto3";
+
+package flexport.oceansupply.carrierprofile.v1beta1;
+
+import "flexport/oceansupply/oceanroute/v1beta1/ocean_route.proto";
+import "flexport/oceansupply/utils/v1beta1/filter.proto";
+import "google/protobuf/wrappers.proto";
+import "google/type/date.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.oceansupply.carrierprofile.v1beta1";
+option ruby_package = "Flexport::OceanSupply::V1Beta1";
+
+/**
+ * The CarrierProfile gives us booking information and its presence or absence tells us
+ * which routes we can book on which contracts.
+ */
+message CarrierProfile {
+  // For "wilcard" profiles, the fid will be blank (empty string).
+  string fid = 1;
+  string carrier_fid = 2;
+  string contract_fid = 3;
+  oceanroute.v1beta1.OceanRoute ocean_route = 4;
+  google.protobuf.StringValue booking_reference = 5;
+  // If client_fid is present, this is a NAC Profile for that client,
+  // otherwise it's a non-NAC profile available to any client.
+  google.protobuf.StringValue client_fid = 6;
+  // Iff there's a premium_service_fid, then this is a Premium Profile.
+  google.protobuf.StringValue premium_service_fid = 7;
+  // Types of premium services provided by the profile.
+  repeated ServiceLevelV1 service_levels_v1 = 8;
+  // If composite_string is absent, then this is valid for all strings.
+  google.protobuf.StringValue composite_string = 9;
+  // Used for determining priority amongst multiple matching nac profiles.
+  // Expected to be missing for non-nac profiles.
+  // 1 is highest priority, higher numbers are lower priority. Scale is 1-10.
+  google.protobuf.Int32Value carrier_preference = 10;
+  // Start and end date are both local dates for the validity period, which
+  // will either be when the Profile is active or when it's inactive depending on
+  // validity_period_type. They are Local dates but if you need to convert to an instant,
+  // you should probably use the timezone of the origin port and startOfDay for start
+  // and endOfDay for end.
+  // If end_date is missing, the time period extends indefinitely forward. Similar for start_date.
+  // A common value for Profiles is "always valid", which would have a missing start and end date
+  // and a validity_period_type of ACTIVE.
+  // The contracts themselves also have validity periods, this
+  // is meant for adjustments on top of those, so both the contract and the Profile need to be valid
+  // for the Profile to be usable.
+  google.type.Date start_date = 11; // optional
+  google.type.Date end_date = 12; // optional
+  ValidityPeriodType validity_period_type = 13; // required
+  // Specifies which hs_code_prefixes are allowed by this Profile
+  // Like all Filters, if it's missing it can be interpreted as exclude none, ie fully inclusive
+  // The strings in the values list may be two digits or six digits and may contain '.'
+  // (eg "42" or "5212.11"). Two digit codes are meant to match with any hs code that starts with those two digits.
+  utils.v1beta1.Filter hs_code_prefixes = 14;
+  // Similar to carrier_preference in that it measures priority, but will
+  // be set for non-nac profiles and missing for nac profiles.
+  // The scale for this is 1-2 where 1 is the highest priority. 2 is the default value.
+  google.protobuf.Int32Value fak_priority = 15;
+}
+
+// A message that's emitted when a profile is created.
+message CarrierProfileCreated {
+  CarrierProfile profile = 1;
+}
+
+// A message that's emitted when a profile is updated.
+message CarrierProfileUpdated {
+  CarrierProfile profile = 1;
+}
+
+// A message that's emitted when a profile is deleted.
+message CarrierProfileDeleted {
+  string profile_fid = 1;
+}
+
+enum ServiceLevelV1 {
+  SERVICE_LEVEL_V1_INVALID = 0;
+  SERVICE_LEVEL_V1_NO_ROLL = 1;
+  SERVICE_LEVEL_V1_EXPEDITED = 2;
+  SERVICE_LEVEL_V1_PREMIUM = 3;
+  SERVICE_LEVEL_V1_PRIORITY_DISCHARGE = 4;
+  SERVICE_LEVEL_V1_NEXT_AVAILABLE_SAILING = 5;
+  SERVICE_LEVEL_V1_EXPEDITED_SAILING = 6;
+  SERVICE_LEVEL_V1_EXPEDITED_RAIL = 7;
+  SERVICE_LEVEL_V1_PRIORITY_SPACE = 8;
+  SERVICE_LEVEL_V1_PRIORITY_EQUIPMENT = 9;
+  SERVICE_LEVEL_V1_GUARANTEE_SPACE = 10;
+  SERVICE_LEVEL_V1_GUARANTEE_EQUIPMENT = 11;
+  SERVICE_LEVEL_V1_TRANSLOAD_PREMIUM = 12;
+}
+
+// In other places we say a Profile is either valid or invalid, but since
+// INVALID is a reserved word for proto enums, we use active or inactive instead.
+// The meaning is the same. This type is repeated from the CarrierOptions proto file,
+// but repeating it here prevents this file from depending on that file.
+enum ValidityPeriodType {
+  VALIDITY_PERIOD_TYPE_INVALID = 0;
+  VALIDITY_PERIOD_TYPE_ACTIVE = 1;
+  VALIDITY_PERIOD_TYPE_INACTIVE = 2;
+}

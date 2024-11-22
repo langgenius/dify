@@ -1,0 +1,25 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.offering.origin.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OriginProto";
+option java_package = "com.flexport.catalog.offering.origin.v1";
+option ruby_package = "Flexport::Catalog::Offering::Origin::V1";
+
+import "flexport/catalog/enums/v1/enums.proto";
+import "google/protobuf/wrappers.proto";
+
+// Origin attributes.
+message OriginAttributesDto {
+  repeated catalog.enums.v1.BookingModesDto booking_modes = 1;
+  google.protobuf.Int64Value origin_id = 2;
+}
+
+// Origin query attributes.
+message OriginQueryAttributesDto {
+  repeated catalog.enums.v1.BookingModesDto booking_modes = 1;
+  repeated int64 origin_ids = 2;
+}

@@ -1,0 +1,38 @@
+// TEAM: customs-insights
+syntax = "proto3";
+
+package flexport.customs.productlibrary.productclassification.v1beta1;
+
+import "flexport/customs/productlibrary/common/v1beta1/country_code.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.productlibrary.productclassification";
+option ruby_package = "Flexport::Customs::ProductLibrary::ProductClassification";
+
+// Service to CREATE/UPDATE/DELETE product classifications.
+service ProductClassificationAPI {
+  // API to update product classification (hs_code) in PPC and Classification State
+  // note: This API is a more general API which is not needed as of now
+  // rpc UpdateProductClassificationAndState(UpdateProductClassificationAndStateRequest) returns (UpdateProductClassificationAndStateResponse);
+
+  // API to update a product's classification (hs_code) in PPC and Classification State to "ReadyForReview" and
+  // Actor to "FLEXPORT_INTERNAL" when Classification_Adapter NIS receives a successful classification.
+  rpc UpdateClassificationWithClassificationAdapterResult(UpdateClassificationWithClassificationAdapterResultRequest) returns (UpdateClassificationWithClassificationAdapterResultResponse);
+}
+
+message UpdateClassificationWithClassificationAdapterResultRequest {
+  // product_fid for which classification has to be updated
+  string product_fid = 1;
+
+  // COI as classification is specific to COI
+  flexport.customs.productlibrary.common.v1beta1.CountryCode country_of_import = 2;
+
+  // unique value to differentiate between active requests for same product_fid+COI.
+  // This would be the primary key (id) of classification states table
+  string idempotency_key = 3;
+
+  // list of hs_codes returned from avalara
+  repeated string hs_codes = 4;
+}
+
+message UpdateClassificationWithClassificationAdapterResultResponse {}

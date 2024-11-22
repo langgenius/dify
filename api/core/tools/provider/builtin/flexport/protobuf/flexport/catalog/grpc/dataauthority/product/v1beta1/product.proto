@@ -1,0 +1,94 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.grpc.dataauthority.product.v1beta1;
+
+import "google/protobuf/struct.proto";
+import "google/rpc/status.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.catalog.grpc.dataauthority.product.v1beta1";
+option ruby_package = "Flexport::Catalog::Grpc::DataAuthority::Product::V1Beta1";
+
+service ProductAPI {
+  // Creates a Product
+  rpc CreateProduct(CreateProductRequest) returns (CreateProductResponse);
+
+  // Updates a Product and bumps version upon success
+  rpc UpdateProduct(UpdateProductRequest) returns (UpdateProductResponse);
+
+  // Archives a specific Product by Fid
+  rpc ArchiveProductByFid(ArchiveProductByFidRequest) returns (ArchiveProductByFidResponse);
+
+  // Retrieves product by query filters
+  rpc ListProductsByQuery(ListProductsByQueryRequest) returns (ListProductsByQueryResponse);
+
+  // Retrieves a specific product by Fid
+  // - For versioned Fid, return product with specified version
+  // - For un-versioned Fid, return product with latest version
+  rpc GetProductByFid(GetProductByFidRequest) returns (GetProductByFidResponse);
+}
+
+message ProductInstance {
+  string product_fid = 1;
+  string configuration_fid = 2;
+  string distinct_key = 3;
+  google.protobuf.Struct attributes = 4;
+  ProductStatus status = 5;
+}
+
+enum ProductStatus {
+  PRODUCT_STATUS_INVALID = 0;
+  PRODUCT_STATUS_ACTIVE = 1;
+  PRODUCT_STATUS_ARCHIVED = 2;
+}
+
+message CreateProductRequest {
+  string configuration_fid = 1;
+  optional string distinct_key = 2;
+  google.protobuf.Struct attributes = 3;
+}
+
+message CreateProductResponse {
+  google.rpc.Status status = 1;
+  ProductInstance product = 2;
+}
+
+message UpdateProductRequest {
+  string product_fid = 1;
+  optional string distinct_key = 2;
+  google.protobuf.Struct attributes = 4;
+}
+
+message UpdateProductResponse {
+  google.rpc.Status status = 1;
+  ProductInstance product = 2;
+}
+
+message ArchiveProductByFidRequest {
+  string product_fid = 1;
+}
+
+message ArchiveProductByFidResponse {
+  google.rpc.Status status = 1;
+  ProductInstance product = 2;
+}
+
+message ListProductsByQueryRequest {
+  google.protobuf.Struct query = 1;
+}
+
+message ListProductsByQueryResponse {
+  google.rpc.Status status = 1;
+  repeated ProductInstance products = 2;
+}
+
+message GetProductByFidRequest {
+  string product_fid = 1;
+}
+
+message GetProductByFidResponse {
+  google.rpc.Status status = 1;
+  ProductInstance product = 2;
+}

@@ -1,0 +1,17 @@
+// TEAM: capital
+
+syntax = "proto3";
+
+package flexport.capital.shared.v1beta1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PageInfoProto";
+option java_package = "com.flexport.capital.shared.v1beta1";
+option ruby_package = "Flexport::Capital::Shared::V1Beta1";
+
+message PageInfo {
+  google.protobuf.StringValue cursor = 1;
+  bool has_more = 2;
+}

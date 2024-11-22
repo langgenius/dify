@@ -1,0 +1,21 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.oceanplanning.entityevent.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FulfilledAssignmentEntityProto";
+option java_package = "com.flexport.oceanplanning.entityevent.v1beta1";
+option ruby_package = "Flexport::OceanPlanning::EntityEvent::V1Beta1";
+
+message FulfilledAssignmentEntity {
+  int64 id = 1;
+  string assignment_fid = 2;
+  string assignment_note = 3;
+  string fulfillment_task_fid = 4;
+  int32 fulfillment_task_revision_number = 5;
+  google.protobuf.Timestamp created_at_time = 6;
+}

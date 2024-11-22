@@ -1,0 +1,35 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.oceanops.bookingofficeport.v1beta1;
+
+import "flexport/rulesengine/options/v1/options.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BookingOfficePortApiProto";
+option java_package = "com.flexport.oceanops.bookingofficeport.v1beta1";
+option ruby_package = "Flexport::OceanOps::BookingOfficePort::V1Beta1";
+
+// BookingOfficePortAPI. This is the rules to determine carrier's booking office port based on POL and carrier.
+service BookingOfficePortAPI {
+  option (flexport.rulesengine.options.v1.rule_facade).service_name = "ocean_ops";
+  // Carrier SCAC & Port of Loading will replace the origin Google sheet.
+  rpc BookingOfficePort(BookingOfficePortRequest) returns (BookingOfficePortResponse) {
+    option (flexport.rulesengine.options.v1.decision_table).use = true;
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.oceanops.bookingofficeport";
+    option (flexport.rulesengine.options.v1.rule).description = "Determine carrier's booking office port based on POL and carrier";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "ocean_ops";
+  }
+}
+
+message BookingOfficePortRequest {
+  string carrier_scac = 1;
+  string port_loc = 2;
+  string port_of_unloading_country_code = 3;
+}
+
+message BookingOfficePortResponse {
+  string port_loc = 1;
+}

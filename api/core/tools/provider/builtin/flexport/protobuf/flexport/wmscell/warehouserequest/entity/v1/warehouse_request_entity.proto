@@ -1,0 +1,32 @@
+// TEAM: wms_bellevue
+
+syntax = "proto3";
+
+package flexport.wmscell.warehouserequest.entity.v1;
+
+import "flexport/wmscell/common/v1/vas.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "WarehouseRequestEntityProto";
+option java_package = "com.flexport.wmscell.warehouserequest.entity.v1";
+
+message WarehouseRequestEntity {
+  string warehouse_request_pk = 1;
+  string warehouse_request_id = 2;
+  string warehouse_request_id_namespace = 3;
+  string warehouse_code = 4;
+  string warehouse_request_status = 5;
+  string freight_mode = 6;
+  uint32 loose_carton_quantity = 7;
+  uint32 pallet_quantity = 8;
+  string import_customs = 9;
+  string export_customs = 10;
+  string is_dangerous = 11;
+  string import_export = 12;
+  string operation_instruction = 13;
+  repeated string hold_type = 14;
+  repeated flexport.wmscell.common.v1.ValueAddedService vas_type = 15;
+  string client = 16;
+  string origin_agent = 17;
+  string shipper_name = 18;
+}

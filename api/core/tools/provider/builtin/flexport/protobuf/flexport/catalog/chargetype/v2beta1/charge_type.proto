@@ -1,0 +1,27 @@
+// TEAM: commerce_charges
+
+syntax = "proto3";
+
+package flexport.catalog.chargetype.v2beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ChargeTypeProto";
+option java_package = "com.flexport.catalog.chargetype.v2beta1";
+option ruby_package = "Flexport::Catalog::ChargeType::V2Beta1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Shared evaluation variables.
+message ChargeTypeDto {
+  google.protobuf.StringValue slug = 1;
+  google.protobuf.StringValue description = 2;
+  // Internal pricing focused description, not used yet
+  google.protobuf.StringValue strategy = 3;
+  google.protobuf.Int64Value updated_by = 4;
+  google.protobuf.Timestamp updated_at_time = 5;
+  google.protobuf.StringValue applicability_policy_id = 6;
+  google.protobuf.StringValue estimated_cost_model_id = 7;
+  google.protobuf.StringValue sell_model_id = 8;
+  google.protobuf.StringValue title = 9;
+}

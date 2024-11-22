@@ -1,0 +1,16 @@
+// TEAM: customs-insights-ml
+
+syntax = "proto3";
+
+package flexport.customs.productclassificationrecommendationservice.snowflake.v1beta1;
+
+message ResponseMapping {
+  // Id that maps to RequestResponse table
+  string request_id_fk = 1;
+  // The HTS code associated with the product
+  string hts_code = 2;
+  // The prediction score assigned to the HTS code for the given product
+  double prediction_score = 3;
+  // The rank of the given prediction by prediction_score relative to other predictions for the same product.
+  int32 rank = 4;
+}

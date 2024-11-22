@@ -1,0 +1,58 @@
+// TEAM: workflow_platform
+
+syntax = "proto3";
+
+package flexport.rulesengine.sample.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SampleProto";
+option java_package = "com.flexport.rulesengine.sample.v1beta1";
+option ruby_package = "Flexport::RulesEngine::Sample::V1Beta1";
+
+import "flexport/rulesengine/options/v1/options.proto";
+import "google/protobuf/timestamp.proto";
+
+// This is a short description about the main message.
+message Sample {
+  string id = 1;
+  Foo foo = 2;
+  string some_old_field = 4 [deprecated = true];
+  BarType bar = 5;
+  repeated int32 baz = 6;
+  google.protobuf.Timestamp now_time = 7;
+  string text = 8 [
+    (flexport.rulesengine.options.v1.field_component) = {
+      text_area: {
+        min_rows: 3
+      }
+    }
+  ];
+  google.protobuf.Timestamp date_time = 9 [
+    (flexport.rulesengine.options.v1.field_component) = {
+      date_time: {
+        type: DATE_TIME_TYPE_DATE
+      }
+    }
+  ];
+  google.protobuf.Timestamp time = 10 [
+    (flexport.rulesengine.options.v1.field_component) = {
+      date_time: {
+        type: DATE_TIME_TYPE_TIME
+      }
+    }
+  ];
+  // TODO @yanjun add a case for WallTimeDate or DateTime
+
+}
+
+// A helper message.
+message Foo {
+  string id = 1;
+}
+
+// An enum definition.
+enum BarType {
+  BAR_TYPE_INVALID = 0;
+  BAR_TYPE_HELLO = 1;
+  BAR_TYPE_BYE = 2;
+}

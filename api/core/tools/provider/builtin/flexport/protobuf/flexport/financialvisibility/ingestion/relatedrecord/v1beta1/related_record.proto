@@ -1,0 +1,51 @@
+// TEAM: cost_capture
+
+syntax = "proto3";
+
+package flexport.financialledger.ingestion.relatedrecord.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RelatedRecordProto";
+option java_package = "com.flexport.financialledger.ingestion.relatedrecord.v1beta1";
+option ruby_package = "Flexport::FinancialLedger::Ingestion::RelatedRecord::V1Beta1";
+
+// FinancialLedger RelatedRecord category enum.
+enum RelatedRecordCategory {
+  RELATED_RECORD_CATEGORY_INVALID = 0;
+  RELATED_RECORD_CATEGORY_BILL = 1;
+  RELATED_RECORD_CATEGORY_PROCUREMENT_CONTRACT = 4;
+  RELATED_RECORD_CATEGORY_PROVIDED_SERVICE = 5;
+  RELATED_RECORD_CATEGORY_SHIPMENT = 6;
+  RELATED_RECORD_CATEGORY_SUPPLY_SERVICE = 7;
+  //  RELATED_RECORD_CATEGORY_INVOICE = 2;
+  //  RELATED_RECORD_CATEGORY_CREDIT_MEMO = 3;
+  //  RELATED_RECORD_CATEGORY_VOID_CREDIT_MEMO = 8;
+}
+
+// Ingestion related record object.
+message RelatedRecordDto {
+  google.protobuf.StringValue fid = 1;
+  google.protobuf.StringValue ingestion_fid = 2;
+  string related_record_type = 3;
+  string related_record_identifier = 4;
+  // Ingestion related record category.
+  RelatedRecordCategory related_record_category = 5;
+  google.protobuf.Timestamp created_at_time = 6;
+}
+
+// RelatedRecord records collection message.
+message RelatedRecordsDto {
+  repeated RelatedRecordDto related_records = 1;
+}
+
+// Ingestion Related Record query filters message.
+message RelatedRecordFiltersDto {
+  repeated string fids = 1;
+  repeated string ingestion_fids = 2;
+  repeated string related_record_types = 3;
+  repeated string related_record_identifiers = 4;
+  repeated RelatedRecordCategory related_record_categories = 5;
+}

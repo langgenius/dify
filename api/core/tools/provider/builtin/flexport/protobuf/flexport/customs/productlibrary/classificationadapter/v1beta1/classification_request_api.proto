@@ -1,0 +1,82 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.productlibrary.classificationadapter.v1beta1;
+
+import "flexport/customs/productlibrary/classificationadapter/v1beta1/classification_request.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.productlibrary.classificationadapter";
+option ruby_package = "Flexport::Customs::ProductLibrary::ClassificationAdapter";
+
+// Service that requests product classification from 3rd party.
+service ClassificationRequestAPI {
+  // API to request classification for a list of products.
+  rpc RequestClassificationForProducts(RequestClassificationForProductsRequest) returns (RequestClassificationForProductsResponse);
+
+  // API to request classification hs_code for a classification_id.
+  rpc GetHsClassification(ClassificationRequestAPIGetHsClassificationRequest) returns (ClassificationRequestAPIGetHsClassificationResponse);
+}
+
+message RequestClassificationForProductsRequest {
+  // A list of classification requests ready to be sent.
+  repeated flexport.customs.productlibrary.classificationadapter.v1beta1.ClassificationRequest classification_requests = 1;
+}
+
+message RequestClassificationForProductsResponse {
+  // A list of errors if the classification request failed.
+  repeated string errors = 1;
+}
+
+message Item {
+  // The id of the item.
+  int32 id = 1;
+  // The id of the company that send the reuqest, most of the time, the company is Flexport.
+  int32 company_id = 2;
+  // item_code of the product
+  string item_code = 3;
+  // parent_code of the item
+  string parent_code = 4;
+  // description of the item
+  string description = 5;
+  // summary of the item
+  string summary = 6;
+  // item_group of the product
+  string item_group = 7;
+  // The patameters needed for classification, represents product properties.
+  repeated flexport.customs.productlibrary.classificationadapter.v1beta1.ClassificationParameter classification_parameters = 8;
+  // The patameters, represents additional properties.
+  repeated flexport.customs.productlibrary.classificationadapter.v1beta1.ClassificationParameter parameters = 9;
+}
+
+message HSClassificationModel {
+  // 3rd part hs_classification_id of the classification request
+  string hs_classification_id = 1;
+  // Item or product details
+  Item item = 2;
+  // Activity of the item
+  string activity = 3;
+  // Country of destination
+  string country_of_destination = 4;
+  // Hs code of the product
+  string hs_code = 5;
+  // Status of the product
+  string status = 6;
+  // Resolution of the classification
+  string resolution = 7;
+  // Confidence
+  string confidence = 8;
+  // Confidence description
+  string confidence_description = 9;
+}
+
+message ClassificationRequestAPIGetHsClassificationResponse {
+  // Response is of HSClassificationModel type
+  repeated HSClassificationModel hs_classification_model = 1;
+}
+
+message ClassificationRequestAPIGetHsClassificationRequest {
+  // A get_classification requests ready to be sent.
+  flexport.customs.productlibrary.classificationadapter.v1beta1.GetHsClassificationRequest classification_requests = 1;
+}
+

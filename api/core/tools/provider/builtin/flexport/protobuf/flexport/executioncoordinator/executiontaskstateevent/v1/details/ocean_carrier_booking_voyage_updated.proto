@@ -1,0 +1,22 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanCarrierBookingVoyageUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/oex/carrierbookingbundle/v1beta1/carrier_booking_bundle.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+
+// The carrier booking voyages have been updated.
+//
+message OceanCarrierBookingVoyageUpdated {
+  string carrier_booking_fid = 1;
+  repeated flexport.oex.carrierbookingbundle.v1beta1.BookingVoyage previous_booking_voyages = 2;
+  repeated flexport.oex.carrierbookingbundle.v1beta1.BookingVoyage current_booking_voyages = 3;
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime estimated_time_of_departure = 4;
+}

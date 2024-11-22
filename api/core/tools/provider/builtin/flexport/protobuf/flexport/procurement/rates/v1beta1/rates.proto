@@ -1,0 +1,229 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.rates.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RatesProto";
+option java_package = "com.flexport.procurement.rates.v1beta1";
+option ruby_package = "Flexport::Procurement::Rates::V1Beta1";
+
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+
+// A rate that can be used to move cargo.
+message Rate {
+  string id = 1;
+  repeated Term terms = 2;
+  repeated Charge charges = 3;
+}
+
+// A term that defines when a rate is applicable.
+message Term {
+  oneof term {
+    TransportModeTerm mode = 1;
+    ValidityTerm validity = 2;
+    CarrierTerm carrier = 3;
+    PartnerTerm partner = 4;
+    RouteTerm route = 5;
+    ClientTerm client = 6;
+    ContainerTerm container = 7;
+    CommodityTerm commodity = 8;
+    ServiceStringTerm service_string = 9;
+    VesselTerm vessel = 10;
+    VoyageTerm voyage = 11;
+    MasterBillOfLadingTerm master_bill_of_lading = 12;
+    DangerousGoodsClassificationTerm dangerous_goods_classification = 13;
+  }
+}
+
+// A charge that will be incurred when moving cargo on a rate.
+message Charge {
+  string charge_code_fid = 1;
+  PricingStructure pricing_structure = 2;
+  // Metadata about the charge as stringified json.
+  // TODO move this to ChargeMeta miscellaneous_json
+  string charge_metadata_json = 3;
+  repeated ChargeCondition conditions = 4;
+  ChargeMeta metadata = 5;
+}
+
+// A pricing structure that is used to calculate a charge amount.
+message PricingStructure {
+  oneof pricing_structure {
+    FlatPricingStructure flat = 1;
+    PerUnitPricingStructure per_unit = 2;
+    PerVolumeUnitPricingStructure per_volume_unit = 3;
+    PerWeightUnitPricingStructure per_weight_unit = 4;
+    PerChargeableWeightUnitPricingStructure per_chargeable_weight_unit = 5;
+  }
+}
+
+// A condition restricting the applicability of a Charge.
+message ChargeCondition {
+  oneof charge_condition {
+    AdditionalLineItemCondition additional_line_item_condition = 1;
+  }
+}
+
+// A condition whereby a Charge applies if the specified additional line item applies.
+message AdditionalLineItemCondition {
+  string additional_line_item_name = 1;
+}
+
+// The mode of transport.
+enum TransportMode {
+  TRANSPORT_MODE_INVALID = 0;
+  TRANSPORT_MODE_OCEAN = 1;
+  TRANSPORT_MODE_AIR = 2;
+  TRANSPORT_MODE_TRUCKING = 3;
+}
+
+// A monetary amount.
+message Amount {
+  string currency_code = 1;
+  string micros = 2;
+  string minimum = 3;
+  string maximum = 4;
+}
+
+// Specifies which transport mode a rate is applicable to.
+message TransportModeTerm {
+  TransportMode mode = 1;
+}
+
+// Specifies the date range a rate is valid for.
+message ValidityTerm {
+  Date validity_start = 1;
+  Date validity_end = 2;
+}
+
+// A calendar date without a timezone.
+message Date {
+  // A common era year.
+  int32 year = 1;
+  // The month number (January = 1, December = 12, and so on).
+  int32 month = 2;
+  // The day of the month.
+  int32 day = 3;
+}
+
+// Specifies a carrier a rate applies to.
+message CarrierTerm {
+  string carrier_fid = 1;
+}
+
+// Specifies a freight partner a rate applies for.
+message PartnerTerm {
+  string partner_fid = 1;
+}
+
+// Specifies the route cargo must take for a rate to apply.
+message RouteTerm {
+  string origin_fid = 1;
+  string destination_fid = 2;
+  repeated Route possible_routes = 3;
+}
+
+// A route that cargo can take.
+message Route {
+  repeated string stops = 1;
+}
+
+// Specifies a client a rate is applicable for.
+message ClientTerm {
+  string client_fid = 1;
+}
+
+// Specifies an ISO6346 shipping container a rate applies to.
+message ContainerTerm {
+  string iso_container_code = 1;
+  double gross_weight_in_kg = 2;
+}
+
+// Specifies the shipped commodity a rate is applicable for.
+message CommodityTerm {
+  string commodity_fid = 1;
+}
+
+// The valid service strings for the rate.
+message ServiceStringTerm {
+  repeated string service_string_fids = 1 [deprecated = true];
+  repeated string service_strings = 2;
+}
+
+// Specifies a vessel a rate is applicable for.
+message VesselTerm {
+  repeated string vessel_names = 1;
+}
+
+// Specifies a voyage a rate is applicable for.
+message VoyageTerm {
+  repeated string voyage_numbers = 1;
+}
+
+// Specifies a master bill of lading a rate is applicable for.
+message MasterBillOfLadingTerm {
+  repeated string bill_numbers = 1;
+}
+
+// Specifies a dg classification a rate is applicable for.
+message DangerousGoodsClassificationTerm {
+  string imo_class = 1;
+}
+
+// A flat pricing structure that always applies to a rate.
+message FlatPricingStructure {
+  string charge_fid = 1;
+  Amount amount = 2;
+}
+
+// A per-cargo-unit pricing structure that always applies to a rate.
+message PerUnitPricingStructure {
+  string charge_fid = 1;
+  Amount amount_per_unit = 2;
+  flexport.os.v1.types.cargo.v1.CargoUnit unit = 3;
+}
+
+// A per-volume-unit pricing structure that always applies to a rate (e.g. per cbm).
+message PerVolumeUnitPricingStructure {
+  string charge_fid = 1;
+  Amount amount_per_unit = 2;
+  flexport.os.v1.types.cargo.v1.CargoVolumeUnit unit = 3;
+}
+
+// A per-weight-unit pricing structure that always applies to a rate (eg per kg).
+message PerWeightUnitPricingStructure {
+  string charge_fid = 1;
+  Amount amount_per_unit = 2;
+  flexport.os.v1.types.cargo.v1.CargoWeightUnit unit = 3;
+}
+
+// A weight or measure pricing structure that always applies to a rate.
+message PerChargeableWeightUnitPricingStructure {
+  string charge_fid = 1;
+  PerVolumeUnitPricingStructure per_volume = 2;
+  PerWeightUnitPricingStructure per_weight = 3;
+}
+
+// Metadata about the charge.
+message ChargeMeta {
+  SourceInfo source_info = 1;
+  string miscellaneous_json = 2;
+}
+
+// Information about the data source from which a charge originated.
+message SourceInfo {
+  Source source = 1;
+}
+
+// Data source for a charge.
+enum Source {
+  SOURCE_INVALID = 0;
+  SOURCE_TARIFF = 1;
+  SOURCE_TARIFF_ADDITIONAL = 2;
+  SOURCE_LINE_ITEM_ADDITIONAL = 3;
+  SOURCE_VATOS = 4;
+  SOURCE_CONDITIONAL_TARIFF = 5;
+  SOURCE_UNKNOWN = 6;
+}

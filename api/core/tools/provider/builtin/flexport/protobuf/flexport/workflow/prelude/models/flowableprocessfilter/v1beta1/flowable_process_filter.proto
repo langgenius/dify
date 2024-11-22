@@ -1,0 +1,20 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.prelude.models.flowableprocessfilter.v1beta1;
+
+import "flexport/workflow/prelude/enums/eventscope/v1beta1/event_scope.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FlowableProcessFilterProto";
+option java_package = "com.flexport.workflow.prelude.models.flowableprocessfilter.v1beta1";
+option ruby_package = "Flexport::Workflow::Prelude::Models::FlowableProcessFilter::V1Beta1";
+
+// Flowable Process Filter.
+message FlowableProcessFilter {
+  flexport.workflow.prelude.enums.eventscope.v1beta1.EventScope event_scope = 1 [deprecated = true];
+  string process_instance_key = 2;
+  string process_instance_id = 3;
+  string execution_id = 4;
+}

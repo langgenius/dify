@@ -1,0 +1,24 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.declaration.eu.common.v1beta1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.declaration.eu.common.v1beta1";
+option ruby_package = "Flexport::Customs::Declaration::EU::Common::V1Beta1";
+
+// [Data Element: 12 12 000 000]
+message Authorisation {
+  // [Data Element: 12 12 001 000]
+  string reference_number = 1;
+
+  enum Type {
+    TYPE_INVALID = 0;
+
+  // TODO: Add more types as needed.
+  }
+  // [Data Element: 12 12 002 000]
+  Type type = 2;
+  // [Data Element: 12 12 080 000]
+  string holder_of_authorisation = 3;
+}

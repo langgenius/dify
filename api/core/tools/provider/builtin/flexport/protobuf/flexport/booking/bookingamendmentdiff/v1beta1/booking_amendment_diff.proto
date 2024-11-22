@@ -1,0 +1,107 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.booking.bookingamendmentdiff.v1beta1;
+
+import "flexport/booking/cargo/v1beta1/cargo.proto";
+import "flexport/booking/containercounts/v1beta1/container_counts.proto";
+import "flexport/booking/enums/declared_as_dangerous/v1beta1/declared_as_dangerous.proto";
+import "flexport/booking/product/v1beta1/product.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BookingAmendmentDiffProto";
+option java_package = "com.flexport.booking.bookingamendmentdiff.v1beta1";
+option ruby_package = "Flexport::Booking::BookingAmendmentDiff::V1Beta1";
+
+// This wraps the content of change in a booking.
+// If a field has identical prev value and current value
+// It means the field is not edited in the amendment.
+// If one of the prev and current value is null.
+// It means the field used to have no value (as manual fields are nullable in a booking).
+// and then has a value. Or the user deleted a value and make it null in the amending process.
+message BookingAmendmentDiff {
+  google.protobuf.StringValue prev_name = 1;
+  google.protobuf.StringValue current_name = 2;
+  NullableProductList prev_booking_products = 3;
+  NullableProductList current_booking_products = 4;
+  NullableContainerCounts prev_container_counts = 5;
+  NullableContainerCounts current_container_counts = 6;
+  google.protobuf.Timestamp prev_cargo_ready_date_time = 7 [deprecated = true];
+  google.protobuf.Timestamp current_cargo_ready_date_time = 8 [deprecated = true];
+  NullableCargo prev_cargo = 9;
+  NullableCargo current_cargo = 10;
+  NullableDeclaredAsDangerous prev_dangerous_goods = 11;
+  NullableDeclaredAsDangerous current_dangerous_goods = 12;
+  google.protobuf.BoolValue prev_wants_pickup_service = 13;
+  google.protobuf.BoolValue current_wants_pickup_service = 14;
+  google.protobuf.StringValue prev_origin_address_fid = 15;
+  google.protobuf.StringValue current_origin_address_fid = 16;
+  google.protobuf.StringValue prev_port_of_loading_fid = 17;
+  google.protobuf.StringValue current_port_of_loading_fid = 18;
+  google.protobuf.BoolValue prev_wants_delivery_service = 19;
+  google.protobuf.BoolValue current_wants_delivery_service = 20;
+  google.protobuf.StringValue prev_destination_address_fid = 21;
+  google.protobuf.StringValue current_destination_address_fid = 22;
+  google.protobuf.StringValue prev_port_of_unloading_fid = 23;
+  google.protobuf.StringValue current_port_of_unloading_fid = 24;
+  google.protobuf.StringValue prev_description_of_products = 25;
+  google.protobuf.StringValue current_description_of_products = 26;
+  google.protobuf.StringValue prev_target_delivery_date = 27;
+  google.protobuf.StringValue current_target_delivery_date = 28;
+  google.protobuf.StringValue prev_cargo_ready_date = 29;
+  google.protobuf.StringValue current_cargo_ready_date = 30;
+  google.protobuf.StringValue prev_planned_delivery_date = 31;
+  google.protobuf.StringValue current_planned_delivery_date = 32;
+  google.protobuf.StringValue prev_scac_code = 33;
+  google.protobuf.StringValue current_scac_code = 34;
+  google.protobuf.StringValue prev_master_bill_of_lading_number = 35;
+  google.protobuf.StringValue current_master_bill_of_lading_number = 36;
+  google.protobuf.StringValue prev_house_bill_of_lading_number = 37;
+  google.protobuf.StringValue current_house_bill_of_lading_number = 38;
+  google.protobuf.ListValue prev_container_numbers = 39;
+  google.protobuf.ListValue current_container_numbers = 40;
+  google.protobuf.StringValue prev_forwarder_name = 41;
+  google.protobuf.StringValue current_forwarder_name = 42;
+  google.protobuf.StringValue prev_notes = 43;
+  google.protobuf.StringValue current_notes = 44;
+  google.protobuf.BoolValue prev_wants_import_customs_service = 45;
+  google.protobuf.BoolValue current_wants_import_customs_service = 46;
+  google.protobuf.BoolValue prev_wants_flexport_freight = 47;
+  google.protobuf.BoolValue current_wants_flexport_freight = 48;
+  google.protobuf.BoolValue prev_wants_bco = 49;
+  google.protobuf.BoolValue current_wants_bco = 50;
+}
+
+// A wrapper for cargo to make it nullable.
+message NullableCargo {
+  oneof kind {
+    google.protobuf.NullValue null = 1;
+    flexport.booking.cargo.v1beta1.Cargo cargo = 2;
+  }
+}
+
+// A wrapper for container counts.
+message NullableContainerCounts {
+  oneof kind {
+    google.protobuf.NullValue null = 1;
+    flexport.booking.containercounts.v1beta1.ContainerCounts container_counts = 2;
+  }
+}
+
+// A wrapper for declared as dangerous to make it nullable.
+message NullableDeclaredAsDangerous {
+  oneof kind {
+    google.protobuf.NullValue null = 1;
+    flexport.booking.enums.declaredasdangerous.v1beta1.DeclaredAsDangerous declared_as_dangerous = 2;
+  }
+}
+
+// A wrapper for product list to make it nullable.
+message NullableProductList {
+  google.protobuf.NullValue null = 1;
+  repeated flexport.booking.product.v1beta1.Product products = 2;
+}

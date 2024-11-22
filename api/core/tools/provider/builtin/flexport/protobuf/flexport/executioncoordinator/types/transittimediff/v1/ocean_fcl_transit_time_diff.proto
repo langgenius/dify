@@ -1,0 +1,76 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.transittimediff.v1;
+
+import "flexport/executioncoordinator/types/enums/v1/transport_mode.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanFclTransitTimeDiffProto";
+option java_package = "com.flexport.executioncoordinator.types.transittimediff.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::TransitTimeDiff::V1";
+
+// Contains differences between arrival and departure times.
+message OceanFclTransitTimeDiff {
+  // The type of diff.
+  ComponentType component_type = 1;
+  // A single location is used for port dwells, otherwise port-to-port & planned delivery will have 2 locations.
+  // If there is a mismatch, this field will be empty.
+  repeated string location_port_fids = 3;
+  // If the predicted leg does not exist, this field will be empty.
+  oneof prediction_input {
+    PortToPortInput prediction_port_to_port_input = 4;
+    DestinationDwellInput prediction_destination_dwell_input = 5;
+  }
+  // If the actual leg does not exist, this field will be empty.
+  oneof actual_input {
+    PortToPortInput actual_port_to_port_input = 6;
+    DestinationDwellInput actual_destination_dwell_input = 7;
+  }
+  DateTime predicted_time = 8;
+  DateTime user_accepted_time = 9;
+  string container_fid = 10;
+}
+
+// Enum for the type of transit time diff.
+enum ComponentType {
+  COMPONENT_TYPE_INVALID = 0;
+  COMPONENT_TYPE_DESTINATION_PORT_DWELL = 6;
+  COMPONENT_TYPE_OCEAN_FCL_PORT_TO_PORT = 5;
+  COMPONENT_TYPE_DESTINATION_PORT_DWELL_OCEAN = 1 [deprecated = true];
+  COMPONENT_TYPE_DESTINATION_PORT_DWELL_RAIL = 2 [deprecated = true];
+  COMPONENT_TYPE_ORIGIN_PORT_DWELL_OCEAN = 3 [deprecated = true];
+  COMPONENT_TYPE_ORIGIN_PORT_DWELL_RAIL = 4 [deprecated = true];
+}
+
+// A struct to encode how much time has passed.
+message DateTime {
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime start_time = 1;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime end_time = 2;
+}
+
+// Data about port to port transit.
+message PortToPortInput {
+  string carrier_fid = 1;
+  string carrier_service_string_fid = 2;
+  string origin_port_fid = 3;
+  string destination_port_fid = 4;
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime arrival_date = 5;
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime departure_date = 6;
+}
+
+// Data about destination dwell transit. Destination refers to the wet port
+// destination, not the final port (EX Chicago inland port)
+message DestinationDwellInput {
+  string carrier_fid = 1;
+  string carrier_service_string_fid = 2;
+  // Refers to the ocean port
+  string port_fid = 3;
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime arrival_date = 4;
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime departure_date = 5;
+  // Specify the transport node of the next leg originating from the ocean port
+  flexport.executioncoordinator.types.enums.v1.TransportMode next_leg_transport_mode = 6;
+}

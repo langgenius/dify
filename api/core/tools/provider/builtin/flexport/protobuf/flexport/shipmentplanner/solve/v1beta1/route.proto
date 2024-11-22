@@ -1,0 +1,54 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.shipmentplanner.solve.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RouteProto";
+option java_package = "com.flexport.shipmentPlanner.solve.v1beta1";
+option ruby_package = "Flexport::ShipmentPlanner::Solve::V1Beta1";
+
+//This API will convert everything to SI units, and will only capture cargo details that are relevant to calculating cost in the solver
+//https://github.flexport.io/flexport/flexport/tree/bc8703fe343ccb210b4755e92dbea9725d7b8b82/protobuf/flexport/os/v1/types/cargo/v1
+message CargoDetails {
+  double kg = 1;
+  double cbm = 2;
+  uint32 pallets = 3; //if it's a floor load then there are 0 pallets.
+}
+
+message ShipmentState {
+  optional string parent_console_fid = 1;
+  //
+  // This is the earliest time we can transition out of the current node.
+  google.protobuf.Timestamp cargo_ready_for_next_edge = 2;
+  CargoDetails cargo_details = 3;
+  google.protobuf.Timestamp late_time = 4; //if the shipment arrives after this time, it is "late"
+
+//customs state goes here if relevant
+}
+
+message ShipmentRoutes {
+  //
+  // An edge candidate is a collection of candidate edges that would satisfy the parent route
+  message EdgeCandidates {
+    repeated string candidate_index = 1;
+  }
+
+  message RouteCandidate {
+    string route_fid = 2;
+    repeated EdgeCandidates route = 1;
+  }
+
+  //
+  // the shipment in question
+  string shipment_fid = 1;
+  //
+  // the current state of the shipment in question
+  ShipmentState current_state = 2;
+  //
+  // All of the routes that should be considered for this shipment.  Note that these are abstract routes representing a spatial route without dates or inventory.
+  repeated RouteCandidate possible_routes = 3;
+}

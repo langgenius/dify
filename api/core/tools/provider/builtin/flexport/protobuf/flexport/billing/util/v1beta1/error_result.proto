@@ -1,0 +1,15 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billing.util.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ErrorResultProto";
+option java_package = "com.flexport.billing.util.v1beta1";
+option ruby_package = "Flexport::Billing::Util::V1Beta1";
+
+// Result with error messages.
+message ErrorResult {
+  repeated string errors = 1;
+}

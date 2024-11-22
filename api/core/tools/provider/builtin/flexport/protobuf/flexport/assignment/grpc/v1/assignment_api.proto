@@ -1,0 +1,426 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.grpc.v1;
+
+import "flexport/assignment/enums/v1/assignable_type.proto";
+import "flexport/assignment/enums/v1/assignee_type.proto";
+import "flexport/assignment/enums/v1/organization_unit_type.proto";
+import "flexport/assignment/enums/v1/reason.proto";
+import "flexport/assignment/enums/v1/responsibility.proto";
+import "flexport/assignment/filters/v1/reason_filter.proto";
+import "flexport/assignment/filters/v1/responsibility_filter.proto";
+import "flexport/assignment/grpc/v1/feature_state.proto";
+import "flexport/assignment/grpc/v1/legacy_assignment.proto";
+import "flexport/assignment/grpc/v1/manual_deletion.proto";
+import "flexport/assignment/grpc/v1/organization_unit.proto";
+import "flexport/assignment/grpc/v1/organization_unit_filter.proto";
+import "flexport/assignment/model/v1/assignee.proto";
+import "flexport/assignment/model/v1/assignment.proto";
+import "flexport/assignment/model/v1/assignment_action_log.proto";
+import "flexport/assignment/model/v1/detailed_assignment.proto";
+import "flexport/assignment/model/v1/poc_user.proto";
+import "flexport/assignment/model/v1/shipment_data.proto";
+import "flexport/assignment/model/v1/squad.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AssignmentApiProto";
+option java_package = "com.flexport.assignment.grpc.v1";
+option ruby_package = "Flexport::Assignment::Grpc::V1";
+
+// An API for Assignment GRPC Service.
+service AssignmentAPI {
+  // Create core legacy shipment assignments into NIS.
+  rpc CreateShipmentAssignments(CreateShipmentAssignmentsRequest) returns (CreateShipmentAssignmentsResponse);
+
+  // Add shipment assignments into NIS.
+  rpc CreateShipmentAssignmentsWithLog(CreateShipmentAssignmentsWithLogRequest) returns (CreateShipmentAssignmentsWithLogResponse);
+
+  // Delete core legacy shipment assignments from NIS.
+  rpc DeleteShipmentAssignments(DeleteShipmentAssignmentsRequest) returns (DeleteShipmentAssignmentsResponse);
+
+  // Get all the assignees of a given assignable object(e.g. Shipment).
+  rpc ListAssignees(ListAssigneesRequest) returns (ListAssigneesResponse) {
+    option deprecated = true;
+  }
+
+  // Get all the assignable ids for a given list of assignee ids.
+  rpc ListAssignableIds(ListAssignableIdsRequest) returns (ListAssignableIdsResponse) {
+    option deprecated = true;
+  }
+
+  // Filter the assignables that have (or do not have) assignments with the specified roles from a source list.
+  rpc ListAssignableIdsByRoles(ListAssignableIdsByRolesRequest) returns (ListAssignableIdsByRolesResponse) {
+    option deprecated = true;
+  }
+
+  // Get all the raw assignments of a given assignable object(e.g. Shipment).
+  rpc ListDetailedAssignments(ListDetailedAssignmentsRequest) returns (ListDetailedAssignmentsResponse) {
+    option deprecated = true;
+  }
+
+  // Query assignments by filters. This works for any assignable type like shipment, work item, etc.
+  rpc QueryAssignments(QueryAssignmentsRequest) returns (QueryAssignmentsResponse);
+
+  // Query count of assignments by filters. This works for any assignable type like shipment, work item, etc.
+  rpc CountAssignments(CountAssignmentsRequest) returns (CountAssignmentsResponse);
+
+  // Given a set of assignable fids, returns those that don't have assignee with the specified responsibility.
+  rpc CalculateMissingAssignments(CalculateMissingAssignmentsRequest) returns (CalculateMissingAssignmentsResponse);
+
+  // Sync manual deletion records to assignment NIS.
+  rpc SyncManualDeletion(SyncManualDeletionRequest) returns (SyncManualDeletionResponse) {
+    option deprecated = true;
+  }
+
+  // Get all the organization units a given assignable object is matched to. For example, which teams are assigned to a shipment.
+  rpc GetOrganizationUnits(GetOrganizationUnitsRequest) returns (GetOrganizationUnitsResponse);
+
+  // Find the organization units by the filter in GetAncestorsRequest, then return the ancestors of them including self.
+  rpc GetAncestors(GetAncestorsRequest) returns (GetAncestorsResponse);
+
+  // Find the organization units by the filter in GetDescendantsRequest, then return the descendants of them including self.
+  // Note: If filter by manager fid, and the nodes include multiple company nodes, it indicates that flexport user may
+  // exist in flexport and partner companies, in this case, return flexport company nodes only
+  rpc GetDescendants(GetDescendantsRequest) returns (GetDescendantsResponse);
+
+  // Find the organization units by the filter in ListOrganizationUnitsRequest.
+  rpc ListOrganizationUnits(ListOrganizationUnitsRequest) returns (ListOrganizationUnitsResponse);
+
+  // Delete users' operator nodes and assignments.
+  rpc DeleteUserAssignments(DeleteUserAssignmentsRequest) returns (DeleteUserAssignmentsResponse);
+
+  // manual assignment work item
+  rpc CreateWorkitemAssignmentsWithLog(CreateWorkitemAssignmentsWithLogRequest) returns (CreateWorkitemAssignmentsWithLogResponse);
+
+  // Check if features are active for users.
+  rpc GetFeatureStatesForUsers(GetFeatureStatesForUsersRequest) returns (GetFeatureStatesForUsersResponse);
+
+  // List teams the user belongs to.
+  rpc ListBelongsToTeamsForUser(ListBelongsToTeamsForUserRequest) returns (ListBelongsToTeamsForUserResponse);
+
+  // Query shipment to team assignments, for backfill only.
+  rpc QueryShipmentToTeamAssignments(QueryShipmentToTeamAssignmentsRequest) returns (QueryShipmentToTeamAssignmentsResponse);
+
+  // Call decision calculation service to get agent assignment result.
+  rpc CalculateAgentAssignment(CalculateAgentAssignmentRequest) returns (CalculateAgentAssignmentResponse);
+
+  // Get shipmentPocs for a shipment.
+  rpc GetShipmentPocs(GetShipmentPocsRequest) returns (GetShipmentPocsResponse);
+
+  // Get first squad email.
+  rpc GetFirstSquadEmail(GetFirstSquadEmailRequest) returns (GetFirstSquadEmailResponse);
+
+  // Get primary squad email.
+  rpc GetPrimarySquadEmail(GetPrimarySquadEmailRequest) returns (GetPrimarySquadEmailResponse);
+
+  // Get all squad emails.
+  rpc GetAllSquadEmails(GetAllSquadEmailsRequest) returns (GetAllSquadEmailsResponse);
+
+  // Get squads for a client, can be use to get primary squad when is_primary is true.
+  rpc GetClientSquads(GetClientSquadsRequest) returns (GetClientSquadsResponse);
+
+  // Get client squad user fids
+  rpc GetClientSquadUsers(GetClientSquadUsersRequest) returns (GetClientSquadUsersResponse);
+
+  // Add client squad relation
+  rpc AddClientSquadRelation(AddClientSquadRelationRequest) returns (AddClientSquadRelationResponse);
+
+  // Get all the clients of a squad.
+  rpc GetSquadClients(GetSquadClientsRequest) returns (GetSquadClientsResponse);
+
+  // Create core legacy squads into NIS using squad and user_squad.
+  rpc CreateSquads(CreateSquadsRequest) returns (CreateSquadsResponse);
+}
+
+// The request containing a list of legacy assignments to create.
+message CreateShipmentAssignmentsRequest {
+  repeated flexport.assignment.model.v1.Assignment assignments = 1;
+  repeated flexport.assignment.grpc.v1.LegacyAssignment legacy_assignments = 2;
+}
+
+message CreateShipmentAssignmentsWithLogRequest {
+  repeated flexport.assignment.model.v1.Assignment assignment = 1;
+  flexport.assignment.enums.v1.Reason reason = 2;
+  flexport.assignment.model.v1.AssignmentActionLog action_log = 3;
+}
+
+// The request containing a list of legacy assignments to delete.
+message DeleteShipmentAssignmentsRequest {
+  repeated flexport.assignment.model.v1.Assignment assignments = 1;
+  repeated flexport.assignment.grpc.v1.LegacyAssignment legacy_assignments = 2;
+}
+
+// The request containing a list of manual deletion records.
+message SyncManualDeletionRequest {
+  repeated flexport.assignment.grpc.v1.ManualDeletion manual_deletions = 1;
+}
+
+// The response of SyncManualDeletion.
+message SyncManualDeletionResponse {}
+
+// The response of CreateShipmentAssignments.
+message CreateShipmentAssignmentsResponse {}
+
+// The response of CreateShipmentAssignmentsWithLogs.
+message CreateShipmentAssignmentsWithLogResponse {}
+
+// The response of DeleteShipmentAssignments.
+message DeleteShipmentAssignmentsResponse {}
+
+// The request payload of ListAssignees.
+message ListAssigneesRequest {
+  string assignable_fid = 1;
+  // All filters are "ANDed" together.
+  flexport.assignment.filters.v1.ResponsibilityFilter responsibility_filter = 2;
+  flexport.assignment.filters.v1.ReasonFilter reason_filter = 3;
+}
+
+// The response payload of ListAssignees.
+message ListAssigneesResponse {
+  repeated flexport.assignment.model.v1.Assignee assignees = 1;
+}
+
+// The request of ListAssignableIds
+message ListAssignableIdsRequest {
+  repeated string assignee_fids = 1;
+  flexport.assignment.filters.v1.ResponsibilityFilter responsibility_filter = 2;
+  flexport.assignment.enums.v1.AssignableType assignable_type = 3;
+}
+
+// The response of ListAssignableIds
+message ListAssignableIdsResponse {
+  repeated uint64 assignable_ids = 1;
+}
+
+// The request of ListAssignableIdsByRoles
+message ListAssignableIdsByRolesRequest {
+  flexport.assignment.enums.v1.AssignableType assignable_type = 1;
+  // If the ResponsibilityFilter in the request have negated = false (default), the api returns assignables that
+  // have assignments with the specified responsibilities. Otherwise, return assignables that do not have
+  // assignments with the specified responsibilities.
+  flexport.assignment.filters.v1.ResponsibilityFilter responsibility_filter = 2;
+  // Client must pass a list of source assignable fids. If the source is empty, the api returns empty list.
+  repeated string source_fids = 3;
+}
+
+// The response of ListAssignableIdsByRoles
+message ListAssignableIdsByRolesResponse {
+  repeated uint64 filtered_ids = 1;
+}
+
+// The request payload of ListAssignments.
+message ListDetailedAssignmentsRequest {
+  string assignable_fid = 1;
+  flexport.assignment.filters.v1.ReasonFilter reason_filter = 2;
+}
+
+// The response payload of ListAssignments.
+message ListDetailedAssignmentsResponse {
+  repeated flexport.assignment.model.v1.DetailedAssignment assignments = 1;
+}
+
+message QueryAssignmentsRequest {
+  repeated string assignable_fids = 1;
+  repeated string assignee_fids = 2;
+  repeated assignment.enums.v1.Responsibility responsibilities = 3;
+  flexport.assignment.enums.v1.AssignableType assignable_type = 5;
+  // Default to USER
+  flexport.assignment.enums.v1.AssigneeType assignee_type = 7;
+  flexport.assignment.enums.v1.Reason reason = 6;
+}
+
+message QueryAssignmentsResponse {
+  repeated flexport.assignment.model.v1.Assignment assignments = 1;
+}
+
+message CountAssignmentsRequest {
+  repeated string assignable_fids = 1;
+  repeated string assignee_fids = 2;
+  repeated assignment.enums.v1.Responsibility responsibilities = 3;
+  flexport.assignment.enums.v1.AssignableType assignable_type = 5;
+  // Default to USER
+  flexport.assignment.enums.v1.AssigneeType assignee_type = 7;
+  flexport.assignment.enums.v1.Reason reason = 6 [deprecated = true];
+  repeated flexport.assignment.enums.v1.Reason reasons = 8;
+}
+
+message CountAssignmentsResponse {
+  uint32 count = 1;
+}
+
+message CalculateMissingAssignmentsRequest {
+  // Required field.
+  repeated string assignable_fids = 1;
+  // Required field. Calculate shipments that are missing all the responsibilities.
+  repeated flexport.assignment.enums.v1.Responsibility responsibilities = 2;
+}
+
+message CalculateMissingAssignmentsResponse {
+  repeated string assignable_fids = 1;
+}
+
+message GetOrganizationUnitsRequest {
+  string assignable_object_fid = 1;
+  flexport.assignment.enums.v1.OrganizationUnitType organization_unit_type = 2;
+}
+
+message GetOrganizationUnitsResponse {
+  repeated flexport.assignment.grpc.v1.OrganizationUnit organization_units = 1;
+}
+
+// The request to find ancestors of base organization units, including self, where the base OUs are found by an OU filter.
+message GetAncestorsRequest {
+  // The filter to find the base organization units.
+  flexport.assignment.grpc.v1.OrganizationUnitFilter base_organization_unit_filter = 1;
+  // Type to restrict returned ancestors.
+  repeated flexport.assignment.enums.v1.OrganizationUnitType ancestor_types = 2;
+}
+
+message GetAncestorsResponse {
+  repeated flexport.assignment.grpc.v1.OrganizationUnit organization_units = 1;
+}
+
+// The request to find descendants of base organization units, including self, where the base OUs are found by an OU filter.
+message GetDescendantsRequest {
+  // The filter to find the base organization units.
+  flexport.assignment.grpc.v1.OrganizationUnitFilter base_organization_unit_filter = 1;
+  // Type to restrict returned descendants.
+  repeated flexport.assignment.enums.v1.OrganizationUnitType descendant_types = 2;
+}
+
+message GetDescendantsResponse {
+  repeated flexport.assignment.grpc.v1.OrganizationUnit organization_units = 1;
+}
+
+message ListOrganizationUnitsRequest {
+  flexport.assignment.grpc.v1.OrganizationUnitFilter base_organization_unit_filter = 1;
+}
+
+message ListOrganizationUnitsResponse {
+  repeated flexport.assignment.grpc.v1.OrganizationUnit organization_units = 1;
+}
+
+message DeleteUserAssignmentsRequest {
+  // The users whose assignments will be deleted
+  repeated string user_fids = 1;
+  // The one who triggers this deleting action.
+  string actor_fid = 2;
+}
+
+message DeleteUserAssignmentsResponse {}
+
+message CreateWorkitemAssignmentsWithLogRequest {
+  repeated flexport.assignment.model.v1.Assignment assignments = 1;
+  flexport.assignment.model.v1.AssignmentActionLog action_log = 2;
+}
+
+message CreateWorkitemAssignmentsWithLogResponse {}
+
+message GetFeatureStatesForUsersRequest {
+  repeated flexport.assignment.grpc.v1.FeatureStateRequest feature_state_requests = 1;
+}
+
+message GetFeatureStatesForUsersResponse {
+  repeated flexport.assignment.grpc.v1.FeatureStateResponse feature_state_responses = 1;
+}
+
+message ListBelongsToTeamsForUserRequest {
+  string user_fid = 1;
+}
+
+message ListBelongsToTeamsForUserResponse {
+  repeated flexport.assignment.grpc.v1.OrganizationUnit belongs_to_teams = 1;
+}
+
+message QueryShipmentToTeamAssignmentsRequest {
+  repeated string shipment_fids = 1;
+  repeated string team_fids = 2;
+}
+
+message QueryShipmentToTeamAssignmentsResponse {
+  repeated flexport.assignment.model.v1.Assignment assignments = 1;
+}
+
+message CalculateAgentAssignmentRequest {
+  string decision_slug = 1;
+  string shipment_fid = 2;
+  flexport.assignment.model.v1.ShipmentData shipment_data = 3;
+}
+
+message CalculateAgentAssignmentResponse {
+  repeated string company_entities = 1;
+  repeated string manager_fids = 2;
+}
+
+message GetShipmentPocsRequest {
+  string shipment_fid = 1;
+}
+
+message GetShipmentPocsResponse {
+  repeated flexport.assignment.model.v1.PocUser poc_users = 1;
+}
+
+message GetFirstSquadEmailRequest {
+  uint64 client_id = 1;
+}
+
+message GetFirstSquadEmailResponse {
+  string email = 1;
+}
+
+message GetPrimarySquadEmailRequest {
+  uint64 client_id = 1;
+}
+
+message GetPrimarySquadEmailResponse {
+  string email = 1;
+}
+
+message GetAllSquadEmailsRequest {
+  uint64 client_id = 1;
+}
+
+message GetAllSquadEmailsResponse {
+  repeated string emails = 1;
+}
+
+message GetClientSquadsRequest {
+  uint64 client_id = 1;
+  bool is_primary = 2;
+}
+
+message GetClientSquadsResponse {
+  repeated flexport.assignment.model.v1.Squad squads = 1;
+}
+
+message GetClientSquadUsersRequest {
+  uint64 client_id = 1;
+}
+
+message GetClientSquadUsersResponse {
+  repeated string user_fids = 1;
+}
+
+message AddClientSquadRelationRequest {
+  uint64 client_id = 1;
+  uint64 squad_id = 2;
+  bool is_primary = 3;
+}
+
+message AddClientSquadRelationResponse {}
+
+message GetSquadClientsRequest {
+  uint64 squad_id = 1;
+}
+
+message GetSquadClientsResponse {
+  repeated uint64 client_ids = 1;
+}
+
+message CreateSquadsRequest {
+  repeated flexport.assignment.model.v1.AssignmentSquad assignment_squads = 1;
+}
+
+message CreateSquadsResponse {}

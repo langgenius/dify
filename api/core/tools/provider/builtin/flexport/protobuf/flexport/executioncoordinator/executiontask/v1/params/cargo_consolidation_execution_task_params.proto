@@ -1,0 +1,51 @@
+// TEAM: wingstop
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+import "flexport/executioncoordinator/types/enums/v1/air_direct_handling_type.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoConsolidationExecutionTaskParamsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+// Parameters for CargoConsolidation ExecutionTask.
+// created by Consol Planner service
+message CargoConsolidationExecutionTaskParams {
+  // This execution task represents either an air or ocean consolidation.
+  oneof loading_plan_params {
+    // deprecation: there are no longer any producers or consumers for loading_plan_params of type ContainerLoadingPlanParams
+    ContainerLoadingPlanParams container_loading_plan_params = 4 [deprecated = true];
+    AirBuildPlanParams air_build_plan_params = 5;
+  }
+  string note = 2;
+  string user_fid = 3;
+}
+
+// A container loading plan describes the cargo packed inside a consolidated ocean container.
+message ContainerLoadingPlanParams {
+  option deprecated = true;
+  // The container loading plan is currently captured as a csv document uploaded via the storage service.
+  string file_object_fid = 1;
+}
+
+// An air build plan describes the cargo in an air consolidation organized into mawbs and ulds.
+message AirBuildPlanParams {
+  repeated string equipment_type_fids = 1;
+  string origin_airport_fid = 2;
+  string allotment_schedule_instance_fid = 7;
+  string initial_allotment_fid = 3;
+  // Deprecation note: loose_shipment_fids can be removed/replaced anytime after CPLAN-284 is deployed
+  repeated string loose_shipment_fids = 4 [deprecated = true];
+  flexport.executioncoordinator.types.enums.v1.AirDirectHandlingType handling_type = 5;
+  repeated MawbPlanParams mawb_plan_params = 6;
+}
+
+// A MAWB plan describes the MAWB structure within a build plan.
+message MawbPlanParams {
+  string mawb_number = 1;
+  repeated string shipment_fids = 2;
+  repeated string route_allotment_fids = 3;
+}

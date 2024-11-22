@@ -1,0 +1,58 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.documentprocessor.structureddata.v1beta1;
+
+import "flexport/document_processor/structured_data/v1beta1/elements.proto";
+import "flexport/document_processor/structured_data/v1beta1/segments.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SectionsProto";
+option java_package = "com.flexport.documentprocessor.structureddata.v1beta1";
+option ruby_package = "Flexport::DocumentProcessor::StructuredData::V1Beta1";
+
+// The header section of a document.
+message HeaderSection {
+  // The title or identifier for the document.
+  string title = 1;
+  // Any identifiers corresponding to the document.
+  repeated IdentifierElement identifiers = 2;
+  // Any events relevant to the document.
+  repeated EventSegment events = 3;
+  // Any parties relevant to the document.
+  repeated PartySegment parties = 4;
+  // Any currencies used in the document.
+  repeated CurrencySegment currencies = 5;
+  // Any exchange rates used in the document.
+  repeated ExchangeRateSegment exchange_rates = 6;
+  // Any references to entities relating to the document.
+  repeated ReferenceElement references = 7;
+}
+
+// A body or detail document section.
+message DetailSection {
+  // Any references to entities relating to this specific body section.
+  repeated ReferenceElement references = 1;
+  // Any line items for this specific body section.
+  repeated LineItemSegment line_items = 2;
+  //
+  // !!! THESE FIELDS ARE NOT USED YET.
+  //
+  // repeated EquipmentSegment equipment = 3;
+  // repeated PartySegment parties = 4;
+  // repeated CargoSegment cargo = 5;
+  // repeated VoyageSegment voyage = 6;
+}
+
+// The footer or summary document section.
+message SummarySection {
+  // The total monetary amount represented in this document.
+  repeated MoneyElement totals = 1;
+  // Payment detail segment.
+  PaymentDetailSegment payment_detail = 2;
+  //
+  // !! THESE FIELDS ARE NOT USED YET.
+  //
+  // CargoSegment cargo = 2;
+}

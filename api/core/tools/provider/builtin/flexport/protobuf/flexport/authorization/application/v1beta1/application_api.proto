@@ -1,0 +1,32 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.authorization.application.v1beta1;
+
+import "google/api/annotations.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ApplicationApiProto";
+option java_package = "com.flexport.authorization.application.v1beta1";
+option ruby_package = "Flexport::Authorization::Application::V1Beta1";
+
+// Third party Application registration/deRegister APIs and messages.
+service ApplicationAPI {
+  // Get the application status. True means active, False means inactive or unsubscribe.
+  // Mostly Application id will be part of Auth0 JWT token claims but also passing a request payload, in case JWT
+  // claims doesn't contain it
+  rpc GetApplicationStatus(GetApplicationStatusRequest) returns (GetApplicationStatusResponse) {
+    option (google.api.http) = {
+      get: "/v1/application/active"
+    };
+  }
+}
+// User will be passed as part of Auth0 jwt token.
+message GetApplicationStatusRequest {
+  string application_fid = 1;
+}
+
+message GetApplicationStatusResponse {
+  bool active = 1;
+}

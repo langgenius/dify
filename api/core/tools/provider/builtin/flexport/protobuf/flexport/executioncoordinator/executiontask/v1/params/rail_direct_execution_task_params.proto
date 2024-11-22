@@ -1,0 +1,54 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+import "flexport/executioncoordinator/executioncargo/v1/execution_cargo.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RailDirectExecutionTaskParamsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+// Parameters for rail_direct ExecutionTask.
+// DISCLAIMERS!
+// 1. The rail_direct ET is still very much a work in progress and has not been fully rolled out for use.
+// 2. Not all rail legs will be associated with a rail_direct ET. Some rail legs are still managed by ocean
+//    carriers, in which case they will belong to the ocean_fcl ET.
+//
+// This Rail ET is used to represent the delegation of container movement to a rail provider, separate
+// from rail movements that are handled by an ocean carrier. This does not include consolidated rail movements,
+// or rail movement that is container-less.
+//
+// A rail_direct ET will be extracted for legs if any of these conditions are true:
+// - The carrier of the leg is in our allowlist for what we consider to be rail carriers
+//   (e.g. Valor. See https://flexport.atlassian.net/wiki/spaces/KB/pages/2038007366/Flexport+Midwest+Express).
+// - In the shipment route there are disjointed rail legs that are not assigned to an ET.
+message RailDirectExecutionTaskParams {
+  //
+  // Address the cargo is departing from.
+  string origin_fid = 1;
+  //
+  // Address the cargo is arriving to.
+  string destination_fid = 2;
+  //
+  // Carrier of the rail carrier responsible for the task.
+  string carrier_fid = 3;
+  //
+  // Freight partner responsible for the task.
+  // "Flexport" if we are managing relationship with the rail carrier.
+  string freight_partner_fid = 4;
+  //
+  // The container data and any per-container cargo data.
+  // The execution_cargo's value must be a ActiveIso6346Container.
+  repeated RailCargoParams container_cargos = 5;
+}
+
+// The params for each subset of cargo moved as part of the rail task.
+message RailCargoParams {
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime departure_estimate = 1 [deprecated = true];
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime arrival_estimate = 2 [deprecated = true];
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 3;
+}

@@ -1,0 +1,103 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.monolith.oceanfmtassignment.fmtassignment.v1beta1;
+
+import "flexport/monolith/oceanfmtassignment/fmtassignment/v1beta1/fmt_assignment.proto";
+import "flexport/oceanplanning/assignment/v1beta1/ocean_planning_fcl_assignment.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FmtAssignmentApiProto";
+option java_package = "com.flexport.monolith.oceanfmtassignment.fmtassignment.v1beta1";
+option ruby_package = "Flexport::Monolith::OceanFmtAssignment::FmtAssignment::V1Beta1";
+
+// Api to allow ocean_supply and ocean_planning to work with Fmt Assignment info.
+service FmtAssignmentAPI {
+  // Return a list of FmtAssignments for a given Contract Fid.
+  rpc ListFmtAssignments(ListFmtAssignmentsRequest) returns (ListFmtAssignmentsResponse);
+  // Return an FmtAssignment for a given Shipment Fid.
+  rpc GetFmtAssignment(GetFmtAssignmentRequest) returns (GetFmtAssignmentResponse);
+  // Return the eligibility of shipment route for fmt assignment.
+  rpc GetFmtAssignmentEligibilityForShipmentRoute(GetFmtAssignmentEligibilityForShipmentRouteRequest) returns (GetFmtAssignmentEligibilityForShipmentRouteResponse);
+  // CreateFmtAssignment is a legacy endpoint intended only for synchronizing the
+  // Ocean Planning NIS assignment with the deprecated FmtAssignment until BAE/FMT
+  // in Core are fully deprecated
+  rpc CreateFmtAssignments(CreateFmtAssignmentsRequest) returns (CreateFmtAssignmentsResponse);
+  // Return a list of recent FmtAssignments for the given loading and discharge port. Will only fetch assignments
+  // where the proforma ETD is either for a future departure or occurred in the last 30 days.
+  // NOTE: We will ONLY return assignments with the given ports_of_loading and ports_of_discharge, if no loading ports
+  // or discharge ports are given we will throw an invalid argument error.
+  rpc ListFmtAssignmentsByLoadingAndDischargePorts(ListFmtAssignmentsByLoadingAndDischargePortsRequest) returns (ListFmtAssignmentsByLoadingAndDischargePortsResponse);
+  // Deletes the assignments associated with the given Shipment Fids.
+  rpc DeleteFmtAssignments(DeleteFmtAssignmentsRequest) returns (DeleteFmtAssignmentsResponse);
+}
+
+message ListFmtAssignmentsRequest {
+  string contract_fid = 1;
+}
+
+message ListFmtAssignmentsResponse {
+  repeated FmtAssignment assignments = 1;
+}
+
+message GetFmtAssignmentRequest {
+  string shipment_fid = 1;
+  bool search_deleted_assignments = 2;
+}
+
+message GetFmtAssignmentResponse {
+  FmtAssignment assignment = 1;
+}
+
+message GetFmtAssignmentEligibilityForShipmentRouteRequest {
+  string shipment_fid = 1;
+}
+
+message GetFmtAssignmentEligibilityForShipmentRouteResponse {
+  google.protobuf.BoolValue shipment_route_eligilable_for_fmt_assignment = 1;
+}
+
+message CreateFmtAssignmentsRequest {
+  repeated flexport.oceanplanning.assignment.v1beta1.OceanPlanningFclAssignment assignments = 1;
+  bool dry_run = 2;
+}
+
+message CreateFmtAssignmentsResponse {
+  string task_id = 1;
+  repeated string saved_shipment_fids = 2;
+  repeated string failed_shipment_fids = 3;
+  repeated string errors = 4;
+  map<string, int64> saved_shipment_fid_to_assignment_id = 5;
+}
+
+message ListFmtAssignmentsByLoadingAndDischargePortsRequest {
+  // assignments with their origin port in the given ports of loading and desitnation port
+  // in the given ports of discharge be returned in the response below
+
+  // ports of loading is the port that the assignment is leaving from, and ports of discharge
+  // is the port that the assignment if arriving at
+
+  // Both of these will take in port FIDs
+  repeated string ports_of_loading = 1;
+  repeated string ports_of_discharge = 2;
+  int32 page_number = 3;
+  int32 page_size = 4;
+}
+
+message ListFmtAssignmentsByLoadingAndDischargePortsResponse {
+  repeated FmtAssignment assignments = 1;
+}
+
+message DeleteFmtAssignmentsRequest {
+  repeated string shipment_fids = 1;
+}
+
+message DeleteFmtAssignmentsResponse {
+  repeated string deleted_shipment_fids = 1;
+  repeated string failed_shipment_fids = 2;
+  repeated string errors = 3;
+  map<string, int64> deleted_shipment_fid_to_assignment_id = 4;
+  map<string, int64> failed_shipment_fid_to_assignment_id = 5;
+}

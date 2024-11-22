@@ -1,0 +1,29 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.documentflow.documentschema.v2beta1;
+
+import "flexport/documentflow/documentschema/v2beta1/entity_document_field.proto";
+import "flexport/documentflow/documentschema/v2beta1/primitive_document_field.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShippersLetterOfInstructionProto";
+option java_package = "com.flexport.documentflow.documentschema.v2beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentSchema::V2Beta1";
+
+// Next ID: 13
+message ShippersLetterOfInstruction {
+  BooleanDocumentField is_hazardous_material = 1;
+  BooleanDocumentField is_to_be_sold_or_route = 2;
+  BooleanDocumentField is_related_parties = 3;
+  BooleanDocumentField is_routed_transaction = 4;
+  DocumentField un_number = 5;
+  DocumentField inbond_type = 6;
+  ShippersLetterOfInstructionUSPPIDocumentField usppi = 7;
+  IntegerDocumentField usppi_company_entity_id = 8;
+  ShippersLetterOfInstructionUltimateConsigneeDocumentField ultimate_consignee = 9;
+  IntegerDocumentField ultimate_consignee_company_entity_id = 10;
+  repeated ShippersLetterOfInstructionExportLineItemDocumentField export_line_items = 11;
+  DocumentField consignee_type = 12;
+}

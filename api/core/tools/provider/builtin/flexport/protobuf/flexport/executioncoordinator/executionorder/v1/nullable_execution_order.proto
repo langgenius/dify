@@ -1,0 +1,19 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorder.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "NullableExecutionOrderProto";
+option java_package = "com.flexport.executioncoordinator.executionorder.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrder::V1";
+
+import "flexport/executioncoordinator/executionorder/v1/execution_order.proto";
+
+// A message that represents either an ExecutionOrder or null as follows:
+// with_execution_order = NullableExecutionOrder.new({value: execution_order})
+// without_execution_order = NullableExecutionOrder.new
+message NullableExecutionOrder {
+  flexport.executioncoordinator.executionorder.v1.ExecutionOrder value = 1;
+}

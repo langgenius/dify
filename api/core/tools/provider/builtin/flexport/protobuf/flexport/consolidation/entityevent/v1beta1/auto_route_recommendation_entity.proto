@@ -1,0 +1,35 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.consolidation.entityevent.v1beta1;
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "flexport/os/v1/types/incoterm/v1/incoterm.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AutoRouteRecommendationEntityProto";
+option java_package = "com.flexport.consolidation.entityevent.v1beta1";
+option ruby_package = "Flexport::Consolidation::EntityEvent::V1Beta1";
+
+enum FreightType {
+  FREIGHT_TYPE_INVALID = 0;
+  FREIGHT_TYPE_DOOR_TO_DOOR = 1;
+  FREIGHT_TYPE_DOOR_TO_PORT = 2;
+  FREIGHT_TYPE_PORT_TO_DOOR = 3;
+  FREIGHT_TYPE_PORT_TO_PORT = 4;
+}
+
+// Proto message for Auto Route Recommendation object.
+message AutoRouteRecommendationEntity {
+  uint64 id = 1;
+  uint64 quote_request_id = 2;
+  uint64 shipment_id = 3;
+  flexport.os.v1.types.incoterm.v1.Incoterm incoterm = 4;
+  FreightType freight_type = 5;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate cargo_ready_date = 6;
+  repeated string fids = 7;
+  repeated string uuids = 8;
+  google.protobuf.Timestamp created_at = 9;
+}

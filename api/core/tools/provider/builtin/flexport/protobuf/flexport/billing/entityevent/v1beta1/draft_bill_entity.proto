@@ -1,0 +1,59 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billing.entityevent.v1beta1;
+
+import "flexport/billing/entityevent/v1beta1/shared.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DraftBillEntityProto";
+option java_package = "com.flexport.billing.entityevent.v1beta1";
+option ruby_package = "Flexport::Billing::EntityEvent::V1Beta1";
+
+// The DraftBill entity object.
+message DraftBillEntity {
+  string fid = 1;
+  google.protobuf.StringValue bill_number = 3;
+  google.protobuf.StringValue issuing_entity_fid = 4;
+  google.protobuf.StringValue receiving_entity_fid = 5;
+  string vendor_fid = 6;
+  google.protobuf.Timestamp due_at_time = 7;
+  google.protobuf.Timestamp issued_at_time = 8;
+  string review_fid = 9;
+  bool has_conflicts = 10 [deprecated = true];
+  repeated string source_bill_fids = 11;
+  repeated DraftBillAllocationValue allocations = 12;
+  google.protobuf.Timestamp created_at_time = 13;
+  google.protobuf.Timestamp updated_at_time = 14;
+  TransactionType transaction_type = 15;
+  repeated SourceBillValue source_bills = 16;
+  google.protobuf.StringValue primary_source_bill_fid = 17;
+}
+
+message SourceBillValue {
+  string source_bill_fid = 1;
+  DocumentSource document_source = 2;
+  DigitizationMethod digitization_method = 3;
+}
+
+// The DraftBillAllocation value object.
+message DraftBillAllocationValue {
+  string fid = 1;
+  google.protobuf.StringValue supply_service_fid = 2;
+  repeated DraftBillItemValue items = 3;
+  google.protobuf.StringValue shipment_fid = 4;
+  google.protobuf.StringValue reference_number = 5;
+  ReferenceType reference_type = 6;
+}
+
+// The DraftBillItem value object.
+message DraftBillItemValue {
+  string fid = 1;
+  google.protobuf.StringValue amount = 2;
+  google.protobuf.StringValue currency_code = 3;
+  google.protobuf.StringValue line_item_mapping_fid = 4;
+  google.protobuf.StringValue vendor_text = 5;
+}

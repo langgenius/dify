@@ -1,0 +1,21 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsRoleProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// The role Flexport has in the customs process (either import or export or other depending on context).
+enum CustomsRole {
+  CUSTOMS_ROLE_INVALID = 0;
+  //
+  // Flexport is operationally responsible for the import customs process.
+  CUSTOMS_ROLE_FULL_SERVICE = 1;
+  //
+  // Flexport has no operational responsibility for in the import customs process.
+  CUSTOMS_ROLE_NO_INVOLVEMENT = 2;
+}

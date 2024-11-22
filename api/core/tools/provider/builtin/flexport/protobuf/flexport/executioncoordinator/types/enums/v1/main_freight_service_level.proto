@@ -1,0 +1,20 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "MainFreightServiceLevelProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// flexport/executioncoordinator/executionoffering/v1/transit/common.proto
+// has similar definition, but we are slowly moving away from execution offering
+// concept, so define a new enum in this file.
+enum MainFreightServiceLevel {
+  MAIN_FREIGHT_SERVICE_LEVEL_INVALID = 0;
+  MAIN_FREIGHT_SERVICE_LEVEL_DEFERRED = 1;
+  MAIN_FREIGHT_SERVICE_LEVEL_STANDARD = 2;
+  MAIN_FREIGHT_SERVICE_LEVEL_EXPRESS = 3;
+}

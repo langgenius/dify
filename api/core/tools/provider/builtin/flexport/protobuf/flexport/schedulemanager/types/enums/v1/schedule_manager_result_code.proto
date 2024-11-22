@@ -1,0 +1,24 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.schedulemanager.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ScheduleManagerResultCodeProto";
+option java_package = "com.flexport.schedulemanager.types.enums.v1";
+option ruby_package = "Flexport::ScheduleManager::Types::Enums::V1";
+
+// DEPRECATED
+enum ScheduleManagerResultCode {
+  option deprecated = true;
+
+  SCHEDULE_MANAGER_RESULT_CODE_INVALID = 0;
+  SCHEDULE_MANAGER_RESULT_CODE_SUCCESS = 1;
+  SCHEDULE_MANAGER_RESULT_CODE_FALLBACK_SUCCESS = 6;
+  SCHEDULE_MANAGER_RESULT_CODE_PARTIAL_SUCCESS = 2 [deprecated = true];
+  SCHEDULE_MANAGER_RESULT_CODE_NO_OP_SUCCESS = 3;
+  SCHEDULE_MANAGER_RESULT_CODE_DRY_RUN_SUCCESS = 7;
+  SCHEDULE_MANAGER_RESULT_CODE_REJECTED = 4;
+  SCHEDULE_MANAGER_RESULT_CODE_FAILED = 5;
+}

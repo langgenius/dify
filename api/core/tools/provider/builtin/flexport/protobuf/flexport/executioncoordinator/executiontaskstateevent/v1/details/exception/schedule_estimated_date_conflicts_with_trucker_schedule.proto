@@ -1,0 +1,30 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ScheduleEstimatedDateConflictsWithTruckerScheduleProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+
+// The schedule was updated such that the new estimated dates for a trucking leg conflict
+// with trucking dates that were already scheduled by a trucking carrier.
+message ScheduleEstimatedDateConflictsWithTruckerSchedule {
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime trucker_scheduled_date = 2;
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime new_estimated_date = 3;
+  repeated string container_fids = 4;
+  TruckingConflictTransitType transit_type = 5;
+  // Exceptions filed to trucking carriers must be associated with a single leg.
+  string route_shape_leg_fid = 6;
+}
+
+// The type of transit date.
+enum TruckingConflictTransitType {
+  TRUCKING_CONFLICT_TRANSIT_TYPE_INVALID = 0;
+  TRUCKING_CONFLICT_TRANSIT_TYPE_DEPARTURE = 1;
+  TRUCKING_CONFLICT_TRANSIT_TYPE_ARRIVAL = 2;
+}

@@ -1,0 +1,83 @@
+// TEAM: order_management
+
+syntax = "proto3";
+
+package flexport.ordermanagement.tasks.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+
+option ruby_package = "Flexport::OrderManagement::Tasks::V1Beta1";
+
+// Services for Order Management to create tasks and adjust their statuses.
+//
+// The Client App team doesn't want to own a gRPC api for creating tasks but is
+// OK with us creating our own that calls their engine.
+//
+// See http://go/stoplight-tasks for more details.
+service OrderManagementTaskAPI {
+  // Creates a Task for a given client to execute on.
+  rpc CreateTask(CreateTaskRequest) returns (CreateTaskResponse);
+
+  // Updates the status of a Task.
+  rpc SetTaskStatus(SetTaskStatusRequest) returns (SetTaskStatusResponse);
+}
+
+message CreateTaskRequest {
+  // The type of task to create.
+  //
+  // For example: "ClientWorkflow::Tasks::BookingApprovalRequired"
+  string task_type = 1;
+
+  // The fid of the entity to which the task will refer to.
+  //
+  // For example, in the case of a BookingApprvoalRequest task, this will be the
+  // fid of the booking requiring approval.
+  string taskable_fid = 2;
+
+  // The fid of the company to which this task will be assigned.
+  string assigned_company_fid = 3;
+
+  // The due date for the task.
+  google.protobuf.Timestamp due_date = 4;
+}
+
+message CreateTaskResponse {
+  // The fid of the task that was created.
+  string task_fid = 1;
+}
+
+message TaskableFilter {
+  // The fid of the entity to which the task refers.
+  string taskable_fid = 1;
+
+  // Task type
+  // For example: ClientWorkflow::Tasks::LoadPlanReviewRequired.sti_name => "Tasks::LoadPlanReviewRequired"
+  string task_type = 4;
+}
+
+message SetTaskStatusRequest {
+  // Either task_fid or taskable_fid should be provided.
+  oneof task_identifier {
+    // The fid of the task to be updated.
+    string task_fid = 1;
+
+    // The taskable filter to update the status of all tasks that match the filter.
+    TaskableFilter taskable_filter = 3;
+  }
+
+  // The new status for the task.
+  TaskStatus status = 2;
+}
+
+message SetTaskStatusResponse {
+  // Empty for now.
+}
+
+// These are only a subset of the statuses from monorail/modules/trade/app/client_app_constants/task_statuses.rb
+// But they're the ones we need.
+enum TaskStatus {
+  TASK_STATUS_INVALID = 0;
+  TASK_STATUS_COMPLETE = 1;
+  TASK_STATUS_ACTIVE = 2;
+  TASK_STATUS_DISMISSED = 3;
+}

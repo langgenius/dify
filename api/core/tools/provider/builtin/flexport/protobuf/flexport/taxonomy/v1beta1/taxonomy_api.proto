@@ -1,0 +1,105 @@
+// TEAM: cost_capture
+
+syntax = "proto3";
+
+package flexport.taxonomy.v1beta1;
+
+import "flexport/taxonomy/v1beta1/taxonomy.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TaxonomyApiProto";
+option java_package = "com.flexport.taxonomy.v1beta1";
+option ruby_package = "Flexport::Taxonomy::V1Beta1";
+
+service TaxonomyAPI {
+  // fetch charge group based on vendor text
+  rpc GetChargeGroup(GetChargeGroupRequest) returns (GetChargeGroupResponse) {}
+  rpc GetChargeCodeByChargeGroup(GetChargeCodeByChargeGroupRequest) returns (GetChargeCodeByChargeGroupResponse) {}
+  rpc GetChargeCodeByServiceItemTemplate(GetChargeCodeByServiceItemTemplateRequest) returns (GetChargeCodeByServiceItemTemplateResponse) {}
+  rpc GetServiceItemTemplateByChargeCode(GetServiceItemTemplateByChargeCodeRequest) returns (GetServiceItemTemplateByChargeCodeResponse) {}
+  rpc GetChargeCodes(GetChargeCodesRequest) returns (GetChargeCodesResponse) {}
+}
+
+message GetChargeGroupRequest {
+  // The text from the line item (AKA "line item title"), e.g. "STORAGE (<30 DAYS)"
+  string vendor_text = 1;
+  // flx::core:company:dbid/<number>
+  google.protobuf.StringValue vendor_company_fid = 2;
+  Namespace namespace = 3;
+}
+
+message ChargeGroupResult {
+  // flx::taxonomy:charge_group:dbid/<number>
+  string charge_group_fid = 1;
+  // flx::core::service_item_template:dbid/40000
+  google.protobuf.StringValue charge_code_fid = 2;
+}
+
+message GetChargeGroupResponse {
+  oneof result {
+    ChargeGroupResult success_result = 1;
+    ErrorResult failure_result = 2;
+  }
+}
+
+message GetChargeCodeByChargeGroupRequest {
+  // flx::taxonomy:charge_group:dbid/<number>
+  string charge_group_fid = 1;
+  // Request the charge code for a specific blended mode, or the default charge code if blended mode is not applicable
+  optional BlendedMode blended_mode = 2;
+}
+
+message ChargeCodeResult {
+  ChargeCode charge_code = 1;
+}
+
+message GetChargeCodeByChargeGroupResponse {
+  oneof result {
+    ChargeCodeResult success_result = 1;
+    ErrorResult failure_result = 2;
+  }
+}
+
+message GetChargeCodeByServiceItemTemplateRequest {
+  // flx::core:service_item_template:dbid/<number>
+  string service_item_template_fid = 1;
+  // Request the charge code for a specific blended mode, or the default charge code if blended mode is not applicable
+  optional BlendedMode blended_mode = 2;
+}
+
+message GetChargeCodeByServiceItemTemplateResponse {
+  oneof result {
+    ChargeCodeResult success_result = 1;
+    ErrorResult failure_result = 2;
+  }
+}
+
+message GetServiceItemTemplateByChargeCodeRequest {
+  uint32 charge_code_id = 1;
+}
+
+message ServiceItemTemplateResult {
+  repeated ServiceItemTemplate service_item_templates = 1;
+}
+
+message GetServiceItemTemplateByChargeCodeResponse {
+  oneof result {
+    ServiceItemTemplateResult success_result = 1;
+    ErrorResult failure_result = 2;
+  }
+}
+
+message GetChargeCodesRequest {
+  Filters filters = 1;
+}
+
+message GetChargeCodesResponse {
+  ChargeCodeResult success_result = 1;
+  ErrorResult failure_result = 2;
+}
+
+// Result with error messages.
+message ErrorResult {
+  repeated string errors = 1;
+}

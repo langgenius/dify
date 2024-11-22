@@ -1,0 +1,27 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PortTruckingDirectionProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// The direction for this trucking move from or away from ports..
+enum PortTruckingDirection {
+  //
+  // The direction is unknown, and was not specified.
+  PORT_TRUCKING_DIRECTION_INVALID = 0;
+  //
+  // Moving cargo from a port to a final destination. (Generally "import" trucking.)
+  PORT_TRUCKING_DIRECTION_FROM_PORT = 1;
+  //
+  // Moving cargo from an origin location to a port. (Generally "export" trucking.)
+  PORT_TRUCKING_DIRECTION_TO_PORT = 2;
+  //
+  // TODO - we may want to add "LOCAL_MOVE" for moving cargo around locally, or for
+  // empty returns.
+
+}

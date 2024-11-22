@@ -1,0 +1,51 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.schedulemanager.heuristics.v1beta1;
+
+import "flexport/executioncoordinator/types/enums/v1/entry_point.proto";
+import "flexport/schedulemanager/datechanges/v1/date_type.proto";
+import "flexport/schedulemanager/types/enums/v1/prediction_source.proto";
+import "flexport/schedulemanager/types/enums/v1/suggestion_type.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "HeuristicViolationProto";
+option java_package = "com.flexport.schedulemanager.heuristics.v1beta1";
+option ruby_package = "Flexport::ScheduleManager::Heuristics::V1Beta1";
+
+// Flagged/violated shipment schedule Heuristic.
+message HeuristicViolation {
+  // Id/Fids
+  string fid = 1;
+  string shipment_fid = 2;
+  repeated string itinerary_revisions = 3;
+
+  // Violation context
+  string heuristic_name = 10;
+  string date_transit_type = 11;
+  flexport.schedulemanager.datechanges.v1.DateType date_type = 12;
+
+  // Violation attribution
+  string user_fid = 16;
+  flexport.executioncoordinator.types.enums.v1.EntryPoint entry_point = 17;
+
+  // Violation details
+  string violated_entity_fid = 20;
+  string violated_entity_type = 21;
+  int32 violation_days = 22;
+  int32 violated_by_days = 23;
+
+  // Suggestion details
+  string suggestion_entity_fid = 30;
+  flexport.schedulemanager.types.enums.v1.SuggestionType suggestion_type = 31;
+  int64 suggestion_days = 32;
+  flexport.schedulemanager.types.enums.v1.PredictionSource suggestion_prediction_source = 33;
+
+  // Metadata
+  google.protobuf.BoolValue is_flexport_owned = 45;
+  google.protobuf.Timestamp created_at = 50;
+  google.protobuf.Timestamp deleted_at = 51;
+}

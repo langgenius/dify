@@ -1,0 +1,21 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanCarrierBookingLastEtaChangedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+
+// The last eta of the carrier booking route has been updated.
+//
+message OceanCarrierBookingLastEtaChanged {
+  string carrier_booking_fid = 1;
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime estimated_time_of_arrival = 3;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate eta = 2 [deprecated = true];
+}

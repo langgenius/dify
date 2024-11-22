@@ -1,0 +1,18 @@
+// TEAM: client_app
+
+syntax = "proto3";
+
+package flexport.dumboindexing.filtergroups.v2beta1;
+
+import "flexport/dumboindexing/filtergroups/v2beta1/shipment_filter_group.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FilterGroupProto";
+option java_package = "com.flexport.dumboindexing.filtergroups.v2beta1";
+option ruby_package = "Flexport::DumboIndexing::FilterGroups::V2Beta1";
+
+message FilterGroup {
+  oneof filter_group {
+    ShipmentFilterGroup shipment_filter_group = 1;
+  }
+}

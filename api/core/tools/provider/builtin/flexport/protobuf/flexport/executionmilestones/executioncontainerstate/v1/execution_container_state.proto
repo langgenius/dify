@@ -1,0 +1,19 @@
+// TEAM: sutro
+
+syntax = "proto3";
+
+package flexport.executionmilestones.executioncontainerstate.v1;
+
+import "flexport/executioncoordinator/executioncontainer/v1/execution_container.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionContainerStateProto";
+option java_package = "com.flexport.executionmilestones.executioncontainerstate.v1";
+
+message ExecutionContainerState {
+  // maps container_fid to ExecutionContainer
+  map<string, flexport.executioncoordinator.executioncontainer.v1.ExecutionContainer> execution_containers = 1;
+
+  // maps container_fid to user fid
+  map<string, string> last_modified_by_fid = 2;
+}

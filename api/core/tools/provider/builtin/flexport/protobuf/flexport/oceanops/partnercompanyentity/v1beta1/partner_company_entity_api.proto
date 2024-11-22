@@ -1,0 +1,35 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.oceanops.partnercompanyentity.v1beta1;
+
+import "flexport/rulesengine/options/v1/options.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PartnerCompanyEntityApiProto";
+option java_package = "com.flexport.oceanops.partnercompanyentity.v1beta1";
+option ruby_package = "Flexport::OceanOps::PartnerCompanyEntity::V1Beta1";
+
+// PartnerCompanyEntityAPI This is the rules to determine what Partner Comapny Entity to use as Shipper and Forwarder when creating a Carrier Booking.
+service PartnerCompanyEntityAPI {
+  option (flexport.rulesengine.options.v1.rule_facade).service_name = "ocean_ops";
+  //  PartnerCompanyEntity Determine the Partner's company entity to use as Shipper and Forwarder when creating Carrier Bookings.
+  rpc PartnerCompanyEntity(PartnerCompanyEntityRequest) returns (PartnerCompanyEntityResponse) {
+    option (flexport.rulesengine.options.v1.decision_table).use = true;
+    option (flexport.rulesengine.options.v1.rule).api_name = "com.flexport.oceanops.partnercompanyentity";
+    option (flexport.rulesengine.options.v1.rule).description = "Determine the Partner's company entity to use as Shipper and Forwarder when creating Carrier Bookings";
+    option (flexport.rulesengine.options.v1.rule).tolerate_evaluation_error = false;
+    option (flexport.rulesengine.options.v1.rule).workspace = "ocean_ops";
+  }
+}
+
+message PartnerCompanyEntityRequest {
+  uint64 partner_company_id = 1;
+  string port_of_loading_loc_code = 2;
+}
+
+message PartnerCompanyEntityResponse {
+  string party_identifier = 1;
+  uint64 partner_company_entity_id = 2;
+}

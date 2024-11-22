@@ -1,0 +1,27 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.workflow.email.models.shipment_email_update.v1beta1;
+
+import "flexport/workflow/email/models/attachment/v1beta1/attachment.proto";
+import "flexport/workflow/email/models/carrier/v1beta1/carrier.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentEmailUpdateProto";
+option java_package = "com.flexport.workflow.email.models.shipment_email_update.v1beta1";
+option ruby_package = "Flexport::Workflow::Email::Models::ShipmentEmailUpdate::V1Beta1";
+
+enum ShipmentEmailUpdateVariant {
+  SHIPMENT_EMAIL_UPDATE_VARIANT_INVALID = 0;
+  SHIPMENT_EMAIL_UPDATE_VARIANT_ONE_CHANGE_OF_NOMINATED_VESSEL_NOTIFICATION = 1;
+}
+
+message ShipmentEmailUpdate {
+  string email_subject = 1;
+  repeated flexport.workflow.email.models.attachment.v1beta1.Attachment attachments = 2;
+  string email_body = 3;
+  string message_id = 4;
+  flexport.workflow.email.models.carrier.v1beta1.Carrier carrier = 5;
+  ShipmentEmailUpdateVariant variant = 6;
+}

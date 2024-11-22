@@ -1,0 +1,28 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionoffering.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "HkExportTradeDeclarationExecutionOfferingProto";
+option java_package = "com.flexport.executioncoordinator.executionoffering.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOffering::V1";
+
+// HkExportTradeDeclarationExecutionOffering is a value-add execution offering for handling declaration of Hong Kong-defined strategic commodities
+// on the origin side.
+message HkExportTradeDeclarationExecutionOffering {
+  //
+  // Freight partner responsible for ensuring trade declarations are made.
+  string freight_partner_fid = 1;
+  //
+  // The role Flexport plays in the declaration process.
+  HkExportTradeDeclarationRole trade_declaration_role = 10;
+}
+
+// Flexport role in export customs clearance.
+enum HkExportTradeDeclarationRole {
+  HK_EXPORT_TRADE_DECLARATION_ROLE_INVALID = 0;
+  HK_EXPORT_TRADE_DECLARATION_ROLE_FULL_SERVICE = 1;
+  HK_EXPORT_TRADE_DECLARATION_ROLE_NO_INVOLVEMENT = 2;
+}

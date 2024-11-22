@@ -1,0 +1,38 @@
+// TEAM: wingstop
+
+syntax = "proto3";
+
+package flexport.airsupply.allotmentcontour.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AllotmentContourProto";
+option java_package = "com.flexport.airsupply.allotmentcontour.v1beta1";
+option ruby_package = "Flexport::AirSupply::AllotmentContour::V1Beta1";
+
+//Description: AllotmentContours specify the particular ULD types procured on a particular allotment.
+//1 Allotment will have many AllotmentContours. For example, an allotment representing space procured on flight CX100,
+//might have 2 AllotmentContours: 1) 1 Q6 with 2800kg of allotted space 2) 1 Q7 with 3200kg of allotted space
+//Usage: This proto will be used as the contract to publish allotment data to snowflake
+//This proto maps to the table air_procurement_allotment_contours.
+message AllotmentContour {
+  string allotment_contour_fid = 1;
+  // The reference to the allotment under which an allotment contour belongs to.
+  string allotment_fid = 2;
+  // The reference to the equipment type fid which specifies the type of ULD: i.e. Q6, Q7, etc.
+  string equipment_type_fid = 3;
+  // Specifies how many units are available on the allotment.
+  uint32 number_of_units = 4;
+  // Carriers optionally may grant a volume / pivot discount.
+  // This is different than the physical max volume of the equipment type.
+  double volume_discount = 5;
+  float max_gross_weight_per_unit_in_kg = 6;
+  // Represents the amount of weight in KG that can be placed on the ULD associated with this allotment.
+  // Single BUP (Bulk Utilization Program) refers to ULDs that are intact and booked for a single destination.
+  float single_bup_weight_in_kg = 9;
+  // Represents the amount of weight in KG that can be place on the ULD associated with this allotment.
+  // Mixed BUP refers to ULDs that are mixed and can go to multiple destinations
+  float mixed_bup_weight_in_kg = 10;
+  // How we will measure utilization of this allotment: ["committed_weight", "pivot_weight"].
+  // This field will be "pivot_weight" for FAE.
+  string weight_type = 11;
+}

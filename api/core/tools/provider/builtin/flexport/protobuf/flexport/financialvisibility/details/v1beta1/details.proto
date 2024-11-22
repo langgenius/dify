@@ -1,0 +1,89 @@
+// TEAM: cost_capture
+
+syntax = "proto3";
+
+package flexport.financialledger.details.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DetailsProto";
+option java_package = "com.flexport.financialledger.details.v1beta1";
+option ruby_package = "Flexport::FinancialLedger::Details::V1Beta1";
+
+// Detail value record. Can be one of several possible formats, depending on
+// the `type' field.
+message DetailValueDto {
+  oneof value {
+    string string = 1;
+    sint32 int = 2;
+    float float = 3;
+    AmountWithUnitsValueDto amount_with_units = 4;
+    google.protobuf.Timestamp time = 5;
+    LocationValueDto location = 6;
+    google.protobuf.BoolValue boolean = 7;
+    CompanyValueDto company = 8;
+    ContainersValueDto containers = 9;
+    DocumentValueDto document = 10;
+    DeliveriesValueDto deliveries = 11;
+    UnknownValueDto unknown = 12;
+  }
+}
+
+// Unit value format consisting of the `name' of the unit and its `power'.
+message UnitDto {
+  string name = 1;
+  sint32 power = 2;
+}
+
+// Mount with units value format.
+message AmountWithUnitsValueDto {
+  string amount = 1;
+  repeated UnitDto units = 2;
+}
+
+// Company value format.
+message CompanyValueDto {
+  string company_id = 1;
+}
+
+// Container list entry.
+message ContainerDto {
+  string number = 1;
+  string iso_code = 2;
+  string size = 3;
+  string container_type = 4;
+}
+
+// Containers value format.
+message ContainersValueDto {
+  repeated ContainerDto containers = 1;
+}
+
+// Document value format.
+message DocumentValueDto {
+  string label = 1;
+  google.protobuf.StringValue document_id = 2;
+}
+
+// Location value format.
+message LocationValueDto {
+  string address_id = 1;
+}
+
+// Delivery list entry.
+message DeliveryDto {
+  string flex_id = 1;
+  google.protobuf.Int32Value container_use_days = 2;
+}
+
+// Deliveries value format.
+message DeliveriesValueDto {
+  repeated DeliveryDto deliveries = 1;
+}
+
+// Unknown value format (fallback for unparseable types).
+message UnknownValueDto {
+  google.protobuf.StringValue json = 1;
+}

@@ -196,8 +196,8 @@ zhipuai = "~2.1.5"
 # required by main implementations
 ############################################################
 grpcio = ">=1.48.2,<2.0.0"
-protobuf = ">=4.21.3,<5.0.0"
-grpcio-tools = ">=1.48.2,<2.0.0"
+protobuf = ">=4.21.3"
+grpcio-tools = ">=1.48.2"
 [tool.poetry.group.indirect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"

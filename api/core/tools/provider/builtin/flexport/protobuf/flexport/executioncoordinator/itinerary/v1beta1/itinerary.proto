@@ -1,0 +1,221 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.itinerary.v1beta1;
+
+import "flexport/executioncoordinator/itinerary/v1beta1/itinerary_process.proto";
+import "flexport/executioncoordinator/itinerary/v1beta1/itinerary_upserter.proto";
+import "flexport/executioncoordinator/types/enums/v1/entry_point.proto";
+import "flexport/executioncoordinator/types/enums/v1/node_tag.proto";
+import "flexport/executioncoordinator/types/enums/v1/transport_mode.proto";
+import "flexport/executioncoordinator/types/enums/v1/transportation_status.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+import "flexport/os/v1/types/walltimerange/v1/wall_time_range.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ItineraryProto";
+option java_package = "com.flexport.executioncoordinator.itinerary.v1beta1";
+option ruby_package = "Flexport::ExecutionCoordinator::Itinerary::V1Beta1";
+
+message Itinerary {
+  // Itinerary build from EP uses shipment fid as id temporarily.
+  string id = 1;
+  repeated Leg legs = 2;
+  repeated Node nodes = 3;
+  //
+  // Revision number of the itinerary. Increments by one each time the itinerary is mutated, starting
+  // at 1. Included in events and reads from the ExecutionCoordinator; ignored during writes.
+  uint32 revision = 4;
+  //
+  // Time the current revision was created.
+  google.protobuf.Timestamp revision_created_time = 5;
+  //
+  // Information about the source of the current Itinerary revision.
+  ItineraryRevisionSource revision_source = 6;
+  // Flex id associated with the itinerary.
+  string flex_id = 7;
+  //
+  // The ExecutionPlan revision number in which this Itinerary revision was created, ie the
+  // revision during which this Itinerary was most recently updated.
+  uint32 revision_created_in_plan_revision = 8;
+
+  // Transportation status of the itinerary.
+  flexport.executioncoordinator.types.enums.v1.TransportationStatus transportation_status = 9;
+}
+
+message Leg {
+  string id = 1;
+  string origin_node_id = 2;
+  string destination_node_id = 3;
+  repeated string cargo_fids = 4;
+  string execution_cargo_fid = 20;
+  repeated string container_fids = 19;
+
+  Timetable estimated_timetable = 5;
+  Timetable actual_timetable = 6;
+  Timetable scheduled_timetable = 17;
+
+  string carrier_fid = 7;
+  string partner_fid = 14;
+  flexport.executioncoordinator.types.enums.v1.TransportMode transport_mode = 9;
+  string execution_task_fid = 10;
+  FreightType freight_type = 18;
+
+  string voyage_tracking_number = 8;
+  string vessel_fid = 11;
+
+  repeated flexport.os.v1.types.walltimerange.v1.WallTimeRange target_discharge_ranges = 12 [deprecated = true];
+  repeated flexport.os.v1.types.walltimerange.v1.WallTimeRange target_delivery_ranges = 13 [deprecated = true];
+
+  // DEPRECATED: use scheduled_timetable.departure_date instead
+  repeated ItineraryDateRange target_discharge_date_ranges = 15 [deprecated = true];
+  // DEPRECATED: use scheduled_timetable.arrival_date instead
+  repeated ItineraryDateRange target_delivery_date_ranges = 16 [deprecated = true];
+}
+
+message Node {
+  string id = 1;
+  string place_fid = 2;
+  string terminal_or_cfs_fid = 3;
+  // The places of interest for specific business processes within a shipment route,
+  // also known as Node Tags in the Monolith.
+  repeated flexport.executioncoordinator.types.enums.v1.NodeTag tags = 4;
+}
+
+// All entity names
+enum Entity {
+  ENTITY_INVALID = 0;
+  ENTITY_NODE = 1;
+  ENTITY_LEG = 2;
+  ENTITY_SCHEDULE = 3;
+}
+
+// Tracks what is updated from the previous entity revision.
+message EntityActivity {
+  // Entity of the activity
+  flexport.executioncoordinator.itinerary.v1beta1.Entity entity_name = 1;
+  // The new json value for the activity
+  EntityDifference entity_difference = 2;
+  // idempotent key to make the API idempotent
+  string idempotent_key = 3;
+  // User that triggers the entity update, if there is
+  string user_fid = 4;
+  // The ExecutionOrder of the entity
+  string execution_order_fid = 5;
+  // The caller system that the update request is from
+  string caller_name = 6;
+  // The creation time of the activity
+  google.protobuf.Timestamp creation_time = 7;
+}
+
+// Tracks what is updated from the previous entity revision.
+message EntityDifference {
+  // All added fields. From non-existence to existence in json.
+  repeated EntityField added = 1;
+  // All updated fields. (value, null) is considered as updated if null appears in json content.
+  repeated EntityField updated = 2;
+  // All deleted fields. From existence to non-existence in json.
+  repeated EntityField deleted = 3;
+}
+
+// Tracks what is changed on a field.
+message EntityField {
+  // json path of a field. Example: $.store.book[0].title
+  // Reference: https://www.ietf.org/archive/id/draft-goessner-dispatch-jsonpath-00.html
+  string path = 1;
+  // Old value before this change.
+  string old_value = 2;
+  // New value after this change.
+  string new_value = 3;
+  // Node id or leg id for reference.
+  string entity_reference_id = 8;
+}
+
+message Timetable {
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime departure = 1 [deprecated = true];
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime arrival = 2 [deprecated = true];
+
+  ItineraryDate departure_date = 3;
+  ItineraryDate arrival_date = 4;
+}
+
+message ItineraryDate {
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime value = 1;
+  ItineraryDateMetadata metadata = 2;
+}
+
+message ItineraryDateRange {
+  option deprecated = true;
+  flexport.os.v1.types.walltimerange.v1.WallTimeRange value = 1;
+  ItineraryDateMetadata metadata = 2;
+}
+
+enum FreightType {
+  FREIGHT_TYPE_INVALID = 0;
+  FREIGHT_TYPE_DRAYAGE = 1;
+  FREIGHT_TYPE_CARTAGE = 2;
+  FREIGHT_TYPE_FTL = 3;
+  FREIGHT_TYPE_LTL = 4;
+}
+// All the metadata associated with a change to an ItineraryDate/Range.
+// Submitted date/range changes should populate as much of this data as possible. If left blank the following fields
+// will be auto-populated from ItineraryRevisionSource:
+//   - created_by_user_fid (via user_fid)
+//   - entry_point (via entry_point)
+message ItineraryDateMetadata {
+  string created_by_user_fid = 1;
+  string triggering_user_fid = 2;
+  flexport.executioncoordinator.types.enums.v1.EntryPoint entry_point = 3;
+  flexport.executioncoordinator.types.enums.v1.EntryPoint triggering_entry_point = 4;
+  string tracking_id = 5;
+  string tracking_reference_type = 6;
+
+  // These fields will be auto-populated
+  string cargo_transit_date_changed_fid = 7;
+  google.protobuf.Timestamp created_at = 8;
+  string created_revision = 9;
+  string manage_schedule_fid = 10;
+}
+
+// A source of an Itinerary revision.
+message ItineraryRevisionSource {
+  // Identifier of the user responsible for the revision. Might be a bot.
+  //   Note: new ItineraryDateMetadata lacking created_by_user_fid will default to this value.
+  string user_fid = 1;
+
+  // Any arbitrary reference_key for this revision_source, set by the planning service or group.
+  // Use case example: indicating which "run" of an automated assignment engine made the revision.
+  // It can be any arbitrary string.
+  string reference_key = 2;
+
+  // Free text note about the revision.
+  string note = 3;
+
+  // The "service or group" (a la http://go/fid) that upserted the Itinerary revision.
+  ItineraryUpserter itinerary_upserter = 4;
+
+  // itinerary process that created the revision.
+  ItineraryProcess itinerary_process = 5;
+
+  // The revision of itinerary that this operation is based on.
+  int32 based_on_itinerary_revision = 6;
+
+  // Entry Point where the changes in this Itinerary originated from. Distinct from Upserter/Process which capture the
+  // service/group & process that made the direct request to Itinerary API.
+  //   Note: new ItineraryDateMetadata lacking entry_point will default to this value.
+  flexport.executioncoordinator.types.enums.v1.EntryPoint entry_point = 7;
+
+  // Entry Point that triggered a secondary process (stored in entry_point). This includes processes like: Propagation, Cascading, etc. where it's useful to know the initial source.
+  //   Note: new ItineraryDateMetadata lacking triggering_entry_point will default to this value.
+  flexport.executioncoordinator.types.enums.v1.EntryPoint triggering_entry_point = 10;
+
+  // WARNING: This field should be used for Audit/Investigation purposes only, not as a reliable value.
+  // Caller Source should be a string unique to the call-site updating Itinerary, e.g. a class/file path.
+  string caller_source = 8;
+
+  // THIS IS AUTOMATICALLY POPULATED, DO NOT SET DIRECTLY.
+  // Schedule Manager's unique tracking id assigned to dates evaluation.
+  string manage_schedule_fid = 9;
+}

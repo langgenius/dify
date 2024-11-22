@@ -1,0 +1,63 @@
+#!/bin/bash
+
+# Get script directory
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Set default directories
+DEFAULT_SOURCE_DIR="$HOME/flexport/protobuf"
+DEFAULT_TARGET_DIR="$SCRIPT_DIR/../api/core/tools/provider/builtin/flexport/protobuf"
+
+# Check parameters
+if [ "$#" -eq 0 ]; then
+    SOURCE_DIR="$DEFAULT_SOURCE_DIR"
+    TARGET_DIR="$DEFAULT_TARGET_DIR"
+    echo "Using default paths:"
+    echo "Source: $SOURCE_DIR"
+    echo "Target: $TARGET_DIR"
+elif [ "$#" -eq 1 ]; then
+    SOURCE_DIR="$1"
+    TARGET_DIR="$DEFAULT_TARGET_DIR"
+    echo "Using provided source and default target:"
+    echo "Source: $SOURCE_DIR"
+    echo "Target: $TARGET_DIR"
+elif [ "$#" -eq 2 ]; then
+    SOURCE_DIR="$1"
+    TARGET_DIR="$2"
+else
+    echo "Too many arguments"
+    echo "Usage: $0 [source_dir] [target_dir]"
+    echo "Default source: $DEFAULT_SOURCE_DIR"
+    echo "Default target: $DEFAULT_TARGET_DIR"
+    exit 1
+fi
+
+# Verify source directory exists
+if [ ! -d "$SOURCE_DIR" ]; then
+    echo "Error: Source directory does not exist: $SOURCE_DIR"
+    exit 1
+fi
+
+# Create target directory with proper permissions
+mkdir -p "$TARGET_DIR"
+if [ $? -ne 0 ]; then
+    echo "Error: Failed to create target directory: $TARGET_DIR"
+    exit 1
+fi
+
+# Sync all .proto files
+echo "Starting proto files sync..."
+rsync -av --include="*.proto" --include="*/" --exclude="*" "$SOURCE_DIR/" "$TARGET_DIR/"
+
+# Check sync result
+if [ $? -eq 0 ]; then
+    echo "Proto files sync successful!"
+    echo "Source directory: $SOURCE_DIR"
+    echo "Target directory: $TARGET_DIR"
+    
+    # Display number of synced files
+    PROTO_COUNT=$(find "$TARGET_DIR" -name "*.proto" | wc -l)
+    echo "Synced $PROTO_COUNT proto files"
+else
+    echo "Sync failed, please check if directory paths are correct"
+    exit 1
+fi 

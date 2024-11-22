@@ -1,0 +1,16 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.exceptionmanagement.publishing.v1beta1;
+
+import "flexport/exceptionmanagement/types/v1beta1/operational_exception_type.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OperationalExceptionTypeUpdatedProto";
+option java_package = "com.flexport.exceptionmanagement.publishing.v1beta1";
+option ruby_package = "Flexport::ExceptionManagement::Publishing::V1Beta1";
+
+message OperationalExceptionTypeUpdated {
+  flexport.exceptionmanagement.types.v1beta1.OperationalExceptionType operational_exception_type = 1;
+}

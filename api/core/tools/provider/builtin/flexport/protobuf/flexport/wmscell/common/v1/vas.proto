@@ -1,0 +1,16 @@
+// TEAM: wms_bellevue
+
+syntax = "proto3";
+
+package flexport.wmscell.common.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "VasProto";
+option java_package = "com.flexport.wmscell.common.v1";
+
+message ValueAddedService {
+  string type = 1;
+  string description = 2;
+  string operation_task_id = 3;
+  string status = 4;
+}

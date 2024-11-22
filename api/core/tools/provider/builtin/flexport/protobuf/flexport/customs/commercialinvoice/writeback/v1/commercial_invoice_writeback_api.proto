@@ -1,0 +1,38 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.commercialinvoice.writeback.v1;
+
+import "flexport/customs/commercialinvoice/v1/commercial_invoice.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CommercialInvoiceWritebackApiProto";
+option java_package = "com.flexport.customs.commercialinvoice.writeback.v1";
+option ruby_package = "Flexport::Customs::CommercialInvoice::Writeback::V1";
+
+service CommercialInvoiceWritebackAPI {
+  rpc UpsertCommercialInvoice(UpsertCommercialInvoiceRequest) returns (UpsertCommercialInvoiceResponse);
+  rpc ArchiveCommercialInvoice(ArchiveCommercialInvoiceRequest) returns (ArchiveCommercialInvoiceResponse);
+}
+
+message UpsertCommercialInvoiceRequest {
+  flexport.customs.commercialinvoice.v1.CommercialInvoice commercial_invoice = 1;
+  UpsertCommercialInvoiceRequestParameters parameters = 2;
+}
+
+message UpsertCommercialInvoiceRequestParameters {
+  bool mark_as_completed = 1;
+}
+
+message UpsertCommercialInvoiceResponse {
+  flexport.customs.commercialinvoice.v1.CommercialInvoice commercial_invoice = 1;
+}
+
+message ArchiveCommercialInvoiceRequest {
+  string fid = 1;
+}
+
+message ArchiveCommercialInvoiceResponse {
+  bool success = 1;
+}

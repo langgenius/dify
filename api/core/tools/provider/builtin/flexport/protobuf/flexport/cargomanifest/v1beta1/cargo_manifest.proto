@@ -1,0 +1,19 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.cargomanifest.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoManifestProto";
+option java_package = "com.flexport.cargomanifest.v1beta1";
+option ruby_package = "Flexport::CargoManifest::V1Beta1";
+
+// A CargoManifest contains the details of the shipment, including
+// details of the goods, route, vessel, and bills of lading.
+// The source of truth for this information is the government system,
+// where multiple parties register details and filings related to the shipment.
+// See https://www.marineinsight.com/maritime-law/what-is-a-cargo-manifest-in-shipping/
+message CargoManifest {
+  string mbl_number = 1;
+}

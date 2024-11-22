@@ -1,0 +1,41 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentprocessor.documentschema.events.v1beta1;
+
+import "flexport/documentflow/documentschema/common/v1beta1/digitization_solution.proto";
+import "flexport/documentprocessor/documentschema/v1beta1/arrival_notice.proto";
+import "flexport/documentprocessor/documentschema/v1beta1/commercial_invoice.proto";
+import "flexport/documentprocessor/documentschema/v1beta1/container_arrival_notice.proto";
+import "flexport/documentprocessor/documentschema/v1beta1/master_bill_of_lading.proto";
+import "flexport/documentprocessor/documentschema/v1beta1/packing_list.proto";
+import "flexport/documentprocessor/documentschema/v1beta1/partner_generated_bill_of_lading.proto";
+import "flexport/documentprocessor/documentschema/v1beta1/shipping_instructions.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TranscribedDataTransformedProto";
+option java_package = "com.flexport.documentprocessor.documentschema.events.v1beta1";
+option ruby_package = "Flexport::DocumentProcessor::DocumentSchema::Events::V1Beta1";
+
+// NextID: 14
+message TranscribedDataTransformed {
+  // The fid of the corresponding transcription job. Usually the downstream doesn't consume this.
+  // Saving the transcription job fid would be useful for debugging purpose.
+  string transcription_job_fid = 1;
+  flexport.documentflow.documentschema.common.v1beta1.DigitizationSolution digitization_solution = 11;
+
+  string storage_fid = 7;
+
+  oneof schema_data {
+    flexport.documentprocessor.documentschema.v1beta1.ArrivalNotice arrival_notice_data = 3;
+    flexport.documentprocessor.documentschema.v1beta1.MasterBillOfLading master_bill_of_lading_data = 4;
+    flexport.documentprocessor.documentschema.v1beta1.ContainerArrivalNotice container_arrival_notice_data = 5;
+    flexport.documentprocessor.documentschema.v1beta1.PartnerGeneratedBillOfLading partner_generated_bill_of_lading = 8;
+    flexport.documentprocessor.documentschema.v1beta1.CommercialInvoice commercial_invoice = 9;
+    flexport.documentprocessor.documentschema.v1beta1.ShippingInstructions shipping_instructions = 10;
+    flexport.documentprocessor.documentschema.v1beta1.PackingList packing_list = 13;
+  }
+
+  reserved 2, 6, 12;
+}

@@ -1,0 +1,207 @@
+// TEAM: work_management
+
+syntax = "proto3";
+
+package flexport.workitems.workitemservice.v1beta1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "WorkItemProto";
+option java_package = "com.flexport.workitems.workitemservice.v1beta1";
+option ruby_package = "Flexport::WorkItems::WorkItemService::V1Beta1";
+
+// A WorkItem is a representation of a unit of work.
+message WorkItem {
+  //
+  // Work Item FID.
+  string fid = 1;
+  //
+  // An external ID used to support upsert semantics and idempotent APIs, similar to 'source_resource_id' in Jetski.
+  // (defaults to WorkItem id)
+  string upsert_key = 2;
+  //
+  // The Work Item type, similar to 'source_resource_type' in Jetski.
+  string work_item_type = 3;
+  //
+  // The Work Item context, similar to vector data in Jetski (stored as jsonb).
+  google.protobuf.Struct work_context = 4;
+  //
+  // The Metadata (stored as jsonb).
+  google.protobuf.Struct metadata = 21;
+  //
+  // The list of business objects that the Work Item relates to.
+  repeated string topic_fids = 5;
+  //
+  // The Work Item's due date.
+  google.protobuf.Timestamp due_at_time = 6;
+  //
+  // Additional Work Item details to be rendered.
+  WorkItemDetails details = 7;
+  //
+  // Work Item warnings to be rendered.
+  repeated WorkItemWarning warnings = 8;
+  //
+  // Work Item block reasons to be rendered.
+  repeated WorkItemBlockReason block_reasons = 9;
+  //
+  // The time at which the Work Item was completed.
+  google.protobuf.Timestamp completed_at_time = 10;
+  //
+  // The time at which the Work Item is snoozed until.
+  google.protobuf.Timestamp snoozed_until_time = 11;
+  //
+  // Inapplicable Work Item will disappear from a work list.
+  google.protobuf.BoolValue applicable = 12;
+  //
+  // The list of assignees that the Work Item is assigned to.
+  repeated string assignee_fids = 13;
+  //
+  // The time at which the Work Item is inapplicable until.
+  google.protobuf.Timestamp applicable_at_time = 14;
+  //
+  // The user completed the work item
+  google.protobuf.StringValue completed_by_fid = 15;
+  //
+  // The user updated the work item
+  google.protobuf.StringValue updated_by_fid = 16;
+  //
+  // The revision for the work item
+  uint64 revision = 17;
+  //
+  // The state for the work item
+  google.protobuf.StringValue state = 18;
+  //
+  // The automation flag for the work item
+  google.protobuf.BoolValue is_for_automation = 19;
+  //
+  // The automation type for the work item
+  AutomationType automation_type = 20;
+  // The optimistic revision for the work item
+  uint64 optimistic_revision = 22;
+  //
+  // The updated date for the work item
+  google.protobuf.Timestamp updated_at_time = 23;
+  //
+  // The list of exceptions that the Work Item is reopened by.
+  repeated WorkItemException exception_context = 24;
+  //
+  // The list of reasons for the applicable_at_time
+  repeated string applicable_at_reasons = 25;
+  //
+  // human readable description of the applicable_at_time
+  google.protobuf.StringValue applicable_at_description = 26;
+  //
+  // The created date for the work item
+  google.protobuf.Timestamp created_at_time = 27;
+  //
+  // Automation availability, indicating whether a work item can be automated
+  WorkItemAutomationAvailability automation_availability = 28;
+  //
+  // Automation result related information
+  WorkItemAutomationResult automation_result = 29;
+  //
+  // The latest time where a work item has become applicable
+  google.protobuf.Timestamp last_applicable_at_time = 30;
+  // User that snoozed this work item
+  string snoozed_by_fid = 31;
+  // User that unsnoozed this work item
+  string unsnoozed_by_fid = 32;
+
+  //
+  // The lock state for the work item, forceComplete will save this field
+  google.protobuf.BoolValue state_lock = 33;
+  //
+  // The lock reason for the work item, forceComplete will save this field
+  google.protobuf.StringValue state_lock_reason = 34;
+  //
+  // The time at which the Work Item was first completed.
+  google.protobuf.Timestamp first_completed_at_time = 35;
+  //
+  // The user that first completed the work item
+  google.protobuf.StringValue first_completed_by = 36;
+  //
+  // The time at which the Work Item was first due.
+  google.protobuf.Timestamp first_due_at_time = 37;
+  //
+  // The time at which the Work Item is due for automation.
+  google.protobuf.Timestamp automation_due_at_time = 38;
+}
+
+// Wrapper message for Work Item details.
+message WorkItemDetails {
+  string details = 1;
+}
+
+// Wrapper message for Work Item warnings.
+message WorkItemWarning {
+  string warning = 1;
+}
+
+// Wrapper message for Work Item block reasons.
+message WorkItemBlockReason {
+  string block_reason = 1;
+}
+
+// reference to com.flexport.exceptionmanagement.types.v1beta1.OperationalException
+message WorkItemException {
+  string exception_fid = 1;
+  google.protobuf.Timestamp due_date_time = 2;
+}
+
+// Wrapper message for Work Item identifier.
+message WorkItemIdentifier {
+  string upsert_key = 1;
+  string work_item_type = 2;
+}
+
+// Wrapper message for Work Item automation availability.
+message WorkItemAutomationAvailability {
+  google.protobuf.BoolValue available = 1;
+}
+
+// Wrapper message for Work Item results.
+message WorkItemAutomationResult {
+  google.protobuf.BoolValue result = 1;
+  google.protobuf.StringValue failed_reason = 2;
+  google.protobuf.Timestamp updated_at = 3;
+}
+
+// The list of services and Rails Engines that call the SaveWorkItem method.
+// Adding your service to this list?
+// Please let us know on #work-management-support so we can assign your service its own rate limit.
+enum UpstreamService {
+  UPSTREAM_SERVICE_INVALID = 0;
+  UPSTREAM_SERVICE_UNSPECIFIED = 1;
+  UPSTREAM_SERVICE_COMPLIANCE = 2;
+  UPSTREAM_SERVICE_CUSTOMS_ISF = 3;
+  UPSTREAM_SERVICE_EXECUTION_MILESTONES = 4;
+  UPSTREAM_SERVICE_MONORAIL = 5;
+  UPSTREAM_SERVICE_OCEAN_FMT_ASSIGNMENT = 6;
+  UPSTREAM_SERVICE_OCEAN_OPS = 7;
+  UPSTREAM_SERVICE_OCEAN_PLANNING = 8;
+  UPSTREAM_SERVICE_OCEAN_SUPPLY = 9;
+  UPSTREAM_SERVICE_QUOTING = 10;
+  UPSTREAM_SERVICE_WORK_ITEMS = 11;
+  UPSTREAM_SERVICE_EXCEPTION_MANAGEMENT = 12;
+  UPSTREAM_SERVICE_DOCUMENT_FLOW = 13;
+  UPSTREAM_SERVICE_TEST = 14; // do not use -- reserved for WorkItemServiceAPI unit tests
+  UPSTREAM_SERVICE_COMMERCIAL_INVOICE_ENGINE = 15;
+  UPSTREAM_SERVICE_VISIBILITY = 16;
+  UPSTREAM_SERVICE_CUSTOMS_DECLARATIONS = 17;
+  UPSTREAM_SERVICE_BILLING = 18;
+  UPSTREAM_SERVICE_LOAD_PLAN = 19;
+  UPSTREAM_SERVICE_SCHEDULE_MANAGER = 20;
+  UPSTREAM_SERVICE_OEX = 21;
+  UPSTREAM_SERVICE_LAMBDA_WORK_ITEMS_AUTOMATION = 22;
+}
+
+// The set of valid automation types for a WorkItem.
+enum AutomationType {
+  AUTOMATION_TYPE_INVALID = 0;
+  AUTOMATION_TYPE_MANUAL = 1;
+  AUTOMATION_TYPE_AUTOMATABLE = 2;
+  AUTOMATION_TYPE_HYBRID = 3;
+}

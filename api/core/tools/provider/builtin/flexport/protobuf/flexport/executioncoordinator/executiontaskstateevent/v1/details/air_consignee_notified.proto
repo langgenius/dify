@@ -1,0 +1,35 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AirConsigneeNotifiedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "google/protobuf/timestamp.proto";
+
+// The cargo and documents are ready for pickup at the destination terminal,
+// and the consignee has been notified. In air freight "Cargo iQ" jargon this
+// event is abbreviated as "NFD".
+message AirConsigneeNotified {
+  //
+  // Do not use. See route_shape_leg_fid below.
+  string cargo_fid = 1 [deprecated = true];
+  //
+  // The destination airport.
+  string port_fid = 2;
+  //
+  // When the cargo became available.
+  google.protobuf.Timestamp cargo_available_time = 3;
+  //
+  // When we think the cargo will become available.
+  google.protobuf.Timestamp estimated_cargo_available_time = 4;
+  //
+  // The outgoing leg whose cargo is available for pickup at the destination
+  // airport. If blank, all of the cargo for the corresponding ExecutionTask
+  // is ready for pickup.
+  string route_shape_leg_fid = 5;
+}

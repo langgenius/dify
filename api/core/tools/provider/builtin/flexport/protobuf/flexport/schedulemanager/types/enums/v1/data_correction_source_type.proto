@@ -1,0 +1,19 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.schedulemanager.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DataCorrectionSourceTypeProto";
+option java_package = "com.flexport.schedulemanager.types.enums.v1";
+option ruby_package = "Flexport::ScheduleManager::Types::Enums::V1";
+
+enum DataCorrectionSourceType {
+  DATA_CORRECTION_SOURCE_TYPE_INVALID = 0;
+  DATA_CORRECTION_SOURCE_TYPE_MARINE_TRAFFIC = 1;
+  DATA_CORRECTION_SOURCE_TYPE_OCEAN_CARRIER = 2;
+  DATA_CORRECTION_SOURCE_TYPE_OCEAN_TERMINAL = 3;
+  DATA_CORRECTION_SOURCE_TYPE_OPERATOR_KNOWLEDGE = 4;
+  DATA_CORRECTION_SOURCE_TYPE_OTHER = 5;
+}

@@ -1,0 +1,39 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.payments.payment.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PaymentProto";
+option java_package = "com.flexport.payments.payment.v1beta1";
+option ruby_package = "Flexport::Payments::Payment::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+
+// A payment to invoices.
+message Payment {
+  int64 total_amount_micros = 1;
+  google.protobuf.Timestamp issued_at_time = 2;
+  google.protobuf.Timestamp created_at_time = 3;
+  string payment_status = 4;
+  string currency_code = 5;
+  string payment_method_kind = 6;
+  string stripe_code = 7;
+  string name = 8;
+  string description = 9;
+  repeated int64 document_ids = 10;
+  int32 payment_id = 11;
+  int32 payment_method_id = 12;
+  int32 broker_id = 13;
+  int32 receiving_entity_id = 14;
+  int32 sender_id = 15;
+}
+
+// Filter Dto to retrieve payment.
+message PaymentFilterDto {
+  repeated int32 id = 1;
+  repeated string stripe_code = 2;
+  repeated int32 invoice_id = 3;
+  repeated int32 payment_line_item_id = 4;
+}

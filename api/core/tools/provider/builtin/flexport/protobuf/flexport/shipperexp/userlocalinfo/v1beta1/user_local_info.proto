@@ -1,0 +1,25 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.shipperexp.userlocalinfo.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "UserLocalInfoProto";
+option java_package = "com.flexport.shipperexp.userlocalinfo.v1beta1";
+option ruby_package = "Flexport::ShipperExp::UserLocalInfo::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+
+// An client shipping info event for data ingestion.
+message UserLocalInfoEntity {
+  string fid = 1;
+  string user_fid = 2;
+  string country_code = 3;
+  string local_first_name = 4;
+  string local_last_name = 5;
+  string local_full_name = 6;
+  string local_language = 7;
+  google.protobuf.Timestamp created_at_time = 8;
+  google.protobuf.Timestamp updated_at_time = 9;
+}

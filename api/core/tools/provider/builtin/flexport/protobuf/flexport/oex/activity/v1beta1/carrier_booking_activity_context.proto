@@ -1,0 +1,177 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.oex.activity.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierBookingActivityContextProto";
+option java_package = "com.flexport.oex.activity.v1beta1";
+option ruby_package = "Flexport::OEX::Activity::V1Beta1";
+
+message CarrierBookingActivityContext {
+  string carrier_booking_fid = 1;
+  ActivityCategory activity_category = 2;
+  string sub_category = 3;
+  // keep it 0 for now
+  uint32 carrier_booking_revision = 4;
+  optional string shipment_fid = 5;
+  optional string booking_number = 6;
+  oneof category_context {
+    CarrierBookingCanceledContext carrier_booking_canceled_context = 50;
+    CarrierBookingDetachedContext carrier_booking_detached_context = 51;
+    CarrierBookingDeclinedContext carrier_booking_declined_context = 52;
+    CarrierBookingAttachedContext carrier_booking_attached_context = 53;
+    CarrierBookingContentUpdatedContext booking_content_updated = 54;
+    CarrierBookingContentUpdatedContext booking_voyages_updated = 55;
+    CarrierBookingContentUpdatedContext booking_integration_updated = 56;
+    CarrierBookingContentUpdatedContext container_requests_updated = 57;
+    CarrierBookingContentUpdatedContext shipping_orders_updated = 58;
+    PlanningTeamNotesContext planning_team_notes_context = 59;
+  }
+  // free text field for additional context
+  string additional_context = 7;
+  google.protobuf.Timestamp created_time = 8;
+  string created_by_fid = 9;
+}
+
+message CarrierBookingCanceledContext {
+  ReasonCode reason_code = 1;
+  string reason_code_description = 2;
+  string responsible_party = 3;
+  repeated string exception_type = 4;
+  google.protobuf.BoolValue fmt_region = 5;
+  string from_shipment_id = 6;
+  string from_carrier_booking_status = 7;
+}
+
+message CarrierBookingDetachedContext {
+  ReasonCode reason_code = 1;
+  string reason_code_description = 2;
+  string responsible_party = 3;
+  repeated string exception_type = 4;
+  google.protobuf.BoolValue fmt_region = 5;
+  string from_shipment_id = 6;
+  string from_carrier_booking_status = 7;
+}
+
+message CarrierBookingDeclinedContext {
+  ReasonCode reason_code = 1;
+  string reason_code_description = 2;
+  string responsible_party = 3;
+  repeated string exception_type = 4;
+  google.protobuf.BoolValue fmt_region = 5;
+  string from_shipment_id = 6;
+  string from_carrier_booking_status = 7;
+}
+
+message PlanningTeamNotesContext {
+  ReasonCode reason_code = 1;
+  string reason_code_description = 2;
+  string responsible_party = 3;
+  string shipment_id = 6;
+  string carrier_booking_status = 7;
+}
+
+message CarrierBookingAttachedContext {
+  string to_shipment_id = 1;
+  string from_carrier_booking_status = 2;
+}
+
+// this is a general context for all the content updated in carrier booking
+message CarrierBookingContentUpdatedContext {
+  string shipment_id = 1;
+  string carrier_booking_status = 2;
+  string carrier_booking_update_description = 3;
+  repeated CarrierBookingUpdatedItem carrier_booking_updated_items = 4;
+}
+
+message CarrierBookingUpdatedItem {
+  string item_identifier = 1;
+  // the field name that is updated, e.g. vessel/voyage, etd, eta, etc.
+  string item_name = 2;
+  string item_description = 3;
+  string changed_from = 4;
+  string changed_to = 5;
+}
+
+enum ActivityCategory {
+  ACTIVITY_CATEGORY_INVALID = 0;
+  ACTIVITY_CATEGORY_DETACHED = 1;
+  ACTIVITY_CATEGORY_CANCELED = 2;
+  ACTIVITY_CATEGORY_DETACH_AND_CANCELED = 3;
+  ACTIVITY_CATEGORY_SPACE_FULLY_RELEASED = 4;
+  ACTIVITY_CATEGORY_DECLINED = 5;
+  ACTIVITY_CATEGORY_ATTACHED = 6;
+  ACTIVITY_CATEGORY_CREATED = 7;
+  ACTIVITY_CATEGORY_BOOKING_CONTENT_UPDATED = 8;
+  ACTIVITY_CATEGORY_BOOKING_VOYAGES_UPDATED = 9;
+  ACTIVITY_CATEGORY_BOOKING_INTEGRATION_UPDATED = 10;
+  ACTIVITY_CATEGORY_CONTAINER_REQUESTS_UPDATED = 11;
+  ACTIVITY_CATEGORY_SHIPPING_ORDERS_UPDATED = 12;
+  ACTIVITY_CATEGORY_PLANNING_TEAM_NOTES = 13;
+}
+
+// source: https://docs.google.com/spreadsheets/d/1iHNc0e96sQB29m0FFEeV6HScbSG-aoD4zyDtAfEAg-o/edit#gid=0
+// detail description and logic in OEX service
+enum ReasonCode {
+  REASON_CODE_INVALID = 0;
+  // Carrier responsible
+  REASON_CODE_CARRIER_REJECTED_BOOKING_AMENDMENT = 1;
+  REASON_CODE_CARRIER_REJECTED_DG_NDG = 2 [deprecated = true];
+  REASON_CODE_CARRIER_LIMITATION_ON_CARGO_WEIGHT = 3 [deprecated = true];
+  REASON_CODE_CARRIER_CANT_PRINT_EIR_EQUIPMENT_UNAVAILABLE = 4;
+  REASON_CODE_CARRIER_RELEASE_SO_LATE = 5;
+  REASON_CODE_CARRIER_NO_SPACE = 6;
+  REASON_CODE_CARRIER_BLANK_SAILING_PORT_OMISSION = 7;
+  REASON_CODE_CARRIER_INITIATED_CHANGE_OF_VESSEL = 8 [deprecated = true];
+  REASON_CODE_CARRIER_RELEASE_SO_ON_ANOTHER_SCHEDULE_COV = 9;
+  REASON_CODE_CARRIER_VESSEL_DELAY = 10;
+  REASON_CODE_CARRIER_RATE_CONTRACT_ISSUE = 11;
+  REASON_CODE_CARRIER_NO_FEEDER_SERVICE = 12;
+  REASON_CODE_CARRIER_NO_ROUTE_SERVICE_OR_PORT_TEMPORARILY_SUSPENDED = 13 [deprecated = true];
+  REASON_CODE_CARRIER_CARRIER_DECLINED_BOOKING = 14 [deprecated = true];
+  REASON_CODE_CARRIER_CARRIER_DECLINED_OUT_OF_BOOKING_WINDOW = 15 [deprecated = true];
+  REASON_CODE_CARRIER_CARRIER_DECLINED_WITHIN_HARD_ALLOCATION = 16 [deprecated = true];
+
+  REASON_CODE_CARRIER_LIMITATION_ON_DG_NDG_CARGO_WEIGHT = 17;
+  REASON_CODE_CARRIER_NO_ROUTE_SERVICE_OR_PORT_SUSPENDED = 18;
+  REASON_CODE_CARRIER_DECLINE_BOOKING = 19;
+  REASON_CODE_CARRIER_DECLINE_BOOKING_WITHIN_HARD_ALLOCATION = 20;
+  REASON_CODE_CARRIER_DECLINE_BY_AUTOMATION_WITHOUT_A_SPECIFIC_CODE = 21;
+  REASON_CODE_CARRIER_CANCELED_BY_AUTOMATION_WITHOUT_A_SPECIFIC_CODE = 22;
+
+  // Client responsible
+  REASON_CODE_CLIENT_SHIPMENT_CANCELED = 30;
+  REASON_CODE_CLIENT_VOLUME_CHANGE = 31 [deprecated = true];
+  REASON_CODE_CLIENT_ROUTE_CHANGE = 32 [deprecated = true];
+  REASON_CODE_CLIENT_CARGO_READY_DATE_CHANGE = 33 [deprecated = true];
+  REASON_CODE_CLIENT_SHIPPER_CANNOT_CATCH_SAILING = 34 [deprecated = true];
+  REASON_CODE_CLIENT_NOT_SATISFIED_WITH_VESSEL_SCHEDULE = 35 [deprecated = true];
+  REASON_CODE_CLIENT_UNABLE_TO_PROVIDE_NDG_DG_RELATED_DOCS = 36 [deprecated = true];
+  REASON_CODE_CLIENT_ALLOCATION_ADJUSTMENT = 37;
+
+  REASON_CODE_CLIENT_BOOKING_AMENDMENT = 38;
+  REASON_CODE_CLIENT_CANNOT_CATCH_SAILING = 39;
+  REASON_CODE_CLIENT_DISSATISFIED_WITH_SAILING = 40;
+  REASON_CODE_CLIENT_VOLUME_INSUFFICIENT_TO_OPEN_A_CONSOL = 41;
+
+  // Flexport responsible
+  REASON_CODE_FLEXPORT_CARGO_STEERING = 60;
+  REASON_CODE_FLEXPORT_INCORRECT_ASSIGNMENT = 61 [deprecated = true];
+  REASON_CODE_FLEXPORT_INCORRECT_BOOKING = 62 [deprecated = true];
+  REASON_CODE_FLEXPORT_INVALID_BOOKING_CAUSED_BY_SYSTEM_BUG_EDI_ISSUE = 63 [deprecated = true];
+  REASON_CODE_FLEXPORT_SWAP_SPACE = 64;
+  REASON_CODE_FLEXPORT_SPLIT_BOOKING = 65 [deprecated = true];
+  REASON_CODE_FLEXPORT_SO_CANNOT_BE_UTILIZED = 66;
+  REASON_CODE_FLEXPORT_INCORRECT_ASSIGNMENT_BOOKING = 67;
+  REASON_CODE_FLEXPORT_INVALID_BOOKING_SYSTEM_BUG_EDI_ISSUE = 68;
+  REASON_CODE_FLEXPORT_SWAP_SPACE_SPLIT_BOOKING = 69;
+  REASON_CODE_FLEXPORT_OUT_OF_BOOKING_WINDOW = 70;
+
+  // Others
+  REASON_CODE_OTHERS = 90;
+}

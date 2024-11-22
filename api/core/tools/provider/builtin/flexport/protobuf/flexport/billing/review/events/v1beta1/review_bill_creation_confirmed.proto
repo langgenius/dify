@@ -1,0 +1,22 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billing.review.events.v1beta1;
+
+import "flexport/billing/review/events/v1beta1/review_metadata.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ReviewBillCreationConfirmedProto";
+option java_package = "com.flexport.billing.review.events.v1beta1";
+option ruby_package = "Flexport::Billing::Review::Events::V1Beta1";
+
+// Bill creation confirmation event.
+message ReviewBillCreationConfirmed {
+  string review_fid = 1;
+  string created_bill_fid = 2;
+  google.protobuf.Timestamp confirmed_at_time = 3;
+  billing.review.events.v1beta1.ReviewMetadata metadata = 4;
+  bool auto_approved = 5;
+}

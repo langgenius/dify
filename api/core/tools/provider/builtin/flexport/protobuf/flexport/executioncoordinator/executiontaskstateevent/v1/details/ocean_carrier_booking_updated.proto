@@ -1,0 +1,80 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanCarrierBookingUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/executioncoordinator/types/enums/v1/transport_mode.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+
+// A carrier booking has been updated. This event shall be emitted upon change
+// of any attribute defined in this message, including attributes changed in
+// the route.
+//
+// Note: specific carrier booking state events should exist for other specific
+// attribute changes, for example: etd.
+message OceanCarrierBookingUpdated {
+  string carrier_booking_fid = 1;
+  string booking_number = 2;
+  OceanCarrierBookingStatus status = 3;
+  OceanCarrierBookingReleaseStatus release_status = 4;
+  repeated OceanCarrierBookingUpdatedRouteLeg route = 5;
+  string carrier_contract_fid = 6;
+  // The fid of the address or port where the ocean carrier takes possession of the cargo.
+  string place_of_receipt_fid = 7;
+  // The fid of the address or port where the ocean carrier releases possession of the cargo.
+  string place_of_delivery_fid = 8;
+  // The fid of the ocean port where cargo is loaded onto the main ocean vessel.
+  string port_of_loading_fid = 9;
+  // The fid of the ocean port where cargo is unloaded from the main ocean vessel.
+  string port_of_unloading_fid = 10;
+  string first_international_ocean_voyage_origin_fid = 13;
+  string first_feeder_ocean_voyage_origin_fid = 14;
+  string internal_reference = 15;
+}
+
+// Representation of the route for a carrier booking.
+// This represents the carrier booking plan, and might be different from OceanProvider::ContainerRoute,
+// which represents the actual route for a container.
+message OceanCarrierBookingUpdatedRouteLeg {
+  string origin_fid = 1;
+  string destination_fid = 2;
+  string carrier_fid = 3;
+  string vessel_fid = 4;
+  string carrier_service_string_fid = 5;
+  flexport.executioncoordinator.types.enums.v1.TransportMode transportation_mode = 6;
+  string tracking_number = 7;
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime scheduled_arrival = 8;
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime scheduled_departure = 9;
+  // Actual dates are a vestige of carrier booking voyages depending on voyages & have been removed
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime actual_arrival = 10 [deprecated = true];
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime actual_departure = 11 [deprecated = true];
+}
+
+// Represents the status of a carrier booking.
+enum OceanCarrierBookingStatus {
+  OCEAN_CARRIER_BOOKING_STATUS_INVALID = 0;
+  OCEAN_CARRIER_BOOKING_STATUS_CREATED = 1;
+  OCEAN_CARRIER_BOOKING_STATUS_REQUESTED = 2;
+  OCEAN_CARRIER_BOOKING_STATUS_PENDING = 3;
+  OCEAN_CARRIER_BOOKING_STATUS_CONFIRMED = 4;
+  OCEAN_CARRIER_BOOKING_STATUS_DECLINED = 5;
+  OCEAN_CARRIER_BOOKING_STATUS_CANCELLED = 6;
+  OCEAN_CARRIER_BOOKING_STATUS_UNBOOKED = 7;
+  OCEAN_CARRIER_BOOKING_STATUS_ERROR = 8;
+  OCEAN_CARRIER_BOOKING_STATUS_SLA_VIOLATION = 9;
+  OCEAN_CARRIER_BOOKING_STATUS_REVISING = 10;
+}
+
+// Represents the release status of a carrier booking.
+enum OceanCarrierBookingReleaseStatus {
+  OCEAN_CARRIER_BOOKING_RELEASE_STATUS_INVALID = 0;
+  OCEAN_CARRIER_BOOKING_RELEASE_STATUS_FULLY_RELEASED = 1;
+  OCEAN_CARRIER_BOOKING_RELEASE_STATUS_PARTIALLY_RELEASED = 2;
+  OCEAN_CARRIER_BOOKING_RELEASE_STATUS_NOT_RELEASED = 3;
+}

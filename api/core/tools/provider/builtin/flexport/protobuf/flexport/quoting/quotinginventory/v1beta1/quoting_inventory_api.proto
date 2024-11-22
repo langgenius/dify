@@ -1,0 +1,197 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.quotinginventory.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "QuotingInventoryApiProto";
+option java_package = "com.flexport.quoting.quotinginventory.v1beta1";
+option ruby_package = "Flexport::Quoting::QuotingInventory::V1Beta1";
+
+import "flexport/catalog/offering/v2beta1/offering.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "flexport/payments/exchangerate/v1/exchange_rate_dto.proto";
+import "flexport/quoting/core_quote/v1/corequote.proto";
+import "flexport/quoting/quotinginventory/v1beta1/quoting_inventory.proto";
+import "flexport/quoting/rfq/v2/rfq.proto";
+import "google/protobuf/wrappers.proto";
+
+// The quoting inventory service definition.
+service QuotingInventoryAPI {
+  // Search for service offerings in catalog.
+  rpc GetOfferings(GetOfferingsRequest) returns (GetOfferingsResponse);
+  // Adds an offering to the quote, returning the modified quote to the caller.
+  // The method doesn't save the quote to database. The quote manipulations are all done in memory.
+  rpc AddServiceToQuote(AddServiceToQuoteRequest) returns (AddServiceToQuoteResponse);
+  // Removes an offering from the quote, returning the modified quote to caller.
+  rpc RemoveServiceFromQuote(RemoveServiceFromQuoteRequest) returns (RemoveServiceFromQuoteResponse);
+  // Swaps an offering for an offering of the same type (used by requoting).
+  rpc ReplaceServiceInQuote(ReplaceServiceInQuoteRequest) returns (ReplaceServiceInQuoteResponse);
+  // Returns a list of carriers that allow us to choose specific sailings.
+  rpc GetFlexibleServiceStrings(GetFlexibleServiceStringsRequest) returns (GetFlexibleServiceStringsResponse);
+  // Returns failure entries with failure reasons when exists.
+  rpc UploadFlexibleServiceStrings(UploadFlexibleServiceStringsRequest) returns (UploadFlexibleServiceStringsResponse);
+  // Returns the number of matching offerings.
+  rpc GetOfferingCount(GetOfferingCountRequest) returns (GetOfferingCountResponse);
+  // Returns the successor of an offering.
+  rpc FindSuccessorOfferingsForQuote(FindSuccessorOfferingsForQuoteRequest) returns (FindSuccessorOfferingsForQuoteResponse);
+  // Evaluate subject-to conditions for line items.
+  rpc EvaluateItems(EvaluateItemsRequest) returns (EvaluateItemsResponse);
+}
+
+message GetOfferingsRequest {
+  // Search attributes (offering type, ports, and other filters).
+  catalog.offering.v2beta1.ClientOfferingQueryAttributesDto attributes = 1;
+  // Information about the quote request (Request-for-quotes).
+  quoting.rfq.v2.Rfq rfq = 2;
+  // Current draft quote. Note that base_currency_code will be used as the currency for displaying
+  // charges in the returned results.
+  quoting.corequote.v1.CoreQuote core_quote = 3;
+  // Currency conversion rates.
+  payments.exchangerate.v1.ExchangeRateDto exchange_rates = 4;
+  // Pagination (1-based).
+  int32 page = 5;
+  // Page size (defaults to 20).
+  int32 page_size = 6;
+  // Sorting.
+  catalog.offering.v2beta1.SortByDto sort_by = 7;
+  // User performing the action.
+  google.protobuf.StringValue current_user_fid = 8;
+}
+
+message GetOfferingsResponse {
+  repeated quoting.quotinginventory.v1beta1.Record records = 1;
+  // Total number of offerings matching the criteria not limited by the page size of the request.
+  int32 total_count = 2;
+}
+
+message AddServiceToQuoteRequest {
+  // Information about the quote request (Request-for-quotes).
+  quoting.rfq.v2.Rfq rfq = 1;
+  // Current draft quote.
+  quoting.corequote.v1.CoreQuote core_quote = 2;
+  // "Priced" offering identifier in Catalog, which should match the fid from ClientOfferingDto.
+  string offering_fid = 3;
+  // Date used to evaluate the charges. Usually this will be the cargo-ready-date of the shipment,
+  // but they don't necessarily have to match.
+  os.v1.types.walltimedate.v1.WallTimeDate selected_date = 4;
+  // Trucking origin address. This overrides the address in Rfq.RequestedRoute for the purpose of
+  // calculating per-km rates.
+  quoting.rfq.v2.RouteAddress origin_address = 5;
+  // Trucking destination address. As with origin_address, this field overrides the address in
+  // Rfq.RequestedRoute for the purpose of calculating per-km rates.
+  quoting.rfq.v2.RouteAddress destination_address = 6;
+  // Accessorial charges to make non-dormant.
+  repeated string accessorial_slugs = 7;
+  // Carriers selected for "PLUS" offerings.
+  repeated CarrierPreference carrier_preferences = 8;
+  // Carriers not to be assigned, also only for "PLUS" offerings.
+  repeated BlacklistedCarrier blacklisted_carriers = 9;
+  // Whether to call the transit-time prediction service with the updated service bundle. If this
+  // is true, the updated transit time predictions will be returned in the quote_transit_time field
+  // of the returned CoreQuote.
+  bool predict_transit_time = 10;
+  // User performing the action.
+  google.protobuf.StringValue current_user_fid = 11;
+}
+
+message AddServiceToQuoteResponse {
+  // Quote containing the added offering.
+  quoting.corequote.v1.CoreQuote core_quote = 1;
+}
+
+message RemoveServiceFromQuoteRequest {
+  // Information about the quote request (Request-for-quotes).
+  quoting.rfq.v2.Rfq rfq = 1;
+  // Current draft quote.
+  quoting.corequote.v1.CoreQuote core_quote = 2;
+  // "Priced" offering identifier in Catalog, which should match the fid from ClientOfferingDto.
+  string offering_fid = 3;
+  // Whether to call the transit-time prediction service with the updated service bundle. If this
+  // is true, the updated transit time predictions will be returned in the quote_transit_time field
+  // of the returned CoreQuote.
+  bool predict_transit_time = 4;
+}
+
+message RemoveServiceFromQuoteResponse {
+  // Quote omitting the removed service and its associated items.
+  quoting.corequote.v1.CoreQuote core_quote = 1;
+}
+
+message ReplaceServiceInQuoteRequest {
+  // Information about the quote request (Request-for-quotes).
+  quoting.rfq.v2.Rfq rfq = 1;
+  // Current draft quote.
+  quoting.corequote.v1.CoreQuote core_quote = 2;
+  // Offering identifier for the service that is swapped out.
+  string removed_offering_fid = 3;
+  // Offering identifier for the service that is replacing removed_offering_fid. The new offering
+  // will be re-priced in Catalog before adding it to the quote.
+  string added_offering_fid = 4;
+  // Whether to call the transit-time prediction service with the updated service bundle. If this
+  // is true, the updated transit time predictions will be returned in the quote_transit_time field
+  // of the returned CoreQuote.
+  bool predict_transit_time = 5;
+  // User performing the action.
+  google.protobuf.StringValue current_user_fid = 6;
+}
+
+message ReplaceServiceInQuoteResponse {
+  // Quote with the offerings swapped.
+  quoting.corequote.v1.CoreQuote core_quote = 1;
+}
+
+message GetFlexibleServiceStringsRequest {
+  string port_of_loading_code = 1;
+  string port_of_discharge_code = 2;
+}
+
+message GetFlexibleServiceStringsResponse {
+  repeated CarrierString carrier_string = 1;
+}
+
+message UploadFlexibleServiceStringsRequest {
+  repeated FlexibleServiceStringEntry flexible_service_string_entries = 1;
+}
+
+message UploadFlexibleServiceStringsResponse {
+  repeated FlexibleServiceStringFailureEntry failure_entries = 1;
+}
+
+message GetOfferingCountRequest {
+  // Search attributes (offering type, ports, and other filters).
+  catalog.offering.v2beta1.ClientOfferingQueryAttributesDto attributes = 1;
+  // Information about the quote request (request-for_quotes).
+  quoting.rfq.v2.Rfq rfq = 2;
+  // Quote transportation mode. Used to accurately determine Booking Mode for Ocean/Air shipments.
+  string quote_transportation_mode = 3;
+  // User performing the action.
+  google.protobuf.StringValue current_user_fid = 4;
+}
+
+message GetOfferingCountResponse {
+  // Total number of offerings matching the criteria.
+  int32 total_count = 1;
+}
+
+message FindSuccessorOfferingsForQuoteRequest {
+  // Information about the quote request (Request-for-quotes).
+  quoting.rfq.v2.Rfq rfq = 1;
+  // Current draft quote.
+  quoting.corequote.v1.CoreQuote core_quote = 2;
+}
+
+message FindSuccessorOfferingsForQuoteResponse {
+  // Successor offerings.
+  repeated catalog.offering.v2beta1.ClientOfferingDto offerings = 1;
+}
+
+message EvaluateItemsRequest {
+  quoting.rfq.v2.Rfq rfq = 1;
+  quoting.corequote.v1.CoreQuote core_quote = 2;
+}
+
+message EvaluateItemsResponse {
+  quoting.corequote.v1.CoreQuote core_quote = 1;
+}

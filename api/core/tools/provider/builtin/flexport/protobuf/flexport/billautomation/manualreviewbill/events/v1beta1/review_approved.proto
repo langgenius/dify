@@ -1,0 +1,25 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billautomation.manualreviewbill.events.v1beta1;
+
+import "flexport/billautomation/manualreviewbill/v1beta1/manual_review_bill.proto";
+import "flexport/billing/bill/v1beta1/bill.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ReviewApprovedProto";
+option java_package = "com.flexport.billautomation.manualreviewbill.events.v1beta1";
+option ruby_package = "Flexport::BillAutomation::ManualReviewBill::Events::V1Beta1";
+
+// Event emitted when a ManualReviewBill is approved.
+message ReviewApproved {
+  flexport.billautomation.manualreviewbill.v1beta1.ManualReviewBill manual_review_bill = 1;
+  google.protobuf.Timestamp reviewed_at_time = 2;
+  flexport.billing.bill.v1beta1.Bill approved_bill = 3;
+  bool payment_required = 4;
+  bool pending_audit = 5;
+  google.protobuf.StringValue approved_by_fid = 6;
+}

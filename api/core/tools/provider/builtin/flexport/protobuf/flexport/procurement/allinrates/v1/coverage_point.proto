@@ -1,0 +1,26 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.allinrates.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "google/type/date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CoveragePointEntityProto";
+option java_package = "com.flexport.procurement.allinrates.v1";
+option ruby_package = "Flexport::Procurement::AllInRates::V1";
+
+message CoveragePointEntity {
+  int64 id = 1;
+  int64 rate_query_id = 2;
+  google.type.Date cost_date = 3;
+  google.protobuf.Timestamp created_time = 4;
+  google.protobuf.Timestamp updated_time = 5;
+  google.protobuf.Int64Value freight_total_usd_micros_20 = 6;
+  google.protobuf.Int64Value freight_total_usd_micros_40 = 7;
+  google.protobuf.Int64Value freight_total_usd_micros_40_hc = 8;
+  google.protobuf.Int64Value freight_total_usd_micros_45_hc = 9;
+}

@@ -1,0 +1,57 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billautomation.manualreviewbill.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "EdiBillProto";
+option java_package = "com.flexport.billautomation.manualreviewbill.v1beta1";
+option ruby_package = "Flexport::BillAutomation::ManualReviewBill::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Message for an EDIBill Record.
+message EDIBill {
+  string fid = 1;
+  string action_code = 2;
+  string bill_name = 3;
+  string vendor_fid = 4;
+  google.protobuf.StringValue issuing_entity_fid = 5;
+  google.protobuf.StringValue receiving_entity_fid = 6;
+  google.protobuf.StringValue contract_number = 7;
+  google.protobuf.StringValue currency_code = 8;
+  bool is_bill_created = 9;
+  bool is_dnd_invoice = 10;
+  EDIAllocationsMetadata allocations = 11;
+  repeated EDILineItemMetadata line_items = 12;
+  google.protobuf.StringValue master_bill_of_lading = 13;
+  google.protobuf.StringValue pdf_reference = 14;
+  google.protobuf.StringValue rejection_reason = 15;
+  google.protobuf.StringValue shipment_method_of_payment = 16;
+  google.protobuf.DoubleValue total_amount = 17;
+  google.protobuf.StringValue usage_type = 18;
+  google.protobuf.StringValue mapped_pdf_object_fid = 19;
+  google.protobuf.Timestamp issued_at_time = 20;
+  google.protobuf.Timestamp due_at_time = 21;
+  google.protobuf.Timestamp created_at_time = 22;
+  google.protobuf.Timestamp updated_at_time = 23;
+}
+
+// Allocation metadata message.
+message EDIAllocationsMetadata {
+  repeated string shipment_fids = 1;
+  repeated string bills_of_lading = 2;
+  repeated string container_numbers = 3;
+}
+
+// Line item metadata message.
+message EDILineItemMetadata {
+  double price = 1;
+  string description = 2;
+  google.protobuf.DoubleValue rate = 3;
+  google.protobuf.Int32Value item_count = 4;
+  google.protobuf.StringValue charge_code = 6;
+  google.protobuf.Int32Value service_code = 7;
+}

@@ -1,0 +1,23 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsciservice.commercialinvoicesyncapi.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CommercialInvoiceSyncApiProto";
+option java_package = "com.flexport.customsciservice.commercialinvoicesyncapi.v1beta1";
+option ruby_package = "Flexport::CustomsCiService::CommercialInvoiceSyncApi::V1Beta1";
+
+service CommercialInvoiceSyncAPI {
+  rpc SyncToCore(SyncToCoreRequest) returns (SyncToCoreResponse);
+}
+
+message SyncToCoreRequest {
+  string client_fid = 1;
+  string invoice_number = 2;
+}
+
+message SyncToCoreResponse {
+  bool successfully_enqueued = 1;
+}

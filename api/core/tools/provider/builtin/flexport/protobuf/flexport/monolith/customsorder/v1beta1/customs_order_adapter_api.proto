@@ -1,0 +1,147 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.monolith.customsorder.v1beta1;
+
+import "flexport/monolith/customsorder/v1beta1/customs_order_adapter_types.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsOrderAdapterApiProto";
+option java_package = "com.flexport.monolith.customsorder.v1beta1";
+option ruby_package = "Flexport::Monolith::CustomsOrder::V1Beta1";
+
+service CustomsOrderAdapterAPI {
+  rpc CreateCustomsOrder(CreateCustomsOrderRequest) returns (CreateCustomsOrderResponse);
+  rpc UpdateCustomsOrder(UpdateCustomsOrderRequest) returns (UpdateCustomsOrderResponse);
+  rpc PublishAsnMilestone(PublishAsnMilestoneRequest) returns (PublishAsnMilestoneResponse);
+}
+
+message PublishAsnMilestoneRequest {
+  AdvanceShippingNotice asn = 1;
+  // Both webhook_uuid and request_id are a part of the async webhook API and both are passed with every post/put request coming from Ecosystems.
+  // Read more here: https://docs.google.com/document/d/17W-ysRlIBC6kRmvkgdIeSxdWSHklQbKDOi1bOWnyZuA
+  // webhook_uuid is useful for developers working with multiple platforms making API requests, as it avoids broadcasting a single API response to all listening webhooks.
+  string webhook_uuid = 2;
+  // request_id is required to correlate the original request from Ecosystems to a service with this publish request due to the async nature of the flow
+  string request_id = 3;
+  // If a shipment is successfully created shipment_id will be filled. Will always be filled if there are no errors.
+  // Presence of shipment_id does not mean absence of errors.
+  optional string shipment_fid = 4;
+  // Any errors during processing of the ASN
+  repeated Error errors = 5;
+  // shipment name
+  string name = 6;
+}
+
+message PublishAsnMilestoneResponse {
+  optional string milestone_uuid = 1;
+}
+
+message CreateCustomsOrderRequest {
+  int32 client_id = 1;
+  string name = 2;
+  optional FreightServices freight_service = 3;
+  optional TransportationMode transportation_mode = 4;
+  repeated ContainerCounts container_counts = 5;
+  // Unsupported field update: No-op if current value matches, otherwise will return entry in response errors list
+  bool delivery_service = 6;
+  Incoterms incoterms = 7;
+  optional bool intermodal = 8;
+  optional int32 origin_port_id = 9;
+  optional int32 origin_address_id = 10;
+  int32 destination_port_id = 11;
+  optional int32 destination_address_id = 12;
+  Cargo cargo = 13;
+  optional string currency_code = 14;
+  optional string mbl_number = 15;
+  repeated string hbl_numbers = 16;
+  repeated string container_numbers = 17;
+  optional ImporterSecurityFilingPartyType isf_filing_party_type = 18;
+  repeated InvolvedParty involved_parties = 19;
+  repeated ShipmentMetadata shipment_tags = 20;
+  optional google.protobuf.Timestamp vessel_estimated_departure_date = 21;
+  optional google.protobuf.Timestamp vessel_estimated_arrival_date = 22;
+  optional PortWithDate inbond_port = 23;
+  repeated PortWithDate transshipment_ports = 24;
+  repeated VoyageWithPort voyage = 25;
+  optional int32 import_customs_agent_id = 26;
+  optional OptionalBoolean wants_insurance = 27;
+  optional int32 freight_partner_id = 28;
+  optional int32 freight_carrier_id = 29;
+  repeated Container containers = 30;
+  optional bool wants_bco = 31;
+  optional bool wants_import_customs_service = 32;
+  optional bool wants_export_customs_service = 33;
+  optional bool wants_pickup_service = 34;
+  optional CustomsOrderForeignTradeZoneParameters foreign_trade_zone = 35;
+}
+
+message CreateCustomsOrderResponse {
+  optional string flex_id = 1;
+  repeated string warnings = 2;
+  repeated Error errors = 3;
+  optional string shipment_fid = 4;
+}
+
+message Error {
+  optional string field = 1;
+  string message = 2;
+}
+
+message UpdateCustomsOrderRequest {
+  string shipment_fid = 1;
+  optional string execution_order_fid = 2;
+  UpdateOrderArguments arguments = 3;
+}
+
+message UpdateCustomsOrderResponse {
+  // shipment_fid of the updated shipment. Guaranteed to be there if there are no errors
+  optional string shipment_fid = 1;
+  // fid of the updated execution order. Guaranteed to be there if there are no errors
+  optional string execution_order_fid = 2;
+  repeated Error errors = 3;
+}
+
+/**
+ * Data to change in the shipment and EO
+ * Note that there is a difference between not setting a field and setting it to the default value
+ * if a field is not set, it will not be changed. If it is set, it will be changed even if it is the default value
+ */
+message UpdateOrderArguments {
+  reserved 1, 2, 9, 10, 11, 12, 21, 22, 23, 24, 25, 28, 29, 36;
+  reserved "client_id", "freight_service";
+
+  optional string name = 3;
+  // Unsupported field update: No-op if current value matches, otherwise will return entry in response errors list
+  optional TransportationMode transportation_mode = 4;
+  repeated ContainerCounts container_counts = 5;
+  // Unsupported field update: No-op if current value matches, otherwise will return entry in response errors list
+  optional bool delivery_service = 6;
+  optional Incoterms incoterms = 7;
+  optional bool intermodal = 8;
+  optional Cargo cargo = 13;
+  // Unsupported field update: No-op if current value matches, otherwise will return entry in response errors list
+  optional string currency_code = 14;
+  optional string mbl_number = 15;
+  repeated string hbl_numbers = 16;
+  repeated string container_numbers = 17;
+  optional ImporterSecurityFilingPartyType isf_filing_party_type = 18;
+  repeated InvolvedParty involved_parties = 19;
+  repeated ShipmentMetadata shipment_tags = 20;
+  optional int32 import_customs_agent_id = 26;
+  // Unsupported field update: No-op if current value matches, otherwise will return entry in response errors list
+  optional OptionalBoolean wants_insurance = 27;
+  repeated Container containers = 30;
+  // Unsupported field update: No-op if current value matches, otherwise will return entry in response errors list
+  optional bool wants_bco = 31;
+  // Unsupported field update: No-op if current value matches, otherwise will return entry in response errors list
+  optional bool wants_import_customs_service = 32;
+  // Unsupported field update: No-op if current value matches, otherwise will return entry in response errors list
+  optional bool wants_export_customs_service = 33;
+  // Unsupported field update: No-op if current value matches, otherwise will return entry in response errors list
+  optional bool wants_pickup_service = 34;
+  // Unsupported field update: No-op if current value matches, otherwise will return entry in response errors list
+  optional CustomsOrderForeignTradeZoneParameters foreign_trade_zone = 35;
+}

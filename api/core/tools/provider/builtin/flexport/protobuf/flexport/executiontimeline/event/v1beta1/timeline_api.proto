@@ -1,0 +1,114 @@
+// TEAM:forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executiontimeline.event.v1beta1;
+
+import "flexport/executiontimeline/event/v1beta1/timeline_event.proto";
+import "flexport/executiontimeline/event/v1beta1/timeline_event_type_dependency.proto";
+import "flexport/executiontimeline/event/v1beta1/timeline_event_type_mapping.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TimelineApiProto";
+option java_package = "com.flexport.executiontimeline.event.v1beta1";
+option ruby_package = "Flexport::ExecutionTimeline::Event::V1Beta1";
+
+// An API for interacting with timeline event entities.
+service TimelineAPI {
+  // Admin for EventTypes
+  rpc GetEventType(GetEventTypeRequest) returns (GetEventTypeResponse);
+  rpc CreateEventType(CreateEventTypeRequest) returns (CreateEventTypeResponse);
+  rpc DeleteEventType(DeleteEventTypeRequest) returns (DeleteEventTypeResponse);
+
+  // Admin for EventTypeTriggerMappings
+  rpc GetEventTriggerMappings(GetEventTriggerMappingsRequest) returns (GetEventTriggerMappingsResponse);
+  rpc CreateEventTriggerMapping(CreateEventTriggerMappingRequest) returns (CreateEventTriggerMappingResponse);
+  rpc DeleteEventTriggerMapping(DeleteEventTriggerMappingRequest) returns (DeleteEventTriggerMappingResponse);
+
+  // Admin for EventTypeDependency
+  rpc GetEventTypeDependency(GetEventTypeDependencyRequest) returns (GetEventTypeDependencyResponse);
+  rpc CreateEventTypeDependency(CreateEventTypeDependencyRequest) returns (CreateEventTypeDependencyResponse);
+  rpc DeleteEventTypeDependency(DeleteEventTypeDependencyRequest) returns (DeleteEventTypeDependencyResponse);
+  
+}
+
+// create eventType
+message CreateEventTypeRequest {
+  TimelineEventType event_type = 1;
+}
+
+message CreateEventTypeResponse {
+  TimelineEventType event_type = 1;
+}
+
+// delete eventType
+message DeleteEventTypeRequest {
+  string fid = 1;
+}
+
+message DeleteEventTypeResponse {
+  TimelineEventType event_type = 1;
+}
+
+// get eventType
+message GetEventTypeRequest {
+  TimelineEventTypeCategory type = 1;
+}
+
+message GetEventTypeResponse {
+  TimelineEventType event_type = 1;
+}
+
+// get EventTypeTriggerMapping
+message GetEventTriggerMappingsRequest {
+  string ec_event_type = 1;
+}
+
+message GetEventTriggerMappingsResponse {
+  repeated TimelineEventTypeMapping event_type_mappings = 1;
+}
+
+// create EventTypeTriggerMapping
+message CreateEventTriggerMappingRequest {
+  TimelineEventTypeMapping event_type_mapping = 1;
+}
+
+message CreateEventTriggerMappingResponse {
+  TimelineEventTypeMapping event_type_mapping = 1;
+}
+
+// delete EventTypeTriggerMapping
+message DeleteEventTriggerMappingRequest {
+  string fid = 1;
+}
+
+message DeleteEventTriggerMappingResponse {
+  TimelineEventTypeMapping event_type_mapping = 1;
+}
+
+// Get EventTypeDependency
+message GetEventTypeDependencyRequest {
+  string fid = 1;
+}
+
+message GetEventTypeDependencyResponse {
+  TimelineEventTypeDependency timeline_event_dependency = 1;
+}
+
+// Create EventTypeDependency
+message CreateEventTypeDependencyRequest {
+  TimelineEventTypeDependency timeline_event_dependency = 1;
+}
+
+message CreateEventTypeDependencyResponse {
+  TimelineEventTypeDependency timeline_event_dependency = 1;
+}
+
+// Delete EventTypeDependency
+message DeleteEventTypeDependencyRequest {
+  string fid = 1;
+}
+
+message DeleteEventTypeDependencyResponse {
+  TimelineEventTypeDependency timeline_event_dependency = 1;
+}

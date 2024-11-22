@@ -1,0 +1,17 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ImportCustonsExecutionOfferingChanged";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// Emitted when a value in ImportCustomsExecutionOffering has changed
+message ImportCustomsExecutionOfferingChanged {
+  google.protobuf.BoolValue wants_flexport_in_bond_transit = 1;
+}

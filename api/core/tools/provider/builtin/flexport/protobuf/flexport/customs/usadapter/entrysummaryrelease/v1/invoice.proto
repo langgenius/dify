@@ -1,0 +1,20 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.entrysummaryrelease.v1;
+
+import "flexport/customs/usadapter/entrysummaryrelease/v1/line_item.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.entrysummaryrelease.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::EntrySummaryRelease::V1";
+
+message Invoice {
+  string number = 1;
+  bool related_party = 2;
+  optional string proration_amount = 3;
+  repeated LineItem line_items = 4;
+  string currency_code = 5;
+  optional string exchange_rate = 6;
+}

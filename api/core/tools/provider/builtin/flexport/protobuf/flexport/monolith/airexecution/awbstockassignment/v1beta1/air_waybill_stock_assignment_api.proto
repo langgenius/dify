@@ -1,0 +1,37 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.monolith.airexecution.awbstockassignment.v1beta1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AirWaybillStockAssignmentApiProto";
+option java_package = "com.flexport.monolith.airexecution.awbstockassignment.v1beta1";
+option ruby_package = "Flexport::Monolith::AirExecution::AirWaybillStockAssignment::V1Beta1";
+
+service AirWaybillStockAssignmentAPI {
+  rpc GetAirWaybillStockAssignment(GetAirWaybillStockAssignmentRequest) returns (GetAirWaybillStockAssignmentResponse);
+}
+
+message GetAirWaybillStockAssignmentRequest {
+  string air_waybill_number = 1;
+}
+
+message GetAirWaybillStockAssignmentResponse {
+  AirWaybillStockAssignment air_waybill_stock_assignment = 1;
+}
+
+message AirWaybillStockAssignment {
+  google.protobuf.StringValue air_waybill_number = 1;
+  google.protobuf.StringValue assigned_station_iata_code = 2;
+  AirWaybillStockAssignmentStatus status = 3;
+}
+
+enum AirWaybillStockAssignmentStatus {
+  AIR_WAYBILL_STOCK_ASSIGNMENT_STATUS_INVALID = 0;
+  AIR_WAYBILL_STOCK_ASSIGNMENT_STATUS_AVAILABLE = 1;
+  AIR_WAYBILL_STOCK_ASSIGNMENT_STATUS_UNAVAILABLE = 2;
+  AIR_WAYBILL_STOCK_ASSIGNMENT_STATUS_PURGATORY = 3;
+}

@@ -1,0 +1,49 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.productlibrary.products.productcountryspecific.us.v1beta1;
+
+import "flexport/customs/productlibrary/products/productcountryspecific/us/v1beta1/pga_disclaim_reason_code.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "UsPgaAmsProto";
+option java_package = "com.flexport.customs.productlibrary.products.productcountryspecific.us.v1beta1";
+option ruby_package = "Flexport::Customs::ProductLibrary::Products::ProductCountrySpecific::US::V1Beta1";
+
+// This structure provides information for US AMS-regulated products.
+message UsPgaAms {
+  reserved 2;
+  string fid = 6;
+  UsPgaDisclaimReasonCode disclaim_reason_code = 1;
+
+  // Among all PGAs, only AMS disclaimed profile still requires all 3 fields below.
+  string commercial_description = 3;
+  ProcessingCode processing_code = 4;
+  ProgramCode program_code = 5;
+
+  enum ProcessingCode {
+    PROCESSING_CODE_INVALID = 0;
+    PROCESSING_CODE_MO_1 = 1;
+    PROCESSING_CODE_MO_2 = 2;
+    PROCESSING_CODE_MO_3 = 3;
+    PROCESSING_CODE_MO_4 = 4;
+    PROCESSING_CODE_MO_5 = 5;
+    PROCESSING_CODE_MO_6 = 6;
+    PROCESSING_CODE_MO_7 = 7;
+    PROCESSING_CODE_MO_8 = 8;
+    PROCESSING_CODE_EG_1 = 9;
+    PROCESSING_CODE_EG_2 = 10;
+    PROCESSING_CODE_PN_1 = 11;
+    PROCESSING_CODE_OR_1 = 12;
+    PROCESSING_CODE_OR_2 = 13;
+  }
+
+  enum ProgramCode {
+    PROGRAM_CODE_INVALID = 0;
+    PROGRAM_CODE_MO = 1;
+    PROGRAM_CODE_EG = 2;
+    PROGRAM_CODE_PN = 3;
+    PROGRAM_CODE_OR = 4;
+  }
+}

@@ -1,0 +1,60 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billautomation.manualreviewbill.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ManualReviewBillProto";
+option java_package = "com.flexport.billautomation.manualreviewbill.v1beta1";
+option ruby_package = "Flexport::BillAutomation::ManualReviewBill::V1Beta1";
+
+// Message for a ManualReviewBill record.
+message ManualReviewBill {
+  string fid = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue currency_code = 3;
+  google.protobuf.Timestamp issued_at_time = 4;
+  google.protobuf.Timestamp due_at_time = 5;
+  google.protobuf.StringValue issuing_entity_fid = 6;
+  google.protobuf.StringValue receiving_entity_fid = 7;
+  string vendor_fid = 8;
+  string source = 9;
+  repeated ManualReviewBillShipment bill_shipments = 10;
+  repeated ManualReviewLineItem line_items = 11;
+  google.protobuf.Timestamp received_at_time = 12;
+  google.protobuf.Timestamp reviewed_at_time = 13;
+  google.protobuf.Timestamp rejected_at_time = 14;
+  google.protobuf.StringValue bill_fid = 15;
+  google.protobuf.BoolValue rossum_manual_reviewed = 16;
+  google.protobuf.StringValue reviewed_by_fid = 17;
+  google.protobuf.StringValue rejection_reason = 18;
+  bool had_no_errors = 19;
+  bool saved_unchanged = 20;
+  google.protobuf.StringValue notes = 21;
+  google.protobuf.Timestamp created_at_time = 22;
+  google.protobuf.Timestamp updated_at_time = 23;
+  google.protobuf.StringValue billing_review_fid = 24;
+}
+
+// Message for a ManualReviewBillShipment record.
+message ManualReviewBillShipment {
+  string fid = 1;
+  string shipment_fid = 2;
+  google.protobuf.Timestamp created_at_time = 3;
+  google.protobuf.Timestamp updated_at_time = 4;
+}
+
+// Message for a ManualReviewLineItem record.
+message ManualReviewLineItem {
+  string fid = 1;
+  google.protobuf.StringValue name = 2;
+  google.protobuf.StringValue bill_item_name = 3;
+  google.protobuf.DoubleValue amount = 4;
+  google.protobuf.Timestamp created_at_time = 5;
+  google.protobuf.Timestamp updated_at_time = 6;
+  google.protobuf.StringValue shipment_fid = 7;
+}

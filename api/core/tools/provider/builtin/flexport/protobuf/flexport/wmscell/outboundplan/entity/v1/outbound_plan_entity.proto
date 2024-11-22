@@ -1,0 +1,77 @@
+// TEAM: wms_shanghai
+
+syntax = "proto3";
+
+package flexport.wmscell.outboundplan.entity.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OutboundPlanEntityProto";
+option java_package = "com.flexport.wmscell.outboundplan.entity.v1";
+
+message OutboundPlanEntity {
+  string outbound_plan_pk = 1;
+  string type = 2;
+  string warehouse_code = 3;
+  string outbound_plan_id = 4;
+  string outbound_plan_id_namespace = 5;
+  string freight_mode = 6;
+  // Payload
+  oneof payload {
+    OceanOutboundPlanPayload ocean_outbound_plan_payload = 7;
+    TruckOutboundPlanPayload truck_outbound_plan_payload = 8;
+    AirOutboundPlanPayload air_outbound_plan_payload = 9;
+  }
+  bool is_draft = 10;
+  google.protobuf.Timestamp plan_tool_timestamp = 11;
+  string plan_tool_exception = 12;
+  string plan_tool_document_fid = 13;
+  google.protobuf.Timestamp update_at = 14;
+}
+
+message OceanOutboundPlanPayload {
+  // Outbound information
+  repeated OutboundInformation outbounds = 1;
+
+  // Basic information
+  string master_flex_id = 2;
+  string assigned_staging_area = 3;
+  string consignee = 4;
+  string departure_port = 5;
+  string arrival_port = 6;
+  google.protobuf.Timestamp departure_date = 7;
+  google.protobuf.Timestamp arrival_date = 8;
+  string carrier_so_number = 9;
+  google.protobuf.Timestamp si_cut_off_time = 10;
+  google.protobuf.Timestamp cy_closing_date = 11;
+  string vessel_name_and_voyage = 12;
+  google.protobuf.Timestamp etd = 13;
+}
+
+message TruckOutboundPlanPayload {
+  // Outbound information
+  repeated OutboundInformation outbounds = 1;
+
+  //Basic Information
+  string task_id = 2;
+  string assigned_staging_area = 3;
+  string carrier = 4;
+}
+
+message AirOutboundPlanPayload {
+  // Outbound information
+  repeated OutboundInformation outbounds = 1;
+
+  // TODO: Basic Information
+}
+
+message OutboundInformation {
+  string flex_id = 1;
+  double weight = 2;
+  double volume = 3;
+  uint32 quantity = 4;
+  string unit_of_measure = 5;
+  string source_id = 6; // DO Id for instance.
+  string remark = 7; // Normally it indicate the handling instructions.
+}

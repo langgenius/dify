@@ -1,0 +1,25 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.fulfillmentguidance.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FulfillmentGuidanceProto";
+option java_package = "com.flexport.executioncoordinator.types.fulfillmentguidance.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::FulfillmentGuidance::V1";
+
+// Instructions provided by sell-side (eg. quoting associate).
+message FulfillmentGuidance {
+  //
+  // Identifier that links to a set of FCL inventories that may fulfill this shipment.
+  string inventory_backed_offering_fid = 1;
+  // Target sailing iso year week. Ex: 202252
+  int32 target_sailing_iso_year_week = 2;
+  // Identifier of the ocean fcl offering.
+  string cda_offering_fid = 3;
+  // Identifier of the ssat allocation.
+  optional string ssat_allocation_id = 4;
+  // The ssat v2 sailing week.
+  optional int32 ssat_sailing_week = 5;
+}

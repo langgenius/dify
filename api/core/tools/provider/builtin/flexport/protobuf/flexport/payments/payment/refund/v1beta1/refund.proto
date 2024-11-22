@@ -1,0 +1,22 @@
+// TEAM: finance_platform
+
+syntax = "proto3";
+
+package flexport.payments.payment.refund.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RefundProto";
+option java_package = "com.flexport.payments.payment.refund.v1beta1";
+option ruby_package = "Flexport::Payments::Payment::Refund::V1Beta1";
+
+import "flexport/payments/invoice/date/v1/date.proto";
+
+// A refund on payment line item.
+message Refund {
+  int64 amount_micros = 1;
+  string reason = 2;
+  flexport.payments.invoice.date.v1.Date refund_date = 4;
+  int32 broker_id = 5;
+  int32 refund_id = 6;
+  int32 payment_line_item_id = 7;
+}

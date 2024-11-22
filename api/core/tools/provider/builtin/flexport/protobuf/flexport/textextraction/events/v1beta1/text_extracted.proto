@@ -1,0 +1,31 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.textextraction.events.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TextExtractedProto";
+option java_package = "com.flexport.textextraction.events.v1beta1";
+option ruby_package = "Flexport::Textextraction::Events::V1Beta1";
+
+// Indicates when text was extracted for file
+message TextExtracted {
+  // Storage file object fid
+  string file_object_fid = 1;
+
+  // Full extracted text from document. Limited to 0.9 MB, will be truncated if larger
+  string full_text = 2;
+
+  // Documentable fid for document
+  string documentable_fid = 3;
+
+  // Documentable type for document
+  string documentable_type = 4;
+
+  // Document type
+  string document_type = 5;
+
+  // Boolean that indicates whether or not the text was truncated
+  bool is_truncated = 6;
+}

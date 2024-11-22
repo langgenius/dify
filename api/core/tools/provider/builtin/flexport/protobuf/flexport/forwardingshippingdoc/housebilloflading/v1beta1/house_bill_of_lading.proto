@@ -1,0 +1,149 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.forwardingshippingdoc.housebilloflading.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/type/date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "HouseBillOfLadingProto";
+option java_package = "com.flexport.forwardingshippingdoc.housebilloflading.v1beta1";
+option ruby_package = "Flexport::ForwardingShippingDoc::HouseBillOfLading::V1Beta1";
+
+message HouseBillOfLading {
+  // HBL owned data
+  string fid = 1;
+  string shipment_fid = 19;
+  string bill_of_lading_number = 2;
+  string ams_reference_number = 3;
+  TransmissionMode transmission_mode = 4;
+  optional ReleaseMethod release_method = 5;
+  optional string agent_reference_number = 6;
+  optional FreightPaymentTerm freight_payment_term = 7;
+  optional string shipper_si_fid = 8;
+  optional string special_instructions = 9;
+
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+  optional google.protobuf.Timestamp deleted_at = 12;
+  string created_by_fid = 13;
+
+  // RouteSchedule
+  RouteSchedule route_schedule = 14;
+
+  // Document
+  Document document = 15;
+
+  // Involved Parties
+  InvolvedParty involved_parties = 16;
+
+  // Cargo
+  Cargo cargo = 17;
+
+  // Container Cargos
+  repeated ContainerCargo container_cargos = 18;
+}
+
+message RouteSchedule {
+  optional string port_of_loading_fid = 1;
+  optional string port_of_unloading_fid = 2;
+  optional string vessel_fid = 3;
+  optional string voyage_tracking_number = 4;
+  optional string carrier_fid = 5;
+  optional string place_of_pickup = 6;
+  optional string pre_carriage_by = 7;
+  optional string free_trade_zone_number = 8;
+  optional google.protobuf.Timestamp laden_on_board_at = 9;
+  optional string first_domestic_port_for_ams_fid = 10;
+  optional string last_foreign_port_for_ams_fid = 11;
+  optional google.type.Date estimated_date_of_unloading_for_ams_override = 12;
+  optional string first_domestic_port_for_aci_fid = 13;
+  optional string last_foreign_port_for_aci_fid = 14;
+}
+
+message Document {
+  optional string document_fid = 1;
+  optional string original_document_fid = 2;
+  optional google.protobuf.Timestamp original_document_printed_at = 3;
+  optional string release_document_fid = 4;
+  optional string loi_for_telex_release_document_fid = 5;
+  optional string draft_document_fid = 6;
+  optional google.protobuf.Timestamp draft_approved_at = 7;
+  optional string draft_approved_by_fid = 8;
+  optional google.protobuf.Timestamp collect_origin_printed_document_at = 9;
+}
+
+message InvolvedParty {
+  optional string formatted_exporter_address = 1;
+  optional string formatted_consignee_address = 2;
+  optional string formatted_destination_agent_address = 3;
+  optional string formatted_notify_party_address = 4;
+  optional string shipper_entity_fid = 5;
+  optional string exporter_address_fid = 6;
+  optional string consignee_address_fid = 7;
+}
+
+message Cargo {
+  optional string total_weight = 1;
+  optional string total_volume = 2;
+  optional string declared_value = 3;
+  optional string package_summary = 4;
+  optional string description_of_goods = 5;
+  optional string marks_and_numbers = 6;
+}
+
+message ContainerCargo {
+  string container_fid = 1;
+  string gross_weight = 2;
+  string volume = 3;
+  int32 slac_quantity = 4;
+  SlacUnit slac_unit = 5;
+  optional string cargo_description = 6;
+  optional string marks_and_numbers = 7;
+}
+
+enum TransmissionMode {
+  TRANSMISSION_MODE_INVALID = 0;
+  TRANSMISSION_MODE_UNKNOWN = 1;
+  TRANSMISSION_MODE_ORIGINAL = 2;
+  TRANSMISSION_MODE_EXPRESS = 3;
+}
+
+enum ReleaseMethod {
+  RELEASE_METHOD_INVALID = 0;
+  RELEASE_METHOD_UNSPECIFIED = 1;
+  RELEASE_METHOD_MAIL_COPY = 2;
+  RELEASE_METHOD_HOLD_FOR_TELEX = 3;
+}
+
+enum SlacUnit {
+  SLAC_UNIT_INVALID = 0;
+  SLAC_UNIT_CTN = 1;
+  SLAC_UNIT_PKG = 2;
+  SLAC_UNIT_PLT = 3;
+  SLAC_UNIT_BAG = 4;
+  SLAC_UNIT_BOX = 5;
+  SLAC_UNIT_ROL = 6;
+  SLAC_UNIT_BAL = 7;
+  SLAC_UNIT_BBL = 8;
+  SLAC_UNIT_CRT = 9;
+  SLAC_UNIT_BLK = 10;
+  SLAC_UNIT_DRM = 11;
+  SLAC_UNIT_BDL = 12;
+  SLAC_UNIT_SKD = 13;
+  SLAC_UNIT_PCS = 14;
+  SLAC_UNIT_CAS = 15;
+  SLAC_UNIT_TOT = 16;
+  SLAC_UNIT_PAL = 17;
+  SLAC_UNIT_SET = 18;
+  SLAC_UNIT_BIN = 19;
+  SLAC_UNIT_SAK = 20;
+}
+
+enum FreightPaymentTerm {
+  FREIGHT_PAYMENT_TERM_INVALID = 0;
+  FREIGHT_PAYMENT_TERM_COLLECT = 1;
+  FREIGHT_PAYMENT_TERM_PREPAID = 2;
+}

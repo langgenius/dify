@@ -1,0 +1,130 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.productlibrary.regulations.v1beta1;
+
+import "flexport/customs/productlibrary/regulations/v1beta1/country_code.proto";
+import "flexport/customs/productlibrary/regulations/v1beta1/section_type.proto";
+import "google/protobuf/timestamp.proto";
+import "google/rpc/status.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.productlibrary.regulations";
+option ruby_package = "Flexport::Customs::ProductLibrary::Regulations";
+
+// Service that provides Special Tariffs for given HS code/s.
+service SpecialTariffsAPI {
+  // API to return Special Tariff details given a hs_code
+  rpc GetSpecialTariffsForHsCode(GetSpecialTariffsForHsCodeRequest) returns (GetSpecialTariffsForHsCodeResponse);
+
+  /*
+  API to return SpecialTariff details for all given hs_codes.
+  The details will contain information about code, section_type, is exclusion code, effective date and deactivated dates
+   */
+  rpc BatchListSpecialTariffsForHsCodes(BatchListSpecialTariffsForHsCodesRequest) returns (BatchListSpecialTariffsForHsCodesResponse);
+
+  // API to update special tariff codes in Core
+  rpc UpdateSpecialTariffCodeCache(UpdateSpecialTariffCodeCacheRequest) returns (UpdateSpecialTariffCodeCacheResponse);
+}
+
+message UpdateSpecialTariffCodeCacheRequest {
+  // The list of special code data
+  repeated SpecialTariffDetailed special_tariff_codes = 1;
+}
+
+message UpdateSpecialTariffCodeCacheResponse {
+  // The result of the job, such as completed, error, or whatever message.
+  google.rpc.Status status = 1;
+}
+
+// API: ListSpecialTariffsForHsCode
+message GetSpecialTariffsForHsCodeRequest {
+  SpecialTariffsRequestArguments special_tariffs_request_arguments = 1;
+  // The date and time for tariff validity.
+  google.protobuf.Timestamp date_time = 2;
+}
+
+message GetSpecialTariffsForHsCodeResponse {
+  // The HS Code of the product
+  string hs_code = 1;
+  // The country of origin of the product.
+  CountryCode country_of_origin = 2;
+  // The country of import of the product.
+  CountryCode country_of_import = 3;
+  // An array of all special tariffs for this API
+  repeated SpecialTariffDetailed special_tariffs = 4;
+}
+
+// API: BatchListSpecialTariffsForHsCodes
+message BatchListSpecialTariffsForHsCodesRequest {
+  repeated SpecialTariffsRequestArguments special_tariffs_request_arguments_list = 1;
+  // The date and time for tariff validity.
+  google.protobuf.Timestamp date_time = 2;
+}
+
+message BatchListSpecialTariffsForHsCodesResponse {
+  repeated SpecialTariffsForHsCode special_tariffs_for_hs_codes = 1;
+}
+
+/*
+Base request type
+ */
+message SpecialTariffsRequestArguments {
+  // The HS code of the product.
+  string hs_code = 1;
+  // The country of origin of the product.
+  CountryCode country_of_origin = 2;
+  // The country of import of the product.
+  CountryCode country_of_import = 3;
+  // The section type of which the tariff flags are requested.
+  SectionType section_type = 4;
+}
+
+/*
+Object to represent the details of a single special tariff
+ */
+message SpecialTariffDetailed {
+  // The special code of the tariff which is either a duty or an exclusion.
+  string special_code = 1;
+  // Whether the tariff is optional or not.
+  bool is_optional = 2;
+  // Whether the tariff is an exclusion or not.
+  bool is_exclusion_code = 3;
+  // The description url of the tariff duty/exclusion.
+  string description_url = 4;
+  // The section type of which the tariff flag.
+  SectionType section_type = 5;
+  // The date from which the tariff is valid
+  google.protobuf.Timestamp date_effective_from = 6;
+  // The date till which the tariff is valid.
+  google.protobuf.Timestamp date_effective_to = 7;
+  // Detailed description of special code
+  string description = 8;
+  // String representation of the country_of_import
+  string country_of_import = 9;
+}
+
+message SpecialTariff {
+  // The special code of the tariff which is either a duty or an exclusion.
+  string special_code = 1;
+  // Whether the tariff is an exclusion or not.
+  bool is_exclusion_code = 2;
+  // The section type of which the tariff flag.
+  SectionType section_type = 3;
+  // Detailed description of special code
+  string description = 4;
+}
+
+/*
+Object to represent list of special tariffs for an hs code
+ */
+message SpecialTariffsForHsCode {
+  // The HS Code of the product
+  string hs_code = 1;
+  // The country of origin of the product.
+  CountryCode country_of_origin = 2;
+  // The country of import of the product.
+  CountryCode country_of_import = 3;
+  // List of special tariff details for the given hs code, coo and coi
+  repeated SpecialTariff special_tariffs = 4;
+}

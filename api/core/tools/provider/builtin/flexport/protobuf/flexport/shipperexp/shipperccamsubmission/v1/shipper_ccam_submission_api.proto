@@ -1,0 +1,43 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.shipperexp.shipperccamsubmission.v1;
+
+import "flexport/shipperexp/shipperccamsubmission/v1/shipper_ccam_submission.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipperCcamSubmissionApiProto";
+option java_package = "com.flexport.shipperexp.shipperccamsubmission.v1";
+option ruby_package = "Flexport::ShipperExp::ShipperCcamSubmission::V1";
+
+// Shipper ccam submission service.
+service ShipperCcamSubmissionAPI {
+  // Get shipper ccam submissions by shipment fid.
+  rpc GetShipperCcamSubmission(GetShipperCcamSubmissionRequest) returns (GetShipperCcamSubmissionResponse);
+  // Create shipper CCAM. This gRPC endpoint is just for debug tools.
+  rpc CreateShipperCcamSubmission(CreateShipperCcamSubmissionRequest) returns (CreateShipperCcamSubmissionResponse);
+  // Remove the shipper CCAM.
+  rpc DeleteShipperCcamSubmission(DeleteShipperCcamSubmissionRequest) returns (DeleteShipperCcamSubmissionResponse);
+}
+
+message GetShipperCcamSubmissionRequest {
+  // Shipment fid
+  string shipment_fid = 1;
+}
+
+message GetShipperCcamSubmissionResponse {
+  flexport.shipperexp.shipperccamsubmission.v1.ShipperCcamSubmission shipper_ccam_submission = 1;
+}
+
+message CreateShipperCcamSubmissionRequest {
+  flexport.shipperexp.shipperccamsubmission.v1.ShipperCcamSubmission shipper_ccam_submission = 1;
+}
+
+message CreateShipperCcamSubmissionResponse {}
+
+message DeleteShipperCcamSubmissionRequest {
+  string shipment_fid = 1;
+}
+
+message DeleteShipperCcamSubmissionResponse {}

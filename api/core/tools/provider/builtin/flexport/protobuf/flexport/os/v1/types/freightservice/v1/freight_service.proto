@@ -1,0 +1,25 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.os.v1.types.freightservice.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FreightServiceProto";
+option java_package = "com.flexport.os.v1.types.freightservice.v1";
+option ruby_package = "Flexport::OS::V1::Types::FreightService::V1";
+
+// Freight Service specifies the level of service that the ocean carrier is providing to Flexport.
+// Examples include:
+// Door to Door
+// Door to CY
+// CY to Door
+// CY to CY
+// https://flexport.atlassian.net/wiki/spaces/KB/pages/87724499/FMC+Guide+-+Negotiated+Rate+Arrangement+NRA
+enum FreightService {
+  FREIGHT_SERVICE_INVALID = 0;
+  FREIGHT_SERVICE_DOOR_TO_DOOR = 1;
+  FREIGHT_SERVICE_DOOR_TO_CY = 2;
+  FREIGHT_SERVICE_CY_TO_DOOR = 3;
+  FREIGHT_SERVICE_CY_TO_CY = 4;
+}

@@ -1,0 +1,33 @@
+// TEAM: work_management
+
+syntax = "proto3";
+
+package flexport.operatingprocedures.procedures.v3beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ProcedureProto";
+option java_package = "com.flexport.operatingprocedures.procedures.v3beta1";
+option ruby_package = "Flexport::OperatingProcedures::Procedures::V3Beta1";
+
+// Represents an operating procedure.
+message Procedure {
+  string procedure_fid = 1;
+  string procedure_type = 2;
+  string client_fid = 3;
+  google.protobuf.Timestamp created_time = 4;
+  google.protobuf.Timestamp updated_time = 5;
+  google.protobuf.Timestamp deleted_time = 6;
+  string created_by_fid = 7;
+  google.protobuf.StringValue updated_by_fid = 8;
+  repeated Attribute criteria = 9;
+  repeated Attribute body = 10;
+}
+
+// Represents criteria or body attributes.
+message Attribute {
+  string key = 1;
+  repeated string values = 2;
+}

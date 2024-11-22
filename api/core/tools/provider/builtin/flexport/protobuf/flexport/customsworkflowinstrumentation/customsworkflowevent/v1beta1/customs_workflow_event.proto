@@ -1,0 +1,42 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsworkflowinstrumentation.customsworkflowevent.v1beta1;
+
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsWorkflowEventProto";
+option java_package = "com.flexport.customsworkflowinstrumentation.customsworkflowevent.v1beta1";
+option ruby_package = "Flexport::CustomsWorkflowInstrumentation::CustomsWorkflowEvent::V1Beta1";
+
+// A CustomsWorkflowEvent contains the details of a customs workflow event
+// which from Core/Monorail.
+message CustomsWorkflowEvent {
+  ProducerType produced_by = 1;
+  string idempotency_token = 2;
+  CustomsWorkflowEventPayload payload = 3;
+}
+
+message CustomsWorkflowEventPayload {
+  EntityType related_entity_type = 1;
+  string related_entity_fid = 2;
+  google.protobuf.Timestamp created_at = 3;
+  string user_fid = 4;
+  string event_slug = 5;
+  google.protobuf.Struct event_metadata = 6;
+}
+
+enum ProducerType {
+  PRODUCER_TYPE_INVALID = 0;
+  PRODUCER_TYPE_CORE_BACKEND = 1;
+}
+
+enum EntityType {
+  ENTITY_TYPE_INVALID = 0;
+  ENTITY_TYPE_SHIPMENT = 1;
+  ENTITY_TYPE_CUSTOMS_ENTRY = 2;
+}

@@ -1,0 +1,251 @@
+// TEAM: ocean_supply
+
+syntax = "proto3";
+
+package flexport.oceansupply.product.v1beta1;
+
+import "flexport/oceansupply/carrieroptions/v1beta1/carrier_option.proto";
+import "flexport/oceansupply/inventory/v1beta1/inventory.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "google/rpc/status.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ProductProto";
+option java_package = "com.flexport.oceansupply.product.v1beta1";
+option ruby_package = "Flexport::OceanSupply::V1Beta1";
+
+// Represents a Monday-based week in the ISO 8601 week-numbering system.
+message IsoWeek {
+  int32 year = 1;
+  int32 week = 2;
+}
+
+message FulfillmentGuidance {
+  //
+  // Shipment FLEX-ID.
+  string shipment_fid = 1;
+  //
+  // Predicted departure week. This is our best guess as to when the shipment will depart from origin, but it is not a guarantee.
+  // NOTES:
+  // 1. If the shipment has multiple containers that might be on different bookings, we only produce a prediction
+  //    for the earlier container to depart.
+  // 2. If the booking has a feeder or transshipment voyage before the mother voyage, the target week prediction
+  //    refers to the first origin voyage.
+  IsoWeek target_departure_week = 3;
+  //
+  // When this prediction was made.
+  google.protobuf.Timestamp last_update_time = 4;
+  //
+  // The ocean_product_key (same thing as inventory_ref) this guidance was made on.
+  // Eg. "product_set=TPEB_NACOceanNetworkExpress,origin=CNYTN,origin_via=,destination_via=,destination=USLAX,client=flx::core:client:dbid/73784"
+  // The caller should check that the [ocean_product_key] matches
+  // what's on the latest accepted quote before deciding to use the [target_departure_week].
+  string ocean_product_key = 5;
+  //
+  // The product set definitions describe inventory and sailing restrictions that should be applied to the shipment.
+  repeated ProductSetDefinition product_set_definitions = 7;
+  //
+  // Predicted arrival week.
+  IsoWeek target_arrival_week = 8;
+  //
+  // The id of the product set that was used in ocean_product_key(inventory_ref).
+  int64 ocean_product_set_id = 9;
+}
+
+message ProductSetDefinition {
+  flexport.oceansupply.inventory.v1beta1.Trinary is_premium = 1;
+  // Corresponds to the rate_type found on an inventory_bucket
+  repeated flexport.oceansupply.inventory.v1beta1.RateType rate_types = 2;
+  Filter string_fids = 3;
+  Filter carrier_fids = 4;
+  Filter contract_fids = 5;
+  // An empty list implies no restrictions.
+  repeated string origin_port_fids = 6;
+  // In order to find origin_via_port restrictions, the connecting leg config must also be considered.
+  // If the connecting leg config allows origin transshipments or origin feeders, then an empty origin_via_port_fids list implies any origin via may be used.
+  // If the connecting leg config does not allow origin transshipments or origin feeders, then an empty origin_via_port_fids list implies no origin via ports are allowed.
+  repeated string origin_via_port_fids = 7;
+  // In order to find destination_via_port restrictions, the connecting leg config must also be considered.
+  // If the connecting leg config allows destination ipis, then an empty destination_via_port_fids list implies any destination via may be used.
+  // If the connecting leg config does not allow destination ipis, then an empty destination_via_port_fids list implies no destination via ports are allowed.
+  repeated string destination_via_port_fids = 8;
+  repeated string destination_port_fids = 9;
+  // The connecting leg config is permissive and not restrictive. For example, if include_destination_ipis is true, it may have an IPI, but it does not have to.
+  flexport.oceansupply.inventory.v1beta1.ConnectingLegConfiguration connecting_leg_config = 10;
+  // Premium service names is only set if premium is allowed. An empty list means any service name is allowed.
+  // Both premium_service_name_fids and any premium_service_level must match.
+  // EX premium profile #1: premium service name = CMA SEAPRIORITY GO, premium service levels = No Roll
+  //    premium profile #2: premium service name = CMA SEAPRIORITY GO, premium service levels = Premium, No Roll
+  // A definition with premium service name = CMA SEAPRIORITY GO, premium service levels = No Roll would
+  // match both premium profile #1 and #2.
+  // A definition with premium service name = CMA SEAPRIORITY GO, premium service levels = Premium would
+  // only match premium profile #2
+  repeated string premium_service_name_fids = 13;
+  // Premium service levels is only set if premium is allowed. An empty list means any service level is allowed
+  // Both premium_service_name_fids and any premium_service_level must match.
+  repeated flexport.oceansupply.carrieroptions.v1beta1.ServiceLevel premium_service_levels = 14;
+}
+
+message Filter {
+  bool include = 1;
+  repeated string values = 2;
+}
+
+// A list of port fids where any of the ports in the list is interchangeable with another in the same list.
+message InterchangeablePorts {
+  // A list of port fids that will not be empty.
+  repeated string ports = 1;
+}
+
+// Marketplace offerings are converted into these search parameters in order
+// to find the corresponding ocean product.
+message OceanProductSearchParameters {
+  string carrier_fid = 1;
+  google.protobuf.StringValue contract_number = 2;
+  repeated google.protobuf.StringValue client_fids = 3;
+  string origin_port_fid = 4;
+  // In marketplace, the origin via port may or may not be specified. In cases when it is not specified,
+  // it's possible that there is no direct route and an origin via port is required.
+  google.protobuf.StringValue origin_via_port_fid = 5;
+  // In marketplace, the destination via port may or may not be specified. In cases when it is not specified,
+  // it's possible that there is no direct route and an destination via port is required.
+  google.protobuf.StringValue destination_via_port_fid = 6;
+  string destination_port_fid = 7;
+  CommodityType commodity_type = 9;
+  google.protobuf.StringValue booking_code = 10;
+  google.protobuf.StringValue free_text = 11;
+  ServiceLevel service_level = 12;
+}
+
+message OceanProductSearchResult {
+  OceanProductSearchParameters search_parameters = 1;
+  // An inventory ref refers to an ocean product, which specifies a specific route + product set.
+  // Example inventory ref: "product_set=TPEB_NACOceanNetworkExpress,origin=CNYTN,origin_via=,destination_via=,destination=USLAX,client=flx::core:client:dbid/73784"
+  // Inventory_refs are stored on marketplace offerings and can be used to retrieve the inventory restrictions that should be applied to an offering.
+  google.protobuf.StringValue inventory_ref = 2;
+}
+
+message TransitTimeSlaUuidSearchParameters {
+  string carrier_fid = 1;
+  google.protobuf.StringValue contract_number = 2;
+  repeated google.protobuf.StringValue client_fids = 3;
+  string origin_port_fid = 4;
+  // A null value means any via port. For direct route value has to be "N/A"
+  google.protobuf.StringValue origin_via_port_fid = 5;
+  // A null value means any via port. For direct route value has to be "N/A"
+  google.protobuf.StringValue destination_via_port_fid = 6;
+  string destination_port_fid = 7;
+  CommodityType commodity_type = 8;
+  google.protobuf.StringValue booking_code = 9;
+  google.protobuf.StringValue free_text = 10;
+  ServiceLevel service_level = 11;
+}
+
+message TransitTimeSlaUuidSearchResult {
+  google.rpc.Status status = 1;
+  TransitTimeSlaUuidSearchParameters search_parameters = 2;
+  string transit_time_sla_uuid = 3;
+}
+
+// Search parameters for GetFulfillmentGuidanceV2.
+message FulfillmentGuidanceV2Param {
+  string shipment_fid = 1;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate cargo_ready_date = 2;
+  string inventory_backed_offering_fid = 3;
+  int32 teu_count = 4;
+}
+
+// Result for GetFulfillmentGuidanceV2.
+message FulfillmentGuidanceV2Result {
+  string shipment_fid = 1;
+  int64 ocean_product_set_id = 2;
+  repeated ProductSetDefinition product_set_definitions = 3;
+  IsoWeek target_departure_week = 4;
+    // When this prediction was made.
+  google.protobuf.Timestamp last_update_time = 5;
+}
+
+// The marketplace service offering service level.
+enum ServiceLevel {
+  SERVICE_LEVEL_INVALID = 0;
+  SERVICE_LEVEL_NO_ROLL = 1;
+  SERVICE_LEVEL_PREMIUM = 2;
+  SERVICE_LEVEL_PRIORITY = 3;
+  SERVICE_LEVEL_STANDARD = 4;
+  SERVICE_LEVEL_DEFERRED = 5;
+  SERVICE_LEVEL_SUBJECT_TO_ROLL = 6;
+  SERVICE_LEVEL_INDIRECT = 7;
+  SERVICE_LEVEL_DIRECT = 8;
+  SERVICE_LEVEL_PLUS = 9;
+  SERVICE_LEVEL_NEXT_AVAILABLE_SAILING = 10;
+  SERVICE_LEVEL_SPECIFIC_SAILING_DAYS = 11;
+  SERVICE_LEVEL_NOR = 12;
+  SERVICE_LEVEL_CARRIER_HAULAGE_TO_FROM_DOOR = 13;
+  SERVICE_LEVEL_EXTENDED_FREE_TIME = 14;
+  SERVICE_LEVEL_PROMOTIONAL = 15;
+  SERVICE_LEVEL_TRIAL_NET_NEW_SHIPPER = 16;
+  SERVICE_LEVEL_EXTENDED_VALIDITY = 17;
+  SERVICE_LEVEL_ECONOMY = 18;
+}
+
+// The service offering commodity type is only set for SSAT NAC offerings.
+enum CommodityType {
+  COMMODITY_TYPE_INVALID = 0;
+  COMMODITY_TYPE_AGRICULTURE = 1;
+  COMMODITY_TYPE_BEANS = 2;
+  COMMODITY_TYPE_CHEMICALS = 3;
+  COMMODITY_TYPE_COTTON = 4;
+  COMMODITY_TYPE_DRIED_FRUIT = 5;
+  COMMODITY_TYPE_ELECTRONICS = 6;
+  COMMODITY_TYPE_FOREST_PRODUCTS = 7;
+  COMMODITY_TYPE_FURNITURE = 8;
+  COMMODITY_TYPE_GARMENT = 9;
+  COMMODITY_TYPE_GARMENT_ON_HANGER = 10;
+  COMMODITY_TYPE_GRAINS = 11;
+  COMMODITY_TYPE_HIDES = 12;
+  COMMODITY_TYPE_MACHINERY = 13;
+  COMMODITY_TYPE_METALS_NON_SCRAP = 14;
+  COMMODITY_TYPE_NUTS = 15;
+  COMMODITY_TYPE_PHARMACEUTICALS = 16;
+  COMMODITY_TYPE_PLASTIC_SCRAP = 17;
+  COMMODITY_TYPE_PLYWOOD = 18;
+  COMMODITY_TYPE_RESIN = 19;
+  COMMODITY_TYPE_RICE = 20;
+  COMMODITY_TYPE_SCRAP_METAL = 21;
+  COMMODITY_TYPE_VEHICLE_SPAREPARTS = 22;
+  COMMODITY_TYPE_VEHICLES = 23;
+  COMMODITY_TYPE_WASTE_PAPER = 24;
+  COMMODITY_TYPE_TELECOM_EQUIPMENT = 25;
+  COMMODITY_TYPE_AUTOMOTIVE_PARTS = 26;
+  COMMODITY_TYPE_AEROSPACE_PARTS = 27;
+  COMMODITY_TYPE_HUMAN_AID_AND_RELIEF = 28;
+  COMMODITY_TYPE_SHOES = 29;
+  COMMODITY_TYPE_COSMETICS = 30;
+  COMMODITY_TYPE_HOME_GOODS = 31;
+  COMMODITY_TYPE_COMPUTER_PARTS = 32;
+  COMMODITY_TYPE_SERVERS_AND_SERVER_RACKS = 33;
+  COMMODITY_TYPE_DRY_FOOD = 34;
+  COMMODITY_TYPE_FRESH_FRUIT_AND_VEGETABLES = 35;
+  COMMODITY_TYPE_SPORT_EQUIPMENT = 36;
+  COMMODITY_TYPE_CAMPING_EQUIPMENT = 37;
+  COMMODITY_TYPE_PRINTED_MATTER = 38;
+  COMMODITY_TYPE_PRODUCTS_OF_ANIMAL_ORIGIN = 39;
+  COMMODITY_TYPE_PREPARED_FOOD_STUFFS = 40;
+  COMMODITY_TYPE_ALCOHOLIC_BEVERAGES = 41;
+  COMMODITY_TYPE_TOBACCO_PRODUCTS = 42;
+  COMMODITY_TYPE_FERTILIZERS = 43;
+  COMMODITY_TYPE_PLASTICS_AND_RUBBER = 44;
+  COMMODITY_TYPE_WOOD_PRODUCTS = 45;
+  COMMODITY_TYPE_TEXTILES_AND_LEATHER = 46;
+  COMMODITY_TYPE_NONMETALLIC_MINERAL_PRODUCTS = 47;
+  COMMODITY_TYPE_ARTICLES_OF_METAL = 48;
+  COMMODITY_TYPE_MOTORIZED_AND_OTHER_VEHICLES = 49;
+  COMMODITY_TYPE_PRECISION_INSTRUMENTS = 50;
+  COMMODITY_TYPE_MISCELLANEOUS_MANUFACTURED_PRODUCTS = 51;
+  COMMODITY_TYPE_WASTE_AND_SCRAP = 52;
+  COMMODITY_TYPE_MEAT_AND_SEAFOOD = 53;
+  COMMODITY_TYPE_CEREAL_GRAINS = 54;
+  COMMODITY_TYPE_LIVE_ANIMALS_AND_FISH = 55;
+}

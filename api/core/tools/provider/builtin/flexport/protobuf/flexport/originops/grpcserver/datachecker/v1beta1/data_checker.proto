@@ -1,0 +1,55 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.originops.grpcserver.datachecker.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DataCheckerProto";
+option java_package = "com.flexport.originops.grpcserver.datachecker.v1beta1";
+option ruby_package = "Flexport::OriginOps::GRpcServer::DataChecker::V1Beta1";
+
+// One field that has inconsistent data.
+message InconsistentField {
+  FieldName name = 1;
+  // readable message for details.
+  string message = 2;
+}
+
+// This enum is used to track inconsistent FIELDS.
+enum FieldName {
+  FIELD_NAME_INVALID = 0;
+  FIELD_NAME_NAME = 1;
+  FIELD_NAME_INCOTERM = 2;
+  FIELD_NAME_PRIORITY = 3;
+  FIELD_NAME_MODE = 4;
+  FIELD_NAME_STATUS = 5;
+  FIELD_NAME_CARGO_READY_DATE = 6;
+  FIELD_NAME_CLIENT_ID = 7;
+  FIELD_NAME_INVOLVED_PARTIES = 8;
+  FIELD_NAME_PARTNERS = 9;
+  FIELD_NAME_ASSIGNMENTS = 10;
+  FIELD_NAME_QUOTE_ACCEPTED_INFO = 11;
+  FIELD_NAME_DANGEROUS_GOODS_INFO = 12;
+  FIELD_NAME_LEGS = 13;
+  FIELD_NAME_NOTES = 14;
+  FIELD_NAME_AIR_FULFILLMENT = 15;
+  FIELD_NAME_OCEAN_FULFILLMENT = 16;
+  FIELD_NAME_CARGO_MOVEMENTS = 17;
+  FIELD_NAME_SCHEDULING = 18;
+  FIELD_NAME_EXTERNAL_MESSAGES = 19;
+  FIELD_NAME_DOCUMENTS = 20;
+  FIELD_NAME_REQUESTED_SERVICES = 21;
+  FIELD_NAME_COMMENTS = 22;
+  FIELD_NAME_MESSAGING = 23;
+  FIELD_NAME_INVOICING = 24;
+
+  //ocean_fulfillment sub fields
+  FIELD_NAME_OCEAN_FMT_ASSIGNMENT = 25;
+  FIELD_NAME_OCEAN_CARRIER_BOOKINGS = 26;
+  FIELD_NAME_OCEAN_CONSOL = 27;
+  FIELD_NAME_OCEAN_FCL_FULFILLMENT_DETAILS = 28;
+  FIELD_NAME_OCEAN_MASTER_BILL_NUMBER = 29;
+  FIELD_NAME_OCEAN_MASTER_BILL_OF_LADING = 30;
+  FIELD_NAME_OCEAN_HOUSE_BILL_OF_LADINGS = 31;
+}

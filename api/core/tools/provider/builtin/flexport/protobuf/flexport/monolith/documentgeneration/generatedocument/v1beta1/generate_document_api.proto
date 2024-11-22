@@ -1,0 +1,48 @@
+// TEAM: sutro
+
+syntax = "proto3";
+
+package flexport.monolith.documentgeneration.generatedocument.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "GenerateDocumentApiProto";
+option java_package = "com.flexport.monolith.documentgeneration.generatedocument.v1beta1";
+option ruby_package = "Flexport::Monolith::DocumentGeneration::GenerateDocument::V1Beta1";
+
+// Main service for auto generating asn documents
+service GenerateDocumentAPI {
+  // Ths is a synchronous API that generates asn shipment details pdf by fid and add the document to the doc store
+  rpc GenerateAsnShipmentDetails(GenerateAsnShipmentDetailsRequest) returns (GenerateAsnShipmentDetailsResponse);
+
+  //This is a synchronous API that generates asn product details csv by fid and add the document to the doc store
+  rpc GenerateAsnProductDetails(GenerateAsnProductDetailsRequest) returns (GenerateAsnProductDetailsResponse);
+
+  // Generates arrival notices for the specified shipment
+  rpc GenerateArrivalNotice(GenerateArrivalNoticeRequest) returns (GenerateArrivalNoticeResponse);
+}
+
+message GenerateAsnShipmentDetailsRequest {
+  string shipment_fid = 1;
+}
+
+message GenerateAsnShipmentDetailsResponse {
+  string document_fid = 1;
+}
+
+message GenerateAsnProductDetailsRequest {
+  string shipment_fid = 1;
+}
+
+message GenerateAsnProductDetailsResponse {
+  string document_fid = 1;
+}
+
+message GenerateArrivalNoticeRequest {
+  string shipment_fid = 1;
+  string user_fid = 2;
+}
+
+message GenerateArrivalNoticeResponse {
+  repeated string document_fids = 1;
+  repeated string errors = 2;
+}

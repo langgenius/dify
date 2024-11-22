@@ -1,0 +1,33 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RailContainerSightingOccurredProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+// A rail container sighting occured.
+// This is a generic, catch-all event that encapsulates all track-and-trace Railinc event codes.
+// More specific and detailed event protos exist for many of the event codes (see other
+// rail_container_*.proto files in this directory). If a more detailed event proto is available, both
+// this event and the more detailed event will be emitted together. And if no more detailed event proto
+// is available, only this event will be emitted.
+// Corresponds to the track_and_trace engine's RailSighting simple PubSub event.
+message RailContainerSightingOccurred {
+  string container_fid = 9;
+  string container_number = 1;
+  string latitude = 2;
+  string longitude = 3;
+  // Event code for a type of sighting event (e.g. "arrived").
+  string sighting_event = 4;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime sighting_time = 5;
+  string station_name = 6;
+  string state = 7;
+  // https://en.wikipedia.org/wiki/Standard_Point_Location_Code
+  string splc = 8;
+}

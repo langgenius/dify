@@ -1,0 +1,34 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.schedulemanager.carrierbookingintegration.v1;
+
+import "flexport/oex/carrierbookingbundle/v1beta1/carrier_booking_bundle.proto";
+import "flexport/schedulemanager/types/enums/v1/autobuild_schedule_result_code.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierBookingIntegrationApiProto";
+option java_package = "com.flexport.schedulemanager.carrierbookingintegration.v1";
+option ruby_package = "Flexport::ScheduleManager::CarrierBookingIntegration::V1";
+
+// API for integration with Carrier Booking to create end-to-end schedules.
+service CarrierBookingIntegrationAPI {
+  option deprecated = true;
+  // Create end-to-end schedules based on Carrier Booking information source
+  rpc CreatePostCarrierBookingSchedules(CreatePostCarrierBookingSchedulesRequest) returns (CreatePostCarrierBookingSchedulesResponse);
+}
+
+// The request for creating post Carrier Booking schedules.
+message CreatePostCarrierBookingSchedulesRequest {
+  option deprecated = true;
+  flexport.oex.carrierbookingbundle.v1beta1.CarrierBookingBundle carrier_booking_bundle = 1;
+}
+
+// The response containing the result of creating post Carrier Booking schedules.
+message CreatePostCarrierBookingSchedulesResponse {
+  option deprecated = true;
+  bool date_change_published = 1;
+  repeated string failure_message = 2;
+  flexport.schedulemanager.types.enums.v1.AutobuildScheduleResultCode result_code = 3;
+}

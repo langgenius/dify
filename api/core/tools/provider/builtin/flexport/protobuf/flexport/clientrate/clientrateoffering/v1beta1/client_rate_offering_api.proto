@@ -1,0 +1,28 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.clientrate.clientrateoffering.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ClientRateOfferingApiProto";
+option java_package = "com.flexport.clientrate.clientrateoffering.v1beta1";
+option ruby_package = "Flexport::ClientRate::ClientRateOffering::V1Beta1";
+
+import "flexport/clientrate/clientrateoffering/v1beta1/client_rate_offering.proto";
+
+// Client Rate Offering Service
+service ClientRateOfferingAPI {
+  // Get saved offerings info by client fid
+  rpc GetClientRateOfferings(GetClientRateOfferingsRequest) returns (GetClientRateOfferingsResponse);
+}
+
+message GetClientRateOfferingsRequest {
+  string client_fid = 1;
+  // if offering_fids is null or empty, return all offerings for the client
+  repeated string offering_fids = 2;
+}
+
+message GetClientRateOfferingsResponse {
+  repeated ClientRateOfferingInfo offerings = 1;
+}

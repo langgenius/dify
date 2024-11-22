@@ -1,0 +1,111 @@
+// TEAM: smb_scone
+
+syntax = "proto3";
+
+package flexport.monolith.smb.v1beta1;
+
+import "flexport/monolith/smb/v1beta1/onboarding.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OnboardingApiProto";
+option java_package = "com.flexport.monolith.smb.v1beta1";
+option ruby_package = "Flexport::Monolith::Smb::V1Beta1";
+
+// Service grouping all SMB onboarding-related APIs.
+service OnboardingAPI {
+  // Triggers SMB onboarding. It creates necessary tasks and task groups with appropriate due dates calculated based on the cargo ready date.
+  rpc CreateOnboarding(CreateOnboardingRequest) returns (CreateOnboardingResponse);
+  rpc InitializeOnboardingReview(InitializeOnboardingReviewRequest) returns (InitializeOnboardingReviewResponse);
+  rpc UpdateTaskStatus(UpdateTaskStatusRequest) returns (UpdateTaskStatusResponse);
+  rpc GetOnboardingStatus(GetOnboardingStatusRequest) returns (GetOnboardingStatusResponse);
+}
+
+// Data necessary to trigger SMB onboarding.
+message CreateOnboardingRequest {
+  string client_fid = 1;
+  // matches booking.proto
+  string cargo_ready_date = 2;
+  ServiceMode service_mode = 3;
+  AddressKind origin_address_kind = 4;
+  AddressKind destination_address_kind = 5;
+
+  enum AddressKind {
+    ADDRESS_KIND_INVALID = 0;
+    ADDRESS_KIND_KNOWN = 1;
+    ADDRESS_KIND_INDIVIDUAL = 2;
+  }
+}
+
+enum ServiceMode {
+  SERVICE_MODE_INVALID = 0;
+  SERVICE_MODE_AIR = 1;
+  SERVICE_MODE_OCEAN = 2;
+}
+
+// Response to an onboarding trigger. It contains IDs of the task groups created,
+// as well as any company information already in the system.
+message CreateOnboardingResponse {
+  OnboardingTaskGroups task_groups = 1;
+  CompanyInformation company_information = 2;
+}
+
+message CompanyInformation {
+  string legal_name = 2;
+  string dba_name = 3;
+  string country_of_registration = 4;
+  string state_of_registration = 5;
+  string type_of_business = 6;
+}
+
+message InitializeOnboardingReviewRequest {
+  string client_fid = 1;
+}
+
+message InitializeOnboardingReviewResponse {}
+
+message UpdateTaskStatusRequest {
+  string client_fid = 1;
+  TaskType task_id = 2;
+  TaskStatus task_status = 3;
+
+  // All tasks defined in engines/smb_experience/app/models/smb_experience/onboarding/task
+  enum TaskType {
+    TASK_TYPE_INVALID = 0;
+    TASK_TYPE_COMPANY_DETAILS = 1;
+    TASK_TYPE_SUPPLIER_INFORMATION = 2;
+    TASK_TYPE_PICKUP_ADDRESS = 3;
+    TASK_TYPE_DELIVERY_ADDRESS = 4;
+    TASK_TYPE_CUSTOMS_BOND = 5;
+    TASK_TYPE_CUSTOMS_CLEARANCE = 6;
+    TASK_TYPE_POWER_OF_ATTORNEY = 7;
+    TASK_TYPE_COMPANY_ADDRESS = 8;
+  }
+
+  // Roughly matches monorail/modules/trade/app/client_app_constants/task_statuses.rb
+  // Inapplicable statuses are omitted
+  enum TaskStatus {
+    TASK_STATUS_INVALID = 0;
+    TASK_STATUS_COMPLETE = 1;
+    TASK_STATUS_ACTIVE = 2;
+    TASK_STATUS_PENDING = 3;
+    TASK_STATUS_REVIEW = 4;
+  }
+}
+
+message UpdateTaskStatusResponse {}
+
+message GetOnboardingStatusRequest {
+  string client_fid = 1;
+}
+
+message GetOnboardingStatusResponse {
+  ModuleStatus company_details_module_status = 1;
+  ModuleStatus authorize_handling_module_status = 2;
+
+  enum ModuleStatus {
+    MODULE_STATUS_INVALID = 0;
+    MODULE_STATUS_ACTIVE = 1;
+    MODULE_STATUS_COMPLETE = 2;
+    MODULE_STATUS_SUBMITTED = 3;
+  }
+}

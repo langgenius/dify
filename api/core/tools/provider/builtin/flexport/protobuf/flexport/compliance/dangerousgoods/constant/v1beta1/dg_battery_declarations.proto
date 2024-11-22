@@ -1,0 +1,18 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.dangerousgoods.constant.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DGBatteryDeclarationsProto";
+option java_package = "com.flexport.compliance.dangerousgoods.constant.v1beta1";
+option ruby_package = "Flexport::Compliance::DangerousGoods::Constant::V1Beta1";
+
+enum DGBatteryDeclarations {
+  DG_BATTERY_DECLARATIONS_INVALID = 0;
+  DG_BATTERY_DECLARATIONS_CONTAINS_LI_ION_BATTERY = 1;
+  DG_BATTERY_DECLARATIONS_CONTAINS_NON_LI_ION_BATTERY = 2;
+  DG_BATTERY_DECLARATIONS_CONTAINS_BOTH_NON_AND_LI_ION_BATTERY = 3;
+  DG_BATTERY_DECLARATIONS_DG_BATTERY_DECLARATIONS_NOT_APPLICABLE = 4;
+}

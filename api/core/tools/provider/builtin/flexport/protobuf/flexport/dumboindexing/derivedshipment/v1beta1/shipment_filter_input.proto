@@ -1,0 +1,171 @@
+// TEAM: client_app
+
+syntax = "proto3";
+
+package flexport.dumboindexing.derivedshipment.v1beta1;
+
+import "flexport/executioncoordinator/derivedshipment/v1/derived_shipment.proto";
+import "flexport/executioncoordinator/types/enums/v1/shipment_priority.proto";
+import "flexport/executioncoordinator/types/enums/v1/transportation_status.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentFilterInputProto";
+option java_package = "com.flexport.dumboindexing.derivedshipment.v1beta1";
+option ruby_package = "Flexport::DumboIndexing::DerivedShipment::V1Beta1";
+
+message ShipmentFilterDetail {
+  repeated ShipmentSource shipment_sources = 1;
+  repeated flexport.executioncoordinator.derivedshipment.v1.DerivedShipmentTransportMode transportation_modes = 2;
+  repeated ClientFacingTransportationModeFilter client_facing_transportation_modes = 3;
+  repeated flexport.executioncoordinator.types.enums.v1.TransportationStatus transportation_statuses = 4;
+  repeated flexport.executioncoordinator.derivedshipment.v1.DerivedShipmentTrackingStatus verification_statuses = 5;
+  repeated flexport.executioncoordinator.types.enums.v1.ShipmentPriority priorities = 6;
+  repeated BuyersConsolidationStatus buyers_consolidation_statuses = 7;
+  DateFilterInput cargo_ready_date = 8;
+  DateFilterInput origin_pickup_date = 9;
+  DateFilterInput departure_date = 10;
+  DateFilterInput arrival_port_arrival_date = 11;
+  DateFilterInput arrival_port_departure_date = 12;
+  DateFilterInput delivered_in_full_date = 13;
+  DateFilterInput last_free_day_date = 14;
+  repeated LocationFilterInput locations = 15;
+  repeated LocationFilterInput country_codes = 16;
+  repeated SelectFilterInput companies = 17;
+  repeated SimpleFilterInput products = 18;
+  repeated SimpleFilterInput products_skus = 19;
+  repeated SimpleFilterInput purchase_orders = 20;
+  repeated SimpleFilterInput assignees = 21;
+  repeated SimpleFilterInput forwarder_names = 22;
+  SortInput sort = 23;
+  BooleanFilterInput is_buyers_consolidation = 24;
+  repeated KeyFilterInput metadata = 25;
+  repeated SimpleFilterInput exceptions = 26;
+  BooleanFilterInput bookmarked = 27;
+  repeated SimpleFilterInput carrier_names = 28;
+  DateFilterValueInput change_occurrence = 29;
+  ConditionalFilterInput schedule_changes = 30;
+}
+
+// Boolean filters type
+message BooleanFilterInput {
+  google.protobuf.BoolValue value = 1;
+}
+
+message ConditionalFilterInput {
+  string operator = 1;
+  string type = 2;
+  SelectFilterValueInput values = 3;
+}
+
+// Date filters type
+message DateFilterInput {
+  oneof date_filter {
+    flexport.os.v1.types.walltimedate.v1.WallTimeDate after_date_filter = 1;
+    flexport.os.v1.types.walltimedate.v1.WallTimeDate before_date_filter = 2;
+    RangeDateFilterInput range_date_filter = 3;
+  }
+}
+
+message DateFilterValueInput {
+  string label = 1;
+  string type = 2;
+  string start_date = 3;
+  string end_date = 4;
+}
+
+// Location filters type
+message LocationFilterInput {
+  string value = 1;
+  LocationFilterType type = 2;
+  SelectFilterOption option = 3;
+}
+
+// Select filter handles include and exclude filters
+message SelectFilterInput {
+  SelectFilterOption option = 1;
+  string value = 2;
+}
+
+message SelectFilterValueInput {
+  string label = 1;
+  string value = 2;
+}
+
+// Simple value selection type
+message SimpleFilterInput {
+  string value = 1;
+}
+
+// Key value pair filters type
+message KeyFilterInput {
+  string key = 1;
+  repeated string values = 2;
+}
+
+// Range Date filter type
+message RangeDateFilterInput {
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate range_to = 1;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate range_from = 2;
+}
+
+message SortInput {
+  DumboSortField field = 1;
+  DumboSortOrder order = 2;
+}
+
+enum DumboSortField {
+  DUMBO_SORT_FIELD_INVALID = 0;
+  DUMBO_SORT_FIELD_TIME_OF_CREATION = 1;
+  DUMBO_SORT_FIELD_DELIVERY_DATE = 2;
+  DUMBO_SORT_FIELD_CARGO_READY_DATE = 3;
+  DUMBO_SORT_FIELD_MOST_RECENT_SCHEDULE_CHANGE = 4;
+  DUMBO_SORT_FIELD_ARRIVAL_PORT_ARRIVAL_DATE = 5;
+}
+
+enum DumboSortOrder {
+  DUMBO_SORT_ORDER_INVALID = 0;
+  DUMBO_SORT_ORDER_ASCENDING = 1;
+  DUMBO_SORT_ORDER_DESCENDING = 2;
+}
+
+// Client specific transportation mode.
+enum ClientFacingTransportationModeFilter {
+  CLIENT_FACING_TRANSPORTATION_MODE_FILTER_INVALID = 0;
+  CLIENT_FACING_TRANSPORTATION_MODE_FILTER_OCEAN_LCL = 1;
+  CLIENT_FACING_TRANSPORTATION_MODE_FILTER_OCEAN_FCL = 2;
+  CLIENT_FACING_TRANSPORTATION_MODE_FILTER_AIR = 3;
+  CLIENT_FACING_TRANSPORTATION_MODE_FILTER_TRUCK_DOMESTIC = 4;
+  CLIENT_FACING_TRANSPORTATION_MODE_FILTER_TRUCK_INTERNATIONAL = 5;
+}
+
+// Type of buyers consolidation.
+enum BuyersConsolidationStatus {
+  BUYERS_CONSOLIDATION_STATUS_INVALID = 0;
+  BUYERS_CONSOLIDATION_STATUS_ONLY_PARENT = 1;
+  BUYERS_CONSOLIDATION_STATUS_ONLY_CHILD = 2;
+  BUYERS_CONSOLIDATION_STATUS_EXCLUDE_PARENT_AND_CHILD = 3;
+}
+
+enum SelectFilterOption {
+  SELECT_FILTER_OPTION_INVALID = 0;
+  SELECT_FILTER_OPTION_INCLUDE = 1;
+  SELECT_FILTER_OPTION_EXCLUDE = 2;
+}
+
+enum LocationFilterType {
+  LOCATION_FILTER_TYPE_INVALID = 0;
+  LOCATION_FILTER_TYPE_ORIGIN = 1;
+  LOCATION_FILTER_TYPE_DEPARTURE = 2;
+  LOCATION_FILTER_TYPE_ARRIVAL = 3;
+  LOCATION_FILTER_TYPE_DESTINATION = 4;
+  LOCATION_FILTER_TYPE_ANY = 5;
+}
+
+enum ShipmentSource {
+  SHIPMENT_SOURCE_INVALID = 0;
+  SHIPMENT_SOURCE_CLIENT_SHIPMENT = 1;
+  SHIPMENT_SOURCE_FLEXPORT_SHIPMENT = 2;
+  SHIPMENT_SOURCE_CUSTOMS_SHIPMENT = 3;
+}

@@ -1,0 +1,28 @@
+// TEAM: client_app
+
+syntax = "proto3";
+
+package flexport.clientfreightdata.metadata.v1beta1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentMetadataUpdatedProto";
+option java_package = "com.flexport.clientfreightdata.metadata.v1beta1";
+option ruby_package = "Flexport::ClientFreightData::Metadata::V1Beta1";
+
+// Data indicating Client Freight Data service has received updated metadata for a shipment.
+message ShipmentMetadataUpdated {
+  google.protobuf.UInt64Value monorail_shipment_dbid = 1;
+  string monorail_shipment_fid = 2;
+  string flex_id = 3;
+  repeated MetadataPair metadata = 4;
+
+  string client_fid = 5;
+}
+
+// A key-list of values pair of metadata.
+message MetadataPair {
+  string label = 1;
+  repeated string values = 2;
+}

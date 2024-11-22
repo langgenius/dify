@@ -1,0 +1,94 @@
+// TEAM: revenue_management
+
+syntax = "proto3";
+
+package flexport.offerings.pricing.v1;
+
+import "flexport/offerings/pricing/v1/line_item.proto";
+import "flexport/offerings/pricing/v1/pricing.proto";
+import "google/type/decimal.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PricingApiProto";
+option java_package = "com.flexport.offerings.pricing.v1";
+option ruby_package = "Flexport::Offerings::Pricing::V1";
+
+// The API definition for the Pricing Engine.
+service PricingAPI {
+  // Get the target OMDA markup and guardrails from the latest data science model output for different freight types.
+  // This is currently only supports quoting OMDA markups.
+  rpc GetPricingRecommendations(GetPricingRecommendationsRequest) returns (GetPricingRecommendationsResponse);
+  // Adjust line items based on the pricing recommendations.
+  // This API will take in a collection of line items as input, perform some type of adjustment, and return all the line items passed in with the adjustments.
+  rpc AdjustLineItems(AdjustLineItemsRequest) returns (AdjustLineItemsResponse);
+}
+
+// Request message for AdjustLineItems API.
+message AdjustLineItemsRequest {
+  // Unique identifier for the request, used for traceability. This is required for all requests.
+  string request_id = 1;
+  // The id of the quote if available. If not available, this field should be empty. This is used for traceability only.
+  optional string quote_id = 2;
+  // The id of the shipment associated with the request. If not available, this field should be empty. This is used for traceability only.
+  optional string shipment_id = 3;
+  // The target OMDA markup percent returned from the GetPricingRecommendations API. This is required if the adjustment type is ADJUST_MARKUP.
+  optional google.type.Decimal target_omda_markup = 4 [deprecated = true];
+  // A list of all the line items to adjust
+  repeated LineItem line_items = 5;
+  // The type of adjustment to perform on the line items
+  AdjustmentType adjustment_type = 6;
+  // The target_omda_markup_percent field returned from the GetPricingRecommendations API.
+  // This is in a format such that 11 means 11% markup. 9.73 means 9.73% markup.
+  // This is required if the adjustment type is ADJUST_MARKUP.
+  optional google.type.Decimal target_omda_markup_percent = 7;
+}
+
+// Response message for AdjustLineItems API.
+message AdjustLineItemsResponse {
+  // A list of all the line items with the adjustments applied
+  repeated LineItem adjusted_line_items = 1;
+  // The computed OMDA markup from the adjusted line items
+  google.type.Decimal omda_markup = 2;
+}
+
+// Request message for GetPricingRecommendations API.
+message GetPricingRecommendationsRequest {
+  // Unique identifier for the request, used for traceability. This is required for all requests.
+  string request_id = 1;
+  // The id of the quote if available. If not available, this field should be empty.
+  optional string quote_id = 2;
+  // The id of the shipment associated with the request. If not available, this field should be empty.
+  optional string shipment_id = 3;
+  // Main freight method. Example: OceanFCL, Air, etc.
+  FreightMethod freight_method = 4;
+  // Fid of the client. For a guest client, provide the guest client FID flx::core:client:dbid/0.
+  // If client_fid is not provided, a wildcard (missing client) DS rule will attempt matched
+  optional string client_fid = 5;
+  // Type of freight service
+  FreightType freight_type = 6;
+  // Origin port fid of the main freight shipment. Ex: flx::core:port:dbid/12345
+  string origin_port_fid = 7;
+  // Destination port fid of the main freight shipment. Ex: flx::core:port:dbid/12345
+  string destination_port_fid = 8;
+  // Air service tier for air freight. This is required only when freight_method is Air.
+  optional AirServiceTier air_service_tier = 9;
+  // The cargo chargeable weight in kg, used to determine applicable air weight break guardrail. This is required only when freight_method is Air.
+  optional google.type.Decimal chargeable_weight_in_kg = 10;
+}
+
+// Response message for GetPricingRecommendations API.
+message GetPricingRecommendationsResponse {
+  // The target OMDA markup percent for the given freight type.
+  // If specified 0.11 means 11% markup. 0.0973 means 9.73% markup.
+  // If not set, it means a target OMDA markup could not be found and default value (0.0) should be treated as null.
+  // You may use the generated method has_target_omda_markup() -> boolean to determine whether this value has been set.
+  optional google.type.Decimal target_omda_markup = 1 [deprecated = true];
+  // Map of guardrail types to guardrail messages.
+  // The key will be the string version of com.flexport.offerings.pricing.v1.GuardrailType (protobuf does not support enum keys).
+  map<string, Guardrail> guardrails = 2;
+  // The target OMDA markup percent for the given freight type.
+  // If specified 11 means 11% markup. 11.13 means 11.13% markup.
+  // If not set, it means a target OMDA markup could not be found and default value (0.0) should be treated as null.
+  // You may use the generated method has_target_omda_markup_percent() -> boolean to determine whether this value has been set.
+  optional google.type.Decimal target_omda_markup_percent = 3;
+}

@@ -1,0 +1,59 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.cargo.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ActiveIso6346ContainerProto";
+option java_package = "com.flexport.executioncoordinator.types.cargo.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Cargo::V1";
+
+import "flexport/os/v1/types/cargo/v1/base_cargo.proto";
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+import "google/protobuf/wrappers.proto";
+
+// A value describing an "active" ISO6346 container.
+//
+// A container is "active" in the sense that it is associated with a shipment in some way. It
+// could either be packed with cargo or intended to be shortly.
+//
+// This message is similar to but distinct from the monolith's container_use.rb. That model
+// includes details about not only the physical cargo but also its route and associated dates
+// such as last free day.
+//
+// This message is only about the physical object: the container itself, its contents, and
+// potentially (though not currently included) seal data. Dates and route data are defined either
+// on the ExecutionOrder, ExecutionTasks, or in ExecutionTaskStateEvents depending on whether
+// they are defined by the client, Flexport, or carriers/terminals (respectively).
+message ActiveIso6346Container {
+  //
+  // Unique identifier for the ISO6346 container associated with this cargo.
+  string container_fid = 1;
+  //
+  // A freeform text description of the cargo.
+  string description = 2;
+  //
+  // The weight of the goods inside the container in kilograms. (Excluding the container itself.)
+  string net_weight_kg = 3;
+  //
+  // The volume of the goods inside the container in cubic meters. (Excluding the container itself.)
+  string net_volume_cbm = 4;
+  //
+  // The count of pallets inside the container.
+  google.protobuf.Int32Value pallet_count = 5;
+  //
+  // The count of cartons inside the container.
+  google.protobuf.Int32Value carton_count = 6;
+  //
+  // Generally, container size and type can be obtained using the container_fid.
+  // But in the early planning of export drayage, the specific container_fid may not be known.
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerSize container_size = 7;
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerType container_type = 8;
+  //
+  // The cargo inside the container, potentially with house bill of lading information as metadata.
+  repeated flexport.os.v1.types.cargo.v1.BaseCargo contents = 9;
+  //
+  // Metadata as stringified JSON.
+  string meta = 10;
+}

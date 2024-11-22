@@ -1,0 +1,25 @@
+// TEAM: ocean_allocations
+
+syntax = "proto3";
+
+package flexport.oceansupply.entityevent.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "InventoryReservedChangeEntityProto";
+option java_package = "com.flexport.oceansupply.entityevent.v1beta1";
+option ruby_package = "Flexport::OceanSupply::EntityEvent::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Records the change history of reserved TEUs on a particular Inventory.
+message InventoryReservedChangeEntity {
+  google.protobuf.Timestamp created_time = 1;
+  google.protobuf.StringValue inventory_fid = 2;
+  google.protobuf.StringValue inventory_bucket_fid = 3;
+  // from_value, this is number of TEUs
+  google.protobuf.UInt32Value from_value = 4;
+  // to_value, this is number of TEUs
+  google.protobuf.UInt32Value to_value = 5;
+  google.protobuf.StringValue updated_by_fid = 6;
+}

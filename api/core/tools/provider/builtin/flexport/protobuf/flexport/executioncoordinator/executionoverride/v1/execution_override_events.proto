@@ -1,0 +1,40 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionoverride.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionOverrideEventsProto";
+option java_package = "com.flexport.executioncoordinator.executionoverride.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOverride::V1";
+
+import "google/protobuf/timestamp.proto";
+
+// The events emitted to track status updates of an override.
+message ExecutionOverrideEvent {
+  string execution_order_fid = 1;
+  google.protobuf.Timestamp occurred_time = 2;
+  oneof event_details {
+    ExecutionCoordinatorWritebackStatusEvent ec_writeback_status_event = 3;
+  }
+}
+
+// EC writeback details.
+message ExecutionCoordinatorWritebackStatusEvent {
+  WritebackEventType event_type = 1;
+  oneof identifier {
+    uint32 eo_revision = 2;
+    uint32 ep_revision = 3;
+    string etse_fid = 4;
+    string eose_fid = 5;
+  }
+}
+
+// Type of writeback status event.
+enum WritebackEventType {
+  WRITEBACK_EVENT_TYPE_INVALID = 0;
+  WRITEBACK_EVENT_TYPE_CONSUMED = 1;
+  WRITEBACK_EVENT_TYPE_SUCCEEDED = 2;
+  WRITEBACK_EVENT_TYPE_FAILED = 3;
+}

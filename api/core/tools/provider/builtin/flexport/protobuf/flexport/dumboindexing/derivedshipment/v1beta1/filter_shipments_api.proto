@@ -1,0 +1,51 @@
+// TEAM: application_framework
+
+syntax = "proto3";
+
+package flexport.dumboindexing.derivedshipment.v1beta1;
+
+import "flexport/dumboindexing/derivedshipment/v1beta1/shipment_filter_input.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "FilterShipmentsApiProto";
+option java_package = "com.flexport.dumboindexing.derivedshipment.v1beta1";
+option ruby_package = "Flexport::DumboIndexing::DerivedShipment::V1Beta1";
+
+// An API for interacting with DerivedShipment entities.
+service FilterShipmentsAPI {
+  // Lists identifiers for filtered shipments.
+  rpc ListShipmentIdentifiersByFilters(ListShipmentIdentifiersByFiltersRequest) returns (ListShipmentIdentifiersByFiltersResponse);
+}
+
+message ListShipmentIdentifiersByFiltersRequest {
+  dumboindexing.derivedshipment.v1beta1.ShipmentFilterDetail shipment_filter_input = 1;
+  PageRequest page_request = 2;
+}
+
+message ListShipmentIdentifiersByFiltersResponse {
+  repeated ShipmentIdentifierPaginationDetail shipment_identifier_pagination_detail = 1;
+}
+
+message ShipmentIdentifierPaginationDetail {
+  oneof identifier {
+    string derived_shipment_fid = 1;
+    string shipment_fid = 2;
+  }
+  string cursor = 4;
+}
+
+// Arguments for paging, based on GraphQL connection type arguments.
+// See for more info: https://relay.dev/graphql/connections.htm#sec-Arguments
+message PageRequest {
+  //
+  // The number of entries to return when paging.
+  // The limit for forward pagination.
+  uint32 first = 1;
+  //
+  // The limit for backward pagination.
+  uint32 last = 2;
+  //
+  // The cursors to page by.
+  string after_cursor = 3;
+  string before_cursor = 4;
+}

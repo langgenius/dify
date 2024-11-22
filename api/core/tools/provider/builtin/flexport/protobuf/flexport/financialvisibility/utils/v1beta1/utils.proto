@@ -1,0 +1,34 @@
+// TEAM: cost_capture
+
+syntax = "proto3";
+
+package flexport.financialvisibility.v1beta1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "UtilsProto";
+option java_package = "com.flexport.financialvisibility.v1beta1";
+option ruby_package = "Flexport::FinancialVisibility::V1Beta1";
+
+// Result with errors message.
+message ErrorResult {
+  repeated string errors = 1;
+}
+
+// Packed JSON value.
+message JSONValueDto {
+  string json = 1;
+}
+
+// Request details for page-based pagination.
+message PaginationParams {
+  uint32 page = 1;
+  uint32 per_page = 2;
+}
+
+// Request details for cursor-based pagination.
+message CursorParams {
+  google.protobuf.StringValue cursor_token = 1;
+  uint32 per_page = 2;
+}

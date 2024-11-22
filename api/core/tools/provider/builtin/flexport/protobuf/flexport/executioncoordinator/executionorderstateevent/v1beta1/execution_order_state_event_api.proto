@@ -1,0 +1,55 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionOrderStateEventApiProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1beta1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1Beta1";
+
+import "flexport/executioncoordinator/executionorderstateevent/v1/execution_order_state_event.proto";
+import "flexport/executioncoordinator/types/query/v1/distinct_on.proto";
+import "flexport/executioncoordinator/types/query/v1/filters.proto";
+import "flexport/executioncoordinator/types/query/v1/order_by.proto";
+import "flexport/executioncoordinator/types/query/v1/page_request.proto";
+
+// This file: http://go/eose-api-proto.
+//
+// An API for reading ExecutionOrderStateEvents.
+// - See execution_order_state_event.proto for entity details.
+// - ExecutionOrderStateEvents cannot be written using gRPC. The ExecutionCoordinator just persists
+//   the events emitted on the execution_order_state Kinesis topic. All events are immutable.
+//
+// This API is in beta. Query expressiveness is limited and performance is not tuned.
+// Please ping #forwarding-platform. We can extend it and load test it to support your use case.
+service ExecutionOrderStateEventAPI {
+  // Retrieves ExecutionOrderStateEvents for a provided query.
+  rpc ListExecutionOrderStateEvents(ListExecutionOrderStateEventsRequest) returns (ListExecutionOrderStateEventsResponse);
+}
+
+// The request for ListExecutionOrderStateEvents.
+message ListExecutionOrderStateEventsRequest {
+  //
+  // The arguments used for paging. Either page_request.first or page_request.last will be used as the limit.
+  flexport.executioncoordinator.types.query.v1.PageRequest page_request = 12;
+  //
+  // All filters are "ANDed" together.
+  flexport.executioncoordinator.types.query.v1.StringFilter execution_order_fid = 3;
+  flexport.executioncoordinator.types.query.v1.TimestampFilter processed_time = 4;
+  flexport.executioncoordinator.types.query.v1.StringFilter details_case = 5;
+  flexport.executioncoordinator.types.query.v1.StringFilter shipment_fid = 6;
+  //
+  // The order of the results. Defaults to ORDER_BY_PROCESSED_TIME_ASC order.
+  flexport.executioncoordinator.types.query.v1.OrderBy order_by = 10;
+  //
+  // A distinct on clause. Behaves like PostgreSQL DISTINCT ON. Default is none.
+  // Warning: This is an experimental feature. Ping #forwarding-platform if you have a use case.
+  flexport.executioncoordinator.types.query.v1.DistinctOn distinct_on = 11;
+}
+
+// The response for ListExecutionOrderStateEvents.
+message ListExecutionOrderStateEventsResponse {
+  repeated flexport.executioncoordinator.executionorderstateevent.v1.ExecutionOrderStateEvent execution_order_state_events = 1;
+}

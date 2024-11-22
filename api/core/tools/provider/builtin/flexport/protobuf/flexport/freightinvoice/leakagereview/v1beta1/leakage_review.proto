@@ -1,0 +1,36 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.freightinvoice.leakagereview.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "LeakageReviewProto";
+option java_package = "com.flexport.freightinvoice.leakagereview.v1beta1";
+option ruby_package = "Flexport::FreightInvoice::LeakageReview::V1Beta1";
+
+message LeakageReviewReport {
+  string shipment_fid = 1;
+  string currency_code = 2;
+  repeated LRCategoryReport lr_category_reports = 3;
+}
+
+message LRCategoryReport {
+  string lr_category = 1;
+  google.protobuf.BoolValue requires_action = 2;
+  repeated LeakageReviewExplanation explanations = 3;
+}
+
+message LeakageReviewExplanation {
+  google.protobuf.Timestamp explained_at_time = 1;
+  string explained_by_user_fid = 2;
+}
+
+// An explanation has been created on a cost item in leakage review
+message LeakageExplanationCreated {
+  string shipment_fid = 1;
+  string vendor_bill_item_fid = 2;
+}

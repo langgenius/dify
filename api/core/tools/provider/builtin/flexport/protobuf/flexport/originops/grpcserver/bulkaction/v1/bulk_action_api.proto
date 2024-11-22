@@ -1,0 +1,27 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.originops.grpcserver.bulkaction.v1;
+
+import "flexport/originops/grpcserver/bulkaction/v1/bulk_action.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BulkActionApiProto";
+option java_package = "com.flexport.originops.grpcserver.bulkaction.v1";
+option ruby_package = "Flexport::OriginOps::GRpcServer::BulkAction::V1";
+
+// The grpc api to update the bulk action run and operation status.
+service BulkActionAPI {
+  // Update the operations status of a bulk action run.
+  rpc UpdateOperationStatus(UpdateOperationStatusRequest) returns (UpdateOperationStatusResponse);
+}
+
+message UpdateOperationStatusRequest {
+  string bulk_action_run_id = 1;
+  repeated UpdateOperationRunStatusDescriptor operations = 2;
+}
+
+message UpdateOperationStatusResponse {
+  string bulk_action_run_id = 1;
+}

@@ -1,0 +1,35 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.monolith.exceptions.exception.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ExceptionEntityProto";
+option java_package = "com.flexport.monolith.exceptions.exception.v1";
+option ruby_package = "Flexport::Monolith::Exceptions::Exception::V1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Exception record.
+// See https://flexport.atlassian.net/wiki/spaces/EN/pages/1206912059/Exceptions+data+ingestion+into+data+lake+warehouse+WIP .
+message ExceptionEntity {
+  string fid = 1;
+  // This is the UUID, and this is the key ExceptionRevision will use to link them. The db id is not included
+  string id = 2;
+  TargetType exception_target_type = 3;
+  string exception_target_id = 4;
+  string reported_by_user_fid = 5;
+  int64 current_revision_id = 6;
+  google.protobuf.Timestamp created_at_time = 7;
+  google.protobuf.Timestamp updated_at_time = 8;
+  google.protobuf.Timestamp deleted_at_time = 9;
+  google.protobuf.StringValue exception_target_fid = 10;
+}
+
+// See engines/exceptions/app/services/exceptions/exception_type.rb#VALID_TARGETS
+enum TargetType {
+  TARGET_TYPE_INVALID = 0;
+  TARGET_TYPE_SHIPMENT = 1;
+}

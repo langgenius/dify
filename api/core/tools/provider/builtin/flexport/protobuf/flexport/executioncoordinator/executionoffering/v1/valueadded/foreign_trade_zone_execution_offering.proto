@@ -1,0 +1,22 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionoffering.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ForeignTradeZoneExecutionOfferingProto";
+option java_package = "com.flexport.executioncoordinator.executionoffering.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOffering::V1";
+
+// An Foreign Trade Zone (FTZ) is a zone where BOLs can be consolidated/manipulated/destroyed under specific customs regulations
+// ForeignTradeZoneExecutionOffering is a value-add execution offering for handling FTZ shipments and smooth FTZ operations
+message ForeignTradeZoneExecutionOffering {
+  // these two fields indicating whether clients want these two services
+  // they are independent with each other and clients can fill either or both of them
+
+  // 214 filling is admission into FTZ, will be always filling by importers
+  bool wants_214_filing = 1;
+  // this is actual FTZ entry for customs filling daily or weekly
+  bool wants_ftz_entry = 2;
+}

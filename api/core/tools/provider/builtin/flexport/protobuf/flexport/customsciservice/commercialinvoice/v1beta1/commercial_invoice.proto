@@ -1,0 +1,118 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsciservice.commercialinvoice.v1beta1;
+
+import "flexport/customsciservice/commercialinvoice/v1beta1/commercial_invoice_condition.proto";
+import "flexport/customsciservice/constants/v1beta1/constants.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CommercialInvoiceProto";
+option java_package = "com.flexport.customsciservice.commercialinvoice.v1beta1";
+option ruby_package = "Flexport::CustomsCiService::CommercialInvoice::V1Beta1";
+
+// Represents a commercial invoice object
+message CommercialInvoice {
+  // Deprecated "freight_charge_adjustments (19)" and replaced with "charge_adjustments (21)"
+  reserved 19;
+
+  uint32 id = 1;
+  string client_fid = 2;
+  google.protobuf.Int32Value shipment_id = 3;
+  google.protobuf.StringValue shipment_ref = 4;
+  string invoice_number = 5;
+  google.protobuf.StringValue invoice_date = 6;
+  string currency_code = 7;
+  google.protobuf.StringValue terms_of_sale = 8;
+  google.protobuf.BoolValue is_related_parties = 9;
+  double proration_amount = 10;
+  google.protobuf.Struct metadata = 11;
+  google.protobuf.StringValue mid_code = 12;
+  repeated CommercialInvoiceLineItem line_items = 13;
+  repeated CommercialInvoiceInvolvedParty involved_parties = 14;
+  flexport.customsciservice.constants.v1beta1.CISourceType source = 15;
+  google.protobuf.Timestamp created_at = 16;
+  google.protobuf.Timestamp updated_at = 17;
+  google.protobuf.StringValue document_fid = 18;
+
+  repeated CommercialInvoiceCondition conditions = 20;
+
+  repeated ChargeAdjustment charge_adjustments = 21;
+}
+
+// Represents a commercial invoice line item object
+message CommercialInvoiceLineItem {
+  // Deprecated "freight_charge_adjustments (30)" and replaced with "charge_adjustments (31)"
+  reserved 30;
+
+  uint32 id = 1;
+  google.protobuf.Int32Value document_line_number = 2;
+  google.protobuf.StringValue purchase_order_number = 3;
+  google.protobuf.StringValue mid_code = 6;
+  google.protobuf.StringValue container_number = 7;
+  google.protobuf.StringValue country_of_origin = 8;
+  string sku = 9;
+  int32 quantity = 10;
+  google.protobuf.DoubleValue net_value = 11;
+  double value = 12;
+  double unit_price = 13;
+  google.protobuf.DoubleValue net_weight = 14;
+  google.protobuf.DoubleValue net_net_weight = 15;
+  google.protobuf.DoubleValue gross_weight = 16;
+  google.protobuf.DoubleValue volume = 17;
+  flexport.customsciservice.constants.v1beta1.QuantityUnit quantity_unit_of_measure = 18;
+  flexport.customsciservice.constants.v1beta1.WeightUnit weight_unit_of_measure = 19;
+  flexport.customsciservice.constants.v1beta1.VolumeUnit volume_unit_of_measure = 20;
+  optional double first_sale_value = 21;
+  google.protobuf.DoubleValue final_sale_value = 22;
+  google.protobuf.StringValue description = 23;
+  google.protobuf.StringValue po_line_item_number = 24;
+  CommercialInvoiceInvolvedParty manufacturer_address = 25;
+  google.protobuf.Struct metadata = 26;
+  google.protobuf.Timestamp created_at = 27;
+  google.protobuf.Timestamp updated_at = 28;
+  google.protobuf.StringValue product_fid = 29;
+
+  repeated ChargeAdjustment charge_adjustments = 31;
+  oneof special_program {
+    string special_program_code = 32;
+    bool eligible_for_special_program = 33;
+  }
+
+  flexport.customsciservice.constants.v1beta1.CILineItemSourceType source = 34;
+}
+
+// Represents a commercial invoice involved party object
+message CommercialInvoiceInvolvedParty {
+  uint32 id = 1;
+  flexport.customsciservice.constants.v1beta1.InvolvedPartyType type = 2;
+  google.protobuf.StringValue name = 3;
+  google.protobuf.StringValue address_line_1 = 4;
+  google.protobuf.StringValue address_line_2 = 5;
+  google.protobuf.StringValue address_line_3 = 6;
+  google.protobuf.StringValue address_line_4 = 7;
+  google.protobuf.StringValue address_line_5 = 8;
+  google.protobuf.StringValue address_line_6 = 9;
+  google.protobuf.StringValue city = 10;
+  google.protobuf.StringValue state_province = 11;
+  google.protobuf.StringValue postal_code = 12;
+  google.protobuf.StringValue country_code = 13;
+  google.protobuf.StringValue external_ref = 14;
+  google.protobuf.StringValue network_entity_fid = 16;
+}
+
+message ChargeAdjustment {
+  uint32 id = 1;
+  flexport.customsciservice.constants.v1beta1.ChargeAdjustmentAppliedAs adjustment_applied_as = 2;
+  flexport.customsciservice.constants.v1beta1.ChargeAdjustmentCode adjustment_code = 3;
+  double adjustment_value = 4;
+  google.protobuf.Int32Value commercial_invoice_id = 5;
+  google.protobuf.Int32Value commercial_invoice_line_item_id = 6;
+  google.protobuf.StringValue currency_code = 7;
+  google.protobuf.StringValue client_defined_code = 8;
+  flexport.customsciservice.constants.v1beta1.ChargeAdjustmentAppliedTo adjustment_applied_to = 9;
+}

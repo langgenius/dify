@@ -1,0 +1,19 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.monolith.vendorbill.events.v1beta1;
+
+import "flexport/monolith/vendorbill/v1beta1/vendor_bill.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BillSentBackToReviewProto";
+option java_package = "com.flexport.monolith.vendorbill.events.v1beta1";
+option ruby_package = "Flexport::Monolith::VendorBill::Events::V1Beta1";
+
+// Event emitted when a VendorBill is sent back from in_core back to pending.
+message BillSentBackToReview {
+  flexport.monolith.vendorbill.v1beta1.VendorBill vendor_bill = 1;
+  google.protobuf.Timestamp changed_at_time = 2;
+}

@@ -1,0 +1,40 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billautomation.manualreviewbill.v1beta1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TranscribedEmailBillProto";
+option java_package = "com.flexport.billautomation.manualreviewbill.v1beta1";
+option ruby_package = "Flexport::BillAutomation::ManualReviewBill::V1Beta1";
+
+message TranscribedEmailBill {
+  google.protobuf.StringValue bill_name = 1;
+  google.protobuf.StringValue vendor_fid = 2;
+  google.protobuf.StringValue issuing_entity_name = 3;
+  google.protobuf.StringValue issuing_entity_fid = 4;
+  google.protobuf.StringValue receiving_entity_fid = 5;
+  google.protobuf.StringValue document_extraction_fid = 6;
+  google.protobuf.Timestamp issued_at_time = 7;
+  google.protobuf.Timestamp due_at_time = 8;
+  google.protobuf.Timestamp email_internal_date_time = 9;
+  google.protobuf.StringValue currency_code = 10;
+  repeated TranscribedEmailBillLineItem line_items = 11;
+  AllocationIdentifiers allocation_identifiers = 12;
+}
+
+message TranscribedEmailBillLineItem {
+  google.protobuf.StringValue description = 1;
+  google.protobuf.DoubleValue price = 2;
+}
+
+message AllocationIdentifiers {
+  repeated string shipment_fids = 1;
+  repeated string container_ids = 2;
+  repeated string delivery_order_fids = 3;
+  repeated string bills_of_lading = 4;
+}

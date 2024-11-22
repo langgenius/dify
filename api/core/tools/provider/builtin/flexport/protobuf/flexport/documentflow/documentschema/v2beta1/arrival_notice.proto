@@ -1,0 +1,40 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentflow.documentschema.v2beta1;
+
+import "flexport/documentflow/documentschema/v2beta1/entity_document_field.proto";
+import "flexport/documentflow/documentschema/v2beta1/primitive_document_field.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ArrivalNoticeProto";
+option java_package = "com.flexport.documentflow.documentschema.v2beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentSchema::V2Beta1";
+
+// Next ID: 14
+message ArrivalNotice {
+  reserved 4, 9;
+  // FIRMS Code
+  DocumentField firms_code = 1;
+  // Weight
+  WeightDocumentField gross_weight = 2;
+  // Cartons
+  IntegerDocumentField total_cartons = 3;
+  // Document issue datetime
+  TimestampDocumentField issue_datetime = 5;
+  // Container info
+  repeated ContainerDocumentField containers = 6;
+  // MBL Number
+  DocumentField mbl_number = 7;
+  // Import port
+  DocumentField port_of_discharge = 8;
+  // Voyage Number
+  repeated DocumentField voyage_number = 10;
+  // Vessel details
+  repeated VesselDocumentField vessel = 11;
+  // Location Code
+  DocumentField location_code = 12;
+  // Estimated Arrival Date
+  TimestampDocumentField eta = 13;
+}

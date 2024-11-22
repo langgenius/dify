@@ -1,0 +1,27 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.smb.globalconveyorbelt.v1beta1;
+
+import "flexport/quoting/rfq/v2/rfq.proto";
+import "flexport/smb/globalconveyorbelt/v1beta1/global_conveyor_belt.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "GlobalConveyorBeltApiProto";
+option java_package = "com.flexport.smb.globalconveyorbelt.v1beta1";
+option ruby_package = "Flexport::Smb::GlobalConveyorBelt::V1Beta1";
+
+// API for global conveyor belt data
+service GlobalConveyorBeltAPI {
+  // Find gcb offerings for quote request.
+  rpc GetGcbOfferingsForRfq(GetGcbOfferingsForRfqRequest) returns (GetGcbOfferingsForRfqResponse);
+}
+
+message GetGcbOfferingsForRfqRequest {
+  quoting.rfq.v2.Rfq rfq = 1;
+}
+
+message GetGcbOfferingsForRfqResponse {
+  repeated GlobalConveyorBeltOffering offerings = 1;
+}

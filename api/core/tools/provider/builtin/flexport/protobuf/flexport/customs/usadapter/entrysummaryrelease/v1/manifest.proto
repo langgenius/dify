@@ -1,0 +1,20 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.entrysummaryrelease.v1;
+
+import "flexport/customs/usadapter/entrysummaryrelease/v1/house_bill.proto";
+import "flexport/customs/usadapter/entrysummaryrelease/v1/master_bill.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.entrysummaryrelease.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::EntrySummaryRelease::V1";
+
+message Manifest {
+  int32 quantity = 1;
+  string unit_of_measure = 2;
+  MasterBill master_bill = 3;
+  optional HouseBill house_bill = 4;
+  optional string in_bond_bill_identifier = 5;
+}

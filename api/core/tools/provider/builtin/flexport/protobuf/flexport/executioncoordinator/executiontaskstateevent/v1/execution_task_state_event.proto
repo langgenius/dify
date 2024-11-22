@@ -1,0 +1,460 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/air_cargo_manifested.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/air_cargo_received_from_shipper.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/air_cargo_split.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/air_carrier_accepted_booking.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/air_carrier_cargo_delivered.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/air_consignee_notified.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/build_plan_execution_complete.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/cargo_consolidated.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/cargo_departed_warehouse.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/cargo_devan_date_updated.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/cargo_manifest_document_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/cargo_pickup_availability_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/cargo_receipt_confirmed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/cargo_receipt_deleted.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/cargo_received.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/cargo_transit_date_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/cfs_inbound_workflow_updated.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/commercial_invoice_document_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/consol_child_route_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_carrier_released.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_customs_released.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_demurrage_amount_reported.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_departure_from_origin.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_discharge_date_scheduled.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_discharged_from_vessel.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_empty_pickup.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_empty_released.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_empty_returned.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_firms_code_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_free_time_expired.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_geofence_event_reported.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_in_review.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_last_free_day_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_loaded_on_board.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_loaded_on_board_consol_child.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_location_reported.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_out_of_network.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_pickup_availability_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_pickup_number_added.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_return_availability_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_tracked.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/container_tracking_inactive.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/damage_photos_document_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/devan_report_document_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/execution_task_exception_filed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/execution_task_revision_processed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/general_document_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/lithium_battery_receiving_checklist_document_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/master_air_waybill_archived.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/master_air_waybill_updated.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/master_house_bill_of_lading_received.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/master_house_bill_of_lading_updated.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_arrival_notice_received.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_attached.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_carrier_updated.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_container_requests_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_copy_schedule_attempted.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_cutoff_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_detached.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_first_etd_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_first_feeder_updated.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_house_bill_of_lading_route_override_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_last_eta_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_mismatch_detection_updated.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_released_container_counts_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_schedule_confirmed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_shipping_order_numbers_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_shipping_orders_updated.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_sub_shipping_order_numbers_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_updated.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_booking_voyage_updated.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_bookings_confirmed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_shipping_instruction_submission_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_space_released.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_carrier_vgm_submission_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_consol_devan_date_updated.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_consol_origin_cfs_cutoff_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_freight_release_received.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_master_bill_of_lading_received.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_master_bill_of_lading_updated.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/ocean_shipping_order_received.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/packing_list_document_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/photo_document_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/rail_container_actual_placement_occurred.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/rail_container_arrived.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/rail_container_available_for_pickup.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/rail_container_departed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/rail_container_deramped.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/rail_container_destination_firms_code_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/rail_container_eta_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/rail_container_inland_transit_number_added.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/rail_container_pickup_number_added.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/rail_container_ramped.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/rail_container_sighting_occurred.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/rail_container_terminal_gate_out_occurred.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/rail_container_train_number_provided.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/route_shape_reported.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/shipping_instructions_document_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/terminal_or_cfs_reported.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_accessorial_charge_incurred.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_bill_of_lading_document_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_carrier_accepted_delivery_order.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_carrier_added_tracking_number.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_carrier_confirmed_schedule.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_carrier_declined_delivery_order.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_container_loading_finished.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_delivery_appointment_requested.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_delivery_appointment_requested_at.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_delivery_appointment_requested_for.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_delivery_appointment_scheduled.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_delivery_order_auto_send_schedule_set.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_delivery_order_created.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_delivery_order_deleted.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_delivery_order_notice_sent.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_delivery_order_recover_and_hold_sent.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_delivery_order_release_from_hold.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_delivery_order_sent.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_drayage_warehouse_visit_type_changed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_estimated_out_for_final_delivery.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_final_delivery_confirmed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_inaccurate_delivery_order_reported.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_out_for_final_delivery.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_proof_of_delivery_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/trucking_trailer_loading_finished.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/us_bonded_move_authorization_document_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/verified_gross_mass_declaration_document_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/warehouse_delivery_time_proposed.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/warehouse_receipt_document_uploaded.proto";
+import "flexport/executioncoordinator/executiontaskstateevent/v1/details/warehouse_release_document_uploaded.proto";
+import "flexport/executioncoordinator/types/enums/v1/entry_point.proto";
+import "flexport/executioncoordinator/types/visibility/v1/metadata.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionTaskStateEventProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// This file: http://go/etse-proto.
+//
+// ExecutionTaskStateEvents (ETSEs) are events about progress towards the completion of
+// an ExecutionTask. Generally these events correspond to interactions with buy-side
+// service providers such as carriers, partners, or customs brokers.
+//
+//   Most recently updated:
+//   go/etse-latest
+//
+//   By fid:
+//   go/fid/flx::trucking:execution_task_state_event:31895c95-7800-42d5-87b7-16403ee2870b
+//
+// The syntax tree for this name reads like this:
+//
+// [[[ExecutionTask]State]Event]
+//
+// ExecutionTask:
+// A unit of work to be performed as part of the execution of an ExecutionOrder.
+// Planned by the ExecutionPlanner and executed by an ExecutionProvider.
+// Roughly corresponds to a booking we would make with an external carrier.
+// Example: drayage of two containers from Port of Long Beach to client warehouse foo.
+//
+// ExecutionTaskState:
+// The current state of an ExecutionProvider's execution of an ExecutionTask. This is called
+// "ExecutionTask state", in contrast to the "ExecutionTask params" set by the ExecutionPlanner.
+// React's notion of "props" and "state" inspired this naming.
+// Example: the datetime the container was actually picked up from the port.
+//
+// ExecutionTaskStateEvent:
+// A semantic event about ExecutionTaskState emitted by ExecutionProviders. All ExecutionTaskState
+// is represented with these events. The "current state" can be event sourced from the stream of
+// ExecutionTaskStateEvents.
+// Example: driver reported container picked up from port at 2020-06-01 13:00:00.
+//
+// ExecutionTaskStateEventCreated:
+// A thin wrapper proto around an ExecutionTaskStateEvent for publishing on Kinesis.
+//
+// Related concept: ExecutionOrderStateEvents. See the wiki page http://go/eose-vs-etse for details.
+//
+message ExecutionTaskStateEvent {
+  //
+  // The event's unique identifier. Event publishers MUST assign an fid to each individual
+  // ExecutionTaskStateEvent. This is useful for building query APIs over the event stream
+  // and debugging. See http://go/etse-latest for recent ET state events to see what this means.
+  //
+  // The service_name in the fid should match your service per the examples below:
+  //
+  // For "ocean_arrival_notice_received" events emitted by ocean ExecutionProvider:
+  //
+  //   flx::ocean_fcl_provider:execution_task_state_event:foo123
+  //
+  // For "cargo_transit_date_changed" events emitted by either ocean FCL or trucking:
+  //
+  //   flx::ocean_fcl_provider:execution_task_state_event:bar456
+  //   flx::trucking_provider:execution_task_state_event:baz456
+  //
+  // Even when emitting ET state events from a Rails Engine in the monolith, use the proper
+  // service_name for the ExecutionProvider as if it were its own NIS.
+  string fid = 1;
+  //
+  // The fid of the ExecutionTask this event relates to.
+  string execution_task_fid = 2;
+  //
+  // The time this event was created.
+  google.protobuf.Timestamp created_time = 3;
+  //
+  // Time the entity was persisted in the EC-NIS.
+  google.protobuf.Timestamp processed_time = 7;
+  //
+  // The user responsible for triggering this event. If the event is automated can be a service user.
+  string created_by_fid = 4;
+  //
+  // The original entry point through which this event entered the ExecutionCoordinator ecosystem.
+  // This is the "raw source" of the event such as Rail Inc, provider GraphQL, or Transmission.
+  flexport.executioncoordinator.types.enums.v1.EntryPoint entry_point = 8;
+  //
+  // Semi-arbitrary legacy metadata. Avoid using.
+  ExecutionTaskStateEventLegacy legacy = 9;
+  // (Optional) an identifier for a visibility event that
+  // triggered this event
+  string visibility_trace_id = 10;
+  // Store the metadata from upstream. eg. VisSource
+  flexport.executioncoordinator.types.visibility.v1.Metadata metadata = 11;
+  //
+  // Instructions for adding a new kind of event:
+  // (1) Keep the list alphabetically ordered.
+  // (2) Respect these field number ranges:
+  //     100-199 = any, 200-299 = ocean, 300-399 = air, 400-499 = trucking,
+  //     500-599 = warehouse, 600-699 = ocean consol, 700-799 = rail
+  // (3) Run `fx bazel proto-bindings --targets=core` to generate rb/rbi files.
+  // (4) If you are publishing from an NIS, ensure it has "put" permissions for the Kinesis topic
+  //     "forwarding-execution-task-state", similar to http://go/eose-put.
+  // Next ID for 100-199: 148
+  oneof event_details {
+    //
+    // A wrapper "event details" for an exception related to an ExecutionTask.
+    ExecutionTaskExceptionFiled exception_filed = 99;
+    //
+    // Meta events.
+    ExecutionTaskRevisionProcessed execution_task_revision_processed = 113;
+    //
+    // Common events shared across modes.
+    CargoPickupAvailabilityChanged cargo_pickup_availability_changed = 103;
+    CargoTransitDateChanged cargo_transit_date_changed = 100;
+    DamagePhotosDocumentUploaded damage_photos_document_uploaded = 116;
+    DevanReportDocumentUploaded devan_report_document_uploaded = 117;
+    GeneralDocumentUploaded general_document_uploaded = 118;
+    LithiumBatteryReceivingChecklistDocumentUploaded lithium_battery_receiving_checklist_document_uploaded = 119;
+    PhotoDocumentUploaded photo_document_uploaded = 121;
+    RouteShapeReported route_shape_reported = 134;
+    TerminalOrCfsReported terminal_or_cfs_reported = 143;
+    UsBondedMoveAuthorizationDocumentUploaded us_bonded_move_authorization_document_uploaded = 124;
+    WarehouseReceiptDocumentUploaded warehouse_receipt_document_uploaded = 126;
+    WarehouseReleaseDocumentUploaded warehouse_release_document_uploaded = 127;
+    //
+    // Ocean FCL/Consol container events. Data sources include carriers, terminals, third-party trackers,
+    // as well as drayage carriers.
+    ContainerCarrierReleased container_carrier_released = 131;
+    ContainerCustomsReleased container_customs_released = 130;
+    ContainerDemurrageAmountReported container_demurrage_amount_reported = 142;
+    ContainerDischargeDateScheduled container_discharge_date_scheduled = 140;
+    ContainerDischargedFromVessel container_discharged_from_vessel = 129;
+    ContainerEmptyPickup container_empty_pickup = 146;
+    ContainerEmptyReturned container_empty_returned = 112;
+    ContainerFirmsCodeChanged container_firms_code_changed = 106;
+    ContainerFreeTimeExpired container_free_time_expired = 110;
+    ContainerLastFreeDayChanged container_last_free_day_changed = 109;
+    ContainerLoadedOnBoard container_loaded_on_board = 128;
+    ContainerEmptyReleased container_empty_released = 144;
+    ContainerDepartureFromOrigin container_departure_from_origin = 145;
+    ContainerLocationReported container_location_reported = 141;
+    ContainerInReview container_in_review = 136;
+    ContainerOutOfNetwork container_out_of_network = 135;
+    ContainerPickupAvailabilityChanged container_pickup_availability_changed = 132;
+    ContainerPickupNumberAdded container_pickup_number_added = 133;
+    ContainerReturnAvailabilityChanged container_return_availability_changed = 111;
+    ContainerTracked container_tracked = 139;
+    ContainerTrackingInactive container_tracking_inactive = 138;
+    ContainerGeofenceEventReported container_geofence_event_reported = 147;
+
+    //
+    // Ocean FCL carrier events. Data sources include ocean carriers and third-party trackers.
+    // If adding a new OceanCarrierBooking event, please also include it in carrier_booking.rb#publish_all_api_events.
+    OceanArrivalNoticeReceived ocean_arrival_notice_received = 204;
+    OceanCarrierBookingAttached ocean_carrier_booking_attached = 223;
+    OceanCarrierBookingCarrierUpdated ocean_carrier_booking_carrier_updated = 211;
+    OceanCarrierBookingContainerRequestsChanged ocean_carrier_booking_container_requests_changed = 216;
+    OceanCarrierBookingCopyScheduleAttempted ocean_carrier_booking_copy_schedule_attempted = 225;
+    OceanCarrierBookingCutoffChanged ocean_carrier_booking_cutoff_changed = 210;
+    OceanCarrierBookingDetached ocean_carrier_booking_detached = 222;
+    OceanCarrierBookingFirstEtdChanged ocean_carrier_booking_first_etd_changed = 209;
+    OceanCarrierBookingFirstFeederUpdated ocean_carrier_booking_first_feeder_updated = 214;
+    OceanCarrierBookingHouseBillOfLadingRouteOverrideChanged ocean_carrier_booking_house_bill_of_lading_route_override_changed = 217;
+    OceanCarrierBookingLastEtaChanged ocean_carrier_booking_last_eta_changed = 208;
+    OceanCarrierBookingMismatchDetectionUpdated ocean_carrier_booking_mismatch_detection_updated = 228;
+    OceanCarrierBookingReleasedContainerCountsChanged ocean_carrier_booking_released_container_counts_changed = 215;
+    OceanCarrierBookingScheduleConfirmed ocean_carrier_booking_schedule_confirmed = 224;
+    OceanCarrierBookingShippingOrdersUpdated ocean_carrier_booking_shipping_orders_updated = 218;
+    OceanCarrierBookingShippingOrderNumbersChanged ocean_carrier_booking_shipping_order_numbers_changed = 213;
+    OceanCarrierBookingSubShippingOrderNumbersChanged ocean_carrier_booking_sub_shipping_order_numbers_changed = 212;
+    OceanCarrierBookingUpdated ocean_carrier_booking_updated = 207;
+    OceanCarrierBookingsConfirmed ocean_carrier_bookings_confirmed = 220;
+    OceanCarrierSpaceReleased ocean_carrier_space_released = 200;
+    OceanFreightReleaseReceived ocean_freight_release_received = 205;
+    OceanShippingOrderReceived ocean_shipping_order_received = 219;
+    OceanMasterBillOfLadingReceived ocean_master_bill_of_lading_received = 206;
+    OceanMasterBillOfLadingUpdated ocean_master_bill_of_lading_updated = 221;
+    OceanCarrierVgmSubmissionChanged ocean_carrier_vgm_submission_changed = 226;
+    OceanCarrierShippingInstructionSubmissionChanged ocean_carrier_shipping_instruction_submission_changed = 227;
+    OceanCarrierBookingVoyageUpdated ocean_carrier_booking_voyage_updated = 229;
+    //
+    // Air carrier events. Data sources include air carriers and third-party trackers.
+    AirCargoManifested air_cargo_manifested = 303;
+    AirCargoReceivedFromShipper air_cargo_received_from_shipper = 302;
+    AirCargoSplit air_cargo_split = 308;
+    AirCarrierAcceptedBooking air_carrier_accepted_booking = 301;
+    AirCarrierCargoDelivered air_carrier_cargo_delivered = 305;
+    AirConsigneeNotified air_consignee_notified = 304;
+    MasterAirWaybillUpdated master_air_waybill_updated = 306;
+    MasterAirWaybillArchived master_air_waybill_archived = 307;
+
+    //
+    // Trucking events. Data sources include warehouses and trucking carriers.
+    TruckingAccessorialChargeIncurred trucking_accessorial_charge_incurred = 410;
+    TruckingCarrierAddedTrackingNumber trucking_carrier_added_tracking_number = 415;
+    TruckingCarrierAcceptedDeliveryOrder trucking_carrier_accepted_delivery_order = 401;
+    TruckingCarrierConfirmedSchedule trucking_carrier_confirmed_schedule = 104;
+    TruckingCarrierDeclinedDeliveryOrder trucking_carrier_declined_delivery_order = 406;
+    TruckingContainerLoadingFinished trucking_container_loading_finished = 414;
+    TruckingDrayageWarehouseVisitTypeChanged trucking_drayage_warehouse_visit_type_changed = 413;
+    TruckingDeliveryAppointmentRequested trucking_delivery_appointment_requested = 407;
+    TruckingDeliveryAppointmentRequestedAt trucking_delivery_appointment_requested_at = 418;
+    TruckingDeliveryAppointmentRequestedFor trucking_delivery_appointment_requested_for = 419;
+    TruckingDeliveryAppointmentScheduled trucking_delivery_appointment_scheduled = 102;
+    TruckingDeliveryOrderNoticeSent trucking_delivery_order_notice_sent = 402;
+    TruckingDeliveryOrderRecoverAndHoldSent trucking_delivery_order_recover_and_hold_sent = 403;
+    TruckingDeliveryOrderReleaseFromHold trucking_delivery_order_release_from_hold = 404;
+    TruckingDeliveryOrderSent trucking_delivery_order_sent = 400;
+    TruckingEstimatedOutForFinalDelivery trucking_estimated_out_for_final_delivery = 412;
+    TruckingFinalDeliveryConfirmed trucking_final_delivery_confirmed = 408;
+    TruckingInaccurateDeliveryOrderReported trucking_inaccurate_delivery_order_reported = 411;
+    TruckingOutForFinalDelivery trucking_out_for_final_delivery = 405;
+    TruckingProofOfDeliveryUploaded trucking_proof_of_delivery_uploaded = 101;
+    TruckingTrailerLoadingFinished trucking_trailer_loading_finished = 409;
+    TruckingDeliveryOrderCreated trucking_delivery_order_created = 416;
+    TruckingDeliveryOrderDeleted trucking_delivery_order_deleted = 417;
+    TruckingDeliveryOrderAutoSendScheduleSet trucking_delivery_order_auto_send_schedule_set = 420;
+    //
+    // Warehouse events. Data sources include warehouse app and warehouse API integrations.
+    CargoConsolidated cargo_consolidated = 501;
+    CargoReceived cargo_received = 502;
+    WarehouseDeliveryTimeProposed warehouse_delivery_time_proposed = 503;
+    CargoDevanDateUpdated cargo_devan_date_updated = 504;
+    CargoReceiptConfirmed cargo_receipt_confirmed = 108 [deprecated = true];
+    BuildPlanExecutionComplete build_plan_execution_complete = 505;
+    CargoReceiptDeleted cargo_receipt_deleted = 506;
+    CargoDepartedWarehouse cargo_departed_warehouse = 507;
+    //
+    // Ocean consol events. Data sources include coloaders and container freight stations.
+    ConsolChildRouteChanged consol_child_route_changed = 603;
+    OceanConsolDevanDateUpdated ocean_consol_devan_date_updated = 602;
+    OceanConsolOriginCfsCutoffChanged ocean_consol_origin_cfs_cutoff_changed = 601;
+    ContainerLoadedOnBoardConsolChild container_loaded_on_board_consol_child = 604;
+    //
+    // Rail events. Data sources include third-party trackers.
+    RailContainerActualPlacementOccurred rail_container_actual_placement_occurred = 701;
+    RailContainerArrived rail_container_arrived = 702;
+    RailContainerDeparted rail_container_departed = 703;
+    RailContainerDeramped rail_container_deramped = 704;
+    RailContainerEtaChanged rail_container_eta_changed = 705;
+    RailContainerRamped rail_container_ramped = 706;
+    RailContainerSightingOccurred rail_container_sighting_occurred = 707;
+    RailContainerTerminalGateOutOccurred rail_container_terminal_gate_out_occurred = 708;
+    RailContainerTrainNumberProvided rail_container_train_number_provided = 709;
+    RailContainerDestinationFirmsCodeChanged rail_container_destination_firms_code_changed = 710;
+    RailContainerPickupNumberAdded rail_container_pickup_number_added = 711;
+    RailContainerAvailableForPickup rail_container_available_for_pickup = 712;
+    RailContainerInlandTransitNumberAdded rail_container_inland_transit_number_added = 713;
+    //
+    // Master House Bill of Lading events. Data sources include coloaders and third-party trackers.
+    MasterHouseBillOfLadingReceived master_house_bill_of_lading_received = 801;
+    MasterHouseBillOfLadingUpdated master_house_bill_of_lading_updated = 802;
+    //
+    // ExecutionOrder-level documents are sometimes uploaded by systems during the execution of
+    // specific ExecutionTasks. For example, the warehouse app is used by some tactically-focused
+    // shipper and consignee warehouse operators in lieu of the client app. The data that appears
+    // in this UI is powered by ExecutionTasks (eg warehouse should expect to receive X cargo),
+    // but operators use it to enter ExecutionOrder-type data as well, eg uploading the CI or PL.
+    // We could have the warehouse app emit EOSEs in these situations. But emitting ETSEs is fine
+    // as well. A derived document service consuming all these events can make them easy to view
+    // and interact with regardless of source. As of January 2021, the shipment details documents
+    // core right documents tab serves this role.
+    CargoManifestDocumentUploaded cargo_manifest_document_uploaded = 114;
+    CommercialInvoiceDocumentUploaded commercial_invoice_document_uploaded = 115;
+    PackingListDocumentUploaded packing_list_document_uploaded = 120;
+    ShippingInstructionsDocumentUploaded shipping_instructions_document_uploaded = 122;
+    TruckingBillOfLadingDocumentUploaded trucking_bill_of_lading_document_uploaded = 123;
+    VerifiedGrossMassDeclarationDocumentUploaded verified_gross_mass_declaration_document_uploaded = 125;
+    // Destination CFS Inbound workflow event
+    // DEPRECATED
+    CfsInboundWorkflowUpdated cfs_inbound_workflow_updated = 137 [deprecated = true];
+  }
+}
+
+// Semi-arbitrary legacy data. Avoid using.
+message ExecutionTaskStateEventLegacy {
+  string temp_track_and_trace_event_fid = 1;
+}
+
+// Kinesis event emitted by ExecutionProvider when a new ExecutionTaskStateEvent is created.
+message ExecutionTaskStateEventCreated {
+  string execution_task_fid = 1;
+  ExecutionTaskStateEvent execution_task_state_event = 4;
+  //
+  // The time the wrapper proto message was created. There may be delay between when the inner
+  // ExecutionTaskStateEvent proto message event was created and when the wrapper was created
+  // if after-commit hooks are used to approximate transactional event publishing semantics.
+  // See "Transactional publishing" section on http://go/event-log. The timestamp on the wrapper
+  // message is mostly for infra-level debugging and instrumentation. Use the created_time within
+  // the inner message for the semantic time the event was created.
+  google.protobuf.Timestamp created_time = 2;
+}
+
+// ExecutionProvider has received state data but chosen to reject it.
+// The provider can publish this ETSE to allow auditing of these
+// events, even if their values are ignored.
+message ExecutionTaskStateEventRejected {
+  string execution_task_fid = 1;
+  ExecutionTaskStateEvent execution_task_state_event = 2;
+  RejectedReason rejected_reason = 3;
+  google.protobuf.Timestamp created_time = 4;
+}
+
+// List of reasons to reject events.
+enum RejectedReason {
+  REJECTED_REASON_INVALID = 0;
+  REJECTED_REASON_VALUE_DID_NOT_CHANGE = 1;
+  REJECTED_REASON_LOW_CONFIDENCE = 2;
+  REJECTED_REASON_NO_MATCHING_PLACE = 3;
+  REJECTED_REASON_ACTUAL_ALREADY_APPLIED = 4;
+  REJECTED_REASON_NO_MATCHING_VESSEL = 5;
+  REJECTED_REASON_LAST_UPDATED_BY_CVTQ = 6;
+  REJECTED_REASON_EXCLUDED_BY_CONFIG = 7;
+  // (VIS-13114) This field is deprecated and will be handled by the Vis Decision Engine.
+  REJECTED_REASON_SAME_DATE_AS_LATEST_MILESTONE = 8 [deprecated = true];
+  REJECTED_REASON_SUPPRESS_VESSEL_ETA_IF_DELIVERY_ORDER_IS_SENT = 9;
+  REJECTED_REASON_EXECUTION_TASK_NOT_FOUND = 10;
+  REJECTED_REASON_MISSING_DATA_FOR_EVENT_CREATION = 11;
+  REJECTED_REASON_NO_MATCHING_LEG = 12;
+  REJECTED_REASON_NO_CONTAINER_USE = 13;
+  REJECTED_REASON_STALE_UPDATE = 14;
+  REJECTED_REASON_ILLOGICAL_TIME_SEQUENCE = 15;
+  REJECTED_REASON_LAST_UPDATED_BY_HUMAN_NOT_CVTQ = 16;
+  REJECTED_REASON_TARGET_ADDRESS_NOT_MATCH = 17;
+  REJECTED_REASON_NO_FMC_DELIVERY_TAG = 18;
+}

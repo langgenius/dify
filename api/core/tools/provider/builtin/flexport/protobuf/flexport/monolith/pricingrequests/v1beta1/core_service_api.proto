@@ -1,0 +1,196 @@
+// TEAM: pricing_opportunities
+
+syntax = "proto3";
+
+package flexport.monolith.pricingrequests.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CoreServiceApiProto";
+option java_package = "com.flexport.monolith.pricingrequests.v1beta1";
+option ruby_package = "Flexport::Monolith::PricingRequests::V1Beta1";
+
+import "flexport/monolith/pricingrequests/v1beta1/core_service.proto";
+import "flexport/pricingrequests/bids/v1beta1/bid.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/wrappers.proto";
+
+// This service is used internally by the PricingRequests service to retrieve Core models.
+// Production readiness: https://docs.google.com/document/d/116GKOolI3f1FOjd2kA8vIQLuEDfbG7PDJaqhoYaOxR8/edit
+service CoreServiceAPI {
+  // Get Clients by fids. (Flexport Resource Identifiers)
+  rpc GetClients(GetClientsRequest) returns (GetClientsResponse);
+  // Get FreightPartners by fids.
+  rpc GetFreightPartners(GetFreightPartnersRequest) returns (GetFreightPartnersResponse);
+  // Get Carriers by fids.
+  rpc GetCarriers(GetCarriersRequest) returns (GetCarriersResponse);
+  // Get Ports by fids.
+  rpc GetPorts(GetPortsRequest) returns (GetPortsResponse);
+  // Get Users by fids. (Flexport Resource Identifiers)
+  rpc GetUsers(GetUsersRequest) returns (GetUsersResponse);
+  // Send notifications
+  // rpc SendBidNotifications(SendBidNotificationsRequest) returns (SendBidNotificatonsResponse);
+
+  // Get a bid by fid. This is used for dual writes, the NIS will pull monolith bid data using this method
+  rpc GetBid(GetBidRequest) returns (GetBidResponse);
+  // Get Addresses by fids. (Flexport Resource Identifiers)
+  rpc GetAddresses(GetAddressesRequest) returns (GetAddressesResponse);
+  // Get Addresses that are visible for a given client.
+  rpc GetVisibleAddressesForCompany(GetVisibleAddressesForCompanyRequest) returns (GetVisibleAddressesForCompanyResponse);
+  // Send email via the monolith.
+  rpc SendEmail(SendEmailRequest) returns (SendEmailResponse);
+  // Get automatic assignees for given bid params.
+  rpc GetAutomaticAssigneesForBid(GetAutomaticAssigneesForBidRequest) returns (GetAutomaticAssigneesForBidResponse);
+  // rpc GetAutomaticAssigneesForServiceRegion(GetAutomaticAssigneesForServiceRegionRequest) returns (GetAutomaticAssigneesForServiceRegionResponse);
+
+  // Get ServiceChargeTypes by fids. (Flexport Resource Identifiers)
+  rpc GetServiceChargeTypes(GetServiceChargeTypesRequest) returns (GetServiceChargeTypesResponse);
+  // Get ServiceChargeTypes by charge type slugs.
+  rpc GetServiceChargeTypesBySlug(GetServiceChargeTypesBySlugRequest) returns (GetServiceChargeTypesBySlugResponse);
+  // Get ServiceOfferingConfigs by fids. (Flexport Resource Identifiers)
+  rpc GetServiceOfferingConfigs(GetServiceOfferingConfigsRequest) returns (GetServiceOfferingConfigsResponse);
+  // Get active ServiceOfferingConfig for marketplace service type.
+  rpc GetActiveServiceOfferingConfigForServiceType(GetActiveServiceOfferingConfigForServiceTypeRequest) returns (GetActiveServiceOfferingConfigForServiceTypeResponse);
+  // Get Carrier Contracts by fids. (Flexport Resource Identifiers)
+  rpc GetCarrierContracts(GetCarrierContractsRequest) returns (GetCarrierContractsResponse);
+}
+
+message GetBidRequest {
+  string fid = 1;
+}
+
+message GetBidResponse {
+  flexport.pricingrequests.bids.v1beta1.Bid bid = 1;
+}
+
+message GetCarriersRequest {
+  repeated string carrier_fids = 1;
+}
+
+message GetCarriersResponse {
+  repeated flexport.monolith.pricingrequests.v1beta1.Carrier carriers = 1;
+}
+
+message GetClientsRequest {
+  repeated string client_fids = 1;
+}
+
+message GetClientsResponse {
+  repeated flexport.monolith.pricingrequests.v1beta1.Client clients = 1;
+}
+
+message GetFreightPartnersRequest {
+  repeated string freight_partner_fids = 1;
+}
+
+message GetFreightPartnersResponse {
+  repeated flexport.monolith.pricingrequests.v1beta1.FreightPartner freight_partners = 1;
+}
+
+message GetPortsRequest {
+  repeated string port_fids = 1;
+}
+
+message GetPortsResponse {
+  repeated flexport.monolith.pricingrequests.v1beta1.Port ports = 1;
+}
+
+message GetUsersRequest {
+  repeated string user_fids = 1;
+}
+
+message GetUsersResponse {
+  repeated flexport.monolith.pricingrequests.v1beta1.User users = 1;
+}
+
+message GetAddressesRequest {
+  repeated string address_fids = 1;
+}
+
+message GetAddressesResponse {
+  repeated flexport.monolith.pricingrequests.v1beta1.Address addresses = 1;
+}
+
+message GetVisibleAddressesForCompanyRequest {
+  string company_fid = 1;
+}
+
+message GetVisibleAddressesForCompanyResponse {
+  repeated flexport.monolith.pricingrequests.v1beta1.Address addresses = 1;
+}
+
+message SendEmailRequest {
+  google.protobuf.Struct email_args = 1;
+}
+
+message SendEmailResponse {}
+
+message GetAutomaticAssigneesForBidRequest {
+  // Bid params needed to assign bids to users.
+  message Bid {
+    flexport.monolith.pricingrequests.v1beta1.FlexportOffice flexport_office = 1;
+  }
+  // Bid mode params needed to assign bid modes to users.
+  message BidMode {
+    flexport.monolith.pricingrequests.v1beta1.MarketplaceServiceType marketplace_service_type = 1;
+    flexport.monolith.pricingrequests.v1beta1.BidTradeLane trade_lane = 2;
+    google.protobuf.StringValue service_region_fid = 3;
+  }
+  Bid bid = 1;
+  repeated BidMode bid_modes = 2;
+}
+
+message GetAutomaticAssigneesForBidResponse {
+  // Bid assignees.
+  message Bid {
+    repeated flexport.monolith.pricingrequests.v1beta1.User assignees = 1;
+  }
+  // Bid mode assignees, keyed by input params.
+  message BidMode {
+    flexport.monolith.pricingrequests.v1beta1.MarketplaceServiceType marketplace_service_type = 1;
+    flexport.monolith.pricingrequests.v1beta1.BidTradeLane trade_lane = 2;
+    google.protobuf.StringValue service_region_fid = 3;
+    repeated flexport.monolith.pricingrequests.v1beta1.User assignees = 4;
+  }
+  Bid bid = 1;
+  repeated BidMode bid_modes = 2;
+}
+
+message GetServiceChargeTypesRequest {
+  repeated string service_charge_type_fids = 1;
+}
+
+message GetServiceChargeTypesResponse {
+  repeated flexport.monolith.pricingrequests.v1beta1.ServiceChargeType service_charge_types = 1;
+}
+
+message GetServiceChargeTypesBySlugRequest {
+  repeated string service_charge_type_slugs = 1;
+}
+
+message GetServiceChargeTypesBySlugResponse {
+  repeated flexport.monolith.pricingrequests.v1beta1.ServiceChargeType service_charge_types = 1;
+}
+
+message GetServiceOfferingConfigsRequest {
+  repeated string service_offering_config_fids = 1;
+}
+
+message GetServiceOfferingConfigsResponse {
+  repeated flexport.monolith.pricingrequests.v1beta1.ServiceOfferingConfig service_offering_configs = 1;
+}
+
+message GetActiveServiceOfferingConfigForServiceTypeRequest {
+  flexport.monolith.pricingrequests.v1beta1.MarketplaceServiceType marketplace_service_type = 1;
+}
+
+message GetActiveServiceOfferingConfigForServiceTypeResponse {
+  flexport.monolith.pricingrequests.v1beta1.ServiceOfferingConfig service_offering_config = 1;
+}
+
+message GetCarrierContractsRequest {
+  repeated string carrier_contract_fids = 1;
+}
+
+message GetCarrierContractsResponse {
+  repeated flexport.monolith.pricingrequests.v1beta1.CarrierContract carrier_contracts = 1;
+}

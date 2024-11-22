@@ -1,0 +1,17 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.entityevent.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PartyStatusProto";
+option java_package = "com.flexport.compliance.entityevent.v1beta1";
+option ruby_package = "Flexport::Compliance::EntityEvent::V1Beta1";
+
+// Status of the party.
+enum PartyStatus {
+  PARTY_STATUS_INVALID = 0;
+  PARTY_STATUS_BLOCKED = 1;
+  PARTY_STATUS_UNBLOCKED = 2;
+}

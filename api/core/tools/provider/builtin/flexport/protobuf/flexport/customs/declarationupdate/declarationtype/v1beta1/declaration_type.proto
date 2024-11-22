@@ -1,0 +1,17 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.declarationupdate.declarationtype.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DeclarationTypeProto";
+option java_package = "com.flexport.customs.declarationupdate.declarationtype.v1beta1";
+option ruby_package = "Flexport::Customs::DeclarationUpdate::DeclarationType::V1Beta1";
+
+// The type of a declaration.
+enum DeclarationType {
+  DECLARATION_TYPE_INVALID = 0;
+  DECLARATION_TYPE_SAD = 1;
+  DECLARATION_TYPE_T1 = 2;
+}

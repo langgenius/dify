@@ -1,0 +1,16 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.monolith.oceansailing.portgroup.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PortGroupProto";
+option java_package = "com.flexport.monolith.oceansailing.portgroup.v1beta1";
+option ruby_package = "Flexport::Monolith::OceanSailing::PortGroup::V1Beta1";
+
+enum PortGroupType {
+  PORT_GROUP_TYPE_INVALID = 0;
+  PORT_GROUP_TYPE_ORIGIN = 1;
+  PORT_GROUP_TYPE_DESTINATION = 2;
+}

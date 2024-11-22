@@ -1,0 +1,24 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FinalDangerousGoodsDeclarationUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// An event to indicate Final DGD is uploaded/modified/archived.
+message FinalDangerousGoodsDeclarationUpdated {
+  string shipment_fid = 1;
+  FinalDangerousGoodsDeclarationUpdateType update_type = 2;
+  string document_fid = 3;
+}
+
+enum FinalDangerousGoodsDeclarationUpdateType {
+  FINAL_DANGEROUS_GOODS_DECLARATION_UPDATE_TYPE_INVALID = 0;
+  FINAL_DANGEROUS_GOODS_DECLARATION_UPDATE_TYPE_CREATED = 1;
+  FINAL_DANGEROUS_GOODS_DECLARATION_UPDATE_TYPE_UPDATED = 2;
+  FINAL_DANGEROUS_GOODS_DECLARATION_UPDATE_TYPE_ARCHIVED = 3;
+}

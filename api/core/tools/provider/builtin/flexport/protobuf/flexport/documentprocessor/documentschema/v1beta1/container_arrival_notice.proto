@@ -1,0 +1,58 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentprocessor.documentschema.v1beta1;
+
+import "flexport/documentflow/documentschema/common/v1beta1/container_arrival_notice_variant.proto";
+import "flexport/documentprocessor/documentschema/v1beta1/document_field.proto";
+import "flexport/workflow/email/models/carrier/v1beta1/carrier.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerArrivalNoticeProto";
+option java_package = "com.flexport.documentprocessor.documentschema.v1beta1";
+option ruby_package = "Flexport::DocumentProcessor::DocumentSchema::V1Beta1";
+
+// Next ID: 7
+message ContainerInfo {
+  // Container number
+  DocumentField container_number = 1;
+  // Last free day
+  DocumentField last_free_day = 2;
+  // Pick up number
+  DocumentField pickup_number = 3;
+  // IT number
+  DocumentField it_number = 4;
+  // Weight
+  DocumentField weight = 5;
+  // Bill of lading number
+  DocumentField bl_number = 6;
+}
+
+// Next ID: 19
+message ContainerArrivalNotice {
+  // FIRMS Code
+  DocumentField firms_code = 1;
+  // Weight
+  DocumentField weight = 2;
+  // Total Cartons
+  DocumentField total_cartons = 3;
+  // Voyage Number
+  DocumentField voyage_number = 8;
+  // Container info
+  repeated ContainerInfo containers = 9;
+  // Carrier
+  flexport.workflow.email.models.carrier.v1beta1.Carrier carrier = 11;
+  // Document variant
+  flexport.documentflow.documentschema.common.v1beta1.ContainerArrivalNoticeVariant variant = 18;
+
+  // received_at is the timestamp when the document becomes available in the Document's system
+  // transcribed_at is the timestamp generated in the backend service when the PDF gets digitized
+  // issue_datetime is a field extracted from the PDF itself.
+  google.protobuf.Timestamp received_at = 12;
+  google.protobuf.Timestamp transcribed_at = 13;
+  DocumentField issue_datetime = 14;
+
+  reserved 4 to 7, 10, 15 to 17;
+}

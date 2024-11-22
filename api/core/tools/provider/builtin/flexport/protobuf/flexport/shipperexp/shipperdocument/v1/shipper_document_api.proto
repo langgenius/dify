@@ -1,0 +1,165 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.shipperexp.shipperdocument.v1;
+
+import "flexport/shipperexp/shipperdocument/v1/shipper_ccam.proto";
+import "flexport/shipperexp/shipperdocument/v1/shipper_document.proto";
+import "flexport/shipperexp/shipperdocument/v1/shipper_shipping_instruction.proto";
+import "flexport/shipperexp/shipperdocument/v1/shipper_vgm.proto";
+import "flexport/shipperexp/shipperdocumentbasicdata/v1/shipper_document_basic_data.proto";
+import "flexport/shipperexp/shipperdocumentsubmitted/v1/shipper_document_submitted.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipperDocumentApiProto";
+option java_package = "com.flexport.shipperexp.shipperdocument.v1";
+option ruby_package = "Flexport::ShipperExp::ShipperDocument::V1";
+
+// Shipper document service.
+service ShipperDocumentAPI {
+  // Get the shipper document by shipment fid.
+  rpc GetShipperDocument(GetShipperDocumentRequest) returns (GetShipperDocumentResponse);
+  // Update document information.
+  rpc UpdateDocumentInformation(UpdateDocumentInformationRequest) returns (UpdateDocumentInformationResponse);
+  // Update the shipper document aggregate.
+  rpc UpsertShipperDocument(UpsertShipperDocumentRequest) returns (UpsertShipperDocumentResponse);
+  // Get the shipper shipping instruction by shipment fid.
+  rpc GetShipperShippingInstruction(GetShipperShippingInstructionRequest) returns (GetShipperShippingInstructionResponse);
+  // Get the shipper CCAM by shipment fid.
+  rpc GetShipperCcam(GetShipperCcamRequest) returns (GetShipperCcamResponse);
+  // Get the shipper VGM by shipment fid.
+  rpc GetShipperVgm(GetShipperVgmRequest) returns (GetShipperVgmResponse);
+  // Remove processing_content_id (Just for debug or emergency).
+  rpc DeleteShipperDocumentProcessingContentId(DeleteShipperDocumentProcessingContentIdRequest) returns (DeleteShipperDocumentProcessingContentIdResponse);
+  // Remove the shipper document data (Just for debug or emergency).
+  rpc DeleteShipperDocument(DeleteShipperDocumentRequest) returns (DeleteShipperDocumentResponse);
+}
+
+message Identifier {
+  oneof detail {
+    // Shipment fid.
+    string shipment_fid = 1;
+    // The shipper document fid.
+    string shipper_document_fid = 2;
+  }
+}
+
+message GetShipperDocumentRequest {
+  // Shipment fid.
+  string shipment_fid = 1 [deprecated = true];
+  // Identifier.
+  Identifier identifier = 2;
+}
+
+message GetShipperDocumentResponse {
+  // Represent the shipper document.
+  flexport.shipperexp.shipperdocument.v1.ShipperDocument shipper_document = 1;
+}
+
+message UpdateDocumentInformationRequest {
+  // Represent the shipper document fid.
+  string fid = 1;
+  // Represent the shipper document (VGM/SI/CCAM) event hash code.
+  // We can decide if we should update the shipper document information.
+  // If the hash code of request is different from the current event hash, we will directly drop it.
+  string event_hash_code = 2;
+  string document_fid = 3;
+  flexport.shipperexp.shipperdocumentbasicdata.v1.DocumentType document_type = 4;
+}
+
+message UpdateDocumentInformationResponse {
+  bool successful = 1;
+}
+
+message UpsertShipperDocumentRequest {
+  string submitted_by = 1;
+  // Represent the data of the shipper document.
+  UpsertShipperDocumentRequestContent content = 2;
+  // Shipment fid.
+  string shipment_fid = 3;
+  // User company Fid.
+  string user_company_fid = 4;
+}
+
+message UpsertShipperDocumentRequestContent {
+  string fid = 1;
+  string shipment_fid = 2;
+  // We can use this field to avoid overwriting.
+  string version_id = 3;
+  string shipper_fid = 4;
+  string formatted_shipper_address = 5;
+  string consignee_fid = 6;
+  string formatted_consignee_address = 7;
+  string notify_party_fid = 8;
+  string formatted_notify_party_address = 9;
+  flexport.shipperexp.shipperdocumentbasicdata.v1.ReleaseMethod release_method = 10;
+  flexport.shipperexp.shipperdocumentbasicdata.v1.TransmissionMode bill_of_lading_transmission_mode = 11;
+  string export_reference_number = 12;
+  string bill_of_lading_special_instructions = 13;
+  flexport.shipperexp.shipperdocumentbasicdata.v1.VerifiedGrossMassDeclaration verified_gross_mass_declaration = 14;
+  flexport.shipperexp.shipperdocumentbasicdata.v1.DocumentStatusInformation shipper_si = 15;
+  flexport.shipperexp.shipperdocumentbasicdata.v1.DocumentStatusInformation shipper_ccam = 16;
+  flexport.shipperexp.shipperdocumentbasicdata.v1.DocumentStatusInformation shipper_vgm = 17;
+  repeated flexport.shipperexp.shipperdocumentbasicdata.v1.ShipperDocumentContainer shipper_document_containers = 18;
+  flexport.shipperexp.shipperdocumentbasicdata.v1.CargoUnitType unit_type_on_total = 19;
+}
+
+message UpsertShipperDocumentResponse {
+  // Shipper document submission Fid.
+  string fid = 1;
+  // Main async job id.
+  int64 async_job_id = 2;
+  // The ShipperDocumentSubmitted will be consumed by core.
+  flexport.shipperexp.shipperdocumentsubmitted.v1.ShipperDocumentSubmitted shipper_document_submitted = 3;
+}
+
+message GetShipperShippingInstructionRequest {
+  // Shipment fid.
+  string shipment_fid = 1 [deprecated = true];
+  // Identifier.
+  Identifier identifier = 2;
+}
+
+message GetShipperShippingInstructionResponse {
+  // Represent the shipper shipping instruction.
+  flexport.shipperexp.shipperdocument.v1.ShipperShippingInstruction shipper_shipping_instruction = 1;
+}
+
+message GetShipperCcamRequest {
+  // Shipment fid.
+  string shipment_fid = 1 [deprecated = true];
+  // Identifier.
+  Identifier identifier = 2;
+}
+
+message GetShipperCcamResponse {
+  // Represent the shipper CCAM.
+  flexport.shipperexp.shipperdocument.v1.ShipperCcam shipper_ccam = 1;
+}
+
+message GetShipperVgmRequest {
+  // Shipment fid.
+  string shipment_fid = 1 [deprecated = true];
+  // Identifier.
+  Identifier identifier = 2;
+}
+
+message GetShipperVgmResponse {
+  // Represent the shipper VGM.
+  flexport.shipperexp.shipperdocument.v1.ShipperVgm shipper_vgm = 1;
+}
+
+message DeleteShipperDocumentProcessingContentIdRequest {
+  // Identifier.
+  Identifier identifier = 1;
+}
+
+message DeleteShipperDocumentProcessingContentIdResponse {}
+
+message DeleteShipperDocumentRequest {
+  // Identifier.
+  Identifier identifier = 1;
+}
+
+message DeleteShipperDocumentResponse {}

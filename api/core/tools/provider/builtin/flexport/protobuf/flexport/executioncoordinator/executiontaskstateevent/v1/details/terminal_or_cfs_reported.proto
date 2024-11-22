@@ -1,0 +1,25 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TerminalOrCfsReportedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// Provider has _reported_ a new terminal.
+//
+// Note that the verb here is "reported" rather than "changed". The "official" route shape
+// for a given ExecutionTask is the route_shape field on the ExecutionTask itself. Sometimes the
+// terminal or cfs reported with this ETSE could be saved as part of the ExecutionTask by a
+// handler within the EC or a planning system, and the new route_shape would be included in the
+// ExecutionTaskChanged event emitted by the EC-NIS.
+//
+// In other cases, the terminal on the route_shape reported by the provider might not be saved as part of the ET.
+message TerminalOrCfsReported {
+  string terminal_or_cfs_fid = 1;
+  // The fid of the port or cfs/port for the terminal or cfs.
+  string place_fid = 2;
+}

@@ -1,0 +1,36 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.originops.shipmentnode.v1;
+
+import "flexport/originops/shipmentnodelocation/v1/shipment_node_location.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentNodeProto";
+option java_package = "com.flexport.originops.shipmentnode.v1";
+option ruby_package = "Flexport::OriginOps::ShipmentNode::V1";
+
+// Represents a node on shipment.
+message ShipmentNode {
+  string id = 1;
+  repeated ShipmentNodeTag tags = 2 [deprecated = true];
+  flexport.originops.shipmentnodelocation.v1.ShipmentNodeLocation location = 3;
+}
+
+//Represent tags of a shipment node.
+enum ShipmentNodeTag {
+  SHIPMENT_NODE_TAG_INVALID = 0;
+  SHIPMENT_NODE_TAG_PORT_OF_LOADING = 1;
+  SHIPMENT_NODE_TAG_PORT_OF_UNLOADING = 2;
+  SHIPMENT_NODE_TAG_PORT_OF_CALLING = 3;
+  SHIPMENT_NODE_TAG_CUSTOMS_ENTRY = 4;
+  SHIPMENT_NODE_TAG_ORIGIN_ADDRESS = 5;
+  SHIPMENT_NODE_TAG_DESTINATION_ADDRESS = 6;
+  SHIPMENT_NODE_TAG_PLACE_OF_DELIVERY = 7;
+  SHIPMENT_NODE_TAG_FMC_PORT_OF_UNLOADING = 8;
+  SHIPMENT_NODE_TAG_DECONSOLIDATION = 9;
+  SHIPMENT_NODE_TAG_CONSOLIDATION = 10;
+  SHIPMENT_NODE_TAG_TRANSSHIPMENT = 11;
+  SHIPMENT_NODE_TAG_FEEDER_PORT = 12;
+}

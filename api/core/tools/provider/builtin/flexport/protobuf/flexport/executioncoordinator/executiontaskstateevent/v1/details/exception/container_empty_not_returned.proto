@@ -1,0 +1,18 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerEmptyNotReturnedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// Container empty not returned. This refers to when a container is not returned by its
+// detention last free day.
+// Corresponds to exception slugs:
+// - empty_container_not_returned
+message ContainerEmptyNotReturned {
+  string container_fid = 1;
+}

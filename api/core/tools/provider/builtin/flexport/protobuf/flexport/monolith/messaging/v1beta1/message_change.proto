@@ -1,0 +1,78 @@
+// TEAM: emerald
+
+syntax = "proto3";
+
+package flexport.monolith.messaging.v1beta1;
+
+//import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MessageChangeProto";
+option java_package = "com.flexport.monolith.messaging.v1beta1";
+option ruby_package = "Flexport::Monolith::Messaging::V1Beta1";
+
+// DTO for creating.
+// PLEASE read API developer guide: https://flexport.atlassian.net/wiki/spaces/EN/pages/2252407401/Messaging+API+Developer+Guide
+message MessageCreate {
+  string body = 1;
+  string author_fid = 2;
+  // Examples: "shipment::123::", "shipment::123::internal_notes::883". Empty for none.
+  string topic_key = 3;
+  // Reference the previous message that is replied to by this message. Empty for none.
+  string reply_to_fid = 4;
+  // Control the companies that can view this message.
+  VisibilityChange visibility = 5;
+  // Control the associated task that can be assigned or resolved.
+  TaskChange task = 6;
+  // An array of attachments related to this message, that were uploaded via graphql before calling this api.
+  repeated AttachmentCreate attachments = 7;
+  // An array of topic_keys
+  repeated string topic_key_list = 8;
+  // Used to set arbitrary created_at timestamps for demo shipments
+  google.protobuf.Timestamp created_time = 9;
+}
+
+message AttachmentCreate {
+  string uuid = 1;
+  repeated CustomAttribute custom_attributes = 2;
+}
+
+message CustomAttribute {
+  string name = 1;
+  string value = 2;
+}
+
+// DTO for updating.
+// null field value usually means the field is unchanged.
+message MessageUpdate {
+  // null means unchanged.
+  google.protobuf.StringValue body = 1;
+  // Control the associated task that can be assigned or resolved.
+  TaskChange task = 3;
+}
+
+// A new or updated visibility metadata.
+message VisibilityChange {
+  // Companies permitted to view this message
+  repeated ViewablePartyChange viewable_parties = 1;
+}
+
+// Updated viewable party information in a message.
+message ViewablePartyChange {
+  // The FID of a Company (not a CompanyEntity).
+  string fid = 1;
+  // Unused
+  string label = 2;
+}
+
+// A new or updated task metadata.
+message TaskChange {
+  // When false, all other fields should be empty.
+  bool is_task = 1;
+  string assigner_fid = 2;
+  repeated string assignee_fids = 3;
+  string resolver_fid = 4;
+  google.protobuf.Timestamp resolved_time = 5;
+}

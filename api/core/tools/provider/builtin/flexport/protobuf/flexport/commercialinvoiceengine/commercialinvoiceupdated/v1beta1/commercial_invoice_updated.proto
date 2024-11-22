@@ -1,0 +1,26 @@
+// TEAM: customs_gateway
+
+syntax = "proto3";
+
+package flexport.commercialinvoiceengine.commercialinvoiceupdated.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CommercialInvoiceUpdatedProto";
+option java_package = "com.flexport.commercialinvoiceengine.commercialinvoiceupdated.v1beta1";
+option ruby_package = "Flexport::CommercialInvoiceEngine::CommercialInvoiceUpdated::V1Beta1";
+
+import "google/protobuf/wrappers.proto";
+
+// A commercial invoice has been created or updated.
+message CommercialInvoiceUpdated {
+  string commercial_invoice_fid = 1;
+  // The shipment fid will be null if the association is deleted.
+  google.protobuf.StringValue shipment_fid = 2;
+  // A commercial invoice can have multiple line items.
+  repeated CommercialInvoiceLineItem commercial_invoice_line_items = 3;
+}
+
+// A commercial invoice line item.
+message CommercialInvoiceLineItem {
+  string product_fid = 1;
+}

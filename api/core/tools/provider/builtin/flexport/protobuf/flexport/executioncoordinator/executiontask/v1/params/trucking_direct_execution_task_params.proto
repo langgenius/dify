@@ -1,0 +1,65 @@
+// TEAM: trucking
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+import "flexport/executioncoordinator/executioncargo/v1/execution_cargo.proto";
+import "flexport/executioncoordinator/types/cartageinfo/v1/cartage_info.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingDirectExecutionTaskParamsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+// Parameters for trucking full-truckload (FTL) ExecutionTask.
+message TruckingDirectExecutionTaskParams {
+  //
+  // Address the cargo is departing from.
+  string origin_fid = 1;
+  //
+  // Address the cargo is arriving to.
+  string destination_fid = 2;
+  //
+  // Carrier of the trucking carrier responsible for the task.
+  string carrier_fid = 3;
+  //
+  // The port terminals involved in this task, if any. Should only be specified if the related
+  // origin or destination is a port. Sometimes this value may be a CFS rather than an actual port
+  // terminal if the main freight carrier eg makes cargo available for pickup at an offsite CFS.
+  string origin_terminal_fid = 7;
+  string destination_terminal_fid = 8;
+  //
+  // Freight partner responsible for the task.
+  // "Flexport" if we are managing relationship with the trucking carrier.
+  string freight_partner_fid = 4;
+  //
+  // Broker responsible for the task.
+  string broker_fid = 16;
+  //
+  // Whether this ExecutionTask requires high-visibility tracking information, such as separate
+  // milestones for prepull legs.
+  google.protobuf.BoolValue requires_additional_tracking = 9;
+  //
+  // Cargo details, in the case that cargo is split.
+  repeated TruckingDirectCargoParams cargo_params = 6;
+  //
+  // Details about picking up or dropping off at airports, if any.
+  flexport.executioncoordinator.types.cartageinfo.v1.CartageInfo cartage_info = 15;
+}
+
+// The params for each subset of cargo moved as part of the FTL task.
+message TruckingDirectCargoParams {
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime departure_estimate = 6 [deprecated = true];
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime arrival_estimate = 7 [deprecated = true];
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 4;
+  // The Tracking number field is used primarily to record carrier PRO numbers or
+  // Delivery Reference Numbers on the leg-level. The DRNs are often required for our
+  // truckers to schedule delivery appointments and are required upon actual delivery
+  // of the goods. PRO numbers are used for internal users to keep track of milestones
+  // associated with a particular leg, if that leg is handled by a trucker with their
+  // own tracking system.
+  string tracking_number = 5;
+}

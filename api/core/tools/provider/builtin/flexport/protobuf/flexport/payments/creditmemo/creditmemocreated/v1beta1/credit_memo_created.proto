@@ -1,0 +1,20 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.payments.creditmemo.creditmemocreated.v1beta1;
+
+import "flexport/payments/creditmemo/v2beta1/credit_memo.proto";
+import "flexport/payments/invoice/v1beta1/invoice.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CreditMemoCreatedProto";
+option java_package = "com.flexport.payments.creditmemo.creditmemocreated.v1beta1";
+option ruby_package = "Flexport::Payments::CreditMemo::CreditMemoCreated::V1Beta1";
+
+// A Credit Memo has been created
+message CreditMemoCreated {
+  flexport.payments.creditmemo.v2beta1.CreditMemo credit_memo = 1;
+  flexport.payments.invoice.v1beta1.Invoice invoice = 2;
+  string acting_user_fid = 3;
+}

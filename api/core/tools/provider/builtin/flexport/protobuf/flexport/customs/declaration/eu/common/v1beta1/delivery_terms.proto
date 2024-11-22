@@ -1,0 +1,32 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.declaration.eu.common.v1beta1;
+
+import "flexport/os/v1/types/incoterm/v1/incoterm.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.declaration.eu.common.v1beta1";
+option ruby_package = "Flexport::Customs::Declaration::EU::Common::V1Beta1";
+
+// The terms of the commercial contract.
+// [Data Element: 14 01 000 000]
+message DeliveryTerms {
+  // [Data Element: 14 01 035 000]
+  flexport.os.v1.types.incoterm.v1.Incoterm inco_term_code = 1;
+  // The UN/LOCODE for the place of destination.
+  // In case of sea traffic, the UN/LOCODE for the location where delivery occurs beyond the port of unloading.
+  // In case of air traffic, the destination of goods using the UN/LOCODE.
+  //
+  // [Data Element: 14 01 036 000]
+  string un_locode = 2;
+  // In case of sea traffic, where the UN/LOCODE is not available, the country code where delivery occurs beyond the port of unloading.
+  // In case of air traffic, where the UN/LOCODE is not available, the country code for the place of destination.
+  //
+  // [Data Element: 14 01 020 000]
+  string country_code = 3;
+  // Where the UN/LOCODE is not available, enter the name of the place of destination.
+  //
+  // [Data Element: 14 01 037 000]
+  string location = 4;
+}

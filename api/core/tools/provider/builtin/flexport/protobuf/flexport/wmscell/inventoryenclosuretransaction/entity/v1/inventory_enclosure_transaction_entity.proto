@@ -1,0 +1,47 @@
+// TEAM: wms_bellevue
+
+syntax = "proto3";
+
+package flexport.wmscell.inventoryenclosuretransaction.entity.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "InventoryEnclosureTransactionEntityProto";
+option java_package = "com.flexport.wmscell.inventoryenclosuretransaction.entity.v1";
+
+message InventoryEnclosureTransactionEntity {
+  string transaction_id = 1;
+  string transaction_type = 2;
+  google.protobuf.Timestamp transaction_time = 3;
+  string user_id = 4;
+  string inbound_warehouse_request_pk = 5;
+  string outbound_warehouse_request_pk = 6;
+  string inbound_load_pk = 7;
+  string outbound_load_pk = 8;
+  string enclosure_id = 9;
+  string scannable_id = 10;
+  string enclosure_type = 11;
+  uint32 quantity = 12;
+  string warehouse_code = 13;
+  string old_parent_enclosure_id = 14;
+  string new_parent_enclosure_id = 15;
+  string old_location_id = 16;
+  string new_location_id = 17;
+  string old_inventory_status = 18;
+  string new_inventory_status = 19;
+  double old_length = 20;
+  double new_length = 21;
+  double old_width = 22;
+  double new_width = 23;
+  double old_height = 24;
+  double new_height = 25;
+  double old_weight = 26;
+  double new_weight = 27;
+  repeated string old_dg_labels = 28;
+  repeated string new_dg_labels = 29;
+  repeated string old_damage_types = 31;
+  repeated string new_damage_types = 32;
+  string old_asn = 33;
+  string new_asn = 34;
+}

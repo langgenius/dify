@@ -1,0 +1,55 @@
+// TEAM: ocean_planning
+
+syntax = "proto3";
+
+package flexport.monolith.oceanplanning.exceptions.v1;
+
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanPlanningExceptionEntityProto";
+option java_package = "com.flexport.monolith.oceanplanning.exceptions.v1";
+option ruby_package = "Flexport::Monolith::OceanPlanning::Exceptions::V1";
+
+// Exception event record for snowflake ingestion.
+message OceanPlanningExceptionEntity {
+  // This is the exception model within Ocean Planning
+  string ocean_planning_exception_fid = 1;
+  // This is the corresponding exception from Centralized Exception
+  string centralized_exception_fid = 2;
+  // The shipment the exception was filed for
+  string shipment_fid = 3;
+  // The associated ocean planning assignment request
+  string ocean_fcl_assignment_request_fid = 4 [deprecated = true];
+  // The status of the shipment
+  OceanPlanningExceptionStatus status = 5;
+  google.protobuf.Timestamp occurred_at_time = 6;
+  google.protobuf.Timestamp updated_at_time = 7;
+  // JSON blob
+  // Ensure this data does not cross 1 MB in size
+  string additional_info = 8;
+  // The app where the exception was filed from. If nil, assume it was created via the core exception filer
+  string created_from = 9;
+  // The app where the exception was resolved from. If nil, assume it was resolved from FMT
+  string resolved_from = 10;
+}
+
+// Represents the status of the exception.
+enum OceanPlanningExceptionStatus {
+  OCEAN_PLANNING_EXCEPTION_STATUS_INVALID = 0;
+  OCEAN_PLANNING_EXCEPTION_STATUS_OPEN = 1;
+  OCEAN_PLANNING_EXCEPTION_STATUS_RESOLVED = 2;
+}
+
+// Encapsulates the category and other data not ingested by snowflake.
+message OceanPlanningExceptionWithCategory {
+  OceanPlanningExceptionEntity exception = 1;
+  // This category comes from centralized exceptions.
+  string exception_category = 2;
+  string reported_by_user_fid = 3;
+  string message = 4;
+  google.protobuf.Struct domain_specific_info = 5 [deprecated = true];
+  string reported_by_user_name = 6;
+  string domain_specific_info_json = 7;
+}

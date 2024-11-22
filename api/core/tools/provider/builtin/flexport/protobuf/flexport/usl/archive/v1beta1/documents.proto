@@ -1,0 +1,81 @@
+// TEAM: unified_subledger
+
+syntax = "proto3";
+
+package flexport.usl.archive.v1beta1;
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "flexport/payments/invoice/v1beta1/invoice.proto";
+import "flexport/usl/archive/v1beta1/money.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DocumentsProto";
+option java_package = "com.flexport.usl.archive.v1beta1";
+option ruby_package = "Flexport::USL::Archive::V1Beta1";
+
+// DocumentDto defines an document to be archived (and, potentially, accounted).
+// the product_group at document level is a default for the line level product_group
+message DocumentDto {
+  reserved 6;
+  string type = 1;
+  string fid = 2;
+  string name = 3;
+  google.protobuf.Timestamp created_at_time = 5;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate document_date = 7;
+  string product_group = 8;
+  string mode = 9;
+  string job_order_fid = 10;
+  PriceValues total_price = 11;
+  string source_entity_fid = 15;
+  string target_entity_fid = 16;
+  // Note: this field is expected to be populated only in the case of invoices
+  flexport.payments.invoice.v1beta1.Invoiceable invoiceable_type = 17;
+  google.protobuf.Timestamp issued_at_time = 18;
+  // Time at which this document was updated / this document version was created
+  google.protobuf.Timestamp updated_at_time = 19;
+  repeated DocumentLine line_items = 20;
+  google.protobuf.Struct extra_data = 30;
+  string lineage_id = 98;
+  string record_id = 99;
+}
+
+// The base price excludes taxes.
+message PriceValues {
+  MoneyAmount base_price = 1;
+  repeated TaxValue tax_value = 3;
+}
+
+// Represent individual taxes applied on top of the base price
+// the tax_percent is used for information, the tax_amount must
+// represent the final value of the tax.
+message TaxValue {
+  string tax_code = 1;
+  string tax_name = 2;
+  string tax_percent = 3;
+  MoneyAmount tax_amount = 4;
+}
+
+// Each of the lines of a document.
+// the product_code is the equivalent of charge code in invoicing
+// the product_group is intended to group similar products together
+//    possible groups would be Ocean FCL, Trucking, Customs Services, or Customs Taxes
+message DocumentLine {
+  string product_code = 1;
+  string product_group = 2;
+  string description = 3;
+  sint32 quantity = 4;
+  PriceValues total_price = 5;
+  PriceValues unit_price = 6;
+  string job_order_fid = 8;
+  string mode = 9;
+  google.protobuf.Struct rate_attributes = 10;
+  google.protobuf.Struct quantity_attributes = 11;
+  google.protobuf.Struct meta = 12;
+  string category = 13;
+  string line_item_fid = 14;
+  google.protobuf.Timestamp created_at_time = 15;
+  string supply_service_fid = 16;
+  string service_template_fid = 17;
+}

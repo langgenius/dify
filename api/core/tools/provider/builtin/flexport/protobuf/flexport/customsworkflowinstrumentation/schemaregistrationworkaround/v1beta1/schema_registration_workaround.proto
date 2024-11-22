@@ -1,0 +1,39 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+// There is no Ruby schema registry client or serializer lib that supports protobuf at the moment.
+// To work around that the Core producer does not use Kafka protocol (rdkafka) but instead calls the Kafka REST Proxy with which you can pass the schema as a string and it will look up/register the schema,
+// but what we discovered is that it doesn't support schemas that import other schemas unless those were are already registered, i.e. it can only register the schema's of a single .proto  file.
+// So the workaround is to create a proto file like to one below, import it to a Kotlin service and send a random message with it to a one-off topic.
+// `workaround-register-proto-schemas.protos` was made for this purpose
+// This will work since the JVM client does not have this limitation, it will register all the imports within the schema registry.
+// This is a temporary solution until a proper one is in place. Context: https://flexport.slack.com/archives/C02G6KX5LCQ/p1689784922137919
+
+package flexport.customsworkflowinstrumentation.schemaregistrationworkaround.v1beta1;
+
+import "flexport/customs/productlibrary/regulations/v1beta1/country_code.proto";
+import "flexport/customsworkflowinstrumentation/customsworkflowevent/v1beta1/customs_workflow_event_data.proto";
+import "flexport/customsworkflowinstrumentation/enums/customsentrystatus/v1beta1/customs_entry_status.proto";
+import "flexport/customsworkflowinstrumentation/enums/customsexceptiontype/v1beta1/customs_exception_type.proto";
+import "flexport/customsworkflowinstrumentation/enums/documenttype/v1beta1/document_type.proto";
+import "flexport/customsworkflowinstrumentation/enums/entitytype/v1beta1/entity_type.proto";
+import "flexport/customsworkflowinstrumentation/enums/eventtype/v1beta1/event_type.proto";
+import "flexport/customsworkflowinstrumentation/enums/producertype/v1beta1/producer_type.proto";
+import "flexport/executioncoordinator/derivedshipment/v1/derived_shipment.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SchemaRegistrationWorkaroundProto";
+option java_package = "com.flexport.customsworkflowinstrumentation.schemaregistrationworkaround.v1beta1";
+
+message SchemaRegistrationWorkaround {
+  flexport.customsworkflowinstrumentation.enums.customsentrystatus.v1beta1.CustomsEntryStatus customs_entry_status = 1;
+  flexport.customsworkflowinstrumentation.enums.customsexceptiontype.v1beta1.CustomsExceptionType exception_type = 2;
+  flexport.customsworkflowinstrumentation.enums.documenttype.v1beta1.DocumentType document_type = 3;
+  flexport.customsworkflowinstrumentation.enums.entitytype.v1beta1.EntityType entity_type = 4;
+  flexport.customsworkflowinstrumentation.enums.eventtype.v1beta1.EventType event_type = 5;
+  flexport.customsworkflowinstrumentation.enums.producertype.v1beta1.ProducerType producer_type = 6;
+  flexport.customsworkflowinstrumentation.customsworkflowevent.v1beta1.CustomsWorkflowEventData event_data = 7;
+  flexport.customs.productlibrary.regulations.v1beta1.CountryCode country_code = 8;
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipmentProductInfo derived_shipment_info = 9;
+}

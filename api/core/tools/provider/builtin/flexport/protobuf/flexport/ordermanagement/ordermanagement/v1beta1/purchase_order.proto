@@ -1,0 +1,169 @@
+// TEAM: order_management
+
+syntax = "proto3";
+
+package flexport.ordermanagement.ordermanagement.v1beta1;
+
+import "flexport/monolith/ordermanagement/order/v1beta1/enums.proto";
+import "flexport/ordermanagement/ordermanagement/v1beta1/enums.proto";
+import "flexport/ordermanagement/ordermanagement/v1beta1/purchase_order_line_item.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PurchaseOrderProto";
+option java_package = "com.flexport.ordermanagement.ordermanagement.v1beta1";
+option ruby_package = "Flexport::OrderManagement::OrderManagement::V1Beta1";
+
+// Parameters for the creation or update of a Purchase Order
+message UpsertPurchaseOrderParameter {
+  // The status of the purchase order
+  flexport.monolith.ordermanagement.order.v1beta1.OrderStatus status = 1;
+
+  // The monorail company entity FID of the buyer entity
+  // Example: flx::core:company_entity:dbid/123
+  // Required field
+  string buyer_entity_fid = 2;
+
+  // The monorail company entity FID of the seller entity
+  // Example: flx::core:company_entity:dbid/123
+  // Required field
+  string seller_entity_fid = 3;
+
+  // The name of the purchase order
+  // Required field
+  string name = 4;
+
+  // The line items of the purchase order
+  repeated PurchaseOrderLineItemParameter line_items_parameters = 5;
+
+  // The FIDs of monorail purchase order line items
+  // Example: [flx::core:po_line_item:Base64.urlsafe_encode64(purchase_order_id/123/item_key/1)]
+  // This field is required for update requests
+  repeated string purchase_order_line_item_fids = 6;
+
+  // The postgres IDs of monorail purchase order line items
+  // Example: [123]
+  // This field is required for update requests
+  repeated uint32 purchase_order_line_item_postgres_ids = 7;
+
+  // The parties involved in the purchase order
+  repeated PurchaseOrderParty parties = 8;
+}
+
+// Purchase order to be returned from a query
+message PurchaseOrder {
+  // The FID of a monorail purchase order
+  // Example: flx::core:purchase_order:dbid/123
+  string purchase_order_fid = 1;
+
+  // Archived time of a purchase order
+  google.protobuf.Timestamp archived_at = 2;
+
+  // The status of the purchase order
+  flexport.monolith.ordermanagement.order.v1beta1.OrderStatus status = 3;
+
+  // The monorail company entity FID of the buyer entity
+  // Example: flx::core:company_entity:dbid/123
+  string buyer_entity_fid = 4;
+
+  // The monorail company entity FID of the seller entity
+  // Example: flx::core:company_entity:dbid/123
+  string seller_entity_fid = 5;
+
+  // The name of the purchase order
+  string name = 6;
+
+  // The time the purchase order was last updated
+  google.protobuf.Timestamp updated_at = 7;
+
+  // The time the purchase order was created
+  google.protobuf.Timestamp created_at = 8;
+
+  // The time the purchase order was updated in postgres
+  google.protobuf.Timestamp updated_at_postgres = 9;
+
+  // The time the purchase order was created in postgres
+  google.protobuf.Timestamp created_at_postgres = 10;
+
+  // The deleted_at timestamp of the purchase order in postgres
+  google.protobuf.Timestamp deleted_at_postgres = 11;
+
+  // The version id of the purchase order in monorail
+  uint32 purchase_order_version_postgres_id = 12;
+
+  // The line items of the purchase order
+  repeated PurchaseOrderLineItem line_items = 13;
+}
+
+// A request to get purchase orders.
+// An explicit optional allows us to differentiate between an empty field and a field that was not set.
+// This state is needed to build filters for the query:
+// 1. If the field is not set, it will not be included in the query.
+// 2. If the field is set to an empty value, it will be included in the query.
+message PurchaseOrderQuery {
+  // Page number of the page to retrieve
+  optional uint32 page = 1;
+
+  // The number of items per page.
+  // Should be between 1 and 100 (inclusive)
+  optional uint32 per = 2;
+
+  // The field to sort by.
+  // Only `id` is supported at this time.
+  optional SortByField sort = 3;
+
+  // The sort order.
+  // Allows "asc"(ascending) or "desc" (descending)
+  optional SortDirection direction = 4;
+
+  // Filter out all archived purchase orders
+  // or filter out all unarchived purchase orders
+  optional bool is_archived = 5;
+
+  // Filters the list based on the PO status
+  optional flexport.monolith.ordermanagement.order.v1beta1.OrderStatus status = 6;
+
+  // Filters the list based on which monorail buyer entity fid in the PO
+  // Example: flx::core:company_entity:dbid/123
+  optional string buyer_entity_fid = 7;
+
+  // Filters the list based on which monorail seller entity fid in the PO
+  // Example: flx::core:company_entity:dbid/123
+  optional string seller_entity_fid = 8;
+
+  // Filters the list based on which role the user has in the PO
+  repeated flexport.monolith.ordermanagement.order.v1beta1.OrderRole roles = 9;
+
+  // Filter the list based on PO name
+  // Example: PO-123456
+  optional string name = 10;
+
+  // Filter the list for purchase orders last updated before the provided time, exclusive
+  optional google.protobuf.Timestamp updated_before = 11;
+
+  // Filter the list for purchase orders last updated after the provided time, exclusive
+  optional google.protobuf.Timestamp updated_after = 12;
+
+  // Filter the list for purchase orders created before the provided time, exclusive
+  optional google.protobuf.Timestamp created_before = 13;
+
+  // Filter the list for purchase orders created after the provided time, exclusive
+  optional google.protobuf.Timestamp created_after = 14;
+
+  // Filter the list for purchase orders with the provided client company entity fids for permissions
+  // It represents the fid of Network::CompanyEntity in monorail of a client company
+  // Example: [flx::core:company_entity:dbid/123]
+  repeated string client_company_entity_fids = 15;
+}
+
+// Fields supported for sorting
+enum SortByField {
+  SORT_BY_FIELD_INVALID = 0;
+  SORT_BY_FIELD_ID = 1;
+}
+
+// Parties involved in a purchase order
+message PurchaseOrderParty {
+  flexport.monolith.ordermanagement.order.v1beta1.OrderRole role = 1;
+  string company_entity_fid = 2;
+}

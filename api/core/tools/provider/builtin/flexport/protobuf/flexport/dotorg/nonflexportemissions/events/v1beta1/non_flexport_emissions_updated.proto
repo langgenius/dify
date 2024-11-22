@@ -1,0 +1,51 @@
+// TEAM: dot_org
+
+syntax = "proto3";
+
+package flexport.dotorg.nonflexportemissions.events.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "NonFlexportEmissionsUpdatedProto";
+option java_package = "com.flexport.dotorg.nonflexportemissions.events.v1beta1";
+option ruby_package = "Flexport::DotOrg::NonFlexportEmissions::Events::V1Beta1";
+
+import "flexport/dotorg/carboncalculation/v1/leg_data_type.proto";
+import "flexport/executioncoordinator/executiontask/v1/params/carbon_services_task_params.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Event emitted when a set of non-Flexport emissions is calculated.
+message NonFlexportEmissionsUpdated {
+  string third_party_analysis_fid = 1;
+  Action action = 2;
+  flexport.executioncoordinator.executiontask.v1.OffsetStatus offset_status = 3;
+  google.protobuf.Timestamp updated_time = 4;
+  repeated flexport.dotorg.carboncalculation.v1.LegDataType leg_tonnes_of_co2 = 5;
+  string version = 6;
+  repeated flexport.dotorg.carboncalculation.v1.LegDataType latest_leg_tonnes_of_co2 = 7;
+  string latest_version = 8;
+  repeated flexport.executioncoordinator.executiontask.v1.ServiceDetails service_details = 9;
+  google.protobuf.BoolValue is_archived = 10;
+  // either the associated document_fid  or raw_file_s3_key for an upload
+  string unique_document_upload_id = 11;
+  DateRange date_range = 12;
+  // time at which the ThirdPartyAnalysis entry was originally created (tpa.created_at)
+  google.protobuf.Timestamp upload_created_at_time = 13;
+}
+
+// Date range associated with the ThirdPartyAnalysis entry (tpa.date_range_start, tpa.date_range_end).
+message DateRange {
+  google.protobuf.Timestamp start_time = 1;
+  google.protobuf.Timestamp end_time = 2;
+}
+
+// Actions a user can take on the set of non-Flexport legs.
+enum Action {
+  ACTION_INVALID = 0;
+  ACTION_CALCULATE = 1;
+  ACTION_ARCHIVE = 2;
+  ACTION_DELETE = 3;
+  ACTION_OFFSET = 4;
+  ACTION_RECALCULATE = 5;
+  ACTION_UNARCHIVE = 6;
+}

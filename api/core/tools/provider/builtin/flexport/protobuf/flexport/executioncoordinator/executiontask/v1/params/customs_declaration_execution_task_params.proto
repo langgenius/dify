@@ -1,0 +1,109 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsDeclarationExecutionTaskParamsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+// The parameters for a CustomsDeclaration ExecutionTask. All forms of customs declaration are
+// represented with this task: import, export, and any other customs status change requests.
+message CustomsDeclarationExecutionTaskParams {
+  //
+  // The required declaration being represented in this ET
+  string required_declaration_fid = 4;
+  //
+  // The address where the declaration is cleared.
+  // Could be a port, terminal, bonded warehouse, etc.
+  // For US imports, this location should have a FIRMS code.
+  // The value is derived from shipment.graph.customs_entry_node.
+  // See comments in shipment_node_tags.rb for more information.
+  string address_fid = 1;
+  //
+  // The country with which to file the declaration.
+  string country_code = 2;
+  //
+  // The declaration type. Could be import, export, or another special type of filing.
+  CustomsDeclarationType declaration_type = 3;
+  //
+  // Does this declaration need to be reviewed before considering it done.
+  google.protobuf.BoolValue requires_review = 6;
+  //
+  // The contents of the declaration. Generally declares all the goods
+  // on one or multiple containers OR one or multiple HBLs
+  CustomsDeclarationDefinitionOfGoods definition_of_goods = 5;
+  //
+  // The port where the goods are unloaded from the “main freight” vessel. It is the inverse of Port of Loading.
+  // The value is derived from shipment.graph.port_of_unloading.
+  // See comments in shipment_node_tags.rb for more information.
+  string port_of_unloading_fid = 7;
+  //
+  // The customs agent responsible for the specific filing. If set it is a Flexport or partner broker
+  string customs_agent_company_entity_fid = 8;
+  //
+  // The user who created the required declaration and ET
+  string created_by_user_fid = 9;
+  // The user who last updated the required declaration and ET
+  string updated_by_user_fid = 10;
+}
+
+// Contains the reference to objects denoting the goods that will be cleared.
+// These are not references to the goods themselves, but references to objects that allow
+// other systems to determine what goods should be declared by this declaration.
+message CustomsDeclarationDefinitionOfGoods {
+  oneof definition {
+    CustomsDeclarationGoodsUndefined goods_undefined = 1;
+    CustomsDeclarationContainers containers = 2;
+    CustomsDeclarationHouseBillsOfLading house_bills_of_lading = 3;
+    CustomsDeclarationCommercialInvoices commercial_invoices = 4;
+  }
+}
+
+// When the goods are undefined.
+message CustomsDeclarationGoodsUndefined {}
+
+// The references to containers.
+message CustomsDeclarationContainers {
+  // A list of references (fids) to containers.
+  repeated string container_fids = 1;
+}
+
+// The references to HBLs.
+message CustomsDeclarationHouseBillsOfLading {
+  // A list of references (fids) to HBLs.
+  repeated string house_bill_of_lading_fids = 2;
+}
+
+// The references to commercial invoices.
+message CustomsDeclarationCommercialInvoices {
+  // A list of references (fids) to commercial invoices.
+  repeated string commercial_invoice_fids = 1;
+}
+
+// The  of the declaration.
+// Also update new fields in ExecutionCoordinator's GqlCustomsDeclarationType.java
+enum CustomsDeclarationType {
+  CUSTOMS_DECLARATION_TYPE_INVALID = 0;
+  CUSTOMS_DECLARATION_TYPE_IMPORT = 1;
+  CUSTOMS_DECLARATION_TYPE_EXPORT = 2;
+  CUSTOMS_DECLARATION_TYPE_EU_T1 = 3;
+  CUSTOMS_DECLARATION_TYPE_EU_SAD = 4;
+  CUSTOMS_DECLARATION_TYPE_US_IMPORT = 5;
+  CUSTOMS_DECLARATION_TYPE_GENERIC_CLEARANCE = 6;
+  CUSTOMS_DECLARATION_TYPE_FTZ_E214 = 7;
+  CUSTOMS_DECLARATION_TYPE_CA_IMPORT = 8;
+}
+
+// Other things we might consider adding to this proto:
+// CustomsDeclarationStrategy
+// - FilingPerBill
+// - FilingPerContainer
+// - Custom (the user will slice and dice and tell us)
+// - SingleFilingForEverything
+// Although maybe the strategy is within the planner and results in different tasks being created,
+// upstream of the provider?

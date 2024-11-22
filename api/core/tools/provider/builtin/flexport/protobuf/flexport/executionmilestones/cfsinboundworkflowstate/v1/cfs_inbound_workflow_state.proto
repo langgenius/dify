@@ -1,0 +1,25 @@
+// TEAM: sutro
+
+syntax = "proto3";
+
+package flexport.executionmilestones.cfsinboundworkflowstate.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CfsInboundWorkflowStateProto";
+option java_package = "com.flexport.executionmilestones.cfsinboundworkflowstate.v1";
+option ruby_package = "Flexport::ExecutionMilestones::CfsInboundWorkflowState::V1";
+
+// Represent destination CFS inbound workflow state.
+// Next ID: 10
+message CfsInboundWorkflowState {
+  bool confirmed_documents = 1;
+  bool confirmed_planning = 2;
+  bool confirmed_arrival_at_inland_railyard = 3;
+  bool confirmed_arrival_at_port = 4;
+  bool confirmed_availability_at_port_or_railyard = 5;
+  bool confirmed_pickup = 6;
+  bool confirmed_arrival_to_cfs = 7;
+  bool confirmed_availability_at_cfs = 8;
+  // To keep track of which user updated the last work item. This string is the user fid.
+  string last_modified_by = 9;
+}

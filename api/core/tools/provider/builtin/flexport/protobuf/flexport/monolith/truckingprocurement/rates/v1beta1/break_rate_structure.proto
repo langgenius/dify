@@ -1,0 +1,31 @@
+// TEAM: trucking_pricing_rate_management
+
+syntax = "proto3";
+
+package flexport.monolith.truckingprocurement.rates.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BreakRate";
+option java_package = "com.flexport.monolith.truckingprocurement.rates.v1beta1";
+option ruby_package = "Flexport::Monolith::TruckingProcurement::Rates::V1Beta1";
+
+message RateBreak {
+  string unit = 1;
+  reserved 2, 3, 4; // Used to be min, max, and scaling_factor respetively
+  float from = 5;
+  float per = 6;
+}
+
+message DimensionalBreak {
+  map<string, RateBreak> rate_breaks = 1;
+  string base_rate = 2;
+  string scaled_rate = 3;
+}
+
+message BreakRateStructure {
+  string min = 1;
+  string max = 2;
+  reserved 3; // Used to be structure
+  repeated DimensionalBreak dimensional_breaks = 4;
+  repeated string dimensional_priorities = 5;
+}

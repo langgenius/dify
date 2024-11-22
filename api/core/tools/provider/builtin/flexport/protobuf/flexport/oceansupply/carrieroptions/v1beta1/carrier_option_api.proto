@@ -1,0 +1,156 @@
+// TEAM: ocean_allocations
+
+syntax = "proto3";
+
+package flexport.oceansupply.carrieroptions.v1beta1;
+
+import "flexport/oceansupply/carrieroptions/v1beta1/carrier_option.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierOptionsApiProto";
+option java_package = "com.flexport.oceansupply.carrieroptions.v1beta1";
+option ruby_package = "Flexport::OceanSupply::V1Beta1";
+
+// An API for reading NAC/Premium carrier options
+service CarrierOptionsAPI {
+  // search for exact match of a single NAC, return null if not found
+  rpc GetNacProfile(GetNacProfileRequest) returns (GetNacProfileResponse);
+  // search for exact match of a single Premium, return null if not found
+  rpc GetPremiumProfile(GetPremiumProfileRequest) returns (GetPremiumProfileResponse);
+  // list all of the premium inventory options
+  rpc ListPremiumProfiles(ListPremiumProfilesRequest) returns (ListPremiumProfilesResponse);
+  // list all of the premium options filtered by a given list of POLs/PODs
+  rpc ListPremiumProfilesByPorts(ListPremiumProfilesByPortsRequest) returns (ListPremiumProfilesByPortsResponse);
+  // list all of the NAC inventory options
+  rpc ListNacProfiles(ListNacProfilesRequest) returns (ListNacProfilesResponse);
+  // list all of the NAC options filtered by a given list of POLs/PODs
+  rpc ListNacProfilesByPorts(ListNacProfilesByPortsRequest) returns (ListNacProfilesByPortsResponse);
+}
+
+// look for exact match of a single NAC profile
+message GetNacProfileRequest {
+  string client_fid = 1;
+  string carrier_fid = 2;
+  string contract_fid = 3;
+  // optional, thus we use wrapper type
+  google.protobuf.StringValue composite_string = 4;
+  string origin_port_fid = 5;
+  // optional, thus we use wrapper type
+  google.protobuf.StringValue origin_via_port_fid = 6;
+  // optional, thus we use wrapper type
+  google.protobuf.StringValue destination_via_port_fid = 7;
+  string destination_port_fid = 8;
+}
+message GetNacProfileResponse {
+  // returns null if not found
+  NacProfile nac_profile = 1;
+}
+// look for exact match of a single premium profile
+message GetPremiumProfileRequest {
+  string carrier_fid = 1;
+  string contract_fid = 2;
+  // optional, thus we use wrapper type. NOTE: a null string means wildcard in profiles. so
+  // it's possible when you query for "EC2", a profile with null string comes back.
+  google.protobuf.StringValue composite_string = 3;
+  string service_name = 4;
+  ServiceLevel service_level = 5;
+  string origin_port_fid = 6;
+  // optional, thus we use wrapper type
+  google.protobuf.StringValue origin_via_port_fid = 7;
+  // optional, thus we use wrapper type
+  google.protobuf.StringValue destination_via_port_fid = 8;
+  string destination_port_fid = 9;
+}
+message GetPremiumProfileResponse {
+  // returns null if not found
+  PremiumProfile premium_profile = 1;
+}
+// Request for ListPremiumOptions
+message ListPremiumProfilesRequest {
+  int32 limit = 1;
+  string offset = 2;
+  // specify ANY of the fields below to filter premium profiles by the provided values
+  // otherwise the request is treated as a find all request
+  string origin_port_fid = 3;
+  string origin_via_port_fid = 4;
+  string destination_port_fid = 5;
+  string destination_via_port_fid = 6;
+  repeated string service_name_fid = 7;
+  repeated ServiceLevel service_level = 8;
+}
+
+// Response for ListPremiumOptions
+message ListPremiumProfilesResponse {
+  repeated PremiumProfile premium_profiles = 1;
+  string offset = 2;
+}
+
+/*
+Request for ListPremiumOptionsByPorts
+
+Specify one or both port FID lists to filter Premium Options 
+that have a corresponding origin or destination port. An
+empty port list is treated as an implicit any filter.
+
+Both port FID lists cannot be empty.
+*/
+message ListPremiumProfilesByPortsRequest {
+  int32 limit = 1;
+  string offset = 2;
+  // find premium options with an origin or origin-via port contained in origin_fids
+  repeated string origin_fids = 10;
+  // find premium options with a destination or destination-via port contained in destination_fids
+  repeated string destination_fids = 11;
+}
+
+// Reponse for ListPremiumOptionsByPorts
+message ListPremiumProfilesByPortsResponse {
+  repeated PremiumProfile premium_options = 1;
+  string offset = 2;
+}
+
+// Request for ListNacOptions
+message ListNacProfilesRequest {
+  int32 limit = 1;
+  string offset = 2;
+  // If you want to apply any filter below you need to provide at least `client_fid`.
+  // If no client_fid present then we treat it as a FindAll (no filter) request.
+  string client_fid = 3;
+  string carrier_fid = 4;
+  string contract_fid = 5;
+  string origin_port_fid = 6;
+  string origin_via_port_fid = 7;
+  string destination_via_port_fid = 8;
+  string destination_port_fid = 9;
+}
+
+// Response for ListNacOptions
+message ListNacProfilesResponse {
+  repeated NacProfile nac_profiles = 1;
+  string offset = 2;
+}
+
+/*
+Request for ListNacOptionsByPorts
+
+Specify one or both port FID lists to filter NAC Options 
+that have a corresponding origin or destination port. An
+empty port list is treated as an implicit any filter.
+
+Both port FID lists cannot be empty.
+*/
+message ListNacProfilesByPortsRequest {
+  int32 limit = 1;
+  string offset = 2;
+  // find NAC options with an origin or origin-via port contained in origin_fids
+  repeated string origin_fids = 10;
+  // find NAC options with a destination or destination-via port contained in destination_fids
+  repeated string destination_fids = 11;
+}
+
+// Reponse for ListNacOptionsByPorts
+message ListNacProfilesByPortsResponse {
+  repeated NacProfile nac_options = 1;
+  string offset = 2;
+}

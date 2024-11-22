@@ -1,0 +1,48 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.monolith.airexecution.hawb.v1beta1;
+
+import "flexport/airshippingdoc/houseairwaybill/v1beta1/house_air_waybill.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "HouseAirWaybillEngineApiProto";
+option java_package = "com.flexport.monolith.airexecution.hawb.v1beta1";
+option ruby_package = "Flexport::Monolith::AirExecution::HAWB::V1Beta1";
+
+service HouseAirWaybillAPI {
+  rpc ListEngineHouseAirWaybills(ListEngineHouseAirWaybillsRequest) returns (ListEngineHouseAirWaybillsResponse);
+  rpc SaveEngineHouseAirWaybill(SaveEngineHouseAirWaybillRequest) returns (SaveEngineHouseAirWaybillResponse);
+  rpc UpdateEngineBillOfLadingAndMisc(UpdateEngineBillOfLadingAndMiscRequest) returns (UpdateEngineBillOfLadingAndMiscResponse);
+}
+
+message ListEngineHouseAirWaybillsRequest {
+  int32 shipment_id = 1;
+}
+
+message ListEngineHouseAirWaybillsResponse {
+  repeated flexport.airshippingdoc.houseairwaybill.v1beta1.HouseAirWaybill house_air_waybills = 1;
+  repeated string errors = 2;
+}
+
+message SaveEngineHouseAirWaybillRequest {
+  flexport.airshippingdoc.houseairwaybill.v1beta1.HouseAirWaybill house_air_waybill = 1;
+  string user_fid = 2;
+}
+
+message SaveEngineHouseAirWaybillResponse {
+  int32 shipment_id = 1;
+  repeated string errors = 2;
+}
+
+message UpdateEngineBillOfLadingAndMiscRequest {
+  int32 shipment_id = 1;
+  string bill_number = 2;
+  string user_fid = 3;
+}
+
+message UpdateEngineBillOfLadingAndMiscResponse {
+  int32 bill_of_lading_id = 1;
+  repeated string errors = 2;
+}

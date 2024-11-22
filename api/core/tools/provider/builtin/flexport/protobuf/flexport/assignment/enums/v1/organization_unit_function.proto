@@ -1,0 +1,18 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OrganizationUnitFunctionProto";
+option java_package = "com.flexport.assignment.enums.v1";
+option ruby_package = "Flexport::Assignment::Enums::V1";
+
+// Business unit function type.
+enum OrganizationUnitFunction {
+  ORGANIZATION_UNIT_FUNCTION_INVALID = 0;
+  ORGANIZATION_UNIT_FUNCTION_EXPORT = 1;
+  ORGANIZATION_UNIT_FUNCTION_IMPORT = 2;
+  ORGANIZATION_UNIT_FUNCTION_CUSTOMS = 3;
+}

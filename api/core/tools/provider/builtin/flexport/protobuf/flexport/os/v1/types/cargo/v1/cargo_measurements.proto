@@ -1,0 +1,25 @@
+// TEAM: flexport_os
+
+syntax = "proto3";
+
+package flexport.os.v1.types.cargo.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoMeasurementsProto";
+option java_package = "com.flexport.os.v1.types.cargo.v1";
+option ruby_package = "Flexport::OS::V1::Types::Cargo::V1";
+
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+
+// Cargo measurements are weight, volume, and dimensions.
+// The numbers are strings rather than doubles to avoid loss of precision.
+message CargoMeasurements {
+  CargoWeightUnit weight_unit = 1;
+  string weight = 2;
+  CargoVolumeUnit volume_unit = 7;
+  string volume = 8;
+  CargoDimensionsUnit dimensions_unit = 3;
+  string height = 4;
+  string width = 5;
+  string depth = 6;
+}

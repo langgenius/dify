@@ -1,0 +1,90 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.commerce.search.collection.v1beta1;
+
+import "google/rpc/status.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CollectionProto";
+option java_package = "com.flexport.commerce.search.collection.v1beta1";
+option ruby_package = "Flexport::Commerce::Search::Collection::V1Beta1";
+
+service CollectionAPI {
+  rpc CreateCollection(CreateCollectionRequest) returns (CreateCollectionResponse);
+  rpc CollectionMetadata(CollectionMetadataRequest) returns (CollectionMetadataResponse);
+}
+
+message CreateCollectionRequest {
+  // All letters must be lowercase.
+  // Collection names can’t begin with underscores (_) or hyphens (-).
+  // Collection names can’t contain spaces, commas, or the following characters:
+  // :, ", *, +, /, \, |, ?, #, >, or <
+  string collection_name = 1;
+  // If a map is empty, fields will be dynamically typed.
+  map<string, Property> type_mapping = 2;
+}
+
+message CreateCollectionResponse {
+  // flx::commerce:search:collection:id/cuid
+  google.rpc.Status status = 1;
+  string collection_fid = 2;
+}
+
+message CollectionMetadataRequest {
+  string collection_fid = 1;
+}
+
+message CollectionMetadataResponse {
+  google.rpc.Status status = 1;
+  map<string, Property> type_mapping = 2;
+}
+
+enum Property {
+  PROPERTY_INVALID = 0;
+  PROPERTY_AGGREGATE_METRIC_DOUBLE = 1;
+  PROPERTY_BINARY = 2;
+  PROPERTY_BOOLEAN = 3;
+  PROPERTY_BYTE = 4;
+  PROPERTY_COMPLETION = 5;
+  PROPERTY_CONSTANT_KEYWORD = 6;
+  PROPERTY_DATE_NANOS = 7;
+  PROPERTY_DATE = 8;
+  PROPERTY_DATE_RANGE = 9;
+  PROPERTY_DENSE_VECTOR = 10;
+  PROPERTY_DOUBLE = 11;
+  PROPERTY_DOUBLE_RANGE = 12;
+  PROPERTY_ALIAS = 13;
+  PROPERTY_FLATTENED = 14;
+  PROPERTY_FLOAT = 15;
+  PROPERTY_FLOAT_RANGE = 16;
+  PROPERTY_GEO_POINT = 17;
+  PROPERTY_GEO_SHAPE = 18;
+  PROPERTY_HALF_FLOAT = 19;
+  PROPERTY_HISTOGRAM = 20;
+  PROPERTY_INTEGER = 21;
+  PROPERTY_INTEGER_RANGE = 22;
+  PROPERTY_IP = 23;
+  PROPERTY_IP_RANGE = 24;
+  PROPERTY_JOIN = 25;
+  PROPERTY_KEYWORD = 26;
+  PROPERTY_LONG = 27;
+  PROPERTY_LONG_RANGE = 28;
+  PROPERTY_MURMUR3 = 29;
+  PROPERTY_NESTED = 30;
+  PROPERTY_OBJECT = 31;
+  PROPERTY_PERCOLATOR = 32;
+  PROPERTY_POINT = 33;
+  PROPERTY_RANK_FEATURE = 34;
+  PROPERTY_RANK_FEATURES = 35;
+  PROPERTY_SCALED_FLOAT = 36;
+  PROPERTY_SEARCH_AS_YOU_TYPE = 37;
+  PROPERTY_SHAPE = 38;
+  PROPERTY_SHORT = 39;
+  PROPERTY_TEXT = 40;
+  PROPERTY_TOKEN_COUNT = 41;
+  PROPERTY_UNSIGNED_LONG = 42;
+  PROPERTY_VERSION = 43;
+  PROPERTY_WILDCARD = 44;
+}

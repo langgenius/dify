@@ -1,0 +1,92 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoReleaseExecutionTaskParamsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+import "flexport/executioncoordinator/executioncargo/v1/execution_cargo.proto";
+import "flexport/os/v1/types/cargo/v1/base_cargo.proto";
+import "flexport/os/v1/types/cargo/v1/cargo_measurements.proto";
+import "flexport/os/v1/types/walltimerange/v1/wall_time_range.proto";
+
+// Identifies the different requirements we might have for palletizing while deconsolidation handling instructions.
+enum DeconsolidationPlanPalletizationRequirements {
+  DECONSOLIDATION_PLAN_PALLETIZATION_REQUIREMENTS_INVALID = 0;
+  DECONSOLIDATION_PLAN_PALLETIZATION_REQUIREMENTS_NONE = 1;
+  DECONSOLIDATION_PLAN_PALLETIZATION_REQUIREMENTS_AMAZON = 2;
+  DECONSOLIDATION_PLAN_PALLETIZATION_REQUIREMENTS_STANDARD = 3;
+  DECONSOLIDATION_PLAN_PALLETIZATION_REQUIREMENTS_CUSTOM = 4;
+}
+
+// Identifies different labeling requirements for pallets on deconsolidation handling instructions.
+enum DeconsolidationPlanPalletLabelingRequirements {
+  DECONSOLIDATION_PLAN_PALLET_LABELING_REQUIREMENTS_INVALID = 0;
+  DECONSOLIDATION_PLAN_PALLET_LABELING_REQUIREMENTS_NONE = 1;
+  DECONSOLIDATION_PLAN_PALLET_LABELING_REQUIREMENTS_AMAZON = 2;
+  DECONSOLIDATION_PLAN_PALLET_LABELING_REQUIREMENTS_STANDARD = 3;
+}
+
+// Identifies different labeling requirements for cartons on deconsolidation handling instructions.
+enum DeconsolidationPlanCartonLabelingRequirements {
+  DECONSOLIDATION_PLAN_CARTON_LABELING_REQUIREMENTS_INVALID = 0;
+  DECONSOLIDATION_PLAN_CARTON_LABELING_REQUIREMENTS_NONE = 1;
+  DECONSOLIDATION_PLAN_CARTON_LABELING_REQUIREMENTS_AMAZON = 2;
+  DECONSOLIDATION_PLAN_CARTON_LABELING_REQUIREMENTS_STANDARD = 3;
+  DECONSOLIDATION_PLAN_CARTON_LABELING_REQUIREMENTS_UPS = 4;
+  DECONSOLIDATION_PLAN_CARTON_LABELING_REQUIREMENTS_FEDEX = 5;
+}
+
+// Identifies groupings of cargo for the deconsolidation outbound plan.
+message DeconsolidationPlanOutboundGroup {
+  flexport.os.v1.types.cargo.v1.BaseCargo cargo_group = 1;
+  string amazon_sku = 2;
+  string product_sku = 3;
+}
+
+// Plan for deconsolidating cargo considered on an outbound basis. This data models
+// both handling instructions and outbound plans.
+message DeconsolidationPlan {
+  //
+  // A text description of how cargo should be handled during deconsolidation.
+  string instructions = 1;
+  //
+  // pallet dimensions for custom palletization requirements
+  flexport.os.v1.types.cargo.v1.CargoMeasurements pallet_dimensions = 2;
+  //
+  // requirements for pallet labeling
+  DeconsolidationPlanPalletLabelingRequirements pallet_labeling_requirements = 3;
+  //
+  // requirements for carton labeling
+  DeconsolidationPlanCartonLabelingRequirements carton_labeling_requirements = 4;
+  //
+  // requirements as to how palletization should be performed
+  DeconsolidationPlanPalletizationRequirements palletization_requirements = 5;
+  //
+  // cargo groupings for outbound plan
+  repeated DeconsolidationPlanOutboundGroup outbound_groups = 6;
+}
+
+// Parameters for CargoRelease ExecutionTask.
+message CargoReleaseExecutionTaskParams {
+  //
+  // Details about the cargo to be released.
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 2;
+  //
+  // When the cargo is expected to be released.
+  flexport.os.v1.types.walltimerange.v1.WallTimeRange time_range = 3;
+  //
+  // Unique identifier of the address of the warehouse (or other facility) to release cargo.
+  string origin_address_fid = 5;
+  //
+  // Instructions on how to deconsolidate the cargo. This uses 16  as it is to be sparsely populated as not
+  // all CargoRelease tasks will have an explicit deconsolidation plan recorded.
+  DeconsolidationPlan deconsolidation_plan = 16;
+  //
+  // The fid identifier for the outbound route_shape_leg from the warehouse releasing the cargo.
+  string departing_route_shape_leg_fid = 6;
+}

@@ -1,0 +1,45 @@
+// TEAM: trucking_carriers
+
+syntax = "proto3";
+
+package flexport.monolith.funnelmanagement.affiliation.v1beta1;
+
+import "flexport/monolith/funnelmanagement/affiliation/v1beta1/affiliation.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AffiliationApiProto";
+option java_package = "com.flexport.monolith.funnelmanagement.affiliation.v1beta1";
+option ruby_package = "Flexport::Monolith::FunnelManagement::Affiliation::V1Beta1";
+
+// The affiliation service definition.
+service AffiliationAPI {
+  // Attempts to affiliate a user with a carrier and sends a chellenge code to the carrier if the email of the user does
+  // not match the email of the carrier.
+  rpc Affiliate(AffiliateRequest) returns (AffiliateResponse);
+  // Verifies a challenge code sent to a carrier and entered by a user to verify that user's affiliation with that
+  // carrier.
+  rpc VerifyAffiliation(VerifyAffiliationRequest) returns (VerifyAffiliationResponse);
+}
+
+// The request message for Affiliation service.
+message AffiliateRequest {
+  string user_email = 1;
+  string usdot_number = 2;
+}
+
+// The response message for Affiliation service.
+message AffiliateResponse {
+  AffiliationStatus affiliation_status = 1;
+  string code_sent_to_email = 2;
+}
+
+// The request message for Verify Affiliation service.
+message VerifyAffiliationRequest {
+  // Email of the user trying to affiliate.
+  string user_email = 1;
+  // Challenge code entereed by the user to be compared to the code sent to the carrier.
+  string challenge_code = 2;
+}
+
+// The response message for Verify Affiliation service.
+message VerifyAffiliationResponse {}

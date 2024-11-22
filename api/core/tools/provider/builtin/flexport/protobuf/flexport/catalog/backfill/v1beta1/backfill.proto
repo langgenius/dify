@@ -1,0 +1,16 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.backfill.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BackfillProto";
+option java_package = "com.flexport.catalog.backfill.v1beta1";
+option ruby_package = "Flexport::Catalog::Backfill::V1Beta1";
+
+// Backfill types.
+enum BackfillType {
+  BACKFILL_TYPE_INVALID = 0;
+  BACKFILL_TYPE_SERVICE_INGESTION = 1;
+}

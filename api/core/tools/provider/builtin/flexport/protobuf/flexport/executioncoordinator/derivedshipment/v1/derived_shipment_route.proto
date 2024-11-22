@@ -1,0 +1,139 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.derivedshipment.v1;
+
+import "flexport/executioncoordinator/executioncargo/v1/execution_cargo.proto";
+import "flexport/executioncoordinator/itinerary/v1beta1/itinerary.proto";
+import "flexport/executioncoordinator/types/enums/v1/entry_point.proto";
+import "flexport/executioncoordinator/types/enums/v1/node_tag.proto";
+import "flexport/executioncoordinator/types/enums/v1/transport_mode.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DerivedShipmentRouteProto";
+option java_package = "com.flexport.executioncoordinator.derivedshipment.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::DerivedShipment::V1";
+
+// Derived route of the shipment.
+message DerivedShipmentRoute {
+  repeated DerivedShipmentNode derived_nodes = 1;
+  repeated DerivedShipmentLeg derived_legs = 2;
+}
+
+// One node of the derived shipment route.
+// Next ID: 11
+message DerivedShipmentNode {
+  // Corresponds to a RouteShapeNode fid on an ExecutionTask
+  // This acts as the main identifier for DerivedShipmentNodes
+  string route_shape_node_fid = 9;
+  string place_fid = 6;
+  repeated flexport.executioncoordinator.types.enums.v1.NodeTag tags = 3;
+  string terminal_or_cfs_fid = 4;
+  // A location represents a semantic place (eg Mom's house).
+  // An address represents where that place is geographically (eg 123 Main St).
+  string location_fid = 5;
+  DerivedShipmentNodeDevanDate devan_date = 8;
+  // Indicates if Flexport is responsible for execution of cargo on this node, and node's associated legs.
+  google.protobuf.BoolValue flexport_owned = 10;
+}
+
+// A devan date for a node.
+message DerivedShipmentNodeDevanDate {
+  string container_fid = 1;
+  string execution_task_fid = 2;
+  DerivedShipmentDate date = 3;
+}
+
+// One leg between two nodes in the derived shipment route.
+// Next ID: 27
+message DerivedShipmentLeg {
+  // Corresponds to a RouteShapeLeg fid on an ExecutionTask
+  // This acts as the main identifier for DerivedShipmentLegs
+  string route_shape_leg_fid = 17;
+  // Corresponds to a route_shape_node_fid on a DerivedShipmentNode
+  // Join on that to get details on the origin node
+  string origin_node_fid = 18;
+  // Corresponds to a route_shape_node_fid on a DerivedShipmentNode
+  // Join on that to get details on the destination node.
+  string destination_node_fid = 19;
+  flexport.executioncoordinator.types.enums.v1.TransportMode transport_mode = 3;
+  repeated string container_fids = 4;
+  DerivedShipmentDate arrival = 5;
+  DerivedShipmentDate departure = 6;
+  // Shipper-specified date the Cargo is ready for pickup. Primarily relevant on pickup legs.
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate cargo_ready_date = 21;
+  string execution_task_fid = 7;
+  // This is needed as a stop-gap for the shipment workspace UI to fetch scheduled date suggestions
+  // for a leg, but other consumers of this proto should AVOID USING THIS FIELD.
+  uint64 monolith_leg_dbid = 8;
+  // Derived from either monolith LegJoin or ET params.
+  repeated string execution_cargo_fids = 9;
+  string carrier_service_string_fid = 11;
+  // The carrier associated with this leg. Corresponds to carrier.rb in the monolith.
+  string carrier_fid = 12;
+  // The partner associated with this leg. Corresponds to freight_partner.rb in the monolith.
+  string freight_partner_fid = 26;
+  // The vessel associated with this leg. Corresponds to vessel.rb in the monolith.
+  string vessel_fid = 23;
+  // Contains tracking information where available for ocean or air legs.
+  // Corresponds to voyage_number on the plan's route_shape.
+  string tracking_number = 15;
+  uint64 number_of_pieces = 16;
+  repeated DerivedShipmentLegTag tags = 20;
+  // Trucking POD document reference if it has been uploaded
+  string trucking_proof_of_delivery_document_fid = 22;
+  string trucking_proof_of_delivery_uploaded_by = 24;
+  // Derived from the cargo_received ETSE emitted by the warehouse provider whenever cargo is received.
+  repeated flexport.executioncoordinator.executioncargo.v1.ExecutionCargo received_cargos = 25;
+}
+
+// Cargo transit dates at a particular node.
+// See http://go/ec-dates for details for the distinction between actual, estimated, and scheduled.
+message DerivedShipmentDate {
+  DerivedShipmentDateUpdate actual = 1;
+  DerivedShipmentDateUpdate estimated = 3;
+  // Scheduled dates are only populated for trucking legs.
+  // In general, estimated dates will be more up-to-date so prefer to use those unless
+  // you are specifically interested in trucking scheduled dates per http://go/ec-dates.
+  // If you want to be precise, you can use which ever has the most recent last_updated_time.
+  DerivedShipmentDateUpdate scheduled = 4;
+}
+
+// The most recent update to a date value.
+// Next ID： 9
+message DerivedShipmentDateUpdate {
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime value = 1;
+  google.protobuf.Timestamp last_updated_time = 2;
+  string last_updated_by_user_fid = 3;
+  // EntryPoint of the ETSE that updated this message.
+  // This is only reliably set for scheduled dates of trucking legs.
+  // Please ping #forwarding-platform if you have other use cases.
+  flexport.executioncoordinator.types.enums.v1.EntryPoint last_updated_entry_point = 4;
+  // The last_remained_time value is the time about the last time the date value was recorded
+  // as remaining the same.
+  google.protobuf.Timestamp last_remained_time = 5 [deprecated = true];
+  // Reserve numbers 6 and 7 for dropped fields last_remained_by_user and last_remained_entry_point
+  // which won't be used anymore.
+  // string last_remained_by_user_fid = 6;
+  // flexport.executioncoordinator.types.enums.v1.EntryPoint last_remained_entry_point = 7;
+
+
+  // Metadata of date value populated when date derived from Itinerary
+  flexport.executioncoordinator.itinerary.v1beta1.ItineraryDateMetadata itinerary_metadata = 8;
+}
+
+// List of tags to identify types of legs.
+enum DerivedShipmentLegTag {
+  DERIVED_SHIPMENT_LEG_TAG_INVALID = 0;
+  // Legs occurring before main freight.
+  DERIVED_SHIPMENT_LEG_TAG_ORIGIN = 1;
+  // Legs occurring during main freight.
+  DERIVED_SHIPMENT_LEG_TAG_MAIN_FREIGHT = 2;
+  // Legs occurring after main freight.
+  DERIVED_SHIPMENT_LEG_TAG_DESTINATION = 3;
+}

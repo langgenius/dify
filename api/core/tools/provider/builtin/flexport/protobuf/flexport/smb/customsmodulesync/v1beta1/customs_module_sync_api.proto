@@ -1,0 +1,58 @@
+// TEAM: smb_scone
+
+syntax = "proto3";
+
+package flexport.smb.customsmodulesync.v1beta1;
+
+import "flexport/smb/customsmodulesync/v1beta1/customs_module_sync.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsModuleSyncApiProto";
+option java_package = "com.flexport.smb.customsmodulesync.v1beta1";
+option ruby_package = "Flexport::Smb::CustomsModuleSync::V1Beta1";
+
+// This service syncs and retrieves data from core.
+service CustomsModuleSyncAPI {
+  // Send customs bond data to core to be synced.
+  rpc SendCustomsBondData(SendCustomsBondDataRequest) returns (SendCustomsBondDataResponse);
+  // Sends customs information data to core to be synced.
+  rpc SendCustomsInformationData(SendCustomsInformationDataRequest) returns (SendCustomsInformationDataResponse);
+  // Retrieves customs client data from core to be visible in the SMB NIS.
+  rpc GetCustomsClientData(GetCustomsClientDataRequest) returns (GetCustomsClientDataResponse);
+}
+
+message SendCustomsBondDataRequest {
+  string client_fid = 1;
+  string user_fid = 2;
+  string products = 3;
+  string exporting_country = 4;
+}
+
+message SendCustomsBondDataResponse {
+  bool success = 1;
+  repeated string errors = 2;
+}
+
+message SendCustomsInformationDataRequest {
+  string client_fid = 1;
+  string user_fid = 2;
+  repeated CustomsContactProto contacts = 3;
+  bool pays_directly_to_cbp = 4;
+}
+
+message SendCustomsInformationDataResponse {
+  bool success = 1;
+  repeated string errors = 2;
+}
+
+message GetCustomsClientDataRequest {
+  string fid = 1;
+}
+
+message GetCustomsClientDataResponse {
+  string fid = 1;
+  string products = 2;
+  string exporting_country = 3;
+  repeated CustomsContactProto contacts = 4;
+  bool pays_directly_to_cbp = 5;
+}

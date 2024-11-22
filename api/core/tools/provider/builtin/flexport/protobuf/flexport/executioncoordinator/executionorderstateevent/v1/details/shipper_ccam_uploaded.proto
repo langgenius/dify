@@ -1,0 +1,17 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipperCcamUploadedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// China Customs Advanced Manifest document has been uploaded by the shipper to Flexport.
+// Emitted when a CCAM document is uploaded. The main purpose of emitting this event is that EMS can consume an EOSE
+// and then "Upload CCAM" WI re-calculation can be triggered.
+message ShipperCcamUploaded {
+  string shipment_fid = 1;
+}

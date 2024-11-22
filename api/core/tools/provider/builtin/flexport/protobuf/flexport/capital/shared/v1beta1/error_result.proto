@@ -1,0 +1,24 @@
+// TEAM: capital
+
+syntax = "proto3";
+
+package flexport.capital.shared.v1beta1;
+
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ErrorResultProto";
+option java_package = "com.flexport.capital.shared.v1beta1";
+option ruby_package = "Flexport::Capital::Shared::V1Beta1";
+
+message Error {
+  google.protobuf.Struct object = 1 [json_name = "_object"];
+  uint32 status = 2;
+  string code = 3;
+  string message = 4;
+}
+
+// Result with errors.
+message ErrorResult {
+  repeated Error errors = 1;
+}

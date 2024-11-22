@@ -1,0 +1,26 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.freightinvoice.creditprofile.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CreditProfileApiProto";
+option java_package = "com.flexport.freightinvoice.creditprofile.v1beta1";
+option ruby_package = "Flexport::FreightInvoice::CreditProfile::V1Beta1";
+
+import "flexport/freightinvoice/creditprofile/v1beta1/credit_profile.proto";
+
+// API for the credit profile product.
+service CreditProfileAPI {
+  // Fetch a credit profile.
+  rpc GetCreditProfile(GetCreditProfileRequest) returns (GetCreditProfileResponse);
+}
+
+message GetCreditProfileRequest {
+  string company_fid = 1;
+}
+
+message GetCreditProfileResponse {
+  CreditProfile credit_profile = 1;
+}

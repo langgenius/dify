@@ -1,0 +1,20 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DerivedShipmentRouteUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "flexport/executioncoordinator/derivedshipment/v1/derived_shipment_route.proto";
+
+// Published when the DerivedShipment's route is updated.
+message DerivedShipmentRouteUpdated {
+  // NOTE: do not use this EOSE type, use DS event DerivedShipmentRouteChanged instead
+  option deprecated = true;
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipmentRoute old_derived_shipment_route = 1;
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipmentRoute new_derived_shipment_route = 2;
+}

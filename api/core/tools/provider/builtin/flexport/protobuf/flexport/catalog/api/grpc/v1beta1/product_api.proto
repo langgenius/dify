@@ -1,0 +1,42 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.api.grpc.v1beta1;
+
+import "google/protobuf/struct.proto";
+import "google/rpc/status.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.catalog.product.api.grpc.v1beta1";
+option ruby_package = "Flexport::Catalog::Product::Api::Gprc::V1Beta1";
+
+// Document based product entry based on predefined product schema
+service ProductEntryAPI {
+  rpc CreateProductEntry(CreateProductEntryRequest) returns (CreateProductEntryResponse);
+  rpc SearchProductEntries(SearchProductEntriesRequest) returns (SearchProductEntriesResponse);
+}
+
+message ProductEntryInstance {
+  string id = 1;
+}
+
+message CreateProductEntryResponse {
+  google.rpc.Status status = 1;
+  optional ProductEntryInstance entity = 2;
+}
+
+message CreateProductEntryRequest {
+  string schema_id = 1;
+  optional google.protobuf.Struct attribute_values = 2;
+  optional string distinct_key = 3;
+}
+
+message SearchProductEntriesRequest {
+  google.protobuf.Struct query = 1;
+}
+
+message SearchProductEntriesResponse {
+  google.rpc.Status status = 1;
+  repeated google.protobuf.Struct product_entries = 2;
+}

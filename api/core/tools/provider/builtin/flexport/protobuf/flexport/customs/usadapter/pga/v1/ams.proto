@@ -1,0 +1,130 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.pga.v1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.pga.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Pga::V1";
+
+message Ams {
+  oneof status {
+    Claim claim = 1;
+    Disclaim disclaim = 2;
+  }
+
+  message Claim {
+    string commercial_description = 1;
+    Program program = 2;
+  }
+
+  message Disclaim {
+    Reason reason = 1;
+    string commercial_description = 2;
+    Program program = 3;
+
+    enum Reason {
+      REASON_INVALID = 0;
+
+      // product is not regulated by this agency
+      REASON_A = 1;
+
+      // data is not required per agency guidance
+      REASON_B = 2;
+
+      // data filed through other agency means
+      REASON_C = 3;
+
+      // data filed through paper
+      REASON_D = 4;
+    }
+  }
+
+  message Program {
+    oneof code {
+      // USDA-AMS Marketing Order Quality Inspection Compliance
+      Mo mo = 1;
+
+      // USDA-AMS Imported Egg Inspection
+      Eg eg = 2;
+
+      // USDA-AMS Imported Peanut Inspection
+      Pn pn = 3;
+
+      // USDA-AMS Organic
+      Or or = 4;
+    }
+
+    message Mo {
+      ProcessingCode processing_code = 1;
+
+      enum ProcessingCode {
+        PROCESSING_CODE_INVALID = 0;
+
+        // The first use case for the associated program code
+        PROCESSING_CODE_1 = 1;
+
+        // The second use case for the associated program code
+        PROCESSING_CODE_2 = 2;
+
+        // The third use case for the associated program code
+        PROCESSING_CODE_3 = 3;
+
+        // The fourth use case for the associated program code
+        PROCESSING_CODE_4 = 4;
+
+        // The fifth use case for the associated program code
+        PROCESSING_CODE_5 = 5;
+
+        // The sixth use case for the associated program code
+        PROCESSING_CODE_6 = 6;
+
+        // The seventh use case for the associated program code
+        PROCESSING_CODE_7 = 7;
+
+        // The eighth use case for the associated program code
+        PROCESSING_CODE_8 = 8;
+      }
+    }
+
+    message Eg {
+      ProcessingCode processing_code = 1;
+
+      enum ProcessingCode {
+        PROCESSING_CODE_INVALID = 0;
+
+        // The first use case for the associated program code
+        PROCESSING_CODE_1 = 1;
+
+        // The second use case for the associated program code
+        PROCESSING_CODE_2 = 2;
+      }
+    }
+
+    message Pn {
+      ProcessingCode processing_code = 1;
+
+      enum ProcessingCode {
+        PROCESSING_CODE_INVALID = 0;
+
+        // The first use case for the associated program code
+        PROCESSING_CODE_1 = 1;
+      }
+    }
+
+    message Or {
+      ProcessingCode processing_code = 1;
+
+      enum ProcessingCode {
+        PROCESSING_CODE_INVALID = 0;
+
+        // Entire data set
+        PROCESSING_CODE_1 = 1;
+
+        // Limited data set – electronic certificates
+        PROCESSING_CODE_2 = 2;
+      }
+    }
+  }
+}

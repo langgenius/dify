@@ -1,0 +1,25 @@
+// TEAM: client_app
+syntax = "proto3";
+
+package flexport.clientfreightdata.trackingonlyorder.v1beta1;
+
+// Payload of message queue, contains required data for creating subscription.
+message CreateClientOrderRequest {
+  string client_fid = 1;
+  // Container numbers like "APZU3168506" provided by users.
+  repeated string container_numbers = 2;
+  // The mbl_number provided by users.
+  string mbl_number = 3;
+  // The hbl_number provided by users.
+  string hbl_number = 4;
+  // The global_scac_code is the VOCC direct carrier SCAC provided by users.
+  string global_scac_code = 5;
+  // The id from table tracking_only_order_tracking_request
+  int64 tracking_only_order_tracking_request_id = 6;
+  // The shipment tags provided by users parsed into json string.
+  string shipment_tags = 7;
+  // Fid of the company associated with the client
+  string client_company_fid = 8;
+  // The freight_forwarder_scac is the SCAC of the freight forwarder provided by users.
+  string freight_forwarder_scac = 9;
+}

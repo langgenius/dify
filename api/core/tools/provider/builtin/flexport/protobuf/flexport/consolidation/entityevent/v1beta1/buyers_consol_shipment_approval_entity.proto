@@ -1,0 +1,28 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.consolidation.entityevent.v1beta1;
+
+import "flexport/consolplanningmanager/events/v1beta1/container_load_plan_updated.proto";
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BuyersConsolShipmentApprovalEntityProto";
+option java_package = "com.flexport.consolidation.entityevent.v1beta1";
+option ruby_package = "Flexport::Consolidation::EntityEvent::V1Beta1";
+
+// Proto message capturing buyers consolidation shipment approvals and holds
+message BuyersConsolShipmentApprovalEntity {
+  int32 supply_shipment_id = 1;
+  repeated int32 demand_shipment_ids = 2;
+  float quoted_volume_cbm = 3;
+  float planned_volume_cbm = 4;
+  flexport.os.v1.types.cargo.v1.Iso6346ContainerSize container_size = 5;
+  float container_total_capacity_cbm = 6;
+  bool is_auto_approved = 7;
+  flexport.consolplanningmanager.events.v1beta1.ConsolPlanStatus clp_status = 8;
+  uint64 clp_bc_revision = 9;
+  google.protobuf.Timestamp updated_at = 10;
+}

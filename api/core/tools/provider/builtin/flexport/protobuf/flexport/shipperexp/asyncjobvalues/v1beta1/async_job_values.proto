@@ -1,0 +1,26 @@
+// TEAM: shipper_exp
+
+syntax = "proto3";
+
+package flexport.shipperexp.asyncjobvalues.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AsyncJobValuesProto";
+option java_package = "com.flexport.shipperexp.asyncjobvalues.v1beta1";
+option ruby_package = "Flexport::ShipperExp::AsyncJobValues::V1Beta1";
+
+// An event to set shipper_exp AsyncJob status.
+message AsyncJobValues {
+  int32 id = 1;
+  Status status = 2;
+  // contains the reason why this async job failed
+  string error_reason = 3;
+}
+
+// Represent asyncjob status.
+enum Status {
+  STATUS_INVALID = 0;
+  STATUS_ACTIVE = 1;
+  STATUS_COMPLETED = 2;
+  STATUS_FAILED = 3;
+}

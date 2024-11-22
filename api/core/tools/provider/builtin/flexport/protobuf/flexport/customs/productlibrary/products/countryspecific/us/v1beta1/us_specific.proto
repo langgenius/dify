@@ -1,0 +1,23 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.productlibrary.products.countryspecific.us.v1beta1;
+
+import "flexport/customs/productlibrary/products/countryspecific/us/v1beta1/pga_requirement.proto";
+import "flexport/customs/productlibrary/products/countryspecific/us/v1beta1/special_tariff.proto";
+import "flexport/customs/productlibrary/products/countryspecific/us/v1beta1/us_fee.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "USSpecificProto";
+option java_package = "com.flexport.customs.productlibrary.products.countryspecific.us.v1beta1";
+option ruby_package = "Flexport::Customs::ProductLibrary::Products::CountrySpecific::US::V1Beta1";
+
+message USSpecific {
+  reserved 1, 2;
+
+  repeated flexport.customs.productlibrary.products.countryspecific.us.v1beta1.UsSpecialTariff special_tariffs = 3;
+  repeated flexport.customs.productlibrary.products.countryspecific.us.v1beta1.UsPgaRequirement pga_requirements = 4;
+
+  flexport.customs.productlibrary.products.countryspecific.us.v1beta1.USFee us_fee_cotton = 100;
+}

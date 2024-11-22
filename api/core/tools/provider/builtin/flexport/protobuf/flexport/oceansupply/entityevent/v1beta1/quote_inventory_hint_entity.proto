@@ -1,0 +1,40 @@
+// TEAM: ocean_service_offerings
+
+syntax = "proto3";
+
+package flexport.oceansupply.entityevent.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "QuoteInventoryHintEntityProto";
+option java_package = "com.flexport.oceansupply.entityevent.v1beta1";
+option ruby_package = "Flexport::OceanSupply::EntityEvent::V1Beta1";
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Experimental target ETDs.
+message ShadowResult {
+  // Internal name of the algorithm used to generate the prediction.
+  //
+  string algorithm = 1;
+  // ETD ISO week, as YYYYWW, eg. 202050.
+  //
+  google.protobuf.Int32Value target_etd_week = 2;
+  // Free-form extra details about the result.
+  //
+  string details = 3;
+}
+
+// Should match com.flexport.oceansupply.app.product.db.entity.QuoteInventoryHint
+message QuoteInventoryHintEntity {
+  int32 shipment_id = 1;
+  string execution_order_fid = 2 [deprecated = true];
+  string event_type = 3;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate cargo_ready_date = 4;
+  int32 target_etd_week = 5;
+  google.protobuf.Timestamp updated_at_time = 6;
+  string ocean_product_key = 7;
+  repeated ShadowResult shadow_results = 8;
+  string algorithm = 9;
+}

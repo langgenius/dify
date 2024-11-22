@@ -1,0 +1,25 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.forwardingcustomsmanager.export.customsdeclaration.events.v1beta1;
+
+import "flexport/forwardingcustomsmanager/export/customsdeclaration/v1beta1/automated_export_system_filing_api.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AutomatedExportSystemFilingEventsProto";
+option java_package = "com.flexport.forwardingcustomsmanager.export.customsdeclaration.events.v1beta1";
+option ruby_package = "Flexport::ForwardingCustomsManager::ExportCustomsDeclaration::Events::V1Beta1";
+
+message CustomsAesFilingCreated {
+  string fid = 1;
+
+  export.customsdeclaration.v1beta1.AutomatedExportSystemFiling customs_aes_filing = 2;
+}
+
+message CustomsAesFilingUpdated {
+  string fid = 1;
+
+  export.customsdeclaration.v1beta1.AutomatedExportSystemFiling customs_aes_filing = 2;
+  optional export.customsdeclaration.v1beta1.AutomatedExportSystemFiling previous_customs_aes_filing = 3;
+}

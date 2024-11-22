@@ -1,0 +1,47 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.backfill.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BackfillApiProto";
+option java_package = "com.flexport.catalog.backfill.v1beta1";
+option ruby_package = "Flexport::Catalog::Backfill::V1Beta1";
+
+import "flexport/catalog/backfill/v1beta1/backfill.proto";
+import "google/protobuf/wrappers.proto";
+
+// An API for managing backfills in Service Catalog.
+service BackfillAPI {
+  // Starts a backfill. Idempotent.
+  rpc StartBackfill(StartBackfillRequest) returns (StartBackfillResponse);
+  // Checks the status of a backfill. Read-only.
+  rpc CheckBackfill(CheckBackfillRequest) returns (CheckBackfillResponse);
+  // Cancels a backfill.
+  rpc StopBackfill(StopBackfillRequest) returns (StopBackfillResponse);
+}
+
+message StartBackfillRequest {
+  BackfillType backfill_type = 1;
+  google.protobuf.Int32Value timeout = 2;
+  repeated string args = 3;
+}
+
+message StartBackfillResponse {
+  string job_id = 1;
+}
+
+message CheckBackfillRequest {
+  string job_id = 1;
+}
+
+message CheckBackfillResponse {
+  string job_status = 1;
+}
+
+message StopBackfillRequest {
+  string job_id = 1;
+}
+
+message StopBackfillResponse {}

@@ -1,0 +1,45 @@
+// TEAM: smb
+
+syntax = "proto3";
+
+package flexport.smb.onboardingregistration.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OnboardingRegistrationProto";
+option java_package = "com.flexport.smb.onboardingregistration.v1beta1";
+
+message OnboardingRegistration {
+  uint32 id = 1;
+  string fid = 2;
+
+  message CompanyEntity {
+    string company_type = 1;
+    string business_registration_country = 2;
+    string business_registration_state = 3;
+    string tin = 4;
+    string name = 5;
+    string doing_business_as = 6;
+
+    message Address {
+      string address = 1;
+      string address2 = 2;
+      string city = 3;
+      string country = 4;
+      string country_code = 5;
+      string province = 6;
+      string province_code = 7;
+      string zip = 8;
+    }
+    Address mailing_address = 7;
+    Address physical_address = 8;
+  }
+  CompanyEntity company_entity = 3;
+
+  message Customs {
+    string merchandise_description = 1;
+    string primary_country_import_from = 2;
+    double duties_paid_last_year = 3;
+    double duties_expected_this_year = 4;
+  }
+  Customs customs = 4;
+}

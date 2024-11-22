@@ -1,0 +1,33 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.workflow.workflowplatform.events.milestoneetaupdated.v1beta1;
+
+import "flexport/workflow/prelude/options/v1/options.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "MilestoneEtaUpdatedProto";
+option java_package = "com.flexport.workflow.workflowplatform.events.milestoneetaupdated.v1beta1";
+option ruby_package = "Flexport::Workflow::WorkflowPlatform::Events::MilestoneEtaUpdated::V1Beta1";
+
+// Shipment is created.
+message MilestoneEtaUpdated {
+  option (flexport.workflow.prelude.options.v1.wp_event).name = "Milestone ETA is updated";
+  option (flexport.workflow.prelude.options.v1.wp_event).description = "This event will be triggered when a the scheduled arrival date of a voyage is updated.";
+  option (flexport.workflow.prelude.options.v1.wp_message_key) = "shipment_fid";
+  string shipment_fid = 1;
+  string client_fid = 2;
+  Milestone milestone = 3;
+  google.protobuf.Timestamp orig_eta_time = 4;
+  google.protobuf.Timestamp new_eta_time = 5;
+}
+
+// Milestone is milestone.
+enum Milestone {
+  MILESTONE_INVALID = 0;
+  MILESTONE_PORT_OF_UNLOAD = 1;
+  MILESTONE_INLAND_PORT = 2;
+  MILESTONE_CFS = 3;
+}

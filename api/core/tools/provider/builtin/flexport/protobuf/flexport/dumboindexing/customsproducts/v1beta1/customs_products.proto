@@ -1,0 +1,17 @@
+// TEAM: application_framework
+
+syntax = "proto3";
+
+package flexport.dumboindexing.customsproducts.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsProductsProto";
+option java_package = "com.flexport.dumboindexing.customsproducts.v1beta1";
+option ruby_package = "Flexport::DumboIndexing::CustomsProducts::V1Beta1";
+
+// Denormalized data from Customs domain that supports the shipment index.
+message CustomsProducts {
+  //
+  // A list of product ids associated with the shipment.
+  repeated string product_fids = 1;
+}

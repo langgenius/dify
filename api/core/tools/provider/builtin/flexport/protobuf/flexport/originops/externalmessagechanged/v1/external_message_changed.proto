@@ -1,0 +1,30 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.originops.externalmessagechanged.v1;
+
+import "flexport/originops/eventrootcontext/v1/event_root_context.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ExternalMessageChangedProto";
+option java_package = "com.flexport.originops.externalmessagechanged.v1";
+option ruby_package = "Flexport::OriginOps::ExternalMessageChanged::V1";
+
+// An events that contains external message(eg. "ocean allocation exception").
+message ExternalMessageChanged {
+  string id = 1;
+  string user_id = 2;
+  string body = 3;
+  string messageable_id = 4;
+  string messageable_type = 5 [deprecated = true];
+  string domain = 6 [deprecated = true];
+  string from = 7;
+  string from_team = 8 [deprecated = true];
+  repeated string mentioned_names = 9 [deprecated = true];
+  google.protobuf.Timestamp created_at_time = 10;
+  google.protobuf.Timestamp updated_at_time = 11;
+  google.protobuf.Timestamp deleted_at_time = 12;
+  flexport.originops.eventrootcontext.v1.EventRootContext event_root_context = 13;
+}

@@ -1,0 +1,144 @@
+// TEAM: service_platform
+
+syntax = "proto3";
+
+package flexport.serviceplatform.grpctest.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "GrpcTestApiProto";
+option java_package = "com.flexport.serviceplatform.grpctest.v1beta1";
+option ruby_package = "Flexport::ServicePlatform::GrpcTest::V1Beta1";
+
+import "google/api/annotations.proto";
+import "google/protobuf/any.proto";
+import "google/rpc/code.proto";
+
+// This service is used internally by Service Platform team to experiment with gRPC.
+service GrpcTestAPI {
+  // Does nothing, used for load testing.
+  rpc DoNothing(DoNothingRequest) returns (DoNothingResponse) {
+    option (google.api.http) = {
+      post: "/v1beta1/grpc-test/do-nothing"
+    };
+  }
+  // Sleeps before returning.
+  rpc Sleep(SleepRequest) returns (SleepResponse) {
+    option (google.api.http) = {
+      post: "/v1beta1/grpc-test/sleep"
+      additional_bindings: {
+        post: "/v1beta1/grpc-test/sleep/{seconds}"
+      }
+    };
+  }
+  // Fails the request.
+  rpc Fail(FailRequest) returns (FailResponse) {
+    option (google.api.http) = {
+      post: "/v1beta1/grpc-test/fail"
+    };
+  }
+  // Recurses between two gRPC services.
+  rpc Recurse(RecurseRequest) returns (RecurseResponse) {
+    option (google.api.http) = {
+      post: "/v1beta1/grpc-test/recurse"
+    };
+  }
+  // Checks the health of another service.
+  rpc HealthProbe(HealthProbeRequest) returns (HealthProbeResponse) {
+    option (google.api.http) = {
+      post: "/v1beta1/grpc-test/health-probe"
+      additional_bindings: {
+        post: "/v1beta1/grpc-test/health-probe/{service_name}"
+      }
+    };
+  }
+  // Unlike the slackers who Sleep, the motivated ones WorkHard!
+  // This is mainly used to benchmark servers.
+  rpc WorkHard(WorkHardRequest) returns (WorkHardResponse) {
+    option (google.api.http) = {
+      post: "/v1beta1/grpc-test/work-hard"
+    };
+  }
+}
+
+message DoNothingRequest {}
+
+message DoNothingResponse {}
+
+message SleepRequest {
+  // Number of seconds to sleep before returning.
+  int32 seconds = 1;
+}
+
+message SleepResponse {}
+
+message FailRequest {
+  // The status code to fail with.
+  int32 code = 1;
+  // Probability for rpc succeed, a float from 0 to 1
+  float succeed_probability = 2;
+  // Use as switch for throwing richer or standard gRPC error
+  bool richer_error_enabled = 3;
+  // Error details to be added to the error
+  repeated google.protobuf.Any error_details = 4;
+}
+
+message FailResponse {}
+
+message RecurseRequest {
+  // Depth of current recursion. Starts at 0. Only the outermost depth is respected.
+  int32 depth = 1;
+  // Request to be executed locally before recursing.
+  oneof request {
+    DoNothingRequest do_nothing = 101;
+    SleepRequest sleep = 102;
+    FailRequest fail = 103;
+  }
+  // Request to be issued to counter part after executing <pre>request</pre>.
+  // If empty, recursion will stop.
+  RecurseRequest recurse = 2;
+}
+
+message RecurseResponse {
+  // Depth of current recursion. Starts at 0.
+  int32 depth = 1;
+  // Result of local request execution.
+  oneof response {
+    DoNothingResponse do_nothing = 101;
+    SleepResponse sleep = 102;
+    FailResponse fail = 103;
+  }
+  // Result of recursion.
+  RecurseResponse recurse = 2;
+}
+
+message HealthProbeRequest {
+  string service_name = 1;
+  google.rpc.Code fail_override_code = 2 [deprecated = true];
+}
+
+message HealthProbeResponse {
+  string serving_status = 1;
+}
+
+message WorkHardRequest {
+  // The problem of calculating PI up to the given precision.
+  message GiveMePi {
+    // Number of digits after decimal point.
+    int32 precision = 1;
+  }
+  oneof problem {
+    GiveMePi give_me_pi = 101;
+  }
+  // Whether the server should delegate the work to an external party.
+  bool should_delegate = 1;
+}
+
+message WorkHardResponse {
+  // The answer to GiveMePi.
+  message GiveMePi {
+    string pi = 1;
+  }
+  oneof answer {
+    GiveMePi give_me_pi = 1;
+  }
+}

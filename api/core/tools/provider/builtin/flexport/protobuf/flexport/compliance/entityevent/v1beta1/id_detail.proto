@@ -1,0 +1,20 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.entityevent.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "IdDetailProto";
+option java_package = "com.flexport.compliance.entityevent.v1beta1";
+option ruby_package = "Flexport::Compliance::EntityEvent::V1Beta1";
+
+import "flexport/compliance/entityevent/v1beta1/id_type.proto";
+
+// Id detail.
+message IdDetail {
+  // Type of the identifier.
+  IdType type = 1;
+  // Id value.
+  string id = 2;
+}

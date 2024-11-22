@@ -1,0 +1,56 @@
+// TEAM: dot_org
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+import "flexport/dotorg/carboncalculation/v1/leg_data_type.proto";
+import "flexport/executioncoordinator/types/routeshape/v1/route_shape.proto";
+import "google/protobuf/struct.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarbonEmissionsCalculatedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+// Emitted when the carbon calculator has updated the carbon emissions value of an EO.
+message CarbonEmissionsCalculated {
+  string tonnes_of_co2 = 1;
+  TonnesOfCo2ByMode tonnes_of_co2_by_mode = 2;
+  google.protobuf.Struct errors = 3;
+  string version = 4;
+  flexport.executioncoordinator.types.routeshape.v1.RouteShape route_shape = 5;
+  repeated LegTonnesOfCo2 leg_tonnes_of_co2 = 6;
+  string shipment_fid = 7;
+  string latest_version = 9;
+  repeated flexport.dotorg.carboncalculation.v1.LegDataType latest_leg_values = 10;
+  repeated flexport.dotorg.carboncalculation.v1.LegDataType leg_values = 11;
+  RecalculationSource recalculation_source = 12;
+}
+
+// This represents a breakdown of the response of the carbon calculator in tonnes of CO2e by mode.
+message TonnesOfCo2ByMode {
+  string air = 1;
+  string ocean = 2;
+  string truck = 3;
+  string rail = 4;
+}
+
+// If provided a route shape, map the leg keys to emissions.
+message LegTonnesOfCo2 {
+  string route_shape_leg_fid = 1;
+  string tonnes_of_co2 = 2;
+}
+
+// All possible reasons a shipment's emissions might be recalculated.
+// NOTE that this should be kept in sync with engines/dot_org_engine/app/constants/dot_org_engine/recalculation_sources.rb
+enum RecalculationSource {
+  RECALCULATION_SOURCE_INVALID = 0;
+  RECALCULATION_SOURCE_ROUTE_SHAPE_UPDATED = 1;
+  RECALCULATION_SOURCE_ORDER_OCEAN_FCL_CONTAINERS_COUNTS_UPDATED = 2;
+  RECALCULATION_SOURCE_ORDER_CARGO_MEASUREMENTS_UPDATED = 3;
+  RECALCULATION_SOURCE_SHIPMENT_COMPLETED = 4;
+  RECALCULATION_SOURCE_BACKFILL = 5;
+  RECALCULATION_SOURCE_QUOTE_ACCEPTED = 6;
+  RECALCULATION_SOURCE_SHIPMENT_CARGO_FINALIZED = 7;
+}

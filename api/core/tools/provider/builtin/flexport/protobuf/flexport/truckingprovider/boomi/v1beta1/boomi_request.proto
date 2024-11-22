@@ -1,0 +1,45 @@
+// TEAM: trucking
+
+syntax = "proto3";
+
+package flexport.truckingprovider.boomi.v1beta1;
+
+import "flexport/truckingprovider/boomi/v1beta1/company.proto";
+import "flexport/truckingprovider/boomi/v1beta1/contact.proto";
+import "flexport/truckingprovider/boomi/v1beta1/load.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "BoomiRequestProto";
+option java_package = "com.flexport.truckingprovider.boomi.v1beta1";
+option ruby_package = "Flexport::TruckingProvider::Boomi::V1Beta1";
+
+// Delivery order Request Type.
+enum BoomiRequestType {
+  BOOMI_REQUEST_TYPE_INVALID = 0;
+  BOOMI_REQUEST_TYPE_LOAD_CREATE = 1;
+  BOOMI_REQUEST_TYPE_LOAD_UPDATE = 2;
+  BOOMI_REQUEST_TYPE_LOAD_CANCEL = 3;
+}
+
+// Payment Method.
+enum PaymentMethod {
+  PAYMENT_METHOD_INVALID = 0;
+  PAYMENT_METHOD_CC = 1;
+  PAYMENT_METHOD_ACH = 2;
+  PAYMENT_METHOD_CAPITAL_FINANCING = 3;
+  PAYMENT_METHOD_COLLECT = 4;
+}
+
+// Boomi Delivery Request is what will be sent to Proserv from Trucking.
+message BoomiRequest {
+  string md5 = 1;
+  int32 carrier_id = 2; //
+  BoomiRequestType request_type = 3;
+  google.protobuf.Timestamp datetime = 4;
+  Company bill_to_party = 5;
+  PaymentMethod payment_method = 6;
+  repeated Contact subscribers = 7;
+  Load load = 8;
+  string unloading_carrier_name = 9;
+}

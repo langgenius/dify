@@ -1,0 +1,26 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.noinvolvement.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanFclNoInvolvementInfoProto";
+option java_package = "com.flexport.executioncoordinator.types.noinvolvement.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::NoInvolvement::V1";
+
+// Info specific to ocean FCL shipments with the "No Involvement" role.
+message OceanFclNoInvolvementInfo {
+  // To track visibility milestones for FCL shipments where Flexport has no involvement,
+  // an Execution Order may provide a master bill of lading number (carrier-issued), a house bill of lading
+  // (forwarder-issued), and/or a list of container numbers.
+  string bill_of_lading_number = 1 [deprecated = true];
+  repeated string container_numbers = 2;
+  string master_bill_of_lading_number = 3;
+  string house_bill_of_lading_number = 4;
+  // Standard Carrier Alpha Code (SCAC) identifies ocean carriers/other forwarders
+  string scac_code = 5;
+  string cargo_ready_date = 6;
+  string target_delivery_date = 7;
+  string planned_delivery_date = 8;
+}

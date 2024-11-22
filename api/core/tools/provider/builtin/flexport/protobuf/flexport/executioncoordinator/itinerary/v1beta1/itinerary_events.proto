@@ -1,0 +1,37 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.itinerary.v1beta1;
+
+import "flexport/executioncoordinator/itinerary/v1beta1/itinerary.proto";
+import "flexport/executioncoordinator/itinerary/v1beta1/itinerary_date_change.proto";
+import "flexport/executioncoordinator/types/diversion/v1/diversion_details.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ItineraryEventsProto";
+option java_package = "com.flexport.executioncoordinator.itinerary.v1beta1";
+option ruby_package = "Flexport::ExecutionCoordinator::Itinerary::V1Beta1";
+
+// Kinesis event emitted by the ExecutionCoordinator, when a Itinerary has been updated.
+// If the itinerary is newly created, the previous_itinerary will be empty.
+message ItineraryUpdated {
+  Itinerary itinerary = 1;
+  Itinerary previous_itinerary = 2;
+  // This is the uuid of the ItineraryUpdated event.
+  string itinerary_event_fid = 3;
+  // Specifies the requestor of the diverion. Used to apply diversion charges and ensure compliance with FMC regulations
+  flexport.executioncoordinator.types.diversion.v1.DiversionDetails diversion_details = 4;
+}
+
+// Kinesis event emitted by the ExecutionCoordinator, when an Itinerary's dates have changed.
+// This is a replacement for the FCTDC event from schedule manager, and may be emitted in addition
+// to an ItineraryUpdated event.
+message ItineraryDatesChanged {
+  string shipment_fid = 1;
+  string execution_order_fid = 2;
+  Itinerary itinerary = 5;
+  repeated flexport.executioncoordinator.itinerary.v1beta1.ItineraryDateChange itinerary_dates_changed = 3;
+  google.protobuf.Timestamp created_at = 4;
+}

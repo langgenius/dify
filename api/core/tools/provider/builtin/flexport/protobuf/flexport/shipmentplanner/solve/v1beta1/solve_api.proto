@@ -1,0 +1,40 @@
+// TEAM: tetrominos
+
+syntax = "proto3";
+
+package flexport.shipmentplanner.solve.v1beta1;
+
+import "flexport/shipmentplanner/solve/v1beta1/edge.proto";
+import "flexport/shipmentplanner/solve/v1beta1/recommendation.proto";
+import "flexport/shipmentplanner/solve/v1beta1/route.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "SolverApiProto";
+option java_package = "com.flexport.shipmentPlanner.solve.v1beta1";
+option ruby_package = "Flexport::ShipmentPlanner::Solve::V1Beta1";
+
+service SolveAPI {
+  //
+  // Gets the full list of all plan constraints at the time of calling including both shipment constraints and affinity
+  rpc GetLCLShipmentRouteOptions(GetLCLShipmentRouteOptionsRequest) returns (GetLCLShipmentRouteOptionsResponse);
+  //
+  // Publish a solution
+  rpc PublishLCLShipmentRouteSolution(PublishLCLShipmentRouteSolutionRequest) returns (PublishLCLShipmentRouteSolutionResponse);
+}
+
+message PublishLCLShipmentRouteSolutionResponse {}
+message GetLCLShipmentRouteOptionsRequest {}
+message PublishLCLShipmentRouteSolutionRequest {
+  string problem_version = 1; //what data is this solution based on?
+  repeated ShipmentRecommendation recommendations = 2;
+}
+
+message GetLCLShipmentRouteOptionsResponse {
+  //
+  // uuid; helps trace the graph and input versions used to create this response.
+  string problem_version = 1;
+
+  repeated ShipmentRoutes shipment_routes = 3;
+  //index id to edge candidate
+  map<string, flexport.shipmentplanner.solve.v1beta1.EdgeCandidate> candidate_edges = 4;
+}

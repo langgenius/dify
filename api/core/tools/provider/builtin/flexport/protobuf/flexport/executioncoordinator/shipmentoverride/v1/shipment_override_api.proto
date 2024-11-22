@@ -1,0 +1,48 @@
+// TEAM: unified_shipment_schedules
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.shipmentoverride.v1;
+
+import "flexport/executioncoordinator/derivedshipment/v1/derived_shipment.proto";
+import "flexport/executioncoordinator/shipmentoverride/v1/task_transit_dates.proto";
+import "flexport/executioncoordinator/types/enums/v1/entry_point.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentOverrideApiProto";
+option java_package = "com.flexport.executioncoordinator.shipmentoverride.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ShipmentOverride::V1";
+
+// An API for overriding shipment dates.
+service ShipmentOverrideAPI {
+  // Overrides transit dates for a shipment.
+  rpc OverrideShipmentTransitDates(OverrideShipmentTransitDatesRequest) returns (OverrideShipmentTransitDatesResponse);
+}
+
+// Request for overriding shipment transit dates.
+message OverrideShipmentTransitDatesRequest {
+  string shipment_fid = 1;
+  // Represents the user or bot requesting the changes. Will map to created_by_fid on the published ETSEs.
+  // This user's credentials will NOT be used to authenticate or authorize the request, and instead any requests made to
+  // this gRPC endpoint will have full access to update dates across all shipments. Any necessary authorization
+  // should be done prior to calling this gRPC endpoint.
+  // See http://go/ec-iam.
+  string user_fid = 2;
+  repeated flexport.executioncoordinator.shipmentoverride.v1.TaskTransitDates task_transit_dates = 3;
+  flexport.executioncoordinator.types.enums.v1.EntryPoint entry_point = 4;
+  // Ignores warnings that would be considered non-blocking for schedule save, but may cause exceptions to
+  // be filed or other side effects.
+  google.protobuf.BoolValue ignore_warnings = 5;
+  // Ignores errors that would normally be considered blocking for schedule save. Setting this to true may result in
+  // illogical schedules.
+  google.protobuf.BoolValue ignore_errors = 6;
+
+  uint32 derived_shipment_revision = 7;
+  uint32 itinerary_revision = 8;
+}
+
+// The response for the override transit dates API.
+message OverrideShipmentTransitDatesResponse {
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipment derived_shipment = 1;
+}

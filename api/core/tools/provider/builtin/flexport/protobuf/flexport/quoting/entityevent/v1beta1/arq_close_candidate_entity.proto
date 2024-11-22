@@ -1,0 +1,39 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.entityevent.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ArqCloseCandidateEntityProto";
+option java_package = "com.flexport.quoting.entityevent.v1beta1";
+option ruby_package = "Flexport::Quoting::EntityEvent::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// ARQ close candidate entity to Data Mesh.
+message ArqCloseCandidateEntity {
+  google.protobuf.StringValue quote_request_fid = 1;
+  google.protobuf.StringValue quote_fid = 2;
+  google.protobuf.Timestamp attempt_time = 3;
+  // Offering uuid in Catalog.
+  google.protobuf.StringValue original_offering_id = 4;
+  // Offering uuid in Catalog.
+  google.protobuf.StringValue candidate_offering_id = 5;
+  google.protobuf.BoolValue successor_matching_successful = 6;
+  google.protobuf.Int32Value total_mismatch_fields = 7;
+  // The mismatch fields we care about. True -> mismatch / False -> not mismatch.
+  google.protobuf.BoolValue origin_via_id_mismatch = 8;
+  google.protobuf.BoolValue destination_via_id_mismatch = 9;
+  google.protobuf.BoolValue freight_partner_id_mismatch = 10;
+  google.protobuf.BoolValue commodity_mismatch = 11;
+  google.protobuf.BoolValue dangerous_goods_mismatch = 12;
+  google.protobuf.BoolValue equipments_mismatch = 13;
+  google.protobuf.BoolValue carrier_id_mismatch = 14;
+  google.protobuf.BoolValue carrier_contract_id_mismatch = 15;
+  // Checking if candidate offering activation_time is after selected date.
+  google.protobuf.BoolValue candidate_activates_after_selected_date = 16;
+  google.protobuf.BoolValue clients_mismatch = 17;
+  google.protobuf.BoolValue container_counts_unsupported_for_shipment = 18;
+}

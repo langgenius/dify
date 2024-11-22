@@ -1,0 +1,50 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+import "flexport/executioncoordinator/types/enums/v1/ocean_master_bill_of_lading_release_method.proto";
+import "flexport/executioncoordinator/types/enums/v1/ocean_master_bill_of_lading_transmission_mode.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanMasterBillOfLadingUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// A master bill of lading has been updated. This event shall be emitted upon change
+// of any attribute defined in this message.
+message OceanMasterBillOfLadingUpdated {
+  string master_bill_of_lading_fid = 1;
+  // The master bill of lading number corresponding to the received document.
+  string master_bill_of_lading_number = 2;
+  // The release process corresponding to the master bill of lading.
+  flexport.executioncoordinator.types.enums.v1.OceanMasterBillOfLadingTransmissionMode transmission_mode = 3;
+  // The fid of the carrier associated with master bill of lading.
+  string carrier_fid = 4;
+  // The fid of the release document associated with the master bill of lading.
+  string release_document_fid = 5;
+  // The time that the master bill of lading was archived
+  google.protobuf.Timestamp archived_time = 6;
+  // The shipment the master bill of lading belongs to
+  string shipment_fid = 7;
+  // The address fid of the place of receipt.
+  string place_of_receipt_fid = 8;
+  // The address fid of the port of loading.
+  string port_of_loading_fid = 9;
+  // The address fid of the port of discharge.
+  string port_of_unloading_fid = 10;
+  // The address fid of the final destination.
+  string place_of_delivery_fid = 11;
+  // The release method corresponding to the master bill of lading.
+  flexport.executioncoordinator.types.enums.v1.OceanMasterBillOfLadingReleaseMethod release_method = 12;
+  // The fid of the user who most recently updated the master bill of lading.
+  string updated_by_fid = 13;
+  // The time that the master bill of lading draft was approved
+  google.protobuf.Timestamp draft_approved_at = 14;
+  // Source of MBL Number
+  string bill_number_source = 15;
+  // The fid of the user who created the master bill of lading
+  string created_by_fid = 16;
+}

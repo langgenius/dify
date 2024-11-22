@@ -1,0 +1,78 @@
+// TEAM: order_management
+
+syntax = "proto3";
+
+package flexport.monolith.ordermanagement.order.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "LineitemProto";
+option java_package = "com.flexport.monolith.ordermanagement.order.v1beta1";
+option ruby_package = "Flexport::Monolith::OrderManagement::Order::V1Beta1";
+
+import "flexport/monolith/ordermanagement/order/v1beta1/enums.proto";
+import "flexport/os/v1/types/incoterm/v1/incoterm.proto";
+import "flexport/os/v1/types/unitsofmeasure/v1/units_of_measure.proto";
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// Order line item record.
+message OrderLineItem {
+  // item_key is a line item specific notion (a string version of line item number); item_keys are unique identifiers of line items on a PO.
+  string item_key = 1;
+  int64 line_item_number = 2;
+  string parent_line_key = 3;
+  LineItemType line_type = 4;
+  int64 units = 5;
+  flexport.os.v1.types.unitsofmeasure.v1.UnitsOfMeasure unit_of_measure = 6;
+  string unit_cost = 7;
+  google.protobuf.Timestamp created_at_time = 8;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate cargo_ready_date = 9;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate must_arrive_date = 10;
+  string destination_port_fid = 11;
+  string origin_port_fid = 12;
+  flexport.os.v1.types.incoterm.v1.Incoterm incoterm = 13;
+  TransportationMode transportation_mode = 14;
+  string currency_code = 15;
+  string origin_location_fid = 16;
+  repeated LineItemDestinationLocation destination_locations = 17;
+  string assigned_party_fid = 18;
+  OrderLineItemProduct line_item_product = 19;
+  repeated HsCode hs_codes = 20;
+  repeated OrderLineItemMeasure measurements = 21;
+}
+
+// Line item hs code detail.
+message HsCode {
+  string code = 1;
+  string country_code = 2;
+}
+
+// Line item measure detail.
+message OrderLineItemMeasure {
+  LineItemMeasurementType measure_type = 1;
+  string value = 2;
+  flexport.os.v1.types.unitsofmeasure.v1.UnitsOfMeasure unit_of_measure = 3;
+}
+
+// Line item product.
+message OrderLineItemProduct {
+  string sku = 1;
+  string name = 2;
+  string color = 3;
+  string country_of_origin = 4;
+  google.protobuf.BoolValue dangerous = 5;
+  string ean_ucc_13 = 6;
+  string ean_ucc_8 = 7;
+  string lot_number = 8;
+  string product_category = 9;
+  string size = 10;
+  string style = 11;
+  string upc = 12;
+}
+
+// Line Item Destination Location.
+message LineItemDestinationLocation {
+  string units = 1;
+  string location_fid = 2;
+}

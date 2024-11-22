@@ -1,0 +1,71 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.db.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BackfillCheckpointProto";
+option java_package = "com.flexport.executioncoordinator.types.db.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Db::V1";
+
+// BackfillCheckpoint.
+message BackfillCheckpoint {
+  oneof checkpoint {
+    DerivedRowsBackfillCheckpoint derived_rows = 2;
+    ExecutionTaskDerivedBackfillCheckpoint execution_task_derived = 1 [deprecated = true];
+    ForEachRowInBatchBackfillCheckpoint for_each_row_in_batch = 3;
+  }
+}
+
+// ForEachRowInBatchBackfillCheckpoint.
+message ForEachRowInBatchBackfillCheckpoint {
+  // The primary key id of the last-backfilled "raw" entity (eg execution_task.id).
+  uint64 last_backfilled_entity_id = 1;
+  RowResultCounts counts = 2;
+  // The lowest primary key id in the "raw" entity table (eg execution_task).
+  uint64 lowest_entity_id = 3;
+  // Formatted as iso8601 strings.
+  string lowest_entity_id_created_at = 4;
+  string last_checkpointed_at = 5;
+  // RowResultCounts.
+  message RowResultCounts {
+    uint64 entity_not_found = 1;
+    uint64 succeeded = 2;
+    uint64 failed = 3;
+    uint64 total = 4;
+  }
+}
+
+// DerivedRowsBackfillCheckpoint.
+message DerivedRowsBackfillCheckpoint {
+  uint32 target_derivation_logic_version = 6;
+  // The primary key id of the last-backfilled "raw" entity (eg execution_task.id).
+  uint64 last_backfilled_entity_id = 1;
+  StatusBeforeBackfillCounts counts = 2;
+  // The lowest primary key id in the "raw" entity table (eg execution_task).
+  uint64 lowest_entity_id = 3;
+  // Formatted as iso8601 strings.
+  string lowest_entity_id_created_at = 4;
+  string last_checkpointed_at = 5;
+}
+
+// ExecutionTaskDerivedBackfillCheckpoint.
+message ExecutionTaskDerivedBackfillCheckpoint {
+  uint64 last_backfilled_execution_task_id = 1;
+  StatusBeforeBackfillCounts counts = 2;
+  uint64 lowest_execution_task_id = 3;
+  // Formatted as iso8601 strings.
+  string lowest_execution_task_id_created_at = 4;
+  string last_checkpointed_at = 5;
+}
+
+// StatusBeforeBackfillCounts.
+message StatusBeforeBackfillCounts {
+  uint64 already_up_to_date = 1;
+  uint64 previously_absent = 2;
+  uint64 previously_obsolete = 3;
+  uint64 entity_not_found = 6;
+  uint64 task_not_found = 4 [deprecated = true];
+  uint64 total = 5;
+}

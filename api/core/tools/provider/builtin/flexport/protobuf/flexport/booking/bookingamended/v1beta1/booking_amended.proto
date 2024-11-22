@@ -1,0 +1,42 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.booking.bookingamended.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "BookingAmendedProto";
+option java_package = "com.flexport.booking.bookingamended.v1beta1";
+option ruby_package = "Flexport::Booking::BookingAmended::V1Beta1";
+
+import "flexport/booking/bookingamendmentdiff/v1beta1/booking_amendment_diff.proto";
+import "flexport/booking/enums/bookingeventsource/v1beta1/booking_event_source.proto";
+import "flexport/booking/purchaseorder/v1beta1/purchase_order_line_item_booking.proto";
+import "flexport/booking/userdefinedmetadata/v1beta1/user_defined_metadata.proto";
+import "flexport/booking/v1beta1/booking.proto";
+
+// A Kinesis event signifying a booking has been amended.
+message BookingAmended {
+  // FID of the booking, used to aggregate events on this topic.
+  string agg_booking_fid = 1;
+  // An order proposal is an immutable set of proposed details for a booking. Each booking amendment creates a new
+  // order proposal, so you can effectively use order_proposal_fid as a revision ID. The actual details of this proposal
+  // are contained in the flexport.booking.v1beta.Booking protobuf below.
+  //
+  // Note that this revision may not yet be approved by all involved parties - If you care, listen for the
+  // BookingAmendmentApproved event with this FID.
+  string order_proposal_fid = 2;
+  // The new booking order details.
+  flexport.booking.v1beta1.Booking new_booking_details = 3;
+  // Diff of the changes compared to previous order details.
+  flexport.booking.bookingamendmentdiff.v1beta1.BookingAmendmentDiff amendment_diff = 4;
+  // The updated user defined metadata pairs
+  repeated flexport.booking.userdefinedmetadata.v1beta1.UserDefinedMetadata user_defined_metadata_pairs = 5;
+  // Info on purchase order line items with units booked on this booking.
+  repeated flexport.booking.purchaseorder.v1beta1.PurchaseOrderLineItemBooking purchase_order_line_item_bookings = 6;
+  // The fid of the entity (user, company or client) that created the booking amended event.
+  string created_by_actor_fid = 7;
+  flexport.booking.enums.bookingeventsource.v1beta1.BookingEventSource booking_event_source = 8;
+  // The fid of the booking amendment
+  string booking_amendment_fid = 9;
+}

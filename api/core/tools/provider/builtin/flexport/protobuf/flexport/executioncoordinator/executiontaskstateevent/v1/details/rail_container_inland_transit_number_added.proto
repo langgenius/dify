@@ -1,0 +1,23 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RailContainerInlandTransitNumberAddedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// A change in inland_transit_number of equipment at rail destination.
+//
+// Sources of data:
+// - Container Arrival Notice
+//
+message RailContainerInlandTransitNumberAdded {
+  string container_fid = 1;
+  string container_number = 2;
+  string inland_transit_number = 3;
+  string track_and_trace_event_fid = 4;
+  string port_fid = 5;
+}

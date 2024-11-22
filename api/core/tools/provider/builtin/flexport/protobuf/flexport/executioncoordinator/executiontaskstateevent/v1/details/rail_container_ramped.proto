@@ -1,0 +1,39 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RailContainerRampedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/executioncoordinator/types/enums/v1/node_tag.proto";
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+// A container was placed on flat car or roadrailer placed on rail.
+// https://www.railinc.com/steelroads/Event_Sighting_Code.pdf.
+//
+// Sources of data:
+// - track_and_trace engine's RailRamped simple PubSub event from Rail Inc.
+// - container_use_node dates (soon).
+//
+// Unlike arrived and departed events, this event is not covered by CargoTransitDateChanged
+// events, so consumers should feel free to subscribe to this event if they want to know about
+// rail ramp events.
+message RailContainerRamped {
+  string container_fid = 8;
+  string container_number = 1;
+  string latitude = 2;
+  string longitude = 3;
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime sighting_time = 4;
+  string station_name = 5;
+  string state = 6;
+  // https://en.wikipedia.org/wiki/Standard_Point_Location_Code
+  string splc = 7;
+  // The fid of the immutable place instance this event relates to, if known.
+  string place_fid = 9;
+  // Describe the place given by place_fid, if known.
+  repeated flexport.executioncoordinator.types.enums.v1.NodeTag node_tags = 10;
+}

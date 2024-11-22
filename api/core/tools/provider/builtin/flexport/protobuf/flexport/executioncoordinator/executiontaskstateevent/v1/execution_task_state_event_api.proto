@@ -1,0 +1,28 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionTaskStateEventApiProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/executioncoordinator/executiontaskstateevent/v1/execution_task_state_event.proto";
+
+// An API for reading ExecutionTaskStateEvent.
+service ExecutionTaskStateEventAPI {
+  // Retrieves an ExecutionTaskStateEvent.
+  rpc GetExecutionTaskStateEvent(GetExecutionTaskStateEventRequest) returns (GetExecutionTaskStateEventResponse);
+}
+
+// The request for GetExecutionTaskStateEvent.
+message GetExecutionTaskStateEventRequest {
+  string fid = 1;
+}
+
+// The response for GetExecutionTaskStateEvent.
+message GetExecutionTaskStateEventResponse {
+  flexport.executioncoordinator.executiontaskstateevent.v1.ExecutionTaskStateEvent execution_task_state_event = 1;
+}

@@ -1,0 +1,27 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.documents.enums.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "MembershipTypeProto";
+option java_package = "com.flexport.documents.enums.v1beta1";
+option ruby_package = "Flexport::Documents::Enums::V1Beta1";
+
+enum MembershipType {
+  MEMBERSHIP_TYPE_INVALID = 0;
+  MEMBERSHIP_TYPE_EXECUTOR = 1;
+  MEMBERSHIP_TYPE_ORIGIN_AGENT = 2;
+  MEMBERSHIP_TYPE_BUYER = 3;
+  MEMBERSHIP_TYPE_SELLER = 4;
+  MEMBERSHIP_TYPE_CONSIGNEE = 5;
+  MEMBERSHIP_TYPE_SHIPPER = 6;
+  MEMBERSHIP_TYPE_IMPORT_CUSTOMS_AGENT = 7;
+  MEMBERSHIP_TYPE_EXPORT_CUSTOMS_AGENT = 8;
+  MEMBERSHIP_TYPE_IMPORTER_OF_RECORD = 9;
+  MEMBERSHIP_TYPE_DESTINATION_AGENT = 10;
+  MEMBERSHIP_TYPE_CLIENT = 11;
+  MEMBERSHIP_TYPE_TRUCKER = 12;
+  MEMBERSHIP_TYPE_WAREHOUSE = 13;
+}

@@ -1,0 +1,20 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.diversion.v1;
+
+import "flexport/executioncoordinator/types/enums/v1/shipment_diversion_source.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DiversionDetailsProto";
+option java_package = "flexport.executioncoordinator.types.diversion.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Diversion::V1";
+
+// Kinesis event emitted by the ExecutionCoordinator, when a Itinerary has been updated.
+// If the itinerary is newly created, the previous_itinerary will be empty.
+message DiversionDetails {
+  flexport.executioncoordinator.types.enums.v1.ShipmentDiversionSource diversion_source = 1;
+  google.protobuf.Timestamp requested_at = 2;
+}

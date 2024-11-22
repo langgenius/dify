@@ -1,0 +1,82 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.declarationupdate.customsbillfinalized.v1beta1;
+
+import "flexport/customs/declarationupdate/declarationtype/v1beta1/declaration_type.proto";
+import "google/type/date.proto";
+import "google/type/decimal.proto";
+import "google/type/money.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsBillFinalizedProto";
+option java_package = "com.flexport.customs.declarationupdate.customsbillfinalized.v1beta1";
+option ruby_package = "Flexport::Customs::DeclarationUpdate::CustomsBillFinalized::V1Beta1";
+
+// The CustomsBillFinalized message is sent when the customs bill of a
+// declaration is finalized in the external system. For example this event is emitted when
+// we get an update on the duties from the external system with the status 'final'.
+message CustomsBillFinalized {
+  // The Flexport ID of the shipment that the declaration is associated with.
+  string shipment_fid = 1;
+  // The Flexport ID of the required declaration that is associated with the
+  // declaration in the external system.
+  string required_declaration_fid = 2;
+  // The type of the declaration.
+  flexport.customs.declarationupdate.declarationtype.v1beta1.DeclarationType declaration_type = 3;
+  string idempotency_id = 4;
+  // The customs bill of the declaration in the external system.
+  CustomsBill customs_bill = 5;
+}
+
+message CustomsBill {
+  google.type.Date customs_clearance_date = 1;
+  // The movement reference number of the declaration.
+  string customs_declaration_number = 2;
+  google.type.Money total_commercial_invoice_value = 3;
+  string incoterm = 4;
+  string import_customs_agent_fid = 5;
+  float total_weight_kg = 6 [deprecated = true];
+  string importer_tax_id = 7;
+  string country_of_import_code = 8;
+  bool duty_defer_flag = 9;
+  repeated CustomsBillLineItem customs_bill_line_items = 10;
+  repeated CustomsBillCharge customs_bill_charges = 11;
+  string customs_bill_currency_code = 12;
+  google.type.Decimal total_weight_kg_decimal = 13;
+}
+
+message CustomsBillLineItem {
+  string description = 1;
+  float quantity = 2 [deprecated = true];
+  string unit = 3;
+  repeated string hs_codes = 4;
+  google.type.Money value_for_duty = 5;
+  google.type.Money value_for_vat = 6;
+  string country_of_origin_code = 7;
+  string preference_code = 8;
+  string duty_rate = 9 [deprecated = true];
+  repeated CustomsBillCharge charges = 10;
+  string vat_rate = 11 [deprecated = true];
+  int32 line_item_number = 12;
+  google.type.Decimal quantity_decimal = 13;
+  google.type.Decimal duty_rate_decimal = 14;
+  google.type.Decimal vat_rate_decimal = 15;
+}
+
+message CustomsBillCharge {
+  ChargeType type = 1;
+  google.type.Money charge_amount = 2;
+}
+
+enum ChargeType {
+  CHARGE_TYPE_INVALID = 0;
+  CHARGE_TYPE_DUTY = 1;
+  CHARGE_TYPE_VALUE_ADDED_TAX = 2;
+  CHARGE_TYPE_ANTI_DUMPING_DUTY = 3;
+  CHARGE_TYPE_COUNTERVAILING_DUTY = 4;
+  CHARGE_TYPE_FREIGHT = 5;
+  CHARGE_TYPE_INSURANCE = 6;
+  CHARGE_TYPE_OTHER = 7;
+}

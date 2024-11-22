@@ -1,0 +1,134 @@
+// TEAM: insurance
+
+syntax = "proto3";
+
+package flexport.insurancepolicy.policy.v1beta1;
+
+import "flexport/executioncoordinator/derivedshipment/v1/derived_shipment.proto";
+import "flexport/executioncoordinator/types/enums/v1/transport_mode.proto";
+import "flexport/executioncoordinator/types/enums/v1/transportation_status.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+import "google/type/money.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "PolicyProto";
+option java_package = "com.flexport.insurancepolicy.policy.v1beta1";
+option ruby_package = "Flexport::InsurancePolicy::Policy::V1Beta1";
+
+message PerShipmentPolicy {
+  // com.policy.insurance.Policy
+  string fid = 1;
+  string shipment_fid = 2;
+  string client_fid = 3;
+  PolicyStatus status = 4;
+  google.protobuf.Timestamp effective_at = 5;
+  google.protobuf.Timestamp expires_at = 6;
+
+  // com.policy.insurance.PolicyCoverageDetail
+  ProductKind product_kind = 7;
+  CoverageKind coverage_kind = 8;
+  FlexportShipment flexport_shipment = 9;
+
+  // other
+  google.type.Money insurance_premium_amount = 10;
+  google.protobuf.StringValue assured_name = 11;
+  FlexportAddress assured_address = 12;
+}
+
+message FlexportShipment {
+  string shipment_fid = 1;
+  google.type.Money freight_charges_amount = 2;
+  google.type.Money customs_duties_and_fees_amount = 3;
+  google.type.Money commercial_invoice_amount = 4;
+  google.type.Money total_insured_value_amount = 5;
+  google.protobuf.Timestamp departure_time = 6;
+  google.protobuf.Timestamp arrival_time = 7;
+  flexport.executioncoordinator.types.enums.v1.TransportMode transportation_mode = 8;
+  FlexportAddress origin_address = 9;
+  FlexportAddress destination_address = 10;
+  FlexportAddress loading_address = 11;
+  FlexportAddress unloading_address = 12;
+  google.protobuf.StringValue description_of_goods = 13;
+  FlexportDotOrgShipmentDetails dot_org_details = 14;
+  string derived_shipment_fid = 15;
+  flexport.executioncoordinator.types.enums.v1.TransportationStatus transportation_status = 16;
+  google.protobuf.Timestamp completed_time = 17;
+  repeated FlexportQuote quotes = 18;
+  repeated FlexportInvoice invoices = 19;
+  google.protobuf.StringValue vessel_name = 20;
+  google.protobuf.StringValue vessel_carrier = 21;
+  google.protobuf.StringValue vessel_imo = 22;
+  google.protobuf.StringValue consignee_name = 23;
+  flexport.executioncoordinator.derivedshipment.v1.DerivedShipmentCargo cargo = 24;
+}
+
+message FlexportQuote {
+  string quote_fid = 1;
+  google.protobuf.Timestamp accepted_time = 2;
+  repeated FlexportItemizableLineItem line_items = 3;
+}
+
+message FlexportInvoice {
+  string invoice_fid = 1;
+  string invoiceable_fid = 2;
+  string invoicing_entity_fid = 3;
+  string receiving_entity_fid = 4;
+  bool was_shared = 5;
+  google.protobuf.Timestamp first_shared_at_time = 6;
+  repeated FlexportItemizableLineItem line_items = 7;
+}
+
+message FlexportItemizableLineItem {
+  string id = 1;
+  string name = 2;
+  string template_fid = 3;
+  string template_slug = 4;
+  google.type.Money price = 5;
+}
+
+// a subset of flexport.network.v1beta1.Address
+message FlexportAddress {
+  // must be a valid core address fid
+  google.protobuf.StringValue address_fid = 1;
+  google.protobuf.StringValue street_address = 2;
+  google.protobuf.StringValue street_address2 = 3;
+  google.protobuf.StringValue city = 4;
+  google.protobuf.StringValue state = 5;
+  google.protobuf.StringValue country_code = 6;
+  google.protobuf.StringValue lat = 7;
+  google.protobuf.StringValue lng = 8;
+  google.protobuf.StringValue zip = 9;
+}
+
+message FlexportDotOrgShipmentDetails {
+  google.protobuf.Struct commodities = 1;
+  google.protobuf.StringValue disaster_description = 2;
+  google.protobuf.StringValue dot_org_value = 3;
+  bool is_dot_org_funded = 4;
+  bool is_dot_org_shipment = 5;
+  google.protobuf.StringValue shipment_type = 6;
+  bool is_dot_org_squad = 7;
+}
+
+enum CoverageKind {
+  COVERAGE_KIND_INVALID = 0;
+  COVERAGE_KIND_ALL_RISK = 1;
+}
+
+enum ProductKind {
+  PRODUCT_KIND_INVALID = 0;
+  PRODUCT_KIND_PER_SHIPMENT = 1;
+  PRODUCT_KIND_ANNUAL = 2;
+}
+
+enum PolicyStatus {
+  POLICY_STATUS_INVALID = 0;
+  POLICY_STATUS_ACTIVE = 1;
+  POLICY_STATUS_COMPLETED = 2;
+  POLICY_STATUS_CANCELLED = 3;
+  POLICY_STATUS_TERMINATED = 4;
+  POLICY_STATUS_RENEWED = 5;
+  POLICY_STATUS_PENDING = 6;
+}

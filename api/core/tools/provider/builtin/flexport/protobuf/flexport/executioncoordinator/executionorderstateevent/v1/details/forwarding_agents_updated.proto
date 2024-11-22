@@ -1,0 +1,33 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ForwardingAgentsUpdatedProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "flexport/executioncoordinator/types/forwardingagents/v1/forwarding_agents.proto";
+
+// Emitted when one or several forwarding agents are updated.
+message ForwardingAgentsUpdated {
+  flexport.executioncoordinator.types.forwardingagents.v1.ForwardingAgents old_forwarding_agents = 1;
+  flexport.executioncoordinator.types.forwardingagents.v1.ForwardingAgents new_forwarding_agents = 2;
+  ForwardingAgentsUpdatedSource source = 3;
+}
+
+// The source of the update to the forwarding agents.
+enum ForwardingAgentsUpdatedSource {
+  FORWARDING_AGENTS_UPDATED_SOURCE_INVALID = 0;
+  // Forwarding agents copied from the shipment booking.
+  FORWARDING_AGENTS_UPDATED_SOURCE_BOOKING = 1;
+  // Forwarding agents updated by the agent assignment Rules Engine.
+  FORWARDING_AGENTS_UPDATED_SOURCE_RULES_ENGINE = 2;
+  // Forwarding agents copied from the accepted quote.
+  FORWARDING_AGENTS_UPDATED_SOURCE_CLIENT_ACCEPT_QUOTE = 3;
+  // When the end user changed it directly through the UI
+  // It's not used by any producer and consumer so far and up to the engineers who need it to fill the gap
+  FORWARDING_AGENTS_UPDATED_SOURCE_DIRECT_MODIFICATION = 4;
+}

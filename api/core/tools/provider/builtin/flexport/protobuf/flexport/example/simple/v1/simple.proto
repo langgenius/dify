@@ -1,0 +1,31 @@
+// TEAM: service_platform
+
+syntax = "proto3";
+
+package flexport.example.simple.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "SimpleProto";
+option java_package = "com.flexport.example.simple.v1";
+option ruby_package = "Flexport::Example::Simple::V1";
+
+// This is a short description about the main message.
+message Simple {
+  string id = 1;
+  Foo foo = 2;
+  string some_old_field = 4 [deprecated = true];
+  BarType bar = 5;
+  repeated int32 baz = 6;
+}
+
+// A helper message.
+message Foo {
+  string id = 1;
+}
+
+// An enum definition.
+enum BarType {
+  BAR_TYPE_INVALID = 0;
+  BAR_TYPE_HELLO = 1;
+  BAR_TYPE_BYE = 2;
+}

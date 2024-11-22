@@ -1,0 +1,21 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerDischargedFromVesselProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+// A container has been discharged from an ocean vessel.
+message ContainerDischargedFromVessel {
+  string container_fid = 1;
+  // Port where the container was discharged from the vessel.
+  string port_fid = 2;
+  // The date time the container was discharged.
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime discharged_date_time = 3;
+}

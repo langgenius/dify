@@ -1,0 +1,244 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.v2writeback.customsimportfiling.v1beta1;
+
+import "flexport/customs/v2writeback/customsv2writeback/v1beta1/v2_writeback_source.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option ruby_package = "Flexport::Customs::V2Writeback::CustomsImportFiling::V1Beta1";
+
+service CustomsV2CustomsImportFilingWritebackAPI {
+  rpc WritebackCustomsLineItems(WritebackCustomsLineItemsRequest) returns (WritebackCustomsLineItemsResponse);
+  rpc UnenrollCustomsLineItems(UnenrollCustomsLineItemsRequest) returns (UnenrollCustomsLineItemsResponse);
+}
+
+message CustomsLineItem {
+  // This should not be relevant in a customs v2 contex
+  // see https://flexport.slack.com/archives/C05C0TPC143/p1727091702718379
+  reserved 1;
+  reserved "classification_group_name_fid";
+  // Weight was last set on a customs line item in 2015-07. For gross weight in v1
+  // we submit using CI line item. see https://flexport.slack.com/archives/C0519QYMQJ3/p1728291730378769
+  reserved 6;
+  reserved "weight";
+  reserved "product_classification_fid";
+  reserved 7;
+
+  optional string country_of_origin = 2;
+  optional string description = 3;
+  optional int32 line_item_number = 4;
+  optional string manufacturer_code = 5;
+
+  // If not provided will be looked up using v2 fid, we aren't sure at time of writing whether
+  // we will send v1 or v2 fid
+  optional string commercial_invoice_v1_fid = 8;
+  string commercial_invoice_v2_fid = 9;
+
+  // Indicates whether this customs line item contains prorated duties and fees, a.k.a. "response processing" or "DRJ"
+  // If false: any existing information related to this will not be overwritten
+  // If true: all existing information will be replaced, like for the other fields
+  // This influences how the tariffs, tariff_quantities and customs_fees fields are treated
+  bool contains_duties_and_fees = 20;
+
+  // Note that the order of tariffs matters, see https://go/j/EUC-4041. So the tariffs will be written back in the
+  // exact given order
+  repeated Tariff tariffs = 40;
+  // The quantities of each unit of measure in the tariff HS codes
+  repeated TariffQuantity tariff_quantities = 41;
+
+  // Customs_fees contains information about customs fees, such as MPF, Harbor Maintenance Fee,
+  // Cotton Fee and dumping duty.
+  // If contains_duties_and_fees is false this is ignored
+  // If contains_duties_and_fees is true this is replaced by whatever is specified in the message (including 0 items)
+  repeated CustomsFee customs_fees = 42;
+
+  // Contains information about PGA profiles and disclaim reasons for the customs line item
+  repeated PgaLineItem pga_line_items = 43;
+  // FID of the corresponding v2 CI line item
+  // Currently in v2 we aren't doing CI line item grouping (and aren't planning to) so
+  // customs line item has a 1:1 mapping with CI line item
+  string v2_ci_line_item_fid = 50;
+  flexport.customs.v2writeback.customsv2writeback.v1beta1.V2WritebackSource source = 51;
+}
+
+message PgaLineItem {
+  // created_at and updated_at are managed by the monorail side of writeback
+  reserved "created_at", "updated_at";
+  // String identifier for the agency type. Currently only "AMS", "EPA" and "FDA" are supported
+  // All values: "AMS", "APHIS", "DEA", "EPA", "FDA", "FSIS", "FWS", "NHTSA", "NMFS", "OMC", "TTB"
+  optional string agency_type = 1;
+  optional google.protobuf.Timestamp deactivated_at = 2;
+  optional DisclaimReason disclaim_reason = 3;
+  enum DisclaimReason {
+    DISCLAIM_REASON_INVALID = 0;
+    // This product is not regulated by this agency
+    DISCLAIM_REASON_A = 1;
+    // This data is not required per agency guidance
+    DISCLAIM_REASON_B = 2;
+    // Data filed through other agency means
+    DISCLAIM_REASON_C = 3;
+    // Data filed through paper
+    DISCLAIM_REASON_D = 4;
+    // Product does not contain fish or wildlife, including live, dead, parts or products thereof,
+    // except as specifically exempted from declaration requirements under 50 CFR Part 14
+    DISCLAIM_REASON_E = 5;
+  }
+  // Data for the PGA line item.
+  // In monorail, this corresponds to a untyped hash (Ruby) and jsonb field (Postgres)
+  // The contents of which is a JSON object, with object keys depending on the specific PGA
+  // See engines/product_clasisfication_engine/app/services/product_classification_engine/pga_profiles_service.rb for
+  // how it's built.
+  optional google.protobuf.Struct data = 4;
+  // Fid of the product PGA profile of format flx::product_classification_engine:ams_profile:dbid/...
+  string pga_profile_fid = 5;
+}
+
+// A tariff on a customs line item
+// Note: Does not have unit of measure, this is looked up through the HS code
+message Tariff {
+  // hs_code_id is determined in monorail based on the hs_code field
+  reserved "hs_code_id";
+
+  // Decimal number. In v1 filled in from NetCHB data by DRJ
+  // If top level contains_duties_and_fees is false this is ignored
+  // If contains_duties_and_fees is true this is replaced including being cleared
+  optional string duty = 1;
+
+  // 1-letter duty computation code. In v1 filled in from NetCHB data by DRJ
+  // If top level contains_duties_and_fees is false this is ignored
+  // If contains_duties_and_fees is true this is replaced including being cleared
+  // Codes in customs v1: blank, 0, 1, 2, 4, 5, 6, 7, 9, K, X
+  optional string duty_computation_code = 2;
+
+  // Information about cotton fees. jsonb array in v1 data, always either an empty array or a singleton array with
+  // one of:
+  //   {"fee_type": "cotton", "fee_status": "exempt"}
+  //   {"fee_type": "cotton", "fee_status": "applied"}"
+  //   {"fee_type": "cotton", "fee_status": "pending"}"
+  repeated FeeInfo fee_info = 3;
+  message FeeInfo {
+    enum FeeType {
+      FEE_TYPE_INVALID = 0;
+      FEE_TYPE_COTTON = 1;
+    }
+    FeeType fee_type = 1;
+    enum FeeStatus {
+      FEE_STATUS_INVALID = 0;
+      FEE_STATUS_EXEMPT = 1;
+      FEE_STATUS_APPLIED = 2;
+      FEE_STATUS_PENDING = 3;
+    }
+    FeeStatus fee_status = 2;
+  }
+
+  // Arbitrary precision number with . as a decimal point. Note that its rounded
+  // to 2 decimal points after adding value when send to NetCHB in Customs v1.
+  optional string proration = 4;
+
+  // In v1 filled in from NetCHB data by DRJ
+  // If top level contains_duties_and_fees is false this is ignored
+  // Most common values in v1 in order of popularity:
+  // * "Free"
+  // * "The duty provided in the applicable subheading + 25%"
+  // * "The duty provided in the applicable subheading + 7.5%"
+  // * "28.2%"
+  // * "32%"
+  // * "3.4%"
+  // * "16%"
+  // * "16.5%"
+  // * "5.3%"
+  // * "2.5%""
+  // * "The duty provided in the applicable subheading"
+  // but there is a very long tail
+  optional string rate_info = 5;
+  // secondary_special_program is always empty in customs v1, except for a single tariff from 2015 which has "0"
+  reserved "secondary_special_program";
+  reserved 6;
+
+  // Special program string. In Customs v1 will be overwritten by NetCHB special_program, but only
+  // if it is not already empty string before.
+  // Codes in customs v1 in order of popularity: blank, PE, A~, P, KR, A, S, CO, CL, SG, AU, IL, MX, CA, 33
+  // C, N, JP, 08, MA, A*, 27, D, A+, K, E
+  optional string special_program = 7;
+  // Arbitrary precision number with . as a decimal point. Note that its rounded
+  // to 2 decimal points after adding proration when send to NetCHB in Customs v1.
+  string value = 8;
+  // HS code without dots
+  string hs_code = 9;
+}
+
+message TariffQuantity {
+  // Arbitrary precision number with . as a decimal point. Note that its rounded
+  // to 2 decimal points when send to NetCHB in Customs v1.
+  string quantity = 1;
+  // A string for the unit of measurement of the tariff, must match the HS code unit_of_measurements.
+  // The following are the 30 most popular string representing 99.9998% of all rows in order of popularity
+  // KG, NO, DOZ, NA, PRS, P/ST, M2, NAR, PA, DPR, G, NMB, DPC, DZN, M3, PCS, K, M, GR, KGM, T, CM2, L, PAR, CE/EL
+  // CAR, PK, HUN, BBL, JWL
+  string unit = 2;
+}
+
+message CustomsFee {
+  // service_item_template_id is determined in monorail based on the duty_or_fee_type field
+  reserved "service_item_template_id";
+
+  // Amount of the fee as a decimal number with 2 digits after the decimal, max 10 digits before
+  // must be >= 0.00
+  string amount = 1;
+
+  enum DutyOrFeeType {
+    DUTY_OR_FEE_TYPE_INVALID = 0;
+    DUTY_OR_FEE_TYPE_ANTI_DUMPING_DUTY = 1;
+    DUTY_OR_FEE_TYPE_COUNTERVAILING_DUTY = 2;
+    // Generic customs duty is not allowed on customs_fees
+    // See comments in engines/customs_billing/app/constants/customs_billing/constants/duty_or_fee_types.rb:
+    // All duties and fees except the generic customs duty are stored under
+    // the `customs_line_item.customs_fees association`.
+    // The generic customs duty is stored under `tariff.duty`.
+    reserved "DUTY_OR_FEE_TYPE_CUSTOMS_DUTY";
+    reserved 3;
+    DUTY_OR_FEE_TYPE_IRC_TAX = 4;
+    DUTY_OR_FEE_TYPE_MERCHANDISE_PROCESSING_FEE = 5;
+    DUTY_OR_FEE_TYPE_MERCHANDISE_PROCESSING_INFORMAL_FEE = 6;
+    DUTY_OR_FEE_TYPE_HARBOR_MAINTENANCE_FEE = 7;
+    DUTY_OR_FEE_TYPE_HONEY_FEE = 8;
+    DUTY_OR_FEE_TYPE_COTTON_FEE = 9;
+    DUTY_OR_FEE_TYPE_SOFTWOOD_LUMBER_FEE = 10;
+    DUTY_OR_FEE_TYPE_POTATO_FEE = 11;
+    DUTY_OR_FEE_TYPE_DAIRY_FEE = 12;
+  }
+  DutyOrFeeType duty_or_fee_type = 2;
+}
+
+message V2ToV1IdMapping {
+  repeated CustomsLineItemMapping customs_line_item_mapping = 1;
+  message CustomsLineItemMapping {
+    string v1_customs_line_item_fid = 1;
+    string v2_ci_line_item_fid = 2;
+  }
+}
+
+message WritebackCustomsLineItemsRequest {
+  string shipment_fid = 1;
+  // The customs filing order for which this work is performed
+  string customs_filing_order_fid = 2;
+  // All customs line items for the shipment
+  repeated CustomsLineItem customs_line_items = 11;
+}
+
+message WritebackCustomsLineItemsResponse {
+  V2ToV1IdMapping id_mapping = 1;
+}
+
+message UnenrollCustomsLineItemsRequest {
+  string shipment_fid = 1;
+  string customs_filing_order_fid = 2;
+  repeated string v2_ci_line_item_fids = 3;
+}
+
+message UnenrollCustomsLineItemsResponse {
+  V2ToV1IdMapping id_mapping = 1;
+}

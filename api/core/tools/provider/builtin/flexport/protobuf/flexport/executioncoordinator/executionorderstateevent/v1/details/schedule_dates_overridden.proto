@@ -1,0 +1,23 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionorderstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ScheduleDatesOverriddenProto";
+option java_package = "com.flexport.executioncoordinator.executionorderstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionOrderStateEvent::V1";
+
+import "flexport/executioncoordinator/executionorderstateevent/v1/details/date_changed_details.proto";
+
+// Emitted when scheduled for the order are overridden via the Schedule Queue or
+// the standalone Schedule Builder developed by the Forwarding Platform team.
+message ScheduleDatesOverridden {
+  // All of the CargoTransitDateChanged events published as part of this override.
+  repeated string cargo_transit_date_changed_fids = 1;
+  // CargoTransitDateChanged event details published as part of this override.
+  repeated DateChangedDetails cargo_transit_date_changed_details = 2;
+  // OceanConsolDevanDateUpdated event details published as part of this override. Empty when no devan date updated.
+  repeated DateChangedDetails ocean_consol_devan_date_updated_details = 3;
+}

@@ -1,0 +1,78 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.oceancosting.v1beta1;
+
+import "google/protobuf/wrappers.proto";
+import "google/type/date.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanCostingApiProto";
+option java_package = "com.flexport.procurement.oceancosting.v1beta1";
+option ruby_package = "Flexport::Procurement::OceanCosting::V1Beta1";
+
+// API for fetching ocean costing dependencies.
+service OceanCostingAPI {
+  // Fetch the costing dependencies for a given shipment fid.
+  rpc GetCostDependencies(GetCostDependenciesRequest) returns (GetCostDependenciesResponse);
+}
+
+message GetCostDependenciesRequest {
+  string shipment_fid = 1;
+}
+
+message GetCostDependenciesResponse {
+  // Costing eligibility requirement.
+  bool is_fcl_shipment = 1;
+
+  // Used to determine if shipment is TPEB/TAWB.
+  bool is_north_america_import = 2;
+  bool is_north_america_export = 3;
+
+  // Indicates if vessel has departed.
+  google.type.Date atd_first_international_vessel = 4;
+
+  // Carrier from the carrier booking.
+  string carrier_fid = 5;
+
+  // Simplified cost date dependencies: gate-in for TPEB/TAWB, else cost_date_for_carrier.
+  bool is_outsourced_lcl = 6;
+  google.type.Date cost_date = 7;
+
+  // Route from the carrier booking.
+  string origin_fid = 8;
+  string via_origin_fid = 9;
+  string via_destination_fid = 10;
+  string destination_fid = 11;
+
+  // Service string name (e.g., "DAS")
+  string carrier_service_string = 12;
+
+  // Additional rate search filters.
+  string contract_number = 13;
+  string client_fid = 14;
+
+  // DG review status info.
+  bool contains_dangerous_goods = 15;
+  repeated string dg_imo_classes = 16;
+
+  // Partner info to determine inclusion/exclusion of origin/destination surcharges.
+  repeated string origin_freight_partner_fids = 17;
+  repeated string destination_freight_partner_fids = 18;
+
+  // Identifier for registering supply service.
+  string master_bill_of_lading_number = 19;
+
+  message Container {
+    // The four-digit code specifying length, height, and type of container.
+    // Reference: https://www.csiu.co/resources-and-links/iso-container-size-and-type-iso-6346
+    string iso_6346_code = 1;
+    google.protobuf.Int32Value gross_weight_in_kg = 2;
+  }
+  // Container details for rate lookup and cost calculation.
+  repeated Container containers = 20;
+  
+  // Ordered via stops from carrier booking
+  repeated string ordered_via_stop_fids = 21;
+}

@@ -1,0 +1,173 @@
+// TEAM: workflow_platform
+
+syntax = "proto3";
+
+package flexport.rulesengine.options.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OptionsProto";
+option java_package = "com.flexport.rulesengine.options.v1";
+option ruby_package = "Flexport::RulesEngine::Options::V1";
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.MessageOptions {
+  string message_description = 6000;
+}
+
+// For @AlgoliaIndex.
+message AlgoliaIndex {
+  //
+  // The name of Algolia index, e.g. User, Client, Carrier. It should not include the environmental
+  // part.
+  //
+  string index_name = 1;
+  //
+  // The value field of Algolia search, e.g. id. If this field is not id or objectID, it must be in
+  // <a href="https://www.algolia.com/doc/api-reference/api-parameters/searchableAttributes/">
+  // searchableAttributes </a> of Algolia index and in Ruby algoliasearch it's `attributesToIndex`.
+  //
+  string value_field = 2;
+  // The label field of Algolia search, e.g. name.
+  string label_field = 3;
+  // The extra fields shown on frontend.
+  repeated string extra_fields = 4;
+  //
+  // A JSON text to add more API parameters for Algolia searching. All available options are in <a
+  // href="https://github.flexport.io/flexport/flexport/blob/33f3b2084c879d195044af6ed14e6d1cb8d7282b/webpack/assets/javascripts/tools/algoliaSearch.js#L15">AlgoliaSearchOptions</a>,
+  // and please use lower camel case as the key of parameters. Read <a
+  // href="https://www.algolia.com/doc/api-reference/api-parameters/">API Parameters</a> for more
+  // details.
+  //
+  string search_options = 5;
+}
+
+// For @ControllingField.
+message ControllingField {
+  // Controlled by field.
+  string field = 1;
+  // Controlled by specific values of the field.
+  repeated string values = 2;
+}
+
+// The DateTimeType.
+enum DateTimeType {
+  DATE_TIME_TYPE_INVALID = 0;
+  DATE_TIME_TYPE_DATE = 1;
+  DATE_TIME_TYPE_TIME = 2;
+}
+
+// The text TemplateType.
+enum TemplateType {
+  TEMPLATE_TYPE_INVALID = 0;
+  // The Spring SpEL template with the starting delimiter {{ and the ending delimiter }}.
+  TEMPLATE_TYPE_SPEL = 1;
+  // The Mustache template.
+  TEMPLATE_TYPE_MUSTACHE = 2;
+}
+
+// For @FieldComponent.
+message FieldComponent {
+  // For @TextArea.
+  message TextArea {
+    uint32 rows = 1;
+    uint32 min_rows = 2;
+    uint32 max_rows = 3;
+  }
+  TextArea text_area = 1;
+  // For @DateTime.
+  message DateTime {
+    DateTimeType type = 1;
+  }
+  DateTime date_time = 2;
+  // More support for JSON, YAML
+
+}
+
+extend google.protobuf.FieldOptions {
+  string field_title = 6006;
+  string field_description = 6000;
+  AlgoliaIndex algolia_index = 6001;
+  repeated ControllingField controlling_fields = 6002;
+  bool optional_output = 6003;
+  TemplateType template_type = 6007;
+  FieldComponent field_component = 6005;
+}
+
+extend google.protobuf.OneofOptions {
+  string oneof_description = 6000;
+}
+
+extend google.protobuf.EnumOptions {
+  string enum_description = 6000;
+}
+
+extend google.protobuf.EnumValueOptions {
+  string enum_value_description = 6000;
+  repeated string group = 6001;
+}
+
+// For @RuleFacade.
+message RuleFacade {
+  string service_name = 1;
+}
+
+extend google.protobuf.ServiceOptions {
+  string service_description = 6000;
+  RuleFacade rule_facade = 6001;
+}
+
+// For @Rule.
+message Rule {
+  // The rule name, default to the rpc name.
+  string name = 1;
+  // The rule name.
+  string api_name = 2;
+  // The rule description.
+  string description = 3;
+  // The rule workspace.
+  string workspace = 4;
+  // Whether to tolerate the evaluation error or not. If true, the server will response `null` if an
+  // evaluation error happened.
+  bool tolerate_evaluation_error = 5;
+  // Whether to allow the rightOperandValue of a condition to be empty.
+  bool allow_right_operand_value_empty = 6;
+  // Whether to allow evaluation from the frontend.
+  bool allow_evaluation_from_frontend = 7;
+  // Multiple input.
+  bool multiple_input = 8;
+  // Evaluate output container.
+  bool evaluate_output_container = 9;
+  // Whether to include null result or not.
+  // WARN: The performance could be hurt for a huge decision table.
+  bool include_null_result = 10;
+}
+
+// For @RuleSet.
+message RuleSet {
+  bool use = 3;
+}
+
+// For @DecisionTable.
+message DecisionTable {
+  bool use = 1;
+}
+
+// For @ValidateOutput.
+message ValidateOutput {
+  //
+  // The bound validation service name. A gRPC request will be sent to this service before saving a
+  // rule into the database of rules_engine. @RuleFacade.serviceName will be used if empty.
+  //
+  string service_name = 1;
+  // The name of the validator.
+  string validator_name = 2;
+}
+
+extend google.protobuf.MethodOptions {
+  string method_description = 6000;
+  Rule rule = 6001;
+  RuleSet rule_set = 6002;
+  DecisionTable decision_table = 6003;
+  ValidateOutput validate_output = 6004;
+}

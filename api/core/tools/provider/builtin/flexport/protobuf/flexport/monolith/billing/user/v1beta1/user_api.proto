@@ -1,0 +1,27 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.monolith.billing.user.v1beta1;
+
+import "flexport/monolith/billing/user/v1beta1/user.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "UserApiProto";
+option java_package = "com.flexport.monolith.billing.user.v1beta1";
+option ruby_package = "Flexport::Monolith::Billing::User::V1Beta1";
+
+service UserAPI {
+  // Get user for a given FID (Flexport Resource Identifiers).
+  rpc GetUser(GetUserRequest) returns (GetUserResponse);
+}
+
+// Request to fetch a user by FID.
+message GetUserRequest {
+  string user_fid = 1;
+}
+
+// Response to fetching a user by FID.
+message GetUserResponse {
+  flexport.monolith.billing.user.v1beta1.User user = 1;
+}

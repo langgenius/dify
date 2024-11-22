@@ -1,0 +1,21 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.form.message.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "FormStatusRecordProto";
+option java_package = "com.flexport.compliance.form.message.v1beta1";
+option ruby_package = "Flexport::Compliance::Form::Message::V1Beta1";
+
+import "flexport/compliance/form/constant/v1beta1/form_status.proto";
+import "google/protobuf/timestamp.proto";
+
+// A timestamped form status used to keep record of all status changes.
+message FormStatusRecord {
+  // The status applied to the form.
+  flexport.compliance.form.constant.v1beta1.FormStatus form_status = 1;
+  // The timestamp the status was applied at.
+  google.protobuf.Timestamp applied_time = 2;
+}

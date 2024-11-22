@@ -1,0 +1,82 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.transcription.transcriptionservice.v1beta1;
+
+import "flexport/transcription/transcriptionservice/v1beta1/transcription_job.proto";
+import "google/api/annotations.proto";
+import "google/api/httpbody.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TranscriptionServiceApiProto";
+option java_package = "com.flexport.transcription.transcriptionservice.v1beta1";
+option ruby_package = "Flexport::Transcription::TranscriptionService::V1Beta1";
+
+// This is the API for the Transcription Service.
+service TranscriptionServiceAPI {
+  // Transcribe a file given its location as a URL.
+  rpc Transcribe(TranscribeRequest) returns (TranscribeResponse);
+  // Callback URL to give to Scale.ai.
+  rpc ScaleAiCallback(ScaleAiCallbackRequest) returns (ScaleAiCallbackResponse) {
+    option (google.api.http) = {
+      post: "/v1beta1/transcription/scale/{transcription_job_id}"
+      body: "body"
+    };
+  }
+  // Callback URL to give to Rossum.
+  rpc RossumCallback(RossumCallbackRequest) returns (RossumCallbackResponse) {
+    option (google.api.http) = {
+      post: "/v1beta1/transcription/rossum"
+      body: "body"
+    };
+  }
+}
+
+message TranscribeRequest {
+  // Next sequence number to use in proto: 8
+
+  // This used to be a field called attachment_url. We now populate attachment_url dynamically based on the file_object_fid.
+  reserved 1;
+  // A configuration id.
+  string config_id = 2;
+  // List of fids associated with this document.
+  repeated string topic_fids = 3;
+  reserved 6; // This used to be a field called storage_fid. Replaced by the field file_object_fid which is equivalent
+  // The FID representing the actual file object. It is usually a storage service FID.
+  string file_object_fid = 7;
+  // Flag to allow duplicate fids.
+  bool allow_duplicates = 4;
+  // Optional deadline to complete the transcription request by (or get notified of failure)
+  google.protobuf.Timestamp deadline = 5;
+}
+
+message TranscribeResponse {
+  oneof response {
+    SuccessResponse success = 1;
+    ErrorResponse error = 2;
+  }
+}
+
+message ScaleAiCallbackRequest {
+  // The id of the transcription_job.
+  string transcription_job_id = 1;
+  // The body of the response
+  google.api.HttpBody body = 2;
+}
+
+message ScaleAiCallbackResponse {
+  // Acknowledge the the request was received.
+  bool ack = 1;
+}
+
+message RossumCallbackRequest {
+  // The body of the response
+  google.api.HttpBody body = 1;
+}
+
+message RossumCallbackResponse {
+  // Acknowledge the the request was received.
+  repeated string messages = 1;
+}

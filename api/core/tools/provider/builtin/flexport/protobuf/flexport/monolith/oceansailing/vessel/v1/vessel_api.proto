@@ -1,0 +1,27 @@
+// TEAM: ocean_sailing_schedules
+
+syntax = "proto3";
+
+package flexport.monolith.oceansailing.vessel.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "VesselApiProto";
+option java_package = "com.flexport.monolith.oceansailing.vessel.v1";
+option ruby_package = "Flexport::Monolith::OceanSailing::Vessel::V1";
+
+import "flexport/monolith/oceansailing/vessel/v1/vessel.proto";
+
+// This service is used by any NIS to retrieve Vessel from monolith DB.
+// Production readiness: https://docs.google.com/document/d/188NiLVa1j91uz98nn-Ovf5MSMUWNRfvx6pDTVGDYvno/edit#
+service VesselAPI {
+  // Get vessel entity for a given fid (Flexport Resource Identifiers).
+  rpc GetVessel(GetVesselRequest) returns (GetVesselResponse);
+}
+
+message GetVesselRequest {
+  string vessel_fid = 1;
+}
+
+message GetVesselResponse {
+  Vessel vessel = 1;
+}

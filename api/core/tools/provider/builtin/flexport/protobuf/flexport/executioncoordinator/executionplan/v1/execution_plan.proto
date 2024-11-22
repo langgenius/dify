@@ -1,0 +1,81 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executionplan.v1;
+
+import "flexport/executioncoordinator/executionplan/v1/plan_upserter.proto";
+import "flexport/executioncoordinator/executionplan/v1/planning_process.proto";
+import "flexport/executioncoordinator/executiontask/v1/execution_task.proto";
+import "flexport/executioncoordinator/types/forwardingagents/v1/forwarding_agents.proto";
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ExecutionPlanProto";
+option java_package = "com.flexport.executioncoordinator.executionplan.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionPlan::V1";
+
+// An ExecutionPlan entity representing Flexport's current plan for executing an ExecutionOrder.
+//
+//   Most recently updated:
+//   http://go/ep-latest
+//
+//   By ExecutionOrder fid:
+//   https://go/ep/flx::execution_coordinator:execution_order:cc64e84f-b1dd-46c7-a380-c860734f6490
+//
+// - An ExecutionPlan is just the list of current ExecutionTasks for an ExecutionOrder.
+// - An ExecutionPlan does not have its own FID, but it does have a current revision number.
+//   Together, the execution_order_fid and the current revision uniquely identify an ExecutionPlan.
+// - Each time an ExecutionTask is created, deleted, or changed for an ExecutionOrder, the order's
+//   plan revision is incremented. One plan revision increment may include changes to several
+//   ExecutionTasks.
+//
+message ExecutionPlan {
+  //
+  // Identifier of the ExecutionPlan.
+  string fid = 7;
+  //
+  // Identifier of the associated ExecutionOrder.
+  string execution_order_fid = 1;
+  //
+  // Revision number of the plan. Increments by one each time the plan is mutated, starting
+  // at 1. Included in events and reads from the ExecutionCoordinator; ignored during writes.
+  uint32 revision = 2;
+  //
+  // Time the current revision was created.
+  google.protobuf.Timestamp revision_created_time = 3;
+  //
+  // Information about the source of the current ExecutionPlan revision.
+  flexport.executioncoordinator.executionplan.v1.ExecutionPlanRevisionSource revision_source = 5;
+  //
+  // Company entity fids of forwarding agents responsible for the different parts of execution.
+  flexport.executioncoordinator.types.forwardingagents.v1.ForwardingAgents forwarding_agents = 6;
+  //
+  // The ExecutionTasks in this ExecutionPlan. May or may not include ExecutionTasks that were
+  // newly cancelled as of the current revision, depending on event or query pattern. (There is
+  // no semantic difference between including or omitting such tasks.)
+  repeated flexport.executioncoordinator.executiontask.v1.ExecutionTask execution_tasks = 4;
+}
+
+// A source of an ExecutionPlan revision.
+// If you are adding a new client that makes upsert gRPC calls to the EC-NIS, please add
+// to the PlanUpserter and PlanningProcess enums.
+message ExecutionPlanRevisionSource {
+  //
+  // The "service or group" (a la http://go/fid) that upserted the ExecutionPlan revision.
+  PlanUpserter plan_upserter = 5;
+  //
+  // Planning process that created the revision.
+  PlanningProcess planning_process = 8;
+  //
+  // Identifier of the user responsible for the revision. Might be a bot.
+  string user_fid = 2;
+  //
+  // Any arbitrary reference_key for this revision_source, set by the planning service or group.
+  // Use case example: indicating which "run" of an automated assignment engine made the revision.
+  // It can be any arbitrary string.
+  string reference_key = 6;
+  //
+  // Free text note about the revision.
+  string note = 4;
+}

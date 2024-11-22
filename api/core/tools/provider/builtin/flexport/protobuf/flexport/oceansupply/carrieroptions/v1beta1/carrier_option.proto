@@ -1,0 +1,114 @@
+// TEAM: ocean_allocations
+
+syntax = "proto3";
+
+package flexport.oceansupply.carrieroptions.v1beta1;
+
+import "flexport/os/v1/types/walltimedate/v1/wall_time_date.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "CarrierOptionsApiProto";
+option java_package = "com.flexport.oceansupply.carrieroptions.v1beta1";
+option ruby_package = "Flexport::OceanSupply::V1Beta1";
+
+message PremiumProfile {
+  string premium_profile_fid = 1;
+  repeated string inventory_bucket_fid = 2;
+  string carrier_fid = 3;
+  string contract_fid = 4;
+  google.protobuf.StringValue composite_string = 5;
+  google.protobuf.StringValue booking_reference = 6;
+  string origin_port_fid = 7;
+  google.protobuf.StringValue origin_via_port_fid = 8;
+  google.protobuf.StringValue destination_via_port_fid = 9;
+  string destination_fid = 10;
+  // name of the premium service offering associated with the profile
+  google.protobuf.StringValue service_name = 11;
+  // type of premium service provided by the profile
+  ServiceLevel service_level = 12 [deprecated = true];
+  // name of the service string derived from composite string
+  string string_name = 13;
+  OpenCarrierTier open_carrier_tier = 14;
+  // type of premium service provided by the profile
+  repeated ServiceLevel service_levels = 15;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate invalidity_start_date = 16;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate invalidity_end_date = 17;
+  ViaPortNullType origin_via_null_type = 18;
+  ViaPortNullType destination_via_null_type = 19;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate start_date = 20;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate end_date = 21;
+  ValidityPeriodType validity_period_type = 22;
+}
+
+message NacProfile {
+  string nac_profile_fid = 1;
+  repeated string inventory_bucket_fid = 2;
+  string carrier_fid = 3;
+  string contract_fid = 4;
+  google.protobuf.StringValue composite_string = 5;
+  string booking_reference = 6;
+  string origin_port_fid = 7;
+  google.protobuf.StringValue origin_via_port_fid = 8;
+  google.protobuf.StringValue destination_via_port_fid = 9;
+  string destination_fid = 10;
+  string client_fid = 11;
+  SupportedShipmentType supported_shipment_type = 12;
+  int32 carrier_preference = 13;
+  // name of the service string derived from composite string
+  string string_name = 14;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate invalidity_start_date = 15;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate invalidity_end_date = 16;
+  ViaPortNullType origin_via_null_type = 17;
+  ViaPortNullType destination_via_null_type = 18;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate start_date = 19;
+  flexport.os.v1.types.walltimedate.v1.WallTimeDate end_date = 20;
+  ValidityPeriodType validity_period_type = 21;
+  repeated ServiceLevel service_levels = 22;
+  google.protobuf.StringValue premium_service_name_fid = 23;
+}
+
+enum SupportedShipmentType {
+  SUPPORTED_SHIPMENT_TYPE_INVALID = 0;
+  SUPPORTED_SHIPMENT_TYPE_NAC_ONLY = 1;
+  SUPPORTED_SHIPMENT_TYPE_NAC_OR_FAK = 2;
+}
+
+enum ServiceLevel {
+  SERVICE_LEVEL_INVALID = 0;
+  SERVICE_LEVEL_NO_ROLL = 1;
+  SERVICE_LEVEL_EXPEDITED = 2;
+  SERVICE_LEVEL_PREMIUM = 3;
+  SERVICE_LEVEL_PRIORITY_DISCHARGE = 4;
+  SERVICE_LEVEL_NEXT_AVAILABLE_SAILING = 5;
+  SERVICE_LEVEL_EXPEDITED_SAILING = 6;
+  SERVICE_LEVEL_EXPEDITED_RAIL = 7;
+  SERVICE_LEVEL_PRIORITY_SPACE = 8;
+  SERVICE_LEVEL_PRIORITY_EQUIPMENT = 9;
+  SERVICE_LEVEL_GUARANTEE_SPACE = 10;
+  SERVICE_LEVEL_GUARANTEE_EQUIPMENT = 11;
+  SERVICE_LEVEL_TRANSLOAD_PREMIUM = 12;
+}
+
+enum OpenCarrierTier {
+  OPEN_CARRIER_TIER_INVALID = 0;
+  OPEN_CARRIER_TIER_FWEB_PREMIUM_OPEN_CARRIER = 1;
+  OPEN_CARRIER_TIER_TPEB_PREMIUM_OPEN_CARRIER = 2;
+  OPEN_CARRIER_TIER_OPEN_PREMIUM_TL = 3;
+  OPEN_CARRIER_TIER_TPEB_SUPER_PREMIUM_OPEN_CARRIER = 4;
+  OPEN_CARRIER_TIER_FWEB_SUPER_PREMIUM_OPEN_CARRIER = 5;
+}
+
+enum ViaPortNullType {
+  VIA_PORT_NULL_TYPE_INVALID = 0;
+  VIA_PORT_NULL_TYPE_ANY_STOP = 1;
+  VIA_PORT_NULL_TYPE_SKIPPED = 2;
+}
+
+enum ValidityPeriodType {
+  VALIDITY_PERIOD_TYPE_INVALID = 0;
+  // refers to ValidityPeriodType VALID
+  VALIDITY_PERIOD_TYPE_ACTIVE = 1;
+  // refers to ValidityPeriodType INVALID
+  VALIDITY_PERIOD_TYPE_INACTIVE = 2;
+}

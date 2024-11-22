@@ -1,0 +1,23 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "TruckingDeliveryAppointmentScheduledProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+import "flexport/os/v1/types/walltimerange/v1/wall_time_range.proto";
+
+// Trucking Carrier scheduled a delivery appointment with a destination warehouse.
+message TruckingDeliveryAppointmentScheduled {
+  string cargo_fid = 1;
+  // the place where this delivery appointment is supposed to deliver to.
+  string address_fid = 2;
+  // the time of scheduled appointment expressed as a walltime range
+  // because trucking carrier can either schedule a delivery to be specific point in time (eg. Jan. 1st, 10:59AM),
+  // or a time range (eg. any time on Jan. 1st)
+  flexport.os.v1.types.walltimerange.v1.WallTimeRange scheduled_time = 3;
+}

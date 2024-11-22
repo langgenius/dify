@@ -1,0 +1,21 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customs.usadapter.cmq.entities.v1;
+
+import "flexport/customs/usadapter/cmq/entities/v1/ocean_bill_type.proto";
+import "flexport/customs/usadapter/cmq/entities/v1/rail_bill_type.proto";
+import "flexport/customs/usadapter/cmq/entities/v1/truck_bill_type.proto";
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.usadapter.cmq.entities.v1";
+option ruby_package = "Flexport::Customs::UsAdapter::Cmq::V1";
+
+message BillType {
+  oneof type {
+    RailBillType rail_bill_type = 1;
+    TruckBillType truck_bill_type = 2;
+    OceanBillType ocean_bill_type = 3;
+  }
+}

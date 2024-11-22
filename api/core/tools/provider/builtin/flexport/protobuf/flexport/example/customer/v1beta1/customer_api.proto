@@ -1,0 +1,38 @@
+// TEAM: service_platform
+
+syntax = "proto3";
+
+package flexport.example.customer.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomerApiProto";
+option java_package = "com.flexport.example.customer.v1beta1";
+option ruby_package = "Flexport::Example::Customer::V1Beta1";
+
+import "flexport/example/customer/v1beta1/customer.proto";
+
+// A toy customer management service.
+service CustomerAPI {
+  // Creates a customer.
+  rpc CreateCustomer(CreateCustomerRequest) returns (CreateCustomerResponse);
+  // Gets a customer.
+  rpc GetCustomer(GetCustomerRequest) returns (GetCustomerResponse);
+}
+
+message CreateCustomerRequest {
+  string name = 1;
+}
+
+message CreateCustomerResponse {
+  Customer customer = 1;
+}
+
+message GetCustomerRequest {
+  // Customer id. Follows the Flexport Resource Identifiers convention.
+  // See https://go/fid
+  string fid = 1;
+}
+
+message GetCustomerResponse {
+  Customer customer = 1;
+}

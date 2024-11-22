@@ -1,0 +1,20 @@
+// TEAM: finance
+
+syntax = "proto3";
+
+package flexport.freightinvoice.date.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DateProto";
+option java_package = "com.flexport.freightinvoice.date.v1";
+option ruby_package = "Flexport::FreightInvoice::Date::V1";
+
+// Some invoice related dates will are stored as a DATE, with no time component. They will be displayed to the user as this literal date.
+message Date {
+  // Year of date. From 1 on.
+  int32 year = 1;
+  // Month of year. From 1 to 12.
+  int32 month = 2;
+  // Day of month. From 1 to 31.
+  int32 day = 3;
+}

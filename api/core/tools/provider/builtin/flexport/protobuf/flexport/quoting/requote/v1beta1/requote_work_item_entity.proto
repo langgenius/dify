@@ -1,0 +1,88 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.requote.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RequoteWorkItemEntityProto";
+option java_package = "com.flexport.quoting.requote.v1beta1";
+option ruby_package = "Flexport::Quoting::Requote::V1Beta1";
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+// All the data about RequoteWorkItems that the business needs to query via Looker.
+message RequoteWorkItemEntity {
+  Status status = 1;
+  string task_fid = 2;
+  // Will only be specified for tasks of type Requires Requote.
+  RequoteReason requote_reason = 3;
+  TaskType task_type = 4;
+  google.protobuf.Timestamp creation_time = 5;
+  // May be null for tasks that are immediately applicable.
+  google.protobuf.Timestamp applicable_time = 6;
+  google.protobuf.Timestamp due_time = 7;
+  // These are dbids, not fids, to optimize for joins with other tables.
+  int64 shipment_id = 8;
+  int64 quote_id = 9;
+  // The current status of the quote, not shipment.quote_status.
+  QuoteStatus quote_status = 10;
+  // ocean_fcl, ocean_lcl or air
+  string quote_mode = 11;
+  // Will be set if the task is dismissed, cancelled, or completed.
+  google.protobuf.Timestamp resolve_time = 12;
+  // This is a dbid, not an fid, to allow for simpler joins.
+  int64 resolved_by_user_id = 13;
+  // Will be set if the task was dismissed or cancelled.
+  google.protobuf.StringValue resolve_reason = 14;
+}
+
+// Be careful when mapping our Ruby enum value to the protobuf value. Protobuf
+// requires the first enum value to be 0, and it's used as the (invalid) default.
+// But in our Ruby enums, 0 maps to a valid value.
+// The Created status is intentionally omitted, since we'll only publish data to
+// Looker after successful work-item-creation gRPC calls.
+enum Status {
+  STATUS_INVALID = 0;
+  STATUS_SCHEDULED = 1;
+  STATUS_COMPLETED = 2;
+  STATUS_CANCELLED = 3;
+  STATUS_DISMISSED = 4;
+}
+
+// Be careful when mapping our Ruby enum value to the protobuf value. Protobuf
+// requires the first enum value to be 0, and it's used as the (invalid) default.
+// But in our Ruby enums, 0 maps to a valid value.
+// The possible values for this enum are found in work_item_types.rb. They're all the
+// values that don't pertain to the Share/PCA/BoB work item types/states.
+enum RequoteReason {
+  REQUOTE_REASON_INVALID = 0;
+  REQUOTE_REASON_NOT_APPLICABLE = 1;
+  REQUOTE_REASON_RATE_EXPIRATION = 2;
+  REQUOTE_REASON_CARRIER_CHANGE = 3 [deprecated = true];
+  REQUOTE_REASON_CARRIER_CONTRACT_CHANGE = 4;
+  REQUOTE_REASON_CARGO_DETAIL_DISCREPANCY = 5;
+  REQUOTE_REASON_ROUTE_CHANGE = 6;
+}
+
+// These are RequoteStates.
+enum TaskType {
+  TASK_TYPE_INVALID = 0;
+  TASK_TYPE_REQUIRES_REQUOTE = 1;
+  TASK_TYPE_SHARE = 2;
+  TASK_TYPE_PENDING_CLIENT_APPROVAL = 3;
+  TASK_TYPE_BOOK_ON_BEHALF = 4;
+}
+
+// Possible values can be found in quote.rb's status method.
+enum QuoteStatus {
+  QUOTE_STATUS_INVALID = 0;
+  QUOTE_STATUS_VOIDED = 1;
+  QUOTE_STATUS_ACCEPTED = 2;
+  QUOTE_STATUS_REJECTED = 3;
+  QUOTE_STATUS_EXPIRED = 4;
+  QUOTE_STATUS_SHARED = 5;
+  QUOTE_STATUS_PENDING = 6;
+  QUOTE_STATUS_DELETED = 7;
+}

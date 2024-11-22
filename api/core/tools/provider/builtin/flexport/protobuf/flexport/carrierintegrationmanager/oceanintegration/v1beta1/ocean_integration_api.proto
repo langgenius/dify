@@ -1,0 +1,33 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.carrierintegrationmanager.oceanintegration.v1beta1;
+
+import "google/api/annotations.proto";
+import "google/api/httpbody.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanIntegrationApiProto";
+option java_package = "com.flexport.carrierintegrationmanager.oceanintegration.v1beta1";
+option ruby_package = "Flexport::CarrierIntegrationManager::OceanIntegration::V1Beta1";
+
+service OceanIntegrationAPI {
+  rpc SavePayload(google.api.HttpBody) returns (SavePayloadResponse) {
+    option (google.api.http) = {
+      post: "/carrier_integration/ocean"
+    };
+  }
+}
+
+message SavePayloadResponse {
+  string object = 1 [json_name = "_object"];
+  string self = 2;
+  string version = 3;
+  ResponseData data = 4;
+}
+
+message ResponseData {
+  string success = 1;
+  string error = 2;
+}

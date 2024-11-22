@@ -1,0 +1,60 @@
+// TEAM: quoting
+
+syntax = "proto3";
+
+package flexport.quoting.ordertemplate.v1;
+
+import "flexport/catalog/enums/v1/enums.proto";
+import "flexport/os/v1/types/incoterm/v1/incoterm.proto";
+import "google/protobuf/timestamp.proto";
+//import "google/rpc/status.proto";
+
+
+//option java_multiple_files = true;
+//option java_outer_classname = "OrderTemplateApiProto";
+//option java_package = "com.flexport.quoting.ordertemplate.v1";
+option ruby_package = "Flexport::Quoting::OrderTemplate::V1";
+
+message OrderTemplateInfo {
+  uint64 client_id = 1;
+
+  string transportation_mode = 2;
+
+  flexport.os.v1.types.incoterm.v1.Incoterm incoterm = 3;
+
+  // some extra notes about this order template
+  optional string description = 4;
+  optional string booking_instruction = 5;
+
+  // the container types that are used for this order template if using ocean-fcl offering
+  repeated catalog.enums.v1.ContainerType container_types = 6;
+
+  // whether contains dangerous goods
+  optional bool is_dangerous_good = 7;
+
+  // agents information
+  optional uint64 origin_agent_id = 8;
+  optional uint64 destination_agent_id = 9;
+  optional uint64 import_customs_agent_id = 10;
+  optional uint64 export_customs_agent_id = 11;
+
+  // the selected cda offerings' fids, cannot be empty array
+  repeated AddCdaOfferingInfo add_cda_offering_infos = 12;
+
+  // the order template id to update
+  optional uint64 order_template_id = 13;
+
+  // the dcrs that is used for this order template
+  //optional string dcrs_fid = 14;
+
+  // The cda offerings selection date, would use today as default date if not provided.
+  //  Also considering removing this field from OT in the future
+  optional google.protobuf.Timestamp service_selection_date = 15;
+}
+
+message AddCdaOfferingInfo {
+  string cda_offering_fid = 1;
+
+  // the selected accessorial charges' template slugs
+  repeated string accessorial_slugs = 2;
+}

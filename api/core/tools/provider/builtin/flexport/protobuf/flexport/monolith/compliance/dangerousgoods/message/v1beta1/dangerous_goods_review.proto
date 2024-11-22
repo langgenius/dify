@@ -1,0 +1,20 @@
+// TEAM: kingsroad
+
+syntax = "proto3";
+
+package flexport.monolith.compliance.dangerousgoods.message.v1beta1;
+
+import "flexport/compliance/dangerousgoods/constant/v1beta1/dg_review_status.proto";
+import "flexport/monolith/compliance/dangerousgoods/constant/v1beta1/dangerous_goods_is_dangerous.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DangerousGoodsReviewProto";
+option java_package = "com.flexport.monolith.compliance.dangerousgoods.message.v1beta1";
+option ruby_package = "Flexport::Monolith::Compliance::DangerousGoods::Message::V1Beta1";
+
+message DangerousGoodsReview {
+  google.protobuf.Int32Value shipment_id = 1;
+  flexport.compliance.dangerousgoods.constant.v1beta1.DangerousGoodsReviewStatus status = 2;
+  monolith.compliance.dangerousgoods.constant.v1beta1.DangerousGoodsIsDangerous is_dangerous = 3;
+}

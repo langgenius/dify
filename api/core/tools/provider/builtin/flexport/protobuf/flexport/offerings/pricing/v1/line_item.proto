@@ -1,0 +1,154 @@
+// TEAM: revenue_management
+
+syntax = "proto3";
+
+package flexport.offerings.pricing.v1;
+
+import "flexport/offerings/pricing/v1/pricing.proto";
+import "google/type/decimal.proto";
+import "google/type/money.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "LineItemProto";
+option java_package = "com.flexport.offerings.pricing.v1";
+option ruby_package = "Flexport::Offerings::Pricing::V1";
+
+// Message definition for a Line Item.
+// A LineItem represents an individual charge to be displayed on a quote or invoice.
+message LineItem {
+  // Unique identifier for the line item.
+  string id = 1;
+  // The category of the line item.
+  Category category = 2;
+  // The slug of the line item. This is a string that uniquely identifies the line item.
+  string slug = 3;
+  // The cost of the line item.
+  google.type.Money cost = 4;
+  // The price of the line item.
+  google.type.Money price = 5;
+  // The source of the line item charge.
+  Source source = 6;
+  // The adjustment status of the line item.
+  AdjustmentStatus adjustment_status = 7;
+  // cost_type specifies the type of cost using an enum.
+  CostType cost_type = 8;
+  // The guardrail for the line item. If adjustment_type is set to ADJUST_MARKUP, the guardrail is required for base freight line items only.
+  optional Guardrail guardrail = 9;
+  // The markup for the line item.
+  oneof markup {
+    // The markup for the line item as a percentage. E.g. 10 is 10% markup.
+    google.type.Decimal percentage_markup = 10;
+  }
+  // The default markup for the line item.
+  oneof default_markup {
+    // The default markup for the line item as a percentage. E.g. 10 is 10% markup.
+    google.type.Decimal default_percentage_markup = 11;
+  }
+  // The initial markup from charge management for the line item.
+  oneof default_charge_management_markup {
+    // The default markup for the line item as a percentage. E.g. 10 is 10% markup.
+    google.type.Decimal default_charge_management_percentage_markup = 12 [deprecated = true];
+  }
+  // A message to represent all the options for a line item derived from an order template. If the line item does not originate from an order template, this field should not be set.
+  optional OrderTemplateSource order_template_source = 13;
+
+  // The original markup for the line item. Original refers to the markup that was set on the line item before any adjustments were made.
+  oneof original_markup {
+    // The original markup for the line item as a percentage. E.g. 10 is 10% markup.
+    google.type.Decimal original_percentage_markup = 14;
+  }
+
+  // Optional adjustment overrides for the line item. Adjustment overrides are used to bypass specific adjustments for this line item during processing. If not specified, the default adjustment logic is applied.
+  optional AdjustmentOverrides adjustment_overrides = 15;
+}
+
+// Enum defining possible adjustment overrides for a line item.
+// Adjustment overrides allow fine-grained control over how
+// adjustments are applied to specific line items.
+enum AdjustmentOverrides {
+  // Default value indicating no specific adjustment override is specified.
+  // This value should not be used for valid configurations.
+  ADJUSTMENT_OVERRIDES_INVALID = 0;
+
+  // Skip adjusting the markup on the line item.
+  // This means that the initial markup will be used as the final markup.
+  ADJUSTMENT_OVERRIDES_SKIP_ADJUST_MARKUP = 1;
+}
+
+// Enum for Cost Types
+enum CostType {
+  // Unspecified cost type
+  COST_TYPE_INVALID = 0;
+  // Base cost type
+  COST_TYPE_BASE = 1;
+  // Surcharge cost type
+  COST_TYPE_SURCHARGE = 2;
+}
+
+// Enum for Adjustment Status
+// Indicates the adjustment status of a line item.
+enum AdjustmentStatus {
+  ADJUSTMENT_STATUS_INVALID = 0;
+  // Unadjusted status means the line item was not changed by the pricing engine
+  ADJUSTMENT_STATUS_UNADJUSTED = 1;
+  // Markup adjusted status means that the markup field on the line item was modified. When the markup is adjusted, the price is also adjusted as markup is an input to price.
+  ADJUSTMENT_STATUS_MARKUP_ADJUSTED = 2;
+}
+
+// Enum representing different sources line item charges.
+enum Source {
+  // Unspecified source, default value.
+  SOURCE_INVALID = 0;
+  // Source from NAC (Named Account Contract) offering.
+  SOURCE_NAC_OFFERING = 1;
+  // Source from FAK (Freight All Kinds) offering.
+  SOURCE_FAK_OFFERING = 2;
+  // Source from charge management system.
+  SOURCE_CHARGE_MANAGEMENT = 3;
+  // Source entered manually.
+  SOURCE_MANUAL = 4;
+}
+
+// Message to represent all the options for a line item derived from an order template.
+message OrderTemplateSource {
+  // The pricing policy for a line item when it originates from an order template.
+  OrderTemplateLineItemPricingPolicy order_template_line_item_pricing_policy = 1;
+}
+
+// Enum representing the pricing policy for a line item when it originates from an order template.
+enum OrderTemplateLineItemPricingPolicy {
+  // Unspecified source, default value.
+  ORDER_TEMPLATE_LINE_ITEM_PRICING_POLICY_INVALID = 0;
+  // The pricing policy is set to default
+  ORDER_TEMPLATE_LINE_ITEM_PRICING_POLICY_DEFAULT = 1;
+  // The pricing policy is set to cost plus percent
+  ORDER_TEMPLATE_LINE_ITEM_PRICING_POLICY_COST_PLUS_PERCENT = 2;
+  // The pricing policy is set to cost plus a USD amount
+  ORDER_TEMPLATE_LINE_ITEM_PRICING_POLICY_COST_PLUS_USD = 3;
+}
+
+// This enum represents the category of the line item.
+enum Category {
+  // Unspecified category
+  CATEGORY_INVALID = 0;
+  // Freight category
+  CATEGORY_FREIGHT = 1;
+  // Origin category
+  CATEGORY_ORIGIN = 2;
+  // Destination category
+  CATEGORY_DESTINATION = 3;
+  // Customs category
+  CATEGORY_CUSTOMS = 4;
+  // Capital category
+  CATEGORY_CAPITAL = 5;
+  // Additional category
+  CATEGORY_ADDITIONAL = 6;
+}
+
+// Enum for Adjustment Types
+enum AdjustmentType {
+  // Unspecified adjustment type
+  ADJUSTMENT_TYPE_INVALID = 0;
+  // Adjust the markup on line items. The exact line items adjusted will depend on the current logic used in the adjust line items algorithm.
+  ADJUSTMENT_TYPE_ADJUST_MARKUP = 1;
+}

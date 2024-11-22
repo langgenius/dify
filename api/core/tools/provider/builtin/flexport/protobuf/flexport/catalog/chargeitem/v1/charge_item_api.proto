@@ -1,0 +1,513 @@
+// TEAM: commerce_charges
+
+syntax = "proto3";
+
+package flexport.catalog.chargeitem.v1;
+
+import "flexport/catalog/chargesource/v1/charge_source.proto";
+import "flexport/catalog/common/v1/warehouse.proto";
+import "flexport/catalog/date/v1/date.proto";
+import "flexport/catalog/enums/v1/enums.proto";
+import "flexport/catalog/rate/v1/rate.proto";
+import "flexport/commerce/merchandising/catalog/data_authority/offering/v1beta1/offering.proto";
+import "flexport/monolith/catalog/v1beta1/core_service.proto";
+import "flexport/os/v1/types/cargo/v1/cargo.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ChargeItemProto";
+option java_package = "com.flexport.catalog.chargeitem.v1";
+option ruby_package = "Flexport::Catalog::ChargeItem::V1";
+
+service ChargeItemAPI {
+  /**
+   Get the ChargeItems for the given request, typically for all the offerings on the order/shipment.
+
+   A ChargeItem is a Commerce owned entity that represents a charge applied to a given order/shipment context. ChargeItems
+   are derived from the internal Charge entity, which is a more granular concept than what most of Commerce’s systems
+   customers interact with. Charges are converted to ChargeItems using ServiceItemTemplates https://core.flexport.com/service_item_templates
+
+   ChargeItems are processed for presentation. At the time of writing, this includes
+    * de-duplicate ChargeItem across offerings
+    * filter out ChargeItems with zero rates
+    * bundle chargeItems based on service offering config https://core.flexport.com/marketplace/service_offerings/configure
+
+   The ChargeItem is an attempt to represent Charges with a centralized set of mutations so that all downstream interested parties
+   get a consistent view of reality which can be priced against.
+   */
+  rpc GetChargeItems(GetChargeItemsRequest) returns (GetChargeItemsResponse);
+
+  /**
+   Get the UnprocessedChargeItems for the given request, typically for a set of offerings
+
+   UnprocessedChargeItems are just ChargeItems which have not been processed for presentation.
+
+   The UnprocessedChargeItem is an attempt to represent Charges mapped to ServiceItems so that all upstream interested parties
+   can think in terms of ChargeItems which can be priced against.
+   */
+  rpc GetUnprocessedChargeItems(GetUnprocessedChargeItemsRequest) returns (GetUnprocessedChargeItemsResponse);
+
+  /**
+   Process ChargeItems for Presentation
+
+   At the time of writing, this includes pure / idempotent functions which do the following:
+     * de-duplicate ChargeItems across offerings
+     * filter out ChargeItems with zero rates
+     * bundle chargeItems based on service offering config https://core.flexport.com/marketplace/service_offerings/configure
+
+   To view how ChargeItems will appear on the quote (for instance), UnprocessedChargeItems should be processed by this centralized set of mutations.
+   */
+  rpc ProcessChargeItems(ProcessChargeItemsRequest) returns (ProcessChargeItemsResponse);
+
+  /**
+   Get Charge Items after applying any applicable invoicing presentation rules.
+
+   This endpoint processes a list of ChargeItems based on client and transportation mode-specific presentation rules.
+   It bundles, renames, and modifies these items according to predefined JSON rules before returning the adjusted list.
+   */
+  rpc GetPresentableChargeItems(GetPresentableChargeItemsRequest) returns (GetPresentableChargeItemsResponse) {
+    // This Service is still in use at a limited capacity but is not recommended for new use cases.
+    option deprecated = true;
+  }
+}
+
+message GetChargeItemsRequest {
+  // Request-level attributes common to every Offering on the order
+  CommonAttributes common_attributes = 1;
+
+  // Offerings to determine charges for. This should represent all the offerings in a single order as some charges need
+  // to be de-duped across the entire order.
+  repeated Offering offering_instances = 2;
+}
+
+message GetChargeItemsResponse {
+  // List of OfferingFids mapped to all the charges that apply to the offering
+  repeated ChargeItemsForOffering charge_items_for_offering = 1;
+}
+
+message GetUnprocessedChargeItemsRequest {
+  // Request-level attributes common to every Offering on the order
+  CommonAttributes common_attributes = 1;
+
+  // Offerings to determine charges for. This should represent all the offerings in a single order as some charges need
+  // to be de-duped across the entire order.
+  repeated Offering offering_instances = 2;
+}
+
+message GetUnprocessedChargeItemsResponse {
+  // List of OfferingFids mapped to all the charges that apply to the offering
+  repeated ChargeItemsForOffering charge_items_for_offering = 1;
+}
+
+message ProcessChargeItemsRequest {
+  // Request-level attributes common to every Offering on the order
+  CommonAttributes common_attributes = 1;
+
+  // Offerings to determine charges for. This should represent all the offerings in a single order as some charges need
+  // to be de-duped across the entire order.
+  repeated Offering offering_instances = 2;
+
+  // List of ChargeItems mapped to Offerings
+  repeated ChargeItemsForOffering charge_items_for_offering = 3;
+}
+
+message ProcessChargeItemsResponse {
+  // List of OfferingFids mapped to all the charges that apply to the offering
+  repeated ChargeItemsForOffering charge_items_for_offering = 1;
+}
+
+message GetPresentableChargeItemsRequest {
+  repeated ChargeItem charge_items = 1;
+  // Attributes needed in order to match the right presentation rules.
+  PresentationRuleAttributes criteria = 2;
+}
+
+message GetPresentableChargeItemsResponse {
+  // This includes ChargeItems after applying presentation rules, ChargeItems that don't have presentation rules,
+  // and ChargeItems that failed to apply presentation rules. The ids of the failed ChargeItems will be included
+  // in the failures field and can be used to differentiate between ChargeItems that don't require modification
+  // versus failures.
+  repeated ChargeItem presentable_charges = 1;
+  repeated MergeFailure failures = 2;
+}
+
+message CommonAttributes {
+  flexport.monolith.catalog.v1beta1.Client client = 1;
+
+  // All attributes optional. Omit entirely if there is no relevant order.
+  OrderAttributes order_attributes = 2;
+
+  // Optional. If true then the pricing engine will be used to compute the sell rate for each charge.
+  // This will override the default sell rate computed by charge management.
+  bool use_pricing_engine_sell_rate = 3;
+
+  // Selects if rates should be evaluated. If they are to be evaluated, then rate evaluation attributes are required
+  RateEvaluationStrategy rate_evaluation_strategy = 4;
+}
+
+// Contains shipment/order attributes for use in charge applicability and rate evaluation.
+// If no rate evaluation attributes are provided, then rates will not be evaluated nor returned. Other charge
+// information will still be returned.
+//   This was assembled by manually copying attributes in use from
+//   flexport.catalog.charge.v3.OrderAttributesForApplicability and
+//   flexport.catalog.rate.v3.OrderAttributesForRateEvaluation
+message OrderAttributes {
+  // Weight in KG (Rate Evaluation Attribute)
+  google.protobuf.DoubleValue shipment_weight = 1;
+
+  // Volume in CBM (Rate Evaluation Attribute)
+  google.protobuf.DoubleValue shipment_volume = 2;
+
+  // (Rate Evaluation Attribute)
+  ContainerDetails container_details = 3;
+
+  // Equivalent to shipment_created_at_time
+  google.protobuf.Timestamp order_created_at_time = 4;
+
+  // CargoReadyDate for charge rules evaluation.
+  catalog.date.v1.DateDto on_date = 5;
+
+  // Acceptable values for this string can be seen here:
+  // com.flexport.quoting.isffilingpartytype.v1.IsfFilingPartyType. This can probably be made an enum, im not sure
+  // why it isn't one on the interfaces like GetChargesV3 where this came from
+  google.protobuf.StringValue isf_filing_party_type = 6;
+
+  // Used to extract allDestinationAddressesHaveLoadingDock and allDestinationAddressesCompanyFid applicability values
+  repeated string destination_address_fids = 7;
+
+  google.protobuf.BoolValue want_delivery_service = 8;
+
+  // The business event date is the date on which the specific business event initiated. e.g. if ChargeItems are being
+  // evaluated for the quote it would be the quote creation date. In the case of search since every search request
+  // is essentially independent it would just be equal to the date/time of the search. If this API were to get called
+  // for invoicing it would be the invoice creation date.
+  catalog.date.v1.DateDto business_event_date = 9;
+
+  google.protobuf.Int32Value pricing_tier = 11;
+  repeated string dangerous_goods_divisions = 12;
+  google.protobuf.StringValue incoterm = 13;
+  google.protobuf.BoolValue flexport_import_customs = 14;
+  google.protobuf.BoolValue flexport_export_customs = 15;
+  google.protobuf.BoolValue flexport_freight = 16;
+  google.protobuf.BoolValue contains_hazmat = 17;
+  repeated flexport.os.v1.types.cargo.v1.CargoUnit cargo_types = 18;
+
+  // Company FID of the destination agent, e.g. "flx::core:company:dbid/883"
+  google.protobuf.StringValue destination_agent = 19;
+
+  google.protobuf.BoolValue in_bond_transit = 20;
+
+  // Map of Address Fid <> Address Dto
+  map<string, flexport.monolith.catalog.v1beta1.Address> address_fids_to_addresses = 21;
+
+  // NOTE: As of 2024-02-28 this field is not implemented in the charge evaluation logic. Follow RM-181 for updates.
+  // This is a workaround to support manual quoting's use-case. If the on_date is specified for a given offering
+  // in the map below, it will be used as the CargoReadyDate when evaluating charges for that offering. If no date
+  // is specified for an offering, the on_date from the OrderAttributes will be used.
+  map<string, catalog.date.v1.DateDto> offering_fids_to_on_dates = 22;
+
+  // Used to calculate the distance between the origin_address and origin departure port (Rate Evaluation Attribute)
+  google.protobuf.StringValue origin_address_fid = 23;
+
+  // (Rate Evaluation Attribute)
+  google.protobuf.Int32Value total_cartons = 24;
+
+  catalog.enums.v1.TransportationModeDto transportation_mode = 25;
+
+  // Booking mode differentiates the chargeable weight calculation between air and cartage.
+  catalog.enums.v1.BookingModesDto booking_mode = 26;
+
+  // Tonnes Of Co2. Used to calculate carbon offset fees (Rate Evaluation Attribute)
+  google.protobuf.StringValue tonnes_of_co2 = 27;
+
+  // Used for carbon offset charge applicability.
+  google.protobuf.BoolValue want_carbon_offset = 28;
+  reserved 29, 30;
+  // The warehouses on the shipment's itinerary
+  repeated catalog.common.v1.Warehouse warehouses = 31;
+}
+
+message ContainerDetails {
+  google.protobuf.Int32Value container_count_twenty_ft = 1;
+  google.protobuf.Int32Value container_count_forty_ft = 2;
+  google.protobuf.Int32Value container_count_forty_ft_hc = 3;
+  google.protobuf.Int32Value container_count_forty_five_ft_hc = 4;
+  google.protobuf.Int32Value container_count_twenty_ft_hc = 5;
+  google.protobuf.Int32Value container_count_fifty_three = 6;
+  google.protobuf.Int32Value container_count_fifty_three_hc = 7;
+}
+
+// Wrapper for catalog Offering to allow for potential overrides or Metadata
+message Offering {
+  flexport.commerce.merchandising.catalog.data_authority.offering.v1beta1.Offering catalog_offering = 1;
+}
+
+message ChargeItemsForOffering {
+  string offering_fid = 1;
+  repeated ChargeItem charges = 2;
+  ChargeItemsFailures failures = 3;
+}
+
+/**
+ A ChargeItem is a Commerce owned entity that represents a Charge applied to a given order/shipment context.
+ ChargeItem contains Rate information for a specific service rendered. For e.g. cartage_base or clean_truck_fee.
+ The different charge-related concepts have become a bit overloaded its useful to understand the differences:
+
+ Charge: (flexport.catalog.charge.v3.Charge) [Internal]
+ ------
+  Configured in the catalog or in Charge Management.
+  Charges are a more granular concept than what most of Commerce’s systems customers interact with.
+  Charges are also represented on an offering.
+
+ ChargeItem: ["Long Term" External Representation of Charge from CM Perspective]
+ -----------
+  A ChargeItem is the external representation of a Charge. Longterm vision
+  ChargeItems are derived from the internal Charge entity.
+  ChargeItems are mapped to ServiceItems and have parity to the entity that Quoting and Invoicing systems call LineItems.
+
+  A Charge may map to Multiple Service Items
+  In most cases, a charge maps to a single service item template (SIT).
+  e.g. cartage_base "charge" often ends up on a quote as 2 ServiceItems for Origin and Destination respectively.
+
+  In most cases, a single SIT per category is applicable to a Charge. i.e.
+    cartage_base -> description:cartage_base category: origin
+    cartage_base -> description:cartage_base category: destination
+
+  In some cases, multiple SIT per category is applicable to a Charge i.e.
+    ocean_fcl_base -> description: fcl_20_container category: freight
+    ocean_fcl_base -> description: fcl_40_container category: freight
+    ...
+    Note - If shipment context is not available, the chargeItem will be returned with a single default SIT (e.g. FCL -20")
+
+  See "Charge Type to Template Map" tab on this screen for a better idea of how this data joins: https://core.flexport.com/service_item_templates
+ */
+message ChargeItem {
+  // The description of this ChargeItem. This is currently the "title" from https://core.flexport.com/service_item_templates
+  // e.g. “Additional Ocean Freight”
+  string description = 1;
+
+  // The category of the item e.g. Customs, Freight, Destination, Origin etc.
+  // The categories associated with different items can be seen here: https://core.flexport.com/service_item_templates
+  // This is not an enum because there are no hard rules around the specific types of categories on the CM side
+  string category = 2;
+
+  catalog.date.v1.DateDto activation_date = 3;
+  catalog.date.v1.DateDto expiration_date = 4;
+
+  ChargeItemRates charge_item_rates = 5;
+  ChargeItemMetadata charge_item_metadata = 6;
+
+  // aka subject-to-charge
+  bool is_dormant = 7;
+
+  // Is this ChargeItem a "base" charge. See https://core.flexport.com/marketplace/service_offerings/configure for
+  // how base charges are configured.
+  bool is_base = 8;
+
+  // some way to uniquely identify a chargeItem. Should be unique to each chargeItem in a response.
+  // In theory, this could be any string so long as it can be used to uniquely key chargeItems.
+  // Current implementation uses a combination of SIT id and rate type with a '#' as delimiter. for example "20#TYPE_CONTAINER_DAY"
+  string identifier = 9;
+
+  // The item count for this line item.
+  // In rate evaluation, EvaluatedRate.unit_details are used to calculate the total amount;
+  // however count used in evaluation is different from what the line item count.
+  // E.g. for a air_rate with 400KG x $5/KG, the evaluated count will be "400"; however, we expect the count of line item to be "1"
+  google.protobuf.Int32Value count = 10;
+
+  // The further breakdown of the item count.
+  ItemCountDetails count_details = 11;
+}
+
+// The different rate related information relevant to a ChargeItem
+//
+// ChargeItem rate information. These fields come directly from the flexport.catalog.charge.v3.Charge
+message ChargeItemRates {
+  catalog.rate.v1.RateDto cost_rate = 1;
+  // FID of source where the cost rate comes from
+  google.protobuf.StringValue cost_rate_source = 2;
+  // Client-specific sell rate. Takes into consideration things like a negotiated rate, client segment, etc.
+  catalog.rate.v1.RateDto sell_rate = 3;
+  // Source of the sell rate (e.g. client override, etc). The sell rate could come from various places depending on
+  // how the SellRate was determined, listed in roughly their order of priority:
+  //   1. A passthrough from the SellRates section of the Offering PricingSchedule
+  //   2. A passthrough from the markup section of the Offering PricingSchedule
+  //   3. From CM calculated markups = "charge_management_markup"
+  //   4. From CM default applied markups (there was no other source) = "default"
+  google.protobuf.StringValue sell_rate_source = 4;
+  // Included in response only if OrderAttributesForRateEvaluation was provided
+  // AND only if the rate could be resolved with the rate parameters provided in OrderAttributesForRateEvaluation
+  EvaluatedRate evaluated_cost = 5;
+  EvaluatedRate evaluated_sell = 6;
+}
+
+// Some metadata about the ChargeItem and its constituent parts that might be useful in some contexts.
+message ChargeItemMetadata {
+  // The id from https://core.flexport.com/service_item_templates.
+  string service_item_template_id = 1;
+
+  // The slug from https://core.flexport.com/service_item_templates
+  // e.g. “additional_ocean_freight”
+  string service_item_template_slug = 2;
+
+  // The slug from https://core.flexport.com/service_item_templates
+  // Service Charge Types tab, e.g. “additional_ocean_freight”
+  string charge_slug = 3;
+
+  // The same source from the Charge proto:
+  //
+  //   FID of source where the charge comes from.
+  //   1) The charge included on the offering in the database.
+  //      flx::catalog:charge:<uuid>
+  //   2) The charge from CM
+  //      flx::rules_engine:rule:dbid/<dbid>
+  string charge_source = 4 [deprecated = true];
+
+  // In some cases, for e.g. based on the Service Configuration https://core.flexport.com/marketplace/service_offerings/configure
+  // charges get merged together, primarily into the base freight charge. This list contains data on the ChargeItems
+  // that were merged, e.g. in Ocean FCL we merge Bunker Adjustment Factor (BAF) into the base freight, so this list will
+  // contain BAF template id 383 and other details if BAF was applicable to this shipment (along with any other charges
+  // that were merged into this base freight ChargeItem)
+  repeated MergedChargeItem merged_items = 6;
+
+  // Unstable field exposing the raw markup rate if present. The information is more for debugging / auditing purpose.
+  optional catalog.rate.v1.RateDto markup_rate = 7;
+
+  // If source is rules engine. This is the rule branch id related to the applicability of this charge.
+  string rule_branch_id = 8 [deprecated = true];
+
+  // The original cost source for this line item.
+  catalog.chargesource.v1.ChargeSource cost_source = 9;
+
+  // The original markup source for this line item.
+  catalog.chargesource.v1.ChargeSource markup_source = 10;
+
+  // Categories of rule attributes that the charge item depends on - offering, client, shipment, container.
+  // This field allows consumers, such as DCRS, to filter out charge items that rely on rules requiring attributes that are not yet available.
+  repeated RuleInputField available_rule_input_fields = 11;
+}
+
+message MergedChargeItem {
+  // The id from https://core.flexport.com/service_item_templates.
+  string service_item_template_id = 1;
+
+  // The description of this ChargeItem. This is currently the "title" from https://core.flexport.com/service_item_templates
+  // e.g. “Additional Ocean Freight”
+  string description = 2;
+
+  // The category of the item e.g. Customs, Freight, Destination, Origin etc.
+  // The categories associated with different items can be seen here: https://core.flexport.com/service_item_templates
+  // This is not an enum because there are no hard rules around the specific types of categories on the CM side
+  string category = 3;
+}
+
+message EvaluatedRate {
+  google.protobuf.StringValue total_amount = 2;
+  google.protobuf.StringValue currency_code = 3;
+  // The effective rate is the specific rate branch that was used to calculate this EvaluatedRate. E.g. if there
+  // is a rate map on the sell rate, eg $20 / 20' Container and "10 / 40' Container, and this ChargeItem was for
+  // the 20' container, the effective rate would just be $20 / 20' Container
+  catalog.rate.v1.RateDto effective_rate = 4;
+  flexport.catalog.rate.v1.UnitDetails unit_details = 5;
+  // Context around which rate entry was used to calculate this item, e.g. values
+  // "twenty_ft", "fourty_ft", "fourty_ft_hc", "fourty_five_ft_hc" which come from the rate map using keys with those
+  // entries.
+  google.protobuf.StringValue rate_key = 6;
+  // The partition key contains information around the container (currently the only use-case for partition)
+  // used to calculate this rate, e.g. CONTAINER_TYPE_TWENTY_FT. See flexport.catalog.enums.v1.ContainerType for
+  // info around the possible container type values. That enum is not directly used here to allow for
+  // a more generic representation of things that can be partitioned against.
+  google.protobuf.StringValue partition_key = 7;
+}
+
+message EvaluatedRateItem {
+  google.protobuf.StringValue amount = 2;
+  google.protobuf.StringValue currency_code = 3;
+  catalog.rate.v1.RateDto effective_rate = 4;
+  flexport.catalog.rate.v1.UnitDetails unit_details = 5;
+  // Context around which rate entry was used to calculate this item, e.g. values
+  // "twenty_ft", "fourty_ft", "fourty_ft_hc", "fourty_five_ft_hc" which come from the rate map using keys with those
+  // entries.
+  google.protobuf.StringValue rate_key = 6;
+  // The partition key contains information around the container (currently the only use-case for partition)
+  // used to calculate this rate, e.g. CONTAINER_TYPE_TWENTY_FT. See flexport.catalog.enums.v1.ContainerType for
+  // info around the possible container type values. That enum is not directly used here to allow for
+  // a more generic representation of things that can be partitioned against.
+  google.protobuf.StringValue partition_key = 7;
+}
+
+// @Unstable.
+// This message is used to provide the multi-dimentional count of the item.
+// E.g. for container_count_day, there will count unit will be a "countainer_count" x "day_count"
+message ItemCountDetails {
+  oneof count_details {
+    // For container_day rate type
+    ContainerDayCount container_day_count_details = 1;
+
+    // For container_type_day rate type
+    ContainerTypeDayCount container_type_day_count_details = 2;
+  }
+}
+
+message ContainerDayCount {
+  google.protobuf.Int32Value container_count = 1;
+  google.protobuf.Int32Value day_count = 2;
+}
+
+message ContainerTypeDayCount {
+  // Map of each container type to the count of days and containers.
+  map<string, ContainerDayCount> per_container_type_counts = 1;
+}
+
+// Captures any and all non-blocking errors that were faced when trying to process chargeItems
+// We can potentially add more types of failures here as and when we need it
+message ChargeItemsFailures {
+  // List of failures that arise from trying to merge chargeItems. Each item in the list contains the exact failure type from an enum as well as
+  // the list of chargeitems impacted by it
+  repeated MergeFailure merge_failures_list = 2;
+}
+
+// Failures that specifically are caused by trying to merge chargeItems. This list of values in the enum may be expanded later on.
+// This message captures each individual failure and the list of items it has impacted
+message MergeFailure {
+  enum MergeFailureType {
+    MERGE_FAILURE_TYPE_INVALID = 0;
+    MERGE_FAILURE_TYPE_CURRENCY_CONVERSION_FAILURE = 1;
+    MERGE_FAILURE_TYPE_CONFLICTING_RATE_BASIS = 2;
+    MERGE_FAILURE_TYPE_CONFLICTING_CURRENCY = 3;
+  }
+  MergeFailureType merge_failure = 2;
+  // we store which charge items have been impacted by this failure type by keeping a copy of their unique identifier
+  repeated string impacted_items_identifier = 3;
+}
+
+message PresentationRuleAttributes {
+  string client_fid = 1;
+  catalog.enums.v1.TransportationModeDto transportation_mode = 2;
+}
+
+enum RateEvaluationStrategy {
+  // For backwards compatability, this option is equivalent to RATE_EVALUATION_STRATEGY_EVALUATE (and is default)
+  RATE_EVALUATION_STRATEGY_INVALID = 0;
+  // Will evaluate rates. Shipment context is required.
+  RATE_EVALUATION_STRATEGY_EVALUATE = 1;
+  // Will skip the rate evaluation step. No rate evaluation attributes are required
+  RATE_EVALUATION_STRATEGY_DO_NOT_EVALUATE = 2;
+}
+
+// Enum to categorize rule attributes that can be used to determine the applicability and icc/sell rates of a charge.
+// The associated attributes of each field can be found in the following spreadsheet:
+// https://docs.google.com/spreadsheets/d/1L3TuyXSfi9O2R-UKlo-Xo4Uo9WnQKjlNVxgshYdUIvA/edit?gid=539258467#gid=539258467
+enum RuleInputField {
+  // Invalid rule input field
+  RULE_INPUT_FIELD_INVALID = 0;
+  // Indicate that the charge depends on offering attributes such as offering type, origin/destination iata/loc code
+  RULE_INPUT_FIELD_OFFERING = 1;
+  // Indicate that the charge depends on client attributes such as client type, client segment, etc.
+  RULE_INPUT_FIELD_CLIENT = 2;
+  // Indicate that the charge depends on shipment attributes such as cargo ready date, incoterm, etc.
+  RULE_INPUT_FIELD_SHIPMENT = 3;
+  // Indicate that the charge depends on container attributes such as gate in time, departure time, etc.
+  RULE_INPUT_FIELD_CONTAINER = 4;
+}

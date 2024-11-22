@@ -1,0 +1,30 @@
+// TEAM: wingstop
+
+syntax = "proto3";
+
+package flexport.consolplanner.entityevent.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AirExpectedProcurementCostEntityProto";
+option java_package = "com.flexport.consolplanner.entityevent.v1";
+option ruby_package = "Flexport::ConsolPlanner::EntityEvent::V1";
+
+// Next ID: 15.
+message AirExpectedProcurementCostEntity {
+  int64 id = 1;
+  int64 mawb_plan_id = 9;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  google.protobuf.Timestamp deleted_at = 4;
+  string currency_code = 5;
+  string amount = 6;
+  string mawb_number = 7;
+  string rate_fid = 8;
+  string contract_identifier = 10;
+  string allotment_schedule_instance_fid = 11;
+  float utilization_factor = 12;
+  repeated string breakdown_costs = 13;
+  repeated string update_reason = 14;
+}

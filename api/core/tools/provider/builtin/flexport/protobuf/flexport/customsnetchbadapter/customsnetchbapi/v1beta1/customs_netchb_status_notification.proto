@@ -1,0 +1,153 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsnetchbadapter.customsnetchbapi.v1beta1;
+
+import "google/type/date.proto";
+import "google/type/timeofday.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "NetchbStatusNotificationProto";
+option java_package = "com.flexport.customsnetchbadapter.customsnetchbapi.v1beta1";
+option ruby_package = "Flexport::CustomsNetchbAdapter::CustomsNetchbApi::V1Beta1";
+
+message NetCHBStatusNotification {
+  // Filer code assigned by CBP, currently its CHQ for Flexport
+  string filer_code = 1;
+  // Entry number with check digit without filer code
+  string entry_number = 2;
+  // CBP Application
+  string application = 3;
+  // CBP Data after parsed according to CATAIR spec
+  oneof status_record {
+    CargoReleaseRecord cargo_release_record = 4;
+  }
+}
+
+//SO codes and (their respective fields) to be defined during implementation phase
+
+message CargoReleaseRecord {
+  Header header = 1; // SO10
+  repeated Reference references = 2; //SO20
+  repeated LineItem line_items = 3; //SO30
+  repeated BillOfLading bill_of_ladings = 4;
+  repeated PgaDisposition pga_dispositions = 5; //SO7*
+  repeated CargoReleaseDisposition cargo_release_dispositions = 6; //SO6*
+}
+
+message CargoReleaseDisposition {
+  google.type.Date action_date = 1;
+  google.type.TimeOfDay action_time = 2;
+  string action_code = 3;
+  string narrative_message = 4;
+  optional google.type.Date release_date = 5;
+  optional int32 release_origin_code = 6;
+  optional string document_type = 7;
+}
+
+message LineItem {
+  int32 line_item_identifier = 1;
+  string country_of_origin = 2;
+  string hts_code = 3;
+}
+
+message Reference {
+  string reference_type = 1;
+  string reference_identifier = 2;
+}
+
+//SO10
+message Header {
+  int32 port_of_entry = 1;
+  string entry_filer_code = 2;
+  string entry_number = 3;
+  int32 entry_type_code = 4;
+  google.type.Date entry_date = 5;
+  string importer_of_record = 6;
+  optional string carrier_code = 7;
+  optional string vessel_name = 8;
+  optional string trip_number = 9;
+  optional google.type.Date estimated_arrival_date = 10;
+  optional string split_shipment_release_code = 11;
+  optional string correction_response_indicator = 12;
+}
+
+message BillOfLading {
+  Bill bill_of_lading = 1; //SO40
+  optional Bill bill_of_lading_second = 2; //SO40
+  repeated InbondInformation inbonds = 3; //SO42
+  repeated BillMatchDisposition bill_match_dispositions = 4; //SO50
+}
+
+message Bill {
+  string bill_type_indicator = 1;
+  string bill_number = 2;
+  string issuer_code_bill_of_lading_number = 3;
+  int32 quantity = 4;
+  string unit_of_measure = 5;
+  string manifested_quantity = 6;
+}
+
+message InbondInformation {
+  string inbond_number = 1;
+  int32 entry_type = 2;
+  int32 port_of_arrival = 3;
+  int32 port_of_entry = 4;
+  google.type.Date create_date = 5;
+  google.type.Date date_of_arrival = 6;
+  int32 quantity = 7;
+}
+
+message BillMatchDisposition {
+  google.type.Date date = 1;
+  google.type.TimeOfDay time = 2;
+  string code = 3;
+  string message = 4;
+  bool shipment_is_split = 5;
+  optional string carrier_code = 6;
+  optional google.type.Date date_of_arrival = 7;
+  optional int32 port_of_arrival = 8;
+  optional string voyage_flight_trip_number = 9;
+}
+
+message PgaDisposition {
+  string government_agency_code = 1;
+  optional string government_agency_program_code = 2;
+  google.type.Date status_action_date = 3;
+  google.type.TimeOfDay status_action_time = 4;
+  PgaEntryLevel pga_entry_level = 5;
+  PgaLineLevel pga_line_level = 6;
+  LineRange cbp_line = 7;
+  LineRange tariff_position = 8;
+  LineRange pga_line = 9;
+  optional string document_type_code = 10;
+  optional string pga_entry_hold = 11;
+  optional int32 group_version = 12;
+  repeated string comments_to_trade = 13;
+  repeated AdditionalDispositions additional_dispositions = 14;
+}
+
+message LineRange {
+  int32 start = 1;
+  int32 end = 2;
+}
+
+message PgaEntryLevel {
+  optional string status_code = 1;
+  optional string status_message = 2;
+}
+
+message PgaLineLevel {
+  optional string status_code = 1;
+  optional string status_reason_code = 2;
+}
+
+message AdditionalDispositions {
+  string reference_identification_number_qualifier = 1;
+  string reference_identification_number = 2;
+  google.type.Date reference_identification_number_receipt_date = 3;
+  google.type.TimeOfDay reference_identification_number_receipt_time = 4;
+  repeated string reason_codes = 5;
+  string pga_reference_identification_number = 6;
+}

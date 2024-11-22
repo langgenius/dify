@@ -1,0 +1,32 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billing.review.v1beta1;
+
+import "flexport/billing/team/v1beta1/team.proto";
+import "flexport/billing/util/v1beta1/error_result.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AssignmentApiProto";
+option java_package = "com.flexport.billing.review.v1beta1";
+option ruby_package = "Flexport::Billing::Review::V1Beta1";
+
+// An API for handling Billing review assignments.
+service AssignmentAPI {
+  // Retrieves the team base on user fid
+  rpc GetTeamByMemberFid(GetTeamByMemberFidRequest) returns (GetTeamByMemberFidResponse);
+}
+
+// The request to get the team
+message GetTeamByMemberFidRequest {
+  string user_fid = 1;
+}
+
+// The response to get the team
+message GetTeamByMemberFidResponse {
+  oneof result {
+    flexport.billing.team.v1beta1.Team team = 1;
+    flexport.billing.util.v1beta1.ErrorResult failure_result = 2;
+  }
+}

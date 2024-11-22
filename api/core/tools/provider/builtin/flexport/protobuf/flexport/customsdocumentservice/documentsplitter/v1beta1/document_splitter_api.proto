@@ -1,0 +1,26 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsdocumentservice.documentsplitter.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "DocumentSplitterAPIProto";
+option java_package = "com.flexport.customsdocumentservice.documentsplitter.v1beta1";
+option ruby_package = "Flexport::CustomsDocumentService::DocumentSplitter::V1Beta1";
+
+// An API for kicking off a document splitter.
+service DocumentSplitterAPI {
+  // Kick off workflow for document fid and user email
+  rpc SplitDocument(SplitDocumentRequest) returns (SplitDocumentResponse);
+}
+
+message SplitDocumentRequest {
+  string document_fid = 1;
+  string uploaded_by_user_fid = 2;
+  string client_id = 3;
+}
+
+message SplitDocumentResponse {
+  string processing_message = 1;
+}

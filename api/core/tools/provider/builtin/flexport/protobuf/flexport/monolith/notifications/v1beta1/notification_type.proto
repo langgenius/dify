@@ -1,0 +1,20 @@
+// TEAM: athena
+
+syntax = "proto3";
+
+package flexport.monolith.notifications.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "NotificationTypeProto";
+option java_package = "com.flexport.monolith.notifications.v1beta1";
+option ruby_package = "Flexport::Monolith::Notifications::V1Beta1";
+
+import "google/protobuf/wrappers.proto";
+
+// For query notification_types.
+message NotificationTypeQuery {
+  repeated string notification_type_fids = 1;
+  google.protobuf.StringValue domain = 2;
+  google.protobuf.StringValue slug = 3;
+  google.protobuf.StringValue message_type = 4;
+}

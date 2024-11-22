@@ -1,0 +1,21 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.filters.v1;
+
+import "flexport/assignment/enums/v1/responsibility.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ResponsibilityFilterProto";
+option java_package = "com.flexport.assignment.filters.v1";
+option ruby_package = "Flexport::Assignment::Filters::V1";
+
+// Filters to only responsibilities that match any of the provided values.
+message ResponsibilityFilter {
+  repeated flexport.assignment.enums.v1.Responsibility matches_any = 1;
+  //
+  // Whether to apply negation to the filter so that values matching the filter are excluded.
+  // Defaults to false, ie values matching the filter are included.
+  bool negated = 2;
+}

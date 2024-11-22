@@ -1,0 +1,40 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.offering.oceanlcl.v2beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanLclProto";
+option java_package = "com.flexport.catalog.offering.oceanlcl.v2beta1";
+option ruby_package = "Flexport::Catalog::Offering::OceanLcl::V2Beta1";
+
+import "flexport/catalog/enums/v1/enums.proto";
+import "google/protobuf/wrappers.proto";
+
+// Ocean LCL attributes.
+message OceanLclAttributesDto {
+  google.protobuf.Int64Value origin_id = 1;
+  google.protobuf.Int64Value destination_id = 2;
+  google.protobuf.Int64Value origin_port_id = 3;
+  google.protobuf.Int64Value destination_port_id = 4;
+  google.protobuf.Int64Value origin_via_id = 5;
+  google.protobuf.Int64Value destination_via_id = 6;
+  google.protobuf.Int64Value origin_cfs_id = 7;
+  google.protobuf.Int64Value destination_cfs_id = 8;
+  google.protobuf.Int64Value inland_cfs_id = 9;
+  google.protobuf.Int64Value carrier_id = 10;
+  google.protobuf.Int64Value carrier_contract_id = 11;
+  google.protobuf.Int32Value closing_days = 12;
+  google.protobuf.Int32Value departure_days = 13;
+  google.protobuf.StringValue place_of_delivery_metro_name = 14;
+  google.protobuf.Int32Value consolidation_time = 15;
+  google.protobuf.Int32Value deconsolidation_time = 16;
+  catalog.enums.v1.CommodityDto commodity = 17;
+  catalog.enums.v1.DangerousGoodsDto dangerous_goods = 18;
+  catalog.enums.v1.OceanTierDto ocean_tier = 19;
+  google.protobuf.Int32Value transit_time_min_days = 20;
+  google.protobuf.Int32Value transit_time_max_days = 21;
+  google.protobuf.StringValue booking_code = 22;
+  google.protobuf.StringValue freight_service = 23;
+}

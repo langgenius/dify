@@ -1,0 +1,27 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontaskstateevent.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ContainerLocationReportedProto";
+option java_package = "com.flexport.executioncoordinator.executiontaskstateevent.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTaskStateEvent::V1";
+
+// Container location is reported.
+message ContainerLocationReported {
+  string container_fid = 1;
+  // The container location value.
+  ContainerLocation container_location = 2;
+  // This is the original container location message before being categorized into ContainerLocation.
+  string original_container_location_message = 3;
+}
+
+// Normalized ContainerLocations.
+enum ContainerLocation {
+  CONTAINER_LOCATION_INVALID = 0;
+  CONTAINER_LOCATION_ON_SHIP = 1;
+  CONTAINER_LOCATION_IN_YARD = 2;
+  CONTAINER_LOCATION_GATE_OUT = 3;
+}

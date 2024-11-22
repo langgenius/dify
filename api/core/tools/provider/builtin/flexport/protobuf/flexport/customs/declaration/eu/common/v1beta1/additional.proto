@@ -1,0 +1,67 @@
+// TEAM: customs_platform
+syntax = "proto3";
+
+package flexport.customs.declaration.eu.common.v1beta1;
+
+option java_multiple_files = true;
+option java_package = "com.flexport.customs.declaration.eu.common.v1beta1";
+option ruby_package = "Flexport::Customs::Declaration::EU::Common::V1Beta1";
+
+// [Data Element: 12 02 000 000]
+message AdditionalInformation {
+  enum Code {
+    CODE_INVALID = 0;
+
+  // TODO: Add more codes, once we have a better idea of what we need.
+  }
+
+  // Union code or national code for additional information.
+  //
+  // [Data Element: 12 02 008 000]
+  Code code = 1;
+  // Any explanatory text for the declared code may be provided if necessary.
+  //
+  // [Data Element: 12 02 009 000]
+  string text = 2;
+}
+
+// [Data Element: 12 04 000 000]
+message AdditionalReference {
+  // [Data Element: 12 04 001 000]
+  string reference_number = 1;
+
+  enum Type {
+    TYPE_INVALID = 0;
+    reserved 1;
+    // TODO: Add more types, once we have a better idea of what we need.
+  }
+
+  // [Data Element: 12 04 002 000]
+  Type type = 2;
+}
+
+// [Data Element: 13 16 000 000]
+message AdditionalFiscalReference {
+  enum Role {
+    ROLE_INVALID = 0;
+    // Importer.
+    ROLE_FR1 = 1;
+    // Customer.
+    ROLE_FR2 = 2;
+    // Tax representative.
+    ROLE_FR3 = 3;
+    // Holder of the deferred payment authorisation.
+    ROLE_FR4 = 4;
+    // Vendor (IOSS).
+    ROLE_FR5 = 5;
+    // Taxable person or of the person liable for payment of VAT
+    ROLE_FR7 = 6;
+  }
+
+  // The role of the party providing the reference.
+  //
+  // [Data Element: 13 16 031 000]
+  Role role = 1;
+  // [Data Element: 13 16 034 000]
+  string vat_identification_number = 2;
+}

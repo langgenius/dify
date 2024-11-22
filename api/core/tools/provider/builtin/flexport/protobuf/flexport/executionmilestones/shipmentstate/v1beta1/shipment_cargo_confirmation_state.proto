@@ -1,0 +1,17 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.executionmilestones.shipmentstate.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "ShipmentCargoConfirmationStateProto";
+option java_package = "com.flexport.executionmilestones.shipmentstate.v1beta1";
+option ruby_package = "Flexport::ExecutionMilestones::ShipmentState::V1Beta1";
+
+// Represents if the shipment cargo is confirmed.
+
+message ShipmentCargoConfirmationState {
+  string created_by_fid = 1;
+  bool is_confirmed = 2;
+}

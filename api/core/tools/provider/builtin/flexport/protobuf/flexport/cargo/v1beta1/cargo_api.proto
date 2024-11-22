@@ -1,0 +1,90 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.cargo.v1beta1;
+
+import "flexport/cargo/v1beta1/cargo_item.proto";
+// import "flexport/cargo/v1beta1/cargo_metadata.proto";
+// import "flexport/cargo/v1beta1/cargo_tag.proto";
+
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoApiProto";
+option java_package = "com.flexport.cargo.v1beta1";
+option ruby_package = "Flexport::Cargo::V1Beta1";
+
+service CargoAPI {
+  // Retrieves a specific CargoItem by id
+  rpc GetCargoItem(GetCargoItemRequest) returns (GetCargoItemResponse);
+
+  // Retrieves CargoItem's by Tag
+  rpc GetCargoItemsByTag(GetCargoItemsByTagRequest) returns (GetCargoItemsByTagResponse);
+
+  // Retrieves a specific CargoItems root parent by id
+  rpc GetCargoItemRootParent(GetCargoItemRootParentRequest) returns (GetCargoItemRootParentResponse);
+
+  // Creates or updates a CargoItem
+  rpc UpsertCargoItem(UpsertCargoItemRequest) returns (UpsertCargoItemResponse);
+
+  // Change the CargoItem's parent
+  rpc ChangeCargoItemParent(ChangeCargoItemParentRequest) returns (ChangeCargoItemParentResponse);
+}
+
+message GetCargoItemRequest {
+  string fid = 1;
+}
+
+// The response for GetCargoItem, if no cargo_item is found
+// then an empty response is returned.
+message GetCargoItemResponse {
+  CargoItem cargo_item = 1;
+}
+
+message GetCargoItemsByTagRequest {
+  string tag = 1;
+  string value = 2;
+
+  // Optional parameters for pagination.
+  // The number of the requested page. Defaults to 0 (first page).
+  uint32 page_number = 3;
+  // How many records should be returned per page. Defaults to 100.
+  uint32 page_size = 4;
+}
+
+message GetCargoItemsByTagResponse {
+  repeated CargoItem cargo_items = 1;
+}
+
+// The FID of the cargo item to retrieve the
+// root parent of
+message GetCargoItemRootParentRequest {
+  string fid = 1;
+}
+
+// The root CargoItem of the supplied cargo item FID; if
+// there is no parent enclosure, the cargo_item of the supplied FID is returned
+// (as this is the true root)
+message GetCargoItemRootParentResponse {
+  CargoItem root_cargo_item = 1;
+}
+
+message UpsertCargoItemRequest {
+  CargoItem cargo_item = 1;
+}
+
+message UpsertCargoItemResponse {
+  CargoItem cargo_item = 1;
+}
+
+message ChangeCargoItemParentRequest {
+  // The CargoItem we want to change the parent of
+  string cargo_item_fid = 1;
+
+  // The new parent fid, null is allowed
+  string new_cargo_item_parent_fid = 2;
+}
+
+message ChangeCargoItemParentResponse {
+  CargoItem cargo_item = 1;
+}

@@ -1,0 +1,28 @@
+// TEAM: wingstop
+
+syntax = "proto3";
+
+package flexport.consolplanner.entityevent.v1;
+
+import "google/protobuf/timestamp.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "AirFaeRecommendationFeedbackEntityProto";
+option java_package = "com.flexport.consolplanner.entityevent.v1";
+option ruby_package = "Flexport::ConsolPlanner::EntityEvent::V1";
+
+message AirFaeRecommendationFeedbackEntity {
+  int64 id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  string user_fid = 4;
+  ActionType action_type = 5;
+  optional string reason = 6;
+  int64 air_fae_recommendation_item_id = 7;
+}
+
+enum ActionType {
+  ACTION_TYPE_INVALID = 0;
+  ACTION_TYPE_ACCEPT = 1;
+  ACTION_TYPE_REJECT = 2;
+}

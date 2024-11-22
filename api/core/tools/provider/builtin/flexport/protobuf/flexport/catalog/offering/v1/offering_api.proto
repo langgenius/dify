@@ -1,0 +1,96 @@
+// TEAM: service_catalog
+
+syntax = "proto3";
+
+package flexport.catalog.offering.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OfferingApiProto";
+option java_package = "com.flexport.catalog.offering.v1";
+option ruby_package = "Flexport::Catalog::Offering::V1";
+
+import "flexport/catalog/offering/v1/offering.proto";
+import "google/protobuf/wrappers.proto";
+
+// The offering service definition.
+service OfferingAPI {
+  // Start job to create offerings asynchronously.
+  rpc CreateOfferings(CreateOfferingsRequest) returns (CreateOfferingsResponse);
+  // Create offerings synchronously (only meant for small number of offerings).
+  rpc CreateOfferingsSynchronous(CreateOfferingsSynchronousRequest) returns (CreateOfferingsSynchronousResponse);
+  // Get the status of an offering creation job.
+  rpc GetCreateOfferingsJobStatus(GetCreateOfferingsJobStatusRequest) returns (GetCreateOfferingsJobStatusResponse);
+  // Update the params of an existing offering. Since offerings are immutable the original offering is archived and a new one is created
+  // with the updated params. The returned offering id is from the new offering.
+  rpc UpdateOffering(UpdateOfferingRequest) returns (UpdateOfferingResponse);
+  // Update the status of an offering.
+  rpc UpdateOfferingStatus(UpdateOfferingStatusRequest) returns (UpdateOfferingStatusResponse);
+  // Get offerings.
+  rpc GetOfferings(GetOfferingsRequest) returns (GetOfferingsResponse);
+  // Search for offerings.
+  rpc QueryOfferings(QueryOfferingsRequest) returns (QueryOfferingsResponse);
+}
+
+message CreateOfferingsRequest {
+  repeated catalog.offering.v1.OfferingDto offerings = 1;
+}
+
+message CreateOfferingsResponse {
+  google.protobuf.StringValue job_id = 1;
+}
+
+message CreateOfferingsSynchronousRequest {
+  repeated catalog.offering.v1.OfferingDto offerings = 1;
+}
+
+message CreateOfferingsSynchronousResponse {
+  repeated catalog.offering.v1.OfferingDto offerings = 1;
+}
+
+message GetCreateOfferingsJobStatusRequest {
+  google.protobuf.StringValue job_id = 1;
+}
+
+message GetCreateOfferingsJobStatusResponse {
+  catalog.offering.v1.CreateOfferingJobStatusDto status = 2;
+  google.protobuf.StringValue error_message = 1;
+}
+
+message UpdateOfferingRequest {
+  google.protobuf.StringValue old_offering_id = 2;
+  catalog.offering.v1.OfferingDto offering = 1;
+}
+
+message UpdateOfferingResponse {
+  google.protobuf.StringValue offering_id = 1;
+  catalog.offering.v1.OfferingDto offering = 2;
+}
+
+message UpdateOfferingStatusRequest {
+  google.protobuf.StringValue offering_id = 1;
+  catalog.offering.v1.OfferingStatusDto status = 2;
+}
+
+message UpdateOfferingStatusResponse {
+  google.protobuf.StringValue offering_id = 1;
+  catalog.offering.v1.OfferingDto offering = 2;
+}
+
+message GetOfferingsRequest {
+  repeated string ids = 1;
+}
+
+message GetOfferingsResponse {
+  repeated catalog.offering.v1.OfferingDto offerings = 1;
+}
+
+message QueryOfferingsRequest {
+  catalog.offering.v1.OfferingQueryAttributesDto attributes = 1;
+  google.protobuf.Int32Value page = 2;
+  google.protobuf.Int32Value page_size = 3;
+  catalog.offering.v1.SortByDto sort_by = 4;
+}
+
+message QueryOfferingsResponse {
+  repeated catalog.offering.v1.OfferingDto offerings = 1;
+}

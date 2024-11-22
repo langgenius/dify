@@ -1,0 +1,26 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executiontimeline.event.v1beta1;
+
+import "flexport/os/v1/types/walltimedatetime/v1/wall_time_date_time.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "TimelineEventDepartureFromOriginTerminalProto";
+option java_package = "com.flexport.executiontimeline.event.v1beta1";
+option ruby_package = "Flexport::ExecutionTimeline::Event::V1Beta1";
+// This event is different for different transport type
+// for ocean - Port of loading
+// for air - origin terminal departure
+message TimelineEventDepartureFromOriginTerminal {
+  string leg_fid = 1;
+  string cargo_fid = 2;
+  string carrier_fid = 3;
+  // The fid of the immutable address instance this delivery is coming from
+  string origin_address_fid = 4;
+  // The fid of the immutable address instance this delivery is going to.
+  string destination_address_fid = 5;
+  // The time that the container departure from origin
+  flexport.os.v1.types.walltimedatetime.v1.WallTimeDateTime departure_from_origin_date_time = 6;
+}

@@ -1,0 +1,50 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AirDirectHandlingTypeProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// Possible handling types for the cargo we want to fly.
+enum AirDirectHandlingType {
+  AIR_DIRECT_HANDLING_TYPE_INVALID = 0;
+  //
+  // Cargo that we tender as one or more fully built-up ULDs, that the airline
+  // breaks down and releases loose at destination. This can happen for several
+  // reasons:
+  //
+  // - Airlines may offer to fly consolidated cargo bound for different
+  //   destinations to their hub airport, break down the ULDs, then fly (or
+  //   truck) the cargo to one or more final destination airports, where we
+  //   retrieve it loose. In this case, the cargo is tendered intact, but flies
+  //   under several MAWBs: one for each destination.
+  // - In a capacity squeeze, other forwarders sometimes pay top dollar to put
+  //   their freight on our procured space. We can mix their cargo with ours in
+  //   the same ULDs which we tender intact at origin, but we can't retrieve it
+  //   intact at destination because we're not a full party to the MAWB. So the
+  //   airline breaks it down and releases it loose.
+  // - We might simply ask the airline to break the ULDs down for us at the
+  //   destination terminal, if this turns out to be more cost-effective, or if
+  //   we don't have a warehouse at destination.
+  //
+  // In the first two scenarios listed above, breakdown is mandatory. In the
+  // third scenario, it's optional.
+  //
+  // There may be other reasons to use this handling type. Do not treat this as
+  // an exhaustive list!
+  AIR_DIRECT_HANDLING_TYPE_BREAKDOWN = 1;
+  //
+  // Cargo that we tender as a fully built-up ULD, and retrieve intact from the
+  // destination terminal. We can do this if all the cargo is Flexport cargo (we
+  // are full party to the MAWB).
+  AIR_DIRECT_HANDLING_TYPE_INTACT = 2;
+  //
+  // Cargo that we tender as loose cartons. The carrier builds a ULD (mixing
+  // with other cargo), and breaks it down again at destination. The cargo is
+  // retrieved loose at the destination terminal.
+  AIR_DIRECT_HANDLING_TYPE_LOOSE = 3;
+}

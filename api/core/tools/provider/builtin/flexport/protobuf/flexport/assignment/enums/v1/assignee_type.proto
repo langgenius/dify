@@ -1,0 +1,17 @@
+// TEAM: assignment
+
+syntax = "proto3";
+
+package flexport.assignment.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AssigneeTypeProto";
+option java_package = "com.flexport.assignment.enums.v1";
+option ruby_package = "Flexport::Assignment::Enums::V1";
+
+// Type of an assignee object.
+enum AssigneeType {
+  ASSIGNEE_TYPE_INVALID = 0;
+  ASSIGNEE_TYPE_USER = 1;
+  ASSIGNEE_TYPE_TEAM = 2;
+}

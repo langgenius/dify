@@ -1,0 +1,51 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.dangerousgoods.event.v1beta1;
+
+import "flexport/compliance/dangerousgoods/constant/v1beta1/dg_battery_declarations.proto";
+import "flexport/compliance/dangerousgoods/constant/v1beta1/dg_battery_packing_declarations.proto";
+import "flexport/compliance/dangerousgoods/constant/v1beta1/dg_declarations.proto";
+import "flexport/compliance/dangerousgoods/constant/v1beta1/dg_review_status.proto";
+import "flexport/compliance/dangerousgoods/constant/v1beta1/dg_source_system.proto";
+import "flexport/compliance/dangerousgoods/constant/v1beta1/transportation_methods.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DGReviewStatusUpdatedProto";
+option java_package = "com.flexport.compliance.dangerousgoods.event.v1beta1";
+option ruby_package = "Flexport::Compliance::DangerousGoods::Event::V1Beta1";
+
+message DGReviewStatusUpdated {
+  string shipment_fid = 1;
+  compliance.dangerousgoods.constant.v1beta1.DangerousGoodsReviewStatus dg_review_status = 2;
+  string shipper_fid = 3;
+  compliance.dangerousgoods.constant.v1beta1.TransportationMethod transportation_method = 4;
+  string origin_location_fid = 5;
+  string origin_port_fid = 6;
+  repeated DGClassifications dg_classification = 7;
+  repeated compliance.dangerousgoods.constant.v1beta1.DGDeclarations dg_declarations = 8;
+  compliance.dangerousgoods.constant.v1beta1.DGBatteryDeclarations dg_battery_declarations = 9;
+  repeated compliance.dangerousgoods.constant.v1beta1.DGBatteryPackingDeclarations dg_battery_packing_declarations = 10;
+  repeated DGDocument dg_documents = 11;
+  compliance.dangerousgoods.constant.v1beta1.DangerousGoodsSourceSystem source_system = 12;
+  compliance.dangerousgoods.constant.v1beta1.DangerousGoodsReviewStatus previous_dg_review_status = 13;
+}
+
+message DGClassifications {
+  string un_dangerous_goods_code = 1;
+  string hazard = 2;
+  string packing_instructions = 3;
+  string section = 4;
+  bool excepted_quantities = 5;
+  bool limited_quantities = 6;
+  repeated string special_provisions = 7;
+  string packing_group = 8;
+}
+
+message DGDocument {
+  string document_fid = 1;
+  string name = 2;
+  string type = 3;
+  string attachment_file_name = 4;
+}

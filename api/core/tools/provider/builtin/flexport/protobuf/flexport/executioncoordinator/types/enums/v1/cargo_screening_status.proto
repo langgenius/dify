@@ -1,0 +1,18 @@
+// TEAM: perseus
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.types.enums.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CargoScreeningStatusProto";
+option java_package = "com.flexport.executioncoordinator.types.enums.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::Types::Enums::V1";
+
+// Represents the cargo screening status of the shipment
+enum CargoScreeningStatus {
+  CARGO_SCREENING_STATUS_INVALID = 0;
+  CARGO_SCREENING_STATUS_UNVERIFIED = 1;
+  CARGO_SCREENING_STATUS_SCREENED = 2;
+  CARGO_SCREENING_STATUS_UNSCREENED = 3;
+}

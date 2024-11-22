@@ -1,0 +1,77 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+import "flexport/executioncoordinator/executioncargo/v1/execution_cargo.proto";
+import "flexport/executioncoordinator/types/enums/v1/drayage_warehouse_visit_type.proto";
+import "flexport/executioncoordinator/types/enums/v1/port_trucking_direction.proto";
+import "flexport/os/v1/types/walltimedateordatetime/v1/wall_time_date_or_date_time.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DrayageExecutionTaskParamsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+// Parameters for drayage ExecutionTask.
+message DrayageExecutionTaskParams {
+  //
+  // Address the cargo is departing from.
+  string origin_fid = 1;
+  //
+  // Address the cargo is arriving to.
+  string destination_fid = 2;
+  //
+  // Carrier of the trucking carrier responsible for the task.
+  string carrier_fid = 3;
+  //
+  // Freight partner responsible for the task.
+  // "Flexport" if we are managing relationship with the trucking carrier.
+  string freight_partner_fid = 17;
+  //
+  // Broker responsible for the task.
+  string broker_fid = 18;
+  //
+  // The params for each container.
+  repeated DrayageContainerParams container_params = 6;
+  //
+  // The direction of the drayage move (eg "to port" or "from port").
+  flexport.executioncoordinator.types.enums.v1.PortTruckingDirection port_trucking_direction = 16;
+  //
+  // This has never been set.
+  // Use the TruckingDrayageWarehouseVisitTypeChanged state event instead.
+  flexport.executioncoordinator.types.enums.v1.DrayageWarehouseVisitType destination_warehouse_visit_type = 8 [deprecated = true];
+  //
+  // We only know whether we should recover and hold late into the shipment lifecycle. An absence
+  // here implies that we haven't yet determined whether we should recover and hold.
+  google.protobuf.BoolValue should_recover_and_hold = 9;
+  //
+  // The port terminals involved in this task, if any. Should only be specified if the related
+  // origin or destination is a port. Sometimes this value may be a CFS rather than an actual port
+  // terminal if the main freight carrier eg makes cargo available for pickup at an offsite CFS.
+  string origin_terminal_fid = 12;
+  string destination_terminal_fid = 13;
+  //
+  // Whether this ExecutionTask requires high-visibility tracking information, such as separate
+  // milestones for prepull legs.
+  google.protobuf.BoolValue requires_additional_tracking = 14;
+}
+
+// The params for each container.
+message DrayageContainerParams {
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime departure_estimate = 6 [deprecated = true];
+  flexport.os.v1.types.walltimedateordatetime.v1.WallTimeDateOrDateTime arrival_estimate = 7 [deprecated = true];
+  //
+  // The container data and any per-container cargo data.
+  // The execution_cargo's value must be a ActiveIso6346Container.
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo execution_cargo = 4;
+  // The Tracking number field is used primarily to record carrier PRO numbers or
+  // Delivery Reference Numbers on the leg-level. The DRNs are often required for our
+  // truckers to schedule delivery appointments and are required upon actual delivery
+  // of the goods. PRO numbers are used for internal users to keep track of milestones
+  // associated with a particular leg, if that leg is handled by a trucker with their
+  // own tracking system.
+  string tracking_number = 5;
+}

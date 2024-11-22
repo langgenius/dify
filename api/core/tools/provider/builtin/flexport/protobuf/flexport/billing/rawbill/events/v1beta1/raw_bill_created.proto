@@ -1,0 +1,19 @@
+// TEAM: billing
+
+syntax = "proto3";
+
+package flexport.billing.rawbill.events.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "RawBillCreatedProto";
+option java_package = "com.flexport.billing.rawbill.events.v1beta1";
+option ruby_package = "Flexport::Billing::RawBill::Events::V1Beta1";
+
+import "flexport/billing/bill/v1beta1/bill.proto";
+import "flexport/billing/rawbill/events/v1beta1/raw_bill_metadata.proto";
+
+// Event emitted when a Raw Bill is created.
+message RawBillCreated {
+  flexport.billing.bill.v1beta1.Bill bill = 1;
+  flexport.billing.rawbill.events.v1beta1.RawBillMetadata metadata = 2;
+}

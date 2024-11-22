@@ -1,0 +1,15 @@
+// TEAM: starship
+
+syntax = "proto3";
+
+package flexport.documents.enums.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "EntityTypeProto";
+option java_package = "com.flexport.documents.enums.v1beta1";
+option ruby_package = "Flexport::Documents::Enums::V1Beta1";
+
+enum EntityType {
+  ENTITY_TYPE_INVALID = 0;
+  ENTITY_TYPE_COMPANY = 1;
+}

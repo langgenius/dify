@@ -1,0 +1,30 @@
+// TEAM: compliance
+
+syntax = "proto3";
+
+package flexport.compliance.entityevent.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "EntityCreatedProto";
+option java_package = "com.flexport.compliance.entityevent.v1beta1";
+option ruby_package = "Flexport::Compliance::EntityEvent::V1Beta1";
+
+import "flexport/compliance/entityevent/v1beta1/company_detail.proto";
+import "flexport/compliance/entityevent/v1beta1/user_detail.proto";
+
+// A Kinesis event signifying an entity has been created.
+message EntityCreated {
+  // Entity fid.
+  string fid = 1;
+  // Type of entity.
+  oneof entity_detail {
+    // User detail object.
+    UserDetail user_detail = 2;
+    // Company detail object.
+    CompanyDetail company_detail = 3;
+  }
+  // Parent fid, usually Company FID.
+  string parent_fid = 4;
+  // netsuite Id, if available. DPS compliance app use compound IdDetails type and intakes as a string.
+  string netsuite_id = 5;
+}

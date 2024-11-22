@@ -1,0 +1,57 @@
+// TEAM: customs_platform
+
+syntax = "proto3";
+
+package flexport.customsnetchbadapter.customsnetchbapi.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "CustomsNetchbAPI";
+option java_package = "com.flexport.customsnetchbadapter.customsnetchbapi.v1beta1";
+option ruby_package = "Flexport::CustomsNetchbAdapter::CustomsNetchbApi::V1Beta1";
+
+service NetCHBAPI {
+  rpc FetchCargoManifestQuery(FetchCargoManifestQueryRequest) returns (FetchCargoManifestQueryResponse);
+}
+
+message FetchCargoManifestQueryRequest {
+  repeated CMQParam params = 1;
+}
+
+message CMQParam {
+  oneof param {
+    OceanMasterBill ocean_master_bill = 1;
+    MasterAirWaybill master_air_waybill = 2;
+    InBond in_bond = 3;
+  }
+}
+
+message OceanMasterBill {
+  string scac = 1;
+  string number = 2;
+}
+
+message MasterAirWaybill {
+  string scac = 1;
+  string number = 2;
+  // Since we can query with master air waybill number + house air waybill number,
+  // we should add house air waybill number here when its supported
+}
+
+message InBond {
+  string number = 1;
+}
+
+message FetchCargoManifestQueryResponse {
+  oneof result {
+    CMQCatairResponse response = 1;
+    CMQNetCHBError error = 2;
+  }
+}
+
+message CMQCatairResponse {
+  string value = 1;
+}
+
+message CMQNetCHBError {
+  string value = 1;
+}

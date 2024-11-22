@@ -1,0 +1,50 @@
+// TEAM: document_intelligence
+
+syntax = "proto3";
+
+package flexport.documentflow.documentschema.api.v2beta1;
+
+import "flexport/documentflow/documentschema/events/v2beta1/document_digitization.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "DocumentDigitizationApiProto";
+option java_package = "com.flexport.documentflow.documentschema.api.v2beta1";
+option ruby_package = "Flexport::DocumentFlow::DocumentSchema::Api::V2Beta1";
+
+// An API for Document Processor.
+service DocumentDigitizationAPI {
+  // Get a document digitization data by file_object_fid.
+  rpc GetDocumentDigitization(GetDocumentDigitizationRequest) returns (GetDocumentDigitizationResponse);
+  // Trigger a document digitization by file_object_fid.
+  rpc DigitizeDocument(DigitizeDocumentRequest) returns (DigitizeDocumentResponse);
+}
+
+// Request for GetDocumentDigitization.
+message GetDocumentDigitizationRequest {
+  string file_object_fid = 1;
+}
+
+// Response for GetDocumentDigitization.
+message GetDocumentDigitizationResponse {
+  repeated flexport.documentflow.documentschema.events.v2beta1.DocumentDigitization document_digitizations = 1;
+}
+
+// Request for DigitizeDocument.
+message DigitizeDocumentRequest {
+  string file_object_fid = 1;
+  DigitizeDocumentType document_type = 2;
+}
+
+// Response for DigitizeDocument.
+message DigitizeDocumentResponse {
+  repeated flexport.documentflow.documentschema.events.v2beta1.DocumentDigitization document_digitizations = 1;
+}
+
+enum DigitizeDocumentType {
+  DIGITIZE_DOCUMENT_TYPE_INVALID = 0;
+  DIGITIZE_DOCUMENT_TYPE_MASTER_BILL_OF_LADING = 1;
+  DIGITIZE_DOCUMENT_TYPE_SHIPPING_ORDER = 2;
+  DIGITIZE_DOCUMENT_TYPE_SHIPPERS_LETTER_OF_INSTRUCTION = 3;
+  DIGITIZE_DOCUMENT_TYPE_ARRIVAL_NOTICE = 4;
+  DIGITIZE_DOCUMENT_TYPE_FREIGHT_RELEASE = 5;
+}

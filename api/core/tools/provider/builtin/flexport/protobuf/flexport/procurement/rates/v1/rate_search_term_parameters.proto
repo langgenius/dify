@@ -1,0 +1,210 @@
+// TEAM: procurement
+
+syntax = "proto3";
+
+package flexport.procurement.rates.v1;
+
+import "flexport/os/v1/types/incoterm/v1/incoterm.proto";
+import "flexport/procurement/rates/v1/universal_rates.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "RateSearchTermParametersProto";
+option java_package = "com.flexport.procurement.rates.v1";
+option ruby_package = "Flexport::Procurement::Rates::V1";
+
+// Search parameters to be matched against Rate Terms.
+message TermParameters {
+  TransportModeTermParameters transport_mode = 1;
+  ValidityTermParameters validity = 2;
+  CarrierTermParameters carrier = 3;
+  PartnerTermParameters partner = 4;
+  RouteTermParameters route = 5;
+  ClientTermParameters client = 6;
+  ContainerTermParameters container = 7;
+  CommodityTermParameters commodity = 8;
+  ServiceStringTermParameters service_string = 9;
+  VesselTermParameters vessel = 10;
+  VoyageTermParameters voyage = 11;
+  MasterBillOfLadingTermParameters master_bill_of_lading = 12;
+  DangerousGoodsClassificationTermParameters dangerous_goods_classification = 13;
+  AdditionalLineItemTermParameters additional_line_item = 14;
+  ShipmentTermParameters shipment = 15;
+  ServiceLevelTermParameters service_level = 16;
+  FlightTermParameters flight = 17;
+  GoodsClassificationTermParameters goods_classification = 18;
+  ContractTermParameters contract = 19;
+  IncotermTermParameters incoterm = 20;
+}
+
+// Parameters to match against TransportModeTerm data.
+message TransportModeTermParameters {
+  // Finds rates matching the given mode.
+  TransportMode mode = 1;
+}
+
+// Parameters to match against ValidityTerm data.
+message ValidityTermParameters {
+  // Finds rates whose validity covers the given date.
+  Date valid_on = 1;
+}
+
+// Parameters to match against CarrierTerm data.
+message CarrierTermParameters {
+  // Finds rates valid for the given carrier fid
+  // (exact match or else no CarrierBundleReason).
+  string carrier_fid = 1;
+}
+
+// Parameters to match against PartnerTerm data.
+message PartnerTermParameters {
+  // Finds rates matching the given partner fid
+  // (exact match or else no PartnerBundleReason).
+  string partner_fid = 1;
+  string origin_partner_fid = 2;
+  string destination_partner_fid = 3;
+}
+
+// Parameters to match against RouteTerm data.
+// Please provide one of two options:
+// 1) origin, destination, via origin, and via destination (vias if applicable)
+// OR
+// 2) origin, destination, and ordered list of via stops (vias if applicable)
+message RouteTermParameters {
+  // Finds rates with any routes matching the given origin fid
+  // or no origin restriction.
+  string origin_fid = 1;
+  // Finds rates with any route matching the given destination fid
+  // or no destination restriction.
+  string destination_fid = 2;
+  // Finds rates with any routes matching the given via origin fid
+  // or no via origin restriction.
+  string via_origin_fid = 3;
+  // Finds rates with any route matching the given via destination fid
+  // or no via destination restriction.
+  string via_destination_fid = 4;
+  // Ordered list of via stops.
+  // Finds all rates matching origin/destination -> then post-filters out rates that
+  // contain any ports not found in the list of stops.
+  repeated string via_stop_fids = 5;
+}
+
+// Parameters to match against ClientTerm data.
+message ClientTermParameters {
+  // Finds rates matching the given client fid
+  // (exact match or no client term).
+  string client_fid = 1;
+}
+
+// Parameters to match against ContainerTerm data.
+message ContainerTermParameters {
+  // Parameters to match against Container data.
+  message Container {
+    //Find rates matching the ISO container code.
+    string iso_container_code = 1;
+    //Find rates matching the container's gross weight measured in Kg.
+    google.protobuf.DoubleValue gross_weight_in_kg = 2;
+  }
+  // Finds rates matching the given containers
+  // (exact match or no container term).
+  repeated Container containers = 1;
+}
+
+// Parameters to match against CommodityTerm data.
+message CommodityTermParameters {
+  // Finds rates matching the given commodity fid
+  // (exact match or else no CommodityBundleReason).
+  string commodity_fid = 1;
+}
+
+// Parameters to match against ServiceString data.
+message ServiceStringTermParameters {
+  // Finds rates matching the given service string
+  // (exact match or else no ServiceStringBundleReason).
+  string service_string = 1;
+}
+
+// Parameters to match against VesselTerm data.
+message VesselTermParameters {
+  // Finds rates matching the given vessel name
+  // (exact match or else no VesselBundleReason).
+  string vessel_name = 1;
+}
+
+// Parameters to match against VoyageTerm data.
+message VoyageTermParameters {
+  // Finds rates matching the given voyage number
+  // (exact match or else no VoyageBundleReason).
+  string voyage_number = 1;
+}
+
+// Parameters to match against MasterBillOfLadingTerm data.
+message MasterBillOfLadingTermParameters {
+  // Finds rates matching the given bill number
+  // (exact match or else no MasterBillOfLadingBundleReason).
+  string bill_number = 1;
+}
+
+// Parameters to match against DangerousGoodsClassificationTerm data.
+message DangerousGoodsClassificationTermParameters {
+  // Finds rates matching the given IMO class
+  // (exact match or no DG classification term).
+  string imo_class = 1;
+}
+
+// Parameters to match against AdditionalLineItemTerm data.
+message AdditionalLineItemTermParameters {
+  // Additional line item enums to include in results (default to all).
+  repeated AdditionalLineItemName include_additional_line_item_names_enum = 1;
+}
+
+// Parameters to match against ShipmentTerm data.
+message ShipmentTermParameters {
+  // Finds rates matching the given shipment fid
+  // (exact match or no shipment term).
+  string shipment_fid = 1;
+}
+
+// Parameters to match against ExpediencyTerm data.
+message ExpediencyTermParameters {
+  // Finds rates matching the given expediency
+  // (exact match with ExpediencyBundleReason).
+  Expediency expediency = 1;
+}
+
+// Parameters to match against ServiceLevelTerm data.
+message ServiceLevelTermParameters {
+  // Finds rates matching the given service level
+  // (exact match with ServiceLevelBundleReason).
+  Expediency expediency = 1;
+  repeated string carrier_premium_service_fids = 2;
+}
+
+// Parameters to match against FlightTerm data.
+message FlightTermParameters {
+  // Finds rates matching the given flight number
+  // (exact match or no flight term).
+  string flight_number = 1;
+}
+
+// Parameters to match against GoodsClassificationTerm data.
+message GoodsClassificationTermParameters {
+  // Finds rates matching the given applicability
+  // (exact match or no goods classification term).
+  GoodsClassificationApplicability applicability = 1;
+  // Finds rates matching the given DG classifications
+  // (exact match or applicability is non-DG).
+  repeated DangerousGoodsClassification dangerous_goods_classifications = 2;
+}
+
+// Parameters to match against ContractTerm data.
+message ContractTermParameters {
+  // Finds rates matching the given contract number.
+  string contract_number = 1;
+}
+
+// Parameters to match against IncotermTerm data.
+message IncotermTermParameters {
+  // Finds rates matching the given incoterm.
+  flexport.os.v1.types.incoterm.v1.Incoterm incoterm = 1;
+}

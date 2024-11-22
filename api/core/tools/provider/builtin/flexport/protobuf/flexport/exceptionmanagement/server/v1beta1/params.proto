@@ -1,0 +1,58 @@
+// TEAM: origin_ops
+
+syntax = "proto3";
+
+package flexport.exceptionmanagement.server.v1beta1;
+
+import "flexport/exceptionmanagement/enums/v1beta1/exception_priority.proto";
+import "flexport/exceptionmanagement/enums/v1beta1/exception_status.proto";
+import "flexport/exceptionmanagement/types/v1beta1/operational_exception.proto";
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
+
+option java_multiple_files = true;
+option java_outer_classname = "ParamsProto";
+option java_package = "com.flexport.exceptionmanagement.server.v1beta1";
+option ruby_package = "Flexport::ExceptionManagement::Server::V1Beta1";
+
+message ExceptionMessagingParam {
+  // Optional. Body of internal message.
+  google.protobuf.StringValue internal_note = 1;
+  // Optional. Attached File of internal message.
+  repeated flexport.exceptionmanagement.types.v1beta1.ExceptionAttachment internal_attachments = 2;
+
+  // Optional. Body of external message.
+  // See more with CreateOperationalExceptionRequest.need_default_fields
+  google.protobuf.StringValue external_message = 3;
+  // Optional. Attached File of external message.
+  repeated flexport.exceptionmanagement.types.v1beta1.ExceptionAttachment external_attachments = 4;
+  // Required. Fids of companies who can see external message and shipmentEvent, must include the creator's company fid.
+  // See more with CreateOperationalExceptionRequest.need_default_fields
+  repeated string external_message_viewer_company_fids = 5;
+
+  // Deprecated
+  // google.protobuf.StringValue internal_note_token = 6;
+  // google.protobuf.StringValue external_message_token = 7;
+
+  // Optional. Default value is `shipment::{shipment_id}::external_messages::event::{shipment_event_id}`
+  google.protobuf.StringValue external_message_topic = 8;
+}
+
+message UpdateExceptionParam {
+  // The user_fid that this exception assigned to.
+  google.protobuf.StringValue assigned_user_fid = 1;
+  // Priority of exception.
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionPriority priority = 2;
+  // User can add some custom Json data in it. For the json content of attrs: https://flexport.atlassian.net/wiki/spaces/EN/pages/2493514340/Extendable+fields+in+exception+management+model
+  google.protobuf.StringValue attrs = 3;
+  // Status of exception.
+  flexport.exceptionmanagement.enums.v1beta1.ExceptionStatus status = 4;
+  // Fid of internal message that will re-attach to this exception.
+  google.protobuf.StringValue internal_message_fid = 5;
+  // Fid of shipment event that will re-attach to this exception.
+  google.protobuf.StringValue shipment_event_fid = 6;
+  google.protobuf.Timestamp time_of_occurrence_time = 7;
+  google.protobuf.Timestamp actual_resolved_at_time = 8;
+  // Fid of container that filing exception on.
+  google.protobuf.StringValue container_fid = 9;
+}

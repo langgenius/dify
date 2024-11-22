@@ -1,0 +1,30 @@
+// TEAM: iam_platform
+
+syntax = "proto3";
+
+package flexport.authorization.policy.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "PolicyApiProto";
+option java_package = "com.flexport.authorization.policy.v1beta1";
+option ruby_package = "Flexport::Authorization::Policy::V1Beta1";
+
+import "flexport/authorization/v1/common.proto";
+
+// Allows access to Authorization Service role policies.
+service PolicyAPI {
+  // Gets all non-object level role -> permission mappings.
+  // This was original written for use in integration testing, usage may not show up in production logs.
+  rpc GetAllNonObjectLevelRolePermissions(GetAllNonObjectLevelRolePermissionsRequest) returns (GetAllNonObjectLevelRolePermissionsResponse);
+}
+
+message GetAllNonObjectLevelRolePermissionsRequest {}
+
+message GetAllNonObjectLevelRolePermissionsResponse {
+  //  Role mapped to corresponding operation slugs.
+  message RolePermissionsEntry {
+    flexport.authorization.v1.Role role = 1;
+    repeated string permissions = 2;
+  }
+  repeated RolePermissionsEntry role_permissions_entry = 1;
+}

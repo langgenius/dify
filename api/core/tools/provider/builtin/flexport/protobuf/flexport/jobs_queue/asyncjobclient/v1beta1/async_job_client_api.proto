@@ -1,0 +1,31 @@
+// TEAM: service_platform
+
+syntax = "proto3";
+
+package flexport.jobsqueue.asyncjobclient.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "AsyncJobClientApiProto";
+option java_package = "com.flexport.jobsqueue.asyncjobclient.v1beta1";
+option ruby_package = "Flexport::JobsQueue::AsyncjobClient::V1Beta1";
+
+import "flexport/jobs_queue/envelope/v1beta1/envelope.proto";
+
+// The protocol for handling async jobs that were callback'ed from the jobs queue server.
+// All gRPC services that want to make async jobs with jobs queue, should set up these
+// rpc endpoints.
+//
+// Refer to sample_rb_grpc_srvr/app/rpc/async_jobs_controller.rb for an example setup.
+service AsyncJobClientAPI {
+  // Listens for async callback from jobs queue.
+  rpc Callback(CallbackRequest) returns (CallbackResponse);
+}
+
+// Package the payload you want to callback with in the Envelope proto, and jobs queue
+// will asynchronously callback with it.
+message CallbackRequest {
+  flexport.jobsqueue.envelope.v1beta1.Envelope envelope = 1;
+}
+
+// Response if the callback was successfully received by the client.
+message CallbackResponse {}

@@ -1,0 +1,92 @@
+// TEAM: forwarding_platform
+
+syntax = "proto3";
+
+package flexport.executioncoordinator.executiontask.v1;
+
+option java_multiple_files = true;
+option java_outer_classname = "OceanConsolExecutionTaskParamsProto";
+option java_package = "com.flexport.executioncoordinator.executiontask.v1";
+option ruby_package = "Flexport::ExecutionCoordinator::ExecutionTask::V1";
+
+import "flexport/executioncoordinator/executioncargo/v1/execution_cargo.proto";
+import "flexport/executioncoordinator/executiontask/v1/params/ocean_fcl_execution_task_params.proto";
+import "flexport/executioncoordinator/executiontask/v1/params/trucking_execution_task_params.proto";
+
+// Parameters for an ocean consolidation ExecutionTask.
+//
+// There are two scenarios for consolidation: insourced and outsourced. Insourced is where Flexport
+// manages consolidation/deconsolidation of cargo into ocean containers. Outsourced is where
+// a third-party co-loader such as Shipco manages the consolidation/deconsolidation process.
+//
+// This message roughly corresponds to the information we would include on a booking we make
+// with Shipco to move LCL cargo within their network: origin CFS, destination CFS, cargo info,
+// routing preferences, etc. See http://go/shipco-lcl-guide for what that process entails.
+//
+// In the case of insourced ocean consolidation, some of this information is redundant with the
+// parent ExecutionOrder. All insourced OceanConsol ETs pointing to a parent EO will share the
+// same origin and destination CFSes, for example. But it can be useful when looking at the
+// ExecutionPlan for a child EO to see something that resembles "the carrier booking we placed with
+// the LCL service provider", even if that service provider happens to be the internal network ops
+// team.
+//
+// Based on the ExecutionOrder, we can know whether a given shipment will be one of:
+// 1. Definitely outsourced (eg Shipco was listed on the quote)
+// OR 2. Maybe insourced or outsourced (ie open carrier was listed on quote)
+// Then, after origin execution planning we decide if category 2 is insourced or outsourced.
+//
+message OceanConsolExecutionTaskParams {
+  oneof consolidator {
+    InsourcedOceanConsolParams insourced = 2;
+    OutsourcedOceanConsolParams outsourced = 3;
+  }
+  //
+  // Cargo details.
+  flexport.executioncoordinator.executioncargo.v1.ExecutionCargo cargo = 10;
+  //
+  // The main freight ocean carrier.
+  string ocean_carrier_fid = 11;
+  //
+  // The consolidation CFS at origin.
+  string consolidation_cfs_fid = 4;
+  //
+  // The deconsolidation CFS at destination.
+  string deconsolidation_cfs_fid = 5;
+  //
+  // The ocean port where cargo is loaded onto the main ocean vessel.
+  string port_of_loading_fid = 6;
+  //
+  // The ocean port where cargo is unloaded from the main ocean vessel. This is sometimes
+  // called the "port of discharge".
+  string port_of_unloading_fid = 7;
+  //
+  // Inland port, if any.
+  // Ex: Chicago in a Yantian => Vancouver => Chicago
+  string inland_port_fid = 8;
+  //
+  // The planned route for the ocean FCL portion of the ExecutionTask.
+  // Must include the Port of Loading and Port of Unloading.
+  // May include intermediate ports of calling or transshipment ports.
+  // May include origin inland or feeder ports before the Port of Loading.
+  // May include destination inland or feeder ports after the Port of Unloading.
+  // See definition on ocean_fcl_execution_task_params.proto.
+  OceanFclRoute planned_fcl_route = 9;
+  // HACK HACK HACK
+  // Trucking legs managed by ocean provider.
+  // See go/trucking-legs-on-non-trucking-task for more details
+  repeated TruckingExecutionTaskParams managed_trucking_params = 12;
+}
+
+// Parameters for an internally managed ocean consol shipment.
+message InsourcedOceanConsolParams {
+  string parent_execution_order_fid = 1;
+}
+
+// Parameters for an externally managed (ie "coloaded") ocean consol shipment.
+// Example: https://core.flexport.com/shipments/839421
+// Example: enter booking code 19152806 here https://www.shipco.com/ecommerce/tra/tra_result.php
+message OutsourcedOceanConsolParams {
+  // Unique identifier of the freight partner we are coloading with.
+  string coloader_fid = 1;
+  string coloader_reference_number = 2;
+}

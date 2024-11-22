@@ -1,0 +1,27 @@
+// TEAM: bookings
+
+syntax = "proto3";
+
+package flexport.monolith.booking.monolithbooking.v1beta1;
+
+option java_multiple_files = true;
+option java_outer_classname = "MonolithBookingApiProto";
+option java_package = "com.flexport.monolith.booking.monolithbooking.v1beta1";
+option ruby_package = "Flexport::Monolith::Booking::MonolithBooking::V1Beta1";
+
+import "flexport/booking/eject/v1beta1/eject.proto";
+
+// This service is used internally by Booking to transfer ownership of bookings from the service to the monolith.
+// Production readiness: https://docs.google.com/document/d/1j6cUMtEFXOCX5ZoGFn0YElhfJjq-R5bDA9T_YkheBLw/edit
+service MonolithBookingAPI {
+  // Eject a booking from the booking service.
+  rpc Eject(EjectRequest) returns (EjectResponse);
+}
+
+message EjectRequest {
+  flexport.booking.eject.v1beta1.Booking booking = 1;
+}
+
+message EjectResponse {
+  int32 booking_dbid = 1;
+}
