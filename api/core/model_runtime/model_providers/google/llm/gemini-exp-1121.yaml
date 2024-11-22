@@ -1,6 +1,6 @@
-model: gemini-exp-1114
+model: gemini-exp-1121
 label:
-  en_US: Gemini exp 1114
+  en_US: Gemini exp 1121
 model_type: llm
 features:
   - agent-thought
