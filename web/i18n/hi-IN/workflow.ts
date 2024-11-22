@@ -102,6 +102,8 @@ const translation = {
     featuresDescription: 'वेब ऐप उपयोगकर्ता अनुभव को बेहतर बनाएं',
     fileUploadTip: 'छवि अपलोड सुविधाओं को फ़ाइल अपलोड में अपग्रेड किया गया है।',
     ImageUploadLegacyTip: 'अब आप प्रारंभ प्रपत्र में फ़ाइल प्रकार चर बना सकते हैं। हम अब भविष्य में छवि अपलोड सुविधा का समर्थन नहीं करेंगे।',
+    importWarning: 'सावधानी',
+    importWarningDetails: 'डीएसएल संस्करण अंतर कुछ सुविधाओं को प्रभावित कर सकता है',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',
@@ -421,6 +423,10 @@ const translation = {
       type: 'प्रकार',
       binaryFileVariable: 'बाइनरी फ़ाइल चर',
       extractListPlaceholder: 'सूची आइटम इंडेक्स दर्ज करें, \'/\' इन्सर्ट वेरिएबल टाइप करें',
+      curl: {
+        placeholder: 'यहां cURL स्ट्रिंग पेस्ट करें',
+        title: 'cURL से आयात करें',
+      },
     },
     code: {
       inputVars: 'इनपुट वेरिएबल्स',
