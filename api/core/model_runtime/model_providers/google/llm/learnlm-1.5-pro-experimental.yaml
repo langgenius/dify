@@ -1,6 +1,6 @@
-model: gemini-exp-1114
+model: learnlm-1.5-pro-experimental
 label:
-  en_US: Gemini exp 1114
+  en_US: LearnLM 1.5 Pro Experimental
 model_type: llm
 features:
   - agent-thought
