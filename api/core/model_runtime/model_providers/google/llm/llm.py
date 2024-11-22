@@ -48,7 +48,7 @@ GOOGLE_AVAILABLE_MIMETYPE = [
     "text/md",
     "text/csv",
     "text/xml",
-    "text/rtf"
+    "text/rtf",
 ]
 
 
