@@ -277,7 +277,7 @@ class PluginModelManager(BasePluginManager):
         model: str,
         credentials: dict,
         texts: list[str],
-    ) -> int:
+    ) -> list[int]:
         """
         Get number of tokens for text embedding
         """
@@ -306,7 +306,7 @@ class PluginModelManager(BasePluginManager):
         for resp in response:
             return resp.num_tokens
 
-        return 0
+        return []
 
     def invoke_rerank(
         self,

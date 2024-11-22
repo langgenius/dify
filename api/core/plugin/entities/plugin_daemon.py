@@ -76,7 +76,7 @@ class PluginNumTokensResponse(BaseModel):
     Response for number of tokens.
     """
 
-    num_tokens: int = Field(description="The number of tokens.")
+    num_tokens: list[int] = Field(description="The number of tokens.")
 
 
 class PluginStringResultResponse(BaseModel):

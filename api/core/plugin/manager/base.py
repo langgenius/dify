@@ -17,6 +17,14 @@ from core.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse, PluginDaemonError, PluginDaemonInnerError
+from core.plugin.manager.exc import (
+    PluginDaemonBadRequestError,
+    PluginDaemonInternalServerError,
+    PluginDaemonNotFoundError,
+    PluginDaemonUnauthorizedError,
+    PluginPermissionDeniedError,
+    PluginUniqueIdentifierError,
+)
 
 plugin_daemon_inner_api_baseurl = dify_config.PLUGIN_API_URL
 plugin_daemon_inner_api_key = dify_config.PLUGIN_API_KEY
@@ -190,17 +198,32 @@ class BasePluginManager:
         """
         args = args or {}
 
-        if error_type == PluginDaemonInnerError.__name__:
-            raise PluginDaemonInnerError(code=-500, message=message)
-        elif error_type == InvokeRateLimitError.__name__:
-            raise InvokeRateLimitError(description=args.get("description"))
-        elif error_type == InvokeAuthorizationError.__name__:
-            raise InvokeAuthorizationError(description=args.get("description"))
-        elif error_type == InvokeBadRequestError.__name__:
-            raise InvokeBadRequestError(description=args.get("description"))
-        elif error_type == InvokeConnectionError.__name__:
-            raise InvokeConnectionError(description=args.get("description"))
-        elif error_type == InvokeServerUnavailableError.__name__:
-            raise InvokeServerUnavailableError(description=args.get("description"))
-        else:
-            raise ValueError(f"got unknown error from plugin daemon: {error_type}, message: {message}, args: {args}")
+        match error_type:
+            case PluginDaemonInnerError.__name__:
+                raise PluginDaemonInnerError(code=-500, message=message)
+            case InvokeRateLimitError.__name__:
+                raise InvokeRateLimitError(description=args.get("description"))
+            case InvokeAuthorizationError.__name__:
+                raise InvokeAuthorizationError(description=args.get("description"))
+            case InvokeBadRequestError.__name__:
+                raise InvokeBadRequestError(description=args.get("description"))
+            case InvokeConnectionError.__name__:
+                raise InvokeConnectionError(description=args.get("description"))
+            case InvokeServerUnavailableError.__name__:
+                raise InvokeServerUnavailableError(description=args.get("description"))
+            case PluginDaemonInternalServerError.__name__:
+                raise PluginDaemonInternalServerError(description=message)
+            case PluginDaemonBadRequestError.__name__:
+                raise PluginDaemonBadRequestError(description=message)
+            case PluginDaemonNotFoundError.__name__:
+                raise PluginDaemonNotFoundError(description=message)
+            case PluginUniqueIdentifierError.__name__:
+                raise PluginUniqueIdentifierError(description=message)
+            case PluginDaemonUnauthorizedError.__name__:
+                raise PluginDaemonUnauthorizedError(description=message)
+            case PluginPermissionDeniedError.__name__:
+                raise PluginPermissionDeniedError(description=message)
+            case _:
+                raise ValueError(
+                    f"got unknown error from plugin daemon: {error_type}, message: {message}, args: {args}"
+                )
