@@ -83,6 +83,18 @@ const translation = {
     appCreateDSLErrorPart4: 'System-supported DSL version: ',
     appCreateFailed: 'Failed to create app',
   },
+  newAppFromTemplate: {
+    byCategories: 'BY CATEGORIES',
+    sidebar: {
+      Recommended: 'Recommended',
+      Agent: 'Agent',
+      Assistant: 'Assistant',
+      HR: 'HR',
+      Workflow: 'Workflow',
+      Writing: 'Writing',
+      Programming: 'Programming',
+    },
+  },
   editApp: 'Edit Info',
   editAppTitle: 'Edit App Info',
   editDone: 'App info updated',

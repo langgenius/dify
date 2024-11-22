@@ -40,7 +40,7 @@ const AppTypeSelector = ({ value, className, onChange }: AppSelectorProps) => {
             {!value && (
               <>
                 <RiFilter3Line className='w-4 h-4' />
-                <div className='flex-1 text-center'>{t('app.typeSelector.all')}</div>
+                <div className='flex-1 min-w-[65px] text-center'>{t('app.typeSelector.all')}</div>
                 <div className='w-4 h-4 p-[1px]'>
                   <RiArrowDownSLine className='w-4 h-4' />
                 </div>

@@ -6,13 +6,13 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import useSWR from 'swr'
 import { useDebounceFn } from 'ahooks'
-import { RiAppsFill, RiExchange2Fill, RiPassPendingFill, RiQuillPenFill, RiTerminalBoxFill, RiThumbUpFill } from '@remixicon/react'
 import AppCard from '../app-card'
+import Sidebar, { AppCategories } from './sidebar'
 import Toast from '@/app/components/base/toast'
 import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
 import ExploreContext from '@/context/explore-context'
-import type { App, AppCategory } from '@/models/explore'
+import type { App } from '@/models/explore'
 import { fetchAppDetail, fetchAppList } from '@/service/explore'
 import { importApp } from '@/service/apps'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
@@ -29,10 +29,10 @@ type AppsProps = {
   onSuccess?: () => void
 }
 
-export enum PageType {
-  EXPLORE = 'explore',
-  CREATE = 'create',
-}
+// export enum PageType {
+//   EXPLORE = 'explore',
+//   CREATE = 'create',
+// }
 
 const Apps = ({
   onSuccess,
@@ -41,7 +41,7 @@ const Apps = ({
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { push } = useRouter()
   const { hasEditPermission } = useContext(ExploreContext)
-  const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
+  const allCategoriesEn = AppCategories.RECOMMENDED
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -163,7 +163,7 @@ const Apps = ({
           <span className='title-xl-semi-bold'>{t('app.newApp.startFromTemplate')}</span>
         </div>
         <div className='flex-1 max-w-[548px] p-1.5 flex items-center rounded-xl bg-components-panel-bg-blur border border-components-panel-border'>
-          <AppTypeSelector className='w-[117px]' value={currentType} onChange={setCurrentType} />
+          <AppTypeSelector value={currentType} onChange={setCurrentType} />
           <div className='h-[14px]'>
             <Divider type='vertical' />
           </div>
@@ -181,23 +181,7 @@ const Apps = ({
       </div>
       <div className='relative flex flex-1'>
         <div className='w-[200px] h-full p-4'>
-          <ul>
-            {
-              categories.map((category) => {
-                return <li key={category} className='p-1 rounded-lg flex items-center gap-2 group cursor-pointer
-                focus:bg-state-base-active active:bg-state-base-active hover:bg-state-base-hover
-                '>
-                  <div className='p-1 rounded-md border border-divider-regular bg-components-icon-bg-blue-solid'>
-                    <AppCategoryIcon category={category} />
-                  </div>
-                  <span className='system-sm-semibold
-                  group-focus:text-components-menu-item-text-active
-                  group-active:text-components-menu-item-text-active
-                  group-hover:text-components-menu-item-text-hover'>{category}</span>
-                </li>
-              })
-            }
-          </ul>
+          <Sidebar current={currCategory as AppCategories} onClick={(category) => { setCurrCategory(category) }} />
         </div>
         <div className={cn(
           'flex-1 h-full overflow-auto shrink-0 grow p-6 pt-2 border-l border-divider-burn',
@@ -238,24 +222,3 @@ const Apps = ({
 }
 
 export default React.memo(Apps)
-
-type AppCategoryIconProps = {
-  category: AppCategory
-}
-function AppCategoryIcon({ category }: AppCategoryIconProps) {
-  if (category === 'Agent')
-    return <RiAppsFill className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
-  if (category === 'Assistant')
-    return <RiAppsFill className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
-  if (category === 'HR')
-    return <RiPassPendingFill className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
-  if (category === 'Programming')
-    return <RiTerminalBoxFill className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
-  if (category === 'Recommended')
-    return <RiThumbUpFill className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
-  if (category === 'Writing')
-    return <RiQuillPenFill className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
-  if (category === '工作流')
-    return <RiExchange2Fill className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
-  return <RiAppsFill className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
-}
