@@ -410,6 +410,10 @@ const translation = {
         writeLabel: '写入超时',
         writePlaceholder: '输入写入超时（以秒为单位）',
       },
+      curl: {
+        title: '导入cURL',
+        placeholder: '粘贴 cURL 字符串',
+      },
     },
     code: {
       inputVars: '输入变量',

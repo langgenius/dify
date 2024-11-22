@@ -410,6 +410,10 @@ const translation = {
         writeLabel: 'Write Timeout',
         writePlaceholder: 'Enter write timeout in seconds',
       },
+      curl: {
+        title: 'Import from cURL',
+        placeholder: 'Paste cURL string here',
+      },
     },
     code: {
       inputVars: 'Input Variables',
