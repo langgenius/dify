@@ -1,0 +1,52 @@
+identity:
+  name: json_extractor
+  author: BenjaminX
+  label:
+    en_US: JSON Extractor
+    zh_Hans: JSON 提取器
+    pt_BR: JSON Extractor
+description:
+  human:
+    en_US: A tool for extracting JSON content
+    zh_Hans: 一个提取 JSON 内容的工具
+    pt_BR: A tool for extracting JSON content
+  llm: A tool for extracting JSON content
+parameters:
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: JSON content
+      zh_Hans: JSON 内容
+      pt_BR: JSON content
+    human_description:
+      en_US: JSON content to be processed
+      zh_Hans: 待处理的 JSON 内容
+      pt_BR: JSON content to be processed
+    llm_description: JSON content to be processed
+    form: llm
+  - name: json_filter
+    type: string
+    required: true
+    label:
+      en_US: JSONPath filter
+      zh_Hans: JSONPath 过滤器
+      pt_BR: JSONPath filter
+    human_description:
+      en_US: JSONPath filter to locate the element to extract
+      zh_Hans: 用于定位要提取元素的 JSONPath 查询
+      pt_BR: JSONPath filter to locate the element to extract
+    llm_description: JSONPath filter to locate the element to extract
+    form: llm
+  - name: ensure_ascii
+    type: boolean
+    default: true
+    label:
+      en_US: Ensure ASCII
+      zh_Hans: 确保 ASCII
+      pt_BR: Ensure ASCII
+    human_description:
+      en_US: Ensure the JSON output is ASCII encoded
+      zh_Hans: 确保输出的 JSON 是 ASCII 编码
+      pt_BR: Ensure the JSON output is ASCII encoded
+    form: form
