@@ -3,11 +3,11 @@ import logging
 from collections.abc import Generator
 from typing import cast
 
-from tencentcloud.common import credential
-from tencentcloud.common.exception import TencentCloudSDKException
-from tencentcloud.common.profile.client_profile import ClientProfile
-from tencentcloud.common.profile.http_profile import HttpProfile
-from tencentcloud.hunyuan.v20230901 import hunyuan_client, models
+from tencentcloud.common import credential  # type: ignore
+from tencentcloud.common.exception import TencentCloudSDKException  # type: ignore
+from tencentcloud.common.profile.client_profile import ClientProfile  # type: ignore
+from tencentcloud.common.profile.http_profile import HttpProfile  # type: ignore
+from tencentcloud.hunyuan.v20230901 import hunyuan_client, models  # type: ignore
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (

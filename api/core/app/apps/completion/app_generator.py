@@ -49,6 +49,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         stream: Literal[False] = False,
     ) -> dict: ...
 
+    @overload
     def generate(
         self, app_model: App, user: Union[Account, EndUser], args: Any, invoke_from: InvokeFrom, stream: bool = True
     ) -> Union[dict, Generator[str, None, None]]:

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from celery import states
+from celery import states  # type: ignore
 
 from extensions.ext_database import db
 

@@ -8,7 +8,7 @@ from typing import Any, Literal, Optional
 
 import sqlalchemy as sa
 from flask import request
-from flask_login import UserMixin
+from flask_login import UserMixin  # type: ignore
 from sqlalchemy import Float, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 

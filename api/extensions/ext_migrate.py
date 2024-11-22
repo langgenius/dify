@@ -1,4 +1,4 @@
-import flask_migrate
+import flask_migrate  # type: ignore
 
 
 def init(app, db):

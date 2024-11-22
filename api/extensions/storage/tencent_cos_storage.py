@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from qcloud_cos import CosConfig, CosS3Client
+from qcloud_cos import CosConfig, CosS3Client  # type: ignore
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage

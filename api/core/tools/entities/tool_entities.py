@@ -375,7 +375,10 @@ class ToolRuntimeVariablePool(BaseModel):
                 pool[index] = ToolRuntimeImageVariable(**variable)
         super().__init__(**data)
 
-    def dict(self) -> dict:
+    def dict(self) -> dict:  # type: ignore
+        """
+        FIXME: just ignore the type check for now
+        """
         return {
             "conversation_id": self.conversation_id,
             "user_id": self.user_id,

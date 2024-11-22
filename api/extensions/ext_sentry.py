@@ -1,6 +1,6 @@
 import openai
 import sentry_sdk
-from langfuse import parse_error
+from langfuse import parse_error  # type: ignore
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.flask import FlaskIntegration
 from werkzeug.exceptions import HTTPException

@@ -6,9 +6,9 @@ import time
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
-import google.auth.transport.requests
+import google.auth.transport.requests  # type: ignore
 import requests
-import vertexai.generative_models as glm
+import vertexai.generative_models as glm  # type: ignore
 from anthropic import AnthropicVertex, Stream
 from anthropic.types import (
     ContentBlockDeltaEvent,
@@ -20,7 +20,7 @@ from anthropic.types import (
 )
 from google.api_core import exceptions
 from google.cloud import aiplatform
-from google.oauth2 import service_account
+from google.oauth2 import service_account  # type: ignore
 from PIL import Image
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage

@@ -1,7 +1,7 @@
 import time
 from typing import Optional
 
-from xinference_client.client.restful.restful_client import Client, RESTfulEmbeddingModelHandle
+from xinference_client.client.restful.restful_client import Client, RESTfulEmbeddingModelHandle  # type: ignore
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject

@@ -5,7 +5,7 @@ from configs import dify_config
 
 def init_app(app: Flask):
     if dify_config.API_COMPRESSION_ENABLED:
-        from flask_compress import Compress
+        from flask_compress import Compress  # type: ignore
 
         app.config["COMPRESS_MIMETYPES"] = [
             "application/json",

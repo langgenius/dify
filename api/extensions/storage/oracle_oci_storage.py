@@ -1,7 +1,7 @@
 from collections.abc import Generator
 
-import boto3
-from botocore.exceptions import ClientError
+import boto3  # type: ignore
+from botocore.exceptions import ClientError  # type: ignore
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage

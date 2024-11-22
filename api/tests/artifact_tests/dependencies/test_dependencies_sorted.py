@@ -1,6 +1,6 @@
 from typing import Any
 
-import toml
+import toml  # type: ignore
 
 
 def load_api_poetry_configs() -> dict[str, Any]:

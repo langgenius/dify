@@ -1,8 +1,8 @@
 from datetime import timedelta
 
 import pytz
-from celery import Celery, Task
-from celery.schedules import crontab
+from celery import Celery, Task  # type: ignore
+from celery.schedules import crontab  # type: ignore
 from flask import Flask
 
 from configs import dify_config

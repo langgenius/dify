@@ -4,7 +4,7 @@ import logging
 import time
 from typing import Any, Optional
 
-import boto3
+import boto3  # type: ignore
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject

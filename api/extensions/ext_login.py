@@ -1,4 +1,4 @@
-import flask_login
+import flask_login  # type: ignore
 
 login_manager = flask_login.LoginManager()
 

@@ -2,9 +2,9 @@ import base64
 import hashlib
 from collections.abc import Generator
 
-from baidubce.auth.bce_credentials import BceCredentials
-from baidubce.bce_client_configuration import BceClientConfiguration
-from baidubce.services.bos.bos_client import BosClient
+from baidubce.auth.bce_credentials import BceCredentials  # type: ignore
+from baidubce.bce_client_configuration import BceClientConfiguration  # type: ignore
+from baidubce.services.bos.bos_client import BosClient  # type: ignore
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage

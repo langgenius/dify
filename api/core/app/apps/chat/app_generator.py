@@ -49,6 +49,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         stream: Literal[False] = False,
     ) -> dict: ...
 
+    @overload
     def generate(
         self,
         app_model: App,

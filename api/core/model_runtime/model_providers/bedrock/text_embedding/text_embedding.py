@@ -3,9 +3,9 @@ import logging
 import time
 from typing import Optional
 
-import boto3
-from botocore.config import Config
-from botocore.exceptions import (
+import boto3  # type: ignore
+from botocore.config import Config  # type: ignore
+from botocore.exceptions import (  # type: ignore
     ClientError,
     EndpointConnectionError,
     NoRegionError,

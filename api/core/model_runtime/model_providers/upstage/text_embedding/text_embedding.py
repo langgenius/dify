@@ -5,7 +5,7 @@ from typing import Union
 
 import numpy as np
 from openai import OpenAI
-from tokenizers import Tokenizer
+from tokenizers import Tokenizer  # type: ignore
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType

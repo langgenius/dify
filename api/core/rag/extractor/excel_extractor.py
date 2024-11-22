@@ -1,10 +1,10 @@
 """Abstract interface for document loader implementations."""
 
 import os
-from typing import Optional
+from typing import Optional, cast
 
 import pandas as pd
-from openpyxl import load_workbook
+from openpyxl import load_workbook  # type: ignore
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -47,7 +47,7 @@ class ExcelExtractor(BaseExtractor):
                     for col_index, (k, v) in enumerate(row.items()):
                         if pd.notna(v):
                             cell = sheet.cell(
-                                row=index + 2, column=col_index + 1
+                                row=cast(int, index) + 2, column=col_index + 1
                             )  # +2 to account for header and 1-based index
                             if cell.hyperlink:
                                 value = f"[{v}]({cell.hyperlink.target})"

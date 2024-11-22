@@ -2,7 +2,7 @@ import json
 import time
 from typing import Optional
 
-from replicate import Client as ReplicateClient
+from replicate import Client as ReplicateClient  # type: ignore
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject

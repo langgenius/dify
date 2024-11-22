@@ -4,7 +4,7 @@ import os
 from datetime import datetime, timedelta
 from typing import Optional
 
-from langfuse import Langfuse
+from langfuse import Langfuse  # type: ignore
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import LangfuseConfig

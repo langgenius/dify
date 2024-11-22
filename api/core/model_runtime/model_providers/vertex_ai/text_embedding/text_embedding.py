@@ -6,8 +6,8 @@ from typing import Optional
 
 import tiktoken
 from google.cloud import aiplatform
-from google.oauth2 import service_account
-from vertexai.language_models import TextEmbeddingModel as VertexTextEmbeddingModel
+from google.oauth2 import service_account  # type: ignore
+from vertexai.language_models import TextEmbeddingModel as VertexTextEmbeddingModel  # type: ignore
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject

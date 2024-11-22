@@ -1,7 +1,7 @@
 import time
 from typing import Optional
 
-from zhipuai import ZhipuAI
+from zhipuai import ZhipuAI  # type: ignore
 
 from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType

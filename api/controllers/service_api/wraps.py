@@ -5,7 +5,7 @@ from functools import wraps
 from typing import Optional
 
 from flask import current_app, request
-from flask_login import user_logged_in
+from flask_login import user_logged_in  # type: ignore
 from flask_restful import Resource  # type: ignore
 from pydantic import BaseModel
 from werkzeug.exceptions import Forbidden, Unauthorized

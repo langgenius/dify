@@ -1,8 +1,8 @@
 import re
 from typing import Optional
 
-import jieba
-from jieba.analyse import default_tfidf
+import jieba  # type: ignore
+from jieba.analyse import default_tfidf  # type: ignore
 
 from core.rag.datasource.keyword.jieba.stopwords import STOPWORDS
 

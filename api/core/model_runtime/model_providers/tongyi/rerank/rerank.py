@@ -1,7 +1,7 @@
 from typing import Optional
 
-import dashscope
-from dashscope.common.error import (
+import dashscope  # type: ignore
+from dashscope.common.error import (  # type: ignore
     AuthenticationError,
     InvalidParameter,
     RequestFailure,

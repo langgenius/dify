@@ -5,12 +5,12 @@ from collections.abc import Generator
 from typing import Optional, Union, cast
 
 import google.ai.generativelanguage as glm
-import google.generativeai as genai
+import google.generativeai as genai  # type: ignore
 import requests
-from google.api_core import exceptions
-from google.generativeai.client import _ClientManager
-from google.generativeai.types import ContentType, GenerateContentResponse
-from google.generativeai.types.content_types import to_part
+from google.api_core import exceptions  # type: ignore
+from google.generativeai.client import _ClientManager  # type: ignore
+from google.generativeai.types import ContentType, GenerateContentResponse  # type: ignore
+from google.generativeai.types.content_types import to_part  # type: ignore
 from PIL import Image
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta

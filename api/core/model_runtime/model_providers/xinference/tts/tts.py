@@ -1,7 +1,7 @@
 import concurrent.futures
 from typing import Any, Optional
 
-from xinference_client.client.restful.restful_client import RESTfulAudioModelHandle
+from xinference_client.client.restful.restful_client import RESTfulAudioModelHandle  # type: ignore
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
