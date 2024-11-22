@@ -13,6 +13,7 @@ from .message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
     VideoPromptMessageContent,
+    DocumentPromptMessageContent,
 )
 from .model_entities import ModelPropertyKey
 
@@ -37,4 +38,5 @@ __all__ = [
     "LLMResultChunk",
     "LLMResultChunkDelta",
     "AudioPromptMessageContent",
+    "DocumentPromptMessageContent",
 ]

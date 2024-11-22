@@ -3,7 +3,12 @@ import base64
 from configs import dify_config
 from core.file import file_repository
 from core.helper import ssrf_proxy
-from core.model_runtime.entities import AudioPromptMessageContent, ImagePromptMessageContent, VideoPromptMessageContent
+from core.model_runtime.entities import (
+    AudioPromptMessageContent,
+    ImagePromptMessageContent,
+    VideoPromptMessageContent,
+    DocumentPromptMessageContent,
+)
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 
@@ -75,8 +80,17 @@ def to_prompt_message_content(
             else:
                 data = _to_base64_data_string(f)
             return VideoPromptMessageContent(data=data, format=f.extension.lstrip("."))
+        case FileType.DOCUMENT:
+            data = _get_encoded_string(f)
+            if f.mime_type is None:
+                raise ValueError("Missing file mime_type")
+            return DocumentPromptMessageContent(
+                encode_format="base64",
+                mime_type=f.mime_type,
+                data=data,
+            )
         case _:
-            raise ValueError("file type f.type is not supported")
+            raise ValueError(f"file type {f.type} is not supported")
 
 
 def download(f: File, /):
