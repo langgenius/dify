@@ -1,42 +1,42 @@
 identity:
-  name: json_extractor
-  author: BenjaminX
+  name: parse
+  author: Mingwei Zhang
   label:
-    en_US: JSON Extractor
-    zh_Hans: JSON 提取器
-    pt_BR: JSON Extractor
+    en_US: JSON Parse
+    zh_Hans: JSON 解析
+    pt_BR: JSON Parse
 description:
   human:
-    en_US: A tool for extracting JSON content
-    zh_Hans: 一个提取 JSON 内容的工具
-    pt_BR: A tool for extracting JSON content
-  llm: A tool for extracting JSON content
+    en_US: A tool for extracting JSON objects
+    zh_Hans: 一个解析JSON对象的工具
+    pt_BR: A tool for extracting JSON objects
+  llm: A tool for extracting JSON objects
 parameters:
   - name: content
     type: string
     required: true
     label:
-      en_US: JSON content
-      zh_Hans: JSON 内容
-      pt_BR: JSON content
+      en_US: JSON data
+      zh_Hans: JSON数据
+      pt_BR: JSON data
     human_description:
-      en_US: JSON content to be processed
-      zh_Hans: 待处理的 JSON 内容
-      pt_BR: JSON content to be processed
-    llm_description: JSON content to be processed
+      en_US: JSON data
+      zh_Hans: JSON数据
+      pt_BR: JSON数据
+    llm_description: JSON data to be processed
     form: llm
   - name: json_filter
     type: string
-    required: true
+    required: false
     label:
-      en_US: JSONPath filter
-      zh_Hans: JSONPath 过滤器
-      pt_BR: JSONPath filter
+      en_US: JSON filter
+      zh_Hans: JSON解析对象
+      pt_BR: JSON filter
     human_description:
-      en_US: JSONPath filter to locate the element to extract
-      zh_Hans: 用于定位要提取元素的 JSONPath 查询
-      pt_BR: JSONPath filter to locate the element to extract
-    llm_description: JSONPath filter to locate the element to extract
+      en_US: JSON fields to be parsed
+      zh_Hans: 需要解析的 JSON 字段
+      pt_BR: JSON fields to be parsed
+    llm_description: JSON fields to be parsed
     form: llm
   - name: ensure_ascii
     type: boolean
@@ -49,4 +49,16 @@ parameters:
       en_US: Ensure the JSON output is ASCII encoded
       zh_Hans: 确保输出的 JSON 是 ASCII 编码
       pt_BR: Ensure the JSON output is ASCII encoded
+    form: form
+  - name: output_full_parsed_json
+    type: boolean
+    default: true
+    label:
+      en_US: Output Full Parsed JSON
+      zh_Hans: 输出完整解析的 JSON
+      pt_BR: Output Full Parsed JSON
+    human_description:
+      en_US: The full parsed JSON is also outputted
+      zh_Hans: 完整解析的 JSON 也已输出
+      pt_BR: The full parsed JSON is also outputted
     form: form

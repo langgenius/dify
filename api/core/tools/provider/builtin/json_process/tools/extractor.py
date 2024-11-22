@@ -14,51 +14,35 @@ class JSONExtractTool(BuiltinTool):
         tool_parameters: dict[str, Any],
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
-        Invoke the JSON extract tool
+        invoke tools
         """
-        # Get content
+        # get tool parameters
         content = tool_parameters.get("content", "")
+        json_filter = tool_parameters.get("json_filter", "")
+        ensure_ascii = tool_parameters.get("ensure_ascii", True)
+        output_full_parsed_json = tool_parameters.get("output_full_parsed_json", True)
+        
         if not content:
             return self.create_text_message("Invalid parameter content")
 
-        # Get query
-        json_filter = tool_parameters.get("json_filter", "")
-        if not json_filter:
-            return self.create_text_message("Invalid parameter json_filter")
-
-        ensure_ascii = tool_parameters.get("ensure_ascii", True)
-
         try:
-            json_string, json_objs = self._extract(content, json_filter, ensure_ascii)
-            json_objs_dict = {str(index): item for index, item in enumerate(json_objs)}
-            return [
-                self.create_text_message(json_string),
-                self.create_json_message(json_objs_dict),
-            ]
-        except Exception as e:
-            return self.create_text_message(f"Failed to extract JSON content: {str(e)}")
+            final_result = []
+            if output_full_parsed_json:
+                # parse full json
+                json_content = json.loads(content)
 
-    def _extract(self, content: str, json_filter: str, ensure_ascii: bool) -> tuple[str, list]:
-        try:
-            input_data = json.loads(content)
-            expr = parse("$." + json_filter.lstrip("$."))
-            matches = expr.find(input_data)
+                # append json_messages to final_result
+                if isinstance(json_content, list):
+                    for item in json_content:
+                        final_result.append(self.create_json_message(item))
+                else:
+                    final_result.append(self.create_json_message(json_content))
 
-            result = [match.value for match in matches]
+            if json_filter:
+                filtered_result = self._extract(content, json_filter, ensure_ascii)
+                final_result.append(self.create_text_message(str(filtered_result)))
 
-            if len(result) == 1:
-                result = result[0]
+            return final_result
 
-            if isinstance(result, dict | list):
-                json_string = json.dumps(result, ensure_ascii=ensure_ascii)
-            elif isinstance(result, str | int | float | bool) or result is None:
-                json_string = str(result)
-            else:
-                json_string = repr(result)
-
-            return json_string, result
-
-        except json.JSONDecodeError as e:
-            raise ValueError(f"Invalid JSON content: {str(e)}")
-        except Exception as e:
-            raise Exception(f"Extract operation failed: {str(e)}")
+        except Exception:
+            return self.create_text_message("Failed to extract JSON content")
