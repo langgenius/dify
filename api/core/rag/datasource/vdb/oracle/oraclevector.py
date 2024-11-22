@@ -5,11 +5,11 @@ import uuid
 from contextlib import contextmanager
 from typing import Any
 
-import jieba.posseg as pseg
-import nltk
+import jieba.posseg as pseg  # type: ignore
+import nltk  # type: ignore
 import numpy
 import oracledb
-from nltk.corpus import stopwords
+from nltk.corpus import stopwords  # type: ignore
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config

@@ -3,7 +3,7 @@ import json
 from typing import Any, Optional
 
 import requests
-import weaviate
+import weaviate  # type: ignore
 from pydantic import BaseModel, model_validator
 
 from configs import dify_config

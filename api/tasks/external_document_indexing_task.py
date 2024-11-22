@@ -3,7 +3,7 @@ import logging
 import time
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 
 from core.indexing_runner import DocumentIsPausedException
 from extensions.ext_database import db

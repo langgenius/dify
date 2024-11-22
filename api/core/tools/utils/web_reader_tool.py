@@ -13,9 +13,9 @@ from typing import Optional
 from urllib.parse import unquote
 
 import chardet
-import cloudscraper
-from bs4 import BeautifulSoup, CData, Comment, NavigableString
-from regex import regex
+import cloudscraper  # type: ignore
+from bs4 import BeautifulSoup, CData, Comment, NavigableString  # type: ignore
+from regex import regex  # type: ignore
 
 from core.helper import ssrf_proxy
 from core.rag.extractor import extract_processor

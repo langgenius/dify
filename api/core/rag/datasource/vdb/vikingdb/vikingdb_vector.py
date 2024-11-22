@@ -2,7 +2,7 @@ import json
 from typing import Any
 
 from pydantic import BaseModel
-from volcengine.viking_db import (
+from volcengine.viking_db import (  # type: ignore
     Data,
     DistanceType,
     Field,

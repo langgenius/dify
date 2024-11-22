@@ -4,7 +4,7 @@ import math
 from typing import Any
 
 from pydantic import BaseModel, model_validator
-from pyobvector import VECTOR, ObVecClient
+from pyobvector import VECTOR, ObVecClient  # type: ignore
 from sqlalchemy import JSON, Column, String, func
 from sqlalchemy.dialects.mysql import LONGTEXT
 

@@ -4,7 +4,7 @@ import time
 import uuid
 
 import click
-from celery import shared_task
+from celery import shared_task  # type: ignore
 from sqlalchemy import func
 
 from core.indexing_runner import IndexingRunner

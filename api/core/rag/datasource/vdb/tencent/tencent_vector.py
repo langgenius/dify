@@ -2,10 +2,10 @@ import json
 from typing import Any, Optional
 
 from pydantic import BaseModel
-from tcvectordb import VectorDBClient
-from tcvectordb.model import document, enum
-from tcvectordb.model import index as vdb_index
-from tcvectordb.model.document import Filter
+from tcvectordb import VectorDBClient  # type: ignore
+from tcvectordb.model import document, enum  # type: ignore
+from tcvectordb.model import index as vdb_index  # type: ignore
+from tcvectordb.model.document import Filter  # type: ignore
 
 from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector

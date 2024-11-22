@@ -1,7 +1,7 @@
 import logging
 from typing import Optional
 
-import resend
+import resend  # type: ignore
 from flask import Flask
 
 from configs import dify_config
