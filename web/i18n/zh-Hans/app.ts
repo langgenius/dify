@@ -72,6 +72,7 @@ const translation = {
     appCreateDSLErrorPart3: '当前应用 DSL 版本：',
     appCreateDSLErrorPart4: '系统支持 DSL 版本：',
     appCreateFailed: '应用创建失败',
+    Confirm: '确认',
   },
   editApp: '编辑信息',
   editAppTitle: '编辑应用信息',

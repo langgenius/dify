@@ -265,6 +265,7 @@ html[data-theme="light"] {
   --color-text-logo-text: #18222F;
   --color-text-empty-state-icon: #D0D5DC;
   --color-text-inverted: #000000;
+  --color-text-inverted-dimmed: #000000F2;
 
   --color-background-body: #F2F4F7;
   --color-background-default-subtle: #FCFCFD;
@@ -296,7 +297,7 @@ html[data-theme="light"] {
   --color-background-section-burn: #F2F4F7;
   --color-background-default-dodge: #FFFFFF;
   --color-background-overlay: #10182899;
-  --color-background-default-dimm: #E9EBF0;
+  --color-background-default-dimmed: #E9EBF0;
   --color-background-default-hover: #F9FAFB;
   --color-background-overlay-alt: #10182866;
   --color-background-surface-white: #FFFFFFF2;
@@ -324,6 +325,17 @@ html[data-theme="light"] {
   --color-workflow-link-line-active: #296DFF;
   --color-workflow-link-line-normal: #D0D5DC;
   --color-workflow-link-line-handle: #296DFF;
+  --color-workflow-link-line-normal-transparent: #D0D5DC33;
+  --color-workflow-link-line-failure-active: #F79009;
+  --color-workflow-link-line-failure-handle: #F79009;
+  --color-workflow-link-line-failure-button-bg: #DC6803;
+  --color-workflow-link-line-failure-button-hover: #B54708;
+
+  --color-workflow-link-line-success-active: #17B26A;
+  --color-workflow-link-line-success-handle: #17B26A;
+
+  --color-workflow-link-line-error-active: #F04438;
+  --color-workflow-link-line-error-handle: #F04438;
 
   --color-workflow-minimap-bg: #E9EBF0;
   --color-workflow-minimap-block: #C8CEDA4D;

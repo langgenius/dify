@@ -2,7 +2,7 @@ import logging
 import re
 import time
 from abc import abstractmethod
-from collections.abc import Generator, Mapping
+from collections.abc import Generator, Mapping, Sequence
 from typing import Optional, Union
 
 from pydantic import ConfigDict
@@ -48,7 +48,7 @@ class LargeLanguageModel(AIModel):
         prompt_messages: list[PromptMessage],
         model_parameters: Optional[dict] = None,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
@@ -169,7 +169,7 @@ class LargeLanguageModel(AIModel):
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
@@ -212,7 +212,7 @@ if you are not sure about the structure.
             )
 
         model_parameters.pop("response_format")
-        stop = stop or []
+        stop = list(stop) if stop is not None else []
         stop.extend(["\n```", "```\n"])
         block_prompts = block_prompts.replace("{{block}}", code_block)
 
@@ -408,7 +408,7 @@ if you are not sure about the structure.
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
@@ -479,7 +479,7 @@ if you are not sure about the structure.
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:
@@ -601,7 +601,7 @@ if you are not sure about the structure.
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
@@ -647,7 +647,7 @@ if you are not sure about the structure.
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
@@ -694,7 +694,7 @@ if you are not sure about the structure.
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
@@ -742,7 +742,7 @@ if you are not sure about the structure.
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
