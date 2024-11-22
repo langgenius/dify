@@ -2,13 +2,11 @@
 import base64
 import json
 import logging
-import mimetypes
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
 # 3rd import
 import boto3
-import requests
 from botocore.config import Config
 from botocore.exceptions import (
     ClientError,
@@ -439,22 +437,10 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                         sub_messages.append(sub_message_dict)
                     elif message_content.type == PromptMessageContentType.IMAGE:
                         message_content = cast(ImagePromptMessageContent, message_content)
-                        if not message_content.data.startswith("data:"):
-                            # fetch image data from url
-                            try:
-                                url = message_content.data
-                                image_content = requests.get(url).content
-                                if "?" in url:
-                                    url = url.split("?")[0]
-                                mime_type, _ = mimetypes.guess_type(url)
-                                base64_data = base64.b64encode(image_content).decode("utf-8")
-                            except Exception as ex:
-                                raise ValueError(f"Failed to fetch image data from url {message_content.data}, {ex}")
-                        else:
-                            data_split = message_content.data.split(";base64,")
-                            mime_type = data_split[0].replace("data:", "")
-                            base64_data = data_split[1]
-                            image_content = base64.b64decode(base64_data)
+                        data_split = message_content.data.split(";base64,")
+                        mime_type = data_split[0].replace("data:", "")
+                        base64_data = data_split[1]
+                        image_content = base64.b64decode(base64_data)
 
                         if mime_type not in {"image/jpeg", "image/png", "image/gif", "image/webp"}:
                             raise ValueError(

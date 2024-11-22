@@ -1,0 +1,39 @@
+identity:
+  name: rapidapi
+  author: Steven Sun
+  label:
+    en_US: RapidAPI
+    zh_Hans: RapidAPI
+  description:
+    en_US: RapidAPI is the world's largest API marketplace with over 1,000,000 developers and 10,000 APIs.
+    zh_Hans: RapidAPI是全球最大的API市场，拥有超过100万开发人员和10000个API。
+  icon: rapidapi.png
+  tags:
+    - news
+credentials_for_provider:
+  x-rapidapi-host:
+    type: text-input
+    required: true
+    label:
+      en_US: x-rapidapi-host
+      zh_Hans: x-rapidapi-host
+    placeholder:
+      en_US: Please input your x-rapidapi-host
+      zh_Hans: 请输入你的 x-rapidapi-host
+    help:
+      en_US: Get your x-rapidapi-host from RapidAPI.
+      zh_Hans: 从 RapidAPI 获取您的 x-rapidapi-host。
+    url: https://rapidapi.com/
+  x-rapidapi-key:
+    type: secret-input
+    required: true
+    label:
+      en_US: x-rapidapi-key
+      zh_Hans: x-rapidapi-key
+    placeholder:
+      en_US: Please input your x-rapidapi-key
+      zh_Hans: 请输入你的 x-rapidapi-key
+    help:
+      en_US: Get your x-rapidapi-key from RapidAPI.
+      zh_Hans: 从 RapidAPI 获取您的 x-rapidapi-key。
+    url: https://rapidapi.com/

@@ -114,16 +114,9 @@ class BaseAgentRunner(AppRunner):
         # check if model supports stream tool call
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
-        if model_schema and ModelFeature.STREAM_TOOL_CALL in (model_schema.features or []):
-            self.stream_tool_call = True
-        else:
-            self.stream_tool_call = False
-
-        # check if model supports vision
-        if model_schema and ModelFeature.VISION in (model_schema.features or []):
-            self.files = application_generate_entity.files
-        else:
-            self.files = []
+        features = model_schema.features if model_schema and model_schema.features else []
+        self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features
+        self.files = application_generate_entity.files if ModelFeature.VISION in features else []
         self.query = None
         self._current_thoughts: list[PromptMessage] = []
 
@@ -250,7 +243,7 @@ class BaseAgentRunner(AppRunner):
         update prompt message tool
         """
         # try to get tool runtime parameters
-        tool_runtime_parameters = tool.get_runtime_parameters() or []
+        tool_runtime_parameters = tool.get_runtime_parameters()
 
         for parameter in tool_runtime_parameters:
             if parameter.form != ToolParameter.ToolParameterForm.LLM:
