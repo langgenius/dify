@@ -107,7 +107,7 @@ export type PluginDetail = {
 }
 
 export type Plugin = {
-  type: PluginType
+  type: 'plugin' | 'bundle'
   org: string
   name: string
   plugin_id: string
