@@ -265,6 +265,7 @@ html[data-theme="dark"] {
   --color-text-logo-text: #E9E9EC;
   --color-text-empty-state-icon: #C8CEDA4D;
   --color-text-inverted: #FFFFFF;
+  --color-text-inverted-dimmed: #FFFFFFCC;
 
   --color-background-body: #1D1D20;
   --color-background-default-subtle: #222225;
@@ -296,7 +297,7 @@ html[data-theme="dark"] {
   --color-background-section-burn: #18181B99;
   --color-background-default-dodge: #3A3A40;
   --color-background-overlay: #18181BCC;
-  --color-background-default-dimm: #27272B;
+  --color-background-default-dimmed: #27272B;
   --color-background-default-hover: #27272B;
   --color-background-overlay-alt: #18181B66;
   --color-background-surface-white: #FFFFFFE5;
@@ -324,6 +325,12 @@ html[data-theme="dark"] {
   --color-workflow-link-line-active: #296DFF;
   --color-workflow-link-line-normal: #676F83;
   --color-workflow-link-line-handle: #296DFF;
+
+  --color-workflow-link-line-success-active: #47CD89;
+  --color-workflow-link-line-success-handle: #47CD89;
+
+  --color-workflow-link-line-error-active: #F97066;
+  --color-workflow-link-line-error-handle: #F97066;
 
   --color-workflow-minimap-bg: #27272B;
   --color-workflow-minimap-block: #C8CEDA14;
@@ -598,6 +605,5 @@ html[data-theme="dark"] {
 
   --color-third-party-LangChain: #FFFFFF;
   --color-third-party-Langfuse: #FFFFFF;
-
   --color-third-party-Github: #FFFFFF;
 }

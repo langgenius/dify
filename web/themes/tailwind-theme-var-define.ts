@@ -265,6 +265,7 @@ const vars = {
   'text-logo-text': 'var(--color-text-logo-text)',
   'text-empty-state-icon': 'var(--color-text-empty-state-icon)',
   'text-inverted': 'var(--color-text-inverted)',
+  'text-inverted-dimmed': 'var(--color-text-inverted-dimmed)',
 
   'background-body': 'var(--color-background-body)',
   'background-default-subtle': 'var(--color-background-default-subtle)',
@@ -296,7 +297,7 @@ const vars = {
   'background-section-burn': 'var(--color-background-section-burn)',
   'background-default-dodge': 'var(--color-background-default-dodge)',
   'background-overlay': 'var(--color-background-overlay)',
-  'background-default-dimm': 'var(--color-background-default-dimm)',
+  'background-default-dimmed': 'var(--color-background-default-dimmed)',
   'background-default-hover': 'var(--color-background-default-hover)',
   'background-overlay-alt': 'var(--color-background-overlay-alt)',
   'background-surface-white': 'var(--color-background-surface-white)',
@@ -324,6 +325,17 @@ const vars = {
   'workflow-link-line-active': 'var(--color-workflow-link-line-active)',
   'workflow-link-line-normal': 'var(--color-workflow-link-line-normal)',
   'workflow-link-line-handle': 'var(--color-workflow-link-line-handle)',
+  'workflow-link-line-normal-transparent': 'var(--color-workflow-link-line-normal-transparent)',
+  'workflow-link-line-failure-active': 'var(--color-workflow-link-line-failure-active)',
+  'workflow-link-line-failure-handle': 'var(--color-workflow-link-line-failure-handle)',
+  'workflow-link-line-failure-button-bg': 'var(--color-workflow-link-line-failure-button-bg)',
+  'workflow-link-line-failure-button-hover': 'var(--color-workflow-link-line-failure-button-hover)',
+
+  'workflow-link-line-success-active': 'var(--color-workflow-link-line-success-active)',
+  'workflow-link-line-success-handle': 'var(--color-workflow-link-line-success-handle)',
+
+  'workflow-link-line-error-active': 'var(--color-workflow-link-line-error-active)',
+  'workflow-link-line-error-handle': 'var(--color-workflow-link-line-error-handle)',
 
   'workflow-minimap-bg': 'var(--color-workflow-minimap-bg)',
   'workflow-minimap-block': 'var(--color-workflow-minimap-block)',
