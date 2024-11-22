@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { useContext } from 'use-context-selector'
 
-import { Vision } from '@/app/components/base/icons/src/vender/features'
+import { Document } from '@/app/components/base/icons/src/vender/features'
 import Tooltip from '@/app/components/base/tooltip'
 import ConfigContext from '@/context/debug-configuration'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
@@ -51,7 +51,7 @@ const ConfigDocument: FC = () => {
     <div className='mt-2 flex items-center gap-2 p-2 rounded-xl border-t-[0.5px] border-l-[0.5px] bg-background-section-burn'>
       <div className='shrink-0 p-1'>
         <div className='p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-indigo-indigo-600'>
-          <Vision className='w-4 h-4 text-text-primary-on-surface' />
+          <Document className='w-4 h-4 text-text-primary-on-surface' />
         </div>
       </div>
       <div className='grow flex items-center'>
