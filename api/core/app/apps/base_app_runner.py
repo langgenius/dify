@@ -1,6 +1,6 @@
 import time
 from collections.abc import Generator, Mapping
-from typing import TYPE_CHECKING, Any, cast, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom

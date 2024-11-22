@@ -1,11 +1,10 @@
-from typing import Any, Dict, List, Tuple, Union
-
 from base64 import b64encode
 from hashlib import sha1
 from hmac import new as hmac_new
 from json import loads as json_loads
 from threading import Lock
 from time import sleep, time
+from typing import Any, Union
 
 from httpx import get, post
 from requests import get as requests_get
@@ -22,13 +21,13 @@ class AIPPTGenerateToolAdapter:
     """
 
     _api_base_url = URL("https://co.aippt.cn/api")
-    _api_token_cache: Dict[str, Dict[str, Union[str, float]]] = {}
-    _style_cache: Dict[str, Dict[str, Union[List[Dict[str, Any]], float]]] = {}
+    _api_token_cache: dict[str, dict[str, Union[str, float]]] = {}
+    _style_cache: dict[str, dict[str, Union[list[dict[str, Any]], float]]] = {}
 
     _api_token_cache_lock: Lock = Lock()
     _style_cache_lock: Lock = Lock()
 
-    _task: Dict[str, Any] = {}
+    _task: dict[str, Any] = {}
     _task_type_map = {
         "auto": 1,
         "markdown": 7,
@@ -39,8 +38,8 @@ class AIPPTGenerateToolAdapter:
         self._tool = tool
 
     def _invoke(
-        self, user_id: str, tool_parameters: Dict[str, Any]
-    ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+        self, user_id: str, tool_parameters: dict[str, Any]
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Invokes the AIPPT generate tool with the given user ID and tool parameters.
 
@@ -229,7 +228,7 @@ class AIPPTGenerateToolAdapter:
 
         return ""
 
-    def _generate_ppt(self, task_id: str, suit_id: int, user_id: str) -> Tuple[str, str]:
+    def _generate_ppt(self, task_id: str, suit_id: int, user_id: str) -> tuple[str, str]:
         """
         Generate a ppt
 
@@ -307,7 +306,7 @@ class AIPPTGenerateToolAdapter:
         raise Exception("Failed to generate ppt, the export is timeout")
 
     @classmethod
-    def _get_api_token(cls, credentials: Dict[str, str], user_id: str) -> str:
+    def _get_api_token(cls, credentials: dict[str, str], user_id: str) -> str:
         """
         Get API token
 
@@ -366,8 +365,8 @@ class AIPPTGenerateToolAdapter:
 
     @classmethod
     def _get_styles(
-        cls, credentials: Dict[str, str], user_id: str
-    ) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+        cls, credentials: dict[str, str], user_id: str
+    ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """
         Get styles
         """
@@ -420,7 +419,7 @@ class AIPPTGenerateToolAdapter:
 
         return colors, styles
 
-    def get_styles(self, user_id: str) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
+    def get_styles(self, user_id: str) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
         """
         Get styles
 
@@ -462,7 +461,7 @@ class AIPPTGenerateToolAdapter:
 
         raise Exception("Failed to get suit, the suit does not exist, please check the style and color")
 
-    def get_runtime_parameters(self) -> List[ToolParameter]:
+    def get_runtime_parameters(self) -> list[ToolParameter]:
         """
         Get runtime parameters
 
@@ -513,13 +512,13 @@ class AIPPTGenerateTool(BuiltinTool):
         super().__init__(**kwargs)
 
     def _invoke(
-        self, user_id: str, tool_parameters: Dict[str, Any]
-    ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+        self, user_id: str, tool_parameters: dict[str, Any]
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         return AIPPTGenerateToolAdapter(self)._invoke(user_id, tool_parameters)
 
-    def get_runtime_parameters(self) -> List[ToolParameter]:
+    def get_runtime_parameters(self) -> list[ToolParameter]:
         return AIPPTGenerateToolAdapter(self).get_runtime_parameters()
 
     @classmethod
-    def _get_api_token(cls, credentials: Dict[str, str], user_id: str) -> str:
+    def _get_api_token(cls, credentials: dict[str, str], user_id: str) -> str:
         return AIPPTGenerateToolAdapter()._get_api_token(credentials, user_id)
