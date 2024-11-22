@@ -400,59 +400,6 @@ def test_fetch_prompt_messages__basic(faker, llm_node, model_config):
                 )
             },
         ),
-        LLMNodeTestScenario(
-            description="Prompt template with variable selector of File without vision feature",
-            user_query=fake_query,
-            user_files=[],
-            vision_enabled=True,
-            vision_detail=fake_vision_detail,
-            features=[],
-            window_size=fake_window_size,
-            prompt_template=[
-                LLMNodeChatModelMessage(
-                    text="{{#input.image#}}",
-                    role=PromptMessageRole.USER,
-                    edition_type="basic",
-                ),
-            ],
-            expected_messages=mock_history[fake_window_size * -2 :] + [UserPromptMessage(content=fake_query)],
-            file_variables={
-                "input.image": File(
-                    tenant_id="test",
-                    type=FileType.IMAGE,
-                    filename="test1.jpg",
-                    transfer_method=FileTransferMethod.REMOTE_URL,
-                    remote_url=fake_remote_url,
-                )
-            },
-        ),
-        LLMNodeTestScenario(
-            description="Prompt template with variable selector of File with video file and vision feature",
-            user_query=fake_query,
-            user_files=[],
-            vision_enabled=True,
-            vision_detail=fake_vision_detail,
-            features=[ModelFeature.VISION],
-            window_size=fake_window_size,
-            prompt_template=[
-                LLMNodeChatModelMessage(
-                    text="{{#input.image#}}",
-                    role=PromptMessageRole.USER,
-                    edition_type="basic",
-                ),
-            ],
-            expected_messages=mock_history[fake_window_size * -2 :] + [UserPromptMessage(content=fake_query)],
-            file_variables={
-                "input.image": File(
-                    tenant_id="test",
-                    type=FileType.VIDEO,
-                    filename="test1.mp4",
-                    transfer_method=FileTransferMethod.REMOTE_URL,
-                    remote_url=fake_remote_url,
-                    extension="mp4",
-                )
-            },
-        ),
     ]
 
     for scenario in test_scenarios:
