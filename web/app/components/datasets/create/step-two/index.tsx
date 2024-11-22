@@ -665,7 +665,16 @@ const StepTwo = ({
                   </div>
                   <div className={s.formRow}>
                     <div className='w-full'>
-                      <div className={s.label}>{t('datasetCreation.stepTwo.maxLength')}</div>
+                      <div className={s.label}>
+                        {t('datasetCreation.stepTwo.maxLength')}
+                        <Tooltip
+                          popupContent={
+                            <div className='max-w-[200px]'>
+                              {t('datasetCreation.stepTwo.maxLengthTip')}
+                            </div>
+                          }
+                        />
+                      </div>
                       <Input
                         type="number"
                         className='h-9'
