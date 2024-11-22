@@ -1,22 +1,23 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
-import { RiArrowDownSLine } from '@remixicon/react'
+import { RiArrowDownSLine, RiFilter3Line } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Check, DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
+import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 export type AppSelectorProps = {
   value: string
+  className?: string
   onChange: (value: string) => void
 }
 
-const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
+const AppTypeSelector = ({ value, className, onChange }: AppSelectorProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
 
@@ -33,18 +34,15 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
           className='block'
         >
           <div className={cn(
-            'flex items-center gap-1 h-8 text-gray-700 text-[13px] leading-[18px] cursor-pointer px-2 rounded-lg bg-white shadow-xs hover:bg-gray-200',
-            open && !value && '!bg-gray-200 hover:!bg-gray-200',
-            !!value && '!bg-white hover:!bg-white',
+            'flex items-center justify-between gap-1 h-8 rounded-md system-sm-medium text-text-tertiary cursor-pointer px-2 hover:bg-state-base-hover',
+            className,
           )}>
             {!value && (
               <>
+                <RiFilter3Line className='w-4 h-4' />
+                <div className='flex-1 text-center'>{t('app.typeSelector.all')}</div>
                 <div className='w-4 h-4 p-[1px]'>
-                  <DotsGrid className='w-3.5 h-3.5' />
-                </div>
-                <div className=''>{t('app.typeSelector.all')}</div>
-                <div className='w-4 h-4 p-[1px]'>
-                  <RiArrowDownSLine className='w-3.5 h-3.5' />
+                  <RiArrowDownSLine className='w-4 h-4' />
                 </div>
               </>
             )}

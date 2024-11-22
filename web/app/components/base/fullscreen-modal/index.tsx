@@ -46,7 +46,7 @@ export default function FullScreenModal({
             e.stopPropagation()
           }}
         >
-          <div className="w-full h-full bg-background-default-subtle rounded-2xl relative">
+          <div className="w-full h-full bg-background-default-subtle rounded-2xl border border-effects-highlight relative">
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"

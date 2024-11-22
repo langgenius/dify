@@ -24,7 +24,7 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
   const { replace } = useRouter()
   const dslUrl = searchParams.get('remoteInstallUrl') || undefined
 
-  const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
+  const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(true)
   const [showNewAppModal, setShowNewAppModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(!!dslUrl)
 
