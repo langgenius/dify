@@ -255,7 +255,7 @@ class AppModelConfig(db.Model):
 
     @property
     def model_dict(self) -> dict:
-        return json.loads(self.model) if self.model else None
+        return json.loads(self.model) if self.model else {}
 
     @property
     def suggested_questions_list(self) -> list:
@@ -600,8 +600,8 @@ class Conversation(db.Model):
                 app_model_config = (
                     db.session.query(AppModelConfig).filter(AppModelConfig.id == self.app_model_config_id).first()
                 )
-
-                model_config = app_model_config.to_dict()
+                if app_model_config:
+                    model_config = app_model_config.to_dict()
 
         model_config["model_id"] = self.model_id
         model_config["provider"] = self.model_provider
