@@ -1,6 +1,6 @@
 from typing import Any
 
-from core.variables import Variable
+from core.variables import SegmentType, Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
@@ -26,11 +26,14 @@ class VariableOperator(BaseNode[VariableOperatorNodeData]):
     def _run(self) -> NodeRunResult:
         inputs = self.node_data.model_dump()
         process_data = {}
-        # This node has no outputs
+        # NOTE: This node has no outputs
+        updated_variables: list[Variable] = []
 
         try:
             for item in self.node_data.items:
                 variable = self.graph_runtime_state.variable_pool.get(item.variable_selector)
+
+                # ==================== Validation Part
 
                 # Check if variable exists
                 if not isinstance(variable, Variable):
@@ -57,6 +60,9 @@ class VariableOperator(BaseNode[VariableOperatorNodeData]):
                     value = self.graph_runtime_state.variable_pool.get(item.value)
                     if value is None:
                         raise VariableNotFoundError(variable_selector=item.value)
+                    # Skip if value is NoneSegment
+                    if value.value_type == SegmentType.NONE:
+                        continue
                     item.value = value.value
 
                 # Check if input value is valid
@@ -65,19 +71,15 @@ class VariableOperator(BaseNode[VariableOperatorNodeData]):
                 ):
                     raise InvalidInputValueError(value=item.value)
 
+                # ==================== Execution Part
+
                 updated_value = self._handle_item(
                     variable=variable,
                     operation=item.operation,
                     value=item.value,
                 )
                 variable = variable.model_copy(update={"value": updated_value})
-                self.graph_runtime_state.variable_pool.add(item.variable_selector, variable)
-                process_data[variable.name] = updated_value
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                inputs=inputs,
-                process_data=process_data,
-            )
+                updated_variables.append(variable)
         except VariableOperatorNodeError as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -85,6 +87,17 @@ class VariableOperator(BaseNode[VariableOperatorNodeData]):
                 process_data=process_data,
                 error=str(e),
             )
+
+        # Update variables
+        for variable in updated_variables:
+            self.graph_runtime_state.variable_pool.add(variable.selector, variable)
+            process_data[variable.name] = variable.value
+
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs=inputs,
+            process_data=process_data,
+        )
 
     def _handle_item(
         self,
