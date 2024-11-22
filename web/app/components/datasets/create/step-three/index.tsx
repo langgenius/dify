@@ -22,7 +22,7 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache }: Step
   const isMobile = media === MediaType.mobile
 
   return (
-    <div className='flex w-full h-full'>
+    <div className='flex w-full max-h-full h-full overflow-y-auto'>
       <div className={'h-full w-full overflow-y-scroll px-6 sm:px-16'}>
         <div className='max-w-[636px]'>
           {!datasetId && (
