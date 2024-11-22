@@ -14,9 +14,7 @@ from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
-from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.index_processor.constant.index_type import IndexType
-from core.rag.models.document import Document as RAGDocument
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
@@ -754,7 +752,7 @@ class DocumentService:
             # save process rule
             if not dataset_process_rule:
                 process_rule = knowledge_config.process_rule
-                if process_rule.mode == "custom" or process_rule.mode == "hierarchical":
+                if process_rule.mode in ("custom", "hierarchical"):
                     dataset_process_rule = DatasetProcessRule(
                         dataset_id=dataset.id,
                         mode=process_rule.mode,
@@ -1530,7 +1528,7 @@ class SegmentService:
                     document.word_count = max(0, document.word_count + word_count_change)
                     db.session.add(document)
                 # update segment index task
-                if segment_update_entity.enabled:
+                if args.enabled:
                     VectorService.create_segments_vector([args.keywords], [segment], dataset)
                 if document.doc_form == IndexType.PARENT_CHILD_INDEX and args.regenerate_child_chunks:
                     # regenerate child chunks
@@ -1630,7 +1628,7 @@ class SegmentService:
                     VectorService.generate_child_chunks(
                         segment, document, dataset, embedding_model_instance, processing_rule, True
                     )
-                elif document.doc_form == IndexType.PARAGRAPH_INDEX or document.doc_form == IndexType.QA_INDEX:
+                elif document.doc_form in (IndexType.PARAGRAPH_INDEX, IndexType.QA_INDEX):
                     # update segment vector index
                     VectorService.update_segment_vector(args.keywords, segment, dataset)
 
@@ -1864,7 +1862,6 @@ class SegmentService:
         document: Document,
         dataset: Dataset,
     ) -> ChildChunk:
-
         try:
             child_chunk.content = content
             child_chunk.word_count = len(content)

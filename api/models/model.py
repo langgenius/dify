@@ -19,6 +19,7 @@ from core.file.tool_file_parser import ToolFileParser
 from extensions.ext_database import db
 from libs.helper import generate_string
 from models.enums import CreatedByRole
+from models.workflow import Workflow
 
 from .account import Account, Tenant
 from .types import StringUUID
@@ -113,7 +114,7 @@ class App(db.Model):
         return None
 
     @property
-    def workflow(self) -> Optional["Workflow"]:
+    def workflow(self) -> Optional[Workflow]:
         if self.workflow_id:
             from .workflow import Workflow
 
