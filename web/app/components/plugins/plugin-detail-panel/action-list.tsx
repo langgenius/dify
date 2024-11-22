@@ -24,14 +24,16 @@ const ActionList = ({
 }: Props) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceManager } = useAppContext()
-  const { data: provider } = useBuiltinProviderInfo(`${detail.plugin_id}/${detail.name}`)
+  const providerBriefInfo = detail.declaration.tool.identity
+  const providerKey = `${detail.plugin_id}/${providerBriefInfo.name}`
+  const { data: provider } = useBuiltinProviderInfo(providerKey)
   const invalidateProviderInfo = useInvalidateBuiltinProviderInfo()
-  const { data } = useBuiltinTools(`${detail.plugin_id}/${detail.name}`)
+  const { data } = useBuiltinTools(providerKey)
 
   const [showSettingAuth, setShowSettingAuth] = useState(false)
 
   const handleCredentialSettingUpdate = () => {
-    invalidateProviderInfo(`${detail.plugin_id}/${detail.name}`)
+    invalidateProviderInfo(providerKey)
     Toast.notify({
       type: 'success',
       message: t('common.api.actionSuccess'),

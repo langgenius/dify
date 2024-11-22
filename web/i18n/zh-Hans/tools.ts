@@ -129,6 +129,7 @@ const translation = {
     parameters: '参数',
     string: '字符串',
     number: '数字',
+    file: '文件',
     required: '必填',
     infoAndSetting: '信息和设置',
   },
