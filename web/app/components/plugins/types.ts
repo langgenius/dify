@@ -5,7 +5,7 @@ import type { Locale } from '@/i18n'
 export enum PluginType {
   tool = 'tool',
   model = 'model',
-  extension = 'endpoint',
+  extension = 'extension',
 }
 
 export enum PluginSource {
