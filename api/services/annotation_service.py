@@ -124,8 +124,7 @@ class AppAnnotationService:
             raise NotFound("App not found")
         if keyword:
             annotations = (
-                db.session.query(MessageAnnotation)
-                .filter(MessageAnnotation.app_id == app_id)
+                MessageAnnotation.query.filter(MessageAnnotation.app_id == app_id)
                 .filter(
                     or_(
                         MessageAnnotation.question.ilike("%{}%".format(keyword)),
@@ -137,8 +136,7 @@ class AppAnnotationService:
             )
         else:
             annotations = (
-                db.session.query(MessageAnnotation)
-                .filter(MessageAnnotation.app_id == app_id)
+                MessageAnnotation.query.filter(MessageAnnotation.app_id == app_id)
                 .order_by(MessageAnnotation.created_at.desc(), MessageAnnotation.id.desc())
                 .paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
             )
@@ -327,8 +325,7 @@ class AppAnnotationService:
             raise NotFound("Annotation not found")
 
         annotation_hit_histories = (
-            db.session.query(AppAnnotationHitHistory)
-            .filter(
+            AppAnnotationHitHistory.query.filter(
                 AppAnnotationHitHistory.app_id == app_id,
                 AppAnnotationHitHistory.annotation_id == annotation_id,
             )

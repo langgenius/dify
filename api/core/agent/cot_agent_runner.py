@@ -26,18 +26,18 @@ from models.model import Message
 class CotAgentRunner(BaseAgentRunner, ABC):
     _is_first_iteration = True
     _ignore_observation_providers = ["wenxin"]
-    _historic_prompt_messages: list[PromptMessage] = None
-    _agent_scratchpad: list[AgentScratchpadUnit] = None
-    _instruction: str = None
-    _query: str = None
-    _prompt_messages_tools: list[PromptMessage] = None
+    _historic_prompt_messages: list[PromptMessage] | None = None
+    _agent_scratchpad: list[AgentScratchpadUnit] | None = None
+    _instruction: str | None = None
+    _query: str | None = None
+    _prompt_messages_tools: list[PromptMessage] | None = None
 
     def run(
         self,
         message: Message,
         query: str,
         inputs: dict[str, str],
-    ) -> Union[Generator, LLMResult]:
+    ) -> Generator:
         """
         Run Cot agent application
         """
@@ -57,10 +57,10 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         # init instruction
         inputs = inputs or {}
         instruction = app_config.prompt_template.simple_prompt_template
-        self._instruction = self._fill_in_inputs_from_external_data_tools(instruction, inputs)
+        self._instruction = self._fill_in_inputs_from_external_data_tools(instruction or "", inputs)
 
         iteration_step = 1
-        max_iteration_steps = min(app_config.agent.max_iteration, 5) + 1
+        max_iteration_steps = min(app_config.agent.max_iteration if app_config.agent else 5, 5) + 1
 
         # convert tools into ModelRuntime Tool format
         tool_instances, self._prompt_messages_tools = self._init_prompt_tools()
@@ -81,6 +81,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 llm_usage.total_price += usage.total_price
 
         model_instance = self.model_instance
+        if not model_instance:
+            raise ValueError("failed to get model instance")
 
         while function_call_state and iteration_step <= max_iteration_steps:
             # continue to run until there is not any tool call
@@ -90,7 +92,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 # the last iteration, remove all tools
                 self._prompt_messages_tools = []
 
-            message_file_ids = []
+            message_file_ids: list[str] = []
 
             agent_thought = self.create_agent_thought(
                 message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
@@ -105,7 +107,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             prompt_messages = self._organize_prompt_messages()
             self.recalc_llm_max_tokens(self.model_config, prompt_messages)
             # invoke model
-            chunks: Generator[LLMResultChunk, None, None] = model_instance.invoke_llm(
+            chunks = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=app_generate_entity.model_conf.parameters,
                 tools=[],
@@ -115,11 +117,14 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 callbacks=[],
             )
 
+            if not isinstance(chunks, Generator):
+                raise ValueError("Expected streaming response from LLM")
+
             # check llm result
             if not chunks:
                 raise ValueError("failed to invoke llm")
 
-            usage_dict = {}
+            usage_dict: dict = {}
             react_chunks = CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict)
             scratchpad = AgentScratchpadUnit(
                 agent_response="",
@@ -376,7 +381,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         """
         result: list[PromptMessage] = []
         scratchpads: list[AgentScratchpadUnit] = []
-        current_scratchpad: AgentScratchpadUnit = None
+        current_scratchpad: AgentScratchpadUnit | None = None
 
         for message in self.history_prompt_messages:
             if isinstance(message, AssistantPromptMessage):

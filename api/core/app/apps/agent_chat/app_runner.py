@@ -173,6 +173,8 @@ class AgentChatAppRunner(AppRunner):
             return
 
         agent_entity = app_config.agent
+        if not agent_entity:
+            raise ValueError("Agent entity not found")
 
         # load tool variables
         tool_conversation_variables = self._load_tool_variables(
@@ -257,7 +259,7 @@ class AgentChatAppRunner(AppRunner):
         """
         load tool variables from database
         """
-        tool_variables: ToolConversationVariables = (
+        tool_variables: ToolConversationVariables | None = (
             db.session.query(ToolConversationVariables)
             .filter(
                 ToolConversationVariables.conversation_id == conversation_id,

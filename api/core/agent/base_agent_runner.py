@@ -326,12 +326,17 @@ class BaseAgentRunner(AppRunner):
         tool_invoke_meta: Union[str, dict],
         answer: str,
         messages_ids: list[str],
-        llm_usage: LLMUsage = None,
-    ) -> MessageAgentThought:
+        llm_usage: LLMUsage | None = None,
+    ):
         """
         Save agent thought
         """
-        agent_thought = db.session.query(MessageAgentThought).filter(MessageAgentThought.id == agent_thought.id).first()
+        queried_thought = (
+            db.session.query(MessageAgentThought).filter(MessageAgentThought.id == agent_thought.id).first()
+        )
+        if not queried_thought:
+            raise ValueError(f"Agent thought {agent_thought.id} not found")
+        agent_thought = queried_thought
 
         if thought is not None:
             agent_thought.thought = thought
@@ -404,13 +409,18 @@ class BaseAgentRunner(AppRunner):
         """
         convert tool variables to db variables
         """
-        db_variables = (
+        queried_variables = (
             db.session.query(ToolConversationVariables)
             .filter(
                 ToolConversationVariables.conversation_id == self.message.conversation_id,
             )
             .first()
         )
+
+        if not queried_variables:
+            return
+
+        db_variables = queried_variables
 
         db_variables.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db_variables.variables_str = json.dumps(jsonable_encoder(tool_variables.pool))
@@ -421,7 +431,7 @@ class BaseAgentRunner(AppRunner):
         """
         Organize agent history
         """
-        result = []
+        result: list[PromptMessage] = []
         # check if there is a system message in the beginning of the conversation
         for prompt_message in prompt_messages:
             if isinstance(prompt_message, SystemPromptMessage):

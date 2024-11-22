@@ -1,6 +1,6 @@
 import time
 from collections.abc import Generator, Mapping
-from typing import TYPE_CHECKING, Any, Optional, Union
+from typing import TYPE_CHECKING, Any, cast, Optional, Union
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -156,6 +156,7 @@ class AppRunner:
         """
         # get prompt without memory and context
         if prompt_template_entity.prompt_type == PromptTemplateEntity.PromptType.SIMPLE:
+            prompt_transform: Union[SimplePromptTransform, AdvancedPromptTransform]
             prompt_transform = SimplePromptTransform()
             prompt_messages, stop = prompt_transform.get_prompt(
                 app_mode=AppMode.value_of(app_record.mode),
@@ -171,8 +172,11 @@ class AppRunner:
             memory_config = MemoryConfig(window=MemoryConfig.WindowConfig(enabled=False))
 
             model_mode = ModelMode.value_of(model_config.mode)
+            prompt_template: Union[CompletionModelPromptTemplate, list[ChatModelMessage]]
             if model_mode == ModelMode.COMPLETION:
                 advanced_completion_prompt_template = prompt_template_entity.advanced_completion_prompt_template
+                if not advanced_completion_prompt_template:
+                    raise InvokeBadRequestError("Advanced completion prompt template is required.")
                 prompt_template = CompletionModelPromptTemplate(text=advanced_completion_prompt_template.prompt)
 
                 if advanced_completion_prompt_template.role_prefix:
@@ -181,6 +185,8 @@ class AppRunner:
                         assistant=advanced_completion_prompt_template.role_prefix.assistant,
                     )
             else:
+                if not prompt_template_entity.advanced_chat_prompt_template:
+                    raise InvokeBadRequestError("Advanced chat prompt template is required.")
                 prompt_template = []
                 for message in prompt_template_entity.advanced_chat_prompt_template.messages:
                     prompt_template.append(ChatModelMessage(text=message.text, role=message.role))
@@ -246,7 +252,7 @@ class AppRunner:
 
     def _handle_invoke_result(
         self,
-        invoke_result: Union[LLMResult, Generator],
+        invoke_result: Union[LLMResult, Generator[Any, None, None]],
         queue_manager: AppQueueManager,
         stream: bool,
         agent: bool = False,
@@ -260,9 +266,13 @@ class AppRunner:
         :return:
         """
         if not stream:
-            self._handle_invoke_result_direct(invoke_result=invoke_result, queue_manager=queue_manager, agent=agent)
+            self._handle_invoke_result_direct(
+                invoke_result=cast(LLMResult, invoke_result), queue_manager=queue_manager, agent=agent
+            )
         else:
-            self._handle_invoke_result_stream(invoke_result=invoke_result, queue_manager=queue_manager, agent=agent)
+            self._handle_invoke_result_stream(
+                invoke_result=cast(Generator[Any, None, None], invoke_result), queue_manager=queue_manager, agent=agent
+            )
 
     def _handle_invoke_result_direct(
         self, invoke_result: LLMResult, queue_manager: AppQueueManager, agent: bool

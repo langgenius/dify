@@ -359,11 +359,11 @@ class GraphEngine:
                                 parallel_start_node_id=parallel_start_node_id,
                             )
 
-                            for item in parallel_generator:
-                                if isinstance(item, str):
-                                    final_node_id = item
+                            for parallel_result in parallel_generator:
+                                if isinstance(parallel_result, str):
+                                    final_node_id = parallel_result
                                 else:
-                                    yield item
+                                    yield parallel_result
 
                         break
 
@@ -378,11 +378,11 @@ class GraphEngine:
                         parallel_start_node_id=parallel_start_node_id,
                     )
 
-                    for item in parallel_generator:
-                        if isinstance(item, str):
-                            final_node_id = item
+                    for generated_item in parallel_generator:
+                        if isinstance(generated_item, str):
+                            final_node_id = generated_item
                         else:
-                            yield item
+                            yield generated_item
 
                     if not final_node_id:
                         break

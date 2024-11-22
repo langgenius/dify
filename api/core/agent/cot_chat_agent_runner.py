@@ -19,7 +19,12 @@ class CotChatAgentRunner(CotAgentRunner):
         """
         Organize system prompt
         """
+        if not self.app_config.agent:
+            raise ValueError("Agent configuration is not set")
+
         prompt_entity = self.app_config.agent.prompt
+        if not prompt_entity:
+            raise ValueError("Agent prompt configuration is not set")
         first_prompt = prompt_entity.first_prompt
 
         system_prompt = (

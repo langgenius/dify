@@ -257,6 +257,8 @@ class MessageService:
                 )
 
                 app_model_config = app_model_config.from_model_config_dict(conversation_override_model_configs)
+            if not app_model_config:
+                raise ValueError("did not find app model config")
 
             suggested_questions_after_answer = app_model_config.suggested_questions_after_answer_dict
             if suggested_questions_after_answer.get("enabled", False) is False:

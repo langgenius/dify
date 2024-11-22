@@ -91,7 +91,7 @@ class Tool(BaseModel, ABC):
         :return: the tool provider type
         """
 
-    def load_variables(self, variables: ToolRuntimeVariablePool):
+    def load_variables(self, variables: ToolRuntimeVariablePool | None) -> None:
         """
         load variables from database
 

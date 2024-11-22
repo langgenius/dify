@@ -21,6 +21,8 @@ class WebConversationService:
         pinned: Optional[bool] = None,
         sort_by="-updated_at",
     ) -> InfiniteScrollPagination:
+        if not user:
+            raise ValueError("User is required")
         include_ids = None
         exclude_ids = None
         if pinned is not None:
@@ -53,6 +55,8 @@ class WebConversationService:
 
     @classmethod
     def pin(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
+        if not user:
+            return
         pinned_conversation = (
             db.session.query(PinnedConversation)
             .filter(
@@ -83,6 +87,8 @@ class WebConversationService:
 
     @classmethod
     def unpin(cls, app_model: App, conversation_id: str, user: Optional[Union[Account, EndUser]]):
+        if not user:
+            return
         pinned_conversation = (
             db.session.query(PinnedConversation)
             .filter(
