@@ -1,4 +1,5 @@
 from abc import ABC
+from collections.abc import Sequence
 from enum import Enum
 from typing import Literal, Optional
 
@@ -109,13 +110,20 @@ class ImagePromptMessageContent(PromptMessageContent):
     detail: DETAIL = DETAIL.LOW
 
 
+class DocumentPromptMessageContent(PromptMessageContent):
+    type: PromptMessageContentType = PromptMessageContentType.DOCUMENT
+    encode_format: Literal["base64"]
+    mime_type: str
+    data: str
+
+
 class PromptMessage(ABC, BaseModel):
     """
     Model class for prompt message.
     """
 
     role: PromptMessageRole
-    content: Optional[str | list[PromptMessageContent]] = None
+    content: Optional[str | Sequence[PromptMessageContent]] = None
     name: Optional[str] = None
 
     def is_empty(self) -> bool:

@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Optional
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -27,7 +28,7 @@ class TokenBufferMemory:
 
     def get_history_prompt_messages(
         self, max_token_limit: int = 2000, message_limit: Optional[int] = None
-    ) -> list[PromptMessage]:
+    ) -> Sequence[PromptMessage]:
         """
         Get history prompt messages.
         :param max_token_limit: max token limit

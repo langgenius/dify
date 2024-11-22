@@ -30,6 +30,7 @@ from core.rag.splitter.fixed_text_splitter import (
 )
 from core.rag.splitter.text_splitter import TextSplitter
 from core.tools.utils.text_processing_utils import remove_leading_symbols
+from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -278,6 +279,19 @@ class IndexingRunner:
             for document in documents:
                 if len(preview_texts) < 5:
                     preview_texts.append(document.page_content)
+
+                # delete image files and related db records
+                image_upload_file_ids = get_image_upload_file_ids(document.page_content)
+                for upload_file_id in image_upload_file_ids:
+                    image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
+                    try:
+                        storage.delete(image_file.key)
+                    except Exception:
+                        logging.exception(
+                            "Delete image_files failed while indexing_estimate, \
+                                          image_upload_file_is: {}".format(upload_file_id)
+                        )
+                    db.session.delete(image_file)
 
         if doc_form and doc_form == "qa_model":
             if len(preview_texts) > 0:

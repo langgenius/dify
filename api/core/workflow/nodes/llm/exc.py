@@ -24,3 +24,11 @@ class LLMModeRequiredError(LLMNodeError):
 
 class NoPromptFoundError(LLMNodeError):
     """Raised when no prompt is found in the LLM configuration."""
+
+
+class NotSupportedPromptTypeError(LLMNodeError):
+    """Raised when the prompt type is not supported."""
+
+
+class MemoryRolePrefixRequiredError(LLMNodeError):
+    """Raised when memory role prefix is required for completion model."""
