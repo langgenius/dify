@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useMemo,
   useState,
 } from 'react'
 import { intersection } from 'lodash-es'
@@ -20,7 +21,9 @@ import type {
   Edge,
   OnSelectBlock,
 } from './types'
+import { NodeRunningStatus } from './types'
 import { ITERATION_CHILDREN_Z_INDEX } from './constants'
+import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
 import cn from '@/utils/classnames'
 
 const CustomEdge = ({
@@ -53,6 +56,25 @@ const CustomEdge = ({
   const { handleNodeAdd } = useNodesInteractions()
   const { availablePrevBlocks } = useAvailableBlocks((data as Edge['data'])!.targetType, (data as Edge['data'])?.isInIteration)
   const { availableNextBlocks } = useAvailableBlocks((data as Edge['data'])!.sourceType, (data as Edge['data'])?.isInIteration)
+  const {
+    _sourceRunningStatus,
+    _targetRunningStatus,
+  } = data
+
+  const linearGradientId = useMemo(() => {
+    if (
+      (
+        _sourceRunningStatus === NodeRunningStatus.Succeeded
+        || _sourceRunningStatus === NodeRunningStatus.Failed
+        || _sourceRunningStatus === NodeRunningStatus.Exception
+      ) && (
+        _targetRunningStatus === NodeRunningStatus.Succeeded
+        || _targetRunningStatus === NodeRunningStatus.Failed
+        || _targetRunningStatus === NodeRunningStatus.Exception
+      )
+    )
+      return id
+  }, [_sourceRunningStatus, _targetRunningStatus, id])
 
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)
@@ -73,13 +95,32 @@ const CustomEdge = ({
     )
   }, [handleNodeAdd, source, sourceHandleId, target, targetHandleId])
 
+  const stroke = useMemo(() => {
+    if (linearGradientId)
+      return `url(#${linearGradientId})`
+
+    if (selected || data?._connectedNodeIsHovering || data?._run)
+      return 'blue'
+
+    return '#D0D5DD'
+  }, [data._connectedNodeIsHovering, data._run, linearGradientId, selected])
+
   return (
     <>
+      {
+        linearGradientId && (
+          <CustomEdgeLinearGradientRender
+            id={linearGradientId}
+            startColor='#2970FF'
+            stopColor='#FF3D71'
+          />
+        )
+      }
       <BaseEdge
         id={id}
         path={edgePath}
         style={{
-          stroke: (selected || data?._connectedNodeIsHovering || data?._run) ? '#2970FF' : '#D0D5DD',
+          stroke,
           strokeWidth: 2,
         }}
       />

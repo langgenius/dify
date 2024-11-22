@@ -81,6 +81,8 @@ export type CommonEdgeType = {
   _connectedNodeIsSelected?: boolean
   _run?: boolean
   _isBundled?: boolean
+  _sourceRunningStatus?: NodeRunningStatus
+  _targetRunningStatus?: NodeRunningStatus
   isInIteration?: boolean
   iteration_id?: string
   sourceType: BlockEnum
@@ -284,6 +286,7 @@ export enum NodeRunningStatus {
   Running = 'running',
   Succeeded = 'succeeded',
   Failed = 'failed',
+  Exception = 'exception',
 }
 
 export type OnNodeAdd = (

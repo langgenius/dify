@@ -21,10 +21,8 @@ const ErrorHandle = ({
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const { error_strategy } = data
   const [collapsed, setCollapsed] = useState(true)
-  const [errorHandleType, setErrorHandleType] = useState(ErrorHandleTypeEnum.none)
 
   const handleErrorHandleTypeChange = useCallback((value: ErrorHandleTypeEnum) => {
-    setErrorHandleType(value)
     if (value === ErrorHandleTypeEnum.none) {
       handleNodeDataUpdateWithSyncDraft({
         id,
@@ -70,7 +68,7 @@ const ErrorHandle = ({
           <div className='system-sm-semibold-uppercase text-text-secondary'>ERROR HANDLING</div>
         </div>
         <ErrorHandleTypeSelector
-          value={errorHandleType}
+          value={error_strategy || ErrorHandleTypeEnum.none}
           onSelected={handleErrorHandleTypeChange}
         />
       </div>
