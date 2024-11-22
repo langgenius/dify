@@ -636,7 +636,7 @@ const StepTwo = ({
   } as RetrievalConfig)
 
   return (
-    <div className='flex w-full h-full'>
+    <div className='flex w-full max-h-full h-full overflow-y-auto'>
       <div className='relative h-full w-full overflow-y-scroll'>
         <div className={cn(s.form, isMobile && '!px-4')}>
           <div className={s.label}>{t('datasetCreation.stepTwo.segmentation')}</div>

@@ -119,7 +119,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
 
   return (
     <div className='flex flex-col' style={{ height: 'calc(100vh - 56px)' }}>
-      <div className="grow bg-white">
+      <div className="grow bg-white flex flex-col max-h-full h-full">
         <Topbar activeStepIndex={step - 1} />
         <div className={step === 1 ? 'block h-full' : 'hidden'}>
           <StepOne
