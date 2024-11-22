@@ -1,8 +1,6 @@
 import json
 from typing import Any, Union
 
-from jsonpath_ng import parse
-
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
@@ -21,7 +19,7 @@ class JSONExtractTool(BuiltinTool):
         json_filter = tool_parameters.get("json_filter", "")
         ensure_ascii = tool_parameters.get("ensure_ascii", True)
         output_full_parsed_json = tool_parameters.get("output_full_parsed_json", True)
-        
+
         if not content:
             return self.create_text_message("Invalid parameter content")
 
