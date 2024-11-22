@@ -21,7 +21,7 @@ from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNode, BaseNodeData
 from core.workflow.nodes.event import NodeEvent
 from core.workflow.nodes.llm import LLMNodeData
-from core.workflow.nodes.node_mapping import node_type_classes_mapping
+from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from factories import file_factory
 from models.enums import UserFrom
 from models.workflow import (
@@ -146,11 +146,8 @@ class WorkflowEntry:
 
         # Get node class
         node_type = NodeType(node_config.get("data", {}).get("type"))
-        node_cls = node_type_classes_mapping.get(node_type)
-        node_cls = cast(type[BaseNode], node_cls)
-
-        if not node_cls:
-            raise ValueError(f"Node class not found for node type {node_type}")
+        node_version = node_config.get("data", {}).get("version", "1")
+        node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
         # init variable pool
         variable_pool = VariablePool(

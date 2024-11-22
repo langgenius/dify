@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import Any, Literal
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -16,5 +16,5 @@ class VariableOperationItem(BaseModel):
 
 
 class VariableOperatorNodeData(BaseNodeData):
-    version: Literal["2"] = "2"
+    version: str = "2"
     items: Sequence[VariableOperationItem]
