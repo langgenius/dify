@@ -1,6 +1,6 @@
 from abc import ABC
 from collections.abc import Sequence
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -49,7 +49,7 @@ class PromptMessageFunction(BaseModel):
     function: PromptMessageTool
 
 
-class PromptMessageContentType(Enum):
+class PromptMessageContentType(StrEnum):
     """
     Enum class for prompt message content type.
     """
