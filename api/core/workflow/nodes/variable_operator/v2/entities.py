@@ -1,0 +1,20 @@
+from collections.abc import Sequence
+from typing import Any, Literal
+
+from pydantic import BaseModel
+
+from core.workflow.nodes.base import BaseNodeData
+
+from .enums import InputType, Operation
+
+
+class VariableOperationItem(BaseModel):
+    variable_selector: Sequence[str]
+    input_type: InputType
+    operation: Operation
+    value: Any
+
+
+class VariableOperatorNodeData(BaseNodeData):
+    version: Literal["2"] = "2"
+    items: Sequence[VariableOperationItem]
