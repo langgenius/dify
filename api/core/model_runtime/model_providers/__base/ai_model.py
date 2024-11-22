@@ -1,7 +1,6 @@
 import decimal
 import os
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
 from typing import Optional
 
 from pydantic import ConfigDict
@@ -214,7 +213,7 @@ class AIModel(ABC):
 
         return model_schemas
 
-    def get_model_schema(self, model: str, credentials: Optional[Mapping] = None) -> Optional[AIModelEntity]:
+    def get_model_schema(self, model: str, credentials: Optional[dict] = None) -> Optional[AIModelEntity]:
         """
         Get model schema by model name and credentials
 

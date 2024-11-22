@@ -63,6 +63,8 @@ class LangSmithDataTrace(BaseTraceInstance):
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         trace_id = trace_info.message_id or trace_info.workflow_app_log_id or trace_info.workflow_run_id
+        if not trace_info.start_time:
+            return
         message_dotted_order = (
             generate_dotted_order(trace_info.message_id, trace_info.start_time) if trace_info.message_id else None
         )
