@@ -139,14 +139,12 @@ class BasePluginManager:
 
         rep = PluginDaemonBasicResponse[type](**json_response)
         if rep.code != 0:
-            if rep.code == -500:
-                try:
-                    error = PluginDaemonError(**json.loads(rep.message))
-                except Exception as e:
-                    raise ValueError(f"{rep.message}, code: {rep.code}")
+            try:
+                error = PluginDaemonError(**json.loads(rep.message))
+            except Exception as e:
+                raise ValueError(f"{rep.message}, code: {rep.code}")
 
-                self._handle_plugin_daemon_error(error.error_type, error.message, error.args)
-            raise ValueError(f"{rep.message}, code: {rep.code}")
+            self._handle_plugin_daemon_error(error.error_type, error.message, error.args)
         if rep.data is None:
             frame = inspect.currentframe()
             raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
@@ -224,6 +222,4 @@ class BasePluginManager:
             case PluginPermissionDeniedError.__name__:
                 raise PluginPermissionDeniedError(description=message)
             case _:
-                raise ValueError(
-                    f"got unknown error from plugin daemon: {error_type}, message: {message}, args: {args}"
-                )
+                raise Exception(f"got unknown error from plugin daemon: {error_type}, message: {message}, args: {args}")
