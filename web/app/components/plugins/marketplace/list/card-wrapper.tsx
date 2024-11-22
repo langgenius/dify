@@ -9,6 +9,7 @@ import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { useBoolean } from 'ahooks'
 import { useI18N } from '@/context/i18n'
+import { useTags } from '@/app/components/plugins/hooks'
 
 type CardWrapperProps = {
   plugin: Plugin
@@ -26,6 +27,7 @@ const CardWrapper = ({
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
   const { locale: localeFromLocale } = useI18N()
+  const { tagsMap } = useTags(t)
 
   if (showInstallButton) {
     return (
@@ -39,7 +41,7 @@ const CardWrapper = ({
           footer={
             <CardMoreInfo
               downloadCount={plugin.install_count}
-              tags={plugin.tags.map(tag => tag.name)}
+              tags={plugin.tags.map(tag => tagsMap[tag.name].label)}
             />
           }
         />
@@ -90,7 +92,7 @@ const CardWrapper = ({
         footer={
           <CardMoreInfo
             downloadCount={plugin.install_count}
-            tags={plugin.tags.map(tag => tag.name)}
+            tags={plugin.tags.map(tag => tagsMap[tag.name].label)}
           />
         }
       />
