@@ -1,6 +1,8 @@
 import json
 from typing import Any, Union
 
+from jsonpath_ng import parse
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
@@ -44,3 +46,28 @@ class JSONExtractTool(BuiltinTool):
 
         except Exception:
             return self.create_text_message("Failed to extract JSON content")
+
+    def _extract(self, content: str, json_filter: str, ensure_ascii: bool) -> tuple[str, list]:
+        try:
+            input_data = json.loads(content)
+            expr = parse("$." + json_filter.lstrip("$."))
+            matches = expr.find(input_data)
+
+            result = [match.value for match in matches]
+
+            if len(result) == 1:
+                result = result[0]
+
+            if isinstance(result, dict | list):
+                json_string = json.dumps(result, ensure_ascii=ensure_ascii)
+            elif isinstance(result, str | int | float | bool) or result is None:
+                json_string = str(result)
+            else:
+                json_string = repr(result)
+
+            return json_string, result
+
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON content: {str(e)}")
+        except Exception as e:
+            raise Exception(f"Extract operation failed: {str(e)}")
