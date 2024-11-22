@@ -10,6 +10,7 @@ from controllers.console import api
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.plugin.manager.exc import PluginDaemonBadRequestError
 from libs.login import login_required
 from models.account import TenantPluginPermission
 from services.plugin.plugin_permission_service import PluginPermissionService
@@ -24,11 +25,14 @@ class PluginDebuggingKeyApi(Resource):
     def get(self):
         tenant_id = current_user.current_tenant_id
 
-        return {
-            "key": PluginService.get_debugging_key(tenant_id),
-            "host": dify_config.PLUGIN_REMOTE_INSTALL_HOST,
-            "port": dify_config.PLUGIN_REMOTE_INSTALL_PORT,
-        }
+        try:
+            return {
+                "key": PluginService.get_debugging_key(tenant_id),
+                "host": dify_config.PLUGIN_REMOTE_INSTALL_HOST,
+                "port": dify_config.PLUGIN_REMOTE_INSTALL_PORT,
+            }
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
 
 class PluginListApi(Resource):
@@ -37,7 +41,11 @@ class PluginListApi(Resource):
     @account_initialization_required
     def get(self):
         tenant_id = current_user.current_tenant_id
-        plugins = PluginService.list(tenant_id)
+        try:
+            plugins = PluginService.list(tenant_id)
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
+
         return jsonable_encoder({"plugins": plugins})
 
 
@@ -52,7 +60,11 @@ class PluginListInstallationsFromIdsApi(Resource):
         parser.add_argument("plugin_ids", type=list, required=True, location="json")
         args = parser.parse_args()
 
-        plugins = PluginService.list_installations_from_ids(tenant_id, args["plugin_ids"])
+        try:
+            plugins = PluginService.list_installations_from_ids(tenant_id, args["plugin_ids"])
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
+
         return jsonable_encoder({"plugins": plugins})
 
 
@@ -64,7 +76,10 @@ class PluginIconApi(Resource):
         req.add_argument("filename", type=str, required=True, location="args")
         args = req.parse_args()
 
-        icon_bytes, mimetype = PluginService.get_asset(args["tenant_id"], args["filename"])
+        try:
+            icon_bytes, mimetype = PluginService.get_asset(args["tenant_id"], args["filename"])
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
@@ -85,7 +100,10 @@ class PluginUploadFromPkgApi(Resource):
             raise ValueError("File size exceeds the maximum allowed size")
 
         content = file.read()
-        response = PluginService.upload_pkg(tenant_id, content)
+        try:
+            response = PluginService.upload_pkg(tenant_id, content)
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
         return jsonable_encoder(response)
 
@@ -104,7 +122,10 @@ class PluginUploadFromGithubApi(Resource):
         parser.add_argument("package", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        response = PluginService.upload_pkg_from_github(tenant_id, args["repo"], args["version"], args["package"])
+        try:
+            response = PluginService.upload_pkg_from_github(tenant_id, args["repo"], args["version"], args["package"])
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
         return jsonable_encoder(response)
 
@@ -124,7 +145,10 @@ class PluginUploadFromBundleApi(Resource):
             raise ValueError("File size exceeds the maximum allowed size")
 
         content = file.read()
-        response = PluginService.upload_bundle(tenant_id, content)
+        try:
+            response = PluginService.upload_bundle(tenant_id, content)
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
         return jsonable_encoder(response)
 
@@ -146,7 +170,10 @@ class PluginInstallFromPkgApi(Resource):
             if not isinstance(plugin_unique_identifier, str):
                 raise ValueError("Invalid plugin unique identifier")
 
-        response = PluginService.install_from_local_pkg(tenant_id, args["plugin_unique_identifiers"])
+        try:
+            response = PluginService.install_from_local_pkg(tenant_id, args["plugin_unique_identifiers"])
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
         return jsonable_encoder(response)
 
@@ -166,13 +193,16 @@ class PluginInstallFromGithubApi(Resource):
         parser.add_argument("plugin_unique_identifier", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        response = PluginService.install_from_github(
-            tenant_id,
-            args["plugin_unique_identifier"],
-            args["repo"],
-            args["version"],
-            args["package"],
-        )
+        try:
+            response = PluginService.install_from_github(
+                tenant_id,
+                args["plugin_unique_identifier"],
+                args["repo"],
+                args["version"],
+                args["package"],
+            )
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
         return jsonable_encoder(response)
 
@@ -194,7 +224,10 @@ class PluginInstallFromMarketplaceApi(Resource):
             if not isinstance(plugin_unique_identifier, str):
                 raise ValueError("Invalid plugin unique identifier")
 
-        response = PluginService.install_from_marketplace_pkg(tenant_id, args["plugin_unique_identifiers"])
+        try:
+            response = PluginService.install_from_marketplace_pkg(tenant_id, args["plugin_unique_identifiers"])
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
         return jsonable_encoder(response)
 
@@ -211,9 +244,16 @@ class PluginFetchManifestApi(Resource):
         parser.add_argument("plugin_unique_identifier", type=str, required=True, location="args")
         args = parser.parse_args()
 
-        return jsonable_encoder(
-            {"manifest": PluginService.fetch_plugin_manifest(tenant_id, args["plugin_unique_identifier"]).model_dump()}
-        )
+        try:
+            return jsonable_encoder(
+                {
+                    "manifest": PluginService.fetch_plugin_manifest(
+                        tenant_id, args["plugin_unique_identifier"]
+                    ).model_dump()
+                }
+            )
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
 
 class PluginFetchInstallTasksApi(Resource):
@@ -229,9 +269,12 @@ class PluginFetchInstallTasksApi(Resource):
         parser.add_argument("page_size", type=int, required=True, location="args")
         args = parser.parse_args()
 
-        return jsonable_encoder(
-            {"tasks": PluginService.fetch_install_tasks(tenant_id, args["page"], args["page_size"])}
-        )
+        try:
+            return jsonable_encoder(
+                {"tasks": PluginService.fetch_install_tasks(tenant_id, args["page"], args["page_size"])}
+            )
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
 
 class PluginFetchInstallTaskApi(Resource):
@@ -242,7 +285,10 @@ class PluginFetchInstallTaskApi(Resource):
     def get(self, task_id: str):
         tenant_id = current_user.current_tenant_id
 
-        return jsonable_encoder({"task": PluginService.fetch_install_task(tenant_id, task_id)})
+        try:
+            return jsonable_encoder({"task": PluginService.fetch_install_task(tenant_id, task_id)})
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
 
 class PluginDeleteInstallTaskApi(Resource):
@@ -253,7 +299,10 @@ class PluginDeleteInstallTaskApi(Resource):
     def post(self, task_id: str):
         tenant_id = current_user.current_tenant_id
 
-        return {"success": PluginService.delete_install_task(tenant_id, task_id)}
+        try:
+            return {"success": PluginService.delete_install_task(tenant_id, task_id)}
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
 
 class PluginDeleteInstallTaskItemApi(Resource):
@@ -264,7 +313,10 @@ class PluginDeleteInstallTaskItemApi(Resource):
     def post(self, task_id: str, identifier: str):
         tenant_id = current_user.current_tenant_id
 
-        return {"success": PluginService.delete_install_task_item(tenant_id, task_id, identifier)}
+        try:
+            return {"success": PluginService.delete_install_task_item(tenant_id, task_id, identifier)}
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
 
 class PluginUpgradeFromMarketplaceApi(Resource):
@@ -280,11 +332,14 @@ class PluginUpgradeFromMarketplaceApi(Resource):
         parser.add_argument("new_plugin_unique_identifier", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        return jsonable_encoder(
-            PluginService.upgrade_plugin_with_marketplace(
-                tenant_id, args["original_plugin_unique_identifier"], args["new_plugin_unique_identifier"]
+        try:
+            return jsonable_encoder(
+                PluginService.upgrade_plugin_with_marketplace(
+                    tenant_id, args["original_plugin_unique_identifier"], args["new_plugin_unique_identifier"]
+                )
             )
-        )
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
 
 class PluginUpgradeFromGithubApi(Resource):
@@ -303,16 +358,19 @@ class PluginUpgradeFromGithubApi(Resource):
         parser.add_argument("package", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        return jsonable_encoder(
-            PluginService.upgrade_plugin_with_github(
-                tenant_id,
-                args["original_plugin_unique_identifier"],
-                args["new_plugin_unique_identifier"],
-                args["repo"],
-                args["version"],
-                args["package"],
+        try:
+            return jsonable_encoder(
+                PluginService.upgrade_plugin_with_github(
+                    tenant_id,
+                    args["original_plugin_unique_identifier"],
+                    args["new_plugin_unique_identifier"],
+                    args["repo"],
+                    args["version"],
+                    args["package"],
+                )
             )
-        )
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
 
 class PluginUninstallApi(Resource):
@@ -327,7 +385,10 @@ class PluginUninstallApi(Resource):
 
         tenant_id = current_user.current_tenant_id
 
-        return {"success": PluginService.uninstall(tenant_id, args["plugin_installation_id"])}
+        try:
+            return {"success": PluginService.uninstall(tenant_id, args["plugin_installation_id"])}
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
 
 
 class PluginChangePermissionApi(Resource):

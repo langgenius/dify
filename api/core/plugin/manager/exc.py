@@ -4,6 +4,10 @@ class PluginDaemonError(Exception):
     def __init__(self, description: str) -> None:
         self.description = description
 
+    def __str__(self) -> str:
+        # returns the class name and description
+        return f"{self.__class__.__name__}: {self.description}"
+
 
 class PluginDaemonInternalServerError(PluginDaemonError):
     description: str = "Internal Server Error"
