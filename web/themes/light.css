@@ -373,7 +373,7 @@ html[data-theme="light"] {
   --color-text-logo-text: #18222F;
   --color-text-empty-state-icon: #D0D5DC;
   --color-text-inverted: #000000;
-  --color-text-inverted-dimm: #000000F2;
+  --color-text-inverted-dimmed: #000000F2;
 
   --color-background-body: #F2F4F7;
   --color-background-default-subtle: #FCFCFD;
@@ -405,7 +405,7 @@ html[data-theme="light"] {
   --color-background-section-burn: #F2F4F7;
   --color-background-default-dodge: #FFFFFF;
   --color-background-overlay: #10182899;
-  --color-background-default-dimm: #E9EBF0;
+  --color-background-default-dimmed: #E9EBF0;
   --color-background-default-hover: #F9FAFB;
   --color-background-overlay-alt: #10182866;
   --color-background-surface-white: #FFFFFFF2;
@@ -447,8 +447,8 @@ html[data-theme="light"] {
   --color-workflow-link-line-error-active: #F04438;
   --color-workflow-link-line-error-handle: #F04438;
 
-  --color-workflow-minmap-bg: #E9EBF0;
-  --color-workflow-minmap-block: #C8CEDA4D;
+  --color-workflow-minimap-bg: #E9EBF0;
+  --color-workflow-minimap-block: #C8CEDA4D;
 
   --color-workflow-display-success-bg: #ECFDF3;
   --color-workflow-display-success-border-1: #17B26ACC;

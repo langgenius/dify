@@ -373,7 +373,7 @@ const vars = {
   'text-logo-text': 'var(--color-text-logo-text)',
   'text-empty-state-icon': 'var(--color-text-empty-state-icon)',
   'text-inverted': 'var(--color-text-inverted)',
-  'text-inverted-dimm': 'var(--color-text-inverted-dimm)',
+  'text-inverted-dimmed': 'var(--color-text-inverted-dimmed)',
 
   'background-body': 'var(--color-background-body)',
   'background-default-subtle': 'var(--color-background-default-subtle)',
@@ -405,7 +405,7 @@ const vars = {
   'background-section-burn': 'var(--color-background-section-burn)',
   'background-default-dodge': 'var(--color-background-default-dodge)',
   'background-overlay': 'var(--color-background-overlay)',
-  'background-default-dimm': 'var(--color-background-default-dimm)',
+  'background-default-dimmed': 'var(--color-background-default-dimmed)',
   'background-default-hover': 'var(--color-background-default-hover)',
   'background-overlay-alt': 'var(--color-background-overlay-alt)',
   'background-surface-white': 'var(--color-background-surface-white)',
@@ -447,8 +447,8 @@ const vars = {
   'workflow-link-line-error-active': 'var(--color-workflow-link-line-error-active)',
   'workflow-link-line-error-handle': 'var(--color-workflow-link-line-error-handle)',
 
-  'workflow-minmap-bg': 'var(--color-workflow-minmap-bg)',
-  'workflow-minmap-block': 'var(--color-workflow-minmap-block)',
+  'workflow-minimap-bg': 'var(--color-workflow-minimap-bg)',
+  'workflow-minimap-block': 'var(--color-workflow-minimap-block)',
 
   'workflow-display-success-bg': 'var(--color-workflow-display-success-bg)',
   'workflow-display-success-border-1': 'var(--color-workflow-display-success-border-1)',
