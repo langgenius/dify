@@ -7,10 +7,10 @@ class Operation(StrEnum):
     APPEND = "append"
     EXTEND = "extend"
     SET = "set"
-    ADD = "add"
-    SUBTRACT = "subtract"
-    MULTIPLY = "multiply"
-    DIVIDE = "divide"
+    ADD = "+="
+    SUBTRACT = "-="
+    MULTIPLY = "*="
+    DIVIDE = "/="
 
 
 class InputType(StrEnum):
