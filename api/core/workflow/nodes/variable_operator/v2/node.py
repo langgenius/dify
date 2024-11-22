@@ -19,7 +19,7 @@ from .exc import (
 )
 
 
-class VariableOperator(BaseNode[VariableOperatorNodeData]):
+class VariableOperatorNode(BaseNode[VariableOperatorNodeData]):
     _node_data_cls = VariableOperatorNodeData
     _node_type = NodeType.VARIABLE_OPERATOR
 
