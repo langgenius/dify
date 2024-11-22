@@ -36,7 +36,7 @@ class AIModel(ABC):
     model_config = ConfigDict(protected_namespaces=())
 
     @abstractmethod
-    def validate_credentials(self, model: str, credentials: Mapping) -> None:
+    def validate_credentials(self, model: str, credentials: dict) -> None:
         """
         Validate model credentials
 
@@ -236,9 +236,7 @@ class AIModel(ABC):
 
         return None
 
-    def get_customizable_model_schema_from_credentials(
-        self, model: str, credentials: Mapping
-    ) -> Optional[AIModelEntity]:
+    def get_customizable_model_schema_from_credentials(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         Get customizable model schema from credentials
 
@@ -248,7 +246,7 @@ class AIModel(ABC):
         """
         return self._get_customizable_model_schema(model, credentials)
 
-    def _get_customizable_model_schema(self, model: str, credentials: Mapping) -> Optional[AIModelEntity]:
+    def _get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         Get customizable model schema and fill in the template
         """
@@ -301,7 +299,7 @@ class AIModel(ABC):
 
         return schema
 
-    def get_customizable_model_schema(self, model: str, credentials: Mapping) -> Optional[AIModelEntity]:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         Get customizable model schema
 

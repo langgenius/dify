@@ -1,6 +1,7 @@
 import json
 import logging
 from pathlib import Path
+from typing import Optional
 
 from configs import dify_config
 from core.helper.position_helper import is_filtered
@@ -32,7 +33,7 @@ class BuiltinToolManageService:
             tenant_id=tenant_id, provider_controller=provider_controller
         )
         # check if user has added the provider
-        builtin_provider: BuiltinToolProvider = (
+        builtin_provider: Optional[BuiltinToolProvider] = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,
@@ -76,7 +77,7 @@ class BuiltinToolManageService:
         update builtin tool provider
         """
         # get if the provider exists
-        provider: BuiltinToolProvider = (
+        provider: Optional[BuiltinToolProvider] = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,
@@ -129,15 +130,15 @@ class BuiltinToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def get_builtin_tool_provider_credentials(user_id: str, tenant_id: str, provider: str):
+    def get_builtin_tool_provider_credentials(user_id: str, tenant_id: str, provider_name: str):
         """
         get builtin tool provider credentials
         """
-        provider: BuiltinToolProvider = (
+        provider: Optional[BuiltinToolProvider] = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,
-                BuiltinToolProvider.provider == provider,
+                BuiltinToolProvider.provider == provider_name,
             )
             .first()
         )
@@ -156,7 +157,7 @@ class BuiltinToolManageService:
         """
         delete tool provider
         """
-        provider: BuiltinToolProvider = (
+        provider: Optional[BuiltinToolProvider] = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,

@@ -1,3 +1,5 @@
+from typing import Any
+
 from pydantic import BaseModel
 
 from core.model_runtime.entities.llm_entities import LLMMode
@@ -90,7 +92,7 @@ def get_model_config(credentials: dict) -> ModelConfig:
 
 
 def get_v2_req_params(credentials: dict, model_parameters: dict, stop: list[str] | None = None):
-    req_params = {}
+    req_params: dict[str, Any] = {}
     # predefined properties
     model_configs = get_model_config(credentials)
     if model_configs:
@@ -118,7 +120,7 @@ def get_v2_req_params(credentials: dict, model_parameters: dict, stop: list[str]
 
 
 def get_v3_req_params(credentials: dict, model_parameters: dict, stop: list[str] | None = None):
-    req_params = {}
+    req_params: dict[str, Any] = {}
     # predefined properties
     model_configs = get_model_config(credentials)
     if model_configs:

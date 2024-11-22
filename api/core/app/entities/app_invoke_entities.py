@@ -1,4 +1,3 @@
-from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional
 
@@ -82,8 +81,8 @@ class AppGenerateEntity(BaseModel):
     app_config: AppConfig
     file_upload_config: Optional[FileUploadConfig] = None
 
-    inputs: Mapping[str, Any]
-    files: Sequence[File]
+    inputs: dict[str, Any]
+    files: list[File]
     user_id: str
 
     # extras

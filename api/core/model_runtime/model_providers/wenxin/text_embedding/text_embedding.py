@@ -1,6 +1,5 @@
 import time
 from abc import abstractmethod
-from collections.abc import Mapping
 from json import dumps
 from typing import Any, Optional
 
@@ -147,7 +146,7 @@ class WenxinTextEmbeddingModel(TextEmbeddingModel):
 
         return total_num_tokens
 
-    def validate_credentials(self, model: str, credentials: Mapping) -> None:
+    def validate_credentials(self, model: str, credentials: dict) -> None:
         api_key = credentials["api_key"]
         secret_key = credentials["secret_key"]
         try:

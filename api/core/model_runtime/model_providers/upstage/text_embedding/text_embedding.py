@@ -1,6 +1,5 @@
 import base64
 import time
-from collections.abc import Mapping
 from typing import Union
 
 import numpy as np
@@ -129,7 +128,7 @@ class UpstageTextEmbeddingModel(_CommonUpstage, TextEmbeddingModel):
 
         return total_num_tokens
 
-    def validate_credentials(self, model: str, credentials: Mapping) -> None:
+    def validate_credentials(self, model: str, credentials: dict) -> None:
         """
         Validate model credentials
 

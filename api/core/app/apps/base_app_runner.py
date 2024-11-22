@@ -1,5 +1,5 @@
 import time
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
@@ -338,11 +338,12 @@ class AppRunner:
 
     def moderation_for_inputs(
         self,
+        *,
         app_id: str,
         tenant_id: str,
         app_generate_entity: AppGenerateEntity,
-        inputs: Mapping[str, Any],
-        query: str,
+        inputs: dict[str, Any],
+        query: str | None = None,
         message_id: str,
     ) -> tuple[bool, dict, str]:
         """
