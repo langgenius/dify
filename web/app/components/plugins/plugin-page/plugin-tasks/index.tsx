@@ -131,7 +131,7 @@ const PluginTasks = () => {
                   className='flex items-center p-1 pl-2 h-8 rounded-lg hover:bg-state-base-hover'
                 >
                   <div className='relative flex items-center justify-center mr-2 w-6 h-6 rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'>
-                    <RiErrorWarningFill className='absolute -right-0.5 -bottom-0.5 w-3 h-3 text-text-destructive' />
+                    <RiErrorWarningFill className='absolute -right-0.5 -bottom-0.5 z-10 w-3 h-3 text-text-destructive' />
                     <CardIcon
                       size='tiny'
                       src={getIconUrl(errorPlugin.icon)}

@@ -2,7 +2,7 @@
 
 import React, { useCallback, useState } from 'react'
 import Modal from '@/app/components/base/modal'
-import type { Plugin, PluginManifestInMarket } from '../../types'
+import type { Dependency, Plugin, PluginManifestInMarket } from '../../types'
 import { InstallStep, PluginType } from '../../types'
 import Install from './steps/install'
 import Installed from '../base/installed'
@@ -10,12 +10,15 @@ import { useTranslation } from 'react-i18next'
 import { useUpdateModelProviders } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useInvalidateAllToolProviders } from '@/service/use-tools'
+import ReadyToInstallBundle from '../install-bundle/ready-to-install'
 
 const i18nPrefix = 'plugin.installModal'
 
 type InstallFromMarketplaceProps = {
   uniqueIdentifier: string
   manifest: PluginManifestInMarket | Plugin
+  isBundle?: boolean
+  dependencies?: Dependency[]
   onSuccess: () => void
   onClose: () => void
 }
@@ -23,6 +26,8 @@ type InstallFromMarketplaceProps = {
 const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   uniqueIdentifier,
   manifest,
+  isBundle,
+  dependencies,
   onSuccess,
   onClose,
 }) => {
@@ -83,7 +88,14 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
         )
       }
       {
-        ([InstallStep.installed, InstallStep.installFailed].includes(step)) && (
+        isBundle ? (
+          <ReadyToInstallBundle
+            step={step}
+            onStepChange={setStep}
+            onClose={onClose}
+            allPlugins={dependencies!}
+          />
+        ) : ([InstallStep.installed, InstallStep.installFailed].includes(step)) && (
           <Installed
             payload={manifest!}
             isMarketPayload

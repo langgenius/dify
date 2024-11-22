@@ -46,9 +46,7 @@ const InputVarList: FC<Props> = ({
   const paramType = (type: string) => {
     if (type === FormTypeEnum.textNumber)
       return 'Number'
-    else if (type === FormTypeEnum.file)
-      return 'File'
-    else if (type === FormTypeEnum.files)
+    else if (type === FormTypeEnum.file || type === FormTypeEnum.files)
       return 'Files'
     else if (type === FormTypeEnum.select)
       return 'Options'
@@ -141,9 +139,8 @@ const InputVarList: FC<Props> = ({
           const varInput = value[variable]
           const isNumber = type === FormTypeEnum.textNumber
           const isSelect = type === FormTypeEnum.select
-          const isFile = type === FormTypeEnum.file
-          const isFileArray = type === FormTypeEnum.files
-          const isString = !isNumber && !isSelect && !isFile && !isFileArray
+          const isFile = type === FormTypeEnum.file || type === FormTypeEnum.files
+          const isString = !isNumber && !isSelect && !isFile
 
           return (
             <div key={variable} className='space-y-1'>
@@ -188,19 +185,7 @@ const InputVarList: FC<Props> = ({
                   onChange={handleFileChange(variable)}
                   onOpen={handleOpen(index)}
                   defaultVarKindType={VarKindType.variable}
-                  filterVar={(varPayload: Var) => varPayload.type === VarType.file}
-                />
-              )}
-              {isFileArray && (
-                <VarReferencePicker
-                  readonly={readOnly}
-                  isShowNodeName
-                  nodeId={nodeId}
-                  value={varInput?.value || []}
-                  onChange={handleFileChange(variable)}
-                  onOpen={handleOpen(index)}
-                  defaultVarKindType={VarKindType.variable}
-                  filterVar={(varPayload: Var) => varPayload.type === VarType.arrayFile}
+                  filterVar={(varPayload: Var) => varPayload.type === VarType.file || varPayload.type === VarType.arrayFile}
                 />
               )}
               {tooltip && <div className='text-text-tertiary body-xs-regular'>{tooltip[language] || tooltip.en_US}</div>}
