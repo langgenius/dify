@@ -27,7 +27,7 @@ parameters:
     form: llm
   - name: json_filter
     type: string
-    required: true
+    required: false
     label:
       en_US: JSON filter
       zh_Hans: JSON解析对象
@@ -49,4 +49,16 @@ parameters:
       en_US: Ensure the JSON output is ASCII encoded
       zh_Hans: 确保输出的 JSON 是 ASCII 编码
       pt_BR: Ensure the JSON output is ASCII encoded
+    form: form
+  - name: output_full_parsed_json
+    type: boolean
+    default: true
+    label:
+      en_US: Output Full Parsed JSON
+      zh_Hans: 输出完整解析的 JSON
+      pt_BR: Output Full Parsed JSON
+    human_description:
+      en_US: The full parsed JSON is also outputted
+      zh_Hans: 完整解析的 JSON 也已输出
+      pt_BR: The full parsed JSON is also outputted
     form: form
