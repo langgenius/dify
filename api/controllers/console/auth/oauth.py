@@ -52,7 +52,6 @@ class OAuthLogin(Resource):
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
-            print(vars(oauth_provider))
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
@@ -81,6 +80,7 @@ class OAuthCallback(Resource):
             logging.exception(f"An error occurred during the OAuth process with {provider}: {e.response.text}")
             return {"error": "OAuth process failed"}, 400
 
+        logging.info(f"login user info --> {user_info}")
         if invite_token and RegisterService.is_valid_invite_token(invite_token):
             invitation = RegisterService._get_invitation_by_token(token=invite_token)
             if invitation:
@@ -101,8 +101,10 @@ class OAuthCallback(Resource):
             )
 
         # Check account status
-        if account.status == AccountStatus.BANNED.value:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account is banned.")
+        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value,
+                              AccountStatus.UNINITIALIZED.value}:
+            return redirect(
+                f"{dify_config.CONSOLE_WEB_URL}/signin?message=Your account is uninitialized. please contact admin to invite you to join in a workspace")
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
@@ -154,8 +156,10 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
                 tenant_was_created.send(tenant)
 
     if not account:
-        if not FeatureService.get_system_features().is_allow_register:
-            raise AccountNotFoundError()
+        return Account(
+            status=AccountStatus.UNINITIALIZED.value,
+        )
+        # Create account
         account_name = user_info.name or "Dify"
         account = RegisterService.register(
             email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider

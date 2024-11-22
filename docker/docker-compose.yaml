@@ -12,6 +12,8 @@ x-shared-env: &shared-api-worker-env
   FLASK_DEBUG: ${FLASK_DEBUG:-false}
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
   INIT_PASSWORD: ${INIT_PASSWORD:-}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-} # add google oauth var
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-}
   CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-}
   CONSOLE_API_URL: ${CONSOLE_API_URL:-}
   SERVICE_API_URL: ${SERVICE_API_URL:-}
@@ -283,7 +285,12 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.11.2
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+      network: host
+    #    image: langgenius/dify-api:0.9.2
+    image: data/dify-api:0.11.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -303,7 +310,8 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.11.2
+    #    image: langgenius/dify-api:0.9.2
+    image: data/dify-api:0.11.2
     restart: always
     environment:
       # Use the shared environment variables.
@@ -322,7 +330,12 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.11.2
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+      network: host
+    #    image: langgenius/dify-web:0.9.2
+    image: data/dify-web:0.11.2
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -350,7 +363,7 @@ services:
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD', 'pg_isready']
+      test: [ 'CMD', 'pg_isready' ]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -365,7 +378,7 @@ services:
     # Set the redis password when startup redis server.
     command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
     healthcheck:
-      test: ['CMD', 'redis-cli', 'ping']
+      test: [ 'CMD', 'redis-cli', 'ping' ]
 
   # The DifySandbox
   sandbox:
@@ -385,7 +398,7 @@ services:
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:8194/health']
+      test: [ 'CMD', 'curl', '-f', 'http://localhost:8194/health' ]
     networks:
       - ssrf_proxy_network
 
@@ -432,8 +445,8 @@ services:
       - CERTBOT_EMAIL=${CERTBOT_EMAIL}
       - CERTBOT_DOMAIN=${CERTBOT_DOMAIN}
       - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
-    entrypoint: ['/docker-entrypoint.sh']
-    command: ['tail', '-f', '/dev/null']
+    entrypoint: [ '/docker-entrypoint.sh' ]
+    command: [ 'tail', '-f', '/dev/null' ]
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
@@ -566,7 +579,7 @@ services:
     volumes:
       - ./volumes/pgvector/data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD', 'pg_isready']
+      test: [ 'CMD', 'pg_isready' ]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -588,7 +601,7 @@ services:
     volumes:
       - ./volumes/pgvecto_rs/data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD', 'pg_isready']
+      test: [ 'CMD', 'pg_isready' ]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -653,7 +666,7 @@ services:
       - ./volumes/milvus/etcd:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     healthcheck:
-      test: ['CMD', 'etcdctl', 'endpoint', 'health']
+      test: [ 'CMD', 'etcdctl', 'endpoint', 'health' ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -672,7 +685,7 @@ services:
       - ./volumes/milvus/minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live']
+      test: [ 'CMD', 'curl', '-f', 'http://localhost:9000/minio/health/live' ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -684,7 +697,7 @@ services:
     image: milvusdb/milvus:v2.3.1
     profiles:
       - milvus
-    command: ['milvus', 'run', 'standalone']
+    command: [ 'milvus', 'run', 'standalone' ]
     environment:
       ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-etcd:2379}
       MINIO_ADDRESS: ${MINIO_ADDRESS:-minio:9000}
@@ -692,7 +705,7 @@ services:
     volumes:
       - ./volumes/milvus/milvus:/var/lib/milvus
     healthcheck:
-      test: ['CMD', 'curl', '-f', 'http://localhost:9091/healthz']
+      test: [ 'CMD', 'curl', '-f', 'http://localhost:9091/healthz' ]
       interval: 30s
       start_period: 90s
       timeout: 20s
@@ -780,7 +793,7 @@ services:
     ports:
       - ${ELASTICSEARCH_PORT:-9200}:9200
     healthcheck:
-      test: ['CMD', 'curl', '-s', 'http://localhost:9200/_cluster/health?pretty']
+      test: [ 'CMD', 'curl', '-s', 'http://localhost:9200/_cluster/health?pretty' ]
       interval: 30s
       timeout: 10s
       retries: 50
@@ -808,7 +821,7 @@ services:
     ports:
       - ${KIBANA_PORT:-5601}:5601
     healthcheck:
-      test: ['CMD-SHELL', 'curl -s http://localhost:5601 >/dev/null || exit 1']
+      test: [ 'CMD-SHELL', 'curl -s http://localhost:5601 >/dev/null || exit 1' ]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -824,10 +837,16 @@ services:
       - ./volumes/unstructured:/app/data
 
 networks:
+  default:
+    driver: bridge
+    driver_opts:
+      com.docker.network.driver.mtu: "1430"
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
     driver: bridge
     internal: true
+    driver_opts:
+      com.docker.network.driver.mtu: "1430"
   milvus:
     driver: bridge
   opensearch-net:
