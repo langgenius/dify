@@ -21,7 +21,7 @@ class JSONParseTool(BuiltinTool):
         json_filter = tool_parameters.get("json_filter", "")
         ensure_ascii = tool_parameters.get("ensure_ascii", True)
         output_full_parsed_json = tool_parameters.get("output_full_parsed_json", True)
-        
+
         if not content:
             return self.create_text_message("Invalid parameter content")
 
