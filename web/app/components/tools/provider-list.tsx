@@ -14,8 +14,10 @@ import CustomCreateCard from '@/app/components/tools/provider/custom-create-card
 import WorkflowToolEmpty from '@/app/components/tools/add-tool-modal/empty'
 import Card from '@/app/components/plugins/card'
 import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
+import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { useAllToolProviders } from '@/service/use-tools'
+import { useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 
 const ProviderList = () => {
   const { t } = useTranslation()
@@ -52,92 +54,105 @@ const ProviderList = () => {
   }, [activeTab, tagFilterValue, keywords, collectionList])
 
   const [currentProvider, setCurrentProvider] = useState<Collection | undefined>()
+  const { data: pluginList } = useInstalledPluginList()
+  const invalidateInstalledPluginList = useInvalidateInstalledPluginList()
+  const currentPluginDetail = useMemo(() => {
+    const detail = pluginList?.plugins.find(plugin => plugin.plugin_id === currentProvider?.plugin_id)
+    return detail
+  }, [currentProvider?.plugin_id, pluginList?.plugins])
 
   return (
-    <div className='relative flex overflow-hidden bg-gray-100 shrink-0 h-0 grow'>
-      <div
-        ref={containerRef}
-        className='relative flex flex-col overflow-y-auto bg-gray-100 grow'
-      >
-        <div className={cn(
-          'sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-20 flex-wrap gap-y-2',
-          currentProvider && 'pr-6',
-        )}>
-          <TabSliderNew
-            value={activeTab}
-            onChange={(state) => {
-              setActiveTab(state)
-              if (state !== activeTab)
-                setCurrentProvider(undefined)
-            }}
-            options={options}
-          />
-          <div className='flex items-center gap-2'>
-            <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
-            <Input
-              showLeftIcon
-              showClearIcon
-              wrapperClassName='w-[200px]'
-              value={keywords}
-              onChange={e => handleKeywordsChange(e.target.value)}
-              onClear={() => handleKeywordsChange('')}
-            />
-          </div>
-        </div>
-        {(filteredCollectionList.length > 0 || activeTab !== 'builtin') && (
+    <>
+      <div className='relative flex overflow-hidden bg-gray-100 shrink-0 h-0 grow'>
+        <div
+          ref={containerRef}
+          className='relative flex flex-col overflow-y-auto bg-gray-100 grow'
+        >
           <div className={cn(
-            'relative grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0',
+            'sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-20 flex-wrap gap-y-2',
+            currentProvider && 'pr-6',
           )}>
-            {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
-            {filteredCollectionList.map(collection => (
-              <div
-                key={collection.id}
-                onClick={() => setCurrentProvider(collection)}
-              >
-                <Card
-                  className={cn(
-                    'border-[1.5px] border-transparent cursor-pointer',
-                    currentProvider?.id === collection.id && 'border-components-option-card-option-selected-border',
-                  )}
-                  hideCornerMark
-                  payload={{
-                    ...collection,
-                    brief: collection.description,
-                  } as any}
-                  footer={
-                    <CardMoreInfo
-                      tags={collection.labels}
-                    />
-                  }
-                />
-              </div>
-            ))}
-            {!filteredCollectionList.length && activeTab === 'workflow' && <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'><WorkflowToolEmpty /></div>}
-          </div>
-        )}
-        {!filteredCollectionList.length && activeTab === 'builtin' && (
-          <Empty lightCard text={t('tools.noTools')} className='px-12' />
-        )}
-        {
-          enable_marketplace && activeTab === 'builtin' && (
-            <Marketplace
-              onMarketplaceScroll={() => {
-                containerRef.current?.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })
+            <TabSliderNew
+              value={activeTab}
+              onChange={(state) => {
+                setActiveTab(state)
+                if (state !== activeTab)
+                  setCurrentProvider(undefined)
               }}
-              searchPluginText={keywords}
-              filterPluginTags={tagFilterValue}
+              options={options}
             />
-          )
-        }
+            <div className='flex items-center gap-2'>
+              <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
+              <Input
+                showLeftIcon
+                showClearIcon
+                wrapperClassName='w-[200px]'
+                value={keywords}
+                onChange={e => handleKeywordsChange(e.target.value)}
+                onClear={() => handleKeywordsChange('')}
+              />
+            </div>
+          </div>
+          {(filteredCollectionList.length > 0 || activeTab !== 'builtin') && (
+            <div className={cn(
+              'relative grid content-start grid-cols-1 gap-4 px-12 pt-2 pb-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0',
+            )}>
+              {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
+              {filteredCollectionList.map(collection => (
+                <div
+                  key={collection.id}
+                  onClick={() => setCurrentProvider(collection)}
+                >
+                  <Card
+                    className={cn(
+                      'border-[1.5px] border-transparent cursor-pointer',
+                      currentProvider?.id === collection.id && 'border-components-option-card-option-selected-border',
+                    )}
+                    hideCornerMark
+                    payload={{
+                      ...collection,
+                      brief: collection.description,
+                    } as any}
+                    footer={
+                      <CardMoreInfo
+                        tags={collection.labels}
+                      />
+                    }
+                  />
+                </div>
+              ))}
+              {!filteredCollectionList.length && activeTab === 'workflow' && <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'><WorkflowToolEmpty /></div>}
+            </div>
+          )}
+          {!filteredCollectionList.length && activeTab === 'builtin' && (
+            <Empty lightCard text={t('tools.noTools')} className='px-12' />
+          )}
+          {
+            enable_marketplace && activeTab === 'builtin' && (
+              <Marketplace
+                onMarketplaceScroll={() => {
+                  containerRef.current?.scrollTo({ top: containerRef.current.scrollHeight, behavior: 'smooth' })
+                }}
+                searchPluginText={keywords}
+                filterPluginTags={tagFilterValue}
+              />
+            )
+          }
+        </div>
       </div>
-      {currentProvider && (
+      {currentProvider && !currentProvider.plugin_id && (
         <ProviderDetail
           collection={currentProvider}
           onHide={() => setCurrentProvider(undefined)}
           onRefreshData={refetch}
         />
       )}
-    </div>
+      <PluginDetailPanel
+        detail={currentPluginDetail}
+        onUpdate={() => invalidateInstalledPluginList()}
+        onHide={() => setCurrentProvider(undefined)}
+      />
+    </>
   )
 }
 ProviderList.displayName = 'ToolProviderList'
