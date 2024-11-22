@@ -90,13 +90,6 @@ class AudioPromptMessageContent(PromptMessageContent):
     format: str = Field(..., description="Audio format")
 
 
-class DocumentPromptMessageContent(PromptMessageContent):
-    type: PromptMessageContentType = PromptMessageContentType.DOCUMENT
-    encode_format: Literal["base64"]
-    mime_type: str
-    data: str
-
-
 class ImagePromptMessageContent(PromptMessageContent):
     """
     Model class for image prompt message content.
