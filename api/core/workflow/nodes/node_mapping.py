@@ -18,7 +18,7 @@ from core.workflow.nodes.start import StartNode
 from core.workflow.nodes.template_transform import TemplateTransformNode
 from core.workflow.nodes.tool import ToolNode
 from core.workflow.nodes.variable_aggregator import VariableAggregatorNode
-from core.workflow.nodes.variable_operator import VariableOperatorNode
+from core.workflow.nodes.variable_operator.v1 import VariableOperatorNode as VariableOperatorNodeV1
 from core.workflow.nodes.variable_operator.v2 import VariableOperatorNode as VariableOperatorNodeV2
 
 LATEST_VERSION = "latest"
@@ -90,7 +90,7 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
     },
     NodeType.VARIABLE_OPERATOR: {
         LATEST_VERSION: VariableOperatorNodeV2,
-        "1": VariableOperatorNode,
+        "1": VariableOperatorNodeV1,
         "2": VariableOperatorNodeV2,
     },
     NodeType.DOCUMENT_EXTRACTOR: {

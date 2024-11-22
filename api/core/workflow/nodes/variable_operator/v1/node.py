@@ -5,12 +5,12 @@ from core.variables import SegmentType, Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode, BaseNodeData
 from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.variable_operator.common.exc import VariableOperatorNodeError
 from extensions.ext_database import db
 from factories import variable_factory
 from models import ConversationVariable
 from models.workflow import WorkflowNodeExecutionStatus
 
-from .common.exc import VariableOperatorNodeError
 from .node_data import VariableOperatorData, WriteMode
 
 

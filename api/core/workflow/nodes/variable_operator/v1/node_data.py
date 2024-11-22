@@ -1,10 +1,10 @@
 from collections.abc import Sequence
-from enum import Enum
+from enum import StrEnum
 
 from core.workflow.nodes.base import BaseNodeData
 
 
-class WriteMode(str, Enum):
+class WriteMode(StrEnum):
     OVER_WRITE = "over-write"
     APPEND = "append"
     CLEAR = "clear"
