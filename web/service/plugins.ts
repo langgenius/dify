@@ -63,7 +63,7 @@ export const fetchManifest = async (uniqueIdentifier: string) => {
 }
 
 export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => {
-  return getMarketplace<{ data: { plugin: PluginManifestInMarket } }>(`/plugins/identifier?unique_identifier=${uniqueIdentifier}`)
+  return getMarketplace<{ data: { plugin: PluginManifestInMarket, version: { version: string } } }>(`/plugins/identifier?unique_identifier=${uniqueIdentifier}`)
 }
 
 export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse, { url: string; }> = ({ url }) => {

@@ -76,9 +76,10 @@ const PluginPage = ({
       await sleep(100)
       if (packageId) {
         const { data } = await fetchManifestFromMarketPlace(encodeURIComponent(packageId))
-        const { plugin } = data
+        const { plugin, version } = data
         setManifest({
           ...plugin,
+          version: version.version,
           icon: `${marketplaceApiPrefix}/plugins/${plugin.org}/${plugin.name}/icon`,
         })
         showInstallFromMarketplace()
