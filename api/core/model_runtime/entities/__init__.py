@@ -2,6 +2,7 @@ from .llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsa
 from .message_entities import (
     AssistantPromptMessage,
     AudioPromptMessageContent,
+    DocumentPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContent,
@@ -13,7 +14,6 @@ from .message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
     VideoPromptMessageContent,
-    DocumentPromptMessageContent,
 )
 from .model_entities import ModelPropertyKey
 

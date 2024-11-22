@@ -16,8 +16,8 @@ from PIL import Image
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
-    ImagePromptMessageContent,
     DocumentPromptMessageContent,
+    ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
     PromptMessageTool,
@@ -35,7 +35,6 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-
 
 GOOGLE_AVAILABLE_MIMETYPE = [
     "application/pdf",

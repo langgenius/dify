@@ -5,9 +5,9 @@ from core.file import file_repository
 from core.helper import ssrf_proxy
 from core.model_runtime.entities import (
     AudioPromptMessageContent,
+    DocumentPromptMessageContent,
     ImagePromptMessageContent,
     VideoPromptMessageContent,
-    DocumentPromptMessageContent,
 )
 from extensions.ext_database import db
 from extensions.ext_storage import storage
