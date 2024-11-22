@@ -52,7 +52,7 @@ class TextEmbeddingModel(AIModel):
         except Exception as e:
             raise self._transform_invoke_error(e)
 
-    def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
+    def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> list[int]:
         """
         Get number of tokens for given prompt messages
 

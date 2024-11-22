@@ -219,7 +219,7 @@ class ModelInstance:
             input_type=input_type,
         )
 
-    def get_text_embedding_num_tokens(self, texts: list[str]) -> int:
+    def get_text_embedding_num_tokens(self, texts: list[str]) -> list[int]:
         """
         Get number of tokens for text embedding
 
@@ -235,7 +235,7 @@ class ModelInstance:
             model=self.model,
             credentials=self.credentials,
             texts=texts,
-        )
+        )[0]  # TODO: fix this, this is only for temporary compatibility with old
 
     def invoke_rerank(
         self,

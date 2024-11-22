@@ -71,7 +71,15 @@ class PluginModelProviderEntity(BaseModel):
     declaration: ProviderEntity = Field(description="The declaration of the model provider.")
 
 
-class PluginNumTokensResponse(BaseModel):
+class PluginTextEmbeddingNumTokensResponse(BaseModel):
+    """
+    Response for number of tokens.
+    """
+
+    num_tokens: list[int] = Field(description="The number of tokens.")
+
+
+class PluginLLMNumTokensResponse(BaseModel):
     """
     Response for number of tokens.
     """
