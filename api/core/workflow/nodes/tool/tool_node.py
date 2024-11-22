@@ -253,6 +253,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                 if message.type == ToolInvokeMessage.MessageType.LINK
                 else ""
                 for message in tool_response
+                if message.type in {ToolInvokeMessage.MessageType.TEXT, ToolInvokeMessage.MessageType.LINK}
             ]
         )
 
