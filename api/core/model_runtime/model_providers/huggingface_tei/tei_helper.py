@@ -27,9 +27,7 @@ cache_lock = Lock()
 class TeiHelper:
     @staticmethod
     def get_tei_extra_parameter(
-        server_url: str, 
-        model_name: str, 
-        headers: Optional[dict] = None
+        server_url: str, model_name: str, headers: Optional[dict] = None
     ) -> TeiModelExtraParameter:
         TeiHelper._clean_cache()
         with cache_lock:
@@ -88,7 +86,7 @@ class TeiHelper:
         return TeiModelExtraParameter(
             model_type=model_type, max_input_length=max_input_length, max_client_batch_size=max_client_batch_size
         )
-    
+
     @staticmethod
     def invoke_tokenize(server_url: str, texts: list[str], headers: Optional[dict] = None) -> list[list[dict]]:
         """

@@ -132,7 +132,7 @@ class HuggingfaceTeiTextEmbeddingModel(TextEmbeddingModel):
         server_url = server_url.removesuffix("/")
 
         headers = {
-                "Authorization": f"Bearer {credentials.get('api_key')}",
+            "Authorization": f"Bearer {credentials.get('api_key')}",
         }
 
         batch_tokens = TeiHelper.invoke_tokenize(server_url, texts, headers)
@@ -146,7 +146,7 @@ class HuggingfaceTeiTextEmbeddingModel(TextEmbeddingModel):
         :param model: model name
         :param credentials: model credentials
         :return:
-        """  
+        """
         try:
             server_url = credentials["server_url"]
             headers = {"Content-Type": "application/json"}
