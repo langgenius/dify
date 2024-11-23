@@ -65,6 +65,7 @@ from .entities import (
     ModelConfig,
 )
 from .exc import (
+    FileTypeNotSupportError,
     InvalidContextStructureError,
     InvalidVariableTypeError,
     LLMModeRequiredError,
@@ -72,7 +73,7 @@ from .exc import (
     MemoryRolePrefixRequiredError,
     ModelNotExistError,
     NoPromptFoundError,
-    NotSupportedPromptTypeError,
+    TemplateTypeNotSupportError,
     VariableNotFoundError,
 )
 
@@ -621,9 +622,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                 prompt_content = prompt_messages[0].content.replace("#sys.query#", user_query)
                 prompt_messages[0].content = prompt_content
         else:
-            errmsg = f"Prompt type {type(prompt_template)} is not supported"
-            logger.warning(errmsg)
-            raise NotSupportedPromptTypeError(errmsg)
+            raise TemplateTypeNotSupportError(type_name=str(type(prompt_template)))
 
         if vision_enabled and user_files:
             file_prompts = []
@@ -671,7 +670,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                             and ModelFeature.AUDIO not in model_config.model_schema.features
                         )
                     ):
-                        continue
+                        raise FileTypeNotSupportError(type_name=content_item.type)
                     prompt_message_content.append(content_item)
                 if len(prompt_message_content) == 1 and prompt_message_content[0].type == PromptMessageContentType.TEXT:
                     prompt_message.content = prompt_message_content[0].data

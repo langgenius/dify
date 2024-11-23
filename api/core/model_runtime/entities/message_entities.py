@@ -49,7 +49,7 @@ class PromptMessageFunction(BaseModel):
     function: PromptMessageTool
 
 
-class PromptMessageContentType(Enum):
+class PromptMessageContentType(str, Enum):
     """
     Enum class for prompt message content type.
     """

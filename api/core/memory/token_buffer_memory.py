@@ -3,7 +3,6 @@ from typing import Optional
 
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.file import file_manager
-from core.file.models import FileType
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import (
     AssistantPromptMessage,
@@ -103,12 +102,11 @@ class TokenBufferMemory:
                     prompt_message_contents: list[PromptMessageContent] = []
                     prompt_message_contents.append(TextPromptMessageContent(data=message.query))
                     for file in file_objs:
-                        if file.type in {FileType.IMAGE, FileType.AUDIO}:
-                            prompt_message = file_manager.to_prompt_message_content(
-                                file,
-                                image_detail_config=detail,
-                            )
-                            prompt_message_contents.append(prompt_message)
+                        prompt_message = file_manager.to_prompt_message_content(
+                            file,
+                            image_detail_config=detail,
+                        )
+                        prompt_message_contents.append(prompt_message)
 
                     prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
 
