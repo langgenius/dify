@@ -144,6 +144,7 @@ const ConfigPromptItem: FC<Props> = ({
       onEditionTypeChange={onEditionTypeChange}
       varList={varList}
       handleAddVariable={handleAddVariable}
+      isSupportFileVar
     />
   )
 }

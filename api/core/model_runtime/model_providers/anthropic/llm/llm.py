@@ -1,7 +1,7 @@
 import base64
 import io
 import json
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from typing import Optional, Union, cast
 
 import anthropic
@@ -21,9 +21,9 @@ from httpx import Timeout
 from PIL import Image
 
 from core.model_runtime.callbacks.base_callback import Callback
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
-from core.model_runtime.entities.message_entities import (
+from core.model_runtime.entities import (
     AssistantPromptMessage,
+    DocumentPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
@@ -33,6 +33,7 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -86,10 +87,10 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         self,
         model: str,
         credentials: dict,
-        prompt_messages: list[PromptMessage],
+        prompt_messages: Sequence[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:
@@ -130,8 +131,16 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         # Add the new header for claude-3-5-sonnet-20240620 model
         extra_headers = {}
         if model == "claude-3-5-sonnet-20240620":
-            if model_parameters.get("max_tokens") > 4096:
+            if model_parameters.get("max_tokens", 0) > 4096:
                 extra_headers["anthropic-beta"] = "max-tokens-3-5-sonnet-2024-07-15"
+
+        if any(
+            isinstance(content, DocumentPromptMessageContent)
+            for prompt_message in prompt_messages
+            if isinstance(prompt_message.content, list)
+            for content in prompt_message.content
+        ):
+            extra_headers["anthropic-beta"] = "pdfs-2024-09-25"
 
         if tools:
             extra_model_kwargs["tools"] = [self._transform_tool_prompt(tool) for tool in tools]
@@ -502,6 +511,21 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                 sub_message_dict = {
                                     "type": "image",
                                     "source": {"type": "base64", "media_type": mime_type, "data": base64_data},
+                                }
+                                sub_messages.append(sub_message_dict)
+                            elif isinstance(message_content, DocumentPromptMessageContent):
+                                if message_content.mime_type != "application/pdf":
+                                    raise ValueError(
+                                        f"Unsupported document type {message_content.mime_type}, "
+                                        "only support application/pdf"
+                                    )
+                                sub_message_dict = {
+                                    "type": "document",
+                                    "source": {
+                                        "type": message_content.encode_format,
+                                        "media_type": message_content.mime_type,
+                                        "data": message_content.data,
+                                    },
                                 }
                                 sub_messages.append(sub_message_dict)
                         prompt_message_dicts.append({"role": "user", "content": sub_messages})

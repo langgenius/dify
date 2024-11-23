@@ -89,6 +89,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
             list={inputs.variables}
             onChange={handleVarListChange}
             filterVar={filterVar}
+            isSupportFileVar={false}
           />
         </Field>
         <Split />

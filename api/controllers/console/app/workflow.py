@@ -20,7 +20,6 @@ from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models import App
 from models.model import AppMode
-from services.app_dsl_service import AppDslService
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_service import WorkflowService
@@ -124,31 +123,6 @@ class DraftWorkflowApi(Resource):
             "hash": workflow.unique_hash,
             "updated_at": TimestampField().format(workflow.updated_at or workflow.created_at),
         }
-
-
-class DraftWorkflowImportApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
-    @marshal_with(workflow_fields)
-    def post(self, app_model: App):
-        """
-        Import draft workflow
-        """
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
-
-        parser = reqparse.RequestParser()
-        parser.add_argument("data", type=str, required=True, nullable=False, location="json")
-        args = parser.parse_args()
-
-        workflow = AppDslService.import_and_overwrite_workflow(
-            app_model=app_model, data=args["data"], account=current_user
-        )
-
-        return workflow
 
 
 class AdvancedChatDraftWorkflowRunApi(Resource):
@@ -453,7 +427,6 @@ class ConvertToWorkflowApi(Resource):
 
 
 api.add_resource(DraftWorkflowApi, "/apps/<uuid:app_id>/workflows/draft")
-api.add_resource(DraftWorkflowImportApi, "/apps/<uuid:app_id>/workflows/draft/import")
 api.add_resource(AdvancedChatDraftWorkflowRunApi, "/apps/<uuid:app_id>/advanced-chat/workflows/draft/run")
 api.add_resource(DraftWorkflowRunApi, "/apps/<uuid:app_id>/workflows/draft/run")
 api.add_resource(WorkflowTaskStopApi, "/apps/<uuid:app_id>/workflow-runs/tasks/<string:task_id>/stop")
