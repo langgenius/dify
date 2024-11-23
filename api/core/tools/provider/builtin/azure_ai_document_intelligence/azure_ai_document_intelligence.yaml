@@ -1,0 +1,33 @@
+identity:
+  author: Hiroshi Fujita
+  name: azure_ai_document_intelligence
+  label:
+    en_US: Azure AI Document Intelligence
+  description:
+    en_US: Accelerate information extraction from documents.
+    ja_JP: ドキュメントからテキストと構造を抽出
+  icon: 00819-icon-service-Form-Recognizers.svg
+  tags:
+    - utilities
+    - productivity
+credentials_for_provider:
+  azure_ai_document_intelligence_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: API Key
+      ja_JP: APIキー
+    placeholder:
+      en_US: Enter your API Key
+      ja_JP: APIキーを入力
+    url: https://portal.azure.com
+  azure_ai_document_intelligence_api_endpoint:
+    type: text-input
+    required: true
+    label:
+      en_US: API Endpoint
+      ja_JP: APIエンドポイント
+    placeholder:
+      en_US: Enter your API Endpoint
+      ja_JP: APIエンドポイントを入力
+    url: https://portal.azure.com

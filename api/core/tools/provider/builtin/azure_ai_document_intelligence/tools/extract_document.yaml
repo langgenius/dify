@@ -1,0 +1,44 @@
+identity:
+  name: extract_document
+  author: Hiroshi Fujita
+  label:
+    en_US: Extract Document
+    ja_JP: ドキュメントの展開
+description:
+  human:
+    en_US: Extract Document/Image File to Text/Markdown
+    ja_JP: ドキュメント/画像をテキストまたはMarkdownに展開
+  llm: This tool extract document or image file to text or markdown format.
+parameters:
+  - name: file
+    type: file
+    required: true
+    label:
+      en_US: Document/Image File
+      ja_JP: ドキュメント/画像ファイル
+    human_description:
+      en_US: The document/image file to extract. Supported file type is PDF, JPEG, JPG, PNG, BMP, TIFF, HEIF, DOCX, XLSX, PPTX, HTML.
+      ja_JP: 展開するドキュメント/画像ファイル。対応形式は PDF, JPEG, JPG, PNG, BMP, TIFF, HEIF, DOCX, XLSX, PPTX, HTML です。
+    llm_description: The document/image file to extract. Supported file type is PDF, JPEG, JPG, PNG, BMP, TIFF, HEIF, DOCX, XLSX, PPTX, HTML.
+    form: llm
+  - name: output_format
+    type: select
+    required: true
+    label:
+      en_US: Output format
+      ja_JP: 出力フォーマット
+    human_description:
+      en_US: Select output format.
+      ja_JP: 出力フォーマットを選択します。
+    llm_description: Output format. Select text or markdown.
+    form: form
+    options:
+      - value: text
+        label:
+          en_US: Text
+          ja_JP: テキスト
+      - value: markdown
+        label:
+          en_US: Markdown
+          ja_JP: Markdown
+    default: text

@@ -564,6 +564,22 @@ files = [
 cryptography = "*"
 
 [[package]]
+name = "azure-ai-documentintelligence"
+version = "1.0.0b4"
+description = "Microsoft Azure AI Document Intelligence Client Library for Python"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "azure_ai_documentintelligence-1.0.0b4-py3-none-any.whl", hash = "sha256:c3a90560b4029e232dbab1334ac2f3dda4cae7c1f60dad277fe21a876dd6bb9f"},
+    {file = "azure_ai_documentintelligence-1.0.0b4.tar.gz", hash = "sha256:1aa36f0617b0c129fdc82b039b7084fd5b69af08e8e0cb500108b9f6efd61b36"},
+]
+
+[package.dependencies]
+azure-core = ">=1.30.0"
+isodate = ">=0.6.1"
+typing-extensions = ">=4.6.0"
+
+[[package]]
 name = "azure-ai-inference"
 version = "1.0.0b6"
 description = "Microsoft Azure AI Inference Client Library for Python"
@@ -11026,4 +11042,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "983ba4f2cb89f0c867fc50cb48677cad9343f7f0828c7082cb0b5cf171d716fb"
+content-hash = "a16394ca804971cc40a790a7e91fefb8fb6fa4ba6fe37e612d1356d57370021f"
