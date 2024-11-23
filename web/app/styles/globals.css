@@ -672,3 +672,13 @@ button:focus-within {
 @import '../components/base/modal/index.css';
 
 @tailwind utilities;
+
+/* hide the scrollbar embedded chatbot */
+.scrollbar-hide {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
