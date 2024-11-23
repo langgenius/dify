@@ -1,0 +1,28 @@
+identity:
+  author: Matri Qi
+  name: did
+  label:
+    en_US: D-ID
+  description:
+    en_US: D-ID is a tool enabling the creation of high-quality, custom videos of Digital Humans from a single image.
+  icon: icon.svg
+  tags:
+    - videos
+credentials_for_provider:
+  did_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: D-ID API Key
+    placeholder:
+      en_US: Please input your D-ID API key
+    help:
+      en_US: Get your D-ID API key from your D-ID account settings.
+    url: https://studio.d-id.com/account-settings
+  base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: D-ID server's Base URL
+    placeholder:
+      en_US: https://api.d-id.com

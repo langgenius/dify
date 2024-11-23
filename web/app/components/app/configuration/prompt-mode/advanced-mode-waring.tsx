@@ -4,7 +4,6 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import I18n from '@/context/i18n'
-import { FlipBackward } from '@/app/components/base/icons/src/vender/line/arrows'
 import { LanguagesSupported } from '@/i18n/language'
 type Props = {
   onReturnToSimpleMode: () => void
@@ -38,7 +37,6 @@ const AdvancedModeWarning: FC<Props> = ({
             onClick={onReturnToSimpleMode}
             className='shrink-0 flex items-center h-6 px-2 bg-indigo-600 shadow-xs border border-gray-200 rounded-lg text-white text-xs font-semibold cursor-pointer space-x-1'
           >
-            <FlipBackward className='w-3 h-3 text-white' />
             <div className='text-xs font-semibold uppercase'>{t('appDebug.promptMode.switchBack')}</div>
           </div>
           <div

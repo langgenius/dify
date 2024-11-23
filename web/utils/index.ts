@@ -1,3 +1,5 @@
+import { escape } from 'lodash-es'
+
 export const sleep = (ms: number) => {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
@@ -6,10 +8,8 @@ export async function asyncRunSafe<T = any>(fn: Promise<T>): Promise<[Error] | [
   try {
     return [null, await fn]
   }
-  catch (e) {
-    if (e instanceof Error)
-      return [e]
-    return [new Error('unknown error')]
+  catch (e: any) {
+    return [e || new Error('unknown error')]
   }
 }
 
@@ -35,5 +35,23 @@ export const getPurifyHref = (href: string) => {
   if (!href)
     return ''
 
-  return href.replace(/javascript:/ig, '').replace(/vbscript:/ig, '').replace(/data:/ig, '')
+  return escape(href)
+}
+
+export async function fetchWithRetry<T = any>(fn: Promise<T>, retries = 3): Promise<[Error] | [null, T]> {
+  const [error, res] = await asyncRunSafe(fn)
+  if (error) {
+    if (retries > 0) {
+      const res = await fetchWithRetry(fn, retries - 1)
+      return res
+    }
+    else {
+      if (error instanceof Error)
+        return [error]
+      return [new Error('unknown error')]
+    }
+  }
+  else {
+    return [null, res]
+  }
 }

@@ -4,14 +4,21 @@ identity:
   label:
     en_US: Vectorizer.AI
     zh_Hans: Vectorizer.AI
-    pt_BR: Vectorizer.AI
 description:
   human:
     en_US: Convert your PNG and JPG images to SVG vectors quickly and easily. Fully automatically. Using AI.
     zh_Hans: 一个将 PNG 和 JPG 图像快速轻松地转换为 SVG 矢量图的工具。
-    pt_BR: Convert your PNG and JPG images to SVG vectors quickly and easily. Fully automatically. Using AI.
   llm: A tool for converting images to SVG vectors. you should input the image id as the input of this tool. the image id can be got from parameters.
 parameters:
+  - name: image
+    type: file
+    label:
+      en_US: image
+    human_description:
+      en_US: The image to be converted.
+      zh_Hans: 要转换的图片。
+    llm_description: you should not input this parameter. just input the image_id.
+    form: llm
   - name: mode
     type: select
     required: true
@@ -20,19 +27,15 @@ parameters:
         label:
           en_US: production
           zh_Hans: 生产模式
-          pt_BR: production
       - value: test
         label:
           en_US: test
           zh_Hans: 测试模式
-          pt_BR: test
     default: test
     label:
       en_US: Mode
       zh_Hans: 模式
-      pt_BR: Mode
     human_description:
       en_US: It is free to integrate with and test out the API in test mode, no subscription required.
       zh_Hans: 在测试模式下，可以免费测试API。
-      pt_BR: It is free to integrate with and test out the API in test mode, no subscription required.
     form: form

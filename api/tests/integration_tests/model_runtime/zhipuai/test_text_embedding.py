@@ -11,34 +11,19 @@ def test_validate_credentials():
     model = ZhipuAITextEmbeddingModel()
 
     with pytest.raises(CredentialsValidateFailedError):
-        model.validate_credentials(
-            model='text_embedding',
-            credentials={
-                'api_key': 'invalid_key'
-            }
-        )
+        model.validate_credentials(model="text_embedding", credentials={"api_key": "invalid_key"})
 
-    model.validate_credentials(
-        model='text_embedding',
-        credentials={
-            'api_key': os.environ.get('ZHIPUAI_API_KEY')
-        }
-    )
+    model.validate_credentials(model="text_embedding", credentials={"api_key": os.environ.get("ZHIPUAI_API_KEY")})
 
 
 def test_invoke_model():
     model = ZhipuAITextEmbeddingModel()
 
     result = model.invoke(
-        model='text_embedding',
-        credentials={
-            'api_key': os.environ.get('ZHIPUAI_API_KEY')
-        },
-        texts=[
-            "hello",
-            "world"
-        ],
-        user="abc-123"
+        model="text_embedding",
+        credentials={"api_key": os.environ.get("ZHIPUAI_API_KEY")},
+        texts=["hello", "world"],
+        user="abc-123",
     )
 
     assert isinstance(result, TextEmbeddingResult)
@@ -50,14 +35,7 @@ def test_get_num_tokens():
     model = ZhipuAITextEmbeddingModel()
 
     num_tokens = model.get_num_tokens(
-        model='text_embedding',
-        credentials={
-            'api_key': os.environ.get('ZHIPUAI_API_KEY')
-        },
-        texts=[
-            "hello",
-            "world"
-        ]
+        model="text_embedding", credentials={"api_key": os.environ.get("ZHIPUAI_API_KEY")}, texts=["hello", "world"]
     )
 
     assert num_tokens == 2

@@ -8,6 +8,7 @@ import type {
   ChatItem,
   Feedback,
 } from '../types'
+import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 import type {
   AppConversationData,
   AppData,
@@ -29,6 +30,7 @@ export type ChatWithHistoryContextValue = {
   conversationList: AppConversationData['data']
   showConfigPanelBeforeChat: boolean
   newConversationInputs: Record<string, any>
+  newConversationInputsRef: RefObject<Record<string, any>>
   handleNewConversationInputsChange: (v: Record<string, any>) => void
   inputsForms: any[]
   handleNewConversation: () => void
@@ -46,6 +48,7 @@ export type ChatWithHistoryContextValue = {
   appId?: string
   handleFeedback: (messageId: string, feedback: Feedback) => void
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
+  themeBuilder?: ThemeBuilder
 }
 
 export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>({
@@ -55,6 +58,7 @@ export const ChatWithHistoryContext = createContext<ChatWithHistoryContextValue>
   conversationList: [],
   showConfigPanelBeforeChat: false,
   newConversationInputs: {},
+  newConversationInputsRef: { current: {} },
   handleNewConversationInputsChange: () => {},
   inputsForms: [],
   handleNewConversation: () => {},

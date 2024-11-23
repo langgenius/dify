@@ -1,7 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { Fragment, useCallback } from 'react'
-import cn from 'classnames'
 import {
   RiAddLine,
   RiArrowDownSLine,
@@ -10,26 +9,30 @@ import {
 import { Menu, Transition } from '@headlessui/react'
 import { useRouter } from 'next/navigation'
 import { debounce } from 'lodash-es'
+import cn from '@/utils/classnames'
 import AppIcon from '@/app/components/base/app-icon'
-import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import { useAppContext } from '@/context/app-context'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import type { AppIconType } from '@/types/app'
 
 export type NavItem = {
   id: string
   name: string
   link: string
+  icon_type: AppIconType | null
   icon: string
   icon_background: string
-  mode: string
+  icon_url: string | null
+  mode?: string
 }
 export type INavSelectorProps = {
   navs: NavItem[]
   curNav?: Omit<NavItem, 'link'>
   createText: string
-  isApp: boolean
+  isApp?: boolean
   onCreate: (state: string) => void
   onLoadmore?: () => void
 }
@@ -55,8 +58,8 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
         {({ open }) => (
           <>
             <Menu.Button className={cn(
-              'group inline-flex items-center w-full h-7 justify-center rounded-[10px] pl-2 pr-2.5 text-[14px] font-semibold text-primary-600 hover:bg-primary-50',
-              open && 'bg-primary-50',
+              'group inline-flex items-center w-full h-7 justify-center rounded-[10px] pl-2 pr-2.5 text-[14px] font-semibold text-components-main-nav-nav-button-text-active hover:hover:bg-components-main-nav-nav-button-bg-active-hover',
+              open && 'bg-components-main-nav-nav-button-bg-active',
             )}>
               <div className='max-w-[180px] truncate' title={curNav?.name}>{curNav?.name}</div>
               <RiArrowDownSLine
@@ -82,7 +85,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                         router.push(nav.link)
                       }} title={nav.name}>
                         <div className='relative w-6 h-6 mr-2 rounded-md'>
-                          <AppIcon size='tiny' icon={nav.icon} background={nav.icon_background}/>
+                          <AppIcon size='tiny' iconType={nav.icon_type} icon={nav.icon} background={nav.icon_background} imageUrl={nav.icon_url}/>
                           {!!nav.mode && (
                             <span className={cn(
                               'absolute w-3.5 h-3.5 -bottom-0.5 -right-0.5 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm',
@@ -91,7 +94,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                                 <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
                               )}
                               {nav.mode === 'agent-chat' && (
-                                <CuteRobote className='w-2.5 h-2.5 text-indigo-600' />
+                                <CuteRobot className='w-2.5 h-2.5 text-indigo-600' />
                               )}
                               {nav.mode === 'chat' && (
                                 <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
@@ -113,7 +116,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                   ))
                 }
               </div>
-              {!isApp && (
+              {!isApp && isCurrentWorkspaceEditor && (
                 <Menu.Button className='p-1 w-full'>
                   <div onClick={() => onCreate('')} className={cn(
                     'flex items-center gap-2 px-3 py-[6px] rounded-lg cursor-pointer hover:bg-gray-100',
@@ -138,7 +141,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                             <RiAddLine className='w-4 h-4 text-gray-500' />
                           </div>
                           <div className='grow text-left font-normal text-[14px] text-gray-700'>{createText}</div>
-                          <RiArrowRightSLine className='shrink-0 w-3.5 h-3.5  text-gray-500'/>
+                          <RiArrowRightSLine className='shrink-0 w-3.5 h-3.5  text-gray-500' />
                         </div>
                       </Menu.Button>
                       <Transition

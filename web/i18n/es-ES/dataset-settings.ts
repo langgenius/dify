@@ -1,0 +1,38 @@
+const translation = {
+  title: 'Configuración del conjunto de datos',
+  desc: 'Aquí puedes modificar las propiedades y los métodos de trabajo del conjunto de datos.',
+  form: {
+    name: 'Nombre del conjunto de datos',
+    namePlaceholder: 'Por favor ingresa el nombre del conjunto de datos',
+    nameError: 'El nombre no puede estar vacío',
+    desc: 'Descripción del conjunto de datos',
+    descInfo: 'Por favor escribe una descripción textual clara para delinear el contenido del conjunto de datos. Esta descripción se utilizará como base para la coincidencia al seleccionar entre múltiples conjuntos de datos para la inferencia.',
+    descPlaceholder: 'Describe lo que hay en este conjunto de datos. Una descripción detallada permite que la IA acceda al contenido del conjunto de datos de manera oportuna. Si está vacío, Dify utilizará la estrategia de coincidencia predeterminada.',
+    descWrite: 'Aprende cómo escribir una buena descripción del conjunto de datos.',
+    permissions: 'Permisos',
+    permissionsOnlyMe: 'Solo yo',
+    permissionsAllMember: 'Todos los miembros del equipo',
+    permissionsInvitedMembers: 'Miembros del equipo invitados',
+    me: '(Tú)',
+    indexMethod: 'Método de indexación',
+    indexMethodHighQuality: 'Alta calidad',
+    indexMethodHighQualityTip: 'Llama al modelo de incrustación para procesar y proporcionar una mayor precisión cuando los usuarios realizan consultas.',
+    indexMethodEconomy: 'Económico',
+    indexMethodEconomyTip: 'Utiliza motores de vectores sin conexión, índices de palabras clave, etc. para reducir la precisión sin gastar tokens.',
+    embeddingModel: 'Modelo de incrustación',
+    embeddingModelTip: 'Cambia el modelo de incrustación, por favor ve a ',
+    embeddingModelTipLink: 'Configuración',
+    retrievalSetting: {
+      title: 'Configuración de recuperación',
+      learnMore: 'Aprende más',
+      description: ' sobre el método de recuperación.',
+      longDescription: ' sobre el método de recuperación, puedes cambiar esto en cualquier momento en la configuración del conjunto de datos.',
+    },
+    save: 'Guardar',
+    retrievalSettings: 'Configuración de recuperación',
+    externalKnowledgeID: 'ID de conocimiento externo',
+    externalKnowledgeAPI: 'API de conocimiento externo',
+  },
+}
+
+export default translation

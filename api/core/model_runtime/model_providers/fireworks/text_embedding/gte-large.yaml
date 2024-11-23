@@ -1,0 +1,12 @@
+model: thenlper/gte-large
+label:
+  zh_Hans: GTE-large
+  en_US: GTE-large
+model_type: text-embedding
+model_properties:
+  context_size: 512
+  max_chunks: 1
+pricing:
+  input: '0.008'
+  unit: '0.000001'
+  currency: 'USD'

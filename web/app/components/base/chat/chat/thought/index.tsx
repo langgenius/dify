@@ -1,17 +1,11 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { useContext } from 'use-context-selector'
 import type { ThoughtItem, ToolInfoInThought } from '../type'
-import Tool from '@/app/components/base/chat/chat/thought/tool'
-import type { Emoji } from '@/app/components/tools/types'
-
-import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
+import ToolDetail from '@/app/components/base/chat/chat/answer/tool-detail'
 
 export type IThoughtProps = {
   thought: ThoughtItem
-  allToolIcons: Record<string, string | Emoji>
   isFinished: boolean
 }
 
@@ -28,12 +22,8 @@ function getValue(value: string, isValueArray: boolean, index: number) {
 
 const Thought: FC<IThoughtProps> = ({
   thought,
-  allToolIcons,
   isFinished,
 }) => {
-  const { locale } = useContext(I18n)
-  const language = getLanguage(locale)
-
   const [toolNames, isValueArray]: [string[], boolean] = (() => {
     try {
       if (Array.isArray(JSON.parse(thought.tool)))
@@ -57,10 +47,9 @@ const Thought: FC<IThoughtProps> = ({
   return (
     <div className='my-2 space-y-2'>
       {toolThoughtList.map((item: ToolInfoInThought, index) => (
-        <Tool
+        <ToolDetail
           key={index}
           payload={item}
-          allToolIcons={allToolIcons}
         />
       ))}
     </div>

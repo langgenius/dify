@@ -3,7 +3,6 @@ import {
   useCallback,
   useState,
 } from 'react'
-import cn from 'classnames'
 import { RiAddCircleFill } from '@remixicon/react'
 import { useStoreApi } from 'reactflow'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +18,7 @@ import {
 import { NODES_INITIAL_DATA } from '../constants'
 import { useWorkflowStore } from '../store'
 import TipPopup from './tip-popup'
+import cn from '@/utils/classnames'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import type {
   OnSelectBlock,
@@ -55,7 +55,7 @@ const AddBlock = ({
     } = store.getState()
     const nodes = getNodes()
     const nodesWithSameType = nodes.filter(node => node.data.type === type)
-    const newNode = generateNewNode({
+    const { newNode } = generateNewNode({
       data: {
         ...NODES_INITIAL_DATA[type],
         title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${type}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${type}`),

@@ -23,6 +23,8 @@ const translation = {
   },
   noRecentTip: '最近のクエリ結果はありません。',
   viewChart: 'ベクトルチャートを表示',
+  settingTitle: '取得設定',
+  viewDetail: '詳細を表示',
 }
 
 export default translation

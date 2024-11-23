@@ -3,23 +3,23 @@ const translation = {
     firstStepTip: 'To get started,',
     enterKeyTip: 'enter your OpenAI API Key below',
     getKeyTip: 'Get your API Key from OpenAI dashboard',
-    placeholder: 'Your OpenAI API Key(eg.sk-xxxx)',
+    placeholder: 'Your OpenAI API Key (eg.sk-xxxx)',
   },
   apiKeyInfo: {
     cloud: {
       trial: {
         title: 'You are using the {{providerName}} trial quota.',
-        description: 'The trial quota is provided for your testing use. Before the trial quota calls are exhausted, please set up your own model provider or purchase additional quota.',
+        description: 'The trial quota is provided for your testing purposes. Before the trial quota is exhausted, please set up your own model provider or purchase additional quota.',
       },
       exhausted: {
         title: 'Your trial quota have been used up, please set up your APIKey.',
-        description: 'Your trial quota has been exhausted. Please set up your own model provider or purchase additional quota.',
+        description: 'You have exhausted your trial quota. Please set up your own model provider or purchase additional quota.',
       },
     },
     selfHost: {
       title: {
         row1: 'To get started,',
-        row2: 'setup your  model provider first.',
+        row2: 'setup your model provider first.',
       },
     },
     callTimes: 'Call times',
@@ -45,9 +45,21 @@ const translation = {
         webDescPlaceholder: 'Enter the description of the WebApp',
         language: 'Language',
         workflow: {
-          title: 'Workflow Steps',
+          title: 'Workflow',
+          subTitle: 'Workflow Details',
           show: 'Show',
           hide: 'Hide',
+          showDesc: 'Show or hide workflow details in WebApp',
+        },
+        chatColorTheme: 'Chat color theme',
+        chatColorThemeDesc: 'Set the color theme of the chatbot',
+        chatColorThemeInverted: 'Inverted',
+        invalidHexMessage: 'Invalid hex value',
+        sso: {
+          label: 'SSO Authentication',
+          title: 'WebApp SSO',
+          description: 'All users are required to login with SSO before using WebApp',
+          tooltip: 'Contact the administrator to enable WebApp SSO',
         },
         more: {
           entry: 'Show more settings',
@@ -72,8 +84,8 @@ const translation = {
         copy: 'Copy',
       },
       qrcode: {
-        title: 'QR code to share',
-        scan: 'Scan Share Application',
+        title: 'Link QR Code',
+        scan: 'Scan To Share',
         download: 'Download QR Code',
       },
       customize: {
@@ -99,14 +111,14 @@ const translation = {
       },
     },
     apiInfo: {
-      title: 'Backend service API',
+      title: 'Backend Service API',
       explanation: 'Easily integrated into your application',
       accessibleAddress: 'Service API Endpoint',
       doc: 'API Reference',
     },
     status: {
-      running: 'In service',
-      disable: 'Disable',
+      running: 'In Service',
+      disable: 'Disabled',
     },
   },
   analysis: {
@@ -115,7 +127,11 @@ const translation = {
     tokenPS: 'Token/s',
     totalMessages: {
       title: 'Total Messages',
-      explanation: 'Daily AI interactions count; prompt engineering/debugging excluded.',
+      explanation: 'Daily AI interactions count.',
+    },
+    totalConversations: {
+      title: 'Total Conversations',
+      explanation: 'Daily AI conversations count; prompt engineering/debugging excluded.',
     },
     activeUsers: {
       title: 'Active Users',

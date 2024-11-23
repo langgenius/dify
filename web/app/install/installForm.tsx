@@ -9,8 +9,8 @@ import type { SubmitHandler } from 'react-hook-form'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
-import classNames from 'classnames'
 import Loading from '../components/base/loading'
+import classNames from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
 import { fetchInitValidateStatus, fetchSetupStatus, setup } from '@/service/common'
@@ -65,6 +65,7 @@ const InstallForm = () => {
   useEffect(() => {
     fetchSetupStatus().then((res: SetupStatusResponse) => {
       if (res.step === 'finished') {
+        localStorage.setItem('setup_status', 'finished')
         window.location.href = '/signin'
       }
       else {
@@ -153,7 +154,7 @@ const InstallForm = () => {
                 </Button>
               </div>
             </form>
-            <div className="block w-hull mt-2 text-xs text-gray-600">
+            <div className="block w-full mt-2 text-xs text-gray-600">
               {t('login.license.tip')}
               &nbsp;
               <Link

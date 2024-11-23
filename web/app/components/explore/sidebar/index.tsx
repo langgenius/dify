@@ -3,14 +3,15 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import cn from 'classnames'
 import { useSelectedLayoutSegments } from 'next/navigation'
 import Link from 'next/link'
 import Toast from '../../base/toast'
 import Item from './app-nav-item'
+import cn from '@/utils/classnames'
 import { fetchInstalledAppList as doFetchInstalledAppList, uninstallApp, updatePinStatus } from '@/service/explore'
 import ExploreContext from '@/context/explore-context'
 import Confirm from '@/app/components/base/confirm'
+import Divider from '@/app/components/base/divider'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 const SelectedDiscoveryIcon = () => (
@@ -89,6 +90,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
     fetchInstalledAppList()
   }, [controlUpdateInstalledApps])
 
+  const pinnedAppsCount = installedApps.filter(({ is_pinned }) => is_pinned).length
   return (
     <div className='w-fit sm:w-[216px] shrink-0 pt-6 px-4 border-gray-200 cursor-pointer'>
       <div>
@@ -109,14 +111,15 @@ const SideBar: FC<IExploreSideBarProps> = ({
               height: 'calc(100vh - 250px)',
             }}
           >
-            {installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon, icon_background } }) => {
-              return (
+            {installedApps.map(({ id, is_pinned, uninstallable, app: { name, icon_type, icon, icon_url, icon_background } }, index) => (
+              <React.Fragment key={id}>
                 <Item
-                  key={id}
                   isMobile={isMobile}
                   name={name}
+                  icon_type={icon_type}
                   icon={icon}
                   icon_background={icon_background}
+                  icon_url={icon_url}
                   id={id}
                   isSelected={lastSegment?.toLowerCase() === id}
                   isPinned={is_pinned}
@@ -127,8 +130,9 @@ const SideBar: FC<IExploreSideBarProps> = ({
                     setShowConfirm(true)
                   }}
                 />
-              )
-            })}
+                {index === pinnedAppsCount - 1 && index !== installedApps.length - 1 && <Divider />}
+              </React.Fragment>
+            ))}
           </div>
         </div>
       )}
@@ -137,7 +141,6 @@ const SideBar: FC<IExploreSideBarProps> = ({
           title={t('explore.sidebar.delete.title')}
           content={t('explore.sidebar.delete.content')}
           isShow={showConfirm}
-          onClose={() => setShowConfirm(false)}
           onConfirm={handleDelete}
           onCancel={() => setShowConfirm(false)}
         />

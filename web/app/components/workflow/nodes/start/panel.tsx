@@ -73,6 +73,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
 
               <VarItem
                 readonly
+                showLegacyBadge={!isChatMode}
                 payload={{
                   variable: 'sys.files',
                 } as any}
@@ -84,23 +85,69 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
               />
               {
                 isChatMode && (
-                  <VarItem
-                    readonly
-                    payload={{
-                      variable: 'sys.conversation_id',
-                    } as any}
-                    rightContent={
-                      <div className='text-xs font-normal text-gray-500'>
-                        String
-                      </div>
-                    }
-                  />
+                  <>
+                    <VarItem
+                      readonly
+                      payload={{
+                        variable: 'sys.dialogue_count',
+                      } as any}
+                      rightContent={
+                        <div className='text-xs font-normal text-gray-500'>
+                          Number
+                        </div>
+                      }
+                    />
+                    <VarItem
+                      readonly
+                      payload={{
+                        variable: 'sys.conversation_id',
+                      } as any}
+                      rightContent={
+                        <div className='text-xs font-normal text-gray-500'>
+                          String
+                        </div>
+                      }
+                    />
+                  </>
                 )
               }
               <VarItem
                 readonly
                 payload={{
                   variable: 'sys.user_id',
+                } as any}
+                rightContent={
+                  <div className='text-xs font-normal text-gray-500'>
+                    String
+                  </div>
+                }
+              />
+              <VarItem
+                readonly
+                payload={{
+                  variable: 'sys.app_id',
+                } as any}
+                rightContent={
+                  <div className='text-xs font-normal text-gray-500'>
+                    String
+                  </div>
+                }
+              />
+              <VarItem
+                readonly
+                payload={{
+                  variable: 'sys.workflow_id',
+                } as any}
+                rightContent={
+                  <div className='text-xs font-normal text-gray-500'>
+                    String
+                  </div>
+                }
+              />
+              <VarItem
+                readonly
+                payload={{
+                  variable: 'sys.workflow_run_id',
                 } as any}
                 rightContent={
                   <div className='text-xs font-normal text-gray-500'>
@@ -117,6 +164,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
       {isShowAddVarModal && (
         <ConfigVarModal
           isCreate
+          supportFile
           isShow={isShowAddVarModal}
           onClose={hideAddVarModal}
           onConfirm={handleAddVarConfirm}

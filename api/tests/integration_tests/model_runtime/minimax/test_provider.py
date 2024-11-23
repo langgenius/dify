@@ -12,14 +12,14 @@ def test_validate_provider_credentials():
     with pytest.raises(CredentialsValidateFailedError):
         provider.validate_provider_credentials(
             credentials={
-                'minimax_api_key': 'hahahaha',
-                'minimax_group_id': '123',
+                "minimax_api_key": "hahahaha",
+                "minimax_group_id": "123",
             }
         )
 
     provider.validate_provider_credentials(
         credentials={
-            'minimax_api_key': os.environ.get('MINIMAX_API_KEY'),
-            'minimax_group_id': os.environ.get('MINIMAX_GROUP_ID'),
+            "minimax_api_key": os.environ.get("MINIMAX_API_KEY"),
+            "minimax_group_id": os.environ.get("MINIMAX_GROUP_ID"),
         }
     )

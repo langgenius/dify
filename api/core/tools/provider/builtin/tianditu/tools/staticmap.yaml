@@ -1,0 +1,26 @@
+identity:
+  name: generate_static_map
+  author: Listeng
+  label:
+    en_US: Generate a static map
+    zh_Hans: 生成静态地图
+    pt_BR: Generate a static map
+description:
+  human:
+    en_US: Generate a static map
+    zh_Hans: 生成静态地图
+    pt_BR: Generate a static map
+  llm: A tool for generate a static map
+parameters:
+  - name: keyword
+    type: string
+    required: true
+    label:
+      en_US: keyword
+      zh_Hans: 搜索的关键字
+      pt_BR: keyword
+    human_description:
+      en_US: keyword
+      zh_Hans: 搜索的关键字
+      pt_BR: keyword
+    form: llm

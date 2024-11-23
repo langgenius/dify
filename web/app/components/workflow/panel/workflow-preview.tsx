@@ -5,7 +5,6 @@ import {
   // useRef,
   useState,
 } from 'react'
-import cn from 'classnames'
 import {
   RiClipboardLine,
   RiCloseLine,
@@ -27,14 +26,11 @@ import { SimpleBtn } from '../../app/text-generate/item'
 import Toast from '../../base/toast'
 import IterationResultPanel from '../run/iteration-result-panel'
 import InputsPanel from './inputs-panel'
+import cn from '@/utils/classnames'
 import Loading from '@/app/components/base/loading'
-import type { NodeTracing } from '@/types/workflow'
+import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 
-const WorkflowPreview = ({
-  onShowIterationDetail,
-}: {
-  onShowIterationDetail: (detail: NodeTracing[][]) => void
-}) => {
+const WorkflowPreview = () => {
   const { t } = useTranslation()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
   const workflowRunningData = useStore(s => s.workflowRunningData)
@@ -57,12 +53,14 @@ const WorkflowPreview = ({
   }, [workflowRunningData])
 
   const [iterationRunResult, setIterationRunResult] = useState<NodeTracing[][]>([])
+  const [iterDurationMap, setIterDurationMap] = useState<IterationDurationMap>({})
   const [isShowIterationDetail, {
     setTrue: doShowIterationDetail,
     setFalse: doHideIterationDetail,
   }] = useBoolean(false)
 
-  const handleShowIterationDetail = useCallback((detail: NodeTracing[][]) => {
+  const handleShowIterationDetail = useCallback((detail: NodeTracing[][], iterationDurationMap: IterationDurationMap) => {
+    setIterDurationMap(iterationDurationMap)
     setIterationRunResult(detail)
     doShowIterationDetail()
   }, [doShowIterationDetail])
@@ -76,6 +74,7 @@ const WorkflowPreview = ({
           list={iterationRunResult}
           onHide={doHideIterationDetail}
           onBack={doHideIterationDetail}
+          iterDurationMap={iterDurationMap}
         />
       </div>
     )
@@ -98,6 +97,7 @@ const WorkflowPreview = ({
               list={iterationRunResult}
               onHide={doHideIterationDetail}
               onBack={doHideIterationDetail}
+              iterDurationMap={iterDurationMap}
             />
           )
           : (
@@ -150,8 +150,8 @@ const WorkflowPreview = ({
                 >{t('runLog.tracing')}</div>
               </div>
               <div className={cn(
-                'grow bg-white h-0 overflow-y-auto rounded-b-2xl',
-                (currentTab === 'RESULT' || currentTab === 'TRACING') && '!bg-gray-50',
+                'grow bg-components-panel-bg h-0 overflow-y-auto rounded-b-2xl',
+                (currentTab === 'RESULT' || currentTab === 'TRACING') && '!bg-background-section-burn',
               )}>
                 {currentTab === 'INPUT' && showInputsPanel && (
                   <InputsPanel onRun={() => switchTab('RESULT')} />
@@ -161,6 +161,7 @@ const WorkflowPreview = ({
                     <ResultText
                       isRunning={workflowRunningData?.result?.status === WorkflowRunningStatus.Running || !workflowRunningData?.result}
                       outputs={workflowRunningData?.resultText}
+                      allFiles={workflowRunningData?.result?.files as any}
                       error={workflowRunningData?.result?.error}
                       onClick={() => switchTab('DETAIL')}
                     />
@@ -195,18 +196,19 @@ const WorkflowPreview = ({
                   />
                 )}
                 {currentTab === 'DETAIL' && !workflowRunningData?.result && (
-                  <div className='flex h-full items-center justify-center bg-white'>
+                  <div className='flex h-full items-center justify-center bg-components-panel-bg'>
                     <Loading />
                   </div>
                 )}
                 {currentTab === 'TRACING' && (
                   <TracingPanel
+                    className='bg-background-section-burn'
                     list={workflowRunningData?.tracing || []}
                     onShowIterationDetail={handleShowIterationDetail}
                   />
                 )}
                 {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
-                  <div className='flex h-full items-center justify-center bg-gray-50'>
+                  <div className='flex h-full items-center justify-center !bg-background-section-burn'>
                     <Loading />
                   </div>
                 )}

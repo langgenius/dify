@@ -3,8 +3,8 @@ import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import cn from 'classnames'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
@@ -32,7 +32,7 @@ const EmptyDatasetCreationModal = ({
       return
     }
     if (inputValue.length > 40) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.modal.nameLengthInvaild') })
+      notify({ type: 'error', message: t('datasetCreation.stepOne.modal.nameLengthInvalid') })
       return
     }
     try {
@@ -58,7 +58,7 @@ const EmptyDatasetCreationModal = ({
       <div className={s.tip}>{t('datasetCreation.stepOne.modal.tip')}</div>
       <div className={s.form}>
         <div className={s.label}>{t('datasetCreation.stepOne.modal.input')}</div>
-        <Input className='!h-8' value={inputValue} placeholder={t('datasetCreation.stepOne.modal.placeholder') || ''} onChange={setInputValue} />
+        <Input value={inputValue} placeholder={t('datasetCreation.stepOne.modal.placeholder') || ''} onChange={e => setInputValue(e.target.value)} />
       </div>
       <div className='flex flex-row-reverse'>
         <Button className='w-24 ml-2' variant='primary' onClick={submit}>{t('datasetCreation.stepOne.modal.confirmButton')}</Button>

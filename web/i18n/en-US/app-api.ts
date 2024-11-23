@@ -6,11 +6,12 @@ const translation = {
   ok: 'In Service',
   copy: 'Copy',
   copied: 'Copied',
+  regenerate: 'Regenerate',
   play: 'Play',
   pause: 'Pause',
   playing: 'Playing',
   loading: 'Loading',
-  merMaind: {
+  merMaid: {
     rerender: 'Redo Rerender',
   },
   never: 'Never',
@@ -77,6 +78,7 @@ const translation = {
     requestBody: 'Request Body',
     pathParams: 'Path Params',
     query: 'Query',
+    toc: 'Contents',
   },
 }
 

@@ -1,9 +1,9 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { RiCloseLine } from '@remixicon/react'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'

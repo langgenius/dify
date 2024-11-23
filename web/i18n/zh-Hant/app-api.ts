@@ -10,7 +10,7 @@ const translation = {
   pause: '暫停',
   playing: '播放中',
   loading: '載入中',
-  merMaind: {
+  merMaid: {
     rerender: '重新渲染',
   },
   never: '從未',
@@ -77,7 +77,9 @@ const translation = {
     requestBody: 'Request Body',
     pathParams: 'Path Params',
     query: 'Query',
+    toc: '目录',
   },
+  regenerate: '重新生成',
 }
 
 export default translation

@@ -5,9 +5,9 @@ import { PencilIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { get } from 'lodash-es'
-import cn from 'classnames'
 import { DocumentContext } from '../index'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
@@ -78,8 +78,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
                 placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
               />
               : <Input
-                className={s.input}
-                onChange={onUpdate}
+                onChange={e => onUpdate?.(e.target.value)}
                 value={value}
                 defaultValue={defaultValue}
                 placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
@@ -102,7 +101,9 @@ const IconButton: FC<{
   const metadataMap = useMetadataMap()
 
   return (
-    <Tooltip content={metadataMap[type].text} selector={`doc-metadata-${type}`}>
+    <Tooltip
+      popupContent={metadataMap[type].text}
+    >
       <button className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
         <TypeIcon
           iconName={metadataMap[type].iconName || ''}

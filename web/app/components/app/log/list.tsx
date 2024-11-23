@@ -5,10 +5,9 @@ import useSWR from 'swr'
 import {
   HandThumbDownIcon,
   HandThumbUpIcon,
-  InformationCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
-import { RiEditFill } from '@remixicon/react'
+import { RiEditFill, RiQuestionLine } from '@remixicon/react'
 import { get } from 'lodash-es'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
@@ -17,18 +16,16 @@ import timezone from 'dayjs/plugin/timezone'
 import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
-import s from './style.module.css'
+import type { ChatItemInTree } from '../../base/chat/types'
 import VarPanel from './var-panel'
-import { randomString } from '@/utils'
-import type { FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
-import type { Annotation, ChatConversationFullDetailResponse, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationFullDetailResponse, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
+import cn from '@/utils/classnames'
+import type { FeedbackFunc, FeedbackType, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
+import type { Annotation, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
 import type { App } from '@/types/app'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
 import Popover from '@/app/components/base/popover'
 import Chat from '@/app/components/base/chat/chat'
-import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
 import { TONE_LIST } from '@/config'
@@ -39,11 +36,14 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import MessageLogModal from '@/app/components/base/message-log-modal'
+import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
+import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -84,16 +84,19 @@ const PARAM_MAP = {
   frequency_penalty: 'Frequency Penalty',
 }
 
-// Format interface data for easy display
 const getFormattedChatList = (messages: ChatMessage[], conversationId: string, timezone: string, format: string) => {
   const newChatList: IChatItem[] = []
   messages.forEach((item: ChatMessage) => {
+    const questionFiles = item.message_files?.filter((file: any) => file.belongs_to === 'user') || []
     newChatList.push({
       id: `question-${item.id}`,
       content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
       isAnswer: false,
-      message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
+      message_files: getProcessedFilesFromResponse(questionFiles.map((item: any) => ({ ...item, related_id: item.id }))),
+      parentMessageId: item.parent_message_id || undefined,
     })
+
+    const answerFiles = item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || []
     newChatList.push({
       id: item.id,
       content: item.answer,
@@ -102,7 +105,7 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
       adminFeedback: item.feedbacks.find(item => item.from_source === 'admin'), // admin feedback
       feedbackDisabled: false,
       isAnswer: true,
-      message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+      message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
       log: [
         ...item.message,
         ...(item.message[item.message.length - 1]?.role !== 'assistant'
@@ -114,7 +117,7 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
             },
           ]
           : []),
-      ],
+      ] as IChatItem['log'],
       workflow_run_id: item.workflow_run_id,
       conversationId,
       input: {
@@ -126,6 +129,7 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
         tokens: item.answer_tokens + item.message_tokens,
         latency: item.provider_response_latency.toFixed(2),
       },
+      citation: item.metadata?.retriever_resources,
       annotation: (() => {
         if (item.annotation_hit_history) {
           return {
@@ -146,6 +150,7 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
 
         return undefined
       })(),
+      parentMessageId: `question-${item.id}`,
     })
   })
   return newChatList
@@ -154,66 +159,86 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
 // const displayedParams = CompletionParams.slice(0, -2)
 const validatedParams = ['temperature', 'top_p', 'presence_penalty', 'frequency_penalty']
 
-type IDetailPanel<T> = {
+type IDetailPanel = {
   detail: any
   onFeedback: FeedbackFunc
   onSubmitAnnotation: SubmitAnnotationFunc
 }
 
-function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionConversationFullDetailResponse>({ detail, onFeedback }: IDetailPanel<T>) {
+function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
-  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
+  const { currentLogItem, setCurrentLogItem, showMessageLogModal, setShowMessageLogModal, showPromptLogModal, setShowPromptLogModal, currentLogModalActiveTab } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
     setCurrentLogItem: state.setCurrentLogItem,
     showMessageLogModal: state.showMessageLogModal,
     setShowMessageLogModal: state.setShowMessageLogModal,
+    showPromptLogModal: state.showPromptLogModal,
+    setShowPromptLogModal: state.setShowPromptLogModal,
     currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
   const { t } = useTranslation()
-  const [items, setItems] = React.useState<IChatItem[]>([])
   const [hasMore, setHasMore] = useState(true)
   const [varValues, setVarValues] = useState<Record<string, string>>({})
-  const fetchData = async () => {
+
+  const [allChatItems, setAllChatItems] = useState<IChatItem[]>([])
+  const [chatItemTree, setChatItemTree] = useState<ChatItemInTree[]>([])
+  const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
+
+  const fetchData = useCallback(async () => {
     try {
       if (!hasMore)
         return
+
       const params: ChatMessagesRequest = {
         conversation_id: detail.id,
         limit: 10,
       }
-      if (items?.[0]?.id)
-        params.first_id = items?.[0]?.id.replace('question-', '')
-
+      if (allChatItems[0]?.id)
+        params.first_id = allChatItems[0]?.id.replace('question-', '')
       const messageRes = await fetchChatMessages({
         url: `/apps/${appDetail?.id}/chat-messages`,
         params,
       })
       if (messageRes.data.length > 0) {
-        const varValues = messageRes.data[0].inputs
+        const varValues = messageRes.data.at(-1)!.inputs
         setVarValues(varValues)
       }
-      const newItems = [...getFormattedChatList(messageRes.data, detail.id, timezone!, t('appLog.dateTimeFormat') as string), ...items]
+      setHasMore(messageRes.has_more)
+
+      const newAllChatItems = [
+        ...getFormattedChatList(messageRes.data, detail.id, timezone!, t('appLog.dateTimeFormat') as string),
+        ...allChatItems,
+      ]
+      setAllChatItems(newAllChatItems)
+
+      let tree = buildChatItemTree(newAllChatItems)
       if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
-        newItems.unshift({
+        tree = [{
           id: 'introduction',
           isAnswer: true,
           isOpeningStatement: true,
           content: detail?.model_config?.configs?.introduction ?? 'hello',
           feedbackDisabled: true,
-        })
+          children: tree,
+        }]
       }
-      setItems(newItems)
-      setHasMore(messageRes.has_more)
+      setChatItemTree(tree)
+
+      setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
     }
     catch (err) {
       console.error(err)
     }
-  }
+  }, [allChatItems, detail.id, hasMore, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
+
+  const switchSibling = useCallback((siblingMessageId: string) => {
+    setThreadChatItems(getThreadMessages(chatItemTree, siblingMessageId))
+  }, [chatItemTree])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
-    setItems(items.map((item, i) => {
+    setAllChatItems(allChatItems.map((item, i) => {
       if (i === index - 1) {
         return {
           ...item,
@@ -234,9 +259,9 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       }
       return item
     }))
-  }, [items])
+  }, [allChatItems])
   const handleAnnotationAdded = useCallback((annotationId: string, authorName: string, query: string, answer: string, index: number) => {
-    setItems(items.map((item, i) => {
+    setAllChatItems(allChatItems.map((item, i) => {
       if (i === index - 1) {
         return {
           ...item,
@@ -264,9 +289,9 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       }
       return item
     }))
-  }, [items])
+  }, [allChatItems])
   const handleAnnotationRemoved = useCallback((index: number) => {
-    setItems(items.map((item, i) => {
+    setAllChatItems(allChatItems.map((item, i) => {
       if (i === index) {
         return {
           ...item,
@@ -276,12 +301,16 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       }
       return item
     }))
-  }, [items])
+  }, [allChatItems])
+
+  const fetchInitiated = useRef(false)
 
   useEffect(() => {
-    if (appDetail?.id && detail.id && appDetail?.mode !== 'completion')
+    if (appDetail?.id && detail.id && appDetail?.mode !== 'completion' && !fetchInitiated.current) {
+      fetchInitiated.current = true
       fetchData()
-  }, [appDetail?.id, detail.id, appDetail?.mode])
+    }
+  }, [appDetail?.id, detail.id, appDetail?.mode, fetchData])
 
   const isChatMode = appDetail?.mode !== 'completion'
   const isAdvanced = appDetail?.mode === 'advanced-chat'
@@ -340,16 +369,16 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   return (
     <div ref={ref} className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
       {/* Panel Header */}
-      <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
+      <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between bg-components-panel-bg'>
         <div>
           <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
           {isChatMode && (
             <div className='flex items-center text-gray-700 text-[13px] leading-[18px]'>
-              <TooltipPlus
-                hideArrow
-                popupContent={detail.id}>
+              <Tooltip
+                popupContent={detail.id}
+              >
                 <div className='max-w-[105px] truncate'>{detail.id}</div>
-              </TooltipPlus>
+              </Tooltip>
               <CopyIcon content={detail.id} />
             </div>
           )}
@@ -379,7 +408,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
                 btnClassName='mr-4 !bg-gray-50 !py-1.5 !px-2.5 border-none font-normal'
                 btnElement={<>
                   <span className='text-[13px]'>{targetTone}</span>
-                  <InformationCircleIcon className='h-4 w-4 text-gray-800 ml-1.5' />
+                  <RiQuestionLine className='h-4 w-4 text-gray-800 ml-1.5' />
                 </>}
                 htmlContent={<div className='w-[280px]'>
                   <div className='flex justify-between py-2 px-4 font-medium text-sm text-gray-700'>
@@ -437,7 +466,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             siteInfo={null}
           />
         </div>
-        : items.length < 8
+        : threadChatItems.length < 8
           ? <div className="pt-4 mb-4">
             <Chat
               config={{
@@ -451,7 +480,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
                 },
                 supportFeedback: true,
               } as any}
-              chatList={items}
+              chatList={threadChatItems}
               onAnnotationAdded={handleAnnotationAdded}
               onAnnotationEdited={handleAnnotationEdited}
               onAnnotationRemoved={handleAnnotationRemoved}
@@ -460,6 +489,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
               showPromptLog
               hideProcessDetail
               chatContainerInnerClassName='px-6'
+              switchSibling={switchSibling}
             />
           </div>
           : <div
@@ -474,7 +504,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             {/* Put the scroll bar always on the bottom */}
             <InfiniteScroll
               scrollableTarget="scrollableDiv"
-              dataLength={items.length}
+              dataLength={threadChatItems.length}
               next={fetchData}
               hasMore={hasMore}
               loader={<div className='text-center text-gray-400 text-xs'>{t('appLog.detail.loading')}...</div>}
@@ -495,7 +525,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             >
               <Chat
                 config={{
-                  app_id: appDetail?.id,
+                  appId: appDetail?.id,
                   text_to_speech: {
                     enabled: true,
                   },
@@ -505,7 +535,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
                   },
                   supportFeedback: true,
                 } as any}
-                chatList={items}
+                chatList={threadChatItems}
                 onAnnotationAdded={handleAnnotationAdded}
                 onAnnotationEdited={handleAnnotationEdited}
                 onAnnotationRemoved={handleAnnotationRemoved}
@@ -514,6 +544,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
                 showPromptLog
                 hideProcessDetail
                 chatContainerInnerClassName='px-6'
+                switchSibling={switchSibling}
               />
             </InfiniteScroll>
           </div>
@@ -527,6 +558,16 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             setShowMessageLogModal(false)
           }}
           defaultTab={currentLogModalActiveTab}
+        />
+      )}
+      {showPromptLogModal && (
+        <PromptLogModal
+          width={width}
+          currentLogItem={currentLogItem}
+          onCancel={() => {
+            setCurrentLogItem()
+            setShowPromptLogModal(false)
+          }}
         />
       )}
     </div>
@@ -543,7 +584,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
-  const handleFeedback = async (mid: string, { rating }: Feedbacktype): Promise<boolean> => {
+  const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {
     try {
       await updateLogMessageFeedbacks({ url: `/apps/${appId}/feedbacks`, body: { message_id: mid, rating } })
       conversationDetailMutate()
@@ -572,7 +613,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
   if (!conversationDetail)
     return null
 
-  return <DetailPanel<CompletionConversationFullDetailResponse>
+  return <DetailPanel
     detail={conversationDetail}
     onFeedback={handleFeedback}
     onSubmitAnnotation={handleAnnotation}
@@ -588,7 +629,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
-  const handleFeedback = async (mid: string, { rating }: Feedbacktype): Promise<boolean> => {
+  const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {
     try {
       await updateLogMessageFeedbacks({ url: `/apps/${appId}/feedbacks`, body: { message_id: mid, rating } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -615,7 +656,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
   if (!conversationDetail)
     return null
 
-  return <DetailPanel<ChatConversationFullDetailResponse>
+  return <DetailPanel
     detail={conversationDetail}
     onFeedback={handleFeedback}
     onSubmitAnnotation={handleAnnotation}
@@ -635,20 +676,23 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const [showDrawer, setShowDrawer] = useState<boolean>(false) // Whether to display the chat details drawer
   const [currentConversation, setCurrentConversation] = useState<ChatConversationGeneralDetail | CompletionConversationGeneralDetail | undefined>() // Currently selected conversation
   const isChatMode = appDetail.mode !== 'completion' // Whether the app is a chat app
+  const { setShowPromptLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
+    setShowPromptLogModal: state.setShowPromptLogModal,
+    setShowAgentLogModal: state.setShowAgentLogModal,
+  })))
 
   // Annotated data needs to be highlighted
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
     return (
       <Tooltip
-        htmlContent={
-          <span className='text-xs text-gray-500 inline-flex items-center'>
+        popupContent={
+          <span className='text-xs text-text-tertiary inline-flex items-center'>
             <RiEditFill className='w-3 h-3 mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         }
-        className={(isHighlight && !isChatMode) ? '' : '!hidden'}
-        selector={`highlight-${randomString(16)}`}
+        popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
       >
-        <div className={cn(isEmptyStyle ? 'text-gray-400' : 'text-gray-700', !isHighlight ? '' : 'bg-orange-100', 'text-sm overflow-hidden text-ellipsis whitespace-nowrap')}>
+        <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'system-sm-regular overflow-hidden text-ellipsis whitespace-nowrap')}>
           {value || '-'}
         </div>
       </Tooltip>
@@ -659,6 +703,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
     onRefresh()
     setShowDrawer(false)
     setCurrentConversation(undefined)
+    setShowPromptLogModal(false)
+    setShowAgentLogModal(false)
   }
 
   if (!logs)
@@ -666,40 +712,46 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
 
   return (
     <div className='overflow-x-auto'>
-      <table className={`w-full min-w-[440px] border-collapse border-0 text-sm mt-3 ${s.logTable}`}>
-        <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-bold">
+      <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
+        <thead className='system-xs-medium-uppercase text-text-tertiary'>
           <tr>
-            <td className='w-[1.375rem] whitespace-nowrap'></td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.time')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.endUser')}</td>
-            <td className='whitespace-nowrap'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
-            <td className='whitespace-nowrap'>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.userRate')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.adminRate')}</td>
+            <td className='pl-2 pr-1 w-5 rounded-l-lg bg-background-section-burn whitespace-nowrap'></td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.endUser')}</td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.userRate')}</td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.adminRate')}</td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.updatedTime')}</td>
+            <td className='pl-3 py-1.5 rounded-r-lg bg-background-section-burn whitespace-nowrap'>{t('appLog.table.header.time')}</td>
           </tr>
         </thead>
-        <tbody className="text-gray-500">
+        <tbody className="text-text-secondary system-sm-regular">
           {logs.data.map((log: any) => {
-            const endUser = log.from_end_user_session_id
+            const endUser = log.from_end_user_session_id || log.from_account_name
             const leftValue = get(log, isChatMode ? 'name' : 'message.inputs.query') || (!isChatMode ? (get(log, 'message.query') || get(log, 'message.inputs.default_input')) : '') || ''
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
             return <tr
               key={log.id}
-              className={`border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer ${currentConversation?.id !== log.id ? '' : 'bg-gray-50'}`}
+              className={cn('border-b border-divider-subtle hover:bg-background-default-hover cursor-pointer', currentConversation?.id !== log.id ? '' : 'bg-background-default-hover')}
               onClick={() => {
                 setShowDrawer(true)
                 setCurrentConversation(log)
               }}>
-              <td className='text-center align-middle'>{!log.read_at && <span className='inline-block bg-[#3F83F8] h-1.5 w-1.5 rounded'></span>}</td>
-              <td className='w-[160px]'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
-              <td>{renderTdValue(endUser || defaultValue, !endUser)}</td>
-              <td style={{ maxWidth: isChatMode ? 300 : 200 }}>
+              <td className='h-4'>
+                {!log.read_at && (
+                  <div className='p-3 pr-0.5 flex items-center'>
+                    <span className='inline-block bg-util-colors-blue-blue-500 h-1.5 w-1.5 rounded'></span>
+                  </div>
+                )}
+              </td>
+              <td className='p-3 pr-2 w-[160px]' style={{ maxWidth: isChatMode ? 300 : 200 }}>
                 {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}
               </td>
-              <td style={{ maxWidth: isChatMode ? 100 : 200 }}>
+              <td className='p-3 pr-2'>{renderTdValue(endUser || defaultValue, !endUser)}</td>
+              <td className='p-3 pr-2' style={{ maxWidth: isChatMode ? 100 : 200 }}>
                 {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('appLog.table.empty.noOutput')), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
               </td>
-              <td>
+              <td className='p-3 pr-2'>
                 {(!log.user_feedback_stats.like && !log.user_feedback_stats.dislike)
                   ? renderTdValue(defaultValue, true)
                   : <>
@@ -708,7 +760,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   </>
                 }
               </td>
-              <td>
+              <td className='p-3 pr-2'>
                 {(!log.admin_feedback_stats.like && !log.admin_feedback_stats.dislike)
                   ? renderTdValue(defaultValue, true)
                   : <>
@@ -717,6 +769,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   </>
                 }
               </td>
+              <td className='w-[160px] p-3 pr-2'>{formatTime(log.updated_at, t('appLog.dateTimeFormat') as string)}</td>
+              <td className='w-[160px] p-3 pr-2'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
             </tr>
           })}
         </tbody>
@@ -726,7 +780,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassname='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl'
+        panelClassname='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-background-gradient-bg-fill-chat-bg-1'
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,

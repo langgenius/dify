@@ -23,6 +23,8 @@ const translation = {
   },
   noRecentTip: 'Keine kürzlichen Abfrageergebnisse hier',
   viewChart: 'VEKTORDIAGRAMM ansehen',
+  viewDetail: 'Im Detail sehen',
+  settingTitle: 'Einstellung für den Abruf',
 }
 
 export default translation

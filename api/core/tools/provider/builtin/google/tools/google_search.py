@@ -9,7 +9,6 @@ SERP_API_URL = "https://serpapi.com/search"
 
 
 class GoogleSearchTool(BuiltinTool):
-
     def _parse_response(self, response: dict) -> dict:
         result = {}
         if "knowledge_graph" in response:
@@ -17,25 +16,23 @@ class GoogleSearchTool(BuiltinTool):
             result["description"] = response["knowledge_graph"].get("description", "")
         if "organic_results" in response:
             result["organic_results"] = [
-                {
-                    "title": item.get("title", ""),
-                    "link": item.get("link", ""),
-                    "snippet": item.get("snippet", "")
-                }
+                {"title": item.get("title", ""), "link": item.get("link", ""), "snippet": item.get("snippet", "")}
                 for item in response["organic_results"]
             ]
         return result
-    def _invoke(self,
-                user_id: str,
-                tool_parameters: dict[str, Any],
-                ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         params = {
-            "api_key": self.runtime.credentials['serpapi_api_key'],
-            "q": tool_parameters['query'],
+            "api_key": self.runtime.credentials["serpapi_api_key"],
+            "q": tool_parameters["query"],
             "engine": "google",
             "google_domain": "google.com",
             "gl": "us",
-            "hl": "en"
+            "hl": "en",
         }
         response = requests.get(url=SERP_API_URL, params=params)
         response.raise_for_status()

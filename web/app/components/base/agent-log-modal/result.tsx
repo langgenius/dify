@@ -21,7 +21,6 @@ type ResultPanelProps = {
 }
 
 const ResultPanel: FC<ResultPanelProps> = ({
-  status,
   elapsed_time,
   total_tokens,
   error,

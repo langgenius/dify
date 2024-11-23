@@ -9,7 +9,7 @@ import Button from '@/app/components/base/button'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
 import { Hash02 } from '@/app/components/base/icons/src/vender/line/general'
 import { ToastContext } from '@/app/components/base/toast'
-import type { SegmentUpdator } from '@/models/datasets'
+import type { SegmentUpdater } from '@/models/datasets'
 import { addSegment } from '@/service/datasets'
 import TagInput from '@/app/components/base/tag-input'
 
@@ -42,7 +42,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
   }
 
   const handleSave = async () => {
-    const params: SegmentUpdator = { content: '' }
+    const params: SegmentUpdater = { content: '' }
     if (docForm === 'qa_model') {
       if (!question.trim())
         return notify({ type: 'error', message: t('datasetDocuments.segment.questionEmpty') })

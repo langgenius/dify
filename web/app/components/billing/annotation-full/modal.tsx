@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import UpgradeBtn from '../upgrade-btn'
 import Modal from '../../base/modal'
 import Usage from './usage'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import GridMask from '@/app/components/base/grid-mask'
 
 type Props = {

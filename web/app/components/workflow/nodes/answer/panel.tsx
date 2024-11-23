@@ -23,6 +23,8 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
     onlyLeafNodeVar: false,
+    hideChatVar: false,
+    hideEnv: false,
     filterVar,
   })
 
@@ -36,6 +38,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
         onChange={handleAnswerChange}
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
+        isSupportFileVar
       />
     </div>
   )

@@ -39,7 +39,10 @@ export const useWorkflowStartRun = () => {
       showDebugAndPreviewPanel,
       setShowDebugAndPreviewPanel,
       setShowInputsPanel,
+      setShowEnvPanel,
     } = workflowStore.getState()
+
+    setShowEnvPanel(false)
 
     if (showDebugAndPreviewPanel) {
       handleCancelDebugAndPreviewPanel()
@@ -63,7 +66,12 @@ export const useWorkflowStartRun = () => {
       showDebugAndPreviewPanel,
       setShowDebugAndPreviewPanel,
       setHistoryWorkflowData,
+      setShowEnvPanel,
+      setShowChatVariablePanel,
     } = workflowStore.getState()
+
+    setShowEnvPanel(false)
+    setShowChatVariablePanel(false)
 
     if (showDebugAndPreviewPanel)
       handleCancelDebugAndPreviewPanel()

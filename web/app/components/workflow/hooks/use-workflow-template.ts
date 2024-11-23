@@ -10,13 +10,13 @@ export const useWorkflowTemplate = () => {
   const isChatMode = useIsChatMode()
   const nodesInitialData = useNodesInitialData()
 
-  const startNode = generateNewNode({
+  const { newNode: startNode } = generateNewNode({
     data: nodesInitialData.start,
     position: START_INITIAL_POSITION,
   })
 
   if (isChatMode) {
-    const llmNode = generateNewNode({
+    const { newNode: llmNode } = generateNewNode({
       id: 'llm',
       data: {
         ...nodesInitialData.llm,
@@ -31,7 +31,7 @@ export const useWorkflowTemplate = () => {
       },
     } as any)
 
-    const answerNode = generateNewNode({
+    const { newNode: answerNode } = generateNewNode({
       id: 'answer',
       data: {
         ...nodesInitialData.answer,

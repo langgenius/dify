@@ -23,6 +23,7 @@ const translation = {
     tipLeft: 'Bitte gehen Sie zum ',
     Link: 'Detailpanel',
     tipRight: 'ansehen.',
+    link: 'Gruppe Detail',
   },
 }
 

@@ -1,6 +1,5 @@
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { RiArrowDownSLine } from '@remixicon/react'
 import type {
   Model,
@@ -11,10 +10,11 @@ import { MODEL_STATUS_TEXT } from '../declarations'
 import { useLanguage } from '../hooks'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
+import cn from '@/utils/classnames'
 import { useProviderContext } from '@/context/provider-context'
 import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type TriggerProps = {
   open?: boolean
@@ -90,7 +90,7 @@ const Trigger: FC<TriggerProps> = ({
       {
         disabled
           ? (
-            <TooltipPlus
+            <Tooltip
               popupContent={
                 hasDeprecated
                   ? t('common.modelProvider.deprecated')
@@ -100,7 +100,7 @@ const Trigger: FC<TriggerProps> = ({
               }
             >
               <AlertTriangle className='w-4 h-4 text-[#F79009]' />
-            </TooltipPlus>
+            </Tooltip>
           )
           : (
             <SlidersH className={cn(!isInWorkflow ? 'text-indigo-600' : 'text-gray-500', 'shrink-0 w-4 h-4')} />

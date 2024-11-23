@@ -17,12 +17,14 @@ class AgentHistoryPromptTransform(PromptTransform):
     """
     History Prompt Transform for Agent App
     """
-    def __init__(self,
-                 model_config: ModelConfigWithCredentialsEntity,
-                 prompt_messages: list[PromptMessage],
-                 history_messages: list[PromptMessage],
-                 memory: Optional[TokenBufferMemory] = None,
-                 ):
+
+    def __init__(
+        self,
+        model_config: ModelConfigWithCredentialsEntity,
+        prompt_messages: list[PromptMessage],
+        history_messages: list[PromptMessage],
+        memory: Optional[TokenBufferMemory] = None,
+    ):
         self.model_config = model_config
         self.prompt_messages = prompt_messages
         self.history_messages = history_messages
@@ -45,9 +47,7 @@ class AgentHistoryPromptTransform(PromptTransform):
         model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
         curr_message_tokens = model_type_instance.get_num_tokens(
-            self.memory.model_instance.model,
-            self.memory.model_instance.credentials,
-            self.history_messages
+            self.memory.model_instance.model, self.memory.model_instance.credentials, self.history_messages
         )
         if curr_message_tokens <= max_token_limit:
             return self.history_messages
@@ -63,9 +63,7 @@ class AgentHistoryPromptTransform(PromptTransform):
             # a message is start with UserPromptMessage
             if isinstance(prompt_message, UserPromptMessage):
                 curr_message_tokens = model_type_instance.get_num_tokens(
-                    self.memory.model_instance.model,
-                    self.memory.model_instance.credentials,
-                    prompt_messages
+                    self.memory.model_instance.model, self.memory.model_instance.credentials, prompt_messages
                 )
                 # if current message token is overflow, drop all the prompts in current message and break
                 if curr_message_tokens > max_token_limit:

@@ -4,9 +4,9 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { flatten, uniq } from 'lodash-es'
-import cn from 'classnames'
 import ResultPanel from './result'
 import TracingPanel from './tracing'
+import cn from '@/utils/classnames'
 import { ToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
 import { fetchAgentLogDetail } from '@/service/log'
@@ -97,7 +97,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
           onClick={() => switchTab('TRACING')}
         >{t('runLog.tracing')}</div>
       </div>
-      {/* panel detal */}
+      {/* panel detail */}
       <div className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-gray-50')}>
         {loading && (
           <div className='flex h-full items-center justify-center bg-white'>

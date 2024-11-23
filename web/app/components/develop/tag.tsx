@@ -1,5 +1,5 @@
 'use client'
-import classNames from 'classnames'
+import classNames from '@/utils/classnames'
 
 const variantStyles = {
   medium: 'rounded-lg px-1.5 ring-1 ring-inset',

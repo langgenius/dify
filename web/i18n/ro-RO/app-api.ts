@@ -10,7 +10,7 @@ const translation = {
   pause: 'Pauză',
   playing: 'În redare',
   loading: 'Se încarcă',
-  merMaind: {
+  merMaid: {
     rerender: 'Reprocesare',
   },
   never: 'Niciodată',
@@ -77,7 +77,9 @@ const translation = {
     requestBody: 'Corpul cererii',
     pathParams: 'Parametrii căii',
     query: 'Interogare',
+    toc: 'Conținut',
   },
+  regenerate: 'Regenera',
 }
 
 export default translation

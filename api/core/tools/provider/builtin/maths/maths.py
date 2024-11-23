@@ -9,9 +9,9 @@ class MathsProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             EvaluateExpressionTool().invoke(
-                user_id='',
+                user_id="",
                 tool_parameters={
-                    'expression': '1+(2+3)*4',
+                    "expression": "1+(2+3)*4",
                 },
             )
         except Exception as e:

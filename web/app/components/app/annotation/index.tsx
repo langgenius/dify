@@ -3,8 +3,8 @@ import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Pagination } from 'react-headless-pagination'
+import { useDebounce } from 'ahooks'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
-import cn from 'classnames'
 import Toast from '../../base/toast'
 import Filter from './filter'
 import type { QueryParam } from './filter'
@@ -14,11 +14,12 @@ import HeaderOpts from './header-opts'
 import s from './style.module.css'
 import { AnnotationEnableStatus, type AnnotationItem, type AnnotationItemBasic, JobStatus } from './type'
 import ViewAnnotationModal from './view-annotation-modal'
+import cn from '@/utils/classnames'
 import Switch from '@/app/components/base/switch'
 import { addAnnotation, delAnnotation, fetchAnnotationConfig as doFetchAnnotationConfig, editAnnotation, fetchAnnotationList, queryAnnotationJobStatus, updateAnnotationScore, updateAnnotationStatus } from '@/service/annotation'
 import Loading from '@/app/components/base/loading'
 import { APP_PAGE_LIMIT } from '@/config'
-import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotation/config-param-modal'
+import ConfigParamModal from '@/app/components/base/features/new-feature-panel/annotation-reply/config-param-modal'
 import type { AnnotationReplyConfig } from '@/models/debug'
 import { sleep } from '@/utils'
 import { useProviderContext } from '@/context/provider-context'
@@ -67,10 +68,11 @@ const Annotation: FC<Props> = ({
 
   const [queryParams, setQueryParams] = useState<QueryParam>({})
   const [currPage, setCurrPage] = React.useState<number>(0)
+  const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
   const query = {
     page: currPage + 1,
     limit: APP_PAGE_LIMIT,
-    keyword: queryParams.keyword || '',
+    keyword: debouncedQueryParams.keyword || '',
   }
 
   const [controlUpdateList, setControlUpdateList] = useState(Date.now())
@@ -150,8 +152,8 @@ const Annotation: FC<Props> = ({
 
   return (
     <div className='flex flex-col h-full'>
-      <p className='flex text-sm font-normal text-gray-500'>{t('appLog.description')}</p>
-      <div className='grow flex flex-col py-4 '>
+      <p className='text-text-tertiary system-sm-regular'>{t('appLog.description')}</p>
+      <div className='flex flex-col py-4 flex-1'>
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div className='flex items-center space-x-2'>
             {isChatApp && (
@@ -280,7 +282,7 @@ const Annotation: FC<Props> = ({
             onSave={async (embeddingModel, score) => {
               if (
                 embeddingModel.embedding_model_name !== annotationConfig?.embedding_model?.embedding_model_name
-                && embeddingModel.embedding_provider_name !== annotationConfig?.embedding_model?.embedding_provider_name
+                || embeddingModel.embedding_provider_name !== annotationConfig?.embedding_model?.embedding_provider_name
               ) {
                 const { job_id: jobId }: any = await updateAnnotationStatus(appDetail.id, AnnotationEnableStatus.enable, embeddingModel, score)
                 await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)

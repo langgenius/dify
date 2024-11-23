@@ -1,16 +1,14 @@
 'use client'
 
 import { useContext } from 'use-context-selector'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
-import {
-  RiMoreFill,
-} from '@remixicon/react'
+import { RiMoreFill } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
-import { deleteDataset } from '@/service/datasets'
+import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import type { DataSet } from '@/models/datasets'
 import Tooltip from '@/app/components/base/tooltip'
 import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
@@ -20,6 +18,8 @@ import Divider from '@/app/components/base/divider'
 import RenameDatasetModal from '@/app/components/datasets/rename-modal'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
+import CornerLabel from '@/app/components/base/corner-label'
+import { useAppContext } from '@/context/app-context'
 
 export type DatasetCardProps = {
   dataset: DataSet
@@ -32,10 +32,28 @@ const DatasetCard = ({
 }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const { push } = useRouter()
+  const EXTERNAL_PROVIDER = 'external' as const
+
+  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [tags, setTags] = useState<Tag[]>(dataset.tags)
 
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [confirmMessage, setConfirmMessage] = useState<string>('')
+  const isExternalProvider = (provider: string): boolean => provider === EXTERNAL_PROVIDER
+  const detectIsUsedByApp = useCallback(async () => {
+    try {
+      const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
+      setConfirmMessage(isUsedByApp ? t('dataset.datasetUsedByApp')! : t('dataset.deleteDatasetConfirmContent')!)
+    }
+    catch (e: any) {
+      const res = await e.json()
+      notify({ type: 'error', message: res?.message || 'Unknown error' })
+    }
+
+    setShowConfirmDelete(true)
+  }, [dataset.id, notify, t])
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteDataset(dataset.id)
@@ -44,12 +62,11 @@ const DatasetCard = ({
         onSuccess()
     }
     catch (e: any) {
-      notify({ type: 'error', message: `${t('dataset.datasetDeleteFailed')}${'message' in e ? `: ${e.message}` : ''}` })
     }
     setShowConfirmDelete(false)
-  }, [dataset.id])
+  }, [dataset.id, notify, onSuccess, t])
 
-  const Operations = (props: HtmlContentProps) => {
+  const Operations = (props: HtmlContentProps & { showDelete: boolean }) => {
     const onMouseLeave = async () => {
       props.onClose?.()
     }
@@ -63,22 +80,26 @@ const DatasetCard = ({
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
-      setShowConfirmDelete(true)
+      detectIsUsedByApp()
     }
     return (
       <div className="relative w-full py-1" onMouseLeave={onMouseLeave}>
         <div className='h-8 py-[6px] px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer' onClick={onClickRename}>
           <span className='text-gray-700 text-sm'>{t('common.operation.settings')}</span>
         </div>
-        <Divider className="!my-1" />
-        <div
-          className='group h-8 py-[6px] px-3 mx-1 flex items-center gap-2 hover:bg-red-50 rounded-lg cursor-pointer'
-          onClick={onClickDelete}
-        >
-          <span className={cn('text-gray-700 text-sm', 'group-hover:text-red-500')}>
-            {t('common.operation.delete')}
-          </span>
-        </div>
+        {props.showDelete && (
+          <>
+            <Divider className="!my-1" />
+            <div
+              className='group h-8 py-[6px] px-3 mx-1 flex items-center gap-2 hover:bg-red-50 rounded-lg cursor-pointer'
+              onClick={onClickDelete}
+            >
+              <span className={cn('text-gray-700 text-sm', 'group-hover:text-red-500')}>
+                {t('common.operation.delete')}
+              </span>
+            </div>
+          </>
+        )}
       </div>
     )
   }
@@ -89,11 +110,17 @@ const DatasetCard = ({
 
   return (
     <>
-      <Link
-        href={`/datasets/${dataset.id}/documents`}
-        className='group flex col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
+      <div
+        className='group relative col-span-1 bg-white border-[0.5px] border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
         data-disable-nprogress={true}
+        onClick={(e) => {
+          e.preventDefault()
+          isExternalProvider(dataset.provider)
+            ? push(`/datasets/${dataset.id}/hitTesting`)
+            : push(`/datasets/${dataset.id}/documents`)
+        }}
       >
+        {isExternalProvider(dataset.provider) && <CornerLabel label='External' className='absolute right-0' labelClassName='rounded-tr-xl' />}
         <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
           <div className={cn(
             'shrink-0 flex items-center justify-center p-2.5 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#E0EAFF]',
@@ -106,23 +133,29 @@ const DatasetCard = ({
               <div className={cn('truncate', !dataset.embedding_available && 'opacity-50 hover:opacity-100')} title={dataset.name}>{dataset.name}</div>
               {!dataset.embedding_available && (
                 <Tooltip
-                  selector={`dataset-tag-${dataset.id}`}
-                  htmlContent={t('dataset.unavailableTip')}
+                  popupContent={t('dataset.unavailableTip')}
                 >
-                  <span className='shrink-0 inline-flex w-max ml-1 px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                  <span className='shrink-0 inline-flex w-max ml-1 px-1 border border-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
                 </Tooltip>
               )}
             </div>
             <div className='flex items-center mt-[1px] text-xs leading-[18px] text-gray-500'>
               <div
                 className={cn('truncate', (!dataset.embedding_available || !dataset.document_count) && 'opacity-50')}
-                title={`${dataset.document_count}${t('dataset.documentCount')} · ${Math.round(dataset.word_count / 1000)}${t('dataset.wordCount')} · ${dataset.app_count}${t('dataset.appCount')}`}
+                title={dataset.provider === 'external' ? `${dataset.app_count}${t('dataset.appCount')}` : `${dataset.document_count}${t('dataset.documentCount')} · ${Math.round(dataset.word_count / 1000)}${t('dataset.wordCount')} · ${dataset.app_count}${t('dataset.appCount')}`}
               >
-                <span>{dataset.document_count}{t('dataset.documentCount')}</span>
-                <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
-                <span>{Math.round(dataset.word_count / 1000)}{t('dataset.wordCount')}</span>
-                <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
-                <span>{dataset.app_count}{t('dataset.appCount')}</span>
+                {dataset.provider === 'external'
+                  ? <>
+                    <span>{dataset.app_count}{t('dataset.appCount')}</span>
+                  </>
+                  : <>
+                    <span>{dataset.document_count}{t('dataset.documentCount')}</span>
+                    <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
+                    <span>{Math.round(dataset.word_count / 1000)}{t('dataset.wordCount')}</span>
+                    <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
+                    <span>{dataset.app_count}{t('dataset.appCount')}</span>
+                  </>
+                }
               </div>
             </div>
           </div>
@@ -159,10 +192,10 @@ const DatasetCard = ({
               />
             </div>
           </div>
-          <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200'/>
+          <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200' />
           <div className='!hidden group-hover:!flex shrink-0'>
             <CustomPopover
-              htmlContent={<Operations />}
+              htmlContent={<Operations showDelete={!isCurrentWorkspaceDatasetOperator} />}
               position="br"
               trigger="click"
               btnElement={
@@ -182,7 +215,7 @@ const DatasetCard = ({
             />
           </div>
         </div>
-      </Link>
+      </div>
       {showRenameModal && (
         <RenameDatasetModal
           show={showRenameModal}
@@ -194,9 +227,8 @@ const DatasetCard = ({
       {showConfirmDelete && (
         <Confirm
           title={t('dataset.deleteDatasetConfirmTitle')}
-          content={t('dataset.deleteDatasetConfirmContent')}
+          content={confirmMessage}
           isShow={showConfirmDelete}
-          onClose={() => setShowConfirmDelete(false)}
           onConfirm={onConfirmDelete}
           onCancel={() => setShowConfirmDelete(false)}
         />

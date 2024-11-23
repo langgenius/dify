@@ -4,20 +4,21 @@ import {
   useMemo,
   useState,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import type { ChatItem } from '../../types'
 import { useChatContext } from '../context'
+import RegenerateBtn from '@/app/components/base/regenerate-btn'
+import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import AudioBtn from '@/app/components/base/audio-btn'
-import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
+import AnnotationCtrlBtn from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-btn'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import {
   ThumbsDown,
   ThumbsUp,
 } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import Log from '@/app/components/base/chat/chat/log'
 
 type OperationProps = {
@@ -28,6 +29,7 @@ type OperationProps = {
   maxSize: number
   contentWidth: number
   hasWorkflowProcess: boolean
+  noChatInput?: boolean
 }
 const Operation: FC<OperationProps> = ({
   item,
@@ -37,6 +39,7 @@ const Operation: FC<OperationProps> = ({
   maxSize,
   contentWidth,
   hasWorkflowProcess,
+  noChatInput,
 }) => {
   const { t } = useTranslation()
   const {
@@ -45,6 +48,7 @@ const Operation: FC<OperationProps> = ({
     onAnnotationEdited,
     onAnnotationRemoved,
     onFeedback,
+    onRegenerate,
   } = useChatContext()
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
   const {
@@ -53,10 +57,11 @@ const Operation: FC<OperationProps> = ({
     content: messageContent,
     annotation,
     feedback,
+    adminFeedback,
     agent_thoughts,
   } = item
   const hasAnnotation = !!annotation?.id
-  const [localFeedback, setLocalFeedback] = useState(feedback)
+  const [localFeedback, setLocalFeedback] = useState(config?.supportAnnotation ? adminFeedback : feedback)
 
   const content = useMemo(() => {
     if (agent_thoughts?.length)
@@ -113,12 +118,16 @@ const Operation: FC<OperationProps> = ({
         {!isOpeningStatement && (showPromptLog || config?.text_to_speech?.enabled) && (
           <div className='hidden group-hover:flex items-center w-max h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md shrink-0'>
             {showPromptLog && (
-              <Log logItem={item} />
+              <>
+                <Log logItem={item} />
+                <div className='mx-1 w-[1px] h-[14px] bg-gray-200' />
+              </>
             )}
+
             {(config?.text_to_speech?.enabled) && (
               <>
-                <div className='mx-1 w-[1px] h-[14px] bg-gray-200'/>
                 <AudioBtn
+                  id={id}
                   value={content}
                   noCache={false}
                   voice={config?.text_to_speech?.voice}
@@ -144,7 +153,7 @@ const Operation: FC<OperationProps> = ({
           />
         )}
         {
-          !positionRight && annotation?.id && (
+          annotation?.id && (
             <div
               className='relative box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7] shadow-md group-hover:hidden'
             >
@@ -155,30 +164,37 @@ const Operation: FC<OperationProps> = ({
           )
         }
         {
+          !isOpeningStatement && !noChatInput && <RegenerateBtn className='hidden group-hover:block mr-1' onClick={() => onRegenerate?.(item)} />
+        }
+        {
           config?.supportFeedback && !localFeedback?.rating && onFeedback && !isOpeningStatement && (
-            <div className='hidden group-hover:flex ml-1 shrink-0 items-center px-0.5 bg-white border-[0.5px] border-gray-100 shadow-md text-gray-500 rounded-lg'>
-              <TooltipPlus popupContent={t('appDebug.operation.agree')}>
+            <div className='hidden group-hover:flex shrink-0 items-center px-0.5 bg-white border-[0.5px] border-gray-100 shadow-md text-gray-500 rounded-lg'>
+              <Tooltip popupContent={t('appDebug.operation.agree')}>
                 <div
                   className='flex items-center justify-center mr-0.5 w-6 h-6 rounded-md hover:bg-black/5 hover:text-gray-800 cursor-pointer'
                   onClick={() => handleFeedback('like')}
                 >
                   <ThumbsUp className='w-4 h-4' />
                 </div>
-              </TooltipPlus>
-              <TooltipPlus popupContent={t('appDebug.operation.disagree')}>
+              </Tooltip>
+              <Tooltip
+                popupContent={t('appDebug.operation.disagree')}
+              >
                 <div
                   className='flex items-center justify-center w-6 h-6 rounded-md hover:bg-black/5 hover:text-gray-800 cursor-pointer'
                   onClick={() => handleFeedback('dislike')}
                 >
                   <ThumbsDown className='w-4 h-4' />
                 </div>
-              </TooltipPlus>
+              </Tooltip>
             </div>
           )
         }
         {
           config?.supportFeedback && localFeedback?.rating && onFeedback && !isOpeningStatement && (
-            <TooltipPlus popupContent={localFeedback.rating === 'like' ? t('appDebug.operation.cancelAgree') : t('appDebug.operation.cancelDisagree')}>
+            <Tooltip
+              popupContent={localFeedback.rating === 'like' ? t('appDebug.operation.cancelAgree') : t('appDebug.operation.cancelDisagree')}
+            >
               <div
                 className={`
                   flex items-center justify-center w-7 h-7 rounded-[10px] border-[2px] border-white cursor-pointer
@@ -198,7 +214,7 @@ const Operation: FC<OperationProps> = ({
                   )
                 }
               </div>
-            </TooltipPlus>
+            </Tooltip>
           )
         }
       </div>

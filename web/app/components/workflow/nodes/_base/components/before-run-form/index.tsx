@@ -2,13 +2,13 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiCloseLine,
   RiLoader2Line,
 } from '@remixicon/react'
 import type { Props as FormProps } from './form'
 import Form from './form'
+import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import Split from '@/app/components/workflow/nodes/_base/components/split'

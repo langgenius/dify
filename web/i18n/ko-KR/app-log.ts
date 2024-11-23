@@ -4,8 +4,9 @@ const translation = {
   dateTimeFormat: 'YYYY/MM/DD HH:mm',
   table: {
     header: {
-      time: '시간',
-      endUser: '엔드 유저',
+      updatedTime: '업데이트 시간',
+      time: '생성 시간',
+      endUser: '엔드 유저 또는 계정',
       input: '입력',
       output: '출력',
       summary: '요약',
@@ -16,7 +17,7 @@ const translation = {
       status: '상태',
       runtime: '실행 시간',
       tokens: '토큰',
-      user: '엔드 유저',
+      user: '엔드 유저 또는 계정',
       version: '버전',
     },
     pagination: {
@@ -70,6 +71,9 @@ const translation = {
       annotated: '향상 주석 ({{count}} 개 항목)',
       not_annotated: '주석 없음',
     },
+    sortBy: '정렬 기준:',
+    descending: '내림차순',
+    ascending: '오름차순',
   },
   workflowTitle: '워크플로우 로그',
   workflowSubtitle: '이 로그는 Automate의 작업을 기록했습니다.',

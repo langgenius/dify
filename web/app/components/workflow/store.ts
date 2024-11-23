@@ -11,7 +11,9 @@ import type {
 } from './help-line/types'
 import type { VariableAssignerNodeType } from './nodes/variable-assigner/types'
 import type {
+  ConversationVariable,
   Edge,
+  EnvironmentVariable,
   HistoryWorkflowData,
   Node,
   RunFile,
@@ -19,6 +21,25 @@ import type {
   WorkflowRunningData,
 } from './types'
 import { WorkflowContext } from './context'
+import type { NodeTracing } from '@/types/workflow'
+
+// #TODO chatVar#
+// const MOCK_DATA = [
+//   {
+//     id: 'fjlaksdjflkjg-dfjlajfl0dnfkafjk-djfdkafj-djfak',
+//     name: 'chat_history',
+//     value_type: 'array[message]',
+//     value: [],
+//     description: 'The chat history of the conversation',
+//   },
+//   {
+//     id: 'fljdaklfjl-dfjlafj0-dklajglje-eknglh',
+//     name: 'order_id',
+//     value: '123456',
+//     value_type: 'string',
+//     description: '',
+//   },
+// ]
 
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
@@ -59,6 +80,7 @@ type Shape = {
     edges: Edge[]
     viewport: Viewport
     features: Record<string, any>
+    environmentVariables: EnvironmentVariable[]
   }
   setBackupDraft: (backupDraft?: Shape['backupDraft']) => void
   notInitialWorkflow: boolean
@@ -78,10 +100,20 @@ type Shape = {
   setWorkflowTools: (tools: ToolWithProvider[]) => void
   clipboardElements: Node[]
   setClipboardElements: (clipboardElements: Node[]) => void
-  shortcutsDisabled: boolean
-  setShortcutsDisabled: (shortcutsDisabled: boolean) => void
   showDebugAndPreviewPanel: boolean
   setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel: boolean) => void
+  showEnvPanel: boolean
+  setShowEnvPanel: (showEnvPanel: boolean) => void
+  environmentVariables: EnvironmentVariable[]
+  setEnvironmentVariables: (environmentVariables: EnvironmentVariable[]) => void
+  envSecrets: Record<string, string>
+  setEnvSecrets: (envSecrets: Record<string, string>) => void
+  showChatVariablePanel: boolean
+  setShowChatVariablePanel: (showChatVariablePanel: boolean) => void
+  showGlobalVariablePanel: boolean
+  setShowGlobalVariablePanel: (showGlobalVariablePanel: boolean) => void
+  conversationVariables: ConversationVariable[]
+  setConversationVariables: (conversationVariables: ConversationVariable[]) => void
   selection: null | { x1: number; y1: number; x2: number; y2: number }
   setSelection: (selection: Shape['selection']) => void
   bundleNodeSize: { width: number; height: number } | null
@@ -133,9 +165,21 @@ type Shape = {
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
   showImportDSLModal: boolean
   setShowImportDSLModal: (showImportDSLModal: boolean) => void
+  showTips: string
+  setShowTips: (showTips: string) => void
+  iterTimes: number
+  setIterTimes: (iterTimes: number) => void
+  iterParallelLogMap: Map<string, NodeTracing[]>
+  setIterParallelLogMap: (iterParallelLogMap: Map<string, NodeTracing[]>) => void
 }
 
 export const createWorkflowStore = () => {
+  const hideAllPanel = {
+    showDebugAndPreviewPanel: false,
+    showEnvPanel: false,
+    showChatVariablePanel: false,
+    showGlobalVariablePanel: false,
+  }
   return createStore<Shape>(set => ({
     appId: '',
     panelWidth: localStorage.getItem('workflow-node-panel-width') ? parseFloat(localStorage.getItem('workflow-node-panel-width')!) : 420,
@@ -186,10 +230,25 @@ export const createWorkflowStore = () => {
     setWorkflowTools: workflowTools => set(() => ({ workflowTools })),
     clipboardElements: [],
     setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
-    shortcutsDisabled: false,
-    setShortcutsDisabled: shortcutsDisabled => set(() => ({ shortcutsDisabled })),
     showDebugAndPreviewPanel: false,
     setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
+    showEnvPanel: false,
+    setShowEnvPanel: showEnvPanel => set(() => ({ showEnvPanel })),
+    environmentVariables: [],
+    setEnvironmentVariables: environmentVariables => set(() => ({ environmentVariables })),
+    envSecrets: {},
+    setEnvSecrets: envSecrets => set(() => ({ envSecrets })),
+    showChatVariablePanel: false,
+    setShowChatVariablePanel: showChatVariablePanel => set(() => ({ showChatVariablePanel })),
+    showGlobalVariablePanel: false,
+    setShowGlobalVariablePanel: showGlobalVariablePanel => set(() => {
+      if (showGlobalVariablePanel)
+        return { ...hideAllPanel, showGlobalVariablePanel: true }
+      else
+        return { showGlobalVariablePanel: false }
+    }),
+    conversationVariables: [],
+    setConversationVariables: conversationVariables => set(() => ({ conversationVariables })),
     selection: null,
     setSelection: selection => set(() => ({ selection })),
     bundleNodeSize: null,
@@ -225,6 +284,13 @@ export const createWorkflowStore = () => {
     setControlPromptEditorRerenderKey: controlPromptEditorRerenderKey => set(() => ({ controlPromptEditorRerenderKey })),
     showImportDSLModal: false,
     setShowImportDSLModal: showImportDSLModal => set(() => ({ showImportDSLModal })),
+    showTips: '',
+    setShowTips: showTips => set(() => ({ showTips })),
+    iterTimes: 1,
+    setIterTimes: iterTimes => set(() => ({ iterTimes })),
+    iterParallelLogMap: new Map<string, NodeTracing[]>(),
+    setIterParallelLogMap: iterParallelLogMap => set(() => ({ iterParallelLogMap })),
+
   }))
 }
 

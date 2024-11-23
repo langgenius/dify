@@ -14,13 +14,13 @@ class ChromaVectorTest(AbstractVectorTest):
         self.vector = ChromaVector(
             collection_name=self.collection_name,
             config=ChromaConfig(
-                host='localhost',
+                host="localhost",
                 port=8000,
                 tenant=chromadb.DEFAULT_TENANT,
                 database=chromadb.DEFAULT_DATABASE,
                 auth_provider="chromadb.auth.token_authn.TokenAuthClientProvider",
                 auth_credentials="difyai123456",
-            )
+            ),
         )
 
     def search_by_full_text(self):

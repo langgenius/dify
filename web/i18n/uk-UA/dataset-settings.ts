@@ -27,6 +27,11 @@ const translation = {
       longDescription: ' про метод вибірки, ви можете змінити це будь-коли в налаштуваннях бази знань.',
     },
     save: 'Зберегти',
+    me: '(Ви)',
+    permissionsInvitedMembers: 'Часткові члени команди',
+    externalKnowledgeAPI: 'API зовнішніх знань',
+    externalKnowledgeID: 'Зовнішній ідентифікатор знань',
+    retrievalSettings: 'Налаштування отримання',
   },
 }
 

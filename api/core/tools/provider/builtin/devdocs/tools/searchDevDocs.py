@@ -13,7 +13,9 @@ class SearchDevDocsInput(BaseModel):
 
 
 class SearchDevDocsTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(
+        self, user_id: str, tool_parameters: dict[str, Any]
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Invokes the DevDocs search tool with the given user ID and tool parameters.
 
@@ -22,15 +24,16 @@ class SearchDevDocsTool(BuiltinTool):
             tool_parameters (dict[str, Any]): The parameters for the tool, including 'doc' and 'topic'.
 
         Returns:
-            ToolInvokeMessage | list[ToolInvokeMessage]: The result of the tool invocation, which can be a single message or a list of messages.
+            ToolInvokeMessage | list[ToolInvokeMessage]: The result of the tool invocation,
+             which can be a single message or a list of messages.
         """
-        doc = tool_parameters.get('doc', '')
-        topic = tool_parameters.get('topic', '')
+        doc = tool_parameters.get("doc", "")
+        topic = tool_parameters.get("topic", "")
 
         if not doc:
-            return self.create_text_message('Please provide the documentation name.')
+            return self.create_text_message("Please provide the documentation name.")
         if not topic:
-            return self.create_text_message('Please provide the topic path.')
+            return self.create_text_message("Please provide the topic path.")
 
         url = f"https://documents.devdocs.io/{doc}/{topic}.html"
         response = requests.get(url)
@@ -39,4 +42,6 @@ class SearchDevDocsTool(BuiltinTool):
             content = response.text
             return self.create_text_message(self.summary(user_id=user_id, content=content))
         else:
-            return self.create_text_message(f"Failed to retrieve the documentation. Status code: {response.status_code}")
+            return self.create_text_message(
+                f"Failed to retrieve the documentation. Status code: {response.status_code}"
+            )

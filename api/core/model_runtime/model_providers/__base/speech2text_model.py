@@ -12,14 +12,13 @@ class Speech2TextModel(AIModel):
     """
     Model class for speech2text model.
     """
+
     model_type: ModelType = ModelType.SPEECH2TEXT
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def invoke(self, model: str, credentials: dict,
-               file: IO[bytes], user: Optional[str] = None) \
-            -> str:
+    def invoke(self, model: str, credentials: dict, file: IO[bytes], user: Optional[str] = None) -> str:
         """
         Invoke large language model
 
@@ -35,9 +34,7 @@ class Speech2TextModel(AIModel):
             raise self._transform_invoke_error(e)
 
     @abstractmethod
-    def _invoke(self, model: str, credentials: dict,
-                file: IO[bytes], user: Optional[str] = None) \
-            -> str:
+    def _invoke(self, model: str, credentials: dict, file: IO[bytes], user: Optional[str] = None) -> str:
         """
         Invoke large language model
 
@@ -59,4 +56,4 @@ class Speech2TextModel(AIModel):
         current_dir = os.path.dirname(os.path.abspath(__file__))
 
         # Construct the path to the audio file
-        return os.path.join(current_dir, 'audio.mp3')
+        return os.path.join(current_dir, "audio.mp3")

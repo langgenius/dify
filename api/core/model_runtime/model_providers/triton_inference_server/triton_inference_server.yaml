@@ -29,7 +29,7 @@ model_credential_schema:
       label:
         zh_Hans: 服务器URL
         en_US: Server url
-      type: secret-input
+      type: text-input
       required: true
       placeholder:
         zh_Hans: 在此输入 Triton Inference Server 的服务器地址，如 http://192.168.1.100:8000

@@ -1,0 +1,68 @@
+identity:
+  name: send_webhook_message
+  author: Doug Lea
+  label:
+    en_US: Send Webhook Message
+    zh_Hans: 使用自定义机器人发送飞书消息
+description:
+  human:
+    en_US: Send webhook message
+    zh_Hans: 使用自定义机器人发送飞书消息
+  llm: A tool for sending Lark messages using a custom robot.
+parameters:
+  - name: webhook
+    type: string
+    required: true
+    label:
+      en_US: webhook
+      zh_Hans: webhook
+    human_description:
+      en_US: |
+        The address of the webhook, the format of the webhook address corresponding to the bot is as follows: https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxxxxxxxxxxx. For details, please refer to: Feishu Custom Bot Usage Guide(https://open.larkoffice.com/document/client-docs/bot-v3/add-custom-bot)
+      zh_Hans: |
+        webhook 的地址，机器人对应的 webhook 地址格式如下: https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxxxxxxxxxxx，详情可参考: 飞书自定义机器人使用指南(https://open.larkoffice.com/document/client-docs/bot-v3/add-custom-bot)
+    llm_description: |
+      webhook 的地址，机器人对应的 webhook 地址格式如下: https://open.feishu.cn/open-apis/bot/v2/hook/xxxxxxxxxxxxxxxxx，详情可参考: 飞书自定义机器人使用指南(https://open.larkoffice.com/document/client-docs/bot-v3/add-custom-bot)
+    form: llm
+
+  - name: msg_type
+    type: select
+    required: true
+    options:
+      - value: text
+        label:
+          en_US: text
+          zh_Hans: 文本
+      - value: interactive
+        label:
+          en_US: interactive
+          zh_Hans: 卡片
+      - value: image
+        label:
+          en_US: image
+          zh_Hans: 图片
+      - value: share_chat
+        label:
+          en_US: share_chat
+          zh_Hans: 分享群名片
+    label:
+      en_US: msg_type
+      zh_Hans: 消息类型
+    human_description:
+      en_US: Message type. Optional values are text, image, interactive, share_chat. For detailed introduction of different message types, refer to the message content(https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json).
+      zh_Hans: 消息类型。可选值有：text、image、interactive、share_chat。不同消息类型的详细介绍，参见发送消息内容(https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json)。
+    llm_description: 消息类型。可选值有：text、image、interactive、share_chat。不同消息类型的详细介绍，参见发送消息内容(https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json)。
+    form: form
+
+
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: content
+      zh_Hans: 消息内容
+    human_description:
+      en_US: Message content, a JSON structure serialized string. The value of this parameter corresponds to msg_type. For example, if msg_type is text, this parameter needs to pass in text type content. To understand the format and usage limitations of different message types, refer to the message content(https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json).
+      zh_Hans: 消息内容，JSON 结构序列化后的字符串。该参数的取值与 msg_type 对应，例如 msg_type 取值为 text，则该参数需要传入文本类型的内容。了解不同类型的消息内容格式、使用限制，可参见发送消息内容(https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json)。
+    llm_description: 消息内容，JSON 结构序列化后的字符串。该参数的取值与 msg_type 对应，例如 msg_type 取值为 text，则该参数需要传入文本类型的内容。了解不同类型的消息内容格式、使用限制，可参见发送消息内容(https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json)。
+    form: llm

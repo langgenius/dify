@@ -1,4 +1,3 @@
-
 import requests
 
 from core.model_runtime.errors.invoke import (
@@ -11,7 +10,7 @@ from core.model_runtime.errors.invoke import (
 )
 
 
-class _CommonOAI_API_Compat:
+class _CommonOaiApiCompat:
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
         """
@@ -35,10 +34,10 @@ class _CommonOAI_API_Compat:
             ],
             InvokeServerUnavailableError: [
                 requests.exceptions.ConnectionError,  # Engine Overloaded
-                requests.exceptions.HTTPError  # Server Error
+                requests.exceptions.HTTPError,  # Server Error
             ],
             InvokeConnectionError: [
                 requests.exceptions.ConnectTimeout,  # Timeout
-                requests.exceptions.ReadTimeout  # Timeout
-            ]
+                requests.exceptions.ReadTimeout,  # Timeout
+            ],
         }

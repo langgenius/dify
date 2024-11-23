@@ -9,7 +9,7 @@ const translation = {
   play: 'Abspielen',
   pause: 'Pause',
   playing: 'Wiedergabe',
-  merMaind: {
+  merMaid: {
     rerender: 'Neu rendern',
   },
   never: 'Nie',
@@ -76,7 +76,10 @@ const translation = {
     requestBody: 'Anfragekörper',
     pathParams: 'Pfadparameter',
     query: 'Anfrage',
+    toc: 'Inhalt',
   },
+  loading: 'Laden',
+  regenerate: 'Erneuern',
 }
 
 export default translation

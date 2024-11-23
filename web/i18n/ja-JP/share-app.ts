@@ -1,8 +1,8 @@
 const translation = {
   common: {
-    welcome: '利用していただきありがとうございます',
+    welcome: '',
     appUnavailable: 'アプリが利用できません',
-    appUnkonwError: 'アプリが利用できません',
+    appUnknownError: 'アプリが利用できません',
   },
   chat: {
     newChat: '新しいチャット',
@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'チャット',
     newChatDefaultName: '新しい会話',
     resetChat: '会話をリセット',
-    powerBy: 'Powered by',
+    poweredBy: 'Powered by',
     prompt: 'プロンプト',
     privatePromptConfigTitle: '会話の設定',
     publicPromptConfigTitle: '初期プロンプト',

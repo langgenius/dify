@@ -1,6 +1,8 @@
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Annotation, MessageRating } from '@/models/log'
-import type { VisionFile } from '@/types/app'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { InputVarType } from '@/app/components/workflow/types'
+import type { FileResponse } from '@/types/workflow'
 
 export type MessageMore = {
   time: string
@@ -8,13 +10,19 @@ export type MessageMore = {
   latency: number | string
 }
 
-export type Feedbacktype = {
+export type FeedbackType = {
   rating: MessageRating
   content?: string | null
 }
 
-export type FeedbackFunc = (messageId: string, feedback: Feedbacktype) => Promise<any>
-export type SubmitAnnotationFunc = (messageId: string, content: string) => Promise<any>
+export type FeedbackFunc = (
+  messageId: string,
+  feedback: FeedbackType
+) => Promise<any>
+export type SubmitAnnotationFunc = (
+  messageId: string,
+  content: string
+) => Promise<any>
 
 export type DisplayScene = 'web' | 'console'
 
@@ -36,7 +44,7 @@ export type ThoughtItem = {
   observation: string
   position: number
   files?: string[]
-  message_files?: VisionFile[]
+  message_files?: FileEntity[]
 }
 
 export type CitationItem = {
@@ -65,11 +73,11 @@ export type IChatItem = {
   /**
    * The user feedback result of this message
    */
-  feedback?: Feedbacktype
+  feedback?: FeedbackType
   /**
    * The admin feedback result of this message
    */
-  adminFeedback?: Feedbacktype
+  adminFeedback?: FeedbackType
   /**
    * Whether to hide the feedback area
    */
@@ -82,27 +90,35 @@ export type IChatItem = {
   useCurrentUserAvatar?: boolean
   isOpeningStatement?: boolean
   suggestedQuestions?: string[]
-  log?: { role: string; text: string; files?: VisionFile[] }[]
+  log?: { role: string; text: string; files?: FileEntity[] }[]
   agent_thoughts?: ThoughtItem[]
-  message_files?: VisionFile[]
+  message_files?: FileEntity[]
   workflow_run_id?: string
   // for agent log
   conversationId?: string
   input?: any
+  parentMessageId?: string | null
+  siblingCount?: number
+  siblingIndex?: number
+  prevSibling?: string
+  nextSibling?: string
+}
+
+export type Metadata = {
+  retriever_resources?: CitationItem[]
+  annotation_reply: {
+    id: string
+    account: {
+      id: string
+      name: string
+    }
+  }
 }
 
 export type MessageEnd = {
   id: string
-  metadata: {
-    retriever_resources?: CitationItem[]
-    annotation_reply: {
-      id: string
-      account: {
-        id: string
-        name: string
-      }
-    }
-  }
+  metadata: Metadata
+  files?: FileResponse[]
 }
 
 export type MessageReplace = {
@@ -119,4 +135,12 @@ export type AnnotationReply = {
   conversation_id: string
   annotation_id: string
   annotation_author_name: string
+}
+
+export type InputForm = {
+  type: InputVarType
+  label: string
+  variable: any
+  required: boolean
+  [key: string]: any
 }

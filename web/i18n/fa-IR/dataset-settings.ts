@@ -1,0 +1,38 @@
+const translation = {
+  title: 'تنظیمات دانش',
+  desc: 'اینجا می‌توانید ویژگی‌ها و روش‌های کاری دانش را تغییر دهید.',
+  form: {
+    name: 'نام دانش',
+    namePlaceholder: 'لطفاً نام دانش را وارد کنید',
+    nameError: 'نام نمی‌تواند خالی باشد',
+    desc: 'توضیحات دانش',
+    descInfo: 'لطفاً یک توضیح متنی واضح بنویسید تا محتوای دانش را مشخص کند. این توضیحات به عنوان مبنایی برای تطبیق هنگام انتخاب از چندین دانش برای استنتاج استفاده خواهد شد.',
+    descPlaceholder: 'توضیح دهید که در این دانش چه چیزی وجود دارد. توضیحات دقیق به هوش مصنوعی اجازه می‌دهد تا به موقع به محتوای دانش دسترسی پیدا کند. اگر خالی باشد، دیفی از استراتژی پیش‌فرض استفاده خواهد کرد.',
+    descWrite: 'یاد بگیرید چگونه یک توضیح دانش خوب بنویسید.',
+    permissions: 'مجوزها',
+    permissionsOnlyMe: 'فقط من',
+    permissionsAllMember: 'تمام اعضای تیم',
+    permissionsInvitedMembers: 'برخی از اعضای تیم',
+    me: '(شما)',
+    indexMethod: 'روش نمایه‌سازی',
+    indexMethodHighQuality: 'کیفیت بالا',
+    indexMethodHighQualityTip: 'مدل تعبیه را برای پردازش فراخوانی کنید تا دقت بالاتری هنگام جستجوی کاربران فراهم شود.',
+    indexMethodEconomy: 'اقتصادی',
+    indexMethodEconomyTip: 'استفاده از موتورهای برداری آفلاین، شاخص‌های کلمات کلیدی و غیره برای کاهش دقت بدون صرف توکن‌ها',
+    embeddingModel: 'مدل تعبیه',
+    embeddingModelTip: 'برای تغییر مدل تعبیه، لطفاً به ',
+    embeddingModelTipLink: 'تنظیمات',
+    retrievalSetting: {
+      title: 'تنظیمات بازیابی',
+      learnMore: 'بیشتر بدانید',
+      description: ' درباره روش بازیابی.',
+      longDescription: ' درباره روش بازیابی، می‌توانید در هر زمانی در تنظیمات دانش این را تغییر دهید.',
+    },
+    save: 'ذخیره',
+    externalKnowledgeAPI: 'API دانش خارجی',
+    retrievalSettings: 'تنظیمات بازیابی',
+    externalKnowledgeID: 'شناسه دانش خارجی',
+  },
+}
+
+export default translation

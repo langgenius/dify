@@ -1,13 +1,11 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import Editor from '../_base/components/prompt/editor'
 import ResultPanel from '../../run/result-panel'
+import ConfigVision from '../_base/components/config-vision'
 import useConfig from './use-config'
 import type { ParameterExtractorNodeType } from './types'
 import ExtractParameter from './components/extract-parameter/list'
@@ -19,7 +17,7 @@ import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import { VarType } from '@/app/components/workflow/types'
 
@@ -54,6 +52,9 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     availableNodesWithParent,
     inputVarValues,
     varInputs,
+    isVisionModel,
+    handleVisionResolutionChange,
+    handleVisionResolutionEnabledChange,
     isShowSingleRun,
     hideSingleRun,
     runningStatus,
@@ -68,20 +69,6 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
   return (
     <div className='mt-2'>
       <div className='px-4 pb-4 space-y-4'>
-        <Field
-          title={t(`${i18nPrefix}.inputVar`)}
-        >
-          <>
-            <VarReferencePicker
-              readonly={readOnly}
-              nodeId={id}
-              isShowNodeName
-              value={inputs.query || []}
-              onChange={handleInputVarChange}
-              filterVar={filterVar}
-            />
-          </>
-        </Field>
         <Field
           title={t(`${i18nCommonPrefix}.model`)}
         >
@@ -100,6 +87,30 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             readonly={readOnly}
           />
         </Field>
+        <Field
+          title={t(`${i18nPrefix}.inputVar`)}
+        >
+          <>
+            <VarReferencePicker
+              readonly={readOnly}
+              nodeId={id}
+              isShowNodeName
+              value={inputs.query || []}
+              onChange={handleInputVarChange}
+              filterVar={filterVar}
+            />
+          </>
+        </Field>
+        <Split />
+        <ConfigVision
+          nodeId={id}
+          readOnly={readOnly}
+          isVisionModel={isVisionModel}
+          enabled={inputs.vision?.enabled}
+          onEnabledChange={handleVisionResolutionEnabledChange}
+          config={inputs.vision?.configs}
+          onConfigChange={handleVisionResolutionChange}
+        />
         <Field
           title={t(`${i18nPrefix}.extractParameters`)}
           operations={
@@ -126,12 +137,14 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           title={
             <div className='flex items-center space-x-1'>
               <span className='uppercase'>{t(`${i18nPrefix}.instruction`)}</span>
-              <TooltipPlus popupContent={
-                <div className='w-[120px]'>
-                  {t(`${i18nPrefix}.instructionTip`)}
-                </div>}>
-                <RiQuestionLine className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
-              </TooltipPlus>
+              <Tooltip
+                popupContent={
+                  <div className='w-[120px]'>
+                    {t(`${i18nPrefix}.instructionTip`)}
+                  </div>
+                }
+                triggerClassName='w-3.5 h-3.5 ml-0.5'
+              />
             </div>
           }
           value={inputs.instruction}

@@ -7,17 +7,23 @@ import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import type { InputVar } from '../../../../types'
-import { BlockEnum, InputVarType } from '../../../../types'
+import { BlockEnum, InputVarType, SupportUploadFileTypes } from '../../../../types'
 import CodeEditor from '../editor/code-editor'
 import { CodeLanguage } from '../../../code/types'
 import TextEditor from '../editor/text-editor'
 import Select from '@/app/components/base/select'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
-import { Resolution } from '@/types/app'
+import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import { Resolution, TransferMethod } from '@/types/app'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
+import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import cn from '@/utils/classnames'
 
 type Props = {
   payload: InputVar
@@ -25,6 +31,7 @@ type Props = {
   onChange: (value: any) => void
   className?: string
   autoFocus?: boolean
+  inStepRun?: boolean
 }
 
 const FormItem: FC<Props> = ({
@@ -33,6 +40,7 @@ const FormItem: FC<Props> = ({
   onChange,
   className,
   autoFocus,
+  inStepRun = false,
 }) => {
   const { t } = useTranslation()
   const { type } = payload
@@ -56,22 +64,24 @@ const FormItem: FC<Props> = ({
   }, [value, onChange])
   const nodeKey = (() => {
     if (typeof payload.label === 'object') {
-      const { nodeType, nodeName, variable } = payload.label
+      const { nodeType, nodeName, variable, isChatVar } = payload.label
       return (
         <div className='h-full flex items-center'>
-          <div className='flex items-center'>
-            <div className='p-[1px]'>
-              <VarBlockIcon type={nodeType || BlockEnum.Start} />
+          {!isChatVar && (
+            <div className='flex items-center'>
+              <div className='p-[1px]'>
+                <VarBlockIcon type={nodeType || BlockEnum.Start} />
+              </div>
+              <div className='mx-0.5 text-xs font-medium text-gray-700 max-w-[150px] truncate' title={nodeName}>
+                {nodeName}
+              </div>
+              <Line3 className='mr-0.5'></Line3>
             </div>
-            <div className='mx-0.5 text-xs font-medium text-gray-700 max-w-[150px] truncate' title={nodeName}>
-              {nodeName}
-            </div>
-            <Line3 className='mr-0.5'></Line3>
-          </div>
-
+          )}
           <div className='flex items-center text-primary-600'>
-            <Variable02 className='w-3.5 h-3.5' />
-            <div className='ml-0.5 text-xs font-medium max-w-[150px] truncate' title={variable} >
+            {!isChatVar && <Variable02 className='w-3.5 h-3.5' />}
+            {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
+            <div className={cn('ml-0.5 text-xs font-medium max-w-[150px] truncate', isChatVar && 'text-text-secondary')} title={variable} >
               {variable}
             </div>
           </div>
@@ -85,17 +95,20 @@ const FormItem: FC<Props> = ({
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator
   return (
-    <div className={`${className}`}>
-      {!isArrayLikeType && <div className='h-8 leading-8 text-[13px] font-medium text-gray-700 truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>}
+    <div className={cn(className)}>
+      {!isArrayLikeType && (
+        <div className='h-6 mb-1 flex items-center gap-1 text-text-secondary system-sm-semibold'>
+          <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
+          {!payload.required && <span className='text-text-tertiary system-xs-regular'>{t('workflow.panel.optional')}</span>}
+        </div>
+      )}
       <div className='grow'>
         {
           type === InputVarType.textInput && (
-            <input
-              className="w-full px-3 text-sm leading-8 text-gray-900 border-0 rounded-lg grow h-8 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
-              type="text"
+            <Input
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               autoFocus={autoFocus}
             />
           )
@@ -103,12 +116,11 @@ const FormItem: FC<Props> = ({
 
         {
           type === InputVarType.number && (
-            <input
-              className="w-full px-3 text-sm leading-8 text-gray-900 border-0 rounded-lg grow h-8 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+            <Input
               type="number"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               autoFocus={autoFocus}
             />
           )
@@ -116,11 +128,10 @@ const FormItem: FC<Props> = ({
 
         {
           type === InputVarType.paragraph && (
-            <textarea
-              className="w-full px-3 py-1 text-sm leading-[18px] text-gray-900 border-0 rounded-lg grow h-[120px] bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+            <Textarea
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               autoFocus={autoFocus}
             />
           )
@@ -148,13 +159,72 @@ const FormItem: FC<Props> = ({
             />
           )
         }
-
+        {(type === InputVarType.singleFile) && (
+          <FileUploaderInAttachmentWrapper
+            value={value ? [value] : []}
+            onChange={(files) => {
+              if (files.length)
+                onChange(files[0])
+              else
+                onChange(null)
+            }}
+            fileConfig={{
+              allowed_file_types: inStepRun
+                ? [
+                  SupportUploadFileTypes.image,
+                  SupportUploadFileTypes.document,
+                  SupportUploadFileTypes.audio,
+                  SupportUploadFileTypes.video,
+                ]
+                : payload.allowed_file_types,
+              allowed_file_extensions: inStepRun
+                ? [
+                  ...FILE_EXTS[SupportUploadFileTypes.image],
+                  ...FILE_EXTS[SupportUploadFileTypes.document],
+                  ...FILE_EXTS[SupportUploadFileTypes.audio],
+                  ...FILE_EXTS[SupportUploadFileTypes.video],
+                ]
+                : payload.allowed_file_extensions,
+              allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
+              number_limits: 1,
+              fileUploadConfig: fileSettings?.fileUploadConfig,
+            }}
+          />
+        )}
+        {(type === InputVarType.multiFiles) && (
+          <FileUploaderInAttachmentWrapper
+            value={value}
+            onChange={files => onChange(files)}
+            fileConfig={{
+              allowed_file_types: inStepRun
+                ? [
+                  SupportUploadFileTypes.image,
+                  SupportUploadFileTypes.document,
+                  SupportUploadFileTypes.audio,
+                  SupportUploadFileTypes.video,
+                ]
+                : payload.allowed_file_types,
+              allowed_file_extensions: inStepRun
+                ? [
+                  ...FILE_EXTS[SupportUploadFileTypes.image],
+                  ...FILE_EXTS[SupportUploadFileTypes.document],
+                  ...FILE_EXTS[SupportUploadFileTypes.audio],
+                  ...FILE_EXTS[SupportUploadFileTypes.video],
+                ]
+                : payload.allowed_file_extensions,
+              allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
+              number_limits: inStepRun ? 5 : payload.max_length,
+              fileUploadConfig: fileSettings?.fileUploadConfig,
+            }}
+          />
+        )}
         {
           type === InputVarType.files && (
             <TextGenerationImageUploader
               settings={{
-                ...fileSettings?.image,
-                detail: Resolution.high,
+                ...fileSettings,
+                detail: fileSettings?.image?.detail || Resolution.high,
+                transfer_methods: fileSettings?.allowed_file_upload_methods || [],
               } as any}
               onFilesChange={files => onChange(files.filter(file => file.progress !== -1).map(fileItem => ({
                 type: 'image',
@@ -178,7 +248,7 @@ const FormItem: FC<Props> = ({
                     (value as any).length > 1
                       ? (<RiDeleteBinLine
                         onClick={handleArrayItemRemove(index)}
-                        className='mr-1 w-3.5 h-3.5 text-gray-500 cursor-pointer'
+                        className='mr-1 w-3.5 h-3.5 text-text-tertiary cursor-pointer'
                       />)
                       : undefined
                   }
@@ -198,13 +268,13 @@ const FormItem: FC<Props> = ({
                   key={index}
                   isInNode
                   value={item}
-                  title={<span>{t('appDebug.variableConig.content')} {index + 1} </span>}
+                  title={<span>{t('appDebug.variableConfig.content')} {index + 1} </span>}
                   onChange={handleArrayItemChange(index)}
                   headerRight={
                     (value as any).length > 1
                       ? (<RiDeleteBinLine
                         onClick={handleArrayItemRemove(index)}
-                        className='mr-1 w-3.5 h-3.5 text-gray-500 cursor-pointer'
+                        className='mr-1 w-3.5 h-3.5 text-text-tertiary cursor-pointer'
                       />)
                       : undefined
                   }

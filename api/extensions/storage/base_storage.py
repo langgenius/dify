@@ -1,17 +1,14 @@
 """Abstract interface for file storage implementations."""
+
 from abc import ABC, abstractmethod
 from collections.abc import Generator
 
-from flask import Flask
-
 
 class BaseStorage(ABC):
-    """Interface for file storage.
-    """
-    app = None
+    """Interface for file storage."""
 
-    def __init__(self, app: Flask):
-        self.app = app
+    def __init__(self):  # noqa: B027
+        pass
 
     @abstractmethod
     def save(self, filename, data):

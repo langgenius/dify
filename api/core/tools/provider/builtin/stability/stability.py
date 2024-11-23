@@ -8,6 +8,7 @@ class StabilityToolProvider(BuiltinToolProviderController, BaseStabilityAuthoriz
     """
     This class is responsible for providing the stability tool.
     """
+
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         """
         This method is responsible for validating the credentials.

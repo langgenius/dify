@@ -1,8 +1,8 @@
 import { useCallback } from 'react'
 import type { ChangeEvent } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 
 type SearchInputProps = {
   value: string

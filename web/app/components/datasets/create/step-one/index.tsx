@@ -1,7 +1,6 @@
 'use client'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import FilePreview from '../file-preview'
 import FileUploader from '../file-uploader'
 import NotionPagePreview from '../notion-page-preview'
@@ -9,8 +8,9 @@ import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import Website from '../website'
 import WebsitePreview from '../website/preview'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
-import type { NotionPage } from '@/models/common'
+import type { DataSourceProvider, NotionPage } from '@/models/common'
 import { DataSourceType } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
@@ -33,7 +33,8 @@ type IStepOneProps = {
   changeType: (type: DataSourceType) => void
   websitePages?: CrawlResultItem[]
   updateWebsitePages: (value: CrawlResultItem[]) => void
-  onFireCrawlJobIdChange: (jobId: string) => void
+  onWebsiteCrawlProviderChange: (provider: DataSourceProvider) => void
+  onWebsiteCrawlJobIdChange: (jobId: string) => void
   crawlOptions: CrawlOptions
   onCrawlOptionsChange: (payload: CrawlOptions) => void
 }
@@ -69,7 +70,8 @@ const StepOne = ({
   updateNotionPages,
   websitePages = [],
   updateWebsitePages,
-  onFireCrawlJobIdChange,
+  onWebsiteCrawlProviderChange,
+  onWebsiteCrawlJobIdChange,
   crawlOptions,
   onCrawlOptionsChange,
 }: IStepOneProps) => {
@@ -229,7 +231,8 @@ const StepOne = ({
                   onPreview={setCurrentWebsite}
                   checkedCrawlResult={websitePages}
                   onCheckedCrawlResultChange={updateWebsitePages}
-                  onJobIdChange={onFireCrawlJobIdChange}
+                  onCrawlProviderChange={onWebsiteCrawlProviderChange}
+                  onJobIdChange={onWebsiteCrawlJobIdChange}
                   crawlOptions={crawlOptions}
                   onCrawlOptionsChange={onCrawlOptionsChange}
                 />

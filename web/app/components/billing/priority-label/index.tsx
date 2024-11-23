@@ -9,7 +9,7 @@ import {
   ZapFast,
   ZapNarrow,
 } from '@/app/components/base/icons/src/vender/solid/general'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 const PriorityLabel = () => {
   const { t } = useTranslation()
@@ -27,7 +27,7 @@ const PriorityLabel = () => {
   }, [plan])
 
   return (
-    <TooltipPlus popupContent={
+    <Tooltip popupContent={
       <div>
         <div className='mb-1 text-xs font-semibold text-gray-700'>{`${t('billing.plansCommon.documentProcessingPriority')}: ${t(`billing.plansCommon.priority.${priority}`)}`}</div>
         {
@@ -53,7 +53,7 @@ const PriorityLabel = () => {
         }
         {t(`billing.plansCommon.priority.${priority}`)}
       </span>
-    </TooltipPlus>
+    </Tooltip>
   )
 }
 

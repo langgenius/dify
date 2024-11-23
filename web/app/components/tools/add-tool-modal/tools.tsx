@@ -2,11 +2,11 @@ import {
   memo,
   useCallback,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
 } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { Tag01 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
@@ -68,10 +68,9 @@ const Blocks = ({
           return (
             <Tooltip
               key={tool.name}
-              selector={`workflow-block-tool-${tool.name}`}
               position='bottom'
-              className='!p-0 !px-3 !py-2.5 !w-[210px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !bg-transparent !rounded-xl !shadow-lg translate-x-[108px]'
-              htmlContent={(
+              popupClassName='!p-0 !px-3 !py-2.5 !w-[210px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !bg-transparent !rounded-xl !shadow-lg translate-x-[108px]'
+              popupContent={(
                 <div>
                   <BlockIcon
                     size='md'
@@ -91,7 +90,6 @@ const Blocks = ({
                   )}
                 </div>
               )}
-              noArrow
             >
               <div className='group/item flex items-center w-full pl-3 pr-1 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'>
                 <BlockIcon

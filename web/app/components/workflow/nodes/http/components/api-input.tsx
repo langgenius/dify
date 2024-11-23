@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useState } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { Method } from '../types'
@@ -9,6 +8,7 @@ import Selector from '../../_base/components/selector'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import { VarType } from '../../../types'
 import type { Var } from '../../../types'
+import cn from '@/utils/classnames'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 
 const MethodOptions = [
@@ -42,7 +42,7 @@ const ApiInput: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number].includes(varPayload.type)
+      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
     },
   })
 

@@ -1,9 +1,9 @@
 'use client'
 import { useMemo } from 'react'
-import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import type { Collection } from '../types'
+import cn from '@/utils/classnames'
 import AppIcon from '@/app/components/base/app-icon'
 import { Tag01 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import I18n from '@/context/i18n'
@@ -36,11 +36,11 @@ const ProviderCard = ({
   }, [collection.labels, labelList, language])
 
   return (
-    <div className={cn('group flex col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg', active && '!border-primary-400')} onClick={onSelect}>
+    <div className={cn('group col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg', active && '!border-primary-400')} onClick={onSelect}>
       <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
         <div className='relative shrink-0'>
           {typeof collection.icon === 'string' && (
-            <div className='w-10 h-10 bg-center bg-cover bg-no-repeat rounded-md' style={{ backgroundImage: `url(${collection.icon})` }}/>
+            <div className='w-10 h-10 bg-center bg-cover bg-no-repeat rounded-md' style={{ backgroundImage: `url(${collection.icon})` }} />
           )}
           {typeof collection.icon !== 'string' && (
             <AppIcon

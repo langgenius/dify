@@ -15,6 +15,7 @@ export type IAppDetailNavProps = {
   iconType?: 'app' | 'dataset' | 'notion'
   title: string
   desc: string
+  isExternal?: boolean
   icon: string
   icon_background: string
   navigation: Array<{
@@ -26,7 +27,7 @@ export type IAppDetailNavProps = {
   extraInfo?: (modeState: string) => React.ReactNode
 }
 
-const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInfo, iconType = 'app' }: IAppDetailNavProps) => {
+const AppDetailNav = ({ title, desc, isExternal, icon, icon_background, navigation, extraInfo, iconType = 'app' }: IAppDetailNavProps) => {
   const { appSidebarExpand, setAppSiderbarExpand } = useAppStore(useShallow(state => ({
     appSidebarExpand: state.appSidebarExpand,
     setAppSiderbarExpand: state.setAppSiderbarExpand,
@@ -49,7 +50,7 @@ const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInf
   return (
     <div
       className={`
-        shrink-0 flex flex-col bg-white border-r border-gray-200 transition-all
+        shrink-0 flex flex-col bg-background-default-subtle border-r border-divider-burn transition-all
         ${expand ? 'w-[216px]' : 'w-14'}
       `}
     >
@@ -60,7 +61,7 @@ const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInf
         `}
       >
         {iconType === 'app' && (
-          <AppInfo expand={expand}/>
+          <AppInfo expand={expand} />
         )}
         {iconType !== 'app' && (
           <AppBasic
@@ -70,15 +71,16 @@ const AppDetailNav = ({ title, desc, icon, icon_background, navigation, extraInf
             icon_background={icon_background}
             name={title}
             type={desc}
+            isExternal={isExternal}
           />
         )}
       </div>
       {!expand && (
-        <div className='mt-1 mx-auto w-6 h-[1px] bg-gray-100'/>
+        <div className='mt-1 mx-auto w-6 h-[1px] bg-divider-subtle' />
       )}
       <nav
         className={`
-          grow space-y-1 bg-white
+          grow space-y-1
           ${expand ? 'p-4' : 'px-2.5 py-4'}
         `}
       >

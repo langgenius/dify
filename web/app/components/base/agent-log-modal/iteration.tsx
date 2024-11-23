@@ -1,8 +1,8 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import type { FC } from 'react'
-import cn from 'classnames'
 import ToolCall from './tool-call'
+import cn from '@/utils/classnames'
 import type { AgentIteration } from '@/models/log'
 
 type Props = {

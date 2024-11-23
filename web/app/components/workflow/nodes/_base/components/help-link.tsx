@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiBookOpenLine } from '@remixicon/react'
 import { useNodeHelpLink } from '../hooks/use-node-help-link'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import TooltipPlus from '@/app/components/base/tooltip'
 import type { BlockEnum } from '@/app/components/workflow/types'
 
 type HelpLinkProps = {
@@ -15,7 +15,9 @@ const HelpLink = ({
   const link = useNodeHelpLink(nodeType)
 
   return (
-    <TooltipPlus popupContent={t('common.userProfile.helpCenter')}>
+    <TooltipPlus
+      popupContent={t('common.userProfile.helpCenter')}
+    >
       <a
         href={link}
         target='_blank'

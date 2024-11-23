@@ -1,0 +1,119 @@
+identity:
+  name: json_replace
+  author: Mingwei Zhang
+  label:
+    en_US: JSON Replace
+    zh_Hans: JSON 替换
+    pt_BR: JSON Replace
+description:
+  human:
+    en_US: A tool for replacing JSON content
+    zh_Hans: 一个替换 JSON 内容的工具
+    pt_BR: A tool for replacing JSON content
+  llm: A tool for replacing JSON content
+parameters:
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: JSON content
+      zh_Hans: JSON 内容
+      pt_BR: JSON content
+    human_description:
+      en_US: JSON content
+      zh_Hans: JSON 内容
+      pt_BR: JSON content
+    llm_description: JSON content to be processed
+    form: llm
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query
+      zh_Hans: 查询
+      pt_BR: Query
+    human_description:
+      en_US: Query
+      zh_Hans: 查询
+      pt_BR: Query
+    llm_description: JSONPath query to locate the element to replace
+    form: llm
+  - name: replace_pattern
+    type: string
+    required: false
+    label:
+      en_US: String to be replaced
+      zh_Hans: 待替换字符串
+      pt_BR: String to be replaced
+    human_description:
+      en_US: String to be replaced
+      zh_Hans: 待替换字符串
+      pt_BR: String to be replaced
+    llm_description: String to be replaced
+    form: llm
+  - name: replace_value
+    type: string
+    required: true
+    label:
+      en_US: Replace Value
+      zh_Hans: 替换值
+      pt_BR: Replace Value
+    human_description:
+      en_US: New Value
+      zh_Hans: 新值
+      pt_BR: New Value
+    llm_description: New Value to replace
+    form: llm
+  - name: value_decode
+    type: boolean
+    default: false
+    label:
+      en_US: Decode Value
+      zh_Hans: 解码值
+      pt_BR: Decode Value
+    human_description:
+      en_US: Whether to decode the value to a JSON object (Does not apply to replace key)
+      zh_Hans: 是否将值解码为 JSON 对象 (不适用于键替换)
+      pt_BR: Whether to decode the value to a JSON object (Does not apply to replace key)
+    form: form
+  - name: replace_model
+    type: select
+    required: true
+    default: pattern
+    label:
+      en_US: Replace Model
+      zh_Hans: 替换模式
+      pt_BR: Replace Model
+    human_description:
+      en_US: Replace Model
+      zh_Hans: 替换模式
+      pt_BR: Replace Model
+    options:
+      - value: key
+        label:
+          en_US: replace key
+          zh_Hans: 键替换
+          pt_BR: replace key
+      - value: value
+        label:
+          en_US: replace value
+          zh_Hans: 值替换
+          pt_BR: replace value
+      - value: pattern
+        label:
+          en_US: replace string
+          zh_Hans: 字符串替换
+          pt_BR: replace string
+    form: form
+  - name: ensure_ascii
+    type: boolean
+    default: true
+    label:
+      en_US: Ensure ASCII
+      zh_Hans: 确保 ASCII
+      pt_BR: Ensure ASCII
+    human_description:
+      en_US: Ensure the JSON output is ASCII encoded
+      zh_Hans: 确保输出的 JSON 是 ASCII 编码
+      pt_BR: Ensure the JSON output is ASCII encoded
+    form: form

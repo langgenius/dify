@@ -1,8 +1,8 @@
 const translation = {
   common: {
-    welcome: 'Bem-vindo ao usar',
+    welcome: '',
     appUnavailable: 'O aplicativo não está disponível',
-    appUnkonwError: 'O aplicativo encontrou um erro desconhecido',
+    appUnknownError: 'O aplicativo encontrou um erro desconhecido',
   },
   chat: {
     newChat: 'Nova conversa',
@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'Conversas',
     newChatDefaultName: 'Nova conversa',
     resetChat: 'Redefinir conversa',
-    powerBy: 'Desenvolvido por',
+    poweredBy: 'Desenvolvido por',
     prompt: 'Prompt',
     privatePromptConfigTitle: 'Configurações da conversa',
     publicPromptConfigTitle: 'Prompt inicial',

@@ -4,7 +4,7 @@
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Auto-alojamiento</a> ·
   <a href="https://docs.dify.ai">Documentación</a> ·
-  <a href="https://cal.com/guchenhe/dify-demo">Programar demostración</a>
+  <a href="https://udify.app/chat/22L1zSxg6yW1cWQg">Consultas empresariales (en inglés)</a>
 </p>
 
 <p align="center">
@@ -15,9 +15,12 @@
     <a href="https://discord.gg/FngNHpbcY7" target="_blank">
         <img src="https://img.shields.io/discord/1082486657678311454?logo=discord&labelColor=%20%235462eb&logoColor=%20%23f5f5f5&color=%20%235462eb"
             alt="chat en Discord"></a>
+    <a href="https://reddit.com/r/difyai" target="_blank">  
+        <img src="https://img.shields.io/reddit/subreddit-subscribers/difyai?style=plastic&logo=reddit&label=r%2Fdifyai&labelColor=white"
+            alt="join Reddit"></a>
     <a href="https://twitter.com/intent/follow?screen_name=dify_ai" target="_blank">
         <img src="https://img.shields.io/twitter/follow/dify_ai?logo=X&color=%20%23f5f5f5"
-            alt="seguir en Twitter"></a>
+            alt="seguir en X(Twitter)"></a>
     <a href="https://hub.docker.com/u/langgenius" target="_blank">
         <img alt="Descargas de Docker" src="https://img.shields.io/docker/pulls/langgenius/dify-web?labelColor=%20%23FDB062&color=%20%23f79009"></a>
     <a href="https://github.com/langgenius/dify/graphs/commit-activity" target="_blank">
@@ -29,13 +32,16 @@
 </p>
 
 <p align="center">
-  <a href="./README.md"><img alt="Actividad de Commits el último mes" src="https://img.shields.io/badge/Inglés-d9d9d9"></a>
-  <a href="./README_CN.md"><img alt="Actividad de Commits el último mes" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
-  <a href="./README_JA.md"><img alt="Actividad de Commits el último mes" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
-  <a href="./README_ES.md"><img alt="Actividad de Commits el último mes" src="https://img.shields.io/badge/Español-d9d9d9"></a>
-  <a href="./README_KL.md"><img alt="Actividad de Commits el último mes" src="https://img.shields.io/badge/Français-d9d9d9"></a>
-  <a href="./README_FR.md"><img alt="Actividad de Commits el último mes" src="https://img.shields.io/badge/Klingon-d9d9d9"></a>
-  <a href="./README_KR.md"><img alt="Actividad de Commits el último mes" src="https://img.shields.io/badge/한국어-d9d9d9"></a>
+  <a href="./README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
+  <a href="./README_CN.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
+  <a href="./README_JA.md"><img alt="日本語のREADME" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
+  <a href="./README_ES.md"><img alt="README en Español" src="https://img.shields.io/badge/Español-d9d9d9"></a>
+  <a href="./README_FR.md"><img alt="README en Français" src="https://img.shields.io/badge/Français-d9d9d9"></a>
+  <a href="./README_KL.md"><img alt="README tlhIngan Hol" src="https://img.shields.io/badge/Klingon-d9d9d9"></a>
+  <a href="./README_KR.md"><img alt="README in Korean" src="https://img.shields.io/badge/한국어-d9d9d9"></a>
+  <a href="./README_AR.md"><img alt="README بالعربية" src="https://img.shields.io/badge/العربية-d9d9d9"></a>
+  <a href="./README_TR.md"><img alt="Türkçe README" src="https://img.shields.io/badge/Türkçe-d9d9d9"></a>
+  <a href="./README_VI.md"><img alt="README Tiếng Việt" src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-d9d9d9"></a>
 </p>
 
 #
@@ -69,7 +75,7 @@ Dify es una plataforma de desarrollo de aplicaciones de LLM de código abierto. 
 **5. Capacidades de agente**: 
   Puedes definir agent
 
-es basados en LLM Function Calling o ReAct, y agregar herramientas preconstruidas o personalizadas para el agente. Dify proporciona más de 50 herramientas integradas para agentes de IA, como Búsqueda de Google, DELL·E, Difusión Estable y WolframAlpha.
+es basados en LLM Function Calling o ReAct, y agregar herramientas preconstruidas o personalizadas para el agente. Dify proporciona más de 50 herramientas integradas para agentes de IA, como Búsqueda de Google, DALL·E, Difusión Estable y WolframAlpha.
 
 **6. LLMOps**: 
   Supervisa y analiza registros de aplicaciones y rendimiento a lo largo del tiempo. Podrías mejorar continuamente prompts, conjuntos de datos y modelos basados en datos de producción y anotaciones.
@@ -155,7 +161,7 @@ Pon rápidamente Dify en funcionamiento en tu entorno con esta [guía de inicio 
 Usa nuestra [documentación](https://docs.dify.ai) para más referencias e instrucciones más detalladas.
 
 - **Dify para Empresas / Organizaciones</br>**
-Proporcionamos características adicionales centradas en la empresa. [Programa una reunión con nosotros](https://cal.com/guchenhe/30min) o [envíanos un correo electrónico](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry) para discutir las necesidades empresariales. </br>
+Proporcionamos características adicionales centradas en la empresa. [Envíanos un correo electrónico](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry) para discutir las necesidades empresariales. </br>
   > Para startups y pequeñas empresas que utilizan AWS, echa un vistazo a [Dify Premium en AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) e impleméntalo en tu propio VPC de AWS con un clic. Es una AMI asequible que ofrece la opción de crear aplicaciones con logotipo y marca personalizados.
 
 
@@ -179,6 +185,7 @@ La forma más fácil de iniciar el servidor de Dify es ejecutar nuestro archivo 
 
 ```bash
 cd docker
+cp .env.example .env
 docker compose up -d
 ```
 
@@ -188,7 +195,7 @@ Después de ejecutarlo, puedes acceder al panel de control de Dify en tu navegad
 
 ## Próximos pasos
 
-Si necesitas personalizar la configuración, consulta los comentarios en nuestro archivo [docker-compose.yml](docker/docker-compose.yaml) y configura manualmente la configuración del entorno
+Si necesita personalizar la configuración, consulte los comentarios en nuestro archivo [.env.example](docker/.env.example) y actualice los valores correspondientes en su archivo `.env`. Además, es posible que deba realizar ajustes en el propio archivo `docker-compose.yaml`, como cambiar las versiones de las imágenes, las asignaciones de puertos o los montajes de volúmenes, según su entorno de implementación y requisitos específicos. Después de realizar cualquier cambio, vuelva a ejecutar `docker-compose up -d`. Puede encontrar la lista completa de variables de entorno disponibles [aquí](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
 . Después de realizar los cambios, ejecuta `docker-compose up -d` nuevamente. Puedes ver la lista completa de variables de entorno [aquí](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
@@ -198,6 +205,15 @@ Si desea configurar una configuración de alta disponibilidad, la comunidad prop
 - [Gráfico Helm por @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [Ficheros YAML por @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
+#### Uso de Terraform para el despliegue
+
+Despliega Dify en una plataforma en la nube con un solo clic utilizando [terraform](https://www.terraform.io/)
+
+##### Azure Global
+- [Azure Terraform por @nikawang](https://github.com/nikawang/dify-azure-terraform)
+
+##### Google Cloud
+- [Google Cloud Terraform por @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
 ## Contribuir
 
@@ -217,26 +233,8 @@ Al mismo tiempo, considera apoyar a Dify compartiéndolo en redes sociales y en 
 
 * [Discusión en GitHub](https://github.com/langgenius/dify/discussions). Lo mejor para: compartir comentarios y hacer preguntas.
 * [Reporte de problemas en GitHub](https://github.com/langgenius/dify/issues). Lo mejor para: errores que encuentres usando Dify.AI y propuestas de características. Consulta nuestra [Guía de contribución](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
-* [Correo electrónico](mailto:support@dify.ai?subject=[GitHub]Questions%20About%20Dify). Lo mejor para: preguntas que tengas sobre el uso de Dify.AI.
 * [Discord](https://discord.gg/FngNHpbcY7). Lo mejor para: compartir tus aplicaciones y pasar el rato con la comunidad.
-* [Twitter](https://twitter.com/dify_ai). Lo mejor para: compartir tus aplicaciones y pasar el rato con la comunidad.
-
-O, programa una reunión directamente con un miembro del equipo:
-
-<table>
-  <tr>
-    <th>Punto de Contacto</th>
-    <th>Propósito</th>
-  </tr>
-  <tr>
-    <td><a href='https://cal.com/guchenhe/15min' target='_blank'><img class="schedule-button" src='https://github.com/langgenius/dify/assets/13230914/9ebcd111-1205-4d71-83d5-948d70b809f5' alt='Git-Hub-README-Button-3x' style="width: 180px; height: auto; object-fit: contain;"/></a></td>
-    <td>Consultas comerciales y retroalimentación del producto</td>
-  </tr>
-  <tr>
-    <td><a href='https://cal.com/pinkbanana' target='_blank'><img class="schedule-button" src='https://github.com/langgenius/dify/assets/13230914/d1edd00a-d7e4-4513-be6c-e57038e143fd' alt='Git-Hub-README-Button-2x' style="width: 180px; height: auto; object-fit: contain;"/></a></td>
-    <td>Contribuciones, problemas y solicitudes de características</td>
-  </tr>
-</table>
+* [X(Twitter)](https://twitter.com/dify_ai). Lo mejor para: compartir tus aplicaciones y pasar el rato con la comunidad.
 
 ## Historial de Estrellas
 

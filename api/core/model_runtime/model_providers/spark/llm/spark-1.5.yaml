@@ -1,4 +1,5 @@
 model: spark-1.5
+deprecated: true
 label:
   en_US: Spark V1.5
 model_type: llm
@@ -28,6 +29,6 @@ parameter_rules:
     min: 1
     max: 6
     help:
-      zh_Hans: 从 k 个候选中随机选择⼀个（⾮等概率）。
+      zh_Hans: 从 k 个候选中随机选择一个（非等概率）。
       en_US: Randomly select one from k candidates (non-equal probability).
     required: false

@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import type { FC } from 'react'
 import { useDebounceFn } from 'ahooks'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 
 type Props = {
   className?: string

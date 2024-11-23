@@ -1,0 +1,148 @@
+identity:
+  name: cogview3
+  author: Waffle
+  label:
+    en_US: CogView 3
+    zh_Hans: CogView 3 绘画
+    pt_BR: CogView 3
+  description:
+    en_US: CogView 3 is a powerful drawing tool that can draw the image you want based on your prompt
+    zh_Hans: CogView 3 是一个强大的绘画工具，它可以根据您的提示词绘制出您想要的图像
+    pt_BR: CogView 3 is a powerful drawing tool that can draw the image you want based on your prompt
+description:
+  human:
+    en_US: CogView 3 is a text to image tool
+    zh_Hans: CogView 3 是一个文本到图像的工具
+    pt_BR: CogView 3 is a text to image tool
+  llm: CogView 3 is a tool used to generate images from text
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+      pt_BR: Prompt
+    human_description:
+      en_US: Image prompt, you can check the official documentation of CogView 3
+      zh_Hans: 图像提示词，您可以查看 CogView 3 的官方文档
+      pt_BR: Image prompt, you can check the official documentation of CogView 3
+    llm_description: Image prompt of CogView 3, you should describe the image you want to generate as a list of words as possible as detailed
+    form: llm
+  - name: size
+    type: select
+    required: true
+    human_description:
+      en_US: selecting the image size
+      zh_Hans: 选择图像大小
+      pt_BR: selecting the image size
+    label:
+      en_US: Image size
+      zh_Hans: 图像大小
+      pt_BR: Image size
+    form: form
+    options:
+      - value: cogview_3
+        label:
+          en_US: Square_cogview_3(1024x1024)
+          zh_Hans: 方_cogview_3(1024x1024)
+          pt_BR: Square_cogview_3(1024x1024)
+      - value: square
+        label:
+          en_US: Square(1024x1024)
+          zh_Hans: 方(1024x1024)
+          pt_BR: Square(1024x1024)
+      - value: vertical_768
+        label:
+          en_US: Vertical(768x1344)
+          zh_Hans: 竖屏(768x1344)
+          pt_BR: Vertical(768x1344)
+      - value: vertical_864
+        label:
+          en_US: Vertical(864x1152)
+          zh_Hans: 竖屏(864x1152)
+          pt_BR: Vertical(864x1152)
+      - value: horizontal_1344
+        label:
+          en_US: Horizontal(1344x768)
+          zh_Hans: 横屏(1344x768)
+          pt_BR: Horizontal(1344x768)
+      - value: horizontal_1152
+        label:
+          en_US: Horizontal(1152x864)
+          zh_Hans: 横屏(1152x864)
+          pt_BR: Horizontal(1152x864)
+      - value: widescreen_1440
+        label:
+          en_US: Widescreen(1440x720)
+          zh_Hans: 宽屏(1440x720)
+          pt_BR: Widescreen(1440x720)
+      - value: tallscreen_720
+        label:
+          en_US: Tallscreen(720x1440)
+          zh_Hans: 高屏(720x1440)
+          pt_BR: Tallscreen(720x1440)
+    default: square
+  - name: n
+    type: number
+    required: true
+    human_description:
+      en_US: selecting the number of images
+      zh_Hans: 选择图像数量
+      pt_BR: selecting the number of images
+    label:
+      en_US: Number of images
+      zh_Hans: 图像数量
+      pt_BR: Number of images
+    form: form
+    min: 1
+    max: 1
+    default: 1
+  - name: quality
+    type: select
+    required: true
+    human_description:
+      en_US: selecting the image quality
+      zh_Hans: 选择图像质量
+      pt_BR: selecting the image quality
+    label:
+      en_US: Image quality
+      zh_Hans: 图像质量
+      pt_BR: Image quality
+    form: form
+    options:
+      - value: standard
+        label:
+          en_US: Standard
+          zh_Hans: 标准
+          pt_BR: Standard
+      - value: hd
+        label:
+          en_US: HD
+          zh_Hans: 高清
+          pt_BR: HD
+    default: standard
+  - name: style
+    type: select
+    required: true
+    human_description:
+      en_US: selecting the image style
+      zh_Hans: 选择图像风格
+      pt_BR: selecting the image style
+    label:
+      en_US: Image style
+      zh_Hans: 图像风格
+      pt_BR: Image style
+    form: form
+    options:
+      - value: vivid
+        label:
+          en_US: Vivid
+          zh_Hans: 生动
+          pt_BR: Vivid
+      - value: natural
+        label:
+          en_US: Natural
+          zh_Hans: 自然
+          pt_BR: Natural
+    default: vivid

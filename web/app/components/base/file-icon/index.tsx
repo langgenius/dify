@@ -8,7 +8,7 @@ import {
   Md,
   Pdf,
   Txt,
-  Unknow,
+  Unknown,
   Xlsx,
 } from '@/app/components/base/icons/src/public/files'
 import { Notion } from '@/app/components/base/icons/src/public/common'
@@ -47,7 +47,7 @@ const FileIcon: FC<FileIconProps> = ({
     case 'notion':
       return <Notion className={className} />
     default:
-      return <Unknow className={className} />
+      return <Unknown className={className} />
   }
 }
 

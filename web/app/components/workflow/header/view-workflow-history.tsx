@@ -4,7 +4,6 @@ import {
   useMemo,
   useState,
 } from 'react'
-import cn from 'classnames'
 import {
   RiCloseLine,
   RiHistoryLine,
@@ -18,6 +17,7 @@ import {
 } from '../hooks'
 import TipPopup from '../operator/tip-popup'
 import type { WorkflowHistoryState } from '../workflow-history-store'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

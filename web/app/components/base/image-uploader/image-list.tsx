@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiCloseLine,
   RiLoader2Line,
 } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import type { ImageFile } from '@/types/app'
 import { TransferMethod } from '@/types/app'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
@@ -87,11 +87,11 @@ const ImageList: FC<ImageListProps> = ({
                 <RiLoader2Line className="animate-spin w-5 h-5 text-white" />
               )}
               {item.progress === -1 && (
-                <TooltipPlus
+                <Tooltip
                   popupContent={t('common.imageUploader.pasteImageLinkInvalid')}
                 >
                   <AlertTriangle className="w-4 h-4 text-[#DC6803]" />
-                </TooltipPlus>
+                </Tooltip>
               )}
             </div>
           )}
@@ -133,6 +133,7 @@ const ImageList: FC<ImageListProps> = ({
         <ImagePreview
           url={imagePreviewUrl}
           onCancel={() => setImagePreviewUrl('')}
+          title=''
         />
       )}
     </div>

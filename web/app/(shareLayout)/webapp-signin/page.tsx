@@ -1,151 +1,100 @@
 'use client'
-import cn from 'classnames'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import React, { useEffect } from 'react'
+import cn from '@/utils/classnames'
 import Toast from '@/app/components/base/toast'
-import Button from '@/app/components/base/button'
 import { fetchSystemFeatures, fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
-import LogoSite from '@/app/components/base/logo/logo-site'
 import { setAccessToken } from '@/app/components/share/utils'
+import Loading from '@/app/components/base/loading'
 
 const WebSSOForm: FC = () => {
   const searchParams = useSearchParams()
+  const router = useRouter()
 
   const redirectUrl = searchParams.get('redirect_url')
   const tokenFromUrl = searchParams.get('web_sso_token')
   const message = searchParams.get('message')
 
-  const router = useRouter()
-  const { t } = useTranslation()
+  const showErrorToast = (message: string) => {
+    Toast.notify({
+      type: 'error',
+      message,
+    })
+  }
 
-  const [isLoading, setIsLoading] = useState(false)
-  const [protocol, setProtocol] = useState('')
+  const getAppCodeFromRedirectUrl = () => {
+    const appCode = redirectUrl?.split('/').pop()
+    if (!appCode)
+      return null
 
-  useEffect(() => {
-    const fetchFeaturesAndSetToken = async () => {
-      await fetchSystemFeatures().then((res) => {
-        setProtocol(res.sso_enforced_for_web_protocol)
-      })
+    return appCode
+  }
 
-      // Callback from SSO, process token and redirect
-      if (tokenFromUrl && redirectUrl) {
-        const appCode = redirectUrl.split('/').pop()
-        if (!appCode) {
-          Toast.notify({
-            type: 'error',
-            message: 'redirect url is invalid. App code is not found.',
-          })
-          return
-        }
+  const processTokenAndRedirect = async () => {
+    const appCode = getAppCodeFromRedirectUrl()
+    if (!appCode || !tokenFromUrl || !redirectUrl) {
+      showErrorToast('redirect url or app code or token is invalid.')
+      return
+    }
 
-        await setAccessToken(appCode, tokenFromUrl)
-        router.push(redirectUrl)
+    await setAccessToken(appCode, tokenFromUrl)
+    router.push(redirectUrl)
+  }
+
+  const handleSSOLogin = async (protocol: string) => {
+    const appCode = getAppCodeFromRedirectUrl()
+    if (!appCode || !redirectUrl) {
+      showErrorToast('redirect url or app code is invalid.')
+      return
+    }
+
+    switch (protocol) {
+      case 'saml': {
+        const samlRes = await fetchWebSAMLSSOUrl(appCode, redirectUrl)
+        router.push(samlRes.url)
+        break
       }
-    }
-
-    fetchFeaturesAndSetToken()
-
-    if (message) {
-      Toast.notify({
-        type: 'error',
-        message,
-      })
-    }
-  }, [])
-
-  const handleSSOLogin = () => {
-    setIsLoading(true)
-
-    if (!redirectUrl) {
-      Toast.notify({
-        type: 'error',
-        message: 'redirect url is not found.',
-      })
-      setIsLoading(false)
-      return
-    }
-
-    const appCode = redirectUrl.split('/').pop()
-    if (!appCode) {
-      Toast.notify({
-        type: 'error',
-        message: 'redirect url is invalid. App code is not found.',
-      })
-      return
-    }
-
-    if (protocol === 'saml') {
-      fetchWebSAMLSSOUrl(appCode, redirectUrl).then((res) => {
-        router.push(res.url)
-      }).finally(() => {
-        setIsLoading(false)
-      })
-    }
-    else if (protocol === 'oidc') {
-      fetchWebOIDCSSOUrl(appCode, redirectUrl).then((res) => {
-        router.push(res.url)
-      }).finally(() => {
-        setIsLoading(false)
-      })
-    }
-    else if (protocol === 'oauth2') {
-      fetchWebOAuth2SSOUrl(appCode, redirectUrl).then((res) => {
-        router.push(res.url)
-      }).finally(() => {
-        setIsLoading(false)
-      })
-    }
-    else {
-      Toast.notify({
-        type: 'error',
-        message: 'sso protocol is not supported.',
-      })
-      setIsLoading(false)
+      case 'oidc': {
+        const oidcRes = await fetchWebOIDCSSOUrl(appCode, redirectUrl)
+        router.push(oidcRes.url)
+        break
+      }
+      case 'oauth2': {
+        const oauth2Res = await fetchWebOAuth2SSOUrl(appCode, redirectUrl)
+        router.push(oauth2Res.url)
+        break
+      }
+      default:
+        showErrorToast('SSO protocol is not supported.')
     }
   }
 
-  return (
-    <div className={cn(
-      'flex w-full min-h-screen',
-      'sm:p-4 lg:p-8',
-      'gap-x-20',
-      'justify-center lg:justify-start',
-    )}>
-      <div className={
-        cn(
-          'flex w-full flex-col bg-white shadow rounded-2xl shrink-0',
-          'space-between',
-        )
-      }>
-        <div className='flex items-center justify-between p-6 w-full'>
-          <LogoSite />
-        </div>
+  useEffect(() => {
+    const init = async () => {
+      const res = await fetchSystemFeatures()
+      const protocol = res.sso_enforced_for_web_protocol
 
-        <div className={
-          cn(
-            'flex flex-col items-center w-full grow items-center justify-center',
-            'px-6',
-            'md:px-[108px]',
-          )
-        }>
-          <div className='flex flex-col md:w-[400px]'>
-            <div className="w-full mx-auto">
-              <h2 className="text-[32px] font-bold text-gray-900">{t('login.pageTitle')}</h2>
-            </div>
-            <div className="w-full mx-auto mt-10">
-              <Button
-                tabIndex={0}
-                variant='primary'
-                onClick={() => { handleSSOLogin() }}
-                disabled={isLoading}
-                className="w-full !text-sm"
-              >{t('login.sso')}
-              </Button>
-            </div>
-          </div>
-        </div>
+      if (message) {
+        showErrorToast(message)
+        return
+      }
+
+      if (!tokenFromUrl) {
+        await handleSSOLogin(protocol)
+        return
+      }
+
+      await processTokenAndRedirect()
+    }
+
+    init()
+  }, [message, tokenFromUrl]) // Added dependencies to useEffect
+
+  return (
+    <div className="flex items-center justify-center h-full">
+      <div className={cn('flex flex-col items-center w-full grow justify-center', 'px-6', 'md:px-[108px]')}>
+        <Loading type='area' />
       </div>
     </div>
   )

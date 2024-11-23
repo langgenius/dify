@@ -23,6 +23,8 @@ const translation = {
   },
   noRecentTip: 'Тут немає результатів останніх запитів',
   viewChart: 'ПЕРЕГЛЯНУТИ ВЕКТОРНУ ДІАГРАМУ',
+  settingTitle: 'Налаштування отримання',
+  viewDetail: 'Переглянути деталі',
 }
 
 export default translation

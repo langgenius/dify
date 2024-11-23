@@ -2,7 +2,6 @@ import {
   memo,
   useState,
 } from 'react'
-import cn from 'classnames'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
@@ -18,13 +17,14 @@ import {
   useWorkflowInteractions,
   useWorkflowRun,
 } from '../hooks'
-import { WorkflowRunningStatus } from '../types'
+import { ControlMode, WorkflowRunningStatus } from '../types'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   ClockPlay,
@@ -32,7 +32,7 @@ import {
 } from '@/app/components/base/icons/src/vender/line/time'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import {
-  fetcChatRunHistory,
+  fetchChatRunHistory,
   fetchWorkflowRunHistory,
 } from '@/service/workflow'
 import Loading from '@/app/components/base/loading'
@@ -58,6 +58,7 @@ const ViewHistory = ({
     handleCancelDebugAndPreviewPanel,
   } = useWorkflowInteractions()
   const workflowStore = useWorkflowStore()
+  const setControlMode = useStore(s => s.setControlMode)
   const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -66,7 +67,7 @@ const ViewHistory = ({
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { handleBackupDraft } = useWorkflowRun()
   const { data: runList, isLoading: runListLoading } = useSWR((appDetail && !isChatMode && open) ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
-  const { data: chatList, isLoading: chatListLoading } = useSWR((appDetail && isChatMode && open) ? `/apps/${appDetail.id}/advanced-chat/workflow-runs` : null, fetcChatRunHistory)
+  const { data: chatList, isLoading: chatListLoading } = useSWR((appDetail && isChatMode && open) ? `/apps/${appDetail.id}/advanced-chat/workflow-runs` : null, fetchChatRunHistory)
 
   const data = isChatMode ? chatList : runList
   const isLoading = isChatMode ? chatListLoading : runListLoading
@@ -99,22 +100,19 @@ const ViewHistory = ({
           }
           {
             !withText && (
-              <TooltipPlus
+              <Tooltip
                 popupContent={t('workflow.common.viewRunHistory')}
               >
                 <div
-                  className={`
-                    flex items-center justify-center w-7 h-7 rounded-md hover:bg-black/5 cursor-pointer
-                    ${open && 'bg-primary-50'}
-                  `}
+                  className={cn('group flex items-center justify-center w-7 h-7 rounded-md hover:bg-state-accent-hover cursor-pointer', open && 'bg-state-accent-hover')}
                   onClick={() => {
                     setCurrentLogItem()
                     setShowMessageLogModal(false)
                   }}
                 >
-                  <ClockPlay className={`w-4 h-4 ${open ? 'text-primary-600' : 'text-gray-500'}`} />
+                  <ClockPlay className={cn('w-4 h-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')} />
                 </div>
-              </TooltipPlus>
+              </Tooltip>
             )
           }
         </PortalToFollowElemTrigger>
@@ -170,11 +168,13 @@ const ViewHistory = ({
                           workflowStore.setState({
                             historyWorkflowData: item,
                             showInputsPanel: false,
+                            showEnvPanel: false,
                           })
                           handleBackupDraft()
                           setOpen(false)
                           handleNodesCancelSelected()
                           handleCancelDebugAndPreviewPanel()
+                          setControlMode(ControlMode.Hand)
                         }}
                       >
                         {

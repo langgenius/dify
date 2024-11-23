@@ -1,5 +1,4 @@
 import type { FC, PropsWithChildren } from 'react'
-import classNames from 'classnames'
 import {
   modelTypeFormat,
   sizeFormat,
@@ -8,6 +7,7 @@ import { useLanguage } from '../hooks'
 import type { ModelItem } from '../declarations'
 import ModelBadge from '../model-badge'
 import FeatureIcon from '../model-selector/feature-icon'
+import classNames from '@/utils/classnames'
 
 type ModelNameProps = PropsWithChildren<{
   modelItem: ModelItem

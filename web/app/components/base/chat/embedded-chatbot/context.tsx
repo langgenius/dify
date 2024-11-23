@@ -7,6 +7,7 @@ import type {
   ChatItem,
   Feedback,
 } from '../types'
+import type { ThemeBuilder } from './theme/theme-context'
 import type {
   AppConversationData,
   AppData,
@@ -28,6 +29,7 @@ export type EmbeddedChatbotContextValue = {
   conversationList: AppConversationData['data']
   showConfigPanelBeforeChat: boolean
   newConversationInputs: Record<string, any>
+  newConversationInputsRef: RefObject<Record<string, any>>
   handleNewConversationInputsChange: (v: Record<string, any>) => void
   inputsForms: any[]
   handleNewConversation: () => void
@@ -40,6 +42,7 @@ export type EmbeddedChatbotContextValue = {
   appId?: string
   handleFeedback: (messageId: string, feedback: Feedback) => void
   currentChatInstanceRef: RefObject<{ handleStop: () => void }>
+  themeBuilder?: ThemeBuilder
 }
 
 export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>({
@@ -49,6 +52,7 @@ export const EmbeddedChatbotContext = createContext<EmbeddedChatbotContextValue>
   conversationList: [],
   showConfigPanelBeforeChat: false,
   newConversationInputs: {},
+  newConversationInputsRef: { current: {} },
   handleNewConversationInputsChange: () => {},
   inputsForms: [],
   handleNewConversation: () => {},

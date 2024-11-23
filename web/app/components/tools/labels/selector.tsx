@@ -3,15 +3,15 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useDebounceFn, useMount } from 'ahooks'
-import cn from 'classnames'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useStore as useLabelStore } from './store'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import SearchInput from '@/app/components/base/search-input'
+import Input from '@/app/components/base/input'
 import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import Checkbox from '@/app/components/base/checkbox'
 import type { Label } from '@/app/components/tools/labels/constant'
@@ -79,7 +79,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
           className='block'
         >
           <div className={cn(
-            'flex items-center gap-1 px-3 h-9 rounded-lg border-[0.5px] border-transparent bg-gray-100 cursor-pointer hover:bg-gray-200',
+            'flex items-center gap-1 px-3 h-10 rounded-lg border-[0.5px] border-transparent bg-gray-100 cursor-pointer hover:bg-gray-200',
             open && '!bg-gray-200 hover:bg-gray-200',
           )}>
             <div title={value.length > 0 ? selectedLabels : ''} className={cn('grow text-[13px] leading-[18px] text-gray-700 truncate', !value.length && '!text-gray-400')}>
@@ -87,14 +87,20 @@ const LabelSelector: FC<LabelSelectorProps> = ({
               {!!value.length && selectedLabels}
             </div>
             <div className='shrink-0 ml-1 text-gray-700 opacity-60'>
-              <RiArrowDownSLine className='h-4 w-4'/>
+              <RiArrowDownSLine className='h-4 w-4' />
             </div>
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1040]'>
           <div className='relative w-[591px] bg-white rounded-lg border-[0.5px] border-gray-200  shadow-lg'>
             <div className='p-2 border-b-[0.5px] border-black/5'>
-              <SearchInput white value={keywords} onChange={handleKeywordsChange} />
+              <Input
+                showLeftIcon
+                showClearIcon
+                value={keywords}
+                onChange={e => handleKeywordsChange(e.target.value)}
+                onClear={() => handleKeywordsChange('')}
+              />
             </div>
             <div className='p-1 max-h-[264px] overflow-y-auto'>
               {filteredLabelList.map(label => (
@@ -106,7 +112,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
                   <Checkbox
                     className='shrink-0'
                     checked={value.includes(label.name)}
-                    onCheck={() => {}}
+                    onCheck={() => { }}
                   />
                   <div title={label.label[language]} className='grow text-sm text-gray-700 leading-5 truncate'>{label.label[language]}</div>
                 </div>

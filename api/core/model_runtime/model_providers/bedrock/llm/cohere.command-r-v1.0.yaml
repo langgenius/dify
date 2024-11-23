@@ -3,9 +3,7 @@ label:
   en_US: Command R
 model_type: llm
 features:
-  #- multi-tool-call
-  - agent-thought
-  #- stream-tool-call
+  - tool-call
 model_properties:
   mode: chat
   context_size: 128000

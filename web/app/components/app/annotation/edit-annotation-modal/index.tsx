@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import EditItem, { EditItemType } from './edit-item'
 import Drawer from '@/app/components/base/drawer-plus'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
-import DeleteConfirmModal from '@/app/components/base/modal/delete-confirm-modal'
+import Confirm from '@/app/components/base/confirm'
 import { addAnnotation, editAnnotation } from '@/service/annotation'
 import Toast from '@/app/components/base/toast'
 import { useProviderContext } from '@/context/provider-context'
@@ -85,19 +85,31 @@ const EditAnnotationModal: FC<Props> = ({
         maxWidthClassName='!max-w-[480px]'
         title={t('appAnnotation.editModal.title') as string}
         body={(
-          <div className='p-6 pb-4 space-y-6'>
-            <EditItem
-              type={EditItemType.Query}
-              content={query}
-              readonly={(isAdd && isAnnotationFull) || onlyEditResponse}
-              onSave={editedContent => handleSave(EditItemType.Query, editedContent)}
-            />
-            <EditItem
-              type={EditItemType.Answer}
-              content={answer}
-              readonly={isAdd && isAnnotationFull}
-              onSave={editedContent => handleSave(EditItemType.Answer, editedContent)}
-            />
+          <div>
+            <div className='p-6 pb-4 space-y-6'>
+              <EditItem
+                type={EditItemType.Query}
+                content={query}
+                readonly={(isAdd && isAnnotationFull) || onlyEditResponse}
+                onSave={editedContent => handleSave(EditItemType.Query, editedContent)}
+              />
+              <EditItem
+                type={EditItemType.Answer}
+                content={answer}
+                readonly={isAdd && isAnnotationFull}
+                onSave={editedContent => handleSave(EditItemType.Answer, editedContent)}
+              />
+              <Confirm
+                isShow={showModal}
+                onCancel={() => setShowModal(false)}
+                onConfirm={() => {
+                  onRemove()
+                  setShowModal(false)
+                  onHide()
+                }}
+                title={t('appDebug.feature.annotation.removeConfirm')}
+              />
+            </div>
           </div>
         )}
         foot={
@@ -126,16 +138,6 @@ const EditAnnotationModal: FC<Props> = ({
             }
           </div>
         }
-      />
-      <DeleteConfirmModal
-        isShow={showModal}
-        onHide={() => setShowModal(false)}
-        onRemove={() => {
-          onRemove()
-          setShowModal(false)
-          onHide()
-        }}
-        text={t('appDebug.feature.annotation.removeConfirm') as string}
       />
     </div>
 

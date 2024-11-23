@@ -10,7 +10,7 @@ const translation = {
   pause: 'विराम',
   playing: 'चल रहा है',
   loading: 'लोड हो रहा है',
-  merMaind: {
+  merMaid: {
     rerender: 'पुनः रीरेंडर करें',
   },
   never: 'कभी नहीं',
@@ -77,7 +77,9 @@ const translation = {
     requestBody: 'अनुरोध निकाय',
     pathParams: 'पथ पैरामीटर',
     query: 'प्रश्न',
+    toc: 'सामग्री',
   },
+  regenerate: 'पुनर्जन्म',
 }
 
 export default translation

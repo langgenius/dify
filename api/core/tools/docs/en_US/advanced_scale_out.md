@@ -8,7 +8,7 @@ We have defined a series of helper methods in the `Tool` class to help developer
 
 ### Message Return
 
-Dify supports various message types such as `text`, `link`, `image`, and `file BLOB`. You can return different types of messages to the LLM and users through the following interfaces.
+Dify supports various message types such as `text`, `link`, `json`, `image`, and `file BLOB`. You can return different types of messages to the LLM and users through the following interfaces.
 
 Please note, some parameters in the following interfaces will be introduced in later sections.
 
@@ -64,6 +64,18 @@ If you need to return the raw data of a file, such as images, audio, video, PPT,
 
             :param blob: the blob
             :return: the blob message
+        """
+```
+
+#### JSON
+If you need to return a formatted JSON, you can use the following interface. This is commonly used for data transmission between nodes in a workflow, of course, in agent mode, most LLM are also able to read and understand JSON.
+
+- `object` A Python dictionary object will be automatically serialized into JSON
+
+```python
+    def create_json_message(self, object: dict) -> ToolInvokeMessage:
+        """
+            create a json message
         """
 ```
 

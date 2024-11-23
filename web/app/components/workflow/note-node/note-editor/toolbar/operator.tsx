@@ -3,8 +3,8 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { RiMoreFill } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import {
   PortalToFollowElem,

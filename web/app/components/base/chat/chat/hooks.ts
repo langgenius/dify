@@ -6,73 +6,45 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
+import { uniqBy } from 'lodash-es'
+import { useParams, usePathname } from 'next/navigation'
+import { v4 as uuidV4 } from 'uuid'
 import type {
   ChatConfig,
   ChatItem,
   Inputs,
-  PromptVariable,
-  VisionFile,
 } from '../types'
+import type { InputForm } from './type'
+import {
+  getProcessedInputs,
+  processOpeningStatement,
+} from './utils'
 import { TransferMethod } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { ssePost } from '@/service/base'
-import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
 import type { Annotation } from '@/models/log'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
+import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import {
+  getProcessedFiles,
+  getProcessedFilesFromResponse,
+} from '@/app/components/base/file-uploader/utils'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
-  onGetConvesationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
+  onGetConversationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
   onConversationComplete?: (conversationId: string) => void
   isPublicAPI?: boolean
 }
 
-export const useCheckPromptVariables = () => {
-  const { t } = useTranslation()
-  const { notify } = useToastContext()
-
-  const checkPromptVariables = useCallback((promptVariablesConfig: {
-    inputs: Inputs
-    promptVariables: PromptVariable[]
-  }) => {
-    const {
-      promptVariables,
-      inputs,
-    } = promptVariablesConfig
-    let hasEmptyInput = ''
-    const requiredVars = promptVariables.filter(({ key, name, required, type }) => {
-      if (type !== 'string' && type !== 'paragraph' && type !== 'select')
-        return false
-      const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
-      return res
-    })
-
-    if (requiredVars?.length) {
-      requiredVars.forEach(({ key, name }) => {
-        if (hasEmptyInput)
-          return
-
-        if (!inputs[key])
-          hasEmptyInput = name
-      })
-    }
-
-    if (hasEmptyInput) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }) })
-      return false
-    }
-  }, [notify, t])
-
-  return checkPromptVariables
-}
-
 export const useChat = (
   config?: ChatConfig,
-  promptVariablesConfig?: {
+  formSettings?: {
     inputs: Inputs
-    promptVariables: PromptVariable[]
+    inputsForm: InputForm[]
   },
   prevChatList?: ChatItem[],
   stopChat?: (taskId: string) => void,
@@ -80,7 +52,7 @@ export const useChat = (
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const { notify } = useToastContext()
-  const connversationId = useRef('')
+  const conversationId = useRef('')
   const hasStopResponded = useRef(false)
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
@@ -90,8 +62,8 @@ export const useChat = (
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
-  const checkPromptVariables = useCheckPromptVariables()
-
+  const params = useParams()
+  const pathname = usePathname()
   useEffect(() => {
     setAutoFreeze(false)
     return () => {
@@ -109,8 +81,8 @@ export const useChat = (
   }, [])
 
   const getIntroduction = useCallback((str: string) => {
-    return replaceStringWithValues(str, promptVariablesConfig?.promptVariables || [], promptVariablesConfig?.inputs || {})
-  }, [promptVariablesConfig?.inputs, promptVariablesConfig?.promptVariables])
+    return processOpeningStatement(str, formSettings?.inputs || {}, formSettings?.inputsForm || [])
+  }, [formSettings?.inputs, formSettings?.inputsForm])
   useEffect(() => {
     if (config?.opening_statement) {
       handleUpdateChatList(produce(chatListRef.current, (draft) => {
@@ -148,7 +120,7 @@ export const useChat = (
   }, [stopChat, handleResponding])
 
   const handleRestart = useCallback(() => {
-    connversationId.current = ''
+    conversationId.current = ''
     taskIdRef.current = ''
     handleStop()
     const newChatList = config?.opening_statement
@@ -192,9 +164,13 @@ export const useChat = (
 
   const handleSend = useCallback(async (
     url: string,
-    data: any,
+    data: {
+      query: string
+      files?: FileEntity[]
+      [key: string]: any
+    },
     {
-      onGetConvesationMessages,
+      onGetConversationMessages,
       onGetSuggestedQuestions,
       onConversationComplete,
       isPublicAPI,
@@ -206,9 +182,6 @@ export const useChat = (
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
     }
-
-    if (promptVariablesConfig?.inputs && promptVariablesConfig?.promptVariables)
-      checkPromptVariables(promptVariablesConfig)
 
     const questionId = `question-${Date.now()}`
     const questionItem = {
@@ -237,18 +210,20 @@ export const useChat = (
       isAnswer: true,
     }
 
-    let isInIteration = false
-
     handleResponding(true)
     hasStopResponded.current = false
 
+    const { query, files, inputs, ...restData } = data
     const bodyParams = {
       response_mode: 'streaming',
-      conversation_id: connversationId.current,
-      ...data,
+      conversation_id: conversationId.current,
+      files: getProcessedFiles(files || []),
+      query,
+      inputs: getProcessedInputs(inputs || {}, formSettings?.inputsForm || []),
+      ...restData,
     }
     if (bodyParams?.files?.length) {
-      bodyParams.files = bodyParams.files.map((item: VisionFile) => {
+      bodyParams.files = bodyParams.files.map((item) => {
         if (item.transfer_method === TransferMethod.local_file) {
           return {
             ...item,
@@ -262,6 +237,19 @@ export const useChat = (
     let isAgentMode = false
     let hasSetResponseId = false
 
+    let ttsUrl = ''
+    let ttsIsPublic = false
+    if (params.token) {
+      ttsUrl = '/text-to-audio'
+      ttsIsPublic = true
+    }
+    else if (params.appId) {
+      if (pathname.search('explore/installed') > -1)
+        ttsUrl = `/installed-apps/${params.appId}/text-to-audio`
+      else
+        ttsUrl = `/apps/${params.appId}/text-to-audio`
+    }
+    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => {})
     ssePost(
       url,
       {
@@ -285,7 +273,7 @@ export const useChat = (
           }
 
           if (isFirstMessage && newConversationId)
-            connversationId.current = newConversationId
+            conversationId.current = newConversationId
 
           taskIdRef.current = taskId
           if (messageId)
@@ -305,11 +293,11 @@ export const useChat = (
             return
 
           if (onConversationComplete)
-            onConversationComplete(connversationId.current)
+            onConversationComplete(conversationId.current)
 
-          if (connversationId.current && !hasStopResponded.current && onGetConvesationMessages) {
-            const { data }: any = await onGetConvesationMessages(
-              connversationId.current,
+          if (conversationId.current && !hasStopResponded.current && onGetConversationMessages) {
+            const { data }: any = await onGetConversationMessages(
+              conversationId.current,
               newAbortController => conversationMessagesAbortControllerRef.current = newAbortController,
             )
             const newResponseItem = data.find((item: any) => item.id === responseItem.id)
@@ -319,9 +307,9 @@ export const useChat = (
             const newChatList = produce(chatListRef.current, (draft) => {
               const index = draft.findIndex(item => item.id === responseItem.id)
               if (index !== -1) {
-                const requestion = draft[index - 1]
+                const question = draft[index - 1]
                 draft[index - 1] = {
-                  ...requestion,
+                  ...question,
                 }
                 draft[index] = {
                   ...draft[index],
@@ -344,7 +332,7 @@ export const useChat = (
                     latency: newResponseItem.provider_response_latency.toFixed(2),
                   },
                   // for agent log
-                  conversationId: connversationId.current,
+                  conversationId: conversationId.current,
                   input: {
                     inputs: newResponseItem.inputs,
                     query: newResponseItem.query,
@@ -355,11 +343,16 @@ export const useChat = (
             handleUpdateChatList(newChatList)
           }
           if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
-            const { data }: any = await onGetSuggestedQuestions(
-              responseItem.id,
-              newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
-            )
-            setSuggestQuestions(data)
+            try {
+              const { data }: any = await onGetSuggestedQuestions(
+                responseItem.id,
+                newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
+              )
+              setSuggestQuestions(data)
+            }
+            catch (e) {
+              setSuggestQuestions([])
+            }
           }
         },
         onFile(file) {
@@ -423,6 +416,8 @@ export const useChat = (
             return
           }
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
+          const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
+          responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
 
           const newListWithAnswer = produce(
             chatListRef.current.filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
@@ -481,12 +476,13 @@ export const useChat = (
               ...responseItem,
             }
           }))
-          isInIteration = true
         },
         onIterationFinish: ({ data }) => {
           const tracing = responseItem.workflowProcess!.tracing!
-          tracing[tracing.length - 1] = {
-            ...tracing[tracing.length - 1],
+          const iterationIndex = tracing.findIndex(item => item.node_id === data.node_id
+            && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
+          tracing[iterationIndex] = {
+            ...tracing[iterationIndex],
             ...data,
             status: WorkflowRunningStatus.Succeeded,
           } as any
@@ -498,10 +494,9 @@ export const useChat = (
               ...responseItem,
             }
           }))
-          isInIteration = false
         },
         onNodeStarted: ({ data }) => {
-          if (isInIteration)
+          if (data.iteration_id)
             return
 
           responseItem.workflowProcess!.tracing!.push({
@@ -517,10 +512,15 @@ export const useChat = (
           }))
         },
         onNodeFinished: ({ data }) => {
-          if (isInIteration)
+          if (data.iteration_id)
             return
 
-          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
+          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
+            if (!item.execution_metadata?.parallel_id)
+              return item.node_id === data.node_id
+
+            return item.node_id === data.node_id && (item.execution_metadata?.parallel_id === data.execution_metadata.parallel_id)
+          })
           responseItem.workflowProcess!.tracing[currentIndex] = data as any
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
             const currentIndex = draft.findIndex(item => item.id === responseItem.id)
@@ -530,18 +530,29 @@ export const useChat = (
             }
           }))
         },
+        onTTSChunk: (messageId: string, audio: string) => {
+          if (!audio || audio === '')
+            return
+          player.playAudioWithAudio(audio, true)
+          AudioPlayerManager.getInstance().resetMsgId(messageId)
+        },
+        onTTSEnd: (messageId: string, audio: string) => {
+          player.playAudioWithAudio(audio, false)
+        },
       })
     return true
   }, [
-    checkPromptVariables,
     config?.suggested_questions_after_answer,
     updateCurrentQA,
     t,
     notify,
-    promptVariablesConfig,
     handleUpdateChatList,
     handleResponding,
     formatTime,
+    params.token,
+    params.appId,
+    pathname,
+    formSettings,
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
@@ -613,8 +624,9 @@ export const useChat = (
 
   return {
     chatList,
-    setChatList,
-    conversationId: connversationId.current,
+    chatListRef,
+    handleUpdateChatList,
+    conversationId: conversationId.current,
     isResponding,
     setIsResponding,
     handleSend,

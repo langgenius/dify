@@ -1,0 +1,16 @@
+identity:
+  author: Ice Yao
+  name: discord
+  label:
+    en_US: Discord
+    zh_Hans: Discord
+    pt_BR: Discord
+  description:
+    en_US: Discord Webhook
+    zh_Hans: Discord Webhook
+    pt_BR: Discord Webhook
+  icon: icon.svg
+  tags:
+    - social
+    - productivity
+credentials_for_provider:

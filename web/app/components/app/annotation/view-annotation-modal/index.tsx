@@ -2,16 +2,16 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { Pagination } from 'react-headless-pagination'
 import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import EditItem, { EditItemType } from '../edit-annotation-modal/edit-item'
 import type { AnnotationItem, HitHistoryItem } from '../type'
 import s from './style.module.css'
 import HitHistoryNoData from './hit-history-no-data'
+import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer-plus'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
-import DeleteConfirmModal from '@/app/components/base/modal/delete-confirm-modal'
+import Confirm from '@/app/components/base/confirm'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import { fetchHitHistoryList } from '@/service/annotation'
 import { APP_PAGE_LIMIT } from '@/config'
@@ -156,8 +156,8 @@ const ViewAnnotationModal: FC<Props> = ({
             middlePagesSiblingCount={1}
             setCurrentPage={setCurrPage}
             totalPages={Math.ceil(total / APP_PAGE_LIMIT)}
-            truncableClassName="w-8 px-0.5 text-center"
-            truncableText="..."
+            truncatableClassName="w-8 px-0.5 text-center"
+            truncatableText="..."
           >
             <Pagination.PrevButton
               disabled={currPage === 0}
@@ -201,8 +201,20 @@ const ViewAnnotationModal: FC<Props> = ({
           />
         }
         body={(
-          <div className='p-6 pb-4 space-y-6'>
-            {activeTab === TabType.annotation ? annotationTab : hitHistoryTab}
+          <div>
+            <div className='p-6 pb-4 space-y-6'>
+              {activeTab === TabType.annotation ? annotationTab : hitHistoryTab}
+            </div>
+            <Confirm
+              isShow={showModal}
+              onCancel={() => setShowModal(false)}
+              onConfirm={async () => {
+                await onRemove()
+                setShowModal(false)
+                onHide()
+              }}
+              title={t('appDebug.feature.annotation.removeConfirm')}
+            />
           </div>
         )}
         foot={id
@@ -219,16 +231,6 @@ const ViewAnnotationModal: FC<Props> = ({
             </div>
           )
           : undefined}
-      />
-      <DeleteConfirmModal
-        isShow={showModal}
-        onHide={() => setShowModal(false)}
-        onRemove={async () => {
-          await onRemove()
-          setShowModal(false)
-          onHide()
-        }}
-        text={t('appDebug.feature.annotation.removeConfirm') as string}
       />
     </div>
 

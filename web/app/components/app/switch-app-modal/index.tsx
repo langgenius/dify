@@ -4,10 +4,13 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { RiCloseLine } from '@remixicon/react'
+import AppIconPicker from '../../base/app-icon-picker'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
+import Checkbox from '@/app/components/base/checkbox'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
@@ -15,7 +18,6 @@ import { deleteApp, switchApp } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import EmojiPicker from '@/app/components/base/emoji-picker'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import type { App } from '@/types/app'
@@ -41,8 +43,13 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
 
-  const [emoji, setEmoji] = useState({ icon: appDetail.icon, icon_background: appDetail.icon_background })
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [appIcon, setAppIcon] = useState(
+    appDetail.icon_type === 'image'
+      ? { type: 'image' as const, url: appDetail.icon_url, fileId: appDetail.icon }
+      : { type: 'emoji' as const, icon: appDetail.icon, background: appDetail.icon_background },
+  )
+
   const [name, setName] = useState(`${appDetail.name}(copy)`)
   const [removeOriginal, setRemoveOriginal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
@@ -52,8 +59,9 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
       const { new_app_id: newAppID } = await switchApp({
         appID: appDetail.id,
         name,
-        icon: emoji.icon,
-        icon_background: emoji.icon_background,
+        icon_type: appIcon.type,
+        icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
+        icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       })
       if (onSuccess)
         onSuccess()
@@ -106,30 +114,40 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         <div className='pb-4'>
           <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.switchLabel')}</div>
           <div className='flex items-center justify-between space-x-2'>
-            <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.icon} background={emoji.icon_background} />
-            <input
+            <AppIcon
+              size='large'
+              onClick={() => { setShowAppIconPicker(true) }}
+              className='cursor-pointer'
+              iconType={appIcon.type}
+              icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+              background={appIcon.type === 'image' ? undefined : appIcon.background}
+              imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+            />
+            <Input
               value={name}
               onChange={e => setName(e.target.value)}
               placeholder={t('app.newApp.appNamePlaceholder') || ''}
-              className='grow h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs'
+              className='grow h-10'
             />
           </div>
-          {showEmojiPicker && <EmojiPicker
-            onSelect={(icon, icon_background) => {
-              setEmoji({ icon, icon_background })
-              setShowEmojiPicker(false)
+          {showAppIconPicker && <AppIconPicker
+            onSelect={(payload) => {
+              setAppIcon(payload)
+              setShowAppIconPicker(false)
             }}
             onClose={() => {
-              setEmoji({ icon: appDetail.icon, icon_background: appDetail.icon_background })
-              setShowEmojiPicker(false)
+              setAppIcon(appDetail.icon_type === 'image'
+                ? { type: 'image' as const, url: appDetail.icon_url, fileId: appDetail.icon }
+                : { type: 'emoji' as const, icon: appDetail.icon, background: appDetail.icon_background })
+              setShowAppIconPicker(false)
             }}
           />}
         </div>
         {isAppsFull && <AppsFull loc='app-switch' />}
         <div className='pt-6 flex justify-between items-center'>
           <div className='flex items-center'>
-            <input id="removeOriginal" type="checkbox" checked={removeOriginal} onChange={() => setRemoveOriginal(!removeOriginal)} className="w-4 h-4 rounded border-gray-300 text-blue-700 cursor-pointer focus:ring-blue-700" />
-            <label htmlFor="removeOriginal" className="ml-2 text-sm leading-5 text-gray-700 cursor-pointer">{t('app.removeOriginal')}</label>
+            <Checkbox className='shrink-0' checked={removeOriginal} onCheck={() => setRemoveOriginal(!removeOriginal)} />
+            <div className="ml-2 text-sm leading-5 text-gray-700 cursor-pointer" onClick={() => setRemoveOriginal(!removeOriginal)}>{t('app.removeOriginal')}</div>
           </div>
           <div className='flex items-center'>
             <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
@@ -144,10 +162,6 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
           isShow={showConfirmDelete}
           onConfirm={() => setShowConfirmDelete(false)}
           onCancel={() => {
-            setShowConfirmDelete(false)
-            setRemoveOriginal(false)
-          }}
-          onClose={() => {
             setShowConfirmDelete(false)
             setRemoveOriginal(false)
           }}

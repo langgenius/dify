@@ -13,17 +13,15 @@ class DuckDuckGoImageSearchTool(BuiltinTool):
 
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> list[ToolInvokeMessage]:
         query_dict = {
-            "keywords": tool_parameters.get('query'),
-            "timelimit": tool_parameters.get('timelimit'),
-            "size": tool_parameters.get('size'),
-            "max_results": tool_parameters.get('max_results'),
+            "keywords": tool_parameters.get("query"),
+            "timelimit": tool_parameters.get("timelimit"),
+            "size": tool_parameters.get("size"),
+            "max_results": tool_parameters.get("max_results"),
         }
         response = DDGS().images(**query_dict)
-        result = []
+        markdown_result = "\n\n"
+        json_result = []
         for res in response:
-            msg = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE_LINK,
-                                    message=res.get('image'),
-                                    save_as='',
-                                    meta=res)
-            result.append(msg)
-        return result
+            markdown_result += f"![{res.get('title') or ''}]({res.get('image') or ''})"
+            json_result.append(self.create_json_message(res))
+        return [self.create_text_message(markdown_result)] + json_result

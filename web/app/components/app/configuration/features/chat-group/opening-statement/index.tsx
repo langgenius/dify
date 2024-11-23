@@ -2,7 +2,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
-import cn from 'classnames'
 import {
   RiAddLine,
   RiDeleteBinLine,
@@ -12,6 +11,7 @@ import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { ReactSortable } from 'react-sortablejs'
+import cn from '@/utils/classnames'
 import ConfigContext from '@/context/debug-configuration'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import Button from '@/app/components/base/button'
@@ -20,6 +20,7 @@ import { getInputKeys } from '@/app/components/base/block-input'
 import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import { getNewVar } from '@/utils/var'
 import { varHighlightHTML } from '@/app/components/app/configuration/base/var-highlight'
+import Toast from '@/app/components/base/toast'
 
 const MAX_QUESTION_NUM = 5
 
@@ -93,6 +94,15 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
   }
 
   const handleConfirm = () => {
+    if (!(tempValue || '').trim()) {
+      Toast.notify({
+        type: 'error',
+        message: t('common.errorMsg.fieldRequired', {
+          field: t('appDebug.openingStatement.title'),
+        }),
+      })
+      return
+    }
     const keys = getInputKeys(tempValue)
     const promptKeys = promptVariables.map(item => item.key)
     let notIncludeKeys: string[] = []
@@ -217,7 +227,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
             onClick={() => { setTempSuggestedQuestions([...tempSuggestedQuestions, '']) }}
             className='mt-1 flex items-center h-9 px-3 gap-2 rounded-lg cursor-pointer text-gray-400  bg-gray-100 hover:bg-gray-200'>
             <RiAddLine className='w-4 h-4' />
-            <div className='text-gray-500 text-[13px]'>{t('appDebug.variableConig.addOption')}</div>
+            <div className='text-gray-500 text-[13px]'>{t('appDebug.variableConfig.addOption')}</div>
           </div>
         )}
       </div>
@@ -277,7 +287,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
         {isShowConfirmAddVar && (
           <ConfirmAddVar
             varNameArr={notIncludeKeys}
-            onConfrim={autoAddVar}
+            onConfirm={autoAddVar}
             onCancel={cancelAutoAddVar}
             onHide={hideConfirmAddVar}
           />

@@ -1,6 +1,6 @@
 'use client'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import cn from '@/utils/classnames'
 import { Exchange02, FileCode } from '@/app/components/base/icons/src/vender/line/others'
 
 type Props = {

@@ -1,52 +1,140 @@
-from core.app.app_config.entities import AppConfig, VariableEntity
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Any, Optional
+
+from core.app.app_config.entities import VariableEntityType
+from core.file import File, FileUploadConfig
+from factories import file_factory
+
+if TYPE_CHECKING:
+    from core.app.app_config.entities import AppConfig, VariableEntity
 
 
 class BaseAppGenerator:
-    def _get_cleaned_inputs(self, user_inputs: dict, app_config: AppConfig):
-        if user_inputs is None:
-            user_inputs = {}
-
-        filtered_inputs = {}
-
+    def _prepare_user_inputs(
+        self,
+        *,
+        user_inputs: Optional[Mapping[str, Any]],
+        app_config: "AppConfig",
+    ) -> Mapping[str, Any]:
+        user_inputs = user_inputs or {}
         # Filter input variables from form configuration, handle required fields, default values, and option values
         variables = app_config.variables
-        for variable_config in variables:
-            variable = variable_config.variable
+        user_inputs = {
+            var.variable: self._validate_inputs(value=user_inputs.get(var.variable), variable_entity=var)
+            for var in variables
+        }
+        user_inputs = {k: self._sanitize_value(v) for k, v in user_inputs.items()}
+        # Convert files in inputs to File
+        entity_dictionary = {item.variable: item for item in app_config.variables}
+        # Convert single file to File
+        files_inputs = {
+            k: file_factory.build_from_mapping(
+                mapping=v,
+                tenant_id=app_config.tenant_id,
+                config=FileUploadConfig(
+                    allowed_file_types=entity_dictionary[k].allowed_file_types,
+                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,
+                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
+                ),
+            )
+            for k, v in user_inputs.items()
+            if isinstance(v, dict) and entity_dictionary[k].type == VariableEntityType.FILE
+        }
+        # Convert list of files to File
+        file_list_inputs = {
+            k: file_factory.build_from_mappings(
+                mappings=v,
+                tenant_id=app_config.tenant_id,
+                config=FileUploadConfig(
+                    allowed_file_types=entity_dictionary[k].allowed_file_types,
+                    allowed_file_extensions=entity_dictionary[k].allowed_file_extensions,
+                    allowed_file_upload_methods=entity_dictionary[k].allowed_file_upload_methods,
+                ),
+            )
+            for k, v in user_inputs.items()
+            if isinstance(v, list)
+            # Ensure skip List<File>
+            and all(isinstance(item, dict) for item in v)
+            and entity_dictionary[k].type == VariableEntityType.FILE_LIST
+        }
+        # Merge all inputs
+        user_inputs = {**user_inputs, **files_inputs, **file_list_inputs}
 
-            if (variable not in user_inputs
-                    or user_inputs[variable] is None
-                    or (isinstance(user_inputs[variable], str) and user_inputs[variable] == '')):
-                if variable_config.required:
-                    raise ValueError(f"{variable} is required in input form")
+        # Check if all files are converted to File
+        if any(filter(lambda v: isinstance(v, dict), user_inputs.values())):
+            raise ValueError("Invalid input type")
+        if any(
+            filter(lambda v: isinstance(v, dict), filter(lambda item: isinstance(item, list), user_inputs.values()))
+        ):
+            raise ValueError("Invalid input type")
+
+        return user_inputs
+
+    def _validate_inputs(
+        self,
+        *,
+        variable_entity: "VariableEntity",
+        value: Any,
+    ):
+        if value is None:
+            if variable_entity.required:
+                raise ValueError(f"{variable_entity.variable} is required in input form")
+            return value
+
+        if variable_entity.type in {
+            VariableEntityType.TEXT_INPUT,
+            VariableEntityType.SELECT,
+            VariableEntityType.PARAGRAPH,
+        } and not isinstance(value, str):
+            raise ValueError(
+                f"(type '{variable_entity.type}') {variable_entity.variable} in input form must be a string"
+            )
+
+        if variable_entity.type == VariableEntityType.NUMBER and isinstance(value, str):
+            # handle empty string case
+            if not value.strip():
+                return None
+            # may raise ValueError if user_input_value is not a valid number
+            try:
+                if "." in value:
+                    return float(value)
                 else:
-                    filtered_inputs[variable] = variable_config.default if variable_config.default is not None else ""
-                    continue
+                    return int(value)
+            except ValueError:
+                raise ValueError(f"{variable_entity.variable} in input form must be a valid number")
 
-            value = user_inputs[variable]
+        match variable_entity.type:
+            case VariableEntityType.SELECT:
+                if value not in variable_entity.options:
+                    raise ValueError(
+                        f"{variable_entity.variable} in input form must be one of the following: "
+                        f"{variable_entity.options}"
+                    )
+            case VariableEntityType.TEXT_INPUT | VariableEntityType.PARAGRAPH:
+                if variable_entity.max_length and len(value) > variable_entity.max_length:
+                    raise ValueError(
+                        f"{variable_entity.variable} in input form must be less than {variable_entity.max_length} "
+                        "characters"
+                    )
+            case VariableEntityType.FILE:
+                if not isinstance(value, dict) and not isinstance(value, File):
+                    raise ValueError(f"{variable_entity.variable} in input form must be a file")
+            case VariableEntityType.FILE_LIST:
+                # if number of files exceeds the limit, raise ValueError
+                if not (
+                    isinstance(value, list)
+                    and (all(isinstance(item, dict) for item in value) or all(isinstance(item, File) for item in value))
+                ):
+                    raise ValueError(f"{variable_entity.variable} in input form must be a list of files")
 
-            if value is not None:
-                if variable_config.type != VariableEntity.Type.NUMBER and not isinstance(value, str):
-                    raise ValueError(f"{variable} in input form must be a string")
-                elif variable_config.type == VariableEntity.Type.NUMBER and isinstance(value, str):
-                    if '.' in value:
-                        value = float(value)
-                    else:
-                        value = int(value)
+                if variable_entity.max_length and len(value) > variable_entity.max_length:
+                    raise ValueError(
+                        f"{variable_entity.variable} in input form must be less than {variable_entity.max_length} files"
+                    )
 
-            if variable_config.type == VariableEntity.Type.SELECT:
-                options = variable_config.options if variable_config.options is not None else []
-                if value not in options:
-                    raise ValueError(f"{variable} in input form must be one of the following: {options}")
-            elif variable_config.type in [VariableEntity.Type.TEXT_INPUT, VariableEntity.Type.PARAGRAPH]:
-                if variable_config.max_length is not None:
-                    max_length = variable_config.max_length
-                    if len(value) > max_length:
-                        raise ValueError(f'{variable} in input form must be less than {max_length} characters')
+        return value
 
-            if value and isinstance(value, str):
-                filtered_inputs[variable] = value.replace('\x00', '')
-            else:
-                filtered_inputs[variable] = value if value is not None else None
-
-        return filtered_inputs
-
+    def _sanitize_value(self, value: Any) -> Any:
+        if isinstance(value, str):
+            return value.replace("\x00", "")
+        return value

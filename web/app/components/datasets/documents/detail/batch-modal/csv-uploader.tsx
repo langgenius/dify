@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
-import cn from 'classnames'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import cn from '@/utils/classnames'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
@@ -101,7 +101,7 @@ const CSVUploader: FC<Props> = ({
                 <span className='text-primary-400 cursor-pointer' onClick={selectHandle}>{t('datasetDocuments.list.batchModal.browse')}</span>
               </div>
             </div>
-            {dragging && <div ref={dragRef} className='absolute w-full h-full top-0 left-0'/>}
+            {dragging && <div ref={dragRef} className='absolute w-full h-full top-0 left-0' />}
           </div>
         )}
         {file && (

@@ -30,7 +30,7 @@
 }
 
 .indexItem {
-  min-height: 146px;
+  min-height: 126px;
 }
 
 .indexItem .disableMask {
@@ -119,10 +119,6 @@
 
 .radioItem.indexItem .typeHeader .title {
   @apply pb-1;
-}
-
-.radioItem.indexItem .typeHeader .tip {
-  @apply pb-3;
 }
 
 .radioItem .typeIcon {
@@ -264,7 +260,7 @@
 }
 
 .input {
-  @apply inline-flex h-9 w-full py-1 px-2 rounded-lg text-xs leading-normal;
+  @apply inline-flex h-9 w-full py-1 px-2 pr-14 rounded-lg text-xs leading-normal;
   @apply bg-gray-100 caret-primary-600 hover:bg-gray-100 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus-visible:outline-none focus:bg-white placeholder:text-gray-400;
 }
 

@@ -37,6 +37,7 @@
   flex-direction: row;
   align-items: center;
   justify-content: center;
+  white-space: nowrap;
   gap: 4px;
 }
 .qrcodeform {
@@ -46,7 +47,8 @@
   margin: 0 !important;
   margin-top: 4px !important;
   margin-left: -75px !important;
-  position: absolute;
+  width: fit-content;
+  position: relative;
   border-radius: 8px;
   background-color: #fff;
   box-shadow: 0 12px 16px -4px rgba(16, 24, 40, 0.08),
@@ -54,8 +56,6 @@
   overflow: hidden;
   align-items: center;
   justify-content: center;
-  padding: 12px;
+  padding: 15px;
   gap: 8px;
-  z-index: 3;
-  font-family: "PingFang SC", serif;
 }

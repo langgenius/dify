@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, usePathname } from 'next/navigation'
-import cn from 'classnames'
 import {
   RiCloseLine,
   RiLoader2Line,
@@ -10,17 +9,20 @@ import Recorder from 'js-audio-recorder'
 import { useRafInterval } from 'ahooks'
 import { convertToMp3 } from './utils'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { audioToText } from '@/service/share'
 
 type VoiceInputTypes = {
   onConverted: (text: string) => void
   onCancel: () => void
+  wordTimestamps?: string
 }
 
 const VoiceInput = ({
   onCancel,
   onConverted,
+  wordTimestamps,
 }: VoiceInputTypes) => {
   const { t } = useTranslation()
   const recorder = useRef(new Recorder({
@@ -88,6 +90,7 @@ const VoiceInput = ({
     const mp3File = new File([mp3Blob], 'temp.mp3', { type: 'audio/mp3' })
     const formData = new FormData()
     formData.append('file', mp3File)
+    formData.append('word_timestamps', wordTimestamps || 'disabled')
 
     let url = ''
     let isPublic = false
@@ -112,7 +115,7 @@ const VoiceInput = ({
       onConverted('')
       onCancel()
     }
-  }, [])
+  }, [clearInterval, onCancel, onConverted, params.appId, params.token, pathname, wordTimestamps])
   const handleStartRecord = async () => {
     try {
       await recorder.current.start()
@@ -146,12 +149,16 @@ const VoiceInput = ({
       }
     }
   }
-  if (originDuration >= 120 && startRecord)
+  if (originDuration >= 600 && startRecord)
     handleStopRecorder()
 
   useEffect(() => {
     initCanvas()
     handleStartRecord()
+    const recorderRef = recorder?.current
+    return () => {
+      recorderRef?.stop()
+    }
   }, [])
 
   const minutes = parseInt(`${parseInt(`${originDuration}`) / 60}`)
@@ -200,7 +207,7 @@ const VoiceInput = ({
             </div>
           )
         }
-        <div className={`w-[45px] pl-1 text-xs font-medium ${originDuration > 110 ? 'text-[#F04438]' : 'text-gray-700'}`}>{`0${minutes.toFixed(0)}:${seconds >= 10 ? seconds : `0${seconds}`}`}</div>
+        <div className={`w-[45px] pl-1 text-xs font-medium ${originDuration > 500 ? 'text-[#F04438]' : 'text-gray-700'}`}>{`0${minutes.toFixed(0)}:${seconds >= 10 ? seconds : `0${seconds}`}`}</div>
       </div>
     </div>
   )

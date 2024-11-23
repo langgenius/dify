@@ -1,7 +1,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
-import cn from 'classnames'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -11,6 +10,7 @@ import { useBoolean } from 'ahooks'
 import { Pin02 } from '../../base/icons/src/vender/line/general'
 
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 
 export type IItemOperationProps = {
@@ -67,12 +67,12 @@ const ItemOperation: FC<IItemOperationProps> = ({
           }}
         >
           <div className={cn(s.actionItem, 'hover:bg-gray-50 group')} onClick={togglePin}>
-            <Pin02 className='shrink-0 w-4 h-4 text-gray-500'/>
+            <Pin02 className='shrink-0 w-4 h-4 text-gray-500' />
             <span className={s.actionName}>{isPinned ? t('explore.sidebar.action.unpin') : t('explore.sidebar.action.pin')}</span>
           </div>
           {isShowRenameConversation && (
             <div className={cn(s.actionItem, 'hover:bg-gray-50 group')} onClick={onRenameConversation}>
-              <RiEditLine className='shrink-0 w-4 h-4 text-gray-500'/>
+              <RiEditLine className='shrink-0 w-4 h-4 text-gray-500' />
               <span className={s.actionName}>{t('explore.sidebar.action.rename')}</span>
             </div>
           )}

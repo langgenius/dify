@@ -1,10 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
-import React, { useEffect, useRef, useState } from 'react'
-import cn from 'classnames'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import Base from '../base'
+import cn from '@/utils/classnames'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import {
+  getFilesInLogs,
+} from '@/app/components/base/file-uploader/utils'
 
 import './style.css'
 
@@ -15,7 +18,7 @@ const CODE_EDITOR_LINE_HEIGHT = 18
 
 export type Props = {
   value?: string | object
-  placeholder?: string
+  placeholder?: JSX.Element | string
   onChange?: (value: string) => void
   title?: JSX.Element
   language: CodeLanguage
@@ -27,9 +30,12 @@ export type Props = {
   onMount?: (editor: any, monaco: any) => void
   noWrapper?: boolean
   isExpand?: boolean
+  showFileList?: boolean
+  onGenerated?: (value: string) => void
+  showCodeGenerator?: boolean
 }
 
-const languageMap = {
+export const languageMap = {
   [CodeLanguage.javascript]: 'javascript',
   [CodeLanguage.python3]: 'python',
   [CodeLanguage.json]: 'json',
@@ -58,6 +64,9 @@ const CodeEditor: FC<Props> = ({
   onMount,
   noWrapper,
   isExpand,
+  showFileList,
+  onGenerated,
+  showCodeGenerator = false,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
@@ -67,6 +76,12 @@ const CodeEditor: FC<Props> = ({
   const valueRef = useRef(value)
   useEffect(() => {
     valueRef.current = value
+  }, [value])
+
+  const fileList = useMemo(() => {
+    if (typeof value === 'object')
+      return getFilesInLogs(value)
+    return []
   }, [value])
 
   const editorRef = useRef<any>(null)
@@ -160,10 +175,14 @@ const CodeEditor: FC<Props> = ({
           // lineNumbers: (num) => {
           //   return <div>{num}</div>
           // }
+          // hide ambiguousCharacters warning
+          unicodeHighlight: {
+            ambiguousCharacters: false,
+          },
         }}
         onMount={handleEditorDidMount}
       />
-      {!outPutValue && <div className='pointer-events-none absolute left-[36px] top-0 leading-[18px] text-[13px] font-normal text-gray-300'>{placeholder}</div>}
+      {!outPutValue && !isFocus && <div className='pointer-events-none absolute left-[36px] top-0 leading-[18px] text-[13px] font-normal text-gray-300'>{placeholder}</div>}
     </>
   )
 
@@ -185,6 +204,11 @@ const CodeEditor: FC<Props> = ({
             isFocus={isFocus && !readOnly}
             minHeight={minHeight}
             isInNode={isInNode}
+            onGenerated={onGenerated}
+            codeLanguages={language}
+            fileList={fileList}
+            showFileList={showFileList}
+            showCodeGenerator={showCodeGenerator}
           >
             {main}
           </Base>

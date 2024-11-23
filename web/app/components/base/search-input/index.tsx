@@ -1,8 +1,8 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { RiSearchLine } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 type SearchInputProps = {
@@ -12,6 +12,7 @@ type SearchInputProps = {
   onChange: (v: string) => void
   white?: boolean
 }
+
 const SearchInput: FC<SearchInputProps> = ({
   placeholder,
   className,
@@ -21,13 +22,14 @@ const SearchInput: FC<SearchInputProps> = ({
 }) => {
   const { t } = useTranslation()
   const [focus, setFocus] = useState<boolean>(false)
+  const isComposing = useRef<boolean>(false)
 
   return (
     <div className={cn(
       'group flex items-center px-2 h-8 rounded-lg bg-gray-200 hover:bg-gray-300 border border-transparent overflow-hidden',
-      focus && '!bg-white hover:bg-white shawdow-xs !border-gray-300',
-      !focus && value && 'hover:!bg-gray-200 hover:!shawdow-xs hover:!border-black/5',
-      white && '!bg-white hover:!bg-white shawdow-xs !border-gray-300 hover:!border-gray-300',
+      focus && '!bg-white hover:bg-white shadow-xs !border-gray-300',
+      !focus && value && 'hover:!bg-gray-200 hover:!shadow-xs hover:!border-black/5',
+      white && '!bg-white hover:!bg-white shadow-xs !border-gray-300 hover:!border-gray-300',
       className,
     )}>
       <div className="pointer-events-none shrink-0 flex items-center mr-1.5 justify-center w-4 h-4">
@@ -37,7 +39,7 @@ const SearchInput: FC<SearchInputProps> = ({
         type="text"
         name="query"
         className={cn(
-          'grow block h-[18px] bg-gray-200 rounded-md border-0 text-gray-700 text-[13px] placeholder:text-gray-500 appearance-none outline-none group-hover:bg-gray-300 caret-blue-600',
+          'grow block h-[18px] bg-gray-200 border-0 text-gray-700 text-[13px] placeholder:text-gray-500 appearance-none outline-none group-hover:bg-gray-300 caret-blue-600',
           focus && '!bg-white hover:bg-white group-hover:bg-white placeholder:!text-gray-400',
           !focus && value && 'hover:!bg-gray-200 group-hover:!bg-gray-200',
           white && '!bg-white hover:!bg-white group-hover:!bg-white placeholder:!text-gray-400',
@@ -45,7 +47,14 @@ const SearchInput: FC<SearchInputProps> = ({
         placeholder={placeholder || t('common.operation.search')!}
         value={value}
         onChange={(e) => {
-          onChange(e.target.value)
+          if (!isComposing.current)
+            onChange(e.target.value)
+        }}
+        onCompositionStart={() => {
+          isComposing.current = true
+        }}
+        onCompositionEnd={() => {
+          isComposing.current = false
         }}
         onFocus={() => setFocus(true)}
         onBlur={() => setFocus(false)}

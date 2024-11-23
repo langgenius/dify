@@ -11,6 +11,7 @@ import {
   ITERATION_PADDING,
   NODES_INITIAL_DATA,
 } from '../../constants'
+import { CUSTOM_ITERATION_START_NODE } from '../iteration-start/constants'
 
 export const useNodeIterationInteractions = () => {
   const { t } = useTranslation()
@@ -107,12 +108,12 @@ export const useNodeIterationInteractions = () => {
   const handleNodeIterationChildrenCopy = useCallback((nodeId: string, newNodeId: string) => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
-    const childrenNodes = nodes.filter(n => n.parentId === nodeId)
+    const childrenNodes = nodes.filter(n => n.parentId === nodeId && n.type !== CUSTOM_ITERATION_START_NODE)
 
     return childrenNodes.map((child, index) => {
       const childNodeType = child.data.type as BlockEnum
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
-      const newNode = generateNewNode({
+      const { newNode } = generateNewNode({
         data: {
           ...NODES_INITIAL_DATA[childNodeType],
           ...child.data,
@@ -121,6 +122,7 @@ export const useNodeIterationInteractions = () => {
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
           title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${childNodeType}`)} ${nodesWithSameType.length + 1}` : t(`workflow.blocks.${childNodeType}`),
+          iteration_id: newNodeId,
         },
         position: child.position,
         positionAbsolute: child.positionAbsolute,

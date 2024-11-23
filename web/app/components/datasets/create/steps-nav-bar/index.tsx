@@ -2,9 +2,9 @@
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 
-import cn from 'classnames'
 import { useCallback } from 'react'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 type IStepsNavBarProps = {
@@ -49,7 +49,7 @@ const StepsNavBar = ({
             key={item}
             className={cn(s.stepItem, s[`step${item}`], step === item && s.active, step > item && s.done, isMobile && 'px-0')}
           >
-            <div className={cn(s.stepNum)}>{item}</div>
+            <div className={cn(s.stepNum)}>{step > item ? '' : item}</div>
             <div className={cn(s.stepName)}>{isMobile ? '' : t(STEP_T_MAP[item])}</div>
           </div>
         ))}

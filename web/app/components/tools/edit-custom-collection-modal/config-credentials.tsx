@@ -2,11 +2,8 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
-import Tooltip from '../../base/tooltip'
+import Tooltip from '@/app/components/base/tooltip'
+import cn from '@/utils/classnames'
 import type { Credential } from '@/app/components/tools/types'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
@@ -112,20 +109,18 @@ const ConfigCredential: FC<Props> = ({
                   <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
                     {t('tools.createTool.authMethod.key')}
                     <Tooltip
-                      selector='model-page-system-reasoning-model-tip'
-                      htmlContent={
+                      popupContent={
                         <div className='w-[261px] text-gray-500'>
                           {t('tools.createTool.authMethod.keyTooltip')}
                         </div>
                       }
-                    >
-                      <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
-                    </Tooltip>
+                      triggerClassName='ml-0.5 w-4 h-4'
+                    />
                   </div>
                   <input
                     value={tempCredential.api_key_header}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_header: e.target.value })}
-                    className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow'
+                    className='w-full h-10 px-3 text-sm font-normal  border border-transparent bg-gray-100 rounded-lg grow outline-none focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs'
                     placeholder={t('tools.createTool.authMethod.types.apiKeyPlaceholder')!}
                   />
                 </div>
@@ -134,7 +129,7 @@ const ConfigCredential: FC<Props> = ({
                   <input
                     value={tempCredential.api_key_value}
                     onChange={e => setTempCredential({ ...tempCredential, api_key_value: e.target.value })}
-                    className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow'
+                    className='w-full h-10 px-3 text-sm font-normal  border border-transparent bg-gray-100 rounded-lg grow outline-none focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs'
                     placeholder={t('tools.createTool.authMethod.types.apiValuePlaceholder')!}
                   />
                 </div>

@@ -3,7 +3,6 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiBold,
   RiItalic,
@@ -13,7 +12,8 @@ import {
 } from '@remixicon/react'
 import { useStore } from '../store'
 import { useCommand } from './hooks'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import cn from '@/utils/classnames'
+import Tooltip from '@/app/components/base/tooltip'
 
 type CommandProps = {
   type: 'bold' | 'italic' | 'strikethrough' | 'link' | 'bullet'
@@ -60,7 +60,9 @@ const Command = ({
   }, [type, t])
 
   return (
-    <TooltipPlus popupContent={tip}>
+    <Tooltip
+      popupContent={tip}
+    >
       <div
         className={cn(
           'flex items-center justify-center w-8 h-8 cursor-pointer rounded-md text-gray-500 hover:text-gray-800 hover:bg-black/5',
@@ -74,7 +76,7 @@ const Command = ({
       >
         {icon}
       </div>
-    </TooltipPlus>
+    </Tooltip>
   )
 }
 

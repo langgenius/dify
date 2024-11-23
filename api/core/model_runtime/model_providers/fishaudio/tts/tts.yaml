@@ -1,0 +1,5 @@
+model: tts-default
+model_type: tts
+model_properties:
+  word_limit: 1000
+  audio_type: 'mp3'

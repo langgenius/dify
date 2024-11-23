@@ -24,10 +24,16 @@ import ToolNode from './tool/node'
 import ToolPanel from './tool/panel'
 import VariableAssignerNode from './variable-assigner/node'
 import VariableAssignerPanel from './variable-assigner/panel'
+import AssignerNode from './assigner/node'
+import AssignerPanel from './assigner/panel'
 import ParameterExtractorNode from './parameter-extractor/node'
 import ParameterExtractorPanel from './parameter-extractor/panel'
 import IterationNode from './iteration/node'
 import IterationPanel from './iteration/panel'
+import DocExtractorNode from './document-extractor/node'
+import DocExtractorPanel from './document-extractor/panel'
+import ListFilterNode from './list-operator/node'
+import ListFilterPanel from './list-operator/panel'
 
 export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Start]: StartNode,
@@ -42,9 +48,12 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.HttpRequest]: HttpNode,
   [BlockEnum.Tool]: ToolNode,
   [BlockEnum.VariableAssigner]: VariableAssignerNode,
+  [BlockEnum.Assigner]: AssignerNode,
   [BlockEnum.VariableAggregator]: VariableAssignerNode,
   [BlockEnum.ParameterExtractor]: ParameterExtractorNode,
   [BlockEnum.Iteration]: IterationNode,
+  [BlockEnum.DocExtractor]: DocExtractorNode,
+  [BlockEnum.ListFilter]: ListFilterNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
@@ -61,8 +70,11 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.Tool]: ToolPanel,
   [BlockEnum.VariableAssigner]: VariableAssignerPanel,
   [BlockEnum.VariableAggregator]: VariableAssignerPanel,
+  [BlockEnum.Assigner]: AssignerPanel,
   [BlockEnum.ParameterExtractor]: ParameterExtractorPanel,
   [BlockEnum.Iteration]: IterationPanel,
+  [BlockEnum.DocExtractor]: DocExtractorPanel,
+  [BlockEnum.ListFilter]: ListFilterPanel,
 }
 
 export const CUSTOM_NODE_TYPE = 'custom'

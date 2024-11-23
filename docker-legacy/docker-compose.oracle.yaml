@@ -1,0 +1,17 @@
+services:
+  # oracle 23 ai vector store.
+  oracle:
+    image: container-registry.oracle.com/database/free:latest
+    restart: always
+    ports:
+      - 1521:1521
+    volumes:
+      - type: volume
+        source: oradata_vector
+        target: /opt/oracle/oradata
+      - ./startupscripts:/opt/oracle/scripts/startup
+    environment:
+      - ORACLE_PWD=Dify123456
+      - ORACLE_CHARACTERSET=AL32UTF8
+volumes:
+  oradata_vector:

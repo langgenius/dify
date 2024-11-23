@@ -2,8 +2,6 @@ from abc import abstractmethod
 
 from pydantic import BaseModel
 
-from core.helper.code_executor.code_executor import CodeExecutor
-
 
 class CodeNodeProvider(BaseModel):
     @staticmethod
@@ -24,32 +22,13 @@ class CodeNodeProvider(BaseModel):
         pass
 
     @classmethod
-    def get_default_available_packages(cls) -> list[dict]:
-        return [p.model_dump() for p in CodeExecutor.list_dependencies(cls.get_language())]
-
-    @classmethod
     def get_default_config(cls) -> dict:
         return {
             "type": "code",
             "config": {
-                "variables": [
-                    {
-                        "variable": "arg1",
-                        "value_selector": []
-                    },
-                    {
-                        "variable": "arg2",
-                        "value_selector": []
-                    }
-                ],
+                "variables": [{"variable": "arg1", "value_selector": []}, {"variable": "arg2", "value_selector": []}],
                 "code_language": cls.get_language(),
                 "code": cls.get_default_code(),
-                "outputs": {
-                    "result": {
-                        "type": "string",
-                        "children": None
-                    }
-                }
+                "outputs": {"result": {"type": "string", "children": None}},
             },
-            "available_dependencies": cls.get_default_available_packages(),
         }

@@ -1,10 +1,9 @@
 'use client'
 import type { FC, SVGProps } from 'react'
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import classNames from 'classnames'
 import { useBoolean } from 'ahooks'
 import {
   Cog8ToothIcon,
@@ -23,6 +22,7 @@ import {
 } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 import s from './style.module.css'
+import classNames from '@/utils/classnames'
 import { fetchDatasetDetail, fetchDatasetRelatedApps } from '@/service/datasets'
 import type { RelatedApp, RelatedAppResponse } from '@/models/datasets'
 import AppSideBar from '@/app/components/app-sidebar'
@@ -35,9 +35,10 @@ import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { LanguagesSupported } from '@/i18n/language'
 import { useStore } from '@/app/components/app/store'
-import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import { getLocaleOnClient } from '@/i18n'
+import { useAppContext } from '@/context/app-context'
 
 export type IAppDetailLayoutProps = {
   children: React.ReactNode
@@ -59,14 +60,14 @@ const LikedItem = ({
   return (
     <Link className={classNames(s.itemWrapper, 'px-2', isMobile && 'justify-center')} href={`/app/${detail?.id}/overview`}>
       <div className={classNames(s.iconWrapper, 'mr-0')}>
-        <AppIcon size='tiny' icon={detail?.icon} background={detail?.icon_background} />
+        <AppIcon size='tiny' iconType={detail.icon_type} icon={detail.icon} background={detail.icon_background} imageUrl={detail.icon_url} />
         {type === 'app' && (
           <span className='absolute bottom-[-2px] right-[-2px] w-3.5 h-3.5 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
             {detail.mode === 'advanced-chat' && (
               <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
             )}
             {detail.mode === 'agent-chat' && (
-              <CuteRobote className='w-2.5 h-2.5 text-indigo-600' />
+              <CuteRobot className='w-2.5 h-2.5 text-indigo-600' />
             )}
             {detail.mode === 'chat' && (
               <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
@@ -165,8 +166,8 @@ const ExtraInfo = ({ isMobile, relatedApps }: IExtraInfoProps) => {
             className='inline-flex items-center text-xs text-primary-600 mt-2 cursor-pointer'
             href={
               locale === LanguagesSupported[1]
-                ? 'https://docs.dify.ai/v/zh-hans/guides/application-design/prompt-engineering'
-                : 'https://docs.dify.ai/user-guide/creating-dify-apps/prompt-engineering'
+                ? 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/integrate_knowledge_within_application'
+                : 'https://docs.dify.ai/guides/knowledge-base/integrate-knowledge-within-application'
             }
             target='_blank' rel='noopener noreferrer'
           >
@@ -187,6 +188,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const hideSideBar = /documents\/create$/.test(pathname)
   const { t } = useTranslation()
+  const { isCurrentWorkspaceDatasetOperator } = useAppContext()
 
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
@@ -201,12 +203,23 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     datasetId,
   }, apiParams => fetchDatasetRelatedApps(apiParams.datasetId))
 
-  const navigation = [
-    { name: t('common.datasetMenus.documents'), href: `/datasets/${datasetId}/documents`, icon: DocumentTextIcon, selectedIcon: DocumentTextSolidIcon },
-    { name: t('common.datasetMenus.hitTesting'), href: `/datasets/${datasetId}/hitTesting`, icon: TargetIcon, selectedIcon: TargetSolidIcon },
-    // { name: 'api & webhook', href: `/datasets/${datasetId}/api`, icon: CommandLineIcon, selectedIcon: CommandLineSolidIcon },
-    { name: t('common.datasetMenus.settings'), href: `/datasets/${datasetId}/settings`, icon: Cog8ToothIcon, selectedIcon: Cog8ToothSolidIcon },
-  ]
+  const navigation = useMemo(() => {
+    const baseNavigation = [
+      { name: t('common.datasetMenus.hitTesting'), href: `/datasets/${datasetId}/hitTesting`, icon: TargetIcon, selectedIcon: TargetSolidIcon },
+      // { name: 'api & webhook', href: `/datasets/${datasetId}/api`, icon: CommandLineIcon, selectedIcon: CommandLineSolidIcon },
+      { name: t('common.datasetMenus.settings'), href: `/datasets/${datasetId}/settings`, icon: Cog8ToothIcon, selectedIcon: Cog8ToothSolidIcon },
+    ]
+
+    if (datasetRes?.provider !== 'external') {
+      baseNavigation.unshift({
+        name: t('common.datasetMenus.documents'),
+        href: `/datasets/${datasetId}/documents`,
+        icon: DocumentTextIcon,
+        selectedIcon: DocumentTextSolidIcon,
+      })
+    }
+    return baseNavigation
+  }, [datasetRes?.provider, datasetId, t])
 
   useEffect(() => {
     if (datasetRes)
@@ -231,8 +244,9 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon={datasetRes?.icon || 'https://static.dify.ai/images/dataset-default-icon.png'}
         icon_background={datasetRes?.icon_background || '#F5F5F5'}
         desc={datasetRes?.description || '--'}
+        isExternal={datasetRes?.provider === 'external'}
         navigation={navigation}
-        extraInfo={mode => <ExtraInfo isMobile={mode === 'collapse'} relatedApps={relatedApps} />}
+        extraInfo={!isCurrentWorkspaceDatasetOperator ? mode => <ExtraInfo isMobile={mode === 'collapse'} relatedApps={relatedApps} /> : undefined}
         iconType={datasetRes?.data_source_type === DataSourceType.NOTION ? 'notion' : 'dataset'}
       />}
       <DatasetDetailContext.Provider value={{

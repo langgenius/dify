@@ -1,9 +1,10 @@
-import type { App, AppTemplate, SiteConfig } from '@/types/app'
+import type { LangFuseConfig, LangSmithConfig, TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
+import type { App, AppSSO, AppTemplate, SiteConfig } from '@/types/app'
 
 /* export type App = {
   id: string
   name: string
-  decription: string
+  description: string
   mode: AppMode
   enable_site: boolean
   enable_api: boolean
@@ -57,6 +58,18 @@ export type SiteConfig = {
   prompt_public: boolean
 } */
 
+export enum DSLImportMode {
+  YAML_CONTENT = 'yaml-content',
+  YAML_URL = 'yaml-url',
+}
+
+export enum DSLImportStatus {
+  COMPLETED = 'completed',
+  COMPLETED_WITH_WARNINGS = 'completed-with-warnings',
+  PENDING = 'pending',
+  FAILED = 'failed',
+}
+
 export type AppListResponse = {
   data: App[]
   has_more: boolean
@@ -67,6 +80,17 @@ export type AppListResponse = {
 
 export type AppDetailResponse = App
 
+export type DSLImportResponse = {
+  id: string
+  status: DSLImportStatus
+  app_id?: string
+  current_dsl_version?: string
+  imported_dsl_version?: string
+  error: string
+}
+
+export type AppSSOResponse = { enabled: AppSSO['enable_sso'] }
+
 export type AppTemplatesResponse = {
   data: AppTemplate[]
 }
@@ -74,6 +98,10 @@ export type AppTemplatesResponse = {
 export type CreateAppResponse = App
 
 export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig
+
+export type AppDailyMessagesResponse = {
+  data: Array<{ date: string; message_count: number }>
+}
 
 export type AppDailyConversationsResponse = {
   data: Array<{ date: string; conversation_count: number }>
@@ -97,15 +125,15 @@ export type AppTokenCostsResponse = {
 
 export type UpdateAppModelConfigResponse = { result: string }
 
-export type ApikeyItemResponse = {
+export type ApiKeyItemResponse = {
   id: string
   token: string
   last_used_at: string
   created_at: string
 }
 
-export type ApikeysListResponse = {
-  data: ApikeyItemResponse[]
+export type ApiKeysListResponse = {
+  data: ApiKeyItemResponse[]
 }
 
 export type CreateApiKeyResponse = {
@@ -129,3 +157,13 @@ export type AppVoicesListResponse = [{
   name: string
   value: string
 }]
+
+export type TracingStatus = {
+  enabled: boolean
+  tracing_provider: TracingProvider | null
+}
+
+export type TracingConfig = {
+  tracing_provider: TracingProvider
+  tracing_config: LangSmithConfig | LangFuseConfig
+}

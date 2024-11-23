@@ -33,13 +33,13 @@ class PromptTemplateParser:
             key = match.group(1)
             value = inputs.get(key, match.group(0))  # return original matched string if key not found
 
-            if remove_template_variables:
+            if remove_template_variables and isinstance(value, str):
                 return PromptTemplateParser.remove_template_variables(value, self.with_variable_tmpl)
             return value
 
         prompt = re.sub(self.regex, replacer, self.template)
-        return re.sub(r'<\|.*?\|>', '', prompt)
+        return re.sub(r"<\|.*?\|>", "", prompt)
 
     @classmethod
     def remove_template_variables(cls, text: str, with_variable_tmpl: bool = False):
-        return re.sub(WITH_VARIABLE_TMPL_REGEX if with_variable_tmpl else REGEX, r'{\1}', text)
+        return re.sub(WITH_VARIABLE_TMPL_REGEX if with_variable_tmpl else REGEX, r"{\1}", text)

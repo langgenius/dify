@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { RiArrowDownSLine } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -41,7 +41,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
               {value === 'llm' ? t('tools.createTool.toolInput.methodParameter') : t('tools.createTool.toolInput.methodSetting')}
             </div>
             <div className='shrink-0 ml-1 text-gray-700 opacity-60'>
-              <RiArrowDownSLine className='h-4 w-4'/>
+              <RiArrowDownSLine className='h-4 w-4' />
             </div>
           </div>
         </PortalToFollowElemTrigger>
@@ -51,7 +51,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
               <div className='pl-3 pr-2 py-2.5 rounded-lg hover:bg-gray-50 cursor-pointer' onClick={() => onChange('llm')}>
                 <div className='flex item-center gap-1'>
                   <div className='shrink-0 w-4 h-4'>
-                    {value === 'llm' && <Check className='shrink-0 w-4 h-4 text-primary-600'/>}
+                    {value === 'llm' && <Check className='shrink-0 w-4 h-4 text-primary-600' />}
                   </div>
                   <div className='text-[13px] text-gray-700 font-medium leading-[18px]'>{t('tools.createTool.toolInput.methodParameter')}</div>
                 </div>
@@ -60,7 +60,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
               <div className='pl-3 pr-2 py-2.5 rounded-lg hover:bg-gray-50 cursor-pointer' onClick={() => onChange('form')}>
                 <div className='flex item-center gap-1'>
                   <div className='shrink-0 w-4 h-4'>
-                    {value === 'form' && <Check className='shrink-0 w-4 h-4 text-primary-600'/>}
+                    {value === 'form' && <Check className='shrink-0 w-4 h-4 text-primary-600' />}
                   </div>
                   <div className='text-[13px] text-gray-700 font-medium leading-[18px]'>{t('tools.createTool.toolInput.methodSetting')}</div>
                 </div>

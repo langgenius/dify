@@ -1,10 +1,10 @@
 'use client'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import EmbeddingProcess from '../embedding-process'
 
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { FullDocumentDetail, createDocumentResponse } from '@/models/datasets'
 
@@ -33,7 +33,7 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache }: Step
                 <div className={s.label}>{t('datasetCreation.stepThree.label')}</div>
                 <div className={s.datasetName}>{datasetName || creationCache?.dataset?.name}</div>
               </div>
-              <div className={s.dividerLine}/>
+              <div className={s.dividerLine} />
             </>
           )}
           {datasetId && (
@@ -52,7 +52,7 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache }: Step
       </div>
       {!isMobile && <div className={cn(s.sideTip)}>
         <div className={s.tipCard}>
-          <span className={s.icon}/>
+          <span className={s.icon} />
           <div className={s.title}>{t('datasetCreation.stepThree.sideTipTitle')}</div>
           <div className={s.content}>{t('datasetCreation.stepThree.sideTipContent')}</div>
         </div>

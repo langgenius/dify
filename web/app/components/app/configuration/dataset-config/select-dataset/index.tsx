@@ -2,18 +2,19 @@
 import type { FC } from 'react'
 import React, { useRef, useState } from 'react'
 import { useGetState, useInfiniteScroll } from 'ahooks'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import produce from 'immer'
 import TypeIcon from '../type-icon'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import type { DataSet } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { fetchDatasets } from '@/service/datasets'
 import Loading from '@/app/components/base/loading'
-import { formatNumber } from '@/utils/format'
+import Badge from '@/app/components/base/badge'
+import { useKnowledge } from '@/hooks/use-knowledge'
 
 export type ISelectDataSetProps = {
   isShow: boolean
@@ -38,6 +39,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const listRef = useRef<HTMLDivElement>(null)
   const [page, setPage, getPage] = useGetState(1)
   const [isNoMore, setIsNoMore] = useState(false)
+  const { formatIndexingTechniqueAndMethod } = useKnowledge()
 
   useInfiniteScroll(
     async () => {
@@ -45,7 +47,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         const { data, has_more } = await fetchDatasets({ url: '/datasets', params: { page } })
         setPage(getPage() + 1)
         setIsNoMore(!has_more)
-        const newList = [...(datasets || []), ...data]
+        const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique || item.provider === 'external')]
         setDataSets(newList)
         setLoaded(true)
         if (!selected.find(item => !item.name))
@@ -133,17 +135,21 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   </div>
                   <div className={cn('max-w-[200px] text-[13px] font-medium text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap', !item.embedding_available && 'opacity-50 !max-w-[120px]')}>{item.name}</div>
                   {!item.embedding_available && (
-                    <span className='ml-1 shrink-0 px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                    <span className='ml-1 shrink-0 px-1 border border-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
                   )}
                 </div>
-
-                <div className={cn('shrink-0 flex text-xs text-gray-500 overflow-hidden whitespace-nowrap', !item.embedding_available && 'opacity-50')}>
-                  <span className='max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap'>{formatNumber(item.word_count)}</span>
-                  {t('appDebug.feature.dataSet.words')}
-                  <span className='px-0.5'>·</span>
-                  <span className='max-w-[100px] min-w-[8px] overflow-hidden text-ellipsis whitespace-nowrap'>{formatNumber(item.document_count)} </span>
-                  {t('appDebug.feature.dataSet.textBlocks')}
-                </div>
+                {
+                  item.indexing_technique && (
+                    <Badge
+                      text={formatIndexingTechniqueAndMethod(item.indexing_technique, item.retrieval_model_dict?.search_method)}
+                    />
+                  )
+                }
+                {
+                  item.provider === 'external' && (
+                    <Badge text={t('dataset.externalTag')} />
+                  )
+                }
               </div>
             ))}
           </div>

@@ -1,4 +1,3 @@
-
 class InfiniteScrollPagination:
     def __init__(self, data, limit, has_more):
         self.data = data

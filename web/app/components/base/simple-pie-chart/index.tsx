@@ -2,8 +2,8 @@ import type { CSSProperties } from 'react'
 import { memo, useMemo } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
-import classNames from 'classnames'
 import style from './index.module.css'
+import classNames from '@/utils/classnames'
 
 export type SimplePieChartProps = {
   percentage?: number

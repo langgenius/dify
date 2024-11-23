@@ -24,7 +24,7 @@ const translation = {
     resetConfig: 'Reset',
     debugConfig: 'Debug',
     addFeature: 'Add Feature',
-    automatic: 'Automatic',
+    automatic: 'Generate',
     stopResponding: 'Stop responding',
     agree: 'like',
     disagree: 'dislike',
@@ -51,7 +51,7 @@ const translation = {
       title: 'Experience enhance',
     },
     conversationOpener: {
-      title: 'Conversation remakers',
+      title: 'Conversation Opener',
       description: 'In a chat app, the first sentence that the AI actively speaks to the user is usually used as a welcome.',
     },
     suggestedQuestionsAfterAnswer: {
@@ -68,17 +68,17 @@ const translation = {
     },
     speechToText: {
       title: 'Speech to Text',
-      description: 'Once enabled, you can use voice input.',
+      description: 'Voice input can be used in chat.',
       resDes: 'Voice input is enabled',
     },
     textToSpeech: {
       title: 'Text to Speech',
-      description: 'Once enabled, text can be converted to speech.',
+      description: 'Conversation messages can be converted to speech.',
       resDes: 'Text to Audio is enabled',
     },
     citation: {
       title: 'Citations and Attributions',
-      description: 'Once enabled, show source document and attributed section of the generated content.',
+      description: 'Show source document and attributed section of the generated content.',
       resDes: 'Citations and Attributions is enabled',
     },
     annotation: {
@@ -163,9 +163,10 @@ const translation = {
     moderation: {
       title: 'Content moderation',
       description: 'Secure model output by using moderation API or maintaining a sensitive word list.',
-      allEnabled: 'INPUT/OUTPUT Content Enabled',
-      inputEnabled: 'INPUT Content Enabled',
-      outputEnabled: 'OUTPUT Content Enabled',
+      contentEnableLabel: 'Enabled moderate content',
+      allEnabled: 'INPUT & OUTPUT',
+      inputEnabled: 'INPUT',
+      outputEnabled: 'OUTPUT',
       modal: {
         title: 'Content moderation settings',
         provider: {
@@ -198,23 +199,98 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'File Upload',
+      description: 'The chat input box allows uploading of images, documents, and other files.',
+      supportedTypes: 'Support File Types',
+      numberLimit: 'Max uploads',
+      modalTitle: 'File Upload Setting',
+    },
+    imageUpload: {
+      title: 'Image Upload',
+      description: 'Allow uploading images.',
+      supportedTypes: 'Support File Types',
+      numberLimit: 'Max uploads',
+      modalTitle: 'Image Upload Setting',
+    },
+    bar: {
+      empty: 'Enable feature to enhance web app user experience',
+      enableText: 'Features Enabled',
+      manage: 'Manage',
+    },
+    documentUpload: {
+      title: 'Document',
+      description: 'Enable Document will allows the model to take in documents and answer questions about them.',
+    },
   },
-  automatic: {
-    title: 'Automated application orchestration',
-    description: 'Describe your scenario, Dify will orchestrate an application for you.',
-    intendedAudience: 'Who is the intended audience?',
-    intendedAudiencePlaceHolder: 'e.g. Student',
-    solveProblem: 'What problems do they hope AI can solve for them?',
-    solveProblemPlaceHolder: 'e.g. Extract insights and summarize information from long reports and articles',
+  codegen: {
+    title: 'Code Generator',
+    description: 'The Code Generator uses configured models to generate high-quality code based on your instructions. Please provide clear and detailed instructions.',
+    instruction: 'Instructions',
+    instructionPlaceholder: 'Enter detailed description of the code you want to generate.',
+    noDataLine1: 'Describe your use case on the left,',
+    noDataLine2: 'the code preview will show here.',
     generate: 'Generate',
-    audiencesRequired: 'Audiences required',
-    problemRequired: 'Problem required',
-    resTitle: 'We have orchestrated the following application for you.',
-    apply: 'Apply this orchestration',
-    noData: 'Describe your use case on the left, the orchestration preview will show here.',
+    generatedCodeTitle: 'Generated Code',
+    loading: 'Generating code...',
+    apply: 'Apply',
+    applyChanges: 'Apply Changes',
+    resTitle: 'Generated Code',
+    overwriteConfirmTitle: 'Overwrite existing code?',
+    overwriteConfirmMessage: 'This action will overwrite the existing code. Do you want to continue?',
+  },
+  generate: {
+    title: 'Prompt Generator',
+    description: 'The Prompt Generator uses the configured model to optimize prompts for higher quality and better structure. Please write clear and detailed instructions.',
+    tryIt: 'Try it',
+    instruction: 'Instructions',
+    instructionPlaceHolder: 'Write clear and specific instructions.',
+    generate: 'Generate',
+    resTitle: 'Generated Prompt',
+    noDataLine1: 'Describe your use case on the left,',
+    noDataLine2: 'the orchestration preview will show here.',
+    apply: 'Apply',
     loading: 'Orchestrating the application for you...',
     overwriteTitle: 'Override existing configuration?',
-    overwriteMessage: 'Applying this orchestration will override existing configuration.',
+    overwriteMessage: 'Applying this prompt will override existing configuration.',
+    template: {
+      pythonDebugger: {
+        name: 'Python debugger',
+        instruction: 'A bot that can generate and debug your code based on your instruction',
+      },
+      translation: {
+        name: 'Translation',
+        instruction: 'A translator that can translate multiple languages',
+      },
+      professionalAnalyst: {
+        name: 'Professional analyst',
+        instruction: 'Extract insights, identify risk and distill key information from long reports into single memo',
+      },
+      excelFormulaExpert: {
+        name: 'Excel formula expert',
+        instruction: 'A chatbot that can help novice users understand, use and create Excel formulas based on user instructions',
+      },
+      travelPlanning: {
+        name: 'Travel planning',
+        instruction: 'The Travel Planning Assistant is an intelligent tool designed to help users effortlessly plan their trips',
+      },
+      SQLSorcerer: {
+        name: 'SQL sorcerer',
+        instruction: 'Transform everyday language into SQL queries',
+      },
+      GitGud: {
+        name: 'Git gud',
+        instruction: 'Generate appropriate Git commands based on user described version control actions',
+      },
+      meetingTakeaways: {
+        name: 'Meeting takeaways',
+        instruction: 'Distill meetings into concise summaries including discussion topics, key takeaways, and action items',
+      },
+      writingsPolisher: {
+        name: 'Writing polisher',
+        instruction: 'Use advanced copyediting techniques to improve your writings',
+      },
+    },
   },
   resetConfig: {
     title: 'Confirm reset?',
@@ -231,6 +307,10 @@ const translation = {
       'Please wait for the response to the batch task to complete.',
     notSelectModel: 'Please choose a model',
     waitForImgUpload: 'Please wait for the image to upload',
+    waitForFileUpload: 'Please wait for the file/files to upload',
+  },
+  warningMessage: {
+    timeoutExceeded: 'Results are not displayed due to timeout. Please refer to the logs to gather complete results.',
   },
   chatSubTitle: 'Instructions',
   completionSubTitle: 'Prefix Prompt',
@@ -254,18 +334,18 @@ const translation = {
     typeSelect: 'Select',
   },
   varKeyError: {
-    canNoBeEmpty: 'Variable key can not be empty',
-    tooLong: 'Variable key: {{key}} too length. Can not be longer then 30 characters',
-    notValid: 'Variable key: {{key}} is invalid. Can only contain letters, numbers, and underscores',
-    notStartWithNumber: 'Variable key: {{key}} can not start with a number',
-    keyAlreadyExists: 'Variable key: :{{key}} already exists',
+    canNoBeEmpty: '{{key}} is required',
+    tooLong: '{{key}} is too length. Can not be longer then 30 characters',
+    notValid: '{{key}} is invalid. Can only contain letters, numbers, and underscores',
+    notStartWithNumber: '{{key}} can not start with a number',
+    keyAlreadyExists: '{{key}} already exists',
   },
   otherError: {
     promptNoBeEmpty: 'Prompt can not be empty',
     historyNoBeEmpty: 'Conversation history must be set in the prompt',
     queryNoBeEmpty: 'Query must be set in the prompt',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Add Input Field',
     'editModalTitle': 'Edit Input Field',
     'description': 'Setting for variable {{varName}}',
@@ -275,6 +355,8 @@ const translation = {
     'paragraph': 'Paragraph',
     'select': 'Select',
     'number': 'Number',
+    'single-file': 'Single File',
+    'multi-files': 'File List',
     'notSet': 'Not set, try typing {{input}} in the prefix prompt',
     'stringTitle': 'Form text box options',
     'maxLength': 'Max length',
@@ -286,8 +368,32 @@ const translation = {
     'inputPlaceholder': 'Please input',
     'content': 'Content',
     'required': 'Required',
+    'file': {
+      supportFileTypes: 'Support File Types',
+      image: {
+        name: 'Image',
+      },
+      audio: {
+        name: 'Audio',
+      },
+      document: {
+        name: 'Document',
+      },
+      video: {
+        name: 'Video',
+      },
+      custom: {
+        name: 'Other file types',
+        description: 'Specify other file types.',
+        createPlaceholder: '+ File extension, e.g .doc',
+      },
+    },
+    'uploadFileTypes': 'Upload File Types',
+    'localUpload': 'Local Upload',
+    'both': 'Both',
+    'maxNumberOfUploads': 'Max number of uploads',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, video < {{videoLimit}}',
     'errorMsg': {
-      varNameRequired: 'Variable name is required',
       labelNameRequired: 'Label name is required',
       varNameCanBeRepeat: 'Variable name can not be repeated',
       atLeastOneOption: 'At least one option is required',
@@ -297,6 +403,7 @@ const translation = {
   vision: {
     name: 'Vision',
     description: 'Enable Vision will allows the model to take in images and answer questions about them. ',
+    onlySupportVisionModelTip: 'Only supports vision models',
     settings: 'Settings',
     visionSettings: {
       title: 'Vision Settings',
@@ -323,12 +430,15 @@ const translation = {
       language: 'Language',
       resolutionTooltip: 'Text-to-speech voice support language。',
       voice: 'Voice',
+      autoPlay: 'Auto Play',
+      autoPlayEnabled: 'On',
+      autoPlayDisabled: 'Off',
     },
   },
   openingStatement: {
     title: 'Conversation Opener',
     add: 'Add',
-    writeOpener: 'Write opener',
+    writeOpener: 'Edit opener',
     placeholder: 'Write your opener message here, you can use variables, try type {{variable}}.',
     openingQuestion: 'Opening Questions',
     noDataPlaceHolder:
@@ -347,7 +457,7 @@ const translation = {
     },
   },
   inputs: {
-    title: 'Debug and Preview',
+    title: 'Debug & Preview',
     noPrompt: 'Try write some prompt in pre-prompt input',
     userInputField: 'User Input Field',
     noVar: 'Fill in the value of the variable, which will be automatically replaced in the prompt word every time a new session is started.',
@@ -361,6 +471,7 @@ const translation = {
     run: 'RUN',
   },
   result: 'Output Text',
+  noResult: 'Output will be displayed here.',
   datasetConfig: {
     settingTitle: 'Retrieval settings',
     knowledgeTip: 'Click the “+” button to add knowledge',
@@ -370,7 +481,7 @@ const translation = {
     },
     retrieveMultiWay: {
       title: 'Multi-path retrieval',
-      description: 'Based on user intent, queries across all Knowledge, retrieves relevant text from multi-sources, and selects the best results matching the user query after reranking. Configuration of the Rerank model API is required.',
+      description: 'Based on user intent, queries across all Knowledge, retrieves relevant text from multi-sources, and selects the best results matching the user query after reranking. ',
     },
     rerankModelRequired: 'Rerank model is required',
     params: 'Params',

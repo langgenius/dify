@@ -3,7 +3,6 @@ import {
   useCallback,
   useState,
 } from 'react'
-import cn from 'classnames'
 import { intersection } from 'lodash-es'
 import type { EdgeProps } from 'reactflow'
 import {
@@ -22,6 +21,7 @@ import type {
   OnSelectBlock,
 } from './types'
 import { ITERATION_CHILDREN_Z_INDEX } from './constants'
+import cn from '@/utils/classnames'
 
 const CustomEdge = ({
   id,
@@ -79,7 +79,7 @@ const CustomEdge = ({
         id={id}
         path={edgePath}
         style={{
-          stroke: (selected || data?._connectedNodeIsHovering || data?._runned) ? '#2970FF' : '#D0D5DD',
+          stroke: (selected || data?._connectedNodeIsHovering || data?._run) ? '#2970FF' : '#D0D5DD',
           strokeWidth: 2,
         }}
       />

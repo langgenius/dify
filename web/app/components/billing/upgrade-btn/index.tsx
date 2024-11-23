@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { GoldCoin } from '../../base/icons/src/vender/solid/FinanceAndECommerce'
 import { Sparkles } from '../../base/icons/src/public/billing'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import { useModalContext } from '@/context/modal-context'
 
 type Props = {

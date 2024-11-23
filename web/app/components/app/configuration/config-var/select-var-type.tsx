@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import React, { useState } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import cn from '@/utils/classnames'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import {
   PortalToFollowElem,
@@ -62,14 +62,14 @@ const SelectVarType: FC<Props> = ({
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
         <div className='bg-white border border-gray-200 shadow-lg rounded-lg min-w-[192px]'>
           <div className='p-1'>
-            <SelectItem type={InputVarType.textInput} value='string' text={t('appDebug.variableConig.string')} onClick={handleChange}></SelectItem>
-            <SelectItem type={InputVarType.paragraph} value='paragraph' text={t('appDebug.variableConig.paragraph')} onClick={handleChange}></SelectItem>
-            <SelectItem type={InputVarType.select} value='select' text={t('appDebug.variableConig.select')} onClick={handleChange}></SelectItem>
-            <SelectItem type={InputVarType.number} value='number' text={t('appDebug.variableConig.number')} onClick={handleChange}></SelectItem>
+            <SelectItem type={InputVarType.textInput} value='string' text={t('appDebug.variableConfig.string')} onClick={handleChange}></SelectItem>
+            <SelectItem type={InputVarType.paragraph} value='paragraph' text={t('appDebug.variableConfig.paragraph')} onClick={handleChange}></SelectItem>
+            <SelectItem type={InputVarType.select} value='select' text={t('appDebug.variableConfig.select')} onClick={handleChange}></SelectItem>
+            <SelectItem type={InputVarType.number} value='number' text={t('appDebug.variableConfig.number')} onClick={handleChange}></SelectItem>
           </div>
           <div className='h-[1px] bg-gray-100'></div>
           <div className='p-1'>
-            <SelectItem Icon={ApiConnection} value='api' text={t('appDebug.variableConig.apiBasedVar')} onClick={handleChange}></SelectItem>
+            <SelectItem Icon={ApiConnection} value='api' text={t('appDebug.variableConfig.apiBasedVar')} onClick={handleChange}></SelectItem>
           </div>
         </div>
       </PortalToFollowElemContent>

@@ -12,21 +12,21 @@ def test_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='mistral:text',
+            model="mistral:text",
             credentials={
-                'base_url': 'http://localhost:21434',
-                'mode': 'chat',
-                'context_size': 4096,
-            }
+                "base_url": "http://localhost:21434",
+                "mode": "chat",
+                "context_size": 4096,
+            },
         )
 
     model.validate_credentials(
-        model='mistral:text',
+        model="mistral:text",
         credentials={
-            'base_url': os.environ.get('OLLAMA_BASE_URL'),
-            'mode': 'chat',
-            'context_size': 4096,
-        }
+            "base_url": os.environ.get("OLLAMA_BASE_URL"),
+            "mode": "chat",
+            "context_size": 4096,
+        },
     )
 
 
@@ -34,17 +34,14 @@ def test_invoke_model():
     model = OllamaEmbeddingModel()
 
     result = model.invoke(
-        model='mistral:text',
+        model="mistral:text",
         credentials={
-            'base_url': os.environ.get('OLLAMA_BASE_URL'),
-            'mode': 'chat',
-            'context_size': 4096,
+            "base_url": os.environ.get("OLLAMA_BASE_URL"),
+            "mode": "chat",
+            "context_size": 4096,
         },
-        texts=[
-            "hello",
-            "world"
-        ],
-        user="abc-123"
+        texts=["hello", "world"],
+        user="abc-123",
     )
 
     assert isinstance(result, TextEmbeddingResult)
@@ -56,16 +53,13 @@ def test_get_num_tokens():
     model = OllamaEmbeddingModel()
 
     num_tokens = model.get_num_tokens(
-        model='mistral:text',
+        model="mistral:text",
         credentials={
-            'base_url': os.environ.get('OLLAMA_BASE_URL'),
-            'mode': 'chat',
-            'context_size': 4096,
+            "base_url": os.environ.get("OLLAMA_BASE_URL"),
+            "mode": "chat",
+            "context_size": 4096,
         },
-        texts=[
-            "hello",
-            "world"
-        ]
+        texts=["hello", "world"],
     )
 
     assert num_tokens == 2

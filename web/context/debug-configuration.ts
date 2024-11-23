@@ -97,6 +97,10 @@ type IDebugConfiguration = {
   isShowVisionConfig: boolean
   visionConfig: VisionSettings
   setVisionConfig: (visionConfig: VisionSettings, noNotice?: boolean) => void
+  isAllowVideoUpload: boolean
+  isShowDocumentConfig: boolean
+  rerankSettingModalOpen: boolean
+  setRerankSettingModalOpen: (rerankSettingModalOpen: boolean) => void
 }
 
 const DebugConfigurationContext = createContext<IDebugConfiguration>({
@@ -202,13 +206,16 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
       prompt_template: '',
       prompt_variables: [],
     },
-    opening_statement: null,
     more_like_this: null,
-    suggested_questions_after_answer: null,
+    opening_statement: '',
+    suggested_questions: [],
+    sensitive_word_avoidance: null,
     speech_to_text: null,
     text_to_speech: null,
+    file_upload: null,
+    suggested_questions_after_answer: null,
     retriever_resource: null,
-    sensitive_word_avoidance: null,
+    annotation_reply: null,
     dataSets: [],
     agentConfig: DEFAULT_AGENT_SETTING,
   },
@@ -217,7 +224,7 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
   showSelectDataSet: () => { },
   setDataSets: () => { },
   datasetConfigs: {
-    retrieval_model: RETRIEVE_TYPE.oneWay,
+    retrieval_model: RETRIEVE_TYPE.multiWay,
     reranking_model: {
       reranking_provider_name: '',
       reranking_model_name: '',
@@ -239,6 +246,10 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     transfer_methods: [TransferMethod.remote_url],
   },
   setVisionConfig: () => { },
+  isAllowVideoUpload: false,
+  isShowDocumentConfig: false,
+  rerankSettingModalOpen: false,
+  setRerankSettingModalOpen: () => { },
 })
 
 export const useDebugConfigurationContext = () => useContext(DebugConfigurationContext)

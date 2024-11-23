@@ -3,7 +3,7 @@ const translation = {
     line1: 'プロンプト',
     line2: 'エンジニアリング',
   },
-  orchestrate: 'Orchestrate',
+  orchestrate: 'オーケストレーション',
   promptMode: {
     simple: 'エキスパートモードに切り替えて、PROMPT全体を編集します',
     advanced: 'エキスパートモード',
@@ -38,7 +38,6 @@ const translation = {
     description: 'LLMプロバイダーキーが設定されていません。デバッグする前に設定する必要があります。',
     settingBtn: '設定に移動',
   },
-
   trailUseGPT4Info: {
     title: '現在、gpt-4はサポートされていません',
     description: 'gpt-4を使用するには、APIキーを設定してください。',
@@ -151,7 +150,7 @@ const translation = {
       title: '会話履歴',
       description: '会話の役割に接頭辞名を設定します',
       tip: '会話履歴は有効になっていません。上記のプロンプトに <histories> を追加してください。',
-      learnMore: '詳細',
+      learnMore: '詳細を見る',
       editModal: {
         title: '会話役割名の編集',
         userPrefix: 'ユーザー接頭辞',
@@ -161,10 +160,10 @@ const translation = {
     toolbox: {
       title: 'ツールボックス',
     },
-
     moderation: {
       title: 'コンテンツのモデレーション',
       description: 'モデレーションAPIを使用するか、機密語リストを維持することで、モデルの出力を安全にします。',
+      contentEnableLabel: 'モデレート・コンテンツを有効にする',
       allEnabled: '入力/出力コンテンツが有効になっています',
       inputEnabled: '入力コンテンツが有効になっています',
       outputEnabled: '出力コンテンツが有効になっています',
@@ -200,24 +199,94 @@ const translation = {
         },
       },
     },
-
+    fileUpload: {
+      title: 'ファイル アップロード',
+      description: 'チャットの入力ボックスは画像やドキュメントやその他のファイルのアップロードをサポートします。',
+      supportedTypes: 'サポートされるファイルのタイプ',
+      numberLimit: '最大アップロード数',
+      modalTitle: 'ファイル アップロード設置',
+    },
+    imageUpload: {
+      title: '画像アップロード',
+      description: '画像アップロードをサポートする',
+      supportedTypes: 'サポートされるファイルのタイプ',
+      numberLimit: '最大アップロード数',
+      modalTitle: '画像アップロード設置',
+    },
+    bar: {
+      empty: 'Webアプリのユーザーエクスペリアンスを強化させる機能を有効にする',
+      enableText: '有効な機能',
+      manage: '管理',
+    },
   },
-  automatic: {
-    title: '自動アプリケーションオーケストレーション',
-    description: 'シナリオを説明してください。Difyがアプリケーションをあなたのためにオーケストレートします。',
-    intendedAudience: '誰が想定されるターゲットですか？',
-    intendedAudiencePlaceHolder: '例：学生',
-    solveProblem: 'どのような問題をAIが解決できると期待していますか？',
-    solveProblemPlaceHolder: '例：学業成績の評価',
+  codegen: {
+    title: 'コードジェネレーター',
+    description: 'コードジェネレーターは、設定されたモデルを使用して指示に基づいて高品質なコードを生成します。明確で詳細な指示を提供してください。',
+    instruction: '指示',
+    instructionPlaceholder: '生成したいコードの詳細な説明を入力してください。',
+    noDataLine1: '左側に使用例を記入してください,',
+    noDataLine2: 'コードのプレビューがこちらに表示されます。',
     generate: '生成',
-    audiencesRequired: 'ターゲットが必要です',
-    problemRequired: '問題が必要です',
-    resTitle: '次のアプリケーションをあなたのためにオーケストレートしました。',
-    apply: 'このオーケストレーションを適用する',
-    noData: '左側にユースケースを記述し、オーケストレーションプレビューがここに表示されます。',
-    loading: 'アプリケーションのオーケストレーションを実行しています...',
-    overwriteTitle: '既存の構成を上書きしますか？',
-    overwriteMessage: 'このオーケストレーションを適用すると、既存の構成が上書きされます。',
+    generatedCodeTitle: '生成されたコード',
+    loading: 'コードを生成中...',
+    apply: '適用',
+    applyChanges: '変更を適用',
+    resTitle: '生成されたコード',
+    overwriteConfirmTitle: '既存のコードを上書きしますか？',
+    overwriteConfirmMessage: 'この操作は既存のコードを上書きします。続行しますか？',
+  },
+  generate: {
+    title: 'プロンプト生成器',
+    description: 'プロンプト生成器は、設定済みのモデルを使って、高品質で構造的に優れたプロンプトを作成するための最適化を行います。具体的で詳細な指示をお書きください。',
+    tryIt: '試してみる',
+    instruction: '指示',
+    instructionPlaceHolder: '具体的で明確な指示を入力してください。',
+    generate: '生成',
+    resTitle: '生成されたプロンプト',
+    noDataLine1: '左側に使用例を記入してください,',
+    noDataLine2: 'オーケストレーションのプレビューがこちらに表示されます。',
+    apply: '適用',
+    loading: 'アプリケーションを処理中です',
+    overwriteTitle: '既存の設定を上書きしますか？',
+    overwriteMessage: 'このプロンプトを適用すると、既存の設定が上書きされます。',
+    template: {
+      pythonDebugger: {
+        name: 'Python デバッガー',
+        instruction: '指示に従ってコードを生成し、デバッグを行うボット',
+      },
+      translation: {
+        name: '翻訳',
+        instruction: '複数言語に対応した翻訳機能',
+      },
+      professionalAnalyst: {
+        name: '専門アナリスト',
+        instruction: '長文のレポートから洞察を引き出し、リスクを特定し、重要情報をまとめる',
+      },
+      excelFormulaExpert: {
+        name: 'エクセル式エキスパート',
+        instruction: 'ユーザーの指示に基づき、エクセル式の理解、使用、作成をサポートするチャットボット',
+      },
+      travelPlanning: {
+        name: '旅行計画',
+        instruction: 'ユーザーが簡単に旅行計画を立てられるように設計されたツール',
+      },
+      SQLSorcerer: {
+        name: 'SQLソーサラー',
+        instruction: '日常言語をSQLクエリに変換する',
+      },
+      GitGud: {
+        name: 'Git gud',
+        instruction: 'ユーザーが記述したバージョン管理アクションに対応するGitコマンドを生成する',
+      },
+      meetingTakeaways: {
+        name: '会議の要点',
+        instruction: '議題、重要点、行動項目を含む要約を作成する',
+      },
+      writingsPolisher: {
+        name: 'ライティングポリッシャー',
+        instruction: '文章を改善するための高度な編集技法を用いる',
+      },
+    },
   },
   resetConfig: {
     title: 'リセットを確認しますか？',
@@ -231,6 +300,10 @@ const translation = {
     waitForBatchResponse: 'バッチタスクへの応答が完了するまでお待ちください。',
     notSelectModel: 'モデルを選択してください',
     waitForImgUpload: '画像のアップロードが完了するまでお待ちください',
+    waitForFileUpload: 'ファイルのアップロードが完了するまでお待ちください',
+  },
+  warningMessage: {
+    timeoutExceeded: 'タイムアウトのため結果が表示されません。完全な結果を手にいれるためには、ログを参照してください。',
   },
   chatSubTitle: '手順',
   completionSubTitle: '接頭辞プロンプト',
@@ -251,27 +324,29 @@ const translation = {
     typeSelect: '選択',
   },
   varKeyError: {
-    canNoBeEmpty: '変数キーを空にすることはできません',
-    tooLong: '変数キー: {{key}} が長すぎます。30文字を超えることはできません',
-    notValid: '変数キー: {{key}} が無効です。文字、数字、アンダースコアのみを含めることができます',
-    notStartWithNumber: '変数キー: {{key}} は数字で始めることはできません',
-    keyAlreadyExists: '変数キー: {{key}} はすでに存在します',
+    canNoBeEmpty: '{{key}} は必須です',
+    tooLong: '{{key}} が長すぎます。30文字を超えることはできません',
+    notValid: '{{key}} が無効です。文字、数字、アンダースコアのみを含めることができます',
+    notStartWithNumber: '{{key}} は数字で始めることはできません',
+    keyAlreadyExists: '{{key}} はすでに存在します',
   },
   otherError: {
     promptNoBeEmpty: 'プロンプトを空にすることはできません',
     historyNoBeEmpty: 'プロンプトには会話履歴を設定する必要があります',
     queryNoBeEmpty: 'プロンプトにクエリを設定する必要があります',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': '入力フィールドを追加',
     'editModalTitle': '入力フィールドを編集',
     'description': '{{varName}} の変数設定',
     'fieldType': 'フィールドタイプ',
-    'string': 'ショートテキスト',
-    'text-input': 'ショートテキスト',
+    'string': '短文',
+    'text-input': '短文',
     'paragraph': '段落',
     'select': '選択',
     'number': '数値',
+    'single-file': '単一ファイル',
+    'multi-files': 'ファイルリスト',
     'notSet': '設定されていません。プレフィックスのプロンプトで {{input}} を入力してみてください。',
     'stringTitle': 'フォームテキストボックスオプション',
     'maxLength': '最大長',
@@ -281,7 +356,33 @@ const translation = {
     'varName': '変数名',
     'labelName': 'ラベル名',
     'inputPlaceholder': '入力してください',
+    'content': 'コンテンツ',
     'required': '必須',
+    'file': {
+      supportFileTypes: 'サッポトされたファイルタイプ',
+      image: {
+        name: '画像',
+      },
+      audio: {
+        name: '音声',
+      },
+      document: {
+        name: 'ドキュメント',
+      },
+      video: {
+        name: '映像',
+      },
+      custom: {
+        name: '他のファイルタイプ',
+        description: '他のファイルタイプを指定する。',
+        createPlaceholder: '+ 拡張子, 例：.doc',
+      },
+    },
+    'uploadFileTypes': 'アップロードされたファイルのタイプ',
+    'localUpload': 'ローカル アップロード',
+    'both': '両方',
+    'maxNumberOfUploads': 'アップロードの最大数',
+    'maxNumberTip': 'ドキュメント < {{docLimit}}, 画像 < {{imgLimit}}, 音声 < {{audioLimit}}, 映像 < {{videoLimit}}',
     'errorMsg': {
       varNameRequired: '変数名は必須です',
       labelNameRequired: 'ラベル名は必須です',
@@ -293,6 +394,7 @@ const translation = {
   vision: {
     name: 'ビジョン',
     description: 'ビジョンを有効にすると、モデルが画像を受け取り、それに関する質問に答えることができます。',
+    onlySupportVisionModelTip: 'ビジョンモデルのみをサポート',
     settings: '設定',
     visionSettings: {
       title: 'ビジョン設定',
@@ -319,6 +421,9 @@ const translation = {
       language: '言語',
       resolutionTooltip: 'テキスト読み上げの音声言語をサポートします。',
       voice: '音声',
+      autoPlay: '自動再生',
+      autoPlayEnabled: '開ける',
+      autoPlayDisabled: '閉じる',
     },
   },
   openingStatement: {
@@ -357,6 +462,7 @@ const translation = {
     run: '実行',
   },
   result: '出力テキスト',
+  noResult: '出力はここに表示されます。',
   datasetConfig: {
     settingTitle: 'リトリーバル設定',
     knowledgeTip: 'ナレッジを追加するには「+」ボタンをクリックしてください',
@@ -376,7 +482,6 @@ const translation = {
     score_thresholdTip: 'チャンクフィルタリングの類似性閾値を設定するために使用されます。',
     retrieveChangeTip: 'インデックスモードとリトリーバルモードを変更すると、このナレッジに関連付けられたアプリケーションに影響を与える可能性があります。',
   },
-
   debugAsSingleModel: '単一モデルでデバッグ',
   debugAsMultipleModel: '複数モデルでデバッグ',
   duplicateModel: '複製',

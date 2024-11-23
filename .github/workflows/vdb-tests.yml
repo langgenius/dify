@@ -1,0 +1,71 @@
+name: Run VDB Tests
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - api/core/rag/datasource/**
+      - docker/**
+      - .github/workflows/vdb-tests.yml
+
+concurrency:
+  group: vdb-tests-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: VDB Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version:
+          - "3.10"
+          - "3.11"
+          - "3.12"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Poetry and Python ${{ matrix.python-version }}
+        uses: ./.github/actions/setup-poetry
+        with:
+          python-version: ${{ matrix.python-version }}
+          poetry-lockfile: api/poetry.lock
+
+      - name: Check Poetry lockfile
+        run: |
+          poetry check -C api --lock
+          poetry show -C api
+
+      - name: Install dependencies
+        run: poetry install -C api --with dev
+
+      - name: Set up dotenvs
+        run: |
+          cp docker/.env.example docker/.env
+          cp docker/middleware.env.example docker/middleware.env
+
+      - name: Expose Service Ports
+        run: sh .github/workflows/expose_service_ports.sh
+
+      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch, Couchbase)
+        uses: hoverkraft-tech/compose-action@v2.0.2
+        with:
+          compose-file: |
+            docker/docker-compose.yaml
+          services: |
+            weaviate
+            qdrant
+            couchbase-server
+            etcd
+            minio
+            milvus-standalone
+            pgvecto-rs
+            pgvector
+            chroma
+            elasticsearch
+
+      - name: Test Vector Stores
+        run: poetry run -C api bash dev/pytest/pytest_vdb.sh

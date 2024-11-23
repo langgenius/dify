@@ -3,13 +3,13 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-import cn from 'classnames'
 import {
   RiArrowDownSLine,
   RiLoader2Line,
 } from '@remixicon/react'
 import type { ToolInfoInThought } from '../type'
 import Panel from './panel'
+import cn from '@/utils/classnames'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { DataSet as DataSetIcon } from '@/app/components/base/icons/src/public/thought'
 import type { Emoji } from '@/app/components/tools/types'

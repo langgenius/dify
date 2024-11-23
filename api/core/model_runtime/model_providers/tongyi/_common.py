@@ -1,11 +1,27 @@
-from core.model_runtime.errors.invoke import InvokeError
+from dashscope.common.error import (
+    AuthenticationError,
+    InvalidParameter,
+    RequestFailure,
+    ServiceUnavailableError,
+    UnsupportedHTTPMethod,
+    UnsupportedModel,
+)
+
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 
 
 class _CommonTongyi:
     @staticmethod
     def _to_credential_kwargs(credentials: dict) -> dict:
         credentials_kwargs = {
-            "dashscope_api_key": credentials['dashscope_api_key'],
+            "dashscope_api_key": credentials["dashscope_api_key"],
         }
 
         return credentials_kwargs
@@ -20,4 +36,20 @@ class _CommonTongyi:
 
         :return: Invoke error mapping
         """
-        pass
+        return {
+            InvokeConnectionError: [
+                RequestFailure,
+            ],
+            InvokeServerUnavailableError: [
+                ServiceUnavailableError,
+            ],
+            InvokeRateLimitError: [],
+            InvokeAuthorizationError: [
+                AuthenticationError,
+            ],
+            InvokeBadRequestError: [
+                InvalidParameter,
+                UnsupportedModel,
+                UnsupportedHTTPMethod,
+            ],
+        }

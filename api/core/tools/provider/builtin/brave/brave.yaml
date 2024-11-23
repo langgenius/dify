@@ -29,3 +29,11 @@ credentials_for_provider:
       zh_Hans: 从 Brave 获取您的 Brave Search API key
       pt_BR: Get your Brave Search API key from Brave
     url: https://brave.com/search/api/
+  base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: Brave server's Base URL
+      zh_Hans: Brave服务器的API URL
+    placeholder:
+      en_US: https://api.search.brave.com/res/v1/web/search

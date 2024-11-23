@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import { useUnmount } from 'ahooks'
 import React, { useCallback, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import cn from 'classnames'
 import {
   RiDashboard2Fill,
   RiDashboard2Line,
@@ -16,12 +15,14 @@ import {
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
+import { useContextSelector } from 'use-context-selector'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import { useStore } from '@/app/components/app/store'
 import AppSideBar from '@/app/components/app-sidebar'
 import type { NavIcon } from '@/app/components/app-sidebar/navLink'
-import { fetchAppDetail } from '@/service/apps'
-import { useAppContext } from '@/context/app-context'
+import { fetchAppDetail, fetchAppSSO } from '@/service/apps'
+import AppContext, { useAppContext } from '@/context/app-context'
 import Loading from '@/app/components/base/loading'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
@@ -40,7 +41,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const { appDetail, setAppDetail, setAppSiderbarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppDetail: state.setAppDetail,
@@ -52,8 +53,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     icon: NavIcon
     selectedIcon: NavIcon
   }>>([])
+  const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
 
-  const getNavigations = useCallback((appId: string, isCurrentWorkspaceManager: boolean, isCurrentWorkspaceEditor: boolean, mode: string) => {
+  const getNavigations = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: string) => {
     const navs = [
       ...(isCurrentWorkspaceEditor
         ? [{
@@ -70,7 +72,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiTerminalBoxLine,
         selectedIcon: RiTerminalBoxFill,
       },
-      ...(isCurrentWorkspaceManager
+      ...(isCurrentWorkspaceEditor
         ? [{
           name: mode !== 'workflow'
             ? t('common.appMenus.logAndAnn')
@@ -106,7 +108,12 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   useEffect(() => {
     setAppDetail()
     fetchAppDetail({ url: '/apps', id: appId }).then((res) => {
-      // redirections
+      // redirection
+      const canIEditApp = isCurrentWorkspaceEditor
+      if (!canIEditApp && (pathname.endsWith('configuration') || pathname.endsWith('workflow') || pathname.endsWith('logs'))) {
+        router.replace(`/app/${appId}/overview`)
+        return
+      }
       if ((res.mode === 'workflow' || res.mode === 'advanced-chat') && (pathname).endsWith('configuration')) {
         router.replace(`/app/${appId}/workflow`)
       }
@@ -114,14 +121,19 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         router.replace(`/app/${appId}/configuration`)
       }
       else {
-        setAppDetail(res)
-        setNavigation(getNavigations(appId, isCurrentWorkspaceManager, isCurrentWorkspaceEditor, res.mode))
+        setAppDetail({ ...res, enable_sso: false })
+        setNavigation(getNavigations(appId, isCurrentWorkspaceEditor, res.mode))
+        if (systemFeatures.enable_web_sso_switch_component && canIEditApp) {
+          fetchAppSSO({ appId }).then((ssoRes) => {
+            setAppDetail({ ...res, enable_sso: ssoRes.enabled })
+          })
+        }
       }
     }).catch((e: any) => {
       if (e.status === 404)
         router.replace('/apps')
     })
-  }, [appId, isCurrentWorkspaceManager, isCurrentWorkspaceEditor])
+  }, [appId, isCurrentWorkspaceEditor, systemFeatures, getNavigations, pathname, router, setAppDetail])
 
   useUnmount(() => {
     setAppDetail()

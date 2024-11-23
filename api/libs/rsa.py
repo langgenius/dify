@@ -4,9 +4,9 @@ from Crypto.Cipher import AES
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 
-import libs.gmpy2_pkcs10aep_cipher as gmpy2_pkcs10aep_cipher
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
+from libs import gmpy2_pkcs10aep_cipher
 
 
 def generate_key_pair(tenant_id):
@@ -48,7 +48,7 @@ def encrypt(text, public_key):
 def get_decrypt_decoding(tenant_id):
     filepath = "privkeys/{tenant_id}".format(tenant_id=tenant_id) + "/private.pem"
 
-    cache_key = 'tenant_privkey:{hash}'.format(hash=hashlib.sha3_256(filepath.encode()).hexdigest())
+    cache_key = "tenant_privkey:{hash}".format(hash=hashlib.sha3_256(filepath.encode()).hexdigest())
     private_key = redis_client.get(cache_key)
     if not private_key:
         try:
@@ -66,12 +66,12 @@ def get_decrypt_decoding(tenant_id):
 
 def decrypt_token_with_decoding(encrypted_text, rsa_key, cipher_rsa):
     if encrypted_text.startswith(prefix_hybrid):
-        encrypted_text = encrypted_text[len(prefix_hybrid):]
+        encrypted_text = encrypted_text[len(prefix_hybrid) :]
 
-        enc_aes_key = encrypted_text[:rsa_key.size_in_bytes()]
-        nonce = encrypted_text[rsa_key.size_in_bytes():rsa_key.size_in_bytes() + 16]
-        tag = encrypted_text[rsa_key.size_in_bytes() + 16:rsa_key.size_in_bytes() + 32]
-        ciphertext = encrypted_text[rsa_key.size_in_bytes() + 32:]
+        enc_aes_key = encrypted_text[: rsa_key.size_in_bytes()]
+        nonce = encrypted_text[rsa_key.size_in_bytes() : rsa_key.size_in_bytes() + 16]
+        tag = encrypted_text[rsa_key.size_in_bytes() + 16 : rsa_key.size_in_bytes() + 32]
+        ciphertext = encrypted_text[rsa_key.size_in_bytes() + 32 :]
 
         aes_key = cipher_rsa.decrypt(enc_aes_key)
 

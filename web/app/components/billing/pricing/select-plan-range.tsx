@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 export enum PlanRange {
   monthly = 'monthly',
   yearly = 'yearly',
@@ -26,9 +26,9 @@ const ITem: FC<{ isActive: boolean; value: PlanRange; text: string; onClick: (va
 
 const ArrowIcon = (
   <svg xmlns="http://www.w3.org/2000/svg" width="26" height="38" viewBox="0 0 26 38" fill="none">
-    <path d="M20.5005 3.49991C23.5 18 18.7571 25.2595 2.92348 31.9599" stroke="#F26725" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M2.21996 32.2756L8.37216 33.5812" stroke="#F26725" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M2.22168 32.2764L3.90351 27.4459" stroke="#F26725" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M20.5005 3.49991C23.5 18 18.7571 25.2595 2.92348 31.9599" stroke="#F26725" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M2.21996 32.2756L8.37216 33.5812" stroke="#F26725" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M2.22168 32.2764L3.90351 27.4459" stroke="#F26725" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 )
 

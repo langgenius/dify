@@ -1,0 +1,67 @@
+identity:
+  name: apply_guardrail
+  author: AWS
+  label:
+    en_US: Content Moderation Guardrails
+    zh_Hans: 内容审查护栏
+description:
+  human:
+    en_US: Content Moderation Guardrails utilizes the ApplyGuardrail API, a feature of Guardrails for Amazon Bedrock. This API is capable of evaluating input prompts and model responses for all Foundation Models (FMs), including those on Amazon Bedrock, custom FMs, and third-party FMs. By implementing this functionality, organizations can achieve centralized governance across all their generative AI applications, thereby enhancing control and consistency in content moderation.
+    zh_Hans: 内容审查护栏采用 Guardrails for Amazon Bedrock 功能中的 ApplyGuardrail API 。ApplyGuardrail 可以评估所有基础模型(FMs)的输入提示和模型响应，包括 Amazon Bedrock 上的 FMs、自定义 FMs 和第三方 FMs。通过实施这一功能, 组织可以在所有生成式 AI 应用程序中实现集中化的治理，从而增强内容审核的控制力和一致性。
+  llm: Content Moderation Guardrails utilizes the ApplyGuardrail API, a feature of Guardrails for Amazon Bedrock. This API is capable of evaluating input prompts and model responses for all Foundation Models (FMs), including those on Amazon Bedrock, custom FMs, and third-party FMs. By implementing this functionality, organizations can achieve centralized governance across all their generative AI applications, thereby enhancing control and consistency in content moderation.
+parameters:
+  - name: guardrail_id
+    type: string
+    required: true
+    label:
+      en_US: Guardrail ID
+      zh_Hans: Guardrail ID
+    human_description:
+      en_US: Please enter the ID of the Guardrail that has already been created on Amazon Bedrock, for example 'qk5nk0e4b77b'.
+      zh_Hans: 请输入已经在 Amazon Bedrock 上创建好的 Guardrail ID, 例如 'qk5nk0e4b77b'.
+    llm_description: Please enter the ID of the Guardrail that has already been created on Amazon Bedrock, for example 'qk5nk0e4b77b'.
+    form: form
+  - name: guardrail_version
+    type: string
+    required: true
+    label:
+      en_US: Guardrail Version Number
+      zh_Hans: Guardrail 版本号码
+    human_description:
+      en_US: Please enter the published version of the Guardrail ID that has already been created on Amazon Bedrock. This is typically a version number, such as 2.
+      zh_Hans: 请输入已经在Amazon Bedrock 上创建好的Guardrail ID发布的版本, 通常使用版本号, 例如2.
+    llm_description: Please enter the published version of the Guardrail ID that has already been created on Amazon Bedrock. This is typically a version number, such as 2.
+    form: form
+  - name: source
+    type: string
+    required: true
+    label:
+      en_US: Content Source (INPUT or OUTPUT)
+      zh_Hans: 内容来源 (INPUT or OUTPUT)
+    human_description:
+      en_US: The source of data used in the request to apply the guardrail. Valid Values "INPUT | OUTPUT"
+      zh_Hans: 用于应用护栏的请求中所使用的数据来源。有效值为 "INPUT | OUTPUT"
+    llm_description: The source of data used in the request to apply the guardrail. Valid Values "INPUT | OUTPUT"
+    form: form
+  - name: text
+    type: string
+    required: true
+    label:
+      en_US: Content to be reviewed
+      zh_Hans: 待审查内容
+    human_description:
+      en_US: The content used for requesting guardrail review, which can be either user input or LLM output.
+      zh_Hans: 用于请求护栏审查的内容，可以是用户输入或 LLM 输出。
+    llm_description: The content used for requesting guardrail review, which can be either user input or LLM output.
+    form: llm
+  - name: aws_region
+    type: string
+    required: true
+    label:
+      en_US: AWS Region
+      zh_Hans: AWS 区域
+    human_description:
+      en_US: Please enter the AWS region for the Bedrock client, for example 'us-east-1'.
+      zh_Hans: 请输入 Bedrock 客户端的 AWS 区域，例如 'us-east-1'。
+    llm_description: Please enter the AWS region for the Bedrock client, for example 'us-east-1'.
+    form: form

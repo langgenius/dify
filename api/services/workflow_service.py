@@ -1,22 +1,25 @@
 import json
 import time
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from typing import Optional
-
-import yaml
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities.node_entities import NodeType
+from core.variables import Variable
+from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.workflow_engine_manager import WorkflowEngineManager
+from core.workflow.nodes import NodeType
+from core.workflow.nodes.event import RunCompletedEvent
+from core.workflow.nodes.node_mapping import node_type_classes_mapping
+from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from models.account import Account
+from models.enums import CreatedByRole
 from models.model import App, AppMode
 from models.workflow import (
-    CreatedByRole,
     Workflow,
     WorkflowNodeExecution,
     WorkflowNodeExecutionStatus,
@@ -37,11 +40,13 @@ class WorkflowService:
         Get draft workflow
         """
         # fetch draft workflow by app_model
-        workflow = db.session.query(Workflow).filter(
-            Workflow.tenant_id == app_model.tenant_id,
-            Workflow.app_id == app_model.id,
-            Workflow.version == 'draft'
-        ).first()
+        workflow = (
+            db.session.query(Workflow)
+            .filter(
+                Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.version == "draft"
+            )
+            .first()
+        )
 
         # return draft workflow
         return workflow
@@ -55,19 +60,29 @@ class WorkflowService:
             return None
 
         # fetch published workflow by workflow_id
-        workflow = db.session.query(Workflow).filter(
-            Workflow.tenant_id == app_model.tenant_id,
-            Workflow.app_id == app_model.id,
-            Workflow.id == app_model.workflow_id
-        ).first()
+        workflow = (
+            db.session.query(Workflow)
+            .filter(
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.id == app_model.workflow_id,
+            )
+            .first()
+        )
 
         return workflow
 
-    def sync_draft_workflow(self, app_model: App,
-                            graph: dict,
-                            features: dict,
-                            unique_hash: Optional[str],
-                            account: Account) -> Workflow:
+    def sync_draft_workflow(
+        self,
+        *,
+        app_model: App,
+        graph: dict,
+        features: dict,
+        unique_hash: Optional[str],
+        account: Account,
+        environment_variables: Sequence[Variable],
+        conversation_variables: Sequence[Variable],
+    ) -> Workflow:
         """
         Sync draft workflow
         :raises WorkflowHashNotEqualError
@@ -75,16 +90,11 @@ class WorkflowService:
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow(app_model=app_model)
 
-        if workflow:
-            # validate unique hash
-            if workflow.unique_hash != unique_hash:
-                raise WorkflowHashNotEqualError()
+        if workflow and workflow.unique_hash != unique_hash:
+            raise WorkflowHashNotEqualError()
 
         # validate features structure
-        self.validate_features_structure(
-            app_model=app_model,
-            features=features
-        )
+        self.validate_features_structure(app_model=app_model, features=features)
 
         # create draft workflow if not found
         if not workflow:
@@ -92,10 +102,12 @@ class WorkflowService:
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 type=WorkflowType.from_app_mode(app_model.mode).value,
-                version='draft',
+                version="draft",
                 graph=json.dumps(graph),
                 features=json.dumps(features),
-                created_by=account.id
+                created_by=account.id,
+                environment_variables=environment_variables,
+                conversation_variables=conversation_variables,
             )
             db.session.add(workflow)
         # update draft workflow if found
@@ -104,6 +116,8 @@ class WorkflowService:
             workflow.features = json.dumps(features)
             workflow.updated_by = account.id
             workflow.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            workflow.environment_variables = environment_variables
+            workflow.conversation_variables = conversation_variables
 
         # commit db session changes
         db.session.commit()
@@ -114,59 +128,7 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
-    def import_draft_workflow(self, app_model: App,
-                              data: str,
-                              account: Account) -> Workflow:
-        """
-        Import draft workflow
-        :param app_model: App instance
-        :param data: import data
-        :param account: Account instance
-        :return:
-        """
-        try:
-            import_data = yaml.safe_load(data)
-        except yaml.YAMLError as e:
-            raise ValueError("Invalid YAML format in data argument.")
-
-        app_data = import_data.get('app')
-        workflow = import_data.get('workflow')
-
-        if not app_data:
-            raise ValueError("Missing app in data argument")
-
-        app_mode = AppMode.value_of(app_data.get('mode'))
-        if app_mode not in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
-            raise ValueError("Only support import workflow in advanced-chat or workflow app.")
-
-        if app_data.get('mode') != app_model.mode:
-            raise ValueError(f"App mode {app_data.get('mode')} is not matched with current app mode {app_model.mode}")
-
-        if not workflow:
-            raise ValueError("Missing workflow in data argument "
-                             "when app mode is advanced-chat or workflow")
-
-        # fetch draft workflow by app_model
-        current_draft_workflow = self.get_draft_workflow(app_model=app_model)
-        if current_draft_workflow:
-            unique_hash = current_draft_workflow.unique_hash
-        else:
-            unique_hash = None
-
-        # sync draft workflow
-        draft_workflow = self.sync_draft_workflow(
-            app_model=app_model,
-            graph=workflow.get('graph'),
-            features=workflow.get('features'),
-            unique_hash=unique_hash,
-            account=account
-        )
-
-        return draft_workflow
-
-    def publish_workflow(self, app_model: App,
-                         account: Account,
-                         draft_workflow: Optional[Workflow] = None) -> Workflow:
+    def publish_workflow(self, app_model: App, account: Account, draft_workflow: Optional[Workflow] = None) -> Workflow:
         """
         Publish workflow from draft
 
@@ -179,7 +141,7 @@ class WorkflowService:
             draft_workflow = self.get_draft_workflow(app_model=app_model)
 
         if not draft_workflow:
-            raise ValueError('No valid workflow found.')
+            raise ValueError("No valid workflow found.")
 
         # create new workflow
         workflow = Workflow(
@@ -189,7 +151,9 @@ class WorkflowService:
             version=str(datetime.now(timezone.utc).replace(tzinfo=None)),
             graph=draft_workflow.graph,
             features=draft_workflow.features,
-            created_by=account.id
+            created_by=account.id,
+            environment_variables=draft_workflow.environment_variables,
+            conversation_variables=draft_workflow.conversation_variables,
         )
 
         # commit db session changes
@@ -211,8 +175,13 @@ class WorkflowService:
         Get default block configs
         """
         # return default block config
-        workflow_engine_manager = WorkflowEngineManager()
-        return workflow_engine_manager.get_default_configs()
+        default_block_configs = []
+        for node_type, node_class in node_type_classes_mapping.items():
+            default_config = node_class.get_default_config()
+            if default_config:
+                default_block_configs.append(default_config)
+
+        return default_block_configs
 
     def get_default_block_config(self, node_type: str, filters: Optional[dict] = None) -> Optional[dict]:
         """
@@ -221,100 +190,93 @@ class WorkflowService:
         :param filters: filter by node config parameters.
         :return:
         """
-        node_type = NodeType.value_of(node_type)
+        node_type_enum: NodeType = NodeType(node_type)
 
         # return default block config
-        workflow_engine_manager = WorkflowEngineManager()
-        return workflow_engine_manager.get_default_config(node_type, filters)
+        node_class = node_type_classes_mapping.get(node_type_enum)
+        if not node_class:
+            return None
 
-    def run_draft_workflow_node(self, app_model: App,
-                                node_id: str,
-                                user_inputs: dict,
-                                account: Account) -> WorkflowNodeExecution:
+        default_config = node_class.get_default_config(filters=filters)
+        if not default_config:
+            return None
+
+        return default_config
+
+    def run_draft_workflow_node(
+        self, app_model: App, node_id: str, user_inputs: dict, account: Account
+    ) -> WorkflowNodeExecution:
         """
         Run draft workflow node
         """
         # fetch draft workflow by app_model
         draft_workflow = self.get_draft_workflow(app_model=app_model)
         if not draft_workflow:
-            raise ValueError('Workflow not initialized')
+            raise ValueError("Workflow not initialized")
 
         # run draft workflow node
-        workflow_engine_manager = WorkflowEngineManager()
         start_at = time.perf_counter()
 
         try:
-            node_instance, node_run_result = workflow_engine_manager.single_step_run_workflow_node(
+            node_instance, generator = WorkflowEntry.single_step_run(
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs=user_inputs,
                 user_id=account.id,
             )
+
+            node_run_result: NodeRunResult | None = None
+            for event in generator:
+                if isinstance(event, RunCompletedEvent):
+                    node_run_result = event.run_result
+
+                    # sign output files
+                    node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs)
+                    break
+
+            if not node_run_result:
+                raise ValueError("Node run failed with no run result")
+
+            run_succeeded = True if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED else False
+            error = node_run_result.error if not run_succeeded else None
         except WorkflowNodeRunFailedError as e:
-            workflow_node_execution = WorkflowNodeExecution(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                workflow_id=draft_workflow.id,
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value,
-                index=1,
-                node_id=e.node_id,
-                node_type=e.node_type.value,
-                title=e.node_title,
-                status=WorkflowNodeExecutionStatus.FAILED.value,
-                error=e.error,
-                elapsed_time=time.perf_counter() - start_at,
-                created_by_role=CreatedByRole.ACCOUNT.value,
-                created_by=account.id,
-                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
-                finished_at=datetime.now(timezone.utc).replace(tzinfo=None)
-            )
-            db.session.add(workflow_node_execution)
-            db.session.commit()
+            node_instance = e.node_instance
+            run_succeeded = False
+            node_run_result = None
+            error = e.error
 
-            return workflow_node_execution
+        workflow_node_execution = WorkflowNodeExecution()
+        workflow_node_execution.tenant_id = app_model.tenant_id
+        workflow_node_execution.app_id = app_model.id
+        workflow_node_execution.workflow_id = draft_workflow.id
+        workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value
+        workflow_node_execution.index = 1
+        workflow_node_execution.node_id = node_id
+        workflow_node_execution.node_type = node_instance.node_type
+        workflow_node_execution.title = node_instance.node_data.title
+        workflow_node_execution.elapsed_time = time.perf_counter() - start_at
+        workflow_node_execution.created_by_role = CreatedByRole.ACCOUNT.value
+        workflow_node_execution.created_by = account.id
+        workflow_node_execution.created_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        workflow_node_execution.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
-        if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
+        if run_succeeded and node_run_result:
             # create workflow node execution
-            workflow_node_execution = WorkflowNodeExecution(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                workflow_id=draft_workflow.id,
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value,
-                index=1,
-                node_id=node_id,
-                node_type=node_instance.node_type.value,
-                title=node_instance.node_data.title,
-                inputs=json.dumps(node_run_result.inputs) if node_run_result.inputs else None,
-                process_data=json.dumps(node_run_result.process_data) if node_run_result.process_data else None,
-                outputs=json.dumps(jsonable_encoder(node_run_result.outputs)) if node_run_result.outputs else None,
-                execution_metadata=(json.dumps(jsonable_encoder(node_run_result.metadata))
-                                    if node_run_result.metadata else None),
-                status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
-                elapsed_time=time.perf_counter() - start_at,
-                created_by_role=CreatedByRole.ACCOUNT.value,
-                created_by=account.id,
-                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
-                finished_at=datetime.now(timezone.utc).replace(tzinfo=None)
+            workflow_node_execution.inputs = json.dumps(node_run_result.inputs) if node_run_result.inputs else None
+            workflow_node_execution.process_data = (
+                json.dumps(node_run_result.process_data) if node_run_result.process_data else None
             )
+            workflow_node_execution.outputs = (
+                json.dumps(jsonable_encoder(node_run_result.outputs)) if node_run_result.outputs else None
+            )
+            workflow_node_execution.execution_metadata = (
+                json.dumps(jsonable_encoder(node_run_result.metadata)) if node_run_result.metadata else None
+            )
+            workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
         else:
             # create workflow node execution
-            workflow_node_execution = WorkflowNodeExecution(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                workflow_id=draft_workflow.id,
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value,
-                index=1,
-                node_id=node_id,
-                node_type=node_instance.node_type.value,
-                title=node_instance.node_data.title,
-                status=node_run_result.status.value,
-                error=node_run_result.error,
-                elapsed_time=time.perf_counter() - start_at,
-                created_by_role=CreatedByRole.ACCOUNT.value,
-                created_by=account.id,
-                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
-                finished_at=datetime.now(timezone.utc).replace(tzinfo=None)
-            )
+            workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
+            workflow_node_execution.error = error
 
         db.session.add(workflow_node_execution)
         db.session.commit()
@@ -334,16 +296,17 @@ class WorkflowService:
         # chatbot convert to workflow mode
         workflow_converter = WorkflowConverter()
 
-        if app_model.mode not in [AppMode.CHAT.value, AppMode.COMPLETION.value]:
-            raise ValueError(f'Current App mode: {app_model.mode} is not supported convert to workflow.')
+        if app_model.mode not in {AppMode.CHAT.value, AppMode.COMPLETION.value}:
+            raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow.")
 
         # convert to workflow
         new_app = workflow_converter.convert_to_workflow(
             app_model=app_model,
             account=account,
-            name=args.get('name'),
-            icon=args.get('icon'),
-            icon_background=args.get('icon_background'),
+            name=args.get("name"),
+            icon_type=args.get("icon_type"),
+            icon=args.get("icon"),
+            icon_background=args.get("icon_background"),
         )
 
         return new_app
@@ -351,15 +314,11 @@ class WorkflowService:
     def validate_features_structure(self, app_model: App, features: dict) -> dict:
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
             return AdvancedChatAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id,
-                config=features,
-                only_structure_validate=True
+                tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
             )
         elif app_model.mode == AppMode.WORKFLOW.value:
             return WorkflowAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id,
-                config=features,
-                only_structure_validate=True
+                tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
             )
         else:
             raise ValueError(f"Invalid app mode: {app_model.mode}")

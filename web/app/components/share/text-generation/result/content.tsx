@@ -1,14 +1,14 @@
 import type { FC } from 'react'
 import React from 'react'
 import Header from './header'
-import type { Feedbacktype } from '@/app/components/base/chat/chat/type'
+import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import { format } from '@/service/base'
 
 export type IResultProps = {
   content: string
   showFeedback: boolean
-  feedback: Feedbacktype
-  onFeedback: (feedback: Feedbacktype) => void
+  feedback: FeedbackType
+  onFeedback: (feedback: FeedbackType) => void
 }
 const Result: FC<IResultProps> = ({
   content,

@@ -1,0 +1,78 @@
+identity:
+  name: add_worksheet_record
+  author: Ryan Tian
+  label:
+    en_US: Add Worksheet Record
+    zh_Hans: 新增一条工作表记录
+description:
+  human:
+    en_US: Adds a new record to the specified worksheet
+    zh_Hans: 向指定的工作表新增一条记录数据
+  llm: A tool to append a new data entry into a specified worksheet.
+parameters:
+  - name: appkey
+    type: secret-input
+    required: true
+    label:
+      en_US: App Key
+      zh_Hans: App Key
+    human_description:
+      en_US: The AppKey parameter for the HAP application, typically found in the application's API documentation.
+      zh_Hans: HAP 应用的 AppKey 参数，可以从应用 API 文档中查找到
+    llm_description: the AppKey parameter for the HAP application
+    form: form
+
+  - name: sign
+    type: secret-input
+    required: true
+    label:
+      en_US: Sign
+      zh_Hans: Sign
+    human_description:
+      en_US: The Sign parameter for the HAP application
+      zh_Hans: HAP 应用的 Sign 参数
+    llm_description: the Sign parameter for the HAP application
+    form: form
+
+  - name: worksheet_id
+    type: string
+    required: true
+    label:
+      en_US: Worksheet ID
+      zh_Hans: 工作表 ID
+    human_description:
+      en_US: The ID of the specified worksheet
+      zh_Hans: 要获取字段信息的工作表 ID
+    llm_description: The ID of the specified worksheet which to get the fields information.
+    form: llm
+
+  - name: record_data
+    type: string
+    required: true
+    label:
+      en_US: Record Row Data
+      zh_Hans: 记录数据
+    human_description:
+      en_US: The fields with data of the specified record
+      zh_Hans: 要新增的记录数据，JSON 对象数组格式。数组元素属性：controlId-字段ID，value-字段值
+    llm_description: |
+      The fields with data of the specified record which to be created. It is in the format of an array of JSON objects, and the structure is defined as follows:
+      ```
+      type RowData = {
+        controlId: string; // Field ID to be updated
+        value: string; // Field value to be updated
+      }[];
+      ```
+    form: llm
+
+  - name: host
+    type: string
+    required: false
+    label:
+      en_US: Host Address
+      zh_Hans: 服务器地址
+    human_description:
+      en_US: The address for the privately deployed HAP server.
+      zh_Hans: 私有部署 HAP 服务器地址，公有云无需填写
+    llm_description: the address for the privately deployed HAP server.
+    form: form

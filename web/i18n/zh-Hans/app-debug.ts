@@ -24,7 +24,7 @@ const translation = {
     resetConfig: '重置',
     debugConfig: '调试',
     addFeature: '添加功能',
-    automatic: '自动编排',
+    automatic: '生成',
     stopResponding: '停止响应',
     agree: '赞同',
     disagree: '反对',
@@ -68,17 +68,17 @@ const translation = {
     },
     speechToText: {
       title: '语音转文字',
-      description: '启用后，您可以使用语音输入。',
+      description: '您可以使用语音输入。',
       resDes: '语音输入已启用',
     },
     textToSpeech: {
       title: '文字转语音',
-      description: '启用后，文本可以转换成语音。',
+      description: '文本可以转换成语音。',
       resDes: '文本转音频已启用',
     },
     citation: {
       title: '引用和归属',
-      description: '启用后，显示源文档和生成内容的归属部分。',
+      description: '显示源文档和生成内容的归属部分。',
       resDes: '引用和归属已启用',
     },
     annotation: {
@@ -163,9 +163,10 @@ const translation = {
     moderation: {
       title: '内容审查',
       description: '您可以调用审查 API 或者维护敏感词库来使模型更安全地输出。',
-      allEnabled: '审查输入/审查输出 内容已启用',
-      inputEnabled: '审查输入内容已启用',
-      outputEnabled: '审查输出内容已启用',
+      contentEnableLabel: '启用审查内容',
+      allEnabled: '输入内容和输出内容',
+      inputEnabled: '输入内容',
+      outputEnabled: '输出内容',
       modal: {
         title: '内容审查设置',
         provider: {
@@ -198,23 +199,99 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: '文件上传',
+      description: '聊天输入框支持上传文件。类型包括图片、文档以及其它类型',
+      supportedTypes: '支持的文件类型',
+      numberLimit: '最大上传数',
+      modalTitle: '文件上传设置',
+    },
+    imageUpload: {
+      title: '图片上传',
+      description: '支持上传图片',
+      supportedTypes: '支持的文件类型',
+      numberLimit: '最大上传数',
+      modalTitle: '图片上传设置',
+    },
+    bar: {
+      empty: '开启功能增强 webapp 用户体验',
+      enableText: '功能已开启',
+      manage: '管理',
+    },
+    documentUpload: {
+      title: '文档',
+      description: '启用文档后，模型可以接收文档并回答关于它们的问题。',
+    },
   },
-  automatic: {
-    title: '自动编排',
-    description: '描述您的场景，Dify 将为您编排一个应用。',
-    intendedAudience: '目标用户是谁？',
-    intendedAudiencePlaceHolder: '例如：学生',
-    solveProblem: '希望 AI 为他们解决什么问题？',
-    solveProblemPlaceHolder: '例如：评估学业水平',
+  codegen: {
+    title: '代码生成器',
+    description: '代码生成器使用配置的模型根据您的指令生成高质量的代码。请提供清晰详细的说明。',
+    instruction: '指令',
+    instructionPlaceholder: '请输入您想要生成的代码的详细描述。',
+    noDataLine1: '在左侧描述您的用例，',
+    noDataLine2: '代码预览将在此处显示。',
     generate: '生成',
-    audiencesRequired: '目标用户必填',
-    problemRequired: '解决问题必填',
-    resTitle: '我们为您编排了以下应用程序',
+    generatedCodeTitle: '生成的代码',
+    loading: '正在生成代码...',
+    apply: '应用',
+    applyChanges: '应用更改',
+    resTitle: '生成的代码',
+    overwriteConfirmTitle: '是否覆盖现有代码？',
+    overwriteConfirmMessage: '此操作将覆盖现有代码。您确定要继续吗？',
+  },
+  generate: {
+    title: '提示词生成器',
+    description: '提示词生成器使用配置的模型来优化提示词，以获得更高的质量和更好的结构。请写出清晰详细的说明。',
+    tryIt: '试一试',
+    instruction: '指令',
+    instructionPlaceHolder: '写下清晰、具体的说明。',
+    generate: '生成',
+    resTitle: '生成的提示词',
+    noDataLine1: '在左侧描述您的用例，',
+    noDataLine2: '编排预览将在此处显示。',
     apply: '应用',
     noData: '在左侧描述您的用例，编排预览将在此处显示。',
     loading: '为您编排应用程序中…',
     overwriteTitle: '覆盖现有配置？',
-    overwriteMessage: '应用此编排将覆盖现有配置。',
+    overwriteMessage: '应用此提示将覆盖现有配置。',
+    template: {
+      pythonDebugger: {
+        name: 'Python 代码助手',
+        instruction: '一个帮你写和纠错程序的机器人',
+      },
+      translation: {
+        name: '翻译机器人',
+        instruction: '一个可以翻译多种语言的翻译器',
+      },
+      professionalAnalyst: {
+        name: '职业分析师',
+        instruction: ' 从长篇报告中提取洞察、识别风险并提炼关键信息',
+      },
+      excelFormulaExpert: {
+        name: 'Excel 公式专家',
+        instruction: '一个可以让小白用户理解、使用和创建 Excel 公式的对话机器人',
+      },
+      travelPlanning: {
+        name: '旅行规划助手',
+        instruction: '旅行规划助手是一个智能工具，旨在帮助用户轻松规划他们的旅行',
+      },
+      SQLSorcerer: {
+        name: 'SQL 生成',
+        instruction: '把自然语言转换成 SQL 查询语句',
+      },
+      GitGud: {
+        name: 'Git 大师',
+        instruction: '从用户提出的版本管理需求生成合适的 Git 命令',
+      },
+      meetingTakeaways: {
+        name: '总结会议纪要',
+        instruction: '将会议内容提炼总结，包括讨论主题、关键要点和待办事项',
+      },
+      writingsPolisher: {
+        name: '润色文章',
+        instruction: '用地道的编辑技巧改进我的文章',
+      },
+    },
   },
   resetConfig: {
     title: '确认重置？',
@@ -228,6 +305,7 @@ const translation = {
     waitForBatchResponse: '请等待批量任务完成',
     notSelectModel: '请选择模型',
     waitForImgUpload: '请等待图片上传完成',
+    waitForFileUpload: '请等待文件上传完成',
   },
   chatSubTitle: '提示词',
   completionSubTitle: '前缀提示词',
@@ -250,18 +328,18 @@ const translation = {
     typeSelect: '下拉选项',
   },
   varKeyError: {
-    canNoBeEmpty: '变量不能为空',
-    tooLong: '变量: {{key}} 长度太长。不能超过 30 个字符',
-    notValid: '变量: {{key}} 非法。只能包含英文字符，数字和下划线',
-    notStartWithNumber: '变量: {{key}} 不能以数字开头',
-    keyAlreadyExists: '变量:{{key}} 已存在',
+    canNoBeEmpty: '{{key}}必填',
+    tooLong: '{{key}} 长度太长。不能超过 30 个字符',
+    notValid: '{{key}} 非法。只能包含英文字符，数字和下划线',
+    notStartWithNumber: '{{key}} 不能以数字开头',
+    keyAlreadyExists: '{{key}} 已存在',
   },
   otherError: {
     promptNoBeEmpty: '提示词不能为空',
     historyNoBeEmpty: '提示词中必须设置对话历史',
     queryNoBeEmpty: '提示词中必须设置查询内容',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': '添加变量',
     'editModalTitle': '编辑变量',
     'description': '设置变量 {{varName}}',
@@ -271,6 +349,8 @@ const translation = {
     'paragraph': '段落',
     'select': '下拉选项',
     'number': '数字',
+    'single-file': '单文件',
+    'multi-files': '文件列表',
     'notSet': '未设置，在 Prompt 中输入 {{input}} 试试',
     'stringTitle': '文本框设置',
     'maxLength': '最大长度',
@@ -281,9 +361,33 @@ const translation = {
     'inputPlaceholder': '请输入',
     'labelName': '显示名称',
     'required': '必填',
+    'file': {
+      supportFileTypes: '支持的文件类型',
+      image: {
+        name: '图片',
+      },
+      audio: {
+        name: '音频',
+      },
+      document: {
+        name: '文档',
+      },
+      video: {
+        name: '视频',
+      },
+      custom: {
+        name: '其他文件类型',
+        description: '指定其他文件类型',
+        createPlaceholder: '+ 文件扩展名，例如 .doc',
+      },
+    },
+    'uploadFileTypes': '上传文件类型',
+    'localUpload': '本地上传',
+    'both': '两者',
+    'maxNumberOfUploads': '最大上传数',
+    'maxNumberTip': '文档 < {{docLimit}}, 图片 < {{imgLimit}}, 音频 < {{audioLimit}}, 视频 < {{videoLimit}}',
     'content': '内容',
     'errorMsg': {
-      varNameRequired: '变量名称必填',
       labelNameRequired: '显示名称必填',
       varNameCanBeRepeat: '变量名称不能重复',
       atLeastOneOption: '至少需要一个选项',
@@ -293,6 +397,7 @@ const translation = {
   vision: {
     name: '视觉',
     description: '开启视觉功能将允许模型输入图片，并根据图像内容的理解回答用户问题',
+    onlySupportVisionModelTip: '只有视觉模型配置视觉功能',
     settings: '设置',
     visionSettings: {
       title: '视觉设置',
@@ -319,6 +424,9 @@ const translation = {
       language: '语言',
       resolutionTooltip: '文本转语音音色支持语言。',
       voice: '音色',
+      autoPlay: '自动播放',
+      autoPlayEnabled: '开启',
+      autoPlayDisabled: '关闭',
     },
   },
   openingStatement: {
@@ -355,6 +463,7 @@ const translation = {
     run: '运行',
   },
   result: '结果',
+  noResult: '输出结果展示在这',
   datasetConfig: {
     settingTitle: '召回设置',
     knowledgeTip: '点击 “+” 按钮添加知识库',
@@ -364,7 +473,7 @@ const translation = {
     },
     retrieveMultiWay: {
       title: '多路召回',
-      description: '根据用户意图同时匹配所有知识库，从多路知识库查询相关文本片段，经过重排序步骤，从多路查询结果中选择匹配用户问题的最佳结果，需配置 Rerank 模型 API。',
+      description: '根据用户意图同时匹配所有知识库，从多路知识库查询相关文本片段，经过重排序步骤，从多路查询结果中选择匹配用户问题的最佳结果。',
     },
     rerankModelRequired: '请选择 Rerank 模型',
     params: '参数设置',

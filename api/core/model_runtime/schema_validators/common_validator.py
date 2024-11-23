@@ -4,9 +4,9 @@ from core.model_runtime.entities.provider_entities import CredentialFormSchema, 
 
 
 class CommonValidator:
-    def _validate_and_filter_credential_form_schemas(self,
-                                                     credential_form_schemas: list[CredentialFormSchema],
-                                                     credentials: dict) -> dict:
+    def _validate_and_filter_credential_form_schemas(
+        self, credential_form_schemas: list[CredentialFormSchema], credentials: dict
+    ) -> dict:
         need_validate_credential_form_schema_map = {}
         for credential_form_schema in credential_form_schemas:
             if not credential_form_schema.show_on:
@@ -36,8 +36,9 @@ class CommonValidator:
 
         return validated_credentials
 
-    def _validate_credential_form_schema(self, credential_form_schema: CredentialFormSchema, credentials: dict) \
-            -> Optional[str]:
+    def _validate_credential_form_schema(
+        self, credential_form_schema: CredentialFormSchema, credentials: dict
+    ) -> Optional[str]:
         """
         Validate credential form schema
 
@@ -49,7 +50,7 @@ class CommonValidator:
         if credential_form_schema.variable not in credentials or not credentials[credential_form_schema.variable]:
             # If required is True, an exception is thrown
             if credential_form_schema.required:
-                raise ValueError(f'Variable {credential_form_schema.variable} is required')
+                raise ValueError(f"Variable {credential_form_schema.variable} is required")
             else:
                 # Get the value of default
                 if credential_form_schema.default:
@@ -65,23 +66,26 @@ class CommonValidator:
         # If max_length=0, no validation is performed
         if credential_form_schema.max_length:
             if len(value) > credential_form_schema.max_length:
-                raise ValueError(f'Variable {credential_form_schema.variable} length should not greater than {credential_form_schema.max_length}')
+                raise ValueError(
+                    f"Variable {credential_form_schema.variable} length should not"
+                    f" greater than {credential_form_schema.max_length}"
+                )
 
         # check the type of value
         if not isinstance(value, str):
-            raise ValueError(f'Variable {credential_form_schema.variable} should be string')
+            raise ValueError(f"Variable {credential_form_schema.variable} should be string")
 
-        if credential_form_schema.type in [FormType.SELECT, FormType.RADIO]:
+        if credential_form_schema.type in {FormType.SELECT, FormType.RADIO}:
             # If the value is in options, no validation is performed
             if credential_form_schema.options:
                 if value not in [option.value for option in credential_form_schema.options]:
-                    raise ValueError(f'Variable {credential_form_schema.variable} is not in options')
+                    raise ValueError(f"Variable {credential_form_schema.variable} is not in options")
 
         if credential_form_schema.type == FormType.SWITCH:
             # If the value is not in ['true', 'false'], an exception is thrown
-            if value.lower() not in ['true', 'false']:
-                raise ValueError(f'Variable {credential_form_schema.variable} should be true or false')
+            if value.lower() not in {"true", "false"}:
+                raise ValueError(f"Variable {credential_form_schema.variable} should be true or false")
 
-            value = True if value.lower() == 'true' else False
+            value = True if value.lower() == "true" else False
 
         return value

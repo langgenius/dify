@@ -8,7 +8,9 @@ import {
 } from '../store'
 import { BlockEnum } from '../types'
 import { useWorkflowUpdate } from '../hooks'
-import { useNodesReadOnly } from './use-workflow'
+import {
+  useNodesReadOnly,
+} from './use-workflow'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { API_PREFIX } from '@/config'
@@ -31,6 +33,8 @@ export const useNodesSyncDraft = () => {
     const [x, y, zoom] = transform
     const {
       appId,
+      conversationVariables,
+      environmentVariables,
       syncWorkflowDraftHash,
     } = workflowStore.getState()
 
@@ -71,8 +75,8 @@ export const useNodesSyncDraft = () => {
             },
           },
           features: {
-            opening_statement: features.opening?.opening_statement || '',
-            suggested_questions: features.opening?.suggested_questions || [],
+            opening_statement: features.opening?.enabled ? (features.opening?.opening_statement || '') : '',
+            suggested_questions: features.opening?.enabled ? (features.opening?.suggested_questions || []) : [],
             suggested_questions_after_answer: features.suggested,
             text_to_speech: features.text2speech,
             speech_to_text: features.speech2text,
@@ -80,6 +84,8 @@ export const useNodesSyncDraft = () => {
             sensitive_word_avoidance: features.moderation,
             file_upload: features.file,
           },
+          environment_variables: environmentVariables,
+          conversation_variables: conversationVariables,
           hash: syncWorkflowDraftHash,
         },
       }

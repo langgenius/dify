@@ -18,6 +18,7 @@ help:
     en_US: https://console.groq.com/
 supported_model_types:
   - llm
+  - speech2text
 configurate_methods:
   - predefined-model
 provider_credential_schema:

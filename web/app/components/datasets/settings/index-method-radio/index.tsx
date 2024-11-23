@@ -1,7 +1,7 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import classNames from 'classnames'
 import s from './index.module.css'
+import classNames from '@/utils/classnames'
 import type { DataSet } from '@/models/datasets'
 
 const itemClass = `

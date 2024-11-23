@@ -6,6 +6,7 @@
 - nvidia
 - nvidia_nim
 - cohere
+- upstage
 - bedrock
 - togetherai
 - openrouter
@@ -23,6 +24,7 @@
 - tongyi
 - wenxin
 - moonshot
+- tencent
 - jina
 - chatglm
 - yi
@@ -33,3 +35,9 @@
 - deepseek
 - hunyuan
 - siliconflow
+- perfxcloud
+- zhinao
+- fireworks
+- mixedbread
+- nomic
+- voyage

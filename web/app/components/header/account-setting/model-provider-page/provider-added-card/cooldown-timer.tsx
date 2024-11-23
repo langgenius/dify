@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useLatest } from 'ahooks'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type CooldownTimerProps = {
   secondsRemaining?: number
@@ -54,9 +54,9 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
 
   return displayTime
     ? (
-      <TooltipPlus popupContent={t('common.modelProvider.apiKeyRateLimit', { seconds: displayTime })}>
+      <Tooltip popupContent={t('common.modelProvider.apiKeyRateLimit', { seconds: displayTime })}>
         <SimplePieChart percentage={Math.round(displayTime / 60 * 100)} className='w-3 h-3' />
-      </TooltipPlus>
+      </Tooltip>
     )
     : null
 }

@@ -1,6 +1,6 @@
 import { memo } from 'react'
-import cn from 'classnames'
 import { getKeyboardKeyNameBySystem } from './utils'
+import cn from '@/utils/classnames'
 
 type ShortcutsNameProps = {
   keys: string[]

@@ -9,6 +9,8 @@ const translation = {
   table: {
     header: {
       question: '質問',
+      match: 'マッチ',
+      response: '応答',
       answer: '回答',
       createdAt: '作成日時',
       hits: 'ヒット数',
@@ -23,7 +25,7 @@ const translation = {
     title: '注釈の返信を編集',
     queryName: 'ユーザーのクエリ',
     answerName: 'ストーリーテラーボット',
-    yourAnswer: 'あなたの回答',
+    yourAnswer: '貴方の回答',
     answerPlaceholder: 'ここに回答を入力してください',
     yourQuery: 'あなたのクエリ',
     queryPlaceholder: 'ここにクエリを入力してください',

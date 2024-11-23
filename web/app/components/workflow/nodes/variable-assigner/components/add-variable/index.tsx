@@ -3,9 +3,9 @@ import {
   useCallback,
   useState,
 } from 'react'
-import cn from 'classnames'
 import { useVariableAssigner } from '../../hooks'
 import type { VariableAssignerNodeType } from '../../types'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

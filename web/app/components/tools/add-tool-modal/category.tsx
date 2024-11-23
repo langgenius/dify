@@ -1,9 +1,9 @@
 'use client'
 import { useRef } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useMount } from 'ahooks'
+import cn from '@/utils/classnames'
 import { Apps02 } from '@/app/components/base/icons/src/vender/line/others'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
@@ -17,16 +17,15 @@ type Props = {
 
 const Icon = ({ svgString, active }: { svgString: string; active: boolean }) => {
   const svgRef = useRef<SVGSVGElement | null>(null)
-  const SVGParsor = (svg: string) => {
+  const SVGParser = (svg: string) => {
     if (!svg)
       return null
     const parser = new DOMParser()
     const doc = parser.parseFromString(svg, 'image/svg+xml')
-    console.log(doc.documentElement)
     return doc.documentElement
   }
   useMount(() => {
-    const svgElement = SVGParsor(svgString)
+    const svgElement = SVGParser(svgString)
     if (svgRef.current && svgElement)
       svgRef.current.appendChild(svgElement)
   })

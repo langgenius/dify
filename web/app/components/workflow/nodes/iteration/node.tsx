@@ -8,11 +8,16 @@ import {
   useNodesInitialized,
   useViewport,
 } from 'reactflow'
-import cn from 'classnames'
+import { useTranslation } from 'react-i18next'
+import { IterationStartNodeDumb } from '../iteration-start'
 import { useNodeIterationInteractions } from './use-interactions'
 import type { IterationNodeType } from './types'
 import AddBlock from './add-block'
+import cn from '@/utils/classnames'
 import type { NodeProps } from '@/app/components/workflow/types'
+import Toast from '@/app/components/base/toast'
+
+const i18nPrefix = 'workflow.nodes.iteration'
 
 const Node: FC<NodeProps<IterationNodeType>> = ({
   id,
@@ -21,15 +26,24 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
   const { zoom } = useViewport()
   const nodesInitialized = useNodesInitialized()
   const { handleNodeIterationRerender } = useNodeIterationInteractions()
+  const { t } = useTranslation()
 
   useEffect(() => {
     if (nodesInitialized)
       handleNodeIterationRerender(id)
-  }, [nodesInitialized, id, handleNodeIterationRerender])
+    if (data.is_parallel && data._isShowTips) {
+      Toast.notify({
+        type: 'warning',
+        message: t(`${i18nPrefix}.answerNodeWarningDesc`),
+        duration: 5000,
+      })
+      data._isShowTips = false
+    }
+  }, [nodesInitialized, id, handleNodeIterationRerender, data, t])
 
   return (
     <div className={cn(
-      'relative min-w-[258px] min-h-[118px] w-full h-full rounded-2xl bg-[#F0F2F7]/90',
+      'relative min-w-[240px] min-h-[90px] w-full h-full rounded-2xl bg-[#F0F2F7]/90',
     )}>
       <Background
         id={`iteration-background-${id}`}
@@ -38,10 +52,19 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
         size={2 / zoom}
         color='#E4E5E7'
       />
-      <AddBlock
-        iterationNodeId={id}
-        iterationNodeData={data}
-      />
+      {
+        data._isCandidate && (
+          <IterationStartNodeDumb />
+        )
+      }
+      {
+        data._children!.length === 1 && (
+          <AddBlock
+            iterationNodeId={id}
+            iterationNodeData={data}
+          />
+        )
+      }
     </div>
   )
 }

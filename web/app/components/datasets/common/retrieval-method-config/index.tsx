@@ -11,6 +11,11 @@ import { FileSearch02 } from '@/app/components/base/icons/src/vender/solid/files
 import { useProviderContext } from '@/context/provider-context'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  DEFAULT_WEIGHTED_SCORE,
+  RerankingModeEnum,
+  WeightedScoreEnum,
+} from '@/models/datasets'
 
 type Props = {
   value: RetrievalConfig
@@ -31,6 +36,18 @@ const RetrievalMethodConfig: FC<Props> = ({
         reranking_model: {
           reranking_provider_name: rerankDefaultModel?.provider.provider || '',
           reranking_model_name: rerankDefaultModel?.model || '',
+        },
+        reranking_mode: passValue.reranking_mode || (rerankDefaultModel ? RerankingModeEnum.RerankingModel : RerankingModeEnum.WeightedScore),
+        weights: passValue.weights || {
+          weight_type: WeightedScoreEnum.Customized,
+          vector_setting: {
+            vector_weight: DEFAULT_WEIGHTED_SCORE.other.semantic,
+            embedding_provider_name: '',
+            embedding_model_name: '',
+          },
+          keyword_setting: {
+            keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword,
+          },
         },
       }
     }

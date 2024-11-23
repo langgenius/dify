@@ -41,7 +41,8 @@ Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use
 {{historic_messages}}
 Question: {{query}}
 {{agent_scratchpad}}
-Thought:"""
+Thought:"""  # noqa: E501
+
 
 ENGLISH_REACT_COMPLETION_AGENT_SCRATCHPAD_TEMPLATES = """Observation: {{observation}}
 Thought:"""
@@ -86,19 +87,20 @@ Action:
 ```
 
 Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:```$JSON_BLOB```then Observation:.
-"""
+"""  # noqa: E501
+
 
 ENGLISH_REACT_CHAT_AGENT_SCRATCHPAD_TEMPLATES = ""
 
 REACT_PROMPT_TEMPLATES = {
-    'english': {
-        'chat': {
-            'prompt': ENGLISH_REACT_CHAT_PROMPT_TEMPLATES,
-            'agent_scratchpad': ENGLISH_REACT_CHAT_AGENT_SCRATCHPAD_TEMPLATES
+    "english": {
+        "chat": {
+            "prompt": ENGLISH_REACT_CHAT_PROMPT_TEMPLATES,
+            "agent_scratchpad": ENGLISH_REACT_CHAT_AGENT_SCRATCHPAD_TEMPLATES,
         },
-        'completion': {
-            'prompt': ENGLISH_REACT_COMPLETION_PROMPT_TEMPLATES,
-            'agent_scratchpad': ENGLISH_REACT_COMPLETION_AGENT_SCRATCHPAD_TEMPLATES
-        }
+        "completion": {
+            "prompt": ENGLISH_REACT_COMPLETION_PROMPT_TEMPLATES,
+            "agent_scratchpad": ENGLISH_REACT_COMPLETION_AGENT_SCRATCHPAD_TEMPLATES,
+        },
     }
 }

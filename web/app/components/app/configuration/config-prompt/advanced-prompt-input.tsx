@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React from 'react'
 import copy from 'copy-to-clipboard'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
@@ -10,12 +9,12 @@ import produce from 'immer'
 import {
   RiDeleteBinLine,
   RiErrorWarningFill,
-  RiQuestionLine,
 } from '@remixicon/react'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
 import ConfirmAddVar from './confirm-add-var'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
+import cn from '@/utils/classnames'
 import type { PromptRole, PromptVariable } from '@/models/debug'
 import {
   Clipboard,
@@ -43,6 +42,7 @@ type Props = {
   promptVariables: PromptVariable[]
   isContextMissing: boolean
   onHideContextMissingTip: () => void
+  noResize?: boolean
 }
 
 const AdvancedPromptInput: FC<Props> = ({
@@ -56,6 +56,7 @@ const AdvancedPromptInput: FC<Props> = ({
   promptVariables,
   isContextMissing,
   onHideContextMissingTip,
+  noResize,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -172,12 +173,12 @@ const AdvancedPromptInput: FC<Props> = ({
                     <div className='text-sm font-semibold uppercase text-indigo-800'>{t('appDebug.pageTitle.line1')}
                     </div>
                     <Tooltip
-                      htmlContent={<div className='w-[180px]'>
-                        {t('appDebug.promptTip')}
-                      </div>}
-                      selector='config-prompt-tooltip'>
-                      <RiQuestionLine className='w-[14px] h-[14px] text-indigo-400' />
-                    </Tooltip>
+                      popupContent={
+                        <div className='w-[180px]'>
+                          {t('appDebug.promptTip')}
+                        </div>
+                      }
+                    />
                   </div>)}
               <div className={cn(s.optionWrap, 'items-center space-x-1')}>
                 {canDelete && (
@@ -207,6 +208,7 @@ const AdvancedPromptInput: FC<Props> = ({
               <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{value.length}</div>
             </div>
           )}
+          hideResize={noResize}
         >
           <PromptEditor
             className='min-h-[84px]'
@@ -260,7 +262,7 @@ const AdvancedPromptInput: FC<Props> = ({
       {isShowConfirmAddVar && (
         <ConfirmAddVar
           varNameArr={newPromptVariables.map(v => v.name)}
-          onConfrim={handleAutoAdd(true)}
+          onConfirm={handleAutoAdd(true)}
           onCancel={handleAutoAdd(false)}
           onHide={hideConfirmAddVar}
         />

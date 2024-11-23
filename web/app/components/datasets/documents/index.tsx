@@ -4,7 +4,8 @@ import React, { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import { debounce, groupBy, omit } from 'lodash-es'
+import { useDebounce, useDebounceFn } from 'ahooks'
+import { groupBy, omit } from 'lodash-es'
 import { PlusIcon } from '@heroicons/react/24/solid'
 import List from './list'
 import s from './style.module.css'
@@ -76,6 +77,7 @@ export const fetcher = (url: string) => get(url, {}, {})
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const { t } = useTranslation()
+  const [inputValue, setInputValue] = useState<string>('') // the input value
   const [searchValue, setSearchValue] = useState<string>('')
   const [currPage, setCurrPage] = React.useState<number>(0)
   const router = useRouter()
@@ -87,9 +89,11 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const isDataSourceFile = dataset?.data_source_type === DataSourceType.FILE
   const embeddingAvailable = !!dataset?.embedding_available
 
+  const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
+
   const query = useMemo(() => {
-    return { page: currPage + 1, limit, keyword: searchValue, fetch: isDataSourceNotion ? true : '' }
-  }, [searchValue, currPage, isDataSourceNotion])
+    return { page: currPage + 1, limit, keyword: debouncedSearchValue, fetch: isDataSourceNotion ? true : '' }
+  }, [currPage, debouncedSearchValue, isDataSourceNotion])
 
   const { data: documentsRes, error, mutate } = useSWR(
     {
@@ -106,15 +110,15 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     let percent = 0
     const documentsData = documentsRes?.data?.map((documentItem) => {
       const { indexing_status, completed_segments, total_segments } = documentItem
-      const isEmbeddinged = indexing_status === 'completed' || indexing_status === 'paused' || indexing_status === 'error'
+      const isEmbedded = indexing_status === 'completed' || indexing_status === 'paused' || indexing_status === 'error'
 
-      if (isEmbeddinged)
+      if (isEmbedded)
         completedNum++
 
       const completedCount = completed_segments || 0
       const totalCount = total_segments || 0
       if (totalCount === 0 && completedCount === 0) {
-        percent = isEmbeddinged ? 100 : 0
+        percent = isEmbedded ? 100 : 0
       }
       else {
         const per = Math.round(completedCount * 100 / totalCount)
@@ -192,6 +196,15 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   const documentsList = isDataSourceNotion ? documentsWithProgress?.data : documentsRes?.data
 
+  const { run: handleSearch } = useDebounceFn(() => {
+    setSearchValue(inputValue)
+  }, { wait: 500 })
+
+  const handleInputChange = (value: string) => {
+    setInputValue(value)
+    handleSearch()
+  }
+
   return (
     <div className='flex flex-col h-full overflow-y-auto'>
       <div className='flex flex-col justify-center gap-1 px-6 pt-4'>
@@ -201,11 +214,12 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       <div className='flex flex-col px-6 py-4 flex-1'>
         <div className='flex items-center justify-between flex-wrap'>
           <Input
-            showPrefix
+            showLeftIcon
+            showClearIcon
             wrapperClassName='!w-[200px]'
-            className='!h-8 !text-[13px]'
-            onChange={debounce(setSearchValue, 500)}
-            value={searchValue}
+            value={inputValue}
+            onChange={e => handleInputChange(e.target.value)}
+            onClear={() => handleInputChange('')}
           />
           <div className='flex gap-2 justify-center items-center !h-8'>
             <RetryButton datasetId={datasetId} />

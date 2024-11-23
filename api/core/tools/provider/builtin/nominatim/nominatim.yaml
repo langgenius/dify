@@ -1,0 +1,43 @@
+identity:
+  author: Charles Zhou
+  name: nominatim
+  label:
+    en_US: Nominatim
+    zh_Hans: Nominatim
+    de_DE: Nominatim
+    ja_JP: Nominatim
+  description:
+    en_US: Nominatim is a search engine for OpenStreetMap data
+    zh_Hans: Nominatim是OpenStreetMap数据的搜索引擎
+    de_DE: Nominatim ist eine Suchmaschine für OpenStreetMap-Daten
+    ja_JP: NominatimはOpenStreetMapデータの検索エンジンです
+  icon: icon.svg
+  tags:
+    - search
+    - utilities
+credentials_for_provider:
+  base_url:
+    type: text-input
+    required: false
+    default: https://nominatim.openstreetmap.org
+    label:
+      en_US: Nominatim Base URL
+      zh_Hans: Nominatim 基础 URL
+      de_DE: Nominatim Basis-URL
+      ja_JP: Nominatim ベースURL
+    placeholder:
+      en_US: "Enter your Nominatim instance URL (default:
+        https://nominatim.openstreetmap.org)"
+      zh_Hans: 输入您的Nominatim实例URL（默认：https://nominatim.openstreetmap.org）
+      de_DE: "Geben Sie Ihre Nominatim-Instanz-URL ein (Standard:
+        https://nominatim.openstreetmap.org)"
+      ja_JP: NominatimインスタンスのURLを入力してください（デフォルト：https://nominatim.openstreetmap.org）
+    help:
+      en_US: The base URL for the Nominatim instance. Use the default for the public
+        service or enter your self-hosted instance URL.
+      zh_Hans: Nominatim实例的基础URL。使用默认值可访问公共服务，或输入您的自托管实例URL。
+      de_DE: Die Basis-URL für die Nominatim-Instanz. Verwenden Sie den Standardwert
+        für den öffentlichen Dienst oder geben Sie die URL Ihrer selbst
+        gehosteten Instanz ein.
+      ja_JP: NominatimインスタンスのベースURL。公共サービスにはデフォルトを使用するか、自己ホスティングインスタンスのURLを入力してください。
+    url: https://nominatim.org/

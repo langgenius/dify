@@ -99,7 +99,7 @@ def upgrade():
             id=id,
             tenant_id=tenant_id,
             user_id=user_id,
-            provider='google',            
+            provider='google', 
             encrypted_credentials=encrypted_credentials,
             created_at=created_at,
             updated_at=updated_at

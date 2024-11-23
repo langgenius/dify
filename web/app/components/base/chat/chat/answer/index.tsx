@@ -14,13 +14,14 @@ import BasicContent from './basic-content'
 import SuggestedQuestions from './suggested-questions'
 import More from './more'
 import WorkflowProcess from './workflow-process'
-import { AnswerTriangle } from '@/app/components/base/icons/src/vender/solid/general'
-import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import Citation from '@/app/components/base/chat/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
-import type { Emoji } from '@/app/components/tools/types'
 import type { AppData } from '@/models/share'
+import AnswerIcon from '@/app/components/base/answer-icon'
+import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import cn from '@/utils/classnames'
+import { FileList } from '@/app/components/base/file-uploader'
 
 type AnswerProps = {
   item: ChatItem
@@ -29,11 +30,12 @@ type AnswerProps = {
   config?: ChatConfig
   answerIcon?: ReactNode
   responding?: boolean
-  allToolIcons?: Record<string, string | Emoji>
   showPromptLog?: boolean
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   appData?: AppData
+  noChatInput?: boolean
+  switchSibling?: (siblingMessageId: string) => void
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -42,11 +44,12 @@ const Answer: FC<AnswerProps> = ({
   config,
   answerIcon,
   responding,
-  allToolIcons,
   showPromptLog,
   chatAnswerContainerInner,
   hideProcessDetail,
   appData,
+  noChatInput,
+  switchSibling,
 }) => {
   const { t } = useTranslation()
   const {
@@ -56,6 +59,8 @@ const Answer: FC<AnswerProps> = ({
     more,
     annotation,
     workflowProcess,
+    allFiles,
+    message_files,
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
@@ -68,57 +73,49 @@ const Answer: FC<AnswerProps> = ({
     if (containerRef.current)
       setContainerWidth(containerRef.current?.clientWidth + 16)
   }
+  useEffect(() => {
+    getContainerWidth()
+  }, [])
+
   const getContentWidth = () => {
     if (contentRef.current)
       setContentWidth(contentRef.current?.clientWidth)
   }
 
   useEffect(() => {
-    getContainerWidth()
-  }, [])
-
-  useEffect(() => {
     if (!responding)
       getContentWidth()
   }, [responding])
 
+  // Recalculate contentWidth when content changes (e.g., SVG preview/source toggle)
+  useEffect(() => {
+    if (!containerRef.current)
+      return
+    const resizeObserver = new ResizeObserver(() => {
+      getContentWidth()
+    })
+    resizeObserver.observe(containerRef.current)
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
+
   return (
     <div className='flex mb-2 last:mb-0'>
       <div className='shrink-0 relative w-10 h-10'>
-        {
-          answerIcon || (
-            <div className='flex items-center justify-center w-full h-full rounded-full bg-[#d5f5f6] border-[0.5px] border-black/5 text-xl'>
-              🤖
-            </div>
-          )
-        }
-        {
-          responding && (
-            <div className='absolute -top-[3px] -left-[3px] pl-[6px] flex items-center w-4 h-4 bg-white rounded-full shadow-xs border-[0.5px] border-gray-50'>
-              <LoadingAnim type='avatar' />
-            </div>
-          )
-        }
+        {answerIcon || <AnswerIcon />}
+        {responding && (
+          <div className='absolute -top-[3px] -left-[3px] pl-[6px] flex items-center w-4 h-4 bg-white rounded-full shadow-xs border-[0.5px] border-gray-50'>
+            <LoadingAnim type='avatar' />
+          </div>
+        )}
       </div>
       <div className='chat-answer-container group grow w-0 ml-4' ref={containerRef}>
-        <div className={`group relative pr-10 ${chatAnswerContainerInner}`}>
-          <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
+        <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
           <div
             ref={contentRef}
-            className={`
-              relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900
-              ${workflowProcess && 'w-full'}
-            `}
+            className={cn('relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-2xl text-sm text-gray-900', workflowProcess && 'w-full')}
           >
-            {annotation?.id && (
-              <div
-                className='absolute -top-3.5 -right-3.5 box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7] shadow-md group-hover:hidden'
-              >
-                <div className='p-1 rounded-lg bg-[#EEF4FF] '>
-                  <MessageFast className='w-4 h-4' />
-                </div>
-              </div>
-            )}
             {
               !responding && (
                 <Operation
@@ -129,6 +126,7 @@ const Answer: FC<AnswerProps> = ({
                   question={question}
                   index={index}
                   showPromptLog={showPromptLog}
+                  noChatInput={noChatInput}
                 />
               )
             }
@@ -138,7 +136,6 @@ const Answer: FC<AnswerProps> = ({
                 <WorkflowProcess
                   data={workflowProcess}
                   item={item}
-                  hideInfo
                   hideProcessDetail={hideProcessDetail}
                 />
               )
@@ -149,7 +146,6 @@ const Answer: FC<AnswerProps> = ({
                 <WorkflowProcess
                   data={workflowProcess}
                   item={item}
-                  hideInfo
                   hideProcessDetail={hideProcessDetail}
                 />
               )
@@ -171,7 +167,28 @@ const Answer: FC<AnswerProps> = ({
                 <AgentContent
                   item={item}
                   responding={responding}
-                  allToolIcons={allToolIcons}
+                />
+              )
+            }
+            {
+              !!allFiles?.length && (
+                <FileList
+                  className='my-1'
+                  files={allFiles}
+                  showDeleteAction={false}
+                  showDownloadAction
+                  canPreview
+                />
+              )
+            }
+            {
+              !!message_files?.length && (
+                <FileList
+                  className='my-1'
+                  files={message_files}
+                  showDeleteAction={false}
+                  showDownloadAction
+                  canPreview
                 />
               )
             }
@@ -189,6 +206,23 @@ const Answer: FC<AnswerProps> = ({
                 <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
               )
             }
+            {item.siblingCount && item.siblingCount > 1 && item.siblingIndex !== undefined && <div className="pt-3.5 flex justify-center items-center text-sm">
+              <button
+                className={`${item.prevSibling ? 'opacity-100' : 'opacity-65'}`}
+                disabled={!item.prevSibling}
+                onClick={() => item.prevSibling && switchSibling?.(item.prevSibling)}
+              >
+                <ChevronRight className="w-[14px] h-[14px] rotate-180 text-gray-500" />
+              </button>
+              <span className="px-2 text-xs text-gray-700">{item.siblingIndex + 1} / {item.siblingCount}</span>
+              <button
+                className={`${item.nextSibling ? 'opacity-100' : 'opacity-65'}`}
+                disabled={!item.nextSibling}
+                onClick={() => item.nextSibling && switchSibling?.(item.nextSibling)}
+              >
+                <ChevronRight className="w-[14px] h-[14px] text-gray-500" />
+              </button>
+            </div>}
           </div>
         </div>
         <More more={more} />

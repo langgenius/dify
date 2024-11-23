@@ -25,7 +25,6 @@ const RemoveVarConfirm: FC<Props> = ({
       content={t(`${i18nPrefix}.content`)}
       onConfirm={onConfirm}
       onCancel={onCancel}
-      onClose={onCancel}
     />
   )
 }

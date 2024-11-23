@@ -59,6 +59,7 @@ import {
   UPDATE_HISTORY_EVENT_EMITTER,
 } from './constants'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import cn from '@/utils/classnames'
 
 export type PromptEditorProps = {
   instanceId?: string
@@ -78,6 +79,7 @@ export type PromptEditorProps = {
   variableBlock?: VariableBlockType
   externalToolBlock?: ExternalToolBlockType
   workflowVariableBlock?: WorkflowVariableBlockType
+  isSupportFileVar?: boolean
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -98,6 +100,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
   variableBlock,
   externalToolBlock,
   workflowVariableBlock,
+  isSupportFileVar,
 }) => {
   const { eventEmitter } = useEventEmitterContextContext()
   const initialConfig = {
@@ -122,9 +125,11 @@ const PromptEditor: FC<PromptEditorProps> = ({
   }
 
   const handleEditorChange = (editorState: EditorState) => {
-    const text = editorState.read(() => $getRoot().getTextContent())
+    const text = editorState.read(() => {
+      return $getRoot().getChildren().map(p => p.getTextContent()).join('\n')
+    })
     if (onChange)
-      onChange(text.replaceAll('\n\n', '\n'))
+      onChange(text)
   }
 
   useEffect(() => {
@@ -142,10 +147,10 @@ const PromptEditor: FC<PromptEditorProps> = ({
 
   return (
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
-      <div className='relative h-full'>
+      <div className='relative min-h-5'>
         <RichTextPlugin
           contentEditable={<ContentEditable className={`${className} outline-none ${compact ? 'leading-5 text-[13px]' : 'leading-6 text-sm'} text-gray-700`} style={style || {}} />}
-          placeholder={<Placeholder value={placeholder} className={placeholderClassName} compact={compact} />}
+          placeholder={<Placeholder value={placeholder} className={cn('truncate', placeholderClassName)} compact={compact} />}
           ErrorBoundary={LexicalErrorBoundary}
         />
         <ComponentPickerBlock
@@ -156,6 +161,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
+          isSupportFileVar={isSupportFileVar}
         />
         <ComponentPickerBlock
           triggerString='{'
@@ -165,6 +171,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           variableBlock={variableBlock}
           externalToolBlock={externalToolBlock}
           workflowVariableBlock={workflowVariableBlock}
+          isSupportFileVar={isSupportFileVar}
         />
         {
           contextBlock?.show && (

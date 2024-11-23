@@ -1,0 +1,54 @@
+name: Check i18n Files and Create PR
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [main]
+
+jobs:
+  check-and-update:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # last 2 commits
+
+      - name: Check for file changes in i18n/en-US
+        id: check_files
+        run: |
+          recent_commit_sha=$(git rev-parse HEAD)
+          second_recent_commit_sha=$(git rev-parse HEAD~1)
+          changed_files=$(git diff --name-only $recent_commit_sha $second_recent_commit_sha -- 'i18n/en-US/*.ts')
+          echo "Changed files: $changed_files"
+          if [ -n "$changed_files" ]; then
+            echo "FILES_CHANGED=true" >> $GITHUB_ENV
+          else
+            echo "FILES_CHANGED=false" >> $GITHUB_ENV
+          fi
+
+      - name: Set up Node.js
+        if: env.FILES_CHANGED == 'true'
+        uses: actions/setup-node@v2
+        with:
+          node-version: 'lts/*'
+
+      - name: Install dependencies
+        if: env.FILES_CHANGED == 'true'
+        run: yarn install --frozen-lockfile
+
+      - name: Run npm script
+        if: env.FILES_CHANGED == 'true'
+        run: npm run auto-gen-i18n
+
+      - name: Create Pull Request
+        if: env.FILES_CHANGED == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: Update i18n files based on en-US changes
+          title: 'chore: translate i18n files'
+          body: This PR was automatically created to update i18n files based on changes in en-US locale.
+          branch: chore/automated-i18n-updates

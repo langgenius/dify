@@ -23,6 +23,8 @@ const translation = {
   },
   noRecentTip: 'Brak ostatnich wyników zapytań tutaj',
   viewChart: 'Zobacz WYKRES WEKTOROWY',
+  settingTitle: 'Ustawienie pobierania',
+  viewDetail: 'Pokaż szczegóły',
 }
 
 export default translation

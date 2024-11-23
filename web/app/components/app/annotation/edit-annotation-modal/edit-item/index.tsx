@@ -3,8 +3,8 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Textarea from 'rc-textarea'
-import cn from 'classnames'
 import { RiDeleteBinLine } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
 import { Edit04 } from '@/app/components/base/icons/src/vender/line/general'
 import { Edit04 as EditSolid } from '@/app/components/base/icons/src/vender/solid/general'
@@ -79,7 +79,7 @@ const EditItem: FC<Props> = ({
                 {!readonly && (
                   <div
                     className='flex items-center space-x-1 leading-[18px] text-xs font-medium text-[#155EEF] cursor-pointer'
-                    onClick={(e) => {
+                    onClick={() => {
                       setIsEdit(true)
                     }}
                   >

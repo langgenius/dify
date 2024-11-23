@@ -1,8 +1,8 @@
 'use client'
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
+import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Tools } from '@/app/components/base/icons/src/vender/line/others'
@@ -65,7 +65,7 @@ const WorkflowToolConfigureButton = ({
         else {
           if (item.type === 'paragraph' && param.type !== 'string')
             return true
-          if (param.type !== item.type && !(param.type === 'string' && item.type === 'paragraph'))
+          if (item.type === 'text-input' && param.type !== 'string')
             return true
         }
       }

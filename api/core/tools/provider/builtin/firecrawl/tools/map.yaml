@@ -1,0 +1,59 @@
+identity:
+  name: map
+  author: hjlarry
+  label:
+    en_US: Map
+    zh_Hans: 地图式快爬
+description:
+  human:
+    en_US: Input a website and get all the urls on the website - extremly fast
+    zh_Hans: 输入一个网站，快速获取网站上的所有网址。
+  llm: Input a website and get all the urls on the website - extremly fast
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: Start URL
+      zh_Hans: 起始URL
+    human_description:
+      en_US: The base URL to start crawling from.
+      zh_Hans: 要爬取网站的起始URL。
+    llm_description: The URL of the website that needs to be crawled. This is a required parameter.
+    form: llm
+  - name: search
+    type: string
+    label:
+      en_US: search
+      zh_Hans: 搜索查询
+    human_description:
+      en_US: Search query to use for mapping. During the Alpha phase, the 'smart' part of the search functionality is limited to 100 search results. However, if map finds more results, there is no limit applied.
+      zh_Hans: 用于映射的搜索查询。在Alpha阶段，搜索功能的“智能”部分限制为最多100个搜索结果。然而，如果地图找到了更多结果，则不施加任何限制。
+    llm_description: Search query to use for mapping. During the Alpha phase, the 'smart' part of the search functionality is limited to 100 search results. However, if map finds more results, there is no limit applied.
+    form: llm
+############## Page Options #######################
+  - name: ignoreSitemap
+    type: boolean
+    default: true
+    label:
+      en_US: ignore Sitemap
+      zh_Hans: 忽略站点地图
+    human_description:
+      en_US: Ignore the website sitemap when crawling.
+      zh_Hans: 爬取时忽略网站站点地图。
+    form: form
+  - name: includeSubdomains
+    type: boolean
+    default: false
+    label:
+      en_US: include Subdomains
+      zh_Hans: 包含子域名
+    form: form
+  - name: limit
+    type: number
+    min: 0
+    default: 5000
+    label:
+      en_US: Maximum results
+      zh_Hans: 最大结果数量
+    form: form

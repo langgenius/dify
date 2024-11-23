@@ -87,8 +87,10 @@ const AppNav = () => {
         })(isCurrentWorkspaceEditor, app)
         return {
           id: app.id,
+          icon_type: app.icon_type,
           icon: app.icon,
           icon_background: app.icon_background,
+          icon_url: app.icon_url,
           name: app.name,
           mode: app.mode,
           link,

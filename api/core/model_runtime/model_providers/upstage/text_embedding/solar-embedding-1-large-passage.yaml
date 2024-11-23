@@ -1,0 +1,9 @@
+model: solar-embedding-1-large-passage
+model_type: text-embedding
+model_properties:
+  context_size: 4000
+  max_chunks: 32
+pricing:
+  input: '0.1'
+  unit: '0.000001'
+  currency: 'USD'

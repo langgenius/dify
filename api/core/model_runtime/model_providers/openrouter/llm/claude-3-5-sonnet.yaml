@@ -27,9 +27,9 @@ parameter_rules:
   - name: max_tokens
     use_template: max_tokens
     required: true
-    default: 4096
+    default: 8192
     min: 1
-    max: 4096
+    max: 8192
   - name: response_format
     use_template: response_format
 pricing:

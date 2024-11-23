@@ -12,11 +12,14 @@ logger = logging.getLogger(__name__)
 
 
 class ExternalDataFetch:
-    def fetch(self, tenant_id: str,
-              app_id: str,
-              external_data_tools: list[ExternalDataVariableEntity],
-              inputs: dict,
-              query: str) -> dict:
+    def fetch(
+        self,
+        tenant_id: str,
+        app_id: str,
+        external_data_tools: list[ExternalDataVariableEntity],
+        inputs: dict,
+        query: str,
+    ) -> dict:
         """
         Fill in variable inputs from external data tools if exists.
 
@@ -38,7 +41,7 @@ class ExternalDataFetch:
                     app_id,
                     tool,
                     inputs,
-                    query
+                    query,
                 )
 
                 futures[future] = tool
@@ -50,12 +53,15 @@ class ExternalDataFetch:
         inputs.update(results)
         return inputs
 
-    def _query_external_data_tool(self, flask_app: Flask,
-                                  tenant_id: str,
-                                  app_id: str,
-                                  external_data_tool: ExternalDataVariableEntity,
-                                  inputs: dict,
-                                  query: str) -> tuple[Optional[str], Optional[str]]:
+    def _query_external_data_tool(
+        self,
+        flask_app: Flask,
+        tenant_id: str,
+        app_id: str,
+        external_data_tool: ExternalDataVariableEntity,
+        inputs: dict,
+        query: str,
+    ) -> tuple[Optional[str], Optional[str]]:
         """
         Query external data tool.
         :param flask_app: flask app
@@ -72,17 +78,10 @@ class ExternalDataFetch:
             tool_config = external_data_tool.config
 
             external_data_tool_factory = ExternalDataToolFactory(
-                name=tool_type,
-                tenant_id=tenant_id,
-                app_id=app_id,
-                variable=tool_variable,
-                config=tool_config
+                name=tool_type, tenant_id=tenant_id, app_id=app_id, variable=tool_variable, config=tool_config
             )
 
             # query external data tool
-            result = external_data_tool_factory.query(
-                inputs=inputs,
-                query=query
-            )
+            result = external_data_tool_factory.query(inputs=inputs, query=query)
 
             return tool_variable, result

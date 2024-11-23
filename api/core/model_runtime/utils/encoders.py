@@ -8,15 +8,18 @@ from ipaddress import IPv4Address, IPv4Interface, IPv4Network, IPv6Address, IPv6
 from pathlib import Path, PurePath
 from re import Pattern
 from types import GeneratorType
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union
 from uuid import UUID
 
 from pydantic import BaseModel
 from pydantic.networks import AnyUrl, NameEmail
 from pydantic.types import SecretBytes, SecretStr
+from pydantic_core import Url
 from pydantic_extra_types.color import Color
 
-from ._compat import PYDANTIC_V2, Url, _model_dump
+
+def _model_dump(model: BaseModel, mode: Literal["json", "python"] = "json", **kwargs: Any) -> Any:
+    return model.model_dump(mode=mode, **kwargs)
 
 
 # Taken from Pydantic v1 as is
@@ -78,11 +81,9 @@ ENCODERS_BY_TYPE: dict[type[Any], Callable[[Any], Any]] = {
 
 
 def generate_encoders_by_class_tuples(
-    type_encoder_map: dict[Any, Callable[[Any], Any]]
+    type_encoder_map: dict[Any, Callable[[Any], Any]],
 ) -> dict[Callable[[Any], Any], tuple[Any, ...]]:
-    encoders_by_class_tuples: dict[Callable[[Any], Any], tuple[Any, ...]] = defaultdict(
-        tuple
-    )
+    encoders_by_class_tuples: dict[Callable[[Any], Any], tuple[Any, ...]] = defaultdict(tuple)
     for type_, encoder in type_encoder_map.items():
         encoders_by_class_tuples[encoder] += (type_,)
     return encoders_by_class_tuples
@@ -109,12 +110,6 @@ def jsonable_encoder(
                 if isinstance(obj, encoder_type):
                     return encoder_instance(obj)
     if isinstance(obj, BaseModel):
-        # TODO: remove when deprecating Pydantic v1
-        encoders: dict[Any, Any] = {}
-        if not PYDANTIC_V2:
-            encoders = getattr(obj.__config__, "json_encoders", {})  # type: ignore[attr-defined]
-            if custom_encoder:
-                encoders.update(custom_encoder)
         obj_dict = _model_dump(
             obj,
             mode="json",
@@ -131,8 +126,6 @@ def jsonable_encoder(
             obj_dict,
             exclude_none=exclude_none,
             exclude_defaults=exclude_defaults,
-            # TODO: remove when deprecating Pydantic v1
-            custom_encoder=encoders,
             sqlalchemy_safe=sqlalchemy_safe,
         )
     if dataclasses.is_dataclass(obj):
@@ -153,17 +146,13 @@ def jsonable_encoder(
     if isinstance(obj, str | int | float | type(None)):
         return obj
     if isinstance(obj, Decimal):
-        return format(obj, 'f')
+        return format(obj, "f")
     if isinstance(obj, dict):
         encoded_dict = {}
         allowed_keys = set(obj.keys())
         for key, value in obj.items():
             if (
-                (
-                    not sqlalchemy_safe
-                    or (not isinstance(key, str))
-                    or (not key.startswith("_sa"))
-                )
+                (not sqlalchemy_safe or (not isinstance(key, str)) or (not key.startswith("_sa")))
                 and (value is not None or not exclude_none)
                 and key in allowed_keys
             ):

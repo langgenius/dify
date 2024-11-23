@@ -1,7 +1,10 @@
 {
   "name": "dify-web",
-  "version": "0.6.11",
+  "version": "0.11.2",
   "private": true,
+  "engines": {
+    "node": ">=18.17.0"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -12,7 +15,12 @@
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky install ./web/.husky",
     "gen-icons": "node ./app/components/base/icons/script.js",
     "uglify-embed": "node ./bin/uglify-embed",
-    "check-i18n": "node ./i18n/script.js"
+    "check-i18n": "node ./i18n/check-i18n.js",
+    "auto-gen-i18n": "node ./i18n/auto-gen-i18n.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@babel/runtime": "^7.22.3",
@@ -31,8 +39,11 @@
     "@remixicon/react": "^4.2.0",
     "@sentry/react": "^7.54.0",
     "@sentry/utils": "^7.54.0",
+    "@svgdotjs/svg.js": "^3.2.4",
     "@tailwindcss/line-clamp": "^0.4.4",
     "@tailwindcss/typography": "^0.5.9",
+    "@tanstack/react-query": "^5.60.5",
+    "@tanstack/react-query-devtools": "^5.60.5",
     "ahooks": "^3.7.5",
     "class-variance-authority": "^0.7.0",
     "classnames": "^2.3.2",
@@ -48,20 +59,23 @@
     "immer": "^9.0.19",
     "js-audio-recorder": "^1.0.7",
     "js-cookie": "^3.0.1",
+    "jwt-decode": "^4.0.0",
     "katex": "^0.16.10",
     "lamejs": "^1.2.1",
     "lexical": "^0.16.0",
     "lodash-es": "^4.17.21",
-    "mermaid": "10.4.0",
+    "mermaid": "10.9.3",
+    "mime": "^4.0.4",
     "negotiator": "^0.6.3",
-    "next": "^14.1.1",
-    "next-nprogress-bar": "^2.3.8",
+    "next": "^14.2.10",
+    "pinyin-pro": "^3.23.0",
     "qrcode.react": "^3.1.0",
     "qs": "^6.11.1",
     "rc-textarea": "^1.5.2",
     "react": "~18.2.0",
     "react-18-input-autosize": "^3.0.0",
     "react-dom": "~18.2.0",
+    "react-easy-crop": "^5.0.8",
     "react-error-boundary": "^4.0.2",
     "react-headless-pagination": "^1.1.4",
     "react-hook-form": "^7.51.4",
@@ -79,6 +93,7 @@
     "reactflow": "^11.11.3",
     "recordrtc": "^5.6.2",
     "rehype-katex": "^6.0.2",
+    "rehype-raw": "^7.0.0",
     "remark-breaks": "^3.0.2",
     "remark-gfm": "^3.0.1",
     "remark-math": "^5.1.1",
@@ -87,6 +102,7 @@
     "sharp": "^0.33.2",
     "sortablejs": "^1.15.0",
     "swr": "^2.1.0",
+    "tailwind-merge": "^2.4.0",
     "use-context-selector": "^1.4.1",
     "uuid": "^9.0.1",
     "zod": "^3.23.6",
@@ -95,10 +111,24 @@
   },
   "devDependencies": {
     "@antfu/eslint-config": "^0.36.0",
+    "@chromatic-com/storybook": "^1.9.0",
     "@faker-js/faker": "^7.6.0",
     "@rgrove/parse-xml": "^4.1.0",
+    "@storybook/addon-essentials": "^8.3.5",
+    "@storybook/addon-interactions": "^8.3.5",
+    "@storybook/addon-links": "^8.3.5",
+    "@storybook/addon-onboarding": "^8.3.5",
+    "@storybook/addon-themes": "^8.3.5",
+    "@storybook/blocks": "^8.3.5",
+    "@storybook/nextjs": "^8.3.5",
+    "@storybook/react": "^8.3.5",
+    "@storybook/test": "^8.3.5",
+    "@testing-library/dom": "^10.3.2",
+    "@testing-library/jest-dom": "^6.4.6",
+    "@testing-library/react": "^16.0.0",
     "@types/crypto-js": "^4.1.1",
     "@types/dagre": "^0.7.52",
+    "@types/jest": "^29.5.12",
     "@types/js-cookie": "^3.0.3",
     "@types/lodash-es": "^4.17.7",
     "@types/negotiator": "^0.6.1",
@@ -114,17 +144,29 @@
     "@types/sortablejs": "^1.15.1",
     "@types/uuid": "^9.0.8",
     "autoprefixer": "^10.4.14",
+    "bing-translate-api": "^4.0.2",
     "code-inspector-plugin": "^0.13.0",
     "cross-env": "^7.0.3",
     "eslint": "^8.36.0",
     "eslint-config-next": "^14.0.4",
+    "eslint-plugin-storybook": "^0.9.0",
     "husky": "^8.0.3",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
     "lint-staged": "^13.2.2",
+    "magicast": "^0.3.4",
     "postcss": "^8.4.31",
     "sass": "^1.61.0",
-    "tailwindcss": "^3.3.3",
+    "storybook": "^8.3.5",
+    "tailwindcss": "^3.4.4",
+    "ts-node": "^10.9.2",
     "typescript": "4.9.5",
     "uglify-js": "^3.17.4"
+  },
+  "resolutions": {
+    "@types/react": "~18.2.0",
+    "@types/react-dom": "~18.2.0",
+    "string-width": "4.2.3"
   },
   "lint-staged": {
     "**/*.js?(x)": [
@@ -133,12 +175,5 @@
     "**/*.ts?(x)": [
       "eslint --fix"
     ]
-  },
-  "engines": {
-    "node": ">=18.17.0"
-  },
-  "resolutions": {
-    "@types/react": "~18.2.0",
-    "@types/react-dom": "~18.2.0"
   }
 }

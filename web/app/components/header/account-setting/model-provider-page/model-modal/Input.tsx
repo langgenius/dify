@@ -53,7 +53,7 @@ const Input: FC<InputProps> = ({
         onChange={e => onChange(e.target.value)}
         onBlur={e => toLimit(e.target.value)}
         onFocus={onFocus}
-        value={value || ''}
+        value={value}
         disabled={disabled}
         type={type}
         min={min}

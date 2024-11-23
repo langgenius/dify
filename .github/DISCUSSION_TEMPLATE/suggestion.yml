@@ -1,0 +1,37 @@
+title: Suggestions for New Features
+body:
+  - type: checkboxes
+    attributes:
+      label: Self Checks
+      description: "To make sure we get to you in time, please check the following :)"
+      options:
+        - label: I have searched for existing issues [search for existing issues](https://github.com/langgenius/dify/issues), including closed ones.
+          required: true
+        - label: I confirm that I am using English to submit this report (我已阅读并同意 [Language Policy](https://github.com/langgenius/dify/issues/1542)).
+          required: true
+        - label: "[FOR CHINESE USERS] 请务必使用英文提交 Issue，否则会被关闭。谢谢！:）"
+          required: true
+        - label: "Please do not modify this template :) and fill in all the required fields."
+          required: true
+  - type: textarea
+    attributes:
+      label: 1. Is this request related to a challenge you're experiencing? Tell me about your story.
+      placeholder: Please describe the specific scenario or problem you're facing as clearly as possible. For instance "I was trying to use [feature] for [specific task], and [what happened]... It was frustrating because...."
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: 2. Additional context or comments
+      placeholder: (Any other information, comments, documentations, links, or screenshots that would provide more clarity. This is the place to add anything else not covered above.)
+    validations:
+      required: false
+  - type: checkboxes
+    attributes:
+      label: 3. Can you help us with this feature?
+      description: Let us know! This is not a commitment, but a starting point for collaboration.
+      options:
+        - label: I am interested in contributing to this feature.
+          required: false
+  - type: markdown
+    attributes:
+      value: Please limit one request per issue.

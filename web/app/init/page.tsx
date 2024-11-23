@@ -1,7 +1,7 @@
 import React from 'react'
-import classNames from 'classnames'
 import style from '../signin/page.module.css'
 import InitPasswordPopup from './InitPasswordPopup'
+import classNames from '@/utils/classnames'
 
 const Install = () => {
   return (

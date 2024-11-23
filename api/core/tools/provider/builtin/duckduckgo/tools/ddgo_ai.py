@@ -13,8 +13,8 @@ class DuckDuckGoAITool(BuiltinTool):
 
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage:
         query_dict = {
-            "keywords": tool_parameters.get('query'),
-            "model": tool_parameters.get('model'),
+            "keywords": tool_parameters.get("query"),
+            "model": tool_parameters.get("model"),
         }
         response = DDGS().chat(**query_dict)
         return self.create_text_message(text=response)

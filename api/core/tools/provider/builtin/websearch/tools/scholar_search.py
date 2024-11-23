@@ -55,14 +55,16 @@ class SerplyApi:
                     link = article["link"]
                 authors = [author["name"] for author in article["author"]["authors"]]
                 string.append(
-                    "\n".join([
-                        f"Title: {article['title']}",
-                        f"Link: {link}",
-                        f"Description: {article['description']}",
-                        f"Cite: {article['cite']}",
-                        f"Authors: {', '.join(authors)}",
-                        "---",
-                    ])
+                    "\n".join(
+                        [
+                            f"Title: {article['title']}",
+                            f"Link: {link}",
+                            f"Description: {article['description']}",
+                            f"Cite: {article['cite']}",
+                            f"Authors: {', '.join(authors)}",
+                            "---",
+                        ]
+                    )
                 )
             except KeyError:
                 continue
@@ -83,7 +85,7 @@ class ScholarSearchTool(BuiltinTool):
         query = tool_parameters["query"]
         gl = tool_parameters.get("gl", "us")
         hl = tool_parameters.get("hl", "en")
-        location = tool_parameters.get("location", None)
+        location = tool_parameters.get("location")
 
         api_key = self.runtime.credentials["serply_api_key"]
         result = SerplyApi(api_key).run(query, gl=gl, hl=hl, location=location)

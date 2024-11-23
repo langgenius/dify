@@ -1,7 +1,7 @@
 import type { ReactElement } from 'react'
-import cn from 'classnames'
 import RadioGroupContext from '../../context'
 import s from '../../style.module.css'
+import cn from '@/utils/classnames'
 
 export type TRadioGroupProps = {
   children?: ReactElement | ReactElement[]
