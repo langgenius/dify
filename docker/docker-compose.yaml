@@ -678,6 +678,9 @@ services:
     environment:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+    ports:
+      - "9001:9001"
+      - "9000:9000"
     volumes:
       - ./volumes/milvus/minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
@@ -691,7 +694,9 @@ services:
 
   milvus-standalone:
     container_name: milvus-standalone
-    image: milvusdb/milvus:v2.3.1
+    image: milvusdb/milvus:v2.4.17
+    security_opt:
+    - seccomp:unconfined
     profiles:
       - milvus
     command: ['milvus', 'run', 'standalone']
