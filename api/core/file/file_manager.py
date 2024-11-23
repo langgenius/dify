@@ -1,4 +1,6 @@
 import base64
+import tempfile
+from pathlib import Path
 
 from configs import dify_config
 from core.file import file_repository
@@ -16,6 +18,38 @@ from . import helpers
 from .enums import FileAttribute
 from .models import File, FileTransferMethod, FileType
 from .tool_file_parser import ToolFileParser
+
+
+def download_to_target_path(f: File, temp_dir: str, /):
+    if f.transfer_method == FileTransferMethod.TOOL_FILE:
+        tool_file = file_repository.get_tool_file(session=db.session(), file=f)
+        suffix = Path(tool_file.file_key).suffix
+        target_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
+        _download_file_to_target_path(tool_file.file_key, target_path)
+        return target_path
+    elif f.transfer_method == FileTransferMethod.LOCAL_FILE:
+        upload_file = file_repository.get_upload_file(session=db.session(), file=f)
+        suffix = Path(upload_file.key).suffix
+        target_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
+        _download_file_to_target_path(upload_file.key, target_path)
+        return target_path
+    else:
+        raise ValueError(f"Unsupported transfer method: {f.transfer_method}")
+
+
+def _download_file_to_target_path(path: str, target_path: str, /):
+    """
+    Download and return the contents of a file as bytes.
+
+    This function loads the file from storage and ensures it's in bytes format.
+
+    Args:
+        path (str): The path to the file in storage.
+        target_path (str): The path to the target file.
+    Raises:
+        ValueError: If the loaded file is not a bytes object.
+    """
+    storage.download(path, target_path)
 
 
 def get_attr(*, file: File, attr: FileAttribute):
