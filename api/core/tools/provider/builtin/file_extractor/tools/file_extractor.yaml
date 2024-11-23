@@ -1,0 +1,49 @@
+identity:
+  name: text extractor
+  author: Jyong
+  label:
+    en_US: Text extractor
+    zh_Hans: Text 文本解析
+  description:
+    en_US: Extract content from text file and support split to chunks by split characters and token length
+    zh_Hans: 支持从文本文件中提取内容并支持通过分割字符和令牌长度分割成块
+    pt_BR: Extract content from text file and support split to chunks by split characters and token length
+description:
+  human:
+    en_US: Text extractor is a text extract tool
+    zh_Hans: Text extractor 是一个文本提取工具
+    pt_BR: Text extractor is a text extract tool
+  llm: Text extractor is a tool used to extract text file
+parameters:
+  - name: text_file
+    type: file
+    label:
+      en_US: Text file
+    human_description:
+      en_US: The text file to be extracted.
+      zh_Hans: 要提取的 text 文档。
+    llm_description: you should not input this parameter. just input the image_id.
+    form: llm
+  - name: separator
+    type: string
+    required: false
+    label:
+      en_US: split character
+      zh_Hans: 分隔符号
+    human_description:
+      en_US: Text content split character
+      zh_Hans: 用于文档分隔的符号
+    llm_description: it is used for split content to chunks
+    form: form
+  - name: max_token
+    type: number
+    required: false
+    label:
+      en_US: Maximum chunk length
+      zh_Hans: 最大分段长度
+    human_description:
+      en_US: Maximum chunk length
+      zh_Hans: 最大分段长度
+    llm_description: it is used for limit chunk's max length
+    form: form
+

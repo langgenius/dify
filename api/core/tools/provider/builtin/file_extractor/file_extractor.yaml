@@ -1,0 +1,15 @@
+identity:
+  author: Jyong
+  name: file_extractor
+  label:
+    en_US: File Extractor
+    zh_Hans: 文件提取
+    pt_BR: File Extractor
+  description:
+    en_US: Extract text from file
+    zh_Hans: 从文件中提取文本
+    pt_BR: Extract text from file
+  icon: icon.png
+  tags:
+    - utilities
+    - productivity
