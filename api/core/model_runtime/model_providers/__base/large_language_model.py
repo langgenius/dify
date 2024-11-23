@@ -48,7 +48,7 @@ class LargeLanguageModel(AIModel):
         prompt_messages: list[PromptMessage],
         model_parameters: Optional[dict] = None,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        stop: Optional[list[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
         callbacks: Optional[list[Callback]] = None,
@@ -479,7 +479,7 @@ if you are not sure about the structure.
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[Sequence[str]] = None,
+        stop: Optional[list[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:

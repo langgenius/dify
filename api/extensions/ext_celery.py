@@ -47,7 +47,7 @@ def init_app(app: Flask) -> Celery:
         worker_log_format=dify_config.LOG_FORMAT,
         worker_task_log_format=dify_config.LOG_FORMAT,
         worker_hijack_root_logger=False,
-        timezone=pytz.timezone(dify_config.LOG_TZ),
+        timezone=pytz.timezone(dify_config.LOG_TZ or "UTC"),
     )
 
     if dify_config.BROKER_USE_SSL:

@@ -181,7 +181,7 @@ class Workflow(db.Model):  # type: ignore[name-defined]
         self._features = value
 
     @property
-    def features_dict(self) -> Mapping[str, Any]:
+    def features_dict(self) -> dict[str, Any]:
         return json.loads(self.features) if self.features else {}
 
     def user_input_form(self, to_old_structure: bool = False) -> list:

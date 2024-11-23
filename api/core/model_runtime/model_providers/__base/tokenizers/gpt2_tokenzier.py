@@ -4,7 +4,7 @@ from typing import Any
 
 from transformers import GPT2Tokenizer as TransformerGPT2Tokenizer  # type: ignore
 
-_tokenizer = None
+_tokenizer: Any = None
 _lock = Lock()
 
 

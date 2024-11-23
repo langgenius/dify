@@ -44,7 +44,7 @@ class CohereRerankModel(RerankModel):
         :return: rerank result
         """
         if len(docs) == 0:
-            return RerankResult(model=model, docs=docs)
+            return RerankResult(model=model, docs=[])
 
         # initialize client
         client = cohere.Client(credentials.get("api_key"), base_url=credentials.get("base_url"))

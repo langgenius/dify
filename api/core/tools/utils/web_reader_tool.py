@@ -9,7 +9,7 @@ import tempfile
 import unicodedata
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional
+from typing import Optional, cast
 from urllib.parse import unquote
 
 import chardet
@@ -68,7 +68,7 @@ def get_url(url: str, user_agent: Optional[str] = None) -> str:
             return "Unsupported content-type [{}] of URL.".format(main_content_type)
 
         if main_content_type in extract_processor.SUPPORT_URL_CONTENT_TYPES:
-            return ExtractProcessor.load_from_url(url, return_text=True)
+            return cast(str, ExtractProcessor.load_from_url(url, return_text=True))
 
         response = ssrf_proxy.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))
     elif response.status_code == 403:

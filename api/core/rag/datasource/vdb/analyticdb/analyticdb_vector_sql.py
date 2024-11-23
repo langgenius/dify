@@ -156,16 +156,17 @@ class AnalyticdbVectorBySql:
                 VALUES (%s, %s, %s, %s, %s, to_tsvector('zh_cn',  %s));
             """
         for i, doc in enumerate(documents):
-            values.append(
-                (
-                    id_prefix + str(i),
-                    doc.metadata.get("doc_id", str(uuid.uuid4())),
-                    embeddings[i],
-                    doc.page_content,
-                    json.dumps(doc.metadata),
-                    doc.page_content,
+            if doc.metadata is not None:
+                values.append(
+                    (
+                        id_prefix + str(i),
+                        doc.metadata.get("doc_id", str(uuid.uuid4())),
+                        embeddings[i],
+                        doc.page_content,
+                        json.dumps(doc.metadata),
+                        doc.page_content,
+                    )
                 )
-            )
         with self._get_cursor() as cur:
             psycopg2.extras.execute_batch(cur, sql, values)
 

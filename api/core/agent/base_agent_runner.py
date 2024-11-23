@@ -1,7 +1,6 @@
 import json
 import logging
 import uuid
-from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Optional, Union, cast
 
@@ -112,12 +111,14 @@ class BaseAgentRunner(AppRunner):
         db.session.close()
 
         # check if model supports stream tool call
+        # FIXME confirm here, model_instance is not None
+        assert model_instance is not None
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
         features = model_schema.features if model_schema and model_schema.features else []
         self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features
         self.files = application_generate_entity.files if ModelFeature.VISION in features else []
-        self.query = None
+        self.query = Optional[str]
         self._current_thoughts: list[PromptMessage] = []
 
     def _repack_app_generate_entity(
@@ -145,7 +146,7 @@ class BaseAgentRunner(AppRunner):
 
         message_tool = PromptMessageTool(
             name=tool.tool_name,
-            description=tool_entity.description.llm,
+            description=tool_entity.description.llm if tool_entity.description else "",
             parameters={
                 "type": "object",
                 "properties": {},
@@ -167,7 +168,7 @@ class BaseAgentRunner(AppRunner):
                 continue
             enum = []
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                enum = [option.value for option in parameter.options]
+                enum = [option.value for option in parameter.options] if parameter.options else []
 
             message_tool.parameters["properties"][parameter.name] = {
                 "type": parameter_type,
@@ -187,8 +188,8 @@ class BaseAgentRunner(AppRunner):
         convert dataset retriever tool to prompt message tool
         """
         prompt_tool = PromptMessageTool(
-            name=tool.identity.name,
-            description=tool.description.llm,
+            name=tool.identity.name if tool.identity else "unknown",
+            description=tool.description.llm if tool.description else "",
             parameters={
                 "type": "object",
                 "properties": {},
@@ -210,14 +211,14 @@ class BaseAgentRunner(AppRunner):
 
         return prompt_tool
 
-    def _init_prompt_tools(self) -> tuple[Mapping[str, Tool], Sequence[PromptMessageTool]]:
+    def _init_prompt_tools(self) -> tuple[dict[str, Tool], list[PromptMessageTool]]:
         """
         Init tools
         """
         tool_instances = {}
         prompt_messages_tools = []
 
-        for tool in self.app_config.agent.tools if self.app_config.agent else []:
+        for tool in self.app_config.agent.tools or [] if self.app_config.agent else []:
             try:
                 prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
             except Exception:
@@ -234,7 +235,8 @@ class BaseAgentRunner(AppRunner):
             # save prompt tool
             prompt_messages_tools.append(prompt_tool)
             # save tool entity
-            tool_instances[dataset_tool.identity.name] = dataset_tool
+            if dataset_tool.identity is not None:
+                tool_instances[dataset_tool.identity.name] = dataset_tool
 
         return tool_instances, prompt_messages_tools
 
@@ -258,7 +260,7 @@ class BaseAgentRunner(AppRunner):
                 continue
             enum = []
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                enum = [option.value for option in parameter.options]
+                enum = [option.value for option in parameter.options] if parameter.options else []
 
             prompt_tool.parameters["properties"][parameter.name] = {
                 "type": parameter_type,

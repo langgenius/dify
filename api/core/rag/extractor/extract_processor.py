@@ -66,7 +66,11 @@ class ExtractProcessor:
                     filename_match = re.search(r'filename="([^"]+)"', content_disposition)
                     if filename_match:
                         filename = unquote(filename_match.group(1))
-                        suffix = "." + re.search(r"\.(\w+)$", filename).group(1)
+                        match = re.search(r"\.(\w+)$", filename)
+                        if match:
+                            suffix = "." + match.group(1)
+                        else:
+                            suffix = ""
 
             file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
             Path(file_path).write_bytes(response.content)

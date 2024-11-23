@@ -309,7 +309,7 @@ class ModelInstance:
         if not self.load_balancing_manager:
             return function(*args, **kwargs)
 
-        last_exception = None
+        last_exception: Union[InvokeRateLimitError, InvokeAuthorizationError, InvokeConnectionError, None] = None
         while True:
             lb_config = self.load_balancing_manager.fetch_next()
             if not lb_config:

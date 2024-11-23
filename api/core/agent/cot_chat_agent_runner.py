@@ -80,6 +80,7 @@ class CotChatAgentRunner(CotAgentRunner):
             assistant_messages = []
         else:
             assistant_message = AssistantPromptMessage(content="")
+            assistant_message.content = ""  # FIXME: type check tell mypy that assistant_message.content is str
             for unit in agent_scratchpad:
                 if unit.is_final():
                     assistant_message.content += f"Final Answer: {unit.agent_response}"

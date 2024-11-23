@@ -296,7 +296,7 @@ class NotionExtractor(BaseExtractor):
         result_lines = "\n".join(result_lines_arr)
         return result_lines
 
-    def update_last_edited_time(self, document_model: DocumentModel):
+    def update_last_edited_time(self, document_model: Optional[DocumentModel]):
         if not document_model:
             return
 

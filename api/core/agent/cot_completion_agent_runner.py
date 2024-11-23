@@ -1,5 +1,5 @@
 import json
-from typing import Optional
+from typing import Optional, cast
 
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
@@ -11,7 +11,11 @@ class CotCompletionAgentRunner(CotAgentRunner):
         """
         Organize instruction prompt
         """
+        if self.app_config.agent is None:
+            raise ValueError("Agent configuration is not set")
         prompt_entity = self.app_config.agent.prompt
+        if prompt_entity is None:
+            raise ValueError("prompt entity is not set")
         first_prompt = prompt_entity.first_prompt
 
         system_prompt = (
@@ -33,7 +37,8 @@ class CotCompletionAgentRunner(CotAgentRunner):
             if isinstance(message, UserPromptMessage):
                 historic_prompt += f"Question: {message.content}\n\n"
             elif isinstance(message, AssistantPromptMessage):
-                historic_prompt += message.content + "\n\n"
+                if message.content is not None:
+                    historic_prompt += cast(str, message.content) + "\n\n"
 
         return historic_prompt
 
@@ -50,7 +55,7 @@ class CotCompletionAgentRunner(CotAgentRunner):
         # organize current assistant messages
         agent_scratchpad = self._agent_scratchpad
         assistant_prompt = ""
-        for unit in agent_scratchpad:
+        for unit in agent_scratchpad or []:
             if unit.is_final():
                 assistant_prompt += f"Final Answer: {unit.agent_response}"
             else:

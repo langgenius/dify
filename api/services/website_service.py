@@ -23,9 +23,9 @@ class WebsiteService:
 
     @classmethod
     def crawl_url(cls, args: dict) -> dict:
-        provider = args.get("provider")
+        provider = args.get("provider", "")
         url = args.get("url")
-        options = args.get("options")
+        options = args.get("options", "")
         credentials = ApiKeyAuthService.get_auth_credentials(current_user.current_tenant_id, "website", provider)
         if provider == "firecrawl":
             # decrypt api_key

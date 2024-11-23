@@ -1,7 +1,7 @@
 import logging
 import time
 import uuid
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from datetime import timedelta
 from typing import Optional, Union
 
@@ -17,7 +17,7 @@ class RateLimit:
     _UNLIMITED_REQUEST_ID = "unlimited_request_id"
     _REQUEST_MAX_ALIVE_TIME = 10 * 60  # 10 minutes
     _ACTIVE_REQUESTS_COUNT_FLUSH_INTERVAL = 5 * 60  # recalculate request_count from request_detail every 5 minutes
-    _instance_dict = {}
+    _instance_dict: dict[str, "RateLimit"] = {}
 
     def __new__(cls: type["RateLimit"], client_id: str, max_active_requests: int):
         if client_id not in cls._instance_dict:
@@ -88,7 +88,7 @@ class RateLimit:
     def gen_request_key() -> str:
         return str(uuid.uuid4())
 
-    def generate(self, generator: Union[Generator, callable, dict], request_id: str):
+    def generate(self, generator: Union[Generator, Callable, dict], request_id: str):
         if isinstance(generator, dict):
             return generator
         else:
@@ -96,7 +96,7 @@ class RateLimit:
 
 
 class RateLimitGenerator:
-    def __init__(self, rate_limit: RateLimit, generator: Union[Generator, callable], request_id: str):
+    def __init__(self, rate_limit: RateLimit, generator: Union[Generator, Callable], request_id: str):
         self.rate_limit = rate_limit
         if callable(generator):
             self.generator = generator()

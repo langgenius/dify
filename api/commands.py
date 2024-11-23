@@ -555,7 +555,8 @@ def create_tenant(email: str, language: Optional[str] = None, name: Optional[str
     if language not in languages:
         language = "en-US"
 
-    name = name.strip()
+    if name is not None:
+        name = name.strip()
 
     # generate random password
     new_password = secrets.token_urlsafe(16)

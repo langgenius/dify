@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Mapping
 from typing import Any, cast
 
 from sqlalchemy import select
@@ -118,7 +117,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                     ]
                     session.add_all(conversation_variables)
                 # Convert database entities to variables.
-                conversation_variables = [item.to_variable() for item in conversation_variables]
+                # FIXME: This is a temporary solution to convert database entities to variables for mypy check
+                conversation_variables = [item.to_variable() for item in conversation_variables]  # type: ignore
 
                 session.commit()
 
@@ -183,7 +183,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         self,
         app_record: App,
         app_generate_entity: AdvancedChatAppGenerateEntity,
-        inputs: Mapping[str, Any],
+        inputs: dict[str, Any],
         query: str,
         message_id: str,
     ) -> bool:

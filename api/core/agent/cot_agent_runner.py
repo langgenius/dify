@@ -1,7 +1,7 @@
 import json
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from typing import Optional
+from typing import Optional, cast
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.agent.entities import AgentScratchpadUnit
@@ -12,6 +12,7 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, 
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
+    PromptMessageTool,
     ToolPromptMessage,
     UserPromptMessage,
 )
@@ -28,9 +29,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
     _ignore_observation_providers = ["wenxin"]
     _historic_prompt_messages: list[PromptMessage] | None = None
     _agent_scratchpad: list[AgentScratchpadUnit] | None = None
-    _instruction: str | None = None
+    _instruction: str = ""  # FIXME this must be str for now
     _query: str | None = None
-    _prompt_messages_tools: list[PromptMessage] | None = None
+    _prompt_messages_tools: list[PromptMessageTool] = []
 
     def run(
         self,
@@ -66,10 +67,10 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         tool_instances, self._prompt_messages_tools = self._init_prompt_tools()
 
         function_call_state = True
-        llm_usage = {"usage": None}
+        llm_usage: dict[str, Optional[LLMUsage]] = {"usage": None}
         final_answer = ""
 
-        def increase_usage(final_llm_usage_dict: dict[str, LLMUsage], usage: LLMUsage):
+        def increase_usage(final_llm_usage_dict: dict[str, Optional[LLMUsage]], usage: LLMUsage):
             if not final_llm_usage_dict["usage"]:
                 final_llm_usage_dict["usage"] = usage
             else:
@@ -124,7 +125,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             if not chunks:
                 raise ValueError("failed to invoke llm")
 
-            usage_dict: dict = {}
+            usage_dict: dict[str, Optional[LLMUsage]] = {"usage": None}
             react_chunks = CotAgentOutputParser.handle_react_stream_output(chunks, usage_dict)
             scratchpad = AgentScratchpadUnit(
                 agent_response="",
@@ -144,25 +145,30 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 if isinstance(chunk, AgentScratchpadUnit.Action):
                     action = chunk
                     # detect action
-                    scratchpad.agent_response += json.dumps(chunk.model_dump())
+                    if scratchpad.agent_response is not None:
+                        scratchpad.agent_response += json.dumps(chunk.model_dump())
                     scratchpad.action_str = json.dumps(chunk.model_dump())
                     scratchpad.action = action
                 else:
-                    scratchpad.agent_response += chunk
-                    scratchpad.thought += chunk
+                    if scratchpad.agent_response is not None:
+                        scratchpad.agent_response += chunk
+                    if scratchpad.thought is not None:
+                        scratchpad.thought += chunk
                     yield LLMResultChunk(
                         model=self.model_config.model,
                         prompt_messages=prompt_messages,
                         system_fingerprint="",
                         delta=LLMResultChunkDelta(index=0, message=AssistantPromptMessage(content=chunk), usage=None),
                     )
-
-            scratchpad.thought = scratchpad.thought.strip() or "I am thinking about how to help you"
-            self._agent_scratchpad.append(scratchpad)
+            if scratchpad.thought is not None:
+                scratchpad.thought = scratchpad.thought.strip() or "I am thinking about how to help you"
+            if self._agent_scratchpad is not None:
+                self._agent_scratchpad.append(scratchpad)
 
             # get llm usage
             if "usage" in usage_dict:
-                increase_usage(llm_usage, usage_dict["usage"])
+                if usage_dict["usage"] is not None:
+                    increase_usage(llm_usage, usage_dict["usage"])
             else:
                 usage_dict["usage"] = LLMUsage.empty_usage()
 
@@ -171,9 +177,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 tool_name=scratchpad.action.action_name if scratchpad.action else "",
                 tool_input={scratchpad.action.action_name: scratchpad.action.action_input} if scratchpad.action else {},
                 tool_invoke_meta={},
-                thought=scratchpad.thought,
+                thought=scratchpad.thought or "",
                 observation="",
-                answer=scratchpad.agent_response,
+                answer=scratchpad.agent_response or "",
                 messages_ids=[],
                 llm_usage=usage_dict["usage"],
             )
@@ -214,7 +220,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         agent_thought=agent_thought,
                         tool_name=scratchpad.action.action_name,
                         tool_input={scratchpad.action.action_name: scratchpad.action.action_input},
-                        thought=scratchpad.thought,
+                        thought=scratchpad.thought or "",
                         observation={scratchpad.action.action_name: tool_invoke_response},
                         tool_invoke_meta={scratchpad.action.action_name: tool_invoke_meta.to_dict()},
                         answer=scratchpad.agent_response,
@@ -252,8 +258,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             answer=final_answer,
             messages_ids=[],
         )
-
-        self.update_db_variables(self.variables_pool, self.db_variables_pool)
+        if self.variables_pool is not None and self.db_variables_pool is not None:
+            self.update_db_variables(self.variables_pool, self.db_variables_pool)
         # publish end event
         self.queue_manager.publish(
             QueueMessageEndEvent(
@@ -312,8 +318,9 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         # publish files
         for message_file_id, save_as in message_files:
-            if save_as:
-                self.variables_pool.set_file(tool_name=tool_call_name, value=message_file_id, name=save_as)
+            if save_as is not None and self.variables_pool:
+                # FIXME the save_as type is confusing, it should be a string or not
+                self.variables_pool.set_file(tool_name=tool_call_name, value=message_file_id, name=str(save_as))
 
             # publish message file
             self.queue_manager.publish(
@@ -387,8 +394,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             if isinstance(message, AssistantPromptMessage):
                 if not current_scratchpad:
                     current_scratchpad = AgentScratchpadUnit(
-                        agent_response=message.content,
-                        thought=message.content or "I am thinking about how to help you",
+                        agent_response=cast(str, message.content),
+                        thought=cast(str, message.content) or "I am thinking about how to help you",
                         action_str="",
                         action=None,
                         observation=None,
@@ -405,7 +412,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                         pass
             elif isinstance(message, ToolPromptMessage):
                 if current_scratchpad:
-                    current_scratchpad.observation = message.content
+                    current_scratchpad.observation = cast(str, message.content)
             elif isinstance(message, UserPromptMessage):
                 if scratchpads:
                     result.append(AssistantPromptMessage(content=self._format_assistant_message(scratchpads)))

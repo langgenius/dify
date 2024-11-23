@@ -102,16 +102,16 @@ class BuiltinTool(Tool):
 
         # merge lines into messages with max tokens
         messages: list[str] = []
-        for i in new_lines:
+        for j in new_lines:
             if len(messages) == 0:
-                messages.append(i)
+                messages.append(j)
             else:
-                if len(messages[-1]) + len(i) < max_tokens * 0.5:
-                    messages[-1] += i
-                if get_prompt_tokens(messages[-1] + i) > max_tokens * 0.7:
-                    messages.append(i)
+                if len(messages[-1]) + len(j) < max_tokens * 0.5:
+                    messages[-1] += j
+                if get_prompt_tokens(messages[-1] + j) > max_tokens * 0.7:
+                    messages.append(j)
                 else:
-                    messages[-1] += i
+                    messages[-1] += j
 
         summaries = []
         for i in range(len(messages)):

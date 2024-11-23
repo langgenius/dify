@@ -37,7 +37,7 @@ class AppQueueManager:
             AppQueueManager._generate_task_belong_cache_key(self._task_id), 1800, f"{user_prefix}-{self._user_id}"
         )
 
-        q = queue.Queue()
+        q: queue.Queue = queue.Queue()
 
         self._q = q
 
@@ -49,7 +49,7 @@ class AppQueueManager:
         # wait for APP_MAX_EXECUTION_TIME seconds to stop listen
         listen_timeout = dify_config.APP_MAX_EXECUTION_TIME
         start_time = time.time()
-        last_ping_time = 0
+        last_ping_time: int | float = 0
         while True:
             try:
                 message = self._q.get(timeout=1)

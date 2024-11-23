@@ -67,6 +67,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 llm_usage.total_price += usage.total_price
 
         model_instance = self.model_instance
+        assert model_instance is not None
 
         while function_call_state and iteration_step <= max_iteration_steps:
             function_call_state = False
@@ -75,7 +76,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 # the last iteration, remove all tools
                 prompt_messages_tools = []
 
-            message_file_ids = []
+            message_file_ids: list[str] = []
             agent_thought = self.create_agent_thought(
                 message_id=message.id, message="", tool_name="", tool_input="", messages_ids=message_file_ids
             )
@@ -391,7 +392,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return prompt_messages
 
-    def _organize_user_query(self, query, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
+    def _organize_user_query(self, query: str, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
         Organize user query
         """
