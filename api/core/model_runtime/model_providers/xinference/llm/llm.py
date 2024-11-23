@@ -466,8 +466,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         client = OpenAI(
             base_url=f'{credentials["server_url"]}/v1',
             api_key=api_key,
-            max_retries=3,
-            timeout=60,
+            max_retries=int(credentials["max_retries"]),
+            timeout=int(credentials["invoke_timeout"]),
         )
 
         xinference_client = Client(
