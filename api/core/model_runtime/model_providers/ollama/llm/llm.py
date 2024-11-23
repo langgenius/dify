@@ -5,9 +5,6 @@ from collections.abc import Generator
 from decimal import Decimal
 from typing import Optional, Union, cast
 from urllib.parse import urljoin
-from core.model_runtime.utils import helper
-from openai.types.chat import ChatCompletion, ChatCompletionChunk, ChatCompletionMessageToolCall
-from openai.types.chat.chat_completion_chunk import ChoiceDeltaFunctionCall, ChoiceDeltaToolCall
 
 import requests
 
@@ -25,8 +22,8 @@ from core.model_runtime.entities.message_entities import (
     PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
+    ToolPromptMessage,
     UserPromptMessage,
-    ToolPromptMessage
 )
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -52,7 +49,6 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import (
     LargeLanguageModel,
 )
-
 
 logger = logging.getLogger(__name__)
 
@@ -91,10 +87,10 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
             credentials=credentials,
             prompt_messages=prompt_messages,
             model_parameters=model_parameters,
+            tools=tools,
             stop=stop,
             stream=stream,
             user=user,
-            tools=tools
         )
 
     def get_num_tokens(
@@ -159,10 +155,10 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
         credentials: dict,
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
+        tools: Optional[list[PromptMessageTool]] = None,
         stop: Optional[list[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
-        tools: Optional[list[PromptMessageTool]] = None
     ) -> Union[LLMResult, Generator]:
         """
         Invoke llm completion model
@@ -200,12 +196,11 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
 
         completion_type = LLMMode.value_of(credentials["mode"])
 
-        if tools and len(tools) > 0:
-            data["stream"] = False
-            data["tools"] = [{"type": "function", "function": helper.dump_model(tool)} for tool in tools]
         if completion_type is LLMMode.CHAT:
             endpoint_url = urljoin(endpoint_url, "api/chat")
             data["messages"] = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
+            if tools:
+                data["tools"] = [self._convert_prompt_message_tool_to_dict(tool) for tool in tools]
         else:
             endpoint_url = urljoin(endpoint_url, "api/generate")
             first_prompt_message = prompt_messages[0]
@@ -242,30 +237,8 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
         if stream:
             return self._handle_generate_stream_response(model, credentials, completion_type, response, prompt_messages)
 
-        return self._handle_generate_response(model, credentials, completion_type, response, prompt_messages)
+        return self._handle_generate_response(model, credentials, completion_type, response, prompt_messages, tools)
 
-    def _extract_response_tool_calls(
-        self, response_tool_calls
-    ) -> list[AssistantPromptMessage.ToolCall]:
-        """
-        Extract tool calls from response
-
-        :param response_tool_calls: response tool calls
-        :return: list of tool calls
-        """
-        tool_calls = []
-        if response_tool_calls:
-            for response_tool_call in response_tool_calls:
-                function = AssistantPromptMessage.ToolCall.ToolCallFunction(
-                    name=response_tool_call.get("function").get("name"), arguments=json.dumps(response_tool_call.get("function").get("arguments"))
-                )
-
-                tool_call = AssistantPromptMessage.ToolCall(
-                    id=response_tool_call.get("id") or "id-1", type=response_tool_call.get("type") or "", function=function
-                )
-                tool_calls.append(tool_call)
-
-        return tool_calls
     def _handle_generate_response(
         self,
         model: str,
@@ -273,6 +246,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
         completion_type: LLMMode,
         response: requests.Response,
         prompt_messages: list[PromptMessage],
+        tools: Optional[list[PromptMessageTool]],
     ) -> LLMResult:
         """
         Handle llm completion response
@@ -284,19 +258,17 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
         :param prompt_messages: prompt messages
         :return: llm result
         """
-        tool_calls = []
         response_json = response.json()
-
+        tool_calls = []
         if completion_type is LLMMode.CHAT:
             message = response_json.get("message", {})
             response_content = message.get("content", "")
-            tool_calls = message.get("tool_calls")
+            response_tool_calls = message.get("tool_calls", [])
+            tool_calls = [self._extract_response_tool_call(tool_call) for tool_call in response_tool_calls]
         else:
             response_content = response_json["response"]
 
-        assistant_prompt_message_tool_calls = self._extract_response_tool_calls(tool_calls or [])
-
-        assistant_message = AssistantPromptMessage(content=response_content, tool_calls = assistant_prompt_message_tool_calls)
+        assistant_message = AssistantPromptMessage(content=response_content, tool_calls=tool_calls)
 
         if "prompt_eval_count" in response_json and "eval_count" in response_json:
             # transform usage
@@ -441,9 +413,28 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
 
             chunk_index += 1
 
+    def _convert_prompt_message_tool_to_dict(self, tool: PromptMessageTool) -> dict:
+        """
+        Convert PromptMessageTool to dict for Ollama API
+
+        :param tool: tool
+        :return: tool dict
+        """
+        return {
+            "type": "function",
+            "function": {
+                "name": tool.name,
+                "description": tool.description,
+                "parameters": tool.parameters,
+            },
+        }
+
     def _convert_prompt_message_to_dict(self, message: PromptMessage) -> dict:
         """
         Convert PromptMessage to dict for Ollama API
+
+        :param message: prompt message
+        :return: message dict
         """
         if isinstance(message, UserPromptMessage):
             message = cast(UserPromptMessage, message)
@@ -470,7 +461,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
             message_dict = {"role": "system", "content": message.content}
         elif isinstance(message, ToolPromptMessage):
             message = cast(ToolPromptMessage, message)
-            message_dict = {"tool_call_id": message.tool_call_id, "role": "tool", "content": message.content, "name": message.name}
+            message_dict = {"role": "tool", "content": message.content}
         else:
             raise ValueError(f"Got unknown type {message}")
 
@@ -491,6 +482,29 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
 
         return num_tokens
 
+    def _extract_response_tool_call(self, response_tool_call: dict) -> AssistantPromptMessage.ToolCall:
+        """
+        Extract response tool call
+        """
+        tool_call = None
+        if response_tool_call and "function" in response_tool_call:
+            # Convert arguments to JSON string if it's a dict
+            arguments = response_tool_call.get("function").get("arguments")
+            if isinstance(arguments, dict):
+                arguments = json.dumps(arguments)
+
+            function = AssistantPromptMessage.ToolCall.ToolCallFunction(
+                name=response_tool_call.get("function").get("name"),
+                arguments=arguments,
+            )
+            tool_call = AssistantPromptMessage.ToolCall(
+                id=response_tool_call.get("function").get("name"),
+                type="function",
+                function=function,
+            )
+
+        return tool_call
+
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
         """
         Get customizable model schema.
@@ -500,14 +514,16 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
 
         :return: model schema
         """
-        extras = {}
+        extras = {
+            "features": [],
+        }
 
         if "vision_support" in credentials and credentials["vision_support"] == "true":
-            extras["features"] = [ModelFeature.VISION]
-        if extras.get("features") is None:
-            extras["features"] = [ModelFeature.TOOL_CALL]
-        else:
-            extras["features"].extend([ModelFeature.TOOL_CALL])
+            extras["features"].append(ModelFeature.VISION)
+        if "function_call_support" in credentials and credentials["function_call_support"] == "true":
+            extras["features"].append(ModelFeature.TOOL_CALL)
+            extras["features"].append(ModelFeature.MULTI_TOOL_CALL)
+
         entity = AIModelEntity(
             model=model,
             label=I18nObject(zh_Hans=model, en_US=model),

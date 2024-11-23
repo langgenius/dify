@@ -242,7 +242,7 @@ class ToolTransformService:
             # get tool parameters
             parameters = tool.parameters or []
             # get tool runtime parameters
-            runtime_parameters = tool.get_runtime_parameters() or []
+            runtime_parameters = tool.get_runtime_parameters()
             # override parameters
             current_parameters = parameters.copy()
             for runtime_parameter in runtime_parameters:

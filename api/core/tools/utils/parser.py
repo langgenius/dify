@@ -161,6 +161,9 @@ class ApiBasedToolSchemaParser:
     def _get_tool_parameter_type(parameter: dict) -> ToolParameter.ToolParameterType:
         parameter = parameter or {}
         typ = None
+        if parameter.get("format") == "binary":
+            return ToolParameter.ToolParameterType.FILE
+
         if "type" in parameter:
             typ = parameter["type"]
         elif "schema" in parameter and "type" in parameter["schema"]:

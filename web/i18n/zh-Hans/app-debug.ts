@@ -218,6 +218,10 @@ const translation = {
       enableText: '功能已开启',
       manage: '管理',
     },
+    documentUpload: {
+      title: '文档',
+      description: '启用文档后，模型可以接收文档并回答关于它们的问题。',
+    },
   },
   codegen: {
     title: '代码生成器',

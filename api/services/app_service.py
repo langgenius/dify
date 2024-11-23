@@ -155,7 +155,7 @@ class AppService:
         """
         # get original app model config
         if app.mode == AppMode.AGENT_CHAT.value or app.is_agent:
-            model_config: AppModelConfig = app.app_model_config
+            model_config = app.app_model_config
             agent_mode = model_config.agent_mode_dict
             # decrypt agent tool parameters if it's secret-input
             for tool in agent_mode.get("tools") or []:
@@ -341,7 +341,7 @@ class AppService:
             if not app_model_config:
                 return meta
 
-            agent_config = app_model_config.agent_mode_dict or {}
+            agent_config = app_model_config.agent_mode_dict
 
             # get all tools
             tools = agent_config.get("tools", [])

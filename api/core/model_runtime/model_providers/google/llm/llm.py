@@ -16,6 +16,7 @@ from PIL import Image
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    DocumentPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
@@ -34,6 +35,21 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+
+GOOGLE_AVAILABLE_MIMETYPE = [
+    "application/pdf",
+    "application/x-javascript",
+    "text/javascript",
+    "application/x-python",
+    "text/x-python",
+    "text/plain",
+    "text/html",
+    "text/css",
+    "text/md",
+    "text/csv",
+    "text/xml",
+    "text/rtf",
+]
 
 
 class GoogleLargeLanguageModel(LargeLanguageModel):
@@ -369,6 +385,12 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                             except Exception as ex:
                                 raise ValueError(f"Failed to fetch image data from url {message_content.data}, {ex}")
                         blob = {"inline_data": {"mime_type": mime_type, "data": base64_data}}
+                        glm_content["parts"].append(blob)
+                    elif c.type == PromptMessageContentType.DOCUMENT:
+                        message_content = cast(DocumentPromptMessageContent, c)
+                        if message_content.mime_type not in GOOGLE_AVAILABLE_MIMETYPE:
+                            raise ValueError(f"Unsupported mime type {message_content.mime_type}")
+                        blob = {"inline_data": {"mime_type": message_content.mime_type, "data": message_content.data}}
                         glm_content["parts"].append(blob)
 
             return glm_content
