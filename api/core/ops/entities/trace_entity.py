@@ -21,8 +21,12 @@ class BaseTraceInfo(BaseModel):
             return None
         if isinstance(v, str | dict | list):
             return v
-        else:
-            return ""
+        return ""
+
+    class Config:
+        json_encoders = {
+            datetime: lambda v: v.isoformat(),
+        }
 
 
 class WorkflowTraceInfo(BaseTraceInfo):
@@ -99,6 +103,12 @@ class ToolTraceInfo(BaseTraceInfo):
 class GenerateNameTraceInfo(BaseTraceInfo):
     conversation_id: Optional[str] = None
     tenant_id: str
+
+
+class TaskData(BaseModel):
+    app_id: str
+    trace_info_type: str
+    trace_info: Any
 
 
 trace_info_info_map = {

@@ -8,18 +8,27 @@ from core.app.app_config.entities import DatasetRetrieveConfigEntity
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.entities.agent_entities import PlanningStrategy
 from core.entities.model_entities import ModelStatus
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
+from core.variables import StringSegment
+from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.enums import NodeType
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 from models.workflow import WorkflowNodeExecutionStatus
+
+from .entities import KnowledgeRetrievalNodeData
+from .exc import (
+    KnowledgeRetrievalNodeError,
+    ModelCredentialsNotInitializedError,
+    ModelNotExistError,
+    ModelNotSupportedError,
+    ModelQuotaExceededError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,16 +41,20 @@ default_retrieval_model = {
 }
 
 
-class KnowledgeRetrievalNode(BaseNode):
+class KnowledgeRetrievalNode(BaseNode[KnowledgeRetrievalNodeData]):
     _node_data_cls = KnowledgeRetrievalNodeData
-    node_type = NodeType.KNOWLEDGE_RETRIEVAL
+    _node_type = NodeType.KNOWLEDGE_RETRIEVAL
 
     def _run(self) -> NodeRunResult:
-        node_data = cast(KnowledgeRetrievalNodeData, self.node_data)
-
         # extract variables
-        variable = self.graph_runtime_state.variable_pool.get_any(node_data.query_variable_selector)
-        query = variable
+        variable = self.graph_runtime_state.variable_pool.get(self.node_data.query_variable_selector)
+        if not isinstance(variable, StringSegment):
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                inputs={},
+                error="Query variable is not string type.",
+            )
+        query = variable.value
         variables = {"query": query}
         if not query:
             return NodeRunResult(
@@ -49,14 +62,14 @@ class KnowledgeRetrievalNode(BaseNode):
             )
         # retrieve knowledge
         try:
-            results = self._fetch_dataset_retriever(node_data=node_data, query=query)
+            results = self._fetch_dataset_retriever(node_data=self.node_data, query=query)
             outputs = {"result": results}
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, process_data=None, outputs=outputs
             )
 
-        except Exception as e:
-            logger.exception("Error when running knowledge retrieval node")
+        except KnowledgeRetrievalNodeError as e:
+            logger.warning("Error when running knowledge retrieval node")
             return NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e))
 
     def _fetch_dataset_retriever(self, node_data: KnowledgeRetrievalNodeData, query: str) -> list[dict[str, Any]]:
@@ -79,8 +92,9 @@ class KnowledgeRetrievalNode(BaseNode):
 
         results = (
             db.session.query(Dataset)
-            .join(subquery, Dataset.id == subquery.c.dataset_id)
+            .outerjoin(subquery, Dataset.id == subquery.c.dataset_id)
             .filter(Dataset.tenant_id == self.tenant_id, Dataset.id.in_(dataset_ids))
+            .filter((subquery.c.available_document_count > 0) | (Dataset.provider == "external"))
             .all()
         )
 
@@ -121,10 +135,13 @@ class KnowledgeRetrievalNode(BaseNode):
                 )
         elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value:
             if node_data.multiple_retrieval_config.reranking_mode == "reranking_model":
-                reranking_model = {
-                    "reranking_provider_name": node_data.multiple_retrieval_config.reranking_model.provider,
-                    "reranking_model_name": node_data.multiple_retrieval_config.reranking_model.model,
-                }
+                if node_data.multiple_retrieval_config.reranking_model:
+                    reranking_model = {
+                        "reranking_provider_name": node_data.multiple_retrieval_config.reranking_model.provider,
+                        "reranking_model_name": node_data.multiple_retrieval_config.reranking_model.model,
+                    }
+                else:
+                    reranking_model = None
                 weights = None
             elif node_data.multiple_retrieval_config.reranking_mode == "weighted_score":
                 reranking_model = None
@@ -156,16 +173,34 @@ class KnowledgeRetrievalNode(BaseNode):
                 weights,
                 node_data.multiple_retrieval_config.reranking_enable,
             )
-
-        context_list = []
-        if all_documents:
+        dify_documents = [item for item in all_documents if item.provider == "dify"]
+        external_documents = [item for item in all_documents if item.provider == "external"]
+        retrieval_resource_list = []
+        # deal with external documents
+        for item in external_documents:
+            source = {
+                "metadata": {
+                    "_source": "knowledge",
+                    "dataset_id": item.metadata.get("dataset_id"),
+                    "dataset_name": item.metadata.get("dataset_name"),
+                    "document_name": item.metadata.get("title"),
+                    "data_source_type": "external",
+                    "retriever_from": "workflow",
+                    "score": item.metadata.get("score"),
+                },
+                "title": item.metadata.get("title"),
+                "content": item.page_content,
+            }
+            retrieval_resource_list.append(source)
+        document_score_list = {}
+        # deal with dify documents
+        if dify_documents:
             document_score_list = {}
-            page_number_list = {}
-            for item in all_documents:
+            for item in dify_documents:
                 if item.metadata.get("score"):
                     document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
 
-            index_node_ids = [document.metadata["doc_id"] for document in all_documents]
+            index_node_ids = [document.metadata["doc_id"] for document in dify_documents]
             segments = DocumentSegment.query.filter(
                 DocumentSegment.dataset_id.in_(dataset_ids),
                 DocumentSegment.completed_at.isnot(None),
@@ -186,13 +221,10 @@ class KnowledgeRetrievalNode(BaseNode):
                         Document.enabled == True,
                         Document.archived == False,
                     ).first()
-
-                    resource_number = 1
                     if dataset and document:
                         source = {
                             "metadata": {
                                 "_source": "knowledge",
-                                "position": resource_number,
                                 "dataset_id": dataset.id,
                                 "dataset_name": dataset.name,
                                 "document_id": document.id,
@@ -212,13 +244,24 @@ class KnowledgeRetrievalNode(BaseNode):
                             source["content"] = f"question:{segment.get_sign_content()} \nanswer:{segment.answer}"
                         else:
                             source["content"] = segment.get_sign_content()
-                        context_list.append(source)
-                        resource_number += 1
-        return context_list
+                        retrieval_resource_list.append(source)
+        if retrieval_resource_list:
+            retrieval_resource_list = sorted(
+                retrieval_resource_list, key=lambda x: x.get("metadata").get("score") or 0.0, reverse=True
+            )
+            position = 1
+            for item in retrieval_resource_list:
+                item["metadata"]["position"] = position
+                position += 1
+        return retrieval_resource_list
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, graph_config: Mapping[str, Any], node_id: str, node_data: KnowledgeRetrievalNodeData
+        cls,
+        *,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: KnowledgeRetrievalNodeData,
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -259,14 +302,14 @@ class KnowledgeRetrievalNode(BaseNode):
         )
 
         if provider_model is None:
-            raise ValueError(f"Model {model_name} not exist.")
+            raise ModelNotExistError(f"Model {model_name} not exist.")
 
         if provider_model.status == ModelStatus.NO_CONFIGURE:
-            raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
+            raise ModelCredentialsNotInitializedError(f"Model {model_name} credentials is not initialized.")
         elif provider_model.status == ModelStatus.NO_PERMISSION:
-            raise ModelCurrentlyNotSupportError(f"Dify Hosted OpenAI {model_name} currently not support.")
+            raise ModelNotSupportedError(f"Dify Hosted OpenAI {model_name} currently not support.")
         elif provider_model.status == ModelStatus.QUOTA_EXCEEDED:
-            raise QuotaExceededError(f"Model provider {provider_name} quota exceeded.")
+            raise ModelQuotaExceededError(f"Model provider {provider_name} quota exceeded.")
 
         # model config
         completion_params = node_data.single_retrieval_config.model.completion_params
@@ -278,12 +321,12 @@ class KnowledgeRetrievalNode(BaseNode):
         # get model mode
         model_mode = node_data.single_retrieval_config.model.mode
         if not model_mode:
-            raise ValueError("LLM mode is required.")
+            raise ModelNotExistError("LLM mode is required.")
 
         model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
 
         if not model_schema:
-            raise ValueError(f"Model {model_name} not exist.")
+            raise ModelNotExistError(f"Model {model_name} not exist.")
 
         return model_instance, ModelConfigWithCredentialsEntity(
             provider=provider_name,

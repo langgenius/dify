@@ -1,4 +1,5 @@
 import json
+from typing import Optional
 
 from core.agent.cot_agent_runner import CotAgentRunner
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessage, UserPromptMessage
@@ -21,7 +22,7 @@ class CotCompletionAgentRunner(CotAgentRunner):
 
         return system_prompt
 
-    def _organize_historic_prompt(self, current_session_messages: list[PromptMessage] = None) -> str:
+    def _organize_historic_prompt(self, current_session_messages: Optional[list[PromptMessage]] = None) -> str:
         """
         Organize historic prompt
         """

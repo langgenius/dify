@@ -77,7 +77,7 @@ class SageMakerText2SpeechModel(TTSModel):
         """
         pass
 
-    def _detect_lang_code(self, content: str, map_dict: dict = None):
+    def _detect_lang_code(self, content: str, map_dict: Optional[dict] = None):
         map_dict = {"zh": "<|zh|>", "en": "<|en|>", "ja": "<|jp|>", "zh-TW": "<|yue|>", "ko": "<|ko|>"}
 
         response = self.comprehend_client.detect_dominant_language(Text=content)
@@ -159,7 +159,7 @@ class SageMakerText2SpeechModel(TTSModel):
 
         return self._tts_invoke_streaming(model_type, payload, sagemaker_endpoint)
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """
@@ -192,7 +192,7 @@ class SageMakerText2SpeechModel(TTSModel):
             InvokeBadRequestError: [InvokeBadRequestError, KeyError, ValueError],
         }
 
-    def _get_model_default_voice(self, model: str, credentials: dict) -> any:
+    def _get_model_default_voice(self, model: str, credentials: dict) -> Any:
         return ""
 
     def _get_model_word_limit(self, model: str, credentials: dict) -> int:
@@ -225,7 +225,7 @@ class SageMakerText2SpeechModel(TTSModel):
         json_obj = json.loads(json_str)
         return json_obj
 
-    def _tts_invoke_streaming(self, model_type: str, payload: dict, sagemaker_endpoint: str) -> any:
+    def _tts_invoke_streaming(self, model_type: str, payload: dict, sagemaker_endpoint: str) -> Any:
         """
         _tts_invoke_streaming text2speech model
 

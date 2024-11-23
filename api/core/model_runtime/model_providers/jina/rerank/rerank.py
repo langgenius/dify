@@ -55,17 +55,26 @@ class JinaRerankModel(RerankModel):
                 base_url + "/rerank",
                 json={"model": model, "query": query, "documents": docs, "top_n": top_n},
                 headers={"Authorization": f"Bearer {credentials.get('api_key')}"},
+                timeout=20,
             )
             response.raise_for_status()
             results = response.json()
 
             rerank_documents = []
             for result in results["results"]:
+                index = result["index"]
+                if "document" in result:
+                    text = result["document"]["text"]
+                else:
+                    # llama.cpp rerank maynot return original documents
+                    text = docs[index]
+
                 rerank_document = RerankDocument(
-                    index=result["index"],
-                    text=result["document"]["text"],
+                    index=index,
+                    text=text,
                     score=result["relevance_score"],
                 )
+
                 if score_threshold is None or result["relevance_score"] >= score_threshold:
                     rerank_documents.append(rerank_document)
 

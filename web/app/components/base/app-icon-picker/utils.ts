@@ -11,6 +11,23 @@ export function getRadianAngle(degreeValue: number) {
   return (degreeValue * Math.PI) / 180
 }
 
+export function getMimeType(fileName: string): string {
+  const extension = fileName.split('.').pop()?.toLowerCase()
+  switch (extension) {
+    case 'png':
+      return 'image/png'
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg'
+    case 'gif':
+      return 'image/gif'
+    case 'webp':
+      return 'image/webp'
+    default:
+      return 'image/jpeg'
+  }
+}
+
 /**
  * Returns the new bounding area of a rotated rectangle.
  */
@@ -31,12 +48,14 @@ export function rotateSize(width: number, height: number, rotation: number) {
 export default async function getCroppedImg(
   imageSrc: string,
   pixelCrop: { x: number; y: number; width: number; height: number },
+  fileName: string,
   rotation = 0,
   flip = { horizontal: false, vertical: false },
 ): Promise<Blob> {
   const image = await createImage(imageSrc)
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
+  const mimeType = getMimeType(fileName)
 
   if (!ctx)
     throw new Error('Could not create a canvas context')
@@ -93,6 +112,55 @@ export default async function getCroppedImg(
         resolve(file)
       else
         reject(new Error('Could not create a blob'))
-    }, 'image/jpeg')
+    }, mimeType)
   })
+}
+
+export function checkIsAnimatedImage(file) {
+  return new Promise((resolve, reject) => {
+    const fileReader = new FileReader()
+
+    fileReader.onload = function (e) {
+      const arr = new Uint8Array(e.target.result)
+
+      // Check file extension
+      const fileName = file.name.toLowerCase()
+      if (fileName.endsWith('.gif')) {
+        // If file is a GIF, assume it's animated
+        resolve(true)
+      }
+      // Check for WebP signature (RIFF and WEBP)
+      else if (isWebP(arr)) {
+        resolve(checkWebPAnimation(arr)) // Check if it's animated
+      }
+      else {
+        resolve(false) // Not a GIF or WebP
+      }
+    }
+
+    fileReader.onerror = function (err) {
+      reject(err) // Reject the promise on error
+    }
+
+    // Read the file as an array buffer
+    fileReader.readAsArrayBuffer(file)
+  })
+}
+
+// Function to check for WebP signature
+function isWebP(arr) {
+  return (
+    arr[0] === 0x52 && arr[1] === 0x49 && arr[2] === 0x46 && arr[3] === 0x46
+    && arr[8] === 0x57 && arr[9] === 0x45 && arr[10] === 0x42 && arr[11] === 0x50
+  ) // "WEBP"
+}
+
+// Function to check if the WebP is animated (contains ANIM chunk)
+function checkWebPAnimation(arr) {
+  // Search for the ANIM chunk in WebP to determine if it's animated
+  for (let i = 12; i < arr.length - 4; i++) {
+    if (arr[i] === 0x41 && arr[i + 1] === 0x4E && arr[i + 2] === 0x49 && arr[i + 3] === 0x4D)
+      return true // Found animation
+  }
+  return false // No animation chunk found
 }

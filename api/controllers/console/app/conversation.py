@@ -10,8 +10,7 @@ from werkzeug.exceptions import Forbidden, NotFound
 
 from controllers.console import api
 from controllers.console.app.wraps import get_app_model
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
@@ -22,7 +21,8 @@ from fields.conversation_fields import (
 )
 from libs.helper import DatetimeString
 from libs.login import login_required
-from models.model import AppMode, Conversation, EndUser, Message, MessageAnnotation
+from models import Conversation, EndUser, Message, MessageAnnotation
+from models.model import AppMode
 
 
 class CompletionConversationApi(Resource):
@@ -188,6 +188,7 @@ class ChatConversationApi(Resource):
                         subquery.c.from_end_user_session_id.ilike(keyword_filter),
                     ),
                 )
+                .group_by(Conversation.id)
             )
 
         account = current_user

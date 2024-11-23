@@ -10,8 +10,7 @@ from models.dataset import Dataset
 from models.model import ApiToken, App
 
 from . import api
-from .setup import setup_required
-from .wraps import account_initialization_required
+from .wraps import account_initialization_required, setup_required
 
 api_key_fields = {
     "id": fields.String,

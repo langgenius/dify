@@ -38,6 +38,7 @@ class Dataset(db.Model):
     )
 
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
+    PROVIDER_LIST = ["vendor", "external", None]
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
@@ -70,6 +71,14 @@ class Dataset(db.Model):
     @property
     def index_struct_dict(self):
         return json.loads(self.index_struct) if self.index_struct else None
+
+    @property
+    def external_retrieval_model(self):
+        default_retrieval_model = {
+            "top_k": 2,
+            "score_threshold": 0.0,
+        }
+        return self.retrieval_model or default_retrieval_model
 
     @property
     def created_by_account(self):
@@ -161,6 +170,29 @@ class Dataset(db.Model):
         )
 
         return tags or []
+
+    @property
+    def external_knowledge_info(self):
+        if self.provider != "external":
+            return None
+        external_knowledge_binding = (
+            db.session.query(ExternalKnowledgeBindings).filter(ExternalKnowledgeBindings.dataset_id == self.id).first()
+        )
+        if not external_knowledge_binding:
+            return None
+        external_knowledge_api = (
+            db.session.query(ExternalKnowledgeApis)
+            .filter(ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id)
+            .first()
+        )
+        if not external_knowledge_api:
+            return None
+        return {
+            "external_knowledge_id": external_knowledge_binding.external_knowledge_id,
+            "external_knowledge_api_id": external_knowledge_api.id,
+            "external_knowledge_api_name": external_knowledge_api.name,
+            "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", ""),
+        }
 
     @staticmethod
     def gen_collection_name_by_id(dataset_id: str) -> str:
@@ -528,15 +560,33 @@ class DocumentSegment(db.Model):
         )
 
     def get_sign_content(self):
-        pattern = r"/files/([a-f0-9\-]+)/image-preview"
-        text = self.content
-        matches = re.finditer(pattern, text)
         signed_urls = []
+        text = self.content
+
+        # For data before v0.10.0
+        pattern = r"/files/([a-f0-9\-]+)/image-preview"
+        matches = re.finditer(pattern, text)
         for match in matches:
             upload_file_id = match.group(1)
             nonce = os.urandom(16).hex()
             timestamp = str(int(time.time()))
             data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
+            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
+            sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
+            encoded_sign = base64.urlsafe_b64encode(sign).decode()
+
+            params = f"timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
+            signed_url = f"{match.group(0)}?{params}"
+            signed_urls.append((match.start(), match.end(), signed_url))
+
+        # For data after v0.10.0
+        pattern = r"/files/([a-f0-9\-]+)/file-preview"
+        matches = re.finditer(pattern, text)
+        for match in matches:
+            upload_file_id = match.group(1)
+            nonce = os.urandom(16).hex()
+            timestamp = str(int(time.time()))
+            data_to_sign = f"file-preview|{upload_file_id}|{timestamp}|{nonce}"
             secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
             sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
@@ -629,7 +679,7 @@ class DatasetKeywordTable(db.Model):
                     return json.loads(keyword_table_text.decode("utf-8"), cls=SetDecoder)
                 return None
             except Exception as e:
-                logging.exception(str(e))
+                logging.exception(f"Failed to load keyword table from file: {file_key}")
                 return None
 
 
@@ -672,6 +722,38 @@ class DatasetCollectionBinding(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
+class TidbAuthBinding(db.Model):
+    __tablename__ = "tidb_auth_bindings"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="tidb_auth_bindings_pkey"),
+        db.Index("tidb_auth_bindings_tenant_idx", "tenant_id"),
+        db.Index("tidb_auth_bindings_active_idx", "active"),
+        db.Index("tidb_auth_bindings_created_at_idx", "created_at"),
+        db.Index("tidb_auth_bindings_status_idx", "status"),
+    )
+    id = db.Column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=True)
+    cluster_id = db.Column(db.String(255), nullable=False)
+    cluster_name = db.Column(db.String(255), nullable=False)
+    active = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    status = db.Column(db.String(255), nullable=False, server_default=db.text("CREATING"))
+    account = db.Column(db.String(255), nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+
+class Whitelist(db.Model):
+    __tablename__ = "whitelists"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="whitelists_pkey"),
+        db.Index("whitelists_tenant_idx", "tenant_id"),
+    )
+    id = db.Column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=True)
+    category = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+
 class DatasetPermission(db.Model):
     __tablename__ = "dataset_permissions"
     __table_args__ = (
@@ -687,3 +769,77 @@ class DatasetPermission(db.Model):
     tenant_id = db.Column(StringUUID, nullable=False)
     has_permission = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+
+class ExternalKnowledgeApis(db.Model):
+    __tablename__ = "external_knowledge_apis"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="external_knowledge_apis_pkey"),
+        db.Index("external_knowledge_apis_tenant_idx", "tenant_id"),
+        db.Index("external_knowledge_apis_name_idx", "name"),
+    )
+
+    id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.String(255), nullable=False)
+    tenant_id = db.Column(StringUUID, nullable=False)
+    settings = db.Column(db.Text, nullable=True)
+    created_by = db.Column(StringUUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_by = db.Column(StringUUID, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "tenant_id": self.tenant_id,
+            "name": self.name,
+            "description": self.description,
+            "settings": self.settings_dict,
+            "dataset_bindings": self.dataset_bindings,
+            "created_by": self.created_by,
+            "created_at": self.created_at.isoformat(),
+        }
+
+    @property
+    def settings_dict(self):
+        try:
+            return json.loads(self.settings) if self.settings else None
+        except JSONDecodeError:
+            return None
+
+    @property
+    def dataset_bindings(self):
+        external_knowledge_bindings = (
+            db.session.query(ExternalKnowledgeBindings)
+            .filter(ExternalKnowledgeBindings.external_knowledge_api_id == self.id)
+            .all()
+        )
+        dataset_ids = [binding.dataset_id for binding in external_knowledge_bindings]
+        datasets = db.session.query(Dataset).filter(Dataset.id.in_(dataset_ids)).all()
+        dataset_bindings = []
+        for dataset in datasets:
+            dataset_bindings.append({"id": dataset.id, "name": dataset.name})
+
+        return dataset_bindings
+
+
+class ExternalKnowledgeBindings(db.Model):
+    __tablename__ = "external_knowledge_bindings"
+    __table_args__ = (
+        db.PrimaryKeyConstraint("id", name="external_knowledge_bindings_pkey"),
+        db.Index("external_knowledge_bindings_tenant_idx", "tenant_id"),
+        db.Index("external_knowledge_bindings_dataset_idx", "dataset_id"),
+        db.Index("external_knowledge_bindings_external_knowledge_idx", "external_knowledge_id"),
+        db.Index("external_knowledge_bindings_external_knowledge_api_idx", "external_knowledge_api_id"),
+    )
+
+    id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    external_knowledge_api_id = db.Column(StringUUID, nullable=False)
+    dataset_id = db.Column(StringUUID, nullable=False)
+    external_knowledge_id = db.Column(db.Text, nullable=False)
+    created_by = db.Column(StringUUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_by = db.Column(StringUUID, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))

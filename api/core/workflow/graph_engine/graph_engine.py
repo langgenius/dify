@@ -4,17 +4,14 @@ import time
 import uuid
 from collections.abc import Generator, Mapping
 from concurrent.futures import ThreadPoolExecutor, wait
+from copy import copy, deepcopy
 from typing import Any, Optional
 
 from flask import Flask, current_app
 
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import (
-    NodeRunMetadataKey,
-    NodeType,
-    UserFrom,
-)
+from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
 from core.workflow.graph_engine.entities.event import (
@@ -36,12 +33,14 @@ from core.workflow.graph_engine.entities.graph import Graph, GraphEdge
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
+from core.workflow.nodes import NodeType
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
-from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
-from core.workflow.nodes.node_mapping import node_classes
+from core.workflow.nodes.node_mapping import node_type_classes_mapping
 from extensions.ext_database import db
+from models.enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 
 logger = logging.getLogger(__name__)
@@ -60,6 +59,9 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
         self.check_is_full()
 
         return super().submit(fn, *args, **kwargs)
+
+    def task_done_callback(self, future):
+        self.submit_count -= 1
 
     def check_is_full(self) -> None:
         print(f"submit_count: {self.submit_count}, max_submit_count: {self.max_submit_count}")
@@ -129,15 +131,14 @@ class GraphEngine:
         yield GraphRunStartedEvent()
 
         try:
-            stream_processor_cls: type[AnswerStreamProcessor | EndStreamProcessor]
             if self.init_params.workflow_type == WorkflowType.CHAT:
-                stream_processor_cls = AnswerStreamProcessor
+                stream_processor = AnswerStreamProcessor(
+                    graph=self.graph, variable_pool=self.graph_runtime_state.variable_pool
+                )
             else:
-                stream_processor_cls = EndStreamProcessor
-
-            stream_processor = stream_processor_cls(
-                graph=self.graph, variable_pool=self.graph_runtime_state.variable_pool
-            )
+                stream_processor = EndStreamProcessor(
+                    graph=self.graph, variable_pool=self.graph_runtime_state.variable_pool
+                )
 
             # run graph
             generator = stream_processor.process(self._run(start_node_id=self.graph.root_node_id))
@@ -171,22 +172,26 @@ class GraphEngine:
                                 "answer"
                             ].strip()
                 except Exception as e:
-                    logger.exception(f"Graph run failed: {str(e)}")
+                    logger.exception("Graph run failed")
                     yield GraphRunFailedEvent(error=str(e))
                     return
 
             # trigger graph run success event
             yield GraphRunSucceededEvent(outputs=self.graph_runtime_state.outputs)
+            self._release_thread()
         except GraphRunFailedError as e:
             yield GraphRunFailedEvent(error=e.error)
+            self._release_thread()
             return
         except Exception as e:
             logger.exception("Unknown Error when graph running")
             yield GraphRunFailedEvent(error=str(e))
+            self._release_thread()
             raise e
-        finally:
-            if self.is_main_thread_pool and self.thread_pool_id in GraphEngine.workflow_thread_pool_mapping:
-                del GraphEngine.workflow_thread_pool_mapping[self.thread_pool_id]
+
+    def _release_thread(self):
+        if self.is_main_thread_pool and self.thread_pool_id in GraphEngine.workflow_thread_pool_mapping:
+            del GraphEngine.workflow_thread_pool_mapping[self.thread_pool_id]
 
     def _run(
         self,
@@ -222,10 +227,8 @@ class GraphEngine:
                 raise GraphRunFailedError(f"Node {node_id} config not found.")
 
             # convert to specific node
-            node_type = NodeType.value_of(node_config.get("data", {}).get("type"))
-            node_cls = node_classes.get(node_type)
-            if not node_cls:
-                raise GraphRunFailedError(f"Node {node_id} type {node_type} not found.")
+            node_type = NodeType(node_config.get("data", {}).get("type"))
+            node_cls = node_type_classes_mapping[node_type]
 
             previous_node_id = previous_route_node_state.node_id if previous_route_node_state else None
 
@@ -426,19 +429,21 @@ class GraphEngine:
             ):
                 continue
 
-            futures.append(
-                self.thread_pool.submit(
-                    self._run_parallel_node,
-                    **{
-                        "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
-                        "q": q,
-                        "parallel_id": parallel_id,
-                        "parallel_start_node_id": edge.target_node_id,
-                        "parent_parallel_id": in_parallel_id,
-                        "parent_parallel_start_node_id": parallel_start_node_id,
-                    },
-                )
+            future = self.thread_pool.submit(
+                self._run_parallel_node,
+                **{
+                    "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
+                    "q": q,
+                    "parallel_id": parallel_id,
+                    "parallel_start_node_id": edge.target_node_id,
+                    "parent_parallel_id": in_parallel_id,
+                    "parent_parallel_start_node_id": parallel_start_node_id,
+                },
             )
+
+            future.add_done_callback(self.thread_pool.task_done_callback)
+
+            futures.append(future)
 
         succeeded_count = 0
         while True:
@@ -687,7 +692,7 @@ class GraphEngine:
             )
             return
         except Exception as e:
-            logger.exception(f"Node {node_instance.node_data.title} run failed: {str(e)}")
+            logger.exception(f"Node {node_instance.node_data.title} run failed")
             raise e
         finally:
             db.session.close()
@@ -719,6 +724,16 @@ class GraphEngine:
         :return:
         """
         return time.perf_counter() - start_at > max_execution_time
+
+    def create_copy(self):
+        """
+        create a graph engine copy
+        :return: with a new variable pool instance of graph engine
+        """
+        new_instance = copy(self)
+        new_instance.graph_runtime_state = copy(self.graph_runtime_state)
+        new_instance.graph_runtime_state.variable_pool = deepcopy(self.graph_runtime_state.variable_pool)
+        return new_instance
 
 
 class GraphRunFailedError(Exception):

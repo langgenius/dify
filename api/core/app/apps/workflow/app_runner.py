@@ -1,21 +1,20 @@
 import logging
-import os
 from typing import Optional, cast
 
+from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
-from core.app.apps.workflow_logging_callback import WorkflowLoggingCallback
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     WorkflowAppGenerateEntity,
 )
-from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
-from core.workflow.entities.node_entities import UserFrom
+from core.workflow.callbacks import WorkflowCallback, WorkflowLoggingCallback
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
+from models.enums import UserFrom
 from models.model import App, EndUser
 from models.workflow import WorkflowType
 
@@ -71,7 +70,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         db.session.close()
 
         workflow_callbacks: list[WorkflowCallback] = []
-        if bool(os.environ.get("DEBUG", "False").lower() == "true"):
+        if dify_config.DEBUG:
             workflow_callbacks.append(WorkflowLoggingCallback())
 
         # if only single iteration run is requested
@@ -90,6 +89,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             system_inputs = {
                 SystemVariableKey.FILES: files,
                 SystemVariableKey.USER_ID: user_id,
+                SystemVariableKey.APP_ID: app_config.app_id,
+                SystemVariableKey.WORKFLOW_ID: app_config.workflow_id,
+                SystemVariableKey.WORKFLOW_RUN_ID: self.application_generate_entity.workflow_run_id,
             }
 
             variable_pool = VariablePool(

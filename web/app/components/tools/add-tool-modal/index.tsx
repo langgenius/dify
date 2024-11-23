@@ -15,11 +15,10 @@ import Category from './category'
 import Tools from './tools'
 import cn from '@/utils/classnames'
 import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n/language'
 import Drawer from '@/app/components/base/drawer'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import SearchInput from '@/app/components/base/search-input'
+import Input from '@/app/components/base/input'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import {
@@ -44,12 +43,14 @@ const AddToolModal: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const language = getLanguage(locale)
   const [currentType, setCurrentType] = useState('builtin')
   const [currentCategory, setCurrentCategory] = useState('')
   const [keywords, setKeywords] = useState<string>('')
   const handleKeywordsChange = (value: string) => {
     setKeywords(value)
+  }
+  const isMatchingKeywords = (text: string, keywords: string) => {
+    return text.toLowerCase().includes(keywords.toLowerCase())
   }
   const [toolList, setToolList] = useState<ToolWithProvider[]>([])
   const [listLoading, setListLoading] = useState(true)
@@ -82,13 +83,16 @@ const AddToolModal: FC<Props> = ({
       else
         return toolWithProvider.labels.includes(currentCategory)
     }).filter((toolWithProvider) => {
-      return toolWithProvider.tools.some((tool) => {
-        return Object.values(tool.label).some((label) => {
-          return label.toLowerCase().includes(keywords.toLowerCase())
+      return (
+        isMatchingKeywords(toolWithProvider.name, keywords)
+        || toolWithProvider.tools.some((tool) => {
+          return Object.values(tool.label).some((label) => {
+            return isMatchingKeywords(label, keywords)
+          })
         })
-      })
+      )
     })
-  }, [currentType, currentCategory, toolList, keywords, language])
+  }, [currentType, currentCategory, toolList, keywords])
 
   const {
     modelConfig,
@@ -193,7 +197,13 @@ const AddToolModal: FC<Props> = ({
           <div className='relative grow bg-white rounded-r-xl overflow-y-auto'>
             <div className='z-10 sticky top-0 left-0 right-0 p-2 flex items-center gap-1 bg-white'>
               <div className='grow'>
-                <SearchInput className='w-full' value={keywords} onChange={handleKeywordsChange} />
+                <Input
+                  showLeftIcon
+                  showClearIcon
+                  value={keywords}
+                  onChange={e => handleKeywordsChange(e.target.value)}
+                  onClear={() => handleKeywordsChange('')}
+                />
               </div>
               <div className='ml-2 mr-1 w-[1px] h-4 bg-gray-200'></div>
               <div className='p-2 cursor-pointer' onClick={onHide}>

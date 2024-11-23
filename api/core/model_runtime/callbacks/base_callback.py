@@ -1,3 +1,5 @@
+from abc import ABC, abstractmethod
+from collections.abc import Sequence
 from typing import Optional
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
@@ -13,7 +15,7 @@ _TEXT_COLOR_MAPPING = {
 }
 
 
-class Callback:
+class Callback(ABC):
     """
     Base class for callbacks.
     Only for LLM.
@@ -21,6 +23,7 @@ class Callback:
 
     raise_error: bool = False
 
+    @abstractmethod
     def on_before_invoke(
         self,
         llm_instance: AIModel,
@@ -29,7 +32,7 @@ class Callback:
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
     ) -> None:
@@ -48,6 +51,7 @@ class Callback:
         """
         raise NotImplementedError()
 
+    @abstractmethod
     def on_new_chunk(
         self,
         llm_instance: AIModel,
@@ -57,7 +61,7 @@ class Callback:
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
     ):
@@ -77,6 +81,7 @@ class Callback:
         """
         raise NotImplementedError()
 
+    @abstractmethod
     def on_after_invoke(
         self,
         llm_instance: AIModel,
@@ -86,7 +91,7 @@ class Callback:
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
     ) -> None:
@@ -106,6 +111,7 @@ class Callback:
         """
         raise NotImplementedError()
 
+    @abstractmethod
     def on_invoke_error(
         self,
         llm_instance: AIModel,
@@ -115,7 +121,7 @@ class Callback:
         prompt_messages: list[PromptMessage],
         model_parameters: dict,
         tools: Optional[list[PromptMessageTool]] = None,
-        stop: Optional[list[str]] = None,
+        stop: Optional[Sequence[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
     ) -> None:

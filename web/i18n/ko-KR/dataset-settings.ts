@@ -29,6 +29,9 @@ const translation = {
     save: '저장',
     permissionsInvitedMembers: '부분 팀 구성원',
     me: '(당신)',
+    externalKnowledgeAPI: '외부 지식 API',
+    externalKnowledgeID: '외부 지식 ID',
+    retrievalSettings: '검색 설정',
   },
 }
 

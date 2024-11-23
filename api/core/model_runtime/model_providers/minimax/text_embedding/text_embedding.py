@@ -4,6 +4,7 @@ from typing import Optional
 
 from requests import post
 
+from core.entities.embedding_type import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.invoke import (
@@ -34,7 +35,12 @@ class MinimaxTextEmbeddingModel(TextEmbeddingModel):
     api_base: str = "https://api.minimax.chat/v1/embeddings"
 
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
@@ -43,6 +49,7 @@ class MinimaxTextEmbeddingModel(TextEmbeddingModel):
         :param credentials: model credentials
         :param texts: texts to embed
         :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
         api_key = credentials["minimax_api_key"]
@@ -54,7 +61,8 @@ class MinimaxTextEmbeddingModel(TextEmbeddingModel):
         url = f"{self.api_base}?GroupId={group_id}"
         headers = {"Authorization": "Bearer " + api_key, "Content-Type": "application/json"}
 
-        data = {"model": "embo-01", "texts": texts, "type": "db"}
+        embedding_type = "db" if input_type == EmbeddingInputType.DOCUMENT else "query"
+        data = {"model": "embo-01", "texts": texts, "type": embedding_type}
 
         try:
             response = post(url, headers=headers, data=dumps(data))

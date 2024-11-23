@@ -29,6 +29,9 @@ const translation = {
     save: 'Salvar',
     permissionsInvitedMembers: 'Membros parciais da equipe',
     me: '(Você)',
+    retrievalSettings: 'Configurações de recuperação',
+    externalKnowledgeID: 'ID de conhecimento externo',
+    externalKnowledgeAPI: 'API de conhecimento externo',
   },
 }
 

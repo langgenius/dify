@@ -1,0 +1,24 @@
+identity:
+  name: delete_task
+  author: Doug Lea
+  label:
+    en_US: Delete Task
+    zh_Hans: 删除飞书任务
+description:
+  human:
+    en_US: Delete Task
+    zh_Hans: 删除飞书任务
+  llm: A tool for deleting tasks in Feishu.(删除飞书任务)
+parameters:
+  - name: task_guid
+    type: string
+    required: true
+    label:
+      en_US: Task GUID
+      zh_Hans: 任务 GUID
+    human_description:
+      en_US: |
+        The GUID of the task to be deleted, supports passing either the Task ID or the Task link URL. Example of Task ID: 8b5425ec-9f2a-43bd-a3ab-01912f50282b; Example of Task link URL: https://applink.feishu-pre.net/client/todo/detail?guid=8c6bf822-e4da-449a-b82a-dc44020f9be9&suite_entity_num=t21587362
+      zh_Hans: 要删除的任务的 GUID，支持传任务 ID 和任务链接 URL。任务 ID 示例：8b5425ec-9f2a-43bd-a3ab-01912f50282b；任务链接 URL 示例：https://applink.feishu-pre.net/client/todo/detail?guid=8c6bf822-e4da-449a-b82a-dc44020f9be9&suite_entity_num=t21587362
+    llm_description: 要删除的任务的 GUID，支持传任务 ID 和任务链接 URL。任务 ID 示例：8b5425ec-9f2a-43bd-a3ab-01912f50282b；任务链接 URL 示例：https://applink.feishu-pre.net/client/todo/detail?guid=8c6bf822-e4da-449a-b82a-dc44020f9be9&suite_entity_num=t21587362
+    form: llm

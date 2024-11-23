@@ -7,11 +7,11 @@ from pymilvus import MilvusClient, MilvusException
 from pymilvus.milvus_client import IndexParams
 
 from configs import dify_config
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
 from models.dataset import Dataset
@@ -86,7 +86,7 @@ class MilvusVector(BaseVector):
                 ids = self._client.insert(collection_name=self._collection_name, data=batch_insert_list)
                 pks.extend(ids)
             except MilvusException as e:
-                logger.error("Failed to insert batch starting at entity: %s/%s", i, total_count)
+                logger.exception("Failed to insert batch starting at entity: %s/%s", i, total_count)
                 raise e
         return pks
 

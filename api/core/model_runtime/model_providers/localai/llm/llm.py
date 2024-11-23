@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import cast
+from typing import Optional, cast
 
 from httpx import Timeout
 from openai import (
@@ -212,7 +212,7 @@ class LocalAILanguageModel(LargeLanguageModel):
         except Exception as ex:
             raise CredentialsValidateFailedError(f"Invalid credentials {str(ex)}")
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         completion_model = None
         if credentials["completion_type"] == "chat_completion":
             completion_model = LLMMode.CHAT.value

@@ -13,7 +13,7 @@ class CreateDocumentTool(BuiltinTool):
 
         document_id = tool_parameters.get("document_id")
         content = tool_parameters.get("content")
-        position = tool_parameters.get("position")
+        position = tool_parameters.get("position", "end")
 
         res = client.write_document(document_id, content, position)
         return self.create_json_message(res)

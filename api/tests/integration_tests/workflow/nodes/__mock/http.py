@@ -6,6 +6,8 @@ import httpx
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 
+from core.helper import ssrf_proxy
+
 MOCK = os.getenv("MOCK_SWITCH", "false") == "true"
 
 
@@ -22,12 +24,18 @@ class MockedHttp:
             return response
 
         # get data, files
-        data = kwargs.get("data", None)
-        files = kwargs.get("files", None)
+        data = kwargs.get("data")
+        files = kwargs.get("files")
+        json = kwargs.get("json")
+        content = kwargs.get("content")
         if data is not None:
             resp = dumps(data).encode("utf-8")
         elif files is not None:
             resp = dumps(files).encode("utf-8")
+        elif json is not None:
+            resp = dumps(json).encode("utf-8")
+        elif content is not None:
+            resp = content
         else:
             resp = b"OK"
 
@@ -43,6 +51,6 @@ def setup_http_mock(request, monkeypatch: MonkeyPatch):
         yield
         return
 
-    monkeypatch.setattr(httpx, "request", MockedHttp.httpx_request)
+    monkeypatch.setattr(ssrf_proxy, "make_request", MockedHttp.httpx_request)
     yield
     monkeypatch.undo()

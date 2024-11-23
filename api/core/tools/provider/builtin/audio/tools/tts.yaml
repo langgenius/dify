@@ -1,0 +1,22 @@
+identity:
+  name: tts
+  author: hjlarry
+  label:
+    en_US: Text To Speech
+description:
+  human:
+    en_US: Convert text to audio file.
+    zh_Hans: 将文本转换为音频文件。
+  llm: Convert text to audio file.
+parameters:
+  - name: text
+    type: string
+    required: true
+    label:
+      en_US: Text
+      zh_Hans: 文本
+    human_description:
+      en_US: The text to be converted.
+      zh_Hans: 要转换的文本。
+    llm_description: The text to be converted.
+    form: llm

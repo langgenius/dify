@@ -6,31 +6,31 @@ from pydantic_settings import BaseSettings
 
 class HostedOpenAiConfig(BaseSettings):
     """
-    Hosted OpenAI service config
+    Configuration for hosted OpenAI service
     """
 
     HOSTED_OPENAI_API_KEY: Optional[str] = Field(
-        description="",
+        description="API key for hosted OpenAI service",
         default=None,
     )
 
     HOSTED_OPENAI_API_BASE: Optional[str] = Field(
-        description="",
+        description="Base URL for hosted OpenAI API",
         default=None,
     )
 
     HOSTED_OPENAI_API_ORGANIZATION: Optional[str] = Field(
-        description="",
+        description="Organization ID for hosted OpenAI service",
         default=None,
     )
 
     HOSTED_OPENAI_TRIAL_ENABLED: bool = Field(
-        description="",
+        description="Enable trial access to hosted OpenAI service",
         default=False,
     )
 
     HOSTED_OPENAI_TRIAL_MODELS: str = Field(
-        description="",
+        description="Comma-separated list of available models for trial access",
         default="gpt-3.5-turbo,"
         "gpt-3.5-turbo-1106,"
         "gpt-3.5-turbo-instruct,"
@@ -42,17 +42,17 @@ class HostedOpenAiConfig(BaseSettings):
     )
 
     HOSTED_OPENAI_QUOTA_LIMIT: NonNegativeInt = Field(
-        description="",
+        description="Quota limit for hosted OpenAI service usage",
         default=200,
     )
 
     HOSTED_OPENAI_PAID_ENABLED: bool = Field(
-        description="",
+        description="Enable paid access to hosted OpenAI service",
         default=False,
     )
 
     HOSTED_OPENAI_PAID_MODELS: str = Field(
-        description="",
+        description="Comma-separated list of available models for paid access",
         default="gpt-4,"
         "gpt-4-turbo-preview,"
         "gpt-4-turbo-2024-04-09,"
@@ -71,124 +71,122 @@ class HostedOpenAiConfig(BaseSettings):
 
 class HostedAzureOpenAiConfig(BaseSettings):
     """
-    Hosted OpenAI service config
+    Configuration for hosted Azure OpenAI service
     """
 
     HOSTED_AZURE_OPENAI_ENABLED: bool = Field(
-        description="",
+        description="Enable hosted Azure OpenAI service",
         default=False,
     )
 
     HOSTED_AZURE_OPENAI_API_KEY: Optional[str] = Field(
-        description="",
+        description="API key for hosted Azure OpenAI service",
         default=None,
     )
 
     HOSTED_AZURE_OPENAI_API_BASE: Optional[str] = Field(
-        description="",
+        description="Base URL for hosted Azure OpenAI API",
         default=None,
     )
 
     HOSTED_AZURE_OPENAI_QUOTA_LIMIT: NonNegativeInt = Field(
-        description="",
+        description="Quota limit for hosted Azure OpenAI service usage",
         default=200,
     )
 
 
 class HostedAnthropicConfig(BaseSettings):
     """
-    Hosted Azure OpenAI service config
+    Configuration for hosted Anthropic service
     """
 
     HOSTED_ANTHROPIC_API_BASE: Optional[str] = Field(
-        description="",
+        description="Base URL for hosted Anthropic API",
         default=None,
     )
 
     HOSTED_ANTHROPIC_API_KEY: Optional[str] = Field(
-        description="",
+        description="API key for hosted Anthropic service",
         default=None,
     )
 
     HOSTED_ANTHROPIC_TRIAL_ENABLED: bool = Field(
-        description="",
+        description="Enable trial access to hosted Anthropic service",
         default=False,
     )
 
     HOSTED_ANTHROPIC_QUOTA_LIMIT: NonNegativeInt = Field(
-        description="",
+        description="Quota limit for hosted Anthropic service usage",
         default=600000,
     )
 
     HOSTED_ANTHROPIC_PAID_ENABLED: bool = Field(
-        description="",
+        description="Enable paid access to hosted Anthropic service",
         default=False,
     )
 
 
 class HostedMinmaxConfig(BaseSettings):
     """
-    Hosted Minmax service config
+    Configuration for hosted Minmax service
     """
 
     HOSTED_MINIMAX_ENABLED: bool = Field(
-        description="",
+        description="Enable hosted Minmax service",
         default=False,
     )
 
 
 class HostedSparkConfig(BaseSettings):
     """
-    Hosted Spark service config
+    Configuration for hosted Spark service
     """
 
     HOSTED_SPARK_ENABLED: bool = Field(
-        description="",
+        description="Enable hosted Spark service",
         default=False,
     )
 
 
 class HostedZhipuAIConfig(BaseSettings):
     """
-    Hosted Minmax service config
+    Configuration for hosted ZhipuAI service
     """
 
     HOSTED_ZHIPUAI_ENABLED: bool = Field(
-        description="",
+        description="Enable hosted ZhipuAI service",
         default=False,
     )
 
 
 class HostedModerationConfig(BaseSettings):
     """
-    Hosted Moderation service config
+    Configuration for hosted Moderation service
     """
 
     HOSTED_MODERATION_ENABLED: bool = Field(
-        description="",
+        description="Enable hosted Moderation service",
         default=False,
     )
 
     HOSTED_MODERATION_PROVIDERS: str = Field(
-        description="",
+        description="Comma-separated list of moderation providers",
         default="",
     )
 
 
 class HostedFetchAppTemplateConfig(BaseSettings):
     """
-    Hosted Moderation service config
+    Configuration for fetching app templates
     """
 
     HOSTED_FETCH_APP_TEMPLATES_MODE: str = Field(
-        description="the mode for fetching app templates,"
-        " default to remote,"
-        " available values: remote, db, builtin",
+        description="Mode for fetching app templates: remote, db, or builtin" " default to remote,",
         default="remote",
     )
 
     HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN: str = Field(
-        description="the domain for fetching remote app templates",
+        description="Domain for fetching remote app templates",
         default="https://tmpl.dify.ai",
     )
 

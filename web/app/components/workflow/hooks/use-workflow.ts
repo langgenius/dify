@@ -235,6 +235,33 @@ export const useWorkflow = () => {
     return nodes.filter(node => node.parentId === nodeId)
   }, [store])
 
+  const isFromStartNode = useCallback((nodeId: string) => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(node => node.id === nodeId)
+
+    if (!currentNode)
+      return false
+
+    if (currentNode.data.type === BlockEnum.Start)
+      return true
+
+    const checkPreviousNodes = (node: Node) => {
+      const previousNodes = getBeforeNodeById(node.id)
+
+      for (const prevNode of previousNodes) {
+        if (prevNode.data.type === BlockEnum.Start)
+          return true
+        if (checkPreviousNodes(prevNode))
+          return true
+      }
+
+      return false
+    }
+
+    return checkPreviousNodes(currentNode)
+  }, [store, getBeforeNodeById])
+
   const handleOutVarRenameChange = useCallback((nodeId: string, oldValeSelector: ValueSelector, newVarSelector: ValueSelector) => {
     const { getNodes, setNodes } = store.getState()
     const afterNodes = getAfterNodesInSameBranch(nodeId)
@@ -389,6 +416,7 @@ export const useWorkflow = () => {
     checkParallelLimit,
     checkNestedParallelLimit,
     isValidConnection,
+    isFromStartNode,
     formatTimeFromNow,
     getNode,
     getBeforeNodeById,
@@ -439,7 +467,9 @@ export const useWorkflowInit = () => {
   const setSyncWorkflowDraftHash = useStore(s => s.setSyncWorkflowDraftHash)
   const [data, setData] = useState<FetchWorkflowDraftResponse>()
   const [isLoading, setIsLoading] = useState(true)
-  workflowStore.setState({ appId: appDetail.id })
+  useEffect(() => {
+    workflowStore.setState({ appId: appDetail.id })
+  }, [appDetail.id, workflowStore])
 
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
@@ -487,6 +517,7 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     handleGetInitialWorkflowData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const handleFetchPreloadData = useCallback(async () => {

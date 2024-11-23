@@ -52,6 +52,10 @@ const OPTION_MAP = {
   #dify-chatbot-bubble-button {
     background-color: ${primaryColor} !important;
   }
+  #dify-chatbot-bubble-window {
+    width: 24rem !important;
+    height: 40rem !important;
+  }
 </style>`,
   },
   chromePlugin: {

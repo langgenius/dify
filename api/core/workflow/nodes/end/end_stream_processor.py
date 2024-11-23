@@ -22,8 +22,8 @@ class EndStreamProcessor(StreamProcessor):
         for end_node_id, _ in self.end_stream_param.end_stream_variable_selector_mapping.items():
             self.route_position[end_node_id] = 0
         self.current_stream_chunk_generating_node_ids: dict[str, list[str]] = {}
-        self.has_outputed = False
-        self.outputed_node_ids = set()
+        self.has_output = False
+        self.output_node_ids = set()
 
     def process(self, generator: Generator[GraphEngineEvent, None, None]) -> Generator[GraphEngineEvent, None, None]:
         for event in generator:
@@ -34,11 +34,11 @@ class EndStreamProcessor(StreamProcessor):
                 yield event
             elif isinstance(event, NodeRunStreamChunkEvent):
                 if event.in_iteration_id:
-                    if self.has_outputed and event.node_id not in self.outputed_node_ids:
+                    if self.has_output and event.node_id not in self.output_node_ids:
                         event.chunk_content = "\n" + event.chunk_content
 
-                    self.outputed_node_ids.add(event.node_id)
-                    self.has_outputed = True
+                    self.output_node_ids.add(event.node_id)
+                    self.has_output = True
                     yield event
                     continue
 
@@ -53,11 +53,11 @@ class EndStreamProcessor(StreamProcessor):
                     )
 
                 if stream_out_end_node_ids:
-                    if self.has_outputed and event.node_id not in self.outputed_node_ids:
+                    if self.has_output and event.node_id not in self.output_node_ids:
                         event.chunk_content = "\n" + event.chunk_content
 
-                    self.outputed_node_ids.add(event.node_id)
-                    self.has_outputed = True
+                    self.output_node_ids.add(event.node_id)
+                    self.has_output = True
                     yield event
             elif isinstance(event, NodeRunSucceededEvent):
                 yield event
@@ -124,11 +124,11 @@ class EndStreamProcessor(StreamProcessor):
 
                 if text:
                     current_node_id = value_selector[0]
-                    if self.has_outputed and current_node_id not in self.outputed_node_ids:
+                    if self.has_output and current_node_id not in self.output_node_ids:
                         text = "\n" + text
 
-                    self.outputed_node_ids.add(current_node_id)
-                    self.has_outputed = True
+                    self.output_node_ids.add(current_node_id)
+                    self.has_output = True
                     yield NodeRunStreamChunkEvent(
                         id=event.id,
                         node_id=event.node_id,

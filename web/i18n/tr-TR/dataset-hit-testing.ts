@@ -23,6 +23,8 @@ const translation = {
   },
   noRecentTip: 'Burada son sorgu sonuçları yok',
   viewChart: 'VEKTÖR GRAFİĞİNİ GÖRÜNTÜLE',
+  viewDetail: 'ayrıntılara bakın',
+  settingTitle: 'Alma Ayarı',
 }
 
 export default translation

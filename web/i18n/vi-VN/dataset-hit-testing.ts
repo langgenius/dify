@@ -23,6 +23,8 @@ const translation = {
   },
   noRecentTip: 'Không có kết quả truy vấn gần đây',
   viewChart: 'Xem BIỂU ĐỒ VECTOR',
+  settingTitle: 'Cài đặt truy xuất',
+  viewDetail: 'Xem chi tiết',
 }
 
 export default translation

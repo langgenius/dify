@@ -24,11 +24,14 @@ const translation = {
     embeddingModelTipLink: '設定',
     retrievalSetting: {
       title: '検索設定',
-      learnMore: '詳細を学ぶ',
+      learnMore: '詳細を見る',
       description: ' 検索方法についての詳細',
       longDescription: ' 検索方法についての詳細については、いつでもナレッジの設定で変更できます。',
     },
     save: '保存',
+    externalKnowledgeID: '外部ナレッジID',
+    retrievalSettings: '取得設定',
+    externalKnowledgeAPI: '外部ナレッジAPI',
   },
 }
 

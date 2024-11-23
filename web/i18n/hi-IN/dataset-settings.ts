@@ -34,6 +34,9 @@ const translation = {
     save: 'सेवना',
     me: '(आप)',
     permissionsInvitedMembers: 'आंशिक टीम के सदस्य',
+    externalKnowledgeID: 'बाहरी ज्ञान ID',
+    externalKnowledgeAPI: 'बाहरी ज्ञान एपीआई',
+    retrievalSettings: 'पुनर्प्राप्ति सेटिंग्स',
   },
 }
 

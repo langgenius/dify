@@ -59,3 +59,4 @@ pricing:
   output: "0.000"
   unit: "0.000"
   currency: RMB
+deprecated: true

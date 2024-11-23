@@ -8,9 +8,9 @@ from sqlalchemy import text as sql_text
 from sqlalchemy.dialects.postgresql import JSON, TEXT
 from sqlalchemy.orm import Session
 
-from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
+from core.rag.embedding.embedding_base import Embeddings
 from models.dataset import Dataset
 
 try:
@@ -162,7 +162,7 @@ class RelytVector(BaseVector):
         else:
             return None
 
-    def delete_by_uuids(self, ids: list[str] = None):
+    def delete_by_uuids(self, ids: Optional[list[str]] = None):
         """Delete by vector IDs.
 
         Args:
@@ -224,7 +224,7 @@ class RelytVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         results = self.similarity_search_with_score_by_vector(
-            k=int(kwargs.get("top_k")), embedding=query_vector, filter=kwargs.get("filter")
+            k=int(kwargs.get("top_k", 4)), embedding=query_vector, filter=kwargs.get("filter")
         )
 
         # Organize results.

@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
@@ -17,16 +18,24 @@ class UnstructuredEpubExtractor(BaseExtractor):
     def __init__(
         self,
         file_path: str,
-        api_url: str = None,
+        api_url: Optional[str] = None,
+        api_key: Optional[str] = None,
     ):
         """Initialize with file path."""
         self._file_path = file_path
         self._api_url = api_url
+        self._api_key = api_key
 
     def extract(self) -> list[Document]:
-        from unstructured.partition.epub import partition_epub
+        if self._api_url:
+            from unstructured.partition.api import partition_via_api
 
-        elements = partition_epub(filename=self._file_path, xml_keep_tags=True)
+            elements = partition_via_api(filename=self._file_path, api_url=self._api_url, api_key=self._api_key)
+        else:
+            from unstructured.partition.epub import partition_epub
+
+            elements = partition_epub(filename=self._file_path, xml_keep_tags=True)
+
         from unstructured.chunking.title import chunk_by_title
 
         chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)

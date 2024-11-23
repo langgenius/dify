@@ -72,6 +72,80 @@ const translation = {
   nTo1RetrievalLegacyLink: 'بیشتر بدانید',
   nTo1RetrievalLegacyLinkText: ' بازیابی N-to-1 از سپتامبر به طور رسمی منسوخ خواهد شد.',
   defaultRetrievalTip: 'بازیابی چند مسیره به طور پیش فرض استفاده می شود. دانش از چندین پایگاه دانش بازیابی می شود و سپس دوباره رتبه بندی می شود.',
+  editExternalAPIConfirmWarningContent: {
+    front: 'این API دانش خارجی به',
+    end: 'دانش خارجی ، و این اصلاح برای همه آنها اعمال خواهد شد. آیا مطمئن هستید که می خواهید این تغییر را ذخیره کنید؟',
+  },
+  editExternalAPIFormWarning: {
+    front: 'این API خارجی به',
+    end: 'دانش بیرونی',
+  },
+  deleteExternalAPIConfirmWarningContent: {
+    title: {
+      front: 'حذف',
+      end: '?',
+    },
+    content: {
+      front: 'این API دانش خارجی به',
+      end: 'دانش بیرونی. حذف این API همه آنها را باطل می کند. آیا مطمئن هستید که می خواهید این API را حذف کنید؟',
+    },
+    noConnectionContent: 'آیا مطمئن هستید که این API را حذف خواهید کرد؟',
+  },
+  selectExternalKnowledgeAPI: {
+    placeholder: 'یک API دانش خارجی را انتخاب کنید',
+  },
+  connectDatasetIntro: {
+    content: {
+      link: 'یادگیری نحوه ایجاد یک API خارجی',
+      front: 'برای اتصال به یک پایگاه دانش خارجی، ابتدا باید یک API خارجی ایجاد کنید. لطفا با دقت بخوانید و به',
+      end: '. سپس شناسه دانش مربوطه را پیدا کرده و آن را در فرم سمت چپ پر کنید. اگر تمام اطلاعات صحیح باشد، پس از کلیک بر روی دکمه اتصال، به طور خودکار به آزمون بازیابی در پایگاه دانش می رود.',
+    },
+    learnMore: 'بیشتر بدانید',
+    title: 'چگونه به یک پایگاه دانش خارجی متصل شویم؟',
+  },
+  connectHelper: {
+    helper5: 'قبل از استفاده از این ویژگی با دقت',
+    helper3: '. اکیدا توصیه می کنیم که',
+    helper2: 'فقط قابلیت بازیابی پشتیبانی می شود',
+    helper4: 'مستندات راهنما را بخوانید',
+    helper1: 'از طریق API و شناسه پایگاه دانش به پایگاه های دانش خارجی متصل شوید. در حال حاضر،',
+  },
+  externalKnowledgeForm: {
+    cancel: 'لغو',
+    connect: 'اتصال',
+  },
+  externalAPIForm: {
+    encrypted: {
+      front: 'توکن API شما رمزگذاری و با استفاده از',
+      end: 'فناوری.',
+    },
+    apiKey: 'کلید API',
+    edit: 'ویرایش',
+    save: 'ذخیره',
+    cancel: 'لغو',
+    endpoint: 'نقطه پایانی API',
+    name: 'نام',
+  },
+  editExternalAPITooltipTitle: 'دانش مرتبط',
+  externalKnowledgeNamePlaceholder: 'لطفا نام پایگاه دانش را وارد کنید',
+  externalAPIPanelDocumentation: 'یادگیری نحوه ایجاد یک API دانش خارجی',
+  externalKnowledgeDescriptionPlaceholder: 'آنچه در این پایگاه دانش وجود دارد را توضیح دهید (اختیاری)',
+  externalKnowledgeDescription: 'توضیحات دانش',
+  externalTag: 'خارجی',
+  externalKnowledgeIdPlaceholder: 'لطفا شناسه دانش را وارد کنید',
+  noExternalKnowledge: 'هنوز هیچ API دانش خارجی وجود ندارد، برای ایجاد اینجا را کلیک کنید',
+  externalAPIPanelTitle: 'API دانش خارجی',
+  connectDataset: 'اتصال به یک پایگاه دانش خارجی',
+  externalKnowledgeId: 'شناسه دانش خارجی',
+  externalAPI: 'API خارجی',
+  externalKnowledgeName: 'نام دانش خارجی',
+  createExternalAPI: 'افزودن یک API دانش خارجی',
+  createNewExternalAPI: 'ایجاد یک API دانش خارجی جدید',
+  learnHowToWriteGoodKnowledgeDescription: 'یاد بگیرید که چگونه یک توضیحات دانش خوب بنویسید.',
+  editExternalAPIFormTitle: 'ویرایش API دانش خارجی',
+  externalAPIPanelDescription: 'API دانش خارجی برای اتصال به یک پایگاه دانش خارج از Dify و بازیابی دانش از آن پایگاه دانش استفاده می شود.',
+  allExternalTip: 'هنگامی که فقط از دانش خارجی استفاده می کنید، کاربر می تواند انتخاب کند که آیا مدل Rerank را فعال کند یا خیر. اگر فعال نباشد، تکه های بازیابی شده بر اساس امتیازات مرتب می شوند. هنگامی که استراتژی های بازیابی پایگاه های دانش مختلف متناقض باشد، نادرست خواهد بود.',
+  mixtureInternalAndExternalTip: 'مدل Rerank برای آمیختگی دانش درونی و بیرونی مورد نیاز است.',
 }
 
 export default translation

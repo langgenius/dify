@@ -29,7 +29,7 @@ def import_module_from_source(*, module_name: str, py_file_path: AnyStr, use_laz
         spec.loader.exec_module(module)
         return module
     except Exception as e:
-        logging.exception(f"Failed to load module {module_name} from {py_file_path}: {str(e)}")
+        logging.exception(f"Failed to load module {module_name} from script file '{py_file_path}'")
         raise e
 
 

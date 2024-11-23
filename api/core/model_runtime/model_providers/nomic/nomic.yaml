@@ -1,0 +1,29 @@
+provider: nomic
+label:
+  zh_Hans: Nomic Atlas
+  en_US: Nomic Atlas
+icon_small:
+  en_US: icon_s_en.png
+icon_large:
+  en_US: icon_l_en.svg
+background: "#EFF1FE"
+help:
+  title:
+    en_US: Get your API key from Nomic Atlas
+    zh_Hans: 从Nomic Atlas获取 API Key
+  url:
+    en_US: https://atlas.nomic.ai/data
+supported_model_types:
+  - text-embedding
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: nomic_api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key

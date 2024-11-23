@@ -54,6 +54,12 @@ model_credential_schema:
       required: true
       options:
         - label:
+            en_US: 2024-10-01-preview
+          value: 2024-10-01-preview
+        - label:
+            en_US: 2024-09-01-preview
+          value: 2024-09-01-preview
+        - label:
             en_US: 2024-08-01-preview
           value: 2024-08-01-preview
         - label:
@@ -117,6 +123,18 @@ model_credential_schema:
         - label:
             en_US: gpt-4-32k
           value: gpt-4-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: o1-mini
+          value: o1-mini
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: o1-preview
+          value: o1-preview
           show_on:
             - variable: __model_type
               value: llm

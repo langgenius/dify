@@ -1,6 +1,6 @@
 import json
 from enum import Enum
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import boto3
 
@@ -21,7 +21,7 @@ class SageMakerTTSTool(BuiltinTool):
     s3_client: Any = None
     comprehend_client: Any = None
 
-    def _detect_lang_code(self, content: str, map_dict: dict = None):
+    def _detect_lang_code(self, content: str, map_dict: Optional[dict] = None):
         map_dict = {"zh": "<|zh|>", "en": "<|en|>", "ja": "<|jp|>", "zh-TW": "<|yue|>", "ko": "<|ko|>"}
 
         response = self.comprehend_client.detect_dominant_language(Text=content)

@@ -71,6 +71,80 @@ const translation = {
   nTo1RetrievalLegacyLink: '자세히 알아보기',
   nTo1RetrievalLegacyLinkText: 'N-대-1 검색은 9월에 공식적으로 더 이상 사용되지 않습니다.',
   defaultRetrievalTip: '다중 경로 검색이 기본적으로 사용됩니다. 지식은 여러 기술 자료에서 검색된 다음 순위가 다시 매겨집니다.',
+  editExternalAPIConfirmWarningContent: {
+    front: '이 외부 지식 API는 다음에 연결됩니다.',
+    end: '외부 지식, 그리고 이 수정 사항은 그들 모두에게 적용될 것입니다. 이 변경 사항을 저장하시겠습니까?',
+  },
+  editExternalAPIFormWarning: {
+    end: '외부 지식',
+    front: '이 외부 API는 다음에 연결됩니다.',
+  },
+  deleteExternalAPIConfirmWarningContent: {
+    title: {
+      front: '삭제하다',
+      end: '?',
+    },
+    content: {
+      front: '이 외부 지식 API는 다음에 연결됩니다.',
+      end: '외부 지식. 이 API를 삭제하면 모두 무효화됩니다. 이 API를 삭제하시겠습니까?',
+    },
+    noConnectionContent: '이 API를 삭제하시겠습니까?',
+  },
+  selectExternalKnowledgeAPI: {
+    placeholder: '외부 지식 API 선택',
+  },
+  connectDatasetIntro: {
+    content: {
+      link: '외부 API를 만드는 방법 알아보기',
+      end: '. 그런 다음 해당 기술 ID를 찾아 왼쪽 양식에 입력합니다. 모든 정보가 올바르면 연결 단추를 클릭한 후 기술 자료의 검색 테스트로 자동으로 이동합니다.',
+      front: '외부 기술 자료에 연결하려면 먼저 외부 API를 만들어야 합니다. 주의 깊게 읽고 참조하십시오.',
+    },
+    learnMore: '더 알아보세요',
+    title: '외부 기술 자료에 연결하는 방법',
+  },
+  connectHelper: {
+    helper1: 'API 및 기술 자료 ID를 통해 외부 기술 자료에 연결합니다. 현재,',
+    helper4: '도움말 문서 읽기',
+    helper2: '검색 기능만 지원됩니다',
+    helper5: '이 기능을 사용하기 전에 주의하십시오.',
+    helper3: '. 다음을 강력히 권장합니다.',
+  },
+  externalKnowledgeForm: {
+    cancel: '취소',
+    connect: '연결하다',
+  },
+  externalAPIForm: {
+    encrypted: {
+      end: '기술.',
+      front: 'API 토큰은 다음을 사용하여 암호화되고 저장됩니다.',
+    },
+    save: '구해내다',
+    name: '이름',
+    endpoint: 'API 엔드포인트',
+    edit: '편집하다',
+    cancel: '취소',
+    apiKey: 'API 키',
+  },
+  editExternalAPITooltipTitle: '연결된 지식',
+  externalAPIPanelTitle: '외부 지식 API',
+  externalKnowledgeDescription: '지식 설명',
+  externalAPI: '외부 API',
+  externalKnowledgeName: '외부 지식 이름',
+  createExternalAPI: '외부 지식 API 추가',
+  externalTag: '외부',
+  editExternalAPIFormTitle: '외부 지식 API 편집',
+  externalKnowledgeNamePlaceholder: '기술 자료의 이름을 입력하십시오.',
+  externalAPIPanelDocumentation: '외부 지식 API를 만드는 방법 알아보기',
+  createNewExternalAPI: '새 외부 지식 API 만들기',
+  mixtureInternalAndExternalTip: '리랭크 모델은 내부 및 외부 지식의 혼합에 필요합니다.',
+  connectDataset: '외부 기술 자료에 연결',
+  learnHowToWriteGoodKnowledgeDescription: '적절한 지식 설명을 작성하는 방법 알아보기',
+  externalKnowledgeDescriptionPlaceholder: '이 기술 자료의 내용 설명(선택 사항)',
+  externalKnowledgeId: '외부 지식 ID',
+  externalKnowledgeIdPlaceholder: '지식 ID를 입력하십시오.',
+  allExternalTip: '외부 지식만 사용하는 경우 사용자는 리랭크 모델을 사용할지 여부를 선택할 수 있습니다. 활성화하지 않으면 검색된 청크가 점수에 따라 정렬됩니다. 서로 다른 기술 자료의 검색 전략이 일관되지 않으면 부정확합니다.',
+  externalAPIPanelDescription: '외부 지식 API는 Dify 외부의 기술 자료에 연결하고 해당 기술 자료에서 지식을 검색하는 데 사용됩니다.',
+  noExternalKnowledge: '아직 외부 지식 API가 없으므로 여기를 클릭하여 생성하십시오.',
 }
 
 export default translation

@@ -36,7 +36,7 @@
   | 被团队成员标记为高优先级的功能    | 高优先级   |
   | 在 [community feedback board](https://github.com/langgenius/dify/discussions/categories/feedbacks) 内反馈的常见功能请求 | 中等优先级 |
   | 非核心功能和小幅改进                     | 低优先级    |
-  | 有价值当不紧急                                   | 未来功能  |
+  | 有价值但不紧急                                   | 未来功能  |
 
 ### 其他任何事情（例如 bug 报告、性能优化、拼写错误更正）：
 * 立即开始编码。
@@ -138,7 +138,7 @@ Dify 的后端使用 Python 编写，使用 [Flask](https://flask.palletsproject
 ├── models                // 描述数据模型和 API 响应的形状
 ├── public                // 如 favicon 等元资源
 ├── service               // 定义 API 操作的形状
-├── test                  
+├── test
 ├── types                 // 函数参数和返回值的描述
 └── utils                 // 共享的实用函数
 ```

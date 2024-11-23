@@ -72,6 +72,80 @@ const translation = {
   nTo1RetrievalLegacyLink: 'En savoir plus',
   nTo1RetrievalLegacyLinkText: 'La récupération N-à-1 sera officiellement obsolète en septembre.',
   defaultRetrievalTip: 'La récupération à chemins multiples est utilisée par défaut. Les connaissances sont extraites de plusieurs bases de connaissances, puis reclassées.',
+  editExternalAPIConfirmWarningContent: {
+    front: 'Cette API de connaissances externes est liée à',
+    end: 'connaissances externes, et cette modification sera appliquée à tous. Êtes-vous sûr de vouloir enregistrer cette modification ?',
+  },
+  editExternalAPIFormWarning: {
+    end: 'Connaissances externes',
+    front: 'Cette API externe est liée à',
+  },
+  deleteExternalAPIConfirmWarningContent: {
+    title: {
+      end: '?',
+      front: 'Supprimer',
+    },
+    content: {
+      front: 'Cette API de connaissances externes est liée à',
+      end: 'connaissances externes. La suppression de cette API les invalidera toutes. Êtes-vous sûr de vouloir supprimer cette API ?',
+    },
+    noConnectionContent: 'Êtes-vous sûr de supprimer cette API ?',
+  },
+  selectExternalKnowledgeAPI: {
+    placeholder: 'Choisir une API de connaissances externe',
+  },
+  connectDatasetIntro: {
+    content: {
+      link: 'Découvrez comment créer une API externe',
+      end: '. Trouvez ensuite l’ID de connaissances correspondant et remplissez-le dans le formulaire sur la gauche. Si toutes les informations sont correctes, il passera automatiquement au test de récupération dans la base de connaissances après avoir cliqué sur le bouton de connexion.',
+      front: 'Pour vous connecter à une base de connaissances externe, vous devez d’abord créer une API externe. Veuillez lire attentivement et vous référer à',
+    },
+    learnMore: 'Pour en savoir plus',
+    title: 'Comment se connecter à une base de connaissances externe',
+  },
+  connectHelper: {
+    helper2: 'Seule la fonctionnalité de récupération est prise en charge',
+    helper3: '. Nous vous recommandons vivement de',
+    helper4: 'Lire la documentation d’aide',
+    helper5: 'soigneusement avant d’utiliser cette fonctionnalité.',
+    helper1: 'Connectez-vous à des bases de connaissances externes via l’API et l’ID de base de connaissances.',
+  },
+  externalKnowledgeForm: {
+    cancel: 'Annuler',
+    connect: 'Relier',
+  },
+  externalAPIForm: {
+    encrypted: {
+      end: 'Technologie.',
+      front: 'Votre jeton API sera chiffré et stocké à l’aide de',
+    },
+    name: 'Nom',
+    apiKey: 'Clé API',
+    save: 'Sauvegarder',
+    cancel: 'Annuler',
+    edit: 'Éditer',
+    endpoint: 'Point de terminaison de l’API',
+  },
+  externalKnowledgeName: 'Nom de la connaissance externe',
+  mixtureInternalAndExternalTip: 'Le modèle Rerank est nécessaire pour mélanger les connaissances internes et externes.',
+  externalKnowledgeIdPlaceholder: 'Entrez l’ID de connaissances',
+  createExternalAPI: 'Ajouter une API de connaissances externe',
+  externalKnowledgeNamePlaceholder: 'Entrez le nom de la base de connaissances',
+  allExternalTip: 'Lorsqu’il utilise uniquement des connaissances externes, l’utilisateur peut choisir d’activer ou non le modèle Rerank. S’il n’est pas activé, les morceaux récupérés seront triés en fonction des scores. Lorsque les stratégies de récupération des différentes bases de connaissances sont incohérentes, elles seront inexactes.',
+  externalAPI: 'API externe',
+  editExternalAPIFormTitle: 'Modifier l’API de connaissances externes',
+  externalTag: 'Externe',
+  editExternalAPITooltipTitle: 'CONNAISSANCES ASSOCIÉES',
+  connectDataset: 'Se connecter à une base de connaissances externe',
+  externalKnowledgeDescription: 'Description des connaissances',
+  externalAPIPanelDocumentation: 'Découvrez comment créer une API de connaissances externe',
+  createNewExternalAPI: 'Créer une API de connaissances externe',
+  externalKnowledgeDescriptionPlaceholder: 'Décrivez le contenu de cette base de connaissances (facultatif)',
+  externalAPIPanelDescription: 'L’API de connaissances externe est utilisée pour se connecter à une base de connaissances en dehors de Dify et récupérer des connaissances de cette base de connaissances.',
+  externalKnowledgeId: 'Identification des connaissances externes',
+  externalAPIPanelTitle: 'API de connaissances externes',
+  noExternalKnowledge: 'Il n’y a pas encore d’API de connaissances externes, cliquez ici pour créer',
+  learnHowToWriteGoodKnowledgeDescription: 'Apprenez à rédiger une bonne description des connaissances',
 }
 
 export default translation

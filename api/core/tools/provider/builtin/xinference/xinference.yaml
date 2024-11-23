@@ -1,0 +1,40 @@
+identity:
+  author: xinference
+  name: xinference
+  label:
+    en_US: Xinference
+    zh_Hans: Xinference
+  description:
+    zh_Hans: Xinference 提供的兼容 Stable Diffusion web ui 的图片生成 API。
+    en_US: Stable Diffusion web ui compatible API provided by Xinference.
+  icon: icon.png
+  tags:
+    - image
+credentials_for_provider:
+  base_url:
+    type: secret-input
+    required: true
+    label:
+      en_US: Base URL
+      zh_Hans: Xinference 服务器的 Base URL
+    placeholder:
+      en_US: Please input Xinference server's Base URL
+      zh_Hans: 请输入 Xinference 服务器的 Base URL
+  model:
+    type: text-input
+    required: true
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    placeholder:
+      en_US: Please input your model name
+      zh_Hans: 请输入你的模型名称
+  api_key:
+    type: secret-input
+    required: false
+    label:
+      en_US: API Key
+      zh_Hans: Xinference 服务器的 API Key
+    placeholder:
+      en_US: Please input Xinference server's API Key
+      zh_Hans: 请输入 Xinference 服务器的 API Key

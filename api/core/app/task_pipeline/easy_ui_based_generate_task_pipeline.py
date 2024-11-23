@@ -248,7 +248,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             else:
                 start_listener_time = time.time()
                 yield MessageAudioStreamResponse(audio=audio.audio, task_id=task_id)
-        yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
+        if publisher:
+            yield MessageAudioEndStreamResponse(audio="", task_id=task_id)
 
     def _process_stream_response(
         self, publisher: AppGeneratorTTSPublisher, trace_manager: Optional[TraceQueueManager] = None

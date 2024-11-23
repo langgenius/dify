@@ -27,9 +27,11 @@ class BaseKeyword(ABC):
     def delete_by_ids(self, ids: list[str]) -> None:
         raise NotImplementedError
 
+    @abstractmethod
     def delete(self) -> None:
         raise NotImplementedError
 
+    @abstractmethod
     def search(self, query: str, **kwargs: Any) -> list[Document]:
         raise NotImplementedError
 

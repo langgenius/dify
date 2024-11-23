@@ -133,6 +133,7 @@ const ImageList: FC<ImageListProps> = ({
         <ImagePreview
           url={imagePreviewUrl}
           onCancel={() => setImagePreviewUrl('')}
+          title=''
         />
       )}
     </div>

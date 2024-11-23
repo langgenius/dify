@@ -1,7 +1,7 @@
 import re
 import tempfile
 from pathlib import Path
-from typing import Union
+from typing import Optional, Union
 from urllib.parse import unquote
 
 from configs import dify_config
@@ -12,6 +12,7 @@ from core.rag.extractor.entity.extract_setting import ExtractSetting
 from core.rag.extractor.excel_extractor import ExcelExtractor
 from core.rag.extractor.firecrawl.firecrawl_web_extractor import FirecrawlWebExtractor
 from core.rag.extractor.html_extractor import HtmlExtractor
+from core.rag.extractor.jina_reader_extractor import JinaReaderWebExtractor
 from core.rag.extractor.markdown_extractor import MarkdownExtractor
 from core.rag.extractor.notion_extractor import NotionExtractor
 from core.rag.extractor.pdf_extractor import PdfExtractor
@@ -83,7 +84,7 @@ class ExtractProcessor:
 
     @classmethod
     def extract(
-        cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: str = None
+        cls, extract_setting: ExtractSetting, is_automatic: bool = False, file_path: Optional[str] = None
     ) -> list[Document]:
         if extract_setting.datasource_type == DatasourceType.FILE.value:
             with tempfile.TemporaryDirectory() as temp_dir:
@@ -104,7 +105,7 @@ class ExtractProcessor:
                         extractor = PdfExtractor(file_path)
                     elif file_extension in {".md", ".markdown"}:
                         extractor = (
-                            UnstructuredMarkdownExtractor(file_path, unstructured_api_url)
+                            UnstructuredMarkdownExtractor(file_path, unstructured_api_url, unstructured_api_key)
                             if is_automatic
                             else MarkdownExtractor(file_path, autodetect_encoding=True)
                         )
@@ -115,17 +116,19 @@ class ExtractProcessor:
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
                     elif file_extension == ".msg":
-                        extractor = UnstructuredMsgExtractor(file_path, unstructured_api_url)
+                        extractor = UnstructuredMsgExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".eml":
-                        extractor = UnstructuredEmailExtractor(file_path, unstructured_api_url)
+                        extractor = UnstructuredEmailExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".ppt":
                         extractor = UnstructuredPPTExtractor(file_path, unstructured_api_url, unstructured_api_key)
+                        # You must first specify the API key
+                        # because unstructured_api_key is necessary to parse .ppt documents
                     elif file_extension == ".pptx":
-                        extractor = UnstructuredPPTXExtractor(file_path, unstructured_api_url)
+                        extractor = UnstructuredPPTXExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     elif file_extension == ".xml":
-                        extractor = UnstructuredXmlExtractor(file_path, unstructured_api_url)
-                    elif file_extension == "epub":
-                        extractor = UnstructuredEpubExtractor(file_path, unstructured_api_url)
+                        extractor = UnstructuredXmlExtractor(file_path, unstructured_api_url, unstructured_api_key)
+                    elif file_extension == ".epub":
+                        extractor = UnstructuredEpubExtractor(file_path, unstructured_api_url, unstructured_api_key)
                     else:
                         # txt
                         extractor = (
@@ -146,7 +149,7 @@ class ExtractProcessor:
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
-                    elif file_extension == "epub":
+                    elif file_extension == ".epub":
                         extractor = UnstructuredEpubExtractor(file_path)
                     else:
                         # txt
@@ -164,6 +167,15 @@ class ExtractProcessor:
         elif extract_setting.datasource_type == DatasourceType.WEBSITE.value:
             if extract_setting.website_info.provider == "firecrawl":
                 extractor = FirecrawlWebExtractor(
+                    url=extract_setting.website_info.url,
+                    job_id=extract_setting.website_info.job_id,
+                    tenant_id=extract_setting.website_info.tenant_id,
+                    mode=extract_setting.website_info.mode,
+                    only_main_content=extract_setting.website_info.only_main_content,
+                )
+                return extractor.extract()
+            elif extract_setting.website_info.provider == "jinareader":
+                extractor = JinaReaderWebExtractor(
                     url=extract_setting.website_info.url,
                     job_id=extract_setting.website_info.job_id,
                     tenant_id=extract_setting.website_info.tenant_id,

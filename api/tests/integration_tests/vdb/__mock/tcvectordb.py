@@ -48,7 +48,7 @@ class MockTcvectordbClass:
         description: str,
         index: Index,
         embedding: Embedding = None,
-        timeout: float = None,
+        timeout: Optional[float] = None,
     ) -> Collection:
         return Collection(
             self,
@@ -97,9 +97,9 @@ class MockTcvectordbClass:
 
     def collection_delete(
         self,
-        document_ids: list[str] = None,
+        document_ids: Optional[list[str]] = None,
         filter: Filter = None,
-        timeout: float = None,
+        timeout: Optional[float] = None,
     ):
         return {"code": 0, "msg": "operation success"}
 

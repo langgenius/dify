@@ -8,11 +8,13 @@ type Props = {
   vars: NodeOutPutVar[]
   onChange: (value: ValueSelector, varDetail: Var) => void
   itemWidth?: number
+  isSupportFileVar?: boolean
 }
 const VarReferencePopup: FC<Props> = ({
   vars,
   onChange,
   itemWidth,
+  isSupportFileVar = true,
 }) => {
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
@@ -23,7 +25,9 @@ const VarReferencePopup: FC<Props> = ({
         searchBoxClassName='mt-1'
         vars={vars}
         onChange={onChange}
-        itemWidth={itemWidth} />
+        itemWidth={itemWidth}
+        isSupportFileVar={isSupportFileVar}
+      />
     </div >
   )
 }

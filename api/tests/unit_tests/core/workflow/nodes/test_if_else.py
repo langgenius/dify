@@ -1,16 +1,20 @@
 import time
 import uuid
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import UserFrom
+from core.file import File, FileTransferMethod, FileType
+from core.variables import ArrayFileSegment
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
+from core.workflow.nodes.if_else.entities import IfElseNodeData
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
+from core.workflow.utils.condition.entities import Condition, SubCondition, SubVariableCondition
 from extensions.ext_database import db
+from models.enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 
 
@@ -51,6 +55,7 @@ def test_execute_if_else_result_true():
     pool.add(["start", "less_than"], 21)
     pool.add(["start", "greater_than_or_equal"], 22)
     pool.add(["start", "less_than_or_equal"], 21)
+    pool.add(["start", "null"], None)
     pool.add(["start", "not_null"], "1212")
 
     node = IfElseNode(
@@ -111,6 +116,7 @@ def test_execute_if_else_result_true():
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs is not None
     assert result.outputs["result"] is True
 
 
@@ -191,4 +197,63 @@ def test_execute_if_else_result_false():
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs is not None
     assert result.outputs["result"] is False
+
+
+def test_array_file_contains_file_name():
+    node_data = IfElseNodeData(
+        title="123",
+        logical_operator="and",
+        cases=[
+            IfElseNodeData.Case(
+                case_id="true",
+                logical_operator="and",
+                conditions=[
+                    Condition(
+                        comparison_operator="contains",
+                        variable_selector=["start", "array_contains"],
+                        sub_variable_condition=SubVariableCondition(
+                            logical_operator="and",
+                            conditions=[
+                                SubCondition(
+                                    key="name",
+                                    comparison_operator="contains",
+                                    value="ab",
+                                )
+                            ],
+                        ),
+                    )
+                ],
+            )
+        ],
+    )
+
+    node = IfElseNode(
+        id=str(uuid.uuid4()),
+        graph_init_params=Mock(),
+        graph=Mock(),
+        graph_runtime_state=Mock(),
+        config={
+            "id": "if-else",
+            "data": node_data.model_dump(),
+        },
+    )
+
+    node.graph_runtime_state.variable_pool.get.return_value = ArrayFileSegment(
+        value=[
+            File(
+                tenant_id="1",
+                type=FileType.IMAGE,
+                transfer_method=FileTransferMethod.LOCAL_FILE,
+                related_id="1",
+                filename="ab",
+            ),
+        ],
+    )
+
+    result = node._run()
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert result.outputs is not None
+    assert result.outputs["result"] is True

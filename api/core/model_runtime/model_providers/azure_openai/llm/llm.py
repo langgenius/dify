@@ -45,9 +45,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         stream: bool = True,
         user: Optional[str] = None,
     ) -> Union[LLMResult, Generator]:
-        base_model_name = credentials.get("base_model_name")
-        if not base_model_name:
-            raise ValueError("Base Model Name is required")
+        base_model_name = self._get_base_model_name(credentials)
         ai_model_entity = self._get_ai_model_entity(base_model_name=base_model_name, model=model)
 
         if ai_model_entity and ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
@@ -81,9 +79,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         prompt_messages: list[PromptMessage],
         tools: Optional[list[PromptMessageTool]] = None,
     ) -> int:
-        base_model_name = credentials.get("base_model_name")
-        if not base_model_name:
-            raise ValueError("Base Model Name is required")
+        base_model_name = self._get_base_model_name(credentials)
         model_entity = self._get_ai_model_entity(base_model_name=base_model_name, model=model)
         if not model_entity:
             raise ValueError(f"Base Model Name {base_model_name} is invalid")
@@ -108,9 +104,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         if "base_model_name" not in credentials:
             raise CredentialsValidateFailedError("Base Model Name is required")
 
-        base_model_name = credentials.get("base_model_name")
-        if not base_model_name:
-            raise CredentialsValidateFailedError("Base Model Name is required")
+        base_model_name = self._get_base_model_name(credentials)
         ai_model_entity = self._get_ai_model_entity(base_model_name=base_model_name, model=model)
 
         if not ai_model_entity:
@@ -119,7 +113,15 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         try:
             client = AzureOpenAI(**self._to_credential_kwargs(credentials))
 
-            if ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
+            if "o1" in model:
+                client.chat.completions.create(
+                    messages=[{"role": "user", "content": "ping"}],
+                    model=model,
+                    temperature=1,
+                    max_completion_tokens=20,
+                    stream=False,
+                )
+            elif ai_model_entity.entity.model_properties.get(ModelPropertyKey.MODE) == LLMMode.CHAT.value:
                 # chat model
                 client.chat.completions.create(
                     messages=[{"role": "user", "content": "ping"}],
@@ -141,9 +143,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
             raise CredentialsValidateFailedError(str(ex))
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
-        base_model_name = credentials.get("base_model_name")
-        if not base_model_name:
-            raise ValueError("Base Model Name is required")
+        base_model_name = self._get_base_model_name(credentials)
         ai_model_entity = self._get_ai_model_entity(base_model_name=base_model_name, model=model)
         return ai_model_entity.entity if ai_model_entity else None
 
@@ -300,11 +300,6 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
 
         if tools:
             extra_model_kwargs["tools"] = [helper.dump_model(PromptMessageFunction(function=tool)) for tool in tools]
-            # extra_model_kwargs['functions'] = [{
-            #     "name": tool.name,
-            #     "description": tool.description,
-            #     "parameters": tool.parameters
-            # } for tool in tools]
 
         if stop:
             extra_model_kwargs["stop"] = stop
@@ -312,10 +307,24 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         if user:
             extra_model_kwargs["user"] = user
 
+        # clear illegal prompt messages
+        prompt_messages = self._clear_illegal_prompt_messages(model, prompt_messages)
+
+        block_as_stream = False
+        if "o1" in model:
+            if stream:
+                block_as_stream = True
+                stream = False
+
+                if "stream_options" in extra_model_kwargs:
+                    del extra_model_kwargs["stream_options"]
+
+            if "stop" in extra_model_kwargs:
+                del extra_model_kwargs["stop"]
+
         # chat model
-        messages = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
         response = client.chat.completions.create(
-            messages=messages,
+            messages=[self._convert_prompt_message_to_dict(m) for m in prompt_messages],
             model=model,
             stream=stream,
             **model_parameters,
@@ -325,7 +334,91 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         if stream:
             return self._handle_chat_generate_stream_response(model, credentials, response, prompt_messages, tools)
 
-        return self._handle_chat_generate_response(model, credentials, response, prompt_messages, tools)
+        block_result = self._handle_chat_generate_response(model, credentials, response, prompt_messages, tools)
+
+        if block_as_stream:
+            return self._handle_chat_block_as_stream_response(block_result, prompt_messages, stop)
+
+        return block_result
+
+    def _handle_chat_block_as_stream_response(
+        self,
+        block_result: LLMResult,
+        prompt_messages: list[PromptMessage],
+        stop: Optional[list[str]] = None,
+    ) -> Generator[LLMResultChunk, None, None]:
+        """
+        Handle llm chat response
+
+        :param model: model name
+        :param credentials: credentials
+        :param response: response
+        :param prompt_messages: prompt messages
+        :param tools: tools for tool calling
+        :param stop: stop words
+        :return: llm response chunk generator
+        """
+        text = block_result.message.content
+        text = cast(str, text)
+
+        if stop:
+            text = self.enforce_stop_tokens(text, stop)
+
+        yield LLMResultChunk(
+            model=block_result.model,
+            prompt_messages=prompt_messages,
+            system_fingerprint=block_result.system_fingerprint,
+            delta=LLMResultChunkDelta(
+                index=0,
+                message=AssistantPromptMessage(content=text),
+                finish_reason="stop",
+                usage=block_result.usage,
+            ),
+        )
+
+    def _clear_illegal_prompt_messages(self, model: str, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
+        """
+        Clear illegal prompt messages for OpenAI API
+
+        :param model: model name
+        :param prompt_messages: prompt messages
+        :return: cleaned prompt messages
+        """
+        checklist = ["gpt-4-turbo", "gpt-4-turbo-2024-04-09"]
+
+        if model in checklist:
+            # count how many user messages are there
+            user_message_count = len([m for m in prompt_messages if isinstance(m, UserPromptMessage)])
+            if user_message_count > 1:
+                for prompt_message in prompt_messages:
+                    if isinstance(prompt_message, UserPromptMessage):
+                        if isinstance(prompt_message.content, list):
+                            prompt_message.content = "\n".join(
+                                [
+                                    item.data
+                                    if item.type == PromptMessageContentType.TEXT
+                                    else "[IMAGE]"
+                                    if item.type == PromptMessageContentType.IMAGE
+                                    else ""
+                                    for item in prompt_message.content
+                                ]
+                            )
+
+        if "o1" in model:
+            system_message_count = len([m for m in prompt_messages if isinstance(m, SystemPromptMessage)])
+            if system_message_count > 0:
+                new_prompt_messages = []
+                for prompt_message in prompt_messages:
+                    if isinstance(prompt_message, SystemPromptMessage):
+                        prompt_message = UserPromptMessage(
+                            content=prompt_message.content,
+                            name=prompt_message.name,
+                        )
+
+                    new_prompt_messages.append(prompt_message)
+                prompt_messages = new_prompt_messages
+
+        return prompt_messages
 
     def _handle_chat_generate_response(
         self,
@@ -560,7 +653,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
             tokens_per_message = 4
             # if there's a name, the role is omitted
             tokens_per_name = -1
-        elif model.startswith("gpt-35-turbo") or model.startswith("gpt-4"):
+        elif model.startswith("gpt-35-turbo") or model.startswith("gpt-4") or "o1" in model:
             tokens_per_message = 3
             tokens_per_name = 1
         else:
@@ -663,3 +756,9 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                 ai_model_entity_copy.entity.label.en_US = model
                 ai_model_entity_copy.entity.label.zh_Hans = model
                 return ai_model_entity_copy
+
+    def _get_base_model_name(self, credentials: dict) -> str:
+        base_model_name = credentials.get("base_model_name")
+        if not base_model_name:
+            raise ValueError("Base Model Name is required")
+        return base_model_name

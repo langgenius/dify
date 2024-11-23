@@ -72,6 +72,80 @@ const translation = {
   nTo1RetrievalLegacyLink: 'Daha fazla bilgi edin',
   nTo1RetrievalLegacyLinkText: 'N-1 geri alma Eylül ayında resmi olarak kullanımdan kaldırılacaktır.',
   defaultRetrievalTip: 'Varsayılan olarak çok alma kullanılır. Bilgi, birden fazla bilgi tabanından alınır ve ardından yeniden sıralanır.',
+  editExternalAPIConfirmWarningContent: {
+    front: 'Bu Harici Bilgi API\'si aşağıdakilerle bağlantılıdır',
+    end: 'Dışsal bilgi ve bu değişiklik hepsine uygulanacaktır. Bu değişikliği kaydetmek istediğinizden emin misiniz?',
+  },
+  editExternalAPIFormWarning: {
+    end: 'Dış bilgi',
+    front: 'Bu Harici API aşağıdakilere bağlıdır:',
+  },
+  deleteExternalAPIConfirmWarningContent: {
+    title: {
+      front: 'Silmek',
+      end: '?',
+    },
+    content: {
+      front: 'Bu Harici Bilgi API\'si aşağıdakilerle bağlantılıdır',
+      end: 'dış bilgi. Bu API\'yi silmek hepsini geçersiz kılacaktır. Bu API\'yi silmek istediğinizden emin misiniz?',
+    },
+    noConnectionContent: 'Bu API\'yi sildiğinizden emin misiniz?',
+  },
+  selectExternalKnowledgeAPI: {
+    placeholder: 'Bir Harici Bilgi API\'si seçin',
+  },
+  connectDatasetIntro: {
+    content: {
+      front: 'Harici bir bilgi bankasına bağlanmak için önce harici bir API oluşturmanız gerekir. Lütfen dikkatlice okuyun ve bakınız',
+      end: '. Ardından ilgili bilgi kimliğini bulun ve soldaki forma doldurun. Tüm bilgiler doğruysa, bağlan düğmesine tıkladıktan sonra otomatik olarak bilgi tabanındaki alma testine atlayacaktır.',
+      link: 'Harici API oluşturmayı öğrenin',
+    },
+    title: 'Harici bir bilgi bankasına nasıl bağlanılır',
+    learnMore: 'Daha fazla bilgi edinin',
+  },
+  connectHelper: {
+    helper2: 'Yalnızca alma işlevi desteklenir',
+    helper5: 'Bu özelliği kullanmadan önce dikkatlice kullanın.',
+    helper3: '. Şunları yapmanızı şiddetle tavsiye ederiz',
+    helper1: 'API ve bilgi bankası kimliği aracılığıyla harici bilgi bankalarına bağlanın. Şu anda,',
+    helper4: 'Yardım belgelerini okuyun',
+  },
+  externalKnowledgeForm: {
+    connect: 'Bağlamak',
+    cancel: 'İptal',
+  },
+  externalAPIForm: {
+    encrypted: {
+      end: 'Teknoloji.',
+      front: 'API Token\'ınız kullanılarak şifrelenecek ve saklanacaktır.',
+    },
+    save: 'Kurtarmak',
+    cancel: 'İptal',
+    endpoint: 'API Uç Noktası',
+    edit: 'Düzenlemek',
+    name: 'Ad',
+    apiKey: 'API Anahtarı',
+  },
+  externalTag: 'Dış',
+  externalAPI: 'Harici API',
+  externalKnowledgeDescription: 'Bilgi Açıklaması',
+  externalAPIPanelDescription: 'Harici bilgi API\'si, Dify dışındaki bir bilgi bankasına bağlanmak ve bu bilgi bankasından bilgi almak için kullanılır.',
+  externalKnowledgeDescriptionPlaceholder: 'Bu Bilgi Bankası\'nda neler olduğunu açıklayın (isteğe bağlı)',
+  externalAPIPanelDocumentation: 'External Knowledge API\'nin nasıl oluşturulacağını öğrenin',
+  mixtureInternalAndExternalTip: 'Rerank modeli, iç ve dış bilgilerin karışımı için gereklidir.',
+  externalKnowledgeName: 'Dış Bilgi Adı',
+  connectDataset: 'Harici bir bilgi bankasına bağlanın',
+  editExternalAPITooltipTitle: 'BAĞLANTILI BILGI',
+  externalAPIPanelTitle: 'Harici Bilgi API\'si',
+  editExternalAPIFormTitle: 'External Knowledge API\'yi düzenleme',
+  externalKnowledgeIdPlaceholder: 'Lütfen Bilgi Kimliğini girin',
+  learnHowToWriteGoodKnowledgeDescription: 'İyi bir bilgi açıklamasının nasıl yazılacağını öğrenin',
+  externalKnowledgeNamePlaceholder: 'Lütfen bilgi bankasının adını giriniz',
+  noExternalKnowledge: 'Henüz Harici Bilgi API\'si yok, oluşturmak için buraya tıklayın',
+  allExternalTip: 'Yalnızca harici bilgileri kullanırken, kullanıcı Rerank modelinin etkinleştirilip etkinleştirilmeyeceğini seçebilir. Etkinleştirilmezse, alınan parçalar puanlara göre sıralanır. Farklı bilgi tabanlarının erişim stratejileri tutarsız olduğunda, yanlış olacaktır.',
+  externalKnowledgeId: 'Harici Bilgi Kimliği',
+  createExternalAPI: 'Harici bilgi API\'si ekleme',
+  createNewExternalAPI: 'Yeni bir External Knowledge API oluşturma',
 }
 
 export default translation

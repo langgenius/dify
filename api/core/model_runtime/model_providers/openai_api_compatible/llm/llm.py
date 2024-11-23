@@ -205,7 +205,13 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
             parameter_rules=[
                 ParameterRule(
                     name=DefaultParameterName.TEMPERATURE.value,
-                    label=I18nObject(en_US="Temperature"),
+                    label=I18nObject(en_US="Temperature", zh_Hans="温度"),
+                    help=I18nObject(
+                        en_US="Kernel sampling threshold. Used to determine the randomness of the results."
+                        "The higher the value, the stronger the randomness."
+                        "The higher the possibility of getting different answers to the same question.",
+                        zh_Hans="核采样阈值。用于决定结果随机性，取值越高随机性越强即相同的问题得到的不同答案的可能性越高。",
+                    ),
                     type=ParameterType.FLOAT,
                     default=float(credentials.get("temperature", 0.7)),
                     min=0,
@@ -214,7 +220,13 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 ),
                 ParameterRule(
                     name=DefaultParameterName.TOP_P.value,
-                    label=I18nObject(en_US="Top P"),
+                    label=I18nObject(en_US="Top P", zh_Hans="Top P"),
+                    help=I18nObject(
+                        en_US="The probability threshold of the nucleus sampling method during the generation process."
+                        "The larger the value is, the higher the randomness of generation will be."
+                        "The smaller the value is, the higher the certainty of generation will be.",
+                        zh_Hans="生成过程中核采样方法概率阈值。取值越大，生成的随机性越高；取值越小，生成的确定性越高。",
+                    ),
                     type=ParameterType.FLOAT,
                     default=float(credentials.get("top_p", 1)),
                     min=0,
@@ -223,7 +235,12 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 ),
                 ParameterRule(
                     name=DefaultParameterName.FREQUENCY_PENALTY.value,
-                    label=I18nObject(en_US="Frequency Penalty"),
+                    label=I18nObject(en_US="Frequency Penalty", zh_Hans="频率惩罚"),
+                    help=I18nObject(
+                        en_US="For controlling the repetition rate of words used by the model."
+                        "Increasing this can reduce the repetition of the same words in the model's output.",
+                        zh_Hans="用于控制模型已使用字词的重复率。 提高此项可以降低模型在输出中重复相同字词的重复度。",
+                    ),
                     type=ParameterType.FLOAT,
                     default=float(credentials.get("frequency_penalty", 0)),
                     min=-2,
@@ -231,7 +248,12 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 ),
                 ParameterRule(
                     name=DefaultParameterName.PRESENCE_PENALTY.value,
-                    label=I18nObject(en_US="Presence Penalty"),
+                    label=I18nObject(en_US="Presence Penalty", zh_Hans="存在惩罚"),
+                    help=I18nObject(
+                        en_US="Used to control the repetition rate when generating models."
+                        "Increasing this can reduce the repetition rate of model generation.",
+                        zh_Hans="用于控制模型生成时的重复度。提高此项可以降低模型生成的重复度。",
+                    ),
                     type=ParameterType.FLOAT,
                     default=float(credentials.get("presence_penalty", 0)),
                     min=-2,
@@ -239,7 +261,10 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 ),
                 ParameterRule(
                     name=DefaultParameterName.MAX_TOKENS.value,
-                    label=I18nObject(en_US="Max Tokens"),
+                    label=I18nObject(en_US="Max Tokens", zh_Hans="最大标记"),
+                    help=I18nObject(
+                        en_US="Maximum length of tokens for the model response.", zh_Hans="模型回答的tokens的最大长度。"
+                    ),
                     type=ParameterType.INT,
                     default=512,
                     min=1,
@@ -372,16 +397,21 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
         chunk_index = 0
 
         def create_final_llm_result_chunk(
-            index: int, message: AssistantPromptMessage, finish_reason: str
+            id: Optional[str], index: int, message: AssistantPromptMessage, finish_reason: str, usage: dict
         ) -> LLMResultChunk:
             # calculate num tokens
-            prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
-            completion_tokens = self._num_tokens_from_string(model, full_assistant_content)
+            prompt_tokens = usage and usage.get("prompt_tokens")
+            if prompt_tokens is None:
+                prompt_tokens = self._num_tokens_from_string(model, prompt_messages[0].content)
+            completion_tokens = usage and usage.get("completion_tokens")
+            if completion_tokens is None:
+                completion_tokens = self._num_tokens_from_string(model, full_assistant_content)
 
             # transform usage
             usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
             return LLMResultChunk(
+                id=id,
                 model=model,
                 prompt_messages=prompt_messages,
                 delta=LLMResultChunkDelta(index=index, message=message, finish_reason=finish_reason, usage=usage),
@@ -425,7 +455,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                     tool_call.function.arguments += new_tool_call.function.arguments
 
         finish_reason = None  # The default value of finish_reason is None
-
+        message_id, usage = None, None
         for chunk in response.iter_lines(decode_unicode=True, delimiter=delimiter):
             chunk = chunk.strip()
             if chunk:
@@ -437,20 +467,26 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                     continue
 
                 try:
-                    chunk_json = json.loads(decoded_chunk)
+                    chunk_json: dict = json.loads(decoded_chunk)
                 # stream ended
                 except json.JSONDecodeError as e:
                     yield create_final_llm_result_chunk(
+                        id=message_id,
                         index=chunk_index + 1,
                         message=AssistantPromptMessage(content=""),
                         finish_reason="Non-JSON encountered.",
+                        usage=usage,
                     )
                     break
+                if chunk_json:
+                    if u := chunk_json.get("usage"):
+                        usage = u
                 if not chunk_json or len(chunk_json["choices"]) == 0:
                     continue
 
                 choice = chunk_json["choices"][0]
                 finish_reason = chunk_json["choices"][0].get("finish_reason")
+                message_id = chunk_json.get("id")
                 chunk_index += 1
 
                 if "delta" in choice:
@@ -499,6 +535,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                     continue
 
                 yield LLMResultChunk(
+                    id=message_id,
                     model=model,
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
@@ -511,6 +548,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
 
         if tools_calls:
             yield LLMResultChunk(
+                id=message_id,
                 model=model,
                 prompt_messages=prompt_messages,
                 delta=LLMResultChunkDelta(
@@ -520,17 +558,22 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
             )
 
         yield create_final_llm_result_chunk(
-            index=chunk_index, message=AssistantPromptMessage(content=""), finish_reason=finish_reason
+            id=message_id,
+            index=chunk_index,
+            message=AssistantPromptMessage(content=""),
+            finish_reason=finish_reason,
+            usage=usage,
         )
 
     def _handle_generate_response(
         self, model: str, credentials: dict, response: requests.Response, prompt_messages: list[PromptMessage]
     ) -> LLMResult:
-        response_json = response.json()
+        response_json: dict = response.json()
 
         completion_type = LLMMode.value_of(credentials["mode"])
 
         output = response_json["choices"][0]
+        message_id = response_json.get("id")
 
         response_content = ""
         tool_calls = None
@@ -568,6 +611,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
 
         # transform response
         result = LLMResult(
+            id=message_id,
             model=response_json["model"],
             prompt_messages=prompt_messages,
             message=assistant_message,
@@ -663,7 +707,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
         model: str,
         messages: list[PromptMessage],
         tools: Optional[list[PromptMessageTool]] = None,
-        credentials: dict = None,
+        credentials: Optional[dict] = None,
     ) -> int:
         """
         Approximate num tokens with GPT2 tokenizer.

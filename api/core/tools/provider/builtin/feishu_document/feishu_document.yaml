@@ -5,8 +5,10 @@ identity:
     en_US: Lark Cloud Document
     zh_Hans: 飞书云文档
   description:
-    en_US: Lark Cloud Document
-    zh_Hans: 飞书云文档
+    en_US: |
+      Lark cloud document, requires the following permissions: docx:document、drive:drive、docs:document.content:read.
+    zh_Hans: |
+      飞书云文档，需要开通以下权限: docx:document、drive:drive、docs:document.content:read。
   icon: icon.svg
   tags:
     - social
@@ -23,7 +25,7 @@ credentials_for_provider:
     help:
       en_US: Get your app_id and app_secret from Feishu
       zh_Hans: 从飞书获取您的 app_id 和 app_secret
-    url: https://open.feishu.cn
+    url: https://open.larkoffice.com/app
   app_secret:
     type: secret-input
     required: true

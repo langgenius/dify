@@ -1,11 +1,16 @@
+from urllib import parse
+
 from flask_login import current_user
 from flask_restful import Resource, abort, marshal_with, reqparse
 
 import services
 from configs import dify_config
 from controllers.console import api
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
+from controllers.console.wraps import (
+    account_initialization_required,
+    cloud_edition_billing_resource_check,
+    setup_required,
+)
 from extensions.ext_database import db
 from fields.member_fields import account_with_role_list_fields
 from libs.login import login_required
@@ -54,11 +59,12 @@ class MemberInviteEmailApi(Resource):
                 token = RegisterService.invite_new_member(
                     inviter.current_tenant, invitee_email, interface_language, role=invitee_role, inviter=inviter
                 )
+                encoded_invitee_email = parse.quote(invitee_email)
                 invitation_results.append(
                     {
                         "status": "success",
                         "email": invitee_email,
-                        "url": f"{console_web_url}/activate?email={invitee_email}&token={token}",
+                        "url": f"{console_web_url}/activate?email={encoded_invitee_email}&token={token}",
                     }
                 )
             except AccountAlreadyInTenantError:

@@ -1,4 +1,5 @@
 import uuid
+from typing import Optional
 
 from flask_login import current_user
 from sqlalchemy import func
@@ -11,7 +12,7 @@ from models.model import App, Tag, TagBinding
 
 class TagService:
     @staticmethod
-    def get_tags(tag_type: str, current_tenant_id: str, keyword: str = None) -> list:
+    def get_tags(tag_type: str, current_tenant_id: str, keyword: Optional[str] = None) -> list:
         query = (
             db.session.query(Tag.id, Tag.type, Tag.name, func.count(TagBinding.id).label("binding_count"))
             .outerjoin(TagBinding, Tag.id == TagBinding.tag_id)

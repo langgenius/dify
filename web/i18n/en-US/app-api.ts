@@ -6,6 +6,7 @@ const translation = {
   ok: 'In Service',
   copy: 'Copy',
   copied: 'Copied',
+  regenerate: 'Regenerate',
   play: 'Play',
   pause: 'Pause',
   playing: 'Playing',
@@ -77,6 +78,7 @@ const translation = {
     requestBody: 'Request Body',
     pathParams: 'Path Params',
     query: 'Query',
+    toc: 'Contents',
   },
 }
 

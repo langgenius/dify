@@ -72,6 +72,80 @@ const translation = {
   nTo1RetrievalLegacyLink: 'Află mai multe',
   nTo1RetrievalLegacyLinkText: 'Recuperarea N-la-1 va fi oficial depreciată în septembrie.',
   defaultRetrievalTip: 'Recuperarea pe mai multe căi este utilizată în mod implicit. Cunoștințele sunt preluate din mai multe baze de cunoștințe și apoi reclasificate.',
+  editExternalAPIConfirmWarningContent: {
+    front: 'Acest API de cunoștințe externe este legat de',
+    end: 'cunoștințe externe, iar această modificare va fi aplicată tuturor. Sunteți sigur că doriți să salvați această modificare?',
+  },
+  editExternalAPIFormWarning: {
+    front: 'Acest API extern este legat de',
+    end: 'cunoștințe externe',
+  },
+  deleteExternalAPIConfirmWarningContent: {
+    title: {
+      front: 'Șterge',
+      end: '?',
+    },
+    content: {
+      front: 'Acest API de cunoștințe externe este legat de',
+      end: 'cunoștințe externe. Ștergerea acestui API le va invalida pe toate. Sunteți sigur că doriți să ștergeți acest API?',
+    },
+    noConnectionContent: 'Sunteți sigur că ștergeți acest API?',
+  },
+  selectExternalKnowledgeAPI: {
+    placeholder: 'Alegeți un API de cunoștințe extern',
+  },
+  connectDatasetIntro: {
+    content: {
+      end: '. Apoi găsiți ID-ul de cunoștințe corespunzător și completați-l în formularul din stânga. Dacă toate informațiile sunt corecte, va sări automat la testul de recuperare din baza de cunoștințe după ce faceți clic pe butonul de conectare.',
+      link: 'Aflați cum să creați un API extern',
+      front: 'Pentru a vă conecta la o bază de cunoștințe externă, trebuie mai întâi să creați un API extern. Vă rugăm să citiți cu atenție și să consultați',
+    },
+    title: 'Cum să vă conectați la o bază de cunoștințe externă',
+    learnMore: 'Află mai multe',
+  },
+  connectHelper: {
+    helper2: 'este acceptată doar funcționalitatea de recuperare',
+    helper5: 'Cu atenție înainte de a utiliza această caracteristică.',
+    helper3: '. Vă recomandăm cu tărie să',
+    helper4: 'Citiți documentația de ajutor',
+    helper1: 'Conectați-vă la baze de cunoștințe externe prin API și ID-ul bazei de cunoștințe. În prezent,',
+  },
+  externalKnowledgeForm: {
+    connect: 'Conecta',
+    cancel: 'Anula',
+  },
+  externalAPIForm: {
+    encrypted: {
+      end: 'Tehnologie.',
+      front: 'Tokenul API va fi criptat și stocat folosind',
+    },
+    edit: 'Editare',
+    endpoint: 'Punct final API',
+    apiKey: 'Cheie API',
+    name: 'Nume',
+    save: 'Salva',
+    cancel: 'Anula',
+  },
+  editExternalAPIFormTitle: 'Editarea API-ului de cunoștințe externe',
+  externalTag: 'Extern',
+  createExternalAPI: 'Adăugarea unui API de cunoștințe extern',
+  connectDataset: 'Conectați-vă la o bază de cunoștințe externă',
+  externalKnowledgeDescriptionPlaceholder: 'Descrieți ce este în această bază de cunoștințe (opțional)',
+  externalAPI: 'API extern',
+  learnHowToWriteGoodKnowledgeDescription: 'Aflați cum să scrieți o descriere bună a cunoștințelor',
+  externalAPIPanelTitle: 'API de cunoștințe externe',
+  allExternalTip: 'Când utilizează numai cunoștințe externe, utilizatorul poate alege dacă să activeze modelul Rerank. Dacă nu este activată, bucățile preluate vor fi sortate pe baza scorurilor. Când strategiile de recuperare a diferitelor baze de cunoștințe sunt inconsistente, acestea vor fi inexacte.',
+  externalKnowledgeNamePlaceholder: 'Vă rugăm să introduceți numele bazei de cunoștințe',
+  externalAPIPanelDocumentation: 'Aflați cum să creați un API de cunoștințe externe',
+  externalKnowledgeName: 'Nume cunoștințe externe',
+  externalKnowledgeDescription: 'Descrierea cunoștințelor',
+  externalKnowledgeIdPlaceholder: 'Vă rugăm să introduceți ID-ul de cunoștințe',
+  noExternalKnowledge: 'Nu există încă un API de cunoștințe externe, faceți clic aici pentru a crea',
+  externalKnowledgeId: 'ID de cunoștințe extern',
+  editExternalAPITooltipTitle: 'CUNOȘTINȚE LEGATE',
+  mixtureInternalAndExternalTip: 'Modelul Rerank este necesar pentru amestecul de cunoștințe interne și externe.',
+  externalAPIPanelDescription: 'API-ul de cunoștințe externe este utilizat pentru a se conecta la o bază de cunoștințe din afara Dify și pentru a prelua cunoștințe din acea bază de cunoștințe.',
+  createNewExternalAPI: 'Creați un nou API de cunoștințe externe',
 }
 
 export default translation

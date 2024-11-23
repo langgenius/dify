@@ -9,6 +9,7 @@ import tempfile
 import unicodedata
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Optional
 from urllib.parse import unquote
 
 import chardet
@@ -36,7 +37,7 @@ def page_result(text: str, cursor: int, max_length: int) -> str:
     return text[cursor : cursor + max_length]
 
 
-def get_url(url: str, user_agent: str = None) -> str:
+def get_url(url: str, user_agent: Optional[str] = None) -> str:
     """Fetch URL and return the contents as a string."""
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
@@ -355,3 +356,19 @@ def content_digest(element):
                 digest.update(child.encode("utf-8"))
             digest = digest.hexdigest()
     return digest
+
+
+def get_image_upload_file_ids(content):
+    pattern = r"!\[image\]\((http?://.*?(file-preview|image-preview))\)"
+    matches = re.findall(pattern, content)
+    image_upload_file_ids = []
+    for match in matches:
+        if match[1] == "file-preview":
+            content_pattern = r"files/([^/]+)/file-preview"
+        else:
+            content_pattern = r"files/([^/]+)/image-preview"
+        content_match = re.search(content_pattern, match[0])
+        if content_match:
+            image_upload_file_id = content_match.group(1)
+            image_upload_file_ids.append(image_upload_file_id)
+    return image_upload_file_ids

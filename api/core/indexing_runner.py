@@ -17,6 +17,7 @@ from core.errors.error import ProviderTokenNotInitError
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelType
+from core.rag.cleaner.clean_processor import CleanProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -28,6 +29,8 @@ from core.rag.splitter.fixed_text_splitter import (
     FixedRecursiveCharacterTextSplitter,
 )
 from core.rag.splitter.text_splitter import TextSplitter
+from core.tools.utils.text_processing_utils import remove_leading_symbols
+from core.tools.utils.web_reader_tool import get_image_upload_file_ids
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from extensions.ext_storage import storage
@@ -211,9 +214,9 @@ class IndexingRunner:
         tenant_id: str,
         extract_settings: list[ExtractSetting],
         tmp_processing_rule: dict,
-        doc_form: str = None,
+        doc_form: Optional[str] = None,
         doc_language: str = "English",
-        dataset_id: str = None,
+        dataset_id: Optional[str] = None,
         indexing_technique: str = "economy",
     ) -> dict:
         """
@@ -276,6 +279,19 @@ class IndexingRunner:
             for document in documents:
                 if len(preview_texts) < 5:
                     preview_texts.append(document.page_content)
+
+                # delete image files and related db records
+                image_upload_file_ids = get_image_upload_file_ids(document.page_content)
+                for upload_file_id in image_upload_file_ids:
+                    image_file = db.session.query(UploadFile).filter(UploadFile.id == upload_file_id).first()
+                    try:
+                        storage.delete(image_file.key)
+                    except Exception:
+                        logging.exception(
+                            "Delete image_files failed while indexing_estimate, \
+                                          image_upload_file_is: {}".format(upload_file_id)
+                        )
+                    db.session.delete(image_file)
 
         if doc_form and doc_form == "qa_model":
             if len(preview_texts) > 0:
@@ -499,11 +515,7 @@ class IndexingRunner:
                     document_node.metadata["doc_hash"] = hash
                     # delete Splitter character
                     page_content = document_node.page_content
-                    if page_content.startswith(".") or page_content.startswith("。"):
-                        page_content = page_content[1:]
-                    else:
-                        page_content = page_content
-                    document_node.page_content = page_content
+                    document_node.page_content = remove_leading_symbols(page_content)
 
                     if document_node.page_content:
                         split_documents.append(document_node)
@@ -553,7 +565,7 @@ class IndexingRunner:
                     qa_documents.append(qa_document)
                 format_documents.extend(qa_documents)
             except Exception as e:
-                logging.exception(e)
+                logging.exception("Failed to format qa document")
 
             all_qa_documents.extend(format_documents)
 
@@ -597,26 +609,9 @@ class IndexingRunner:
             rules = DatasetProcessRule.AUTOMATIC_RULES
         else:
             rules = json.loads(processing_rule.rules) if processing_rule.rules else {}
+        document_text = CleanProcessor.clean(text, {"rules": rules})
 
-        if "pre_processing_rules" in rules:
-            pre_processing_rules = rules["pre_processing_rules"]
-            for pre_processing_rule in pre_processing_rules:
-                if pre_processing_rule["id"] == "remove_extra_spaces" and pre_processing_rule["enabled"] is True:
-                    # Remove extra spaces
-                    pattern = r"\n{3,}"
-                    text = re.sub(pattern, "\n\n", text)
-                    pattern = r"[\t\f\r\x20\u00a0\u1680\u180e\u2000-\u200a\u202f\u205f\u3000]{2,}"
-                    text = re.sub(pattern, " ", text)
-                elif pre_processing_rule["id"] == "remove_urls_emails" and pre_processing_rule["enabled"] is True:
-                    # Remove email
-                    pattern = r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)"
-                    text = re.sub(pattern, "", text)
-
-                    # Remove URL
-                    pattern = r"https?://[^\s]+"
-                    text = re.sub(pattern, "", text)
-
-        return text
+        return document_text
 
     @staticmethod
     def format_split_text(text):

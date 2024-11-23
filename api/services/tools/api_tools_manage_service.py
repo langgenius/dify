@@ -1,5 +1,6 @@
 import json
 import logging
+from typing import Optional
 
 from httpx import get
 
@@ -79,7 +80,9 @@ class ApiToolManageService:
             raise ValueError(f"invalid schema: {str(e)}")
 
     @staticmethod
-    def convert_schema_to_tool_bundles(schema: str, extra_info: dict = None) -> list[ApiToolBundle]:
+    def convert_schema_to_tool_bundles(
+        schema: str, extra_info: Optional[dict] = None
+    ) -> tuple[list[ApiToolBundle], str]:
         """
         convert schema to tool bundles
 
@@ -110,8 +113,10 @@ class ApiToolManageService:
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema}")
 
+        provider_name = provider_name.strip()
+
         # check if the provider exists
-        provider: ApiToolProvider = (
+        provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
@@ -190,27 +195,27 @@ class ApiToolManageService:
             # try to parse schema, avoid SSRF attack
             ApiToolManageService.parser_api_schema(schema)
         except Exception as e:
-            logger.error(f"parse api schema error: {str(e)}")
+            logger.exception("parse api schema error")
             raise ValueError("invalid schema, please check the url you provided")
 
         return {"schema": schema}
 
     @staticmethod
-    def list_api_tool_provider_tools(user_id: str, tenant_id: str, provider: str) -> list[UserTool]:
+    def list_api_tool_provider_tools(user_id: str, tenant_id: str, provider_name: str) -> list[UserTool]:
         """
         list api tool provider tools
         """
-        provider: ApiToolProvider = (
+        provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
-                ApiToolProvider.name == provider,
+                ApiToolProvider.name == provider_name,
             )
             .first()
         )
 
         if provider is None:
-            raise ValueError(f"you have not added provider {provider}")
+            raise ValueError(f"you have not added provider {provider_name}")
 
         controller = ToolTransformService.api_provider_to_controller(db_provider=provider)
         labels = ToolLabelManager.get_tool_labels(controller)
@@ -243,8 +248,10 @@ class ApiToolManageService:
         if schema_type not in [member.value for member in ApiProviderSchemaType]:
             raise ValueError(f"invalid schema type {schema}")
 
+        provider_name = provider_name.strip()
+
         # check if the provider exists
-        provider: ApiToolProvider = (
+        provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
@@ -311,7 +318,7 @@ class ApiToolManageService:
         """
         delete tool provider
         """
-        provider: ApiToolProvider = (
+        provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,
@@ -361,7 +368,7 @@ class ApiToolManageService:
         if tool_bundle is None:
             raise ValueError(f"invalid tool name {tool_name}")
 
-        db_provider: ApiToolProvider = (
+        db_provider = (
             db.session.query(ApiToolProvider)
             .filter(
                 ApiToolProvider.tenant_id == tenant_id,

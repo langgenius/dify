@@ -6,25 +6,25 @@ from pydantic_settings import BaseSettings
 
 class ElasticsearchConfig(BaseSettings):
     """
-    Elasticsearch configs
+    Configuration settings for Elasticsearch
     """
 
     ELASTICSEARCH_HOST: Optional[str] = Field(
-        description="Elasticsearch host",
+        description="Hostname or IP address of the Elasticsearch server (e.g., 'localhost' or '192.168.1.100')",
         default="127.0.0.1",
     )
 
     ELASTICSEARCH_PORT: PositiveInt = Field(
-        description="Elasticsearch port",
+        description="Port number on which the Elasticsearch server is listening (default is 9200)",
         default=9200,
     )
 
     ELASTICSEARCH_USERNAME: Optional[str] = Field(
-        description="Elasticsearch username",
+        description="Username for authenticating with Elasticsearch (default is 'elastic')",
         default="elastic",
     )
 
     ELASTICSEARCH_PASSWORD: Optional[str] = Field(
-        description="Elasticsearch password",
+        description="Password for authenticating with Elasticsearch (default is 'elastic')",
         default="elastic",
     )

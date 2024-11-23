@@ -1,6 +1,6 @@
 'use client'
 import type { FC, SVGProps } from 'react'
-import React, { useEffect } from 'react'
+import React, { useEffect, useMemo } from 'react'
 import { usePathname } from 'next/navigation'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
@@ -203,12 +203,23 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     datasetId,
   }, apiParams => fetchDatasetRelatedApps(apiParams.datasetId))
 
-  const navigation = [
-    { name: t('common.datasetMenus.documents'), href: `/datasets/${datasetId}/documents`, icon: DocumentTextIcon, selectedIcon: DocumentTextSolidIcon },
-    { name: t('common.datasetMenus.hitTesting'), href: `/datasets/${datasetId}/hitTesting`, icon: TargetIcon, selectedIcon: TargetSolidIcon },
-    // { name: 'api & webhook', href: `/datasets/${datasetId}/api`, icon: CommandLineIcon, selectedIcon: CommandLineSolidIcon },
-    { name: t('common.datasetMenus.settings'), href: `/datasets/${datasetId}/settings`, icon: Cog8ToothIcon, selectedIcon: Cog8ToothSolidIcon },
-  ]
+  const navigation = useMemo(() => {
+    const baseNavigation = [
+      { name: t('common.datasetMenus.hitTesting'), href: `/datasets/${datasetId}/hitTesting`, icon: TargetIcon, selectedIcon: TargetSolidIcon },
+      // { name: 'api & webhook', href: `/datasets/${datasetId}/api`, icon: CommandLineIcon, selectedIcon: CommandLineSolidIcon },
+      { name: t('common.datasetMenus.settings'), href: `/datasets/${datasetId}/settings`, icon: Cog8ToothIcon, selectedIcon: Cog8ToothSolidIcon },
+    ]
+
+    if (datasetRes?.provider !== 'external') {
+      baseNavigation.unshift({
+        name: t('common.datasetMenus.documents'),
+        href: `/datasets/${datasetId}/documents`,
+        icon: DocumentTextIcon,
+        selectedIcon: DocumentTextSolidIcon,
+      })
+    }
+    return baseNavigation
+  }, [datasetRes?.provider, datasetId, t])
 
   useEffect(() => {
     if (datasetRes)
@@ -233,6 +244,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon={datasetRes?.icon || 'https://static.dify.ai/images/dataset-default-icon.png'}
         icon_background={datasetRes?.icon_background || '#F5F5F5'}
         desc={datasetRes?.description || '--'}
+        isExternal={datasetRes?.provider === 'external'}
         navigation={navigation}
         extraInfo={!isCurrentWorkspaceDatasetOperator ? mode => <ExtraInfo isMobile={mode === 'collapse'} relatedApps={relatedApps} /> : undefined}
         iconType={datasetRes?.data_source_type === DataSourceType.NOTION ? 'notion' : 'dataset'}

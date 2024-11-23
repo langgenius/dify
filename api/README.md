@@ -18,12 +18,17 @@
    ```
 
 2. Copy `.env.example` to `.env`
+
+   ```cli
+   cp .env.example .env 
+   ```
 3. Generate a `SECRET_KEY` in the `.env` file.
 
+   bash for Linux
    ```bash for Linux
    sed -i "/^SECRET_KEY=/c\SECRET_KEY=$(openssl rand -base64 42)" .env
    ```
-
+   bash for Mac
    ```bash for Mac
    secret_key=$(openssl rand -base64 42)
    sed -i '' "/^SECRET_KEY=/c\\
@@ -37,16 +42,8 @@
 5. Install dependencies
 
    ```bash
-   poetry env use 3.10
+   poetry env use 3.12
    poetry install
-   ```
-
-   In case of contributors missing to update dependencies for `pyproject.toml`, you can perform the following shell instead.
-
-   ```bash
-   poetry shell                                               # activate current environment
-   poetry add $(cat requirements.txt)           # install dependencies of production and update pyproject.toml
-   poetry add $(cat requirements-dev.txt) --group dev    # install dependencies of development and update pyproject.toml
    ```
 
 6. Run migrate
@@ -65,25 +62,22 @@
 
 8. Start Dify [web](../web) service.
 9. Setup your application by visiting `http://localhost:3000`...
-10. If you need to debug local async processing, please start the worker service.
+10. If you need to handle and debug the async tasks (e.g. dataset importing and documents indexing), please start the worker service.
 
    ```bash
    poetry run python -m celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion
    ```
-
-   The started celery app handles the async tasks, e.g. dataset importing and documents indexing.
 
 ## Testing
 
 1. Install dependencies for both the backend and the test environment
 
    ```bash
-   poetry install --with dev
+   poetry install -C api --with dev
    ```
 
 2. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`
 
    ```bash
-   cd ../
    poetry run -C api bash dev/pytest/pytest_all_tests.sh
    ```

@@ -6,13 +6,11 @@ import pytest
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
-    ImagePromptMessageContent,
     PromptMessageTool,
     SystemPromptMessage,
-    TextPromptMessageContent,
     UserPromptMessage,
 )
-from core.model_runtime.entities.model_entities import AIModelEntity, ModelType
+from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.stepfun.llm.llm import StepfunLargeLanguageModel
 

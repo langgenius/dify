@@ -34,6 +34,9 @@ const translation = {
     save: 'Zapisz',
     permissionsInvitedMembers: 'Częściowi członkowie zespołu',
     me: '(Ty)',
+    externalKnowledgeAPI: 'Interfejs API wiedzy zewnętrznej',
+    retrievalSettings: 'Ustawienia pobierania',
+    externalKnowledgeID: 'Zewnętrzny identyfikator wiedzy',
   },
 }
 

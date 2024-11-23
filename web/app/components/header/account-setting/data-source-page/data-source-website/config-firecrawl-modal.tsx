@@ -9,7 +9,7 @@ import {
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Button from '@/app/components/base/button'
 import type { FirecrawlConfig } from '@/models/common'
-import Field from '@/app/components/datasets/create/website/firecrawl/base/field'
+import Field from '@/app/components/datasets/create/website/base/field'
 import Toast from '@/app/components/base/toast'
 import { createDataSourceApiKeyBinding } from '@/service/datasets'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'

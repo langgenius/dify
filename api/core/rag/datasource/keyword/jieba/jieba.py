@@ -45,7 +45,7 @@ class Jieba(BaseKeyword):
             keyword_table_handler = JiebaKeywordTableHandler()
 
             keyword_table = self._get_dataset_keyword_table()
-            keywords_list = kwargs.get("keywords_list", None)
+            keywords_list = kwargs.get("keywords_list")
             for i in range(len(texts)):
                 text = texts[i]
                 if keywords_list:

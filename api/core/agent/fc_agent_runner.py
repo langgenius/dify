@@ -2,21 +2,27 @@ import json
 import logging
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
 from core.app.entities.queue_entities import QueueAgentThoughtEvent, QueueMessageEndEvent, QueueMessageFileEvent
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
-from core.model_runtime.entities.message_entities import (
+from core.file import file_manager
+from core.model_runtime.entities import (
     AssistantPromptMessage,
+    LLMResult,
+    LLMResultChunk,
+    LLMResultChunkDelta,
+    LLMUsage,
     PromptMessage,
+    PromptMessageContent,
     PromptMessageContentType,
     SystemPromptMessage,
     TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
@@ -370,7 +376,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         return tool_calls
 
     def _init_system_message(
-        self, prompt_template: str, prompt_messages: list[PromptMessage] = None
+        self, prompt_template: str, prompt_messages: Optional[list[PromptMessage]] = None
     ) -> list[PromptMessage]:
         """
         Initialize system message
@@ -385,14 +391,31 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return prompt_messages
 
-    def _organize_user_query(self, query, prompt_messages: list[PromptMessage] = None) -> list[PromptMessage]:
+    def _organize_user_query(self, query, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
         Organize user query
         """
         if self.files:
-            prompt_message_contents = [TextPromptMessageContent(data=query)]
-            for file_obj in self.files:
-                prompt_message_contents.append(file_obj.prompt_message_content)
+            prompt_message_contents: list[PromptMessageContent] = []
+            prompt_message_contents.append(TextPromptMessageContent(data=query))
+
+            # get image detail config
+            image_detail_config = (
+                self.application_generate_entity.file_upload_config.image_config.detail
+                if (
+                    self.application_generate_entity.file_upload_config
+                    and self.application_generate_entity.file_upload_config.image_config
+                )
+                else None
+            )
+            image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
+            for file in self.files:
+                prompt_message_contents.append(
+                    file_manager.to_prompt_message_content(
+                        file,
+                        image_detail_config=image_detail_config,
+                    )
+                )
 
             prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
         else:

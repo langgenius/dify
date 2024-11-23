@@ -2,13 +2,11 @@
 import base64
 import json
 import logging
-import mimetypes
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
 # 3rd import
 import boto3
-import requests
 from botocore.config import Config
 from botocore.exceptions import (
     ClientError,
@@ -63,6 +61,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         {"prefix": "us.anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "eu.anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
+        {"prefix": "us.meta.llama3-2", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "meta.llama", "support_system_prompts": True, "support_tool_use": False},
         {"prefix": "mistral.mistral-7b-instruct", "support_system_prompts": False, "support_tool_use": False},
         {"prefix": "mistral.mixtral-8x7b-instruct", "support_system_prompts": False, "support_tool_use": False},
@@ -70,6 +69,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         {"prefix": "mistral.mistral-small", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "cohere.command-r", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "amazon.titan", "support_system_prompts": False, "support_tool_use": False},
+        {"prefix": "ai21.jamba-1-5", "support_system_prompts": True, "support_tool_use": False},
     ]
 
     @staticmethod
@@ -90,7 +90,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         stop: Optional[list[str]] = None,
         stream: bool = True,
         user: Optional[str] = None,
-        callbacks: list[Callback] = None,
+        callbacks: Optional[list[Callback]] = None,
     ) -> Union[LLMResult, Generator]:
         """
         Code block mode wrapper for invoking large language model
@@ -437,22 +437,10 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                         sub_messages.append(sub_message_dict)
                     elif message_content.type == PromptMessageContentType.IMAGE:
                         message_content = cast(ImagePromptMessageContent, message_content)
-                        if not message_content.data.startswith("data:"):
-                            # fetch image data from url
-                            try:
-                                url = message_content.data
-                                image_content = requests.get(url).content
-                                if "?" in url:
-                                    url = url.split("?")[0]
-                                mime_type, _ = mimetypes.guess_type(url)
-                                base64_data = base64.b64encode(image_content).decode("utf-8")
-                            except Exception as ex:
-                                raise ValueError(f"Failed to fetch image data from url {message_content.data}, {ex}")
-                        else:
-                            data_split = message_content.data.split(";base64,")
-                            mime_type = data_split[0].replace("data:", "")
-                            base64_data = data_split[1]
-                            image_content = base64.b64decode(base64_data)
+                        data_split = message_content.data.split(";base64,")
+                        mime_type = data_split[0].replace("data:", "")
+                        base64_data = data_split[1]
+                        image_content = base64.b64decode(base64_data)
 
                         if mime_type not in {"image/jpeg", "image/png", "image/gif", "image/webp"}:
                             raise ValueError(

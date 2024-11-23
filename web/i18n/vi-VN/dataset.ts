@@ -72,6 +72,80 @@ const translation = {
   nTo1RetrievalLegacyLink: 'Tìm hiểu thêm',
   nTo1RetrievalLegacyLinkText: 'Truy xuất N-đến-1 sẽ chính thức bị loại bỏ vào tháng 9.',
   defaultRetrievalTip: 'Truy xuất nhiều đường dẫn được sử dụng theo mặc định. Kiến thức được lấy từ nhiều cơ sở kiến thức và sau đó được xếp hạng lại.',
+  editExternalAPIConfirmWarningContent: {
+    front: 'API Kiến thức Bên ngoài này được liên kết với',
+    end: 'kiến thức bên ngoài, và sửa đổi này sẽ được áp dụng cho tất cả chúng. Bạn có chắc chắn muốn lưu thay đổi này không?',
+  },
+  editExternalAPIFormWarning: {
+    front: 'API bên ngoài này được liên kết với',
+    end: 'Kiến thức bên ngoài',
+  },
+  deleteExternalAPIConfirmWarningContent: {
+    title: {
+      end: '?',
+      front: 'Xóa',
+    },
+    content: {
+      front: 'API Kiến thức Bên ngoài này được liên kết với',
+      end: 'kiến thức bên ngoài. Xóa API này sẽ làm mất hiệu lực tất cả chúng. Bạn có chắc chắn muốn xóa API này không?',
+    },
+    noConnectionContent: 'Bạn có chắc chắn xóa API này không?',
+  },
+  selectExternalKnowledgeAPI: {
+    placeholder: 'Chọn một API kiến thức bên ngoài',
+  },
+  connectDatasetIntro: {
+    content: {
+      end: '. Sau đó tìm ID kiến thức tương ứng và điền vào biểu mẫu bên trái. Nếu tất cả thông tin là chính xác, nó sẽ tự động chuyển đến bài kiểm tra truy xuất trong cơ sở kiến thức sau khi nhấp vào nút kết nối.',
+      front: 'Để kết nối với cơ sở kiến thức bên ngoài, trước tiên bạn cần tạo API bên ngoài. Vui lòng đọc kỹ và tham khảo',
+      link: 'Tìm hiểu cách tạo API bên ngoài',
+    },
+    learnMore: 'Tìm hiểu thêm',
+    title: 'Cách kết nối với cơ sở kiến thức bên ngoài',
+  },
+  connectHelper: {
+    helper3: '. Chúng tôi thực sự khuyên bạn nên',
+    helper4: 'Đọc tài liệu trợ giúp',
+    helper1: 'Kết nối với cơ sở kiến thức bên ngoài thông qua API và ID cơ sở kiến thức. Hiện tại,',
+    helper2: 'Chỉ hỗ trợ chức năng truy xuất',
+    helper5: 'cẩn thận trước khi sử dụng tính năng này.',
+  },
+  externalKnowledgeForm: {
+    cancel: 'Hủy',
+    connect: 'Kết nối',
+  },
+  externalAPIForm: {
+    encrypted: {
+      end: 'Công nghệ.',
+      front: 'Mã thông báo API của bạn sẽ được mã hóa và lưu trữ bằng cách sử dụng',
+    },
+    apiKey: 'Khóa API',
+    endpoint: 'Điểm cuối API',
+    edit: 'Biên tập',
+    cancel: 'Hủy',
+    name: 'Tên',
+    save: 'Cứu',
+  },
+  learnHowToWriteGoodKnowledgeDescription: 'Tìm hiểu cách viết mô tả kiến thức tốt',
+  noExternalKnowledge: 'Chưa có API Kiến thức Bên ngoài, hãy nhấp vào đây để tạo',
+  connectDataset: 'Kết nối với cơ sở kiến thức bên ngoài',
+  externalTag: 'Ngoài',
+  externalAPIPanelTitle: 'API kiến thức bên ngoài',
+  editExternalAPITooltipTitle: 'KIẾN THỨC LIÊN KẾT',
+  externalKnowledgeNamePlaceholder: 'Vui lòng nhập tên của cơ sở kiến thức',
+  createExternalAPI: 'Thêm API kiến thức bên ngoài',
+  externalKnowledgeDescription: 'Mô tả kiến thức',
+  externalAPIPanelDocumentation: 'Tìm hiểu cách tạo API Kiến thức Bên ngoài',
+  allExternalTip: 'Khi chỉ sử dụng kiến thức bên ngoài, người dùng có thể chọn có bật mô hình Xếp hạng lại hay không. Nếu không được bật, các đoạn được truy xuất sẽ được sắp xếp dựa trên điểm số. Khi các chiến lược truy xuất của các cơ sở kiến thức khác nhau không nhất quán, nó sẽ không chính xác.',
+  editExternalAPIFormTitle: 'Chỉnh sửa API Kiến thức Bên ngoài',
+  externalKnowledgeId: 'ID kiến thức bên ngoài',
+  mixtureInternalAndExternalTip: 'Mô hình Rerank là cần thiết cho sự kết hợp giữa kiến thức bên trong và bên ngoài.',
+  externalAPI: 'API bên ngoài',
+  externalKnowledgeDescriptionPlaceholder: 'Mô tả nội dung trong Cơ sở Kiến thức này (tùy chọn)',
+  externalKnowledgeName: 'Tên kiến thức bên ngoài',
+  externalKnowledgeIdPlaceholder: 'Vui lòng nhập ID kiến thức',
+  createNewExternalAPI: 'Tạo API Kiến thức Bên ngoài mới',
+  externalAPIPanelDescription: 'API kiến thức bên ngoài được sử dụng để kết nối với cơ sở kiến thức bên ngoài Dify và truy xuất kiến thức từ cơ sở kiến thức đó.',
 }
 
 export default translation

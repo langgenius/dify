@@ -44,7 +44,6 @@ class DatasetIndexToolCallbackHandler:
                 DocumentSegment.index_node_id == document.metadata["doc_id"]
             )
 
-            # if 'dataset_id' in document.metadata:
             if "dataset_id" in document.metadata:
                 query = query.filter(DocumentSegment.dataset_id == document.metadata["dataset_id"])
 
@@ -59,7 +58,7 @@ class DatasetIndexToolCallbackHandler:
             for item in resource:
                 dataset_retriever_resource = DatasetRetrieverResource(
                     message_id=self._message_id,
-                    position=item.get("position"),
+                    position=item.get("position") or 0,
                     dataset_id=item.get("dataset_id"),
                     dataset_name=item.get("dataset_name"),
                     document_id=item.get("document_id"),

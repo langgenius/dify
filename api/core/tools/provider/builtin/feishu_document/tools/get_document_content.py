@@ -12,8 +12,8 @@ class GetDocumentRawContentTool(BuiltinTool):
         client = FeishuRequest(app_id, app_secret)
 
         document_id = tool_parameters.get("document_id")
-        mode = tool_parameters.get("mode")
-        lang = tool_parameters.get("lang", 0)
+        mode = tool_parameters.get("mode", "markdown")
+        lang = tool_parameters.get("lang", "0")
 
         res = client.get_document_content(document_id, mode, lang)
         return self.create_json_message(res)

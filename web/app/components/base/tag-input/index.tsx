@@ -14,6 +14,7 @@ type TagInputProps = {
   disableAdd?: boolean
   customizedConfirmKey?: 'Enter' | 'Tab'
   isInWorkflow?: boolean
+  placeholder?: string
 }
 
 const TagInput: FC<TagInputProps> = ({
@@ -23,6 +24,7 @@ const TagInput: FC<TagInputProps> = ({
   disableRemove,
   customizedConfirmKey = 'Enter',
   isInWorkflow,
+  placeholder,
 }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -104,7 +106,7 @@ const TagInput: FC<TagInputProps> = ({
               setValue(e.target.value)
             }}
             onKeyDown={handleKeyDown}
-            placeholder={t(isSpecialMode ? 'common.model.params.stop_sequencesPlaceholder' : 'datasetDocuments.segment.addKeyWord')}
+            placeholder={t(placeholder || (isSpecialMode ? 'common.model.params.stop_sequencesPlaceholder' : 'datasetDocuments.segment.addKeyWord'))}
           />
         )
       }

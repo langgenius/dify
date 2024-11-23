@@ -25,7 +25,7 @@ from core.ops.langsmith_trace.entities.langsmith_trace_entity import (
     LangSmithRunType,
     LangSmithRunUpdateModel,
 )
-from core.ops.utils import filter_none_values
+from core.ops.utils import filter_none_values, generate_dotted_order
 from extensions.ext_database import db
 from models.model import EndUser, MessageFile
 from models.workflow import WorkflowNodeExecution
@@ -62,6 +62,16 @@ class LangSmithDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
+        trace_id = trace_info.message_id or trace_info.workflow_app_log_id or trace_info.workflow_run_id
+        message_dotted_order = (
+            generate_dotted_order(trace_info.message_id, trace_info.start_time) if trace_info.message_id else None
+        )
+        workflow_dotted_order = generate_dotted_order(
+            trace_info.workflow_app_log_id or trace_info.workflow_run_id,
+            trace_info.workflow_data.created_at,
+            message_dotted_order,
+        )
+
         if trace_info.message_id:
             message_run = LangSmithRunModel(
                 id=trace_info.message_id,
@@ -76,6 +86,8 @@ class LangSmithDataTrace(BaseTraceInstance):
                 },
                 tags=["message", "workflow"],
                 error=trace_info.error,
+                trace_id=trace_id,
+                dotted_order=message_dotted_order,
             )
             self.add_run(message_run)
 
@@ -95,31 +107,42 @@ class LangSmithDataTrace(BaseTraceInstance):
             error=trace_info.error,
             tags=["workflow"],
             parent_run_id=trace_info.message_id or None,
+            trace_id=trace_id,
+            dotted_order=workflow_dotted_order,
         )
 
         self.add_run(langsmith_run)
 
         # through workflow_run_id get all_nodes_execution
-        workflow_nodes_executions = (
-            db.session.query(
-                WorkflowNodeExecution.id,
-                WorkflowNodeExecution.tenant_id,
-                WorkflowNodeExecution.app_id,
-                WorkflowNodeExecution.title,
-                WorkflowNodeExecution.node_type,
-                WorkflowNodeExecution.status,
-                WorkflowNodeExecution.inputs,
-                WorkflowNodeExecution.outputs,
-                WorkflowNodeExecution.created_at,
-                WorkflowNodeExecution.elapsed_time,
-                WorkflowNodeExecution.process_data,
-                WorkflowNodeExecution.execution_metadata,
-            )
+        workflow_nodes_execution_id_records = (
+            db.session.query(WorkflowNodeExecution.id)
             .filter(WorkflowNodeExecution.workflow_run_id == trace_info.workflow_run_id)
             .all()
         )
 
-        for node_execution in workflow_nodes_executions:
+        for node_execution_id_record in workflow_nodes_execution_id_records:
+            node_execution = (
+                db.session.query(
+                    WorkflowNodeExecution.id,
+                    WorkflowNodeExecution.tenant_id,
+                    WorkflowNodeExecution.app_id,
+                    WorkflowNodeExecution.title,
+                    WorkflowNodeExecution.node_type,
+                    WorkflowNodeExecution.status,
+                    WorkflowNodeExecution.inputs,
+                    WorkflowNodeExecution.outputs,
+                    WorkflowNodeExecution.created_at,
+                    WorkflowNodeExecution.elapsed_time,
+                    WorkflowNodeExecution.process_data,
+                    WorkflowNodeExecution.execution_metadata,
+                )
+                .filter(WorkflowNodeExecution.id == node_execution_id_record.id)
+                .first()
+            )
+
+            if not node_execution:
+                continue
+
             node_execution_id = node_execution.id
             tenant_id = node_execution.tenant_id
             app_id = node_execution.app_id
@@ -168,6 +191,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             else:
                 run_type = LangSmithRunType.tool
 
+            node_dotted_order = generate_dotted_order(node_execution_id, created_at, workflow_dotted_order)
             langsmith_run = LangSmithRunModel(
                 total_tokens=node_total_tokens,
                 name=node_type,
@@ -182,6 +206,9 @@ class LangSmithDataTrace(BaseTraceInstance):
                 },
                 parent_run_id=trace_info.workflow_app_log_id or trace_info.workflow_run_id,
                 tags=["node_execution"],
+                id=node_execution_id,
+                trace_id=trace_id,
+                dotted_order=node_dotted_order,
             )
 
             self.add_run(langsmith_run)

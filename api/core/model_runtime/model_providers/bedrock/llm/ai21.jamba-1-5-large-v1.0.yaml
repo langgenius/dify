@@ -1,0 +1,26 @@
+model: ai21.jamba-1-5-large-v1:0
+label:
+  en_US: Jamba 1.5 Large
+model_type: llm
+model_properties:
+  mode: completion
+  context_size: 256000
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+    default: 1
+    min: 0.0
+    max: 2.0
+  - name: top_p
+    use_template: top_p
+  - name: max_gen_len
+    use_template: max_tokens
+    required: true
+    default: 4096
+    min: 1
+    max: 4096
+pricing:
+  input: '0.002'
+  output: '0.008'
+  unit: '0.001'
+  currency: USD

@@ -10,8 +10,7 @@ from controllers.console import api
 from controllers.console.apikey import api_key_fields, api_key_list
 from controllers.console.app.error import ProviderNotInitializeError
 from controllers.console.datasets.error import DatasetInUseError, DatasetNameDuplicateError, IndexingEstimateError
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, enterprise_license_required, setup_required
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.indexing_runner import IndexingRunner
 from core.model_runtime.entities.model_entities import ModelType
@@ -24,8 +23,8 @@ from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
 from fields.document_fields import document_status_fields
 from libs.login import login_required
-from models.dataset import Dataset, DatasetPermissionEnum, Document, DocumentSegment
-from models.model import ApiToken, UploadFile
+from models import ApiToken, Dataset, Document, DocumentSegment, UploadFile
+from models.dataset import DatasetPermissionEnum
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
 
@@ -45,11 +44,12 @@ class DatasetListApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
+    @enterprise_license_required
     def get(self):
         page = request.args.get("page", default=1, type=int)
         limit = request.args.get("limit", default=20, type=int)
         ids = request.args.getlist("ids")
-        provider = request.args.get("provider", default="vendor")
+        # provider = request.args.get("provider", default="vendor")
         search = request.args.get("keyword", default=None, type=str)
         tag_ids = request.args.getlist("tag_ids")
 
@@ -57,7 +57,7 @@ class DatasetListApi(Resource):
             datasets, total = DatasetService.get_datasets_by_ids(ids, current_user.current_tenant_id)
         else:
             datasets, total = DatasetService.get_datasets(
-                page, limit, provider, current_user.current_tenant_id, current_user, search, tag_ids
+                page, limit, current_user.current_tenant_id, current_user, search, tag_ids
             )
 
         # check embedding setting
@@ -103,12 +103,39 @@ class DatasetListApi(Resource):
             type=_validate_name,
         )
         parser.add_argument(
+            "description",
+            type=str,
+            nullable=True,
+            required=False,
+            default="",
+        )
+        parser.add_argument(
             "indexing_technique",
             type=str,
             location="json",
             choices=Dataset.INDEXING_TECHNIQUE_LIST,
             nullable=True,
             help="Invalid indexing technique.",
+        )
+        parser.add_argument(
+            "external_knowledge_api_id",
+            type=str,
+            nullable=True,
+            required=False,
+        )
+        parser.add_argument(
+            "provider",
+            type=str,
+            nullable=True,
+            choices=Dataset.PROVIDER_LIST,
+            required=False,
+            default="vendor",
+        )
+        parser.add_argument(
+            "external_knowledge_id",
+            type=str,
+            nullable=True,
+            required=False,
         )
         args = parser.parse_args()
 
@@ -120,9 +147,13 @@ class DatasetListApi(Resource):
             dataset = DatasetService.create_empty_dataset(
                 tenant_id=current_user.current_tenant_id,
                 name=args["name"],
+                description=args["description"],
                 indexing_technique=args["indexing_technique"],
                 account=current_user,
                 permission=DatasetPermissionEnum.ONLY_ME,
+                provider=args["provider"],
+                external_knowledge_api_id=args["external_knowledge_api_id"],
+                external_knowledge_id=args["external_knowledge_id"],
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
@@ -211,6 +242,33 @@ class DatasetApi(Resource):
         )
         parser.add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model.")
         parser.add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list.")
+
+        parser.add_argument(
+            "external_retrieval_model",
+            type=dict,
+            required=False,
+            nullable=True,
+            location="json",
+            help="Invalid external retrieval model.",
+        )
+
+        parser.add_argument(
+            "external_knowledge_id",
+            type=str,
+            required=False,
+            nullable=True,
+            location="json",
+            help="Invalid external knowledge id.",
+        )
+
+        parser.add_argument(
+            "external_knowledge_api_id",
+            type=str,
+            required=False,
+            nullable=True,
+            location="json",
+            help="Invalid external knowledge api id.",
+        )
         args = parser.parse_args()
         data = request.get_json()
 
@@ -399,7 +457,7 @@ class DatasetIndexingEstimateApi(Resource):
             )
         except LLMBadRequestError:
             raise ProviderNotInitializeError(
-                "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
+                "No Embedding Model available. Please configure a valid provider " "in the Settings -> Model Provider."
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -567,6 +625,11 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
                 | VectorType.TENCENT
+                | VectorType.PGVECTO_RS
+                | VectorType.BAIDU
+                | VectorType.VIKINGDB
+                | VectorType.UPSTASH
+                | VectorType.OCEANBASE
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
@@ -577,6 +640,10 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.MYSCALE
                 | VectorType.ORACLE
                 | VectorType.ELASTICSEARCH
+                | VectorType.PGVECTOR
+                | VectorType.TIDB_ON_QDRANT
+                | VectorType.LINDORM
+                | VectorType.COUCHBASE
             ):
                 return {
                     "retrieval_method": [
@@ -602,6 +669,10 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.CHROMA
                 | VectorType.TENCENT
                 | VectorType.PGVECTO_RS
+                | VectorType.BAIDU
+                | VectorType.VIKINGDB
+                | VectorType.UPSTASH
+                | VectorType.OCEANBASE
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
@@ -612,7 +683,9 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.MYSCALE
                 | VectorType.ORACLE
                 | VectorType.ELASTICSEARCH
+                | VectorType.COUCHBASE
                 | VectorType.PGVECTOR
+                | VectorType.LINDORM
             ):
                 return {
                     "retrieval_method": [

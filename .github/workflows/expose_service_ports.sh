@@ -7,5 +7,7 @@ yq eval '.services["milvus-standalone"].ports += ["19530:19530"]' -i docker/dock
 yq eval '.services.pgvector.ports += ["5433:5432"]' -i docker/docker-compose.yaml
 yq eval '.services["pgvecto-rs"].ports += ["5431:5432"]' -i docker/docker-compose.yaml
 yq eval '.services["elasticsearch"].ports += ["9200:9200"]' -i docker/docker-compose.yaml
+yq eval '.services.couchbase-server.ports += ["8091-8096:8091-8096"]' -i docker/docker-compose.yaml
+yq eval '.services.couchbase-server.ports += ["11210:11210"]' -i docker/docker-compose.yaml
 
-echo "Ports exposed for sandbox, weaviate, qdrant, chroma, milvus, pgvector, pgvecto-rs, elasticsearch"
+echo "Ports exposed for sandbox, weaviate, qdrant, chroma, milvus, pgvector, pgvecto-rs, elasticsearch, couchbase"

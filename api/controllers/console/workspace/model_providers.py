@@ -6,8 +6,7 @@ from flask_restful import Resource, reqparse
 from werkzeug.exceptions import Forbidden
 
 from controllers.console import api
-from controllers.console.setup import setup_required
-from controllers.console.wraps import account_initialization_required
+from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -126,13 +125,12 @@ class ModelProviderIconApi(Resource):
     Get model provider icon
     """
 
-    @setup_required
-    @login_required
-    @account_initialization_required
     def get(self, provider: str, icon_type: str, lang: str):
         model_provider_service = ModelProviderService()
         icon, mimetype = model_provider_service.get_model_provider_icon(
-            provider=provider, icon_type=icon_type, lang=lang
+            provider=provider,
+            icon_type=icon_type,
+            lang=lang,
         )
 
         return send_file(io.BytesIO(icon), mimetype=mimetype)

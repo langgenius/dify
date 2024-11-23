@@ -37,6 +37,7 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
           <span className="mx-1 text-gray-900 text-[13px] leading-[18px] font-medium">{name}</span>
           {!noTooltip && (
             <Tooltip
+              triggerClassName='w-4 h-4 shrink-0'
               popupContent={<div className="w-[200px]">{tip}</div>}
             />
           )}

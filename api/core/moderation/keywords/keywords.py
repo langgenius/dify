@@ -1,3 +1,6 @@
+from collections.abc import Sequence
+from typing import Any
+
 from core.moderation.base import Moderation, ModerationAction, ModerationInputsResult, ModerationOutputsResult
 
 
@@ -18,8 +21,12 @@ class KeywordsModeration(Moderation):
         if not config.get("keywords"):
             raise ValueError("keywords is required")
 
-        if len(config.get("keywords")) > 1000:
-            raise ValueError("keywords length must be less than 1000")
+        if len(config.get("keywords")) > 10000:
+            raise ValueError("keywords length must be less than 10000")
+
+        keywords_row_len = config["keywords"].split("\n")
+        if len(keywords_row_len) > 100:
+            raise ValueError("the number of rows for the keywords must be less than 100")
 
     def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
         flagged = False
@@ -58,5 +65,5 @@ class KeywordsModeration(Moderation):
     def _is_violated(self, inputs: dict, keywords_list: list) -> bool:
         return any(self._check_keywords_in_value(keywords_list, value) for value in inputs.values())
 
-    def _check_keywords_in_value(self, keywords_list, value) -> bool:
-        return any(keyword.lower() in value.lower() for keyword in keywords_list)
+    def _check_keywords_in_value(self, keywords_list: Sequence[str], value: Any) -> bool:
+        return any(keyword.lower() in str(value).lower() for keyword in keywords_list)

@@ -23,6 +23,8 @@ const translation = {
   },
   noRecentTip: 'Nu există rezultate de interogare recente aici',
   viewChart: 'Vizualizați GRAFICUL VECTORIAL',
+  settingTitle: 'Setare de recuperare',
+  viewDetail: 'Vezi detalii',
 }
 
 export default translation

@@ -29,7 +29,7 @@ export const SVGRenderer = ({ content }: { content: string }) => {
     if (svgRef.current) {
       try {
         svgRef.current.innerHTML = ''
-        const draw = SVG().addTo(svgRef.current).size('100%', '100%')
+        const draw = SVG().addTo(svgRef.current)
 
         const parser = new DOMParser()
         const svgDoc = parser.parseFromString(content, 'image/svg+xml')
@@ -40,13 +40,11 @@ export const SVGRenderer = ({ content }: { content: string }) => {
 
         const originalWidth = parseInt(svgElement.getAttribute('width') || '400', 10)
         const originalHeight = parseInt(svgElement.getAttribute('height') || '600', 10)
-        const scale = Math.min(windowSize.width / originalWidth, windowSize.height / originalHeight, 1)
-        const scaledWidth = originalWidth * scale
-        const scaledHeight = originalHeight * scale
-        draw.size(scaledWidth, scaledHeight)
+        draw.viewbox(0, 0, originalWidth, originalHeight)
+
+        svgRef.current.style.width = `${Math.min(originalWidth, 298)}px`
 
         const rootElement = draw.svg(content)
-        rootElement.scale(scale)
 
         rootElement.click(() => {
           setImagePreview(svgToDataURL(svgElement as Element))
@@ -54,7 +52,7 @@ export const SVGRenderer = ({ content }: { content: string }) => {
       }
       catch (error) {
         if (svgRef.current)
-          svgRef.current.innerHTML = 'Error rendering SVG. Wait for the image content to complete.'
+          svgRef.current.innerHTML = '<span style="padding: 1rem;">Error rendering SVG. Wait for the image content to complete.</span>'
       }
     }
   }, [content, windowSize])
@@ -62,14 +60,14 @@ export const SVGRenderer = ({ content }: { content: string }) => {
   return (
     <>
       <div ref={svgRef} style={{
-        width: '100%',
-        height: '100%',
-        minHeight: '300px',
         maxHeight: '80vh',
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
         cursor: 'pointer',
+        wordBreak: 'break-word',
+        whiteSpace: 'normal',
+        margin: '0 auto',
       }} />
       {imagePreview && (<ImagePreview url={imagePreview} title='Preview' onCancel={() => setImagePreview('')} />)}
     </>
