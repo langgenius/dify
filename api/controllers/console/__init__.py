@@ -62,6 +62,7 @@ from .datasets import (
     external,
     hit_testing,
     website,
+    fta_test,
 )
 
 # Import explore controllers
