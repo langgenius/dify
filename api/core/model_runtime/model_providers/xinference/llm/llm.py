@@ -66,6 +66,7 @@ from core.model_runtime.utils import helper
 DEFAULT_MAX_RETRIES = 3
 DEFAULT_INVOKE_TIMEOUT = 60
 
+
 class XinferenceAILargeLanguageModel(LargeLanguageModel):
     def _invoke(
         self,
@@ -317,8 +318,12 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             message_dict = {"role": "system", "content": message.content}
         elif isinstance(message, ToolPromptMessage):
             message = cast(ToolPromptMessage, message)
-            message_dict = {"tool_call_id": message.tool_call_id, "role": "tool", "content": message.content,
-                            "name": message.name}
+            message_dict = {
+                "tool_call_id": message.tool_call_id,
+                "role": "tool",
+                "content": message.content,
+                "name": message.name,
+            }
         else:
             raise ValueError(f"Unknown message type {type(message)}")
 
