@@ -38,7 +38,7 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
         # update segment status to indexing
         update_params = {
             DocumentSegment.status: "indexing",
-            DocumentSegment.indexing_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+            DocumentSegment.indexing_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
         }
         DocumentSegment.query.filter_by(id=segment.id).update(update_params)
         db.session.commit()
@@ -75,7 +75,7 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
         # update segment to completed
         update_params = {
             DocumentSegment.status: "completed",
-            DocumentSegment.completed_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+            DocumentSegment.completed_at: datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
         }
         DocumentSegment.query.filter_by(id=segment.id).update(update_params)
         db.session.commit()
@@ -87,7 +87,7 @@ def create_segment_to_index_task(segment_id: str, keywords: Optional[list[str]] 
     except Exception as e:
         logging.exception("create segment to index failed")
         segment.enabled = False
-        segment.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         segment.status = "error"
         segment.error = str(e)
         db.session.commit()

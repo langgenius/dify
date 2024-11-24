@@ -71,7 +71,7 @@ def enable_segment_to_index_task(segment_id: str):
     except Exception as e:
         logging.exception("enable segment to index failed")
         segment.enabled = False
-        segment.disabled_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        segment.disabled_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         segment.status = "error"
         segment.error = str(e)
         db.session.commit()

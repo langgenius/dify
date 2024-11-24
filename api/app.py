@@ -1,6 +1,11 @@
 import os
 import sys
 
+python_version = sys.version_info
+if not ((3, 11) <= python_version < (3, 13)):
+    print(f"Python 3.11 or 3.12 is required, current version is {python_version.major}.{python_version.minor}")
+    raise SystemExit(1)
+
 from configs import dify_config
 
 if not dify_config.DEBUG:
@@ -29,9 +34,6 @@ from extensions.ext_database import db
 from models import account, dataset, model, source, task, tool, tools, web  # noqa: F401
 
 # DO NOT REMOVE ABOVE
-
-if sys.version_info[:2] == (3, 10):
-    print("Warning: Python 3.10 will not be supported in the next version.")
 
 
 warnings.simplefilter("ignore", ResourceWarning)

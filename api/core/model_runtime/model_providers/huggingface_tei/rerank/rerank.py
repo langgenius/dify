@@ -51,8 +51,13 @@ class HuggingfaceTeiRerankModel(RerankModel):
 
         server_url = server_url.removesuffix("/")
 
+        headers = {"Content-Type": "application/json"}
+        api_key = credentials.get("api_key")
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
+
         try:
-            results = TeiHelper.invoke_rerank(server_url, query, docs)
+            results = TeiHelper.invoke_rerank(server_url, query, docs, headers)
 
             rerank_documents = []
             for result in results:
@@ -80,7 +85,11 @@ class HuggingfaceTeiRerankModel(RerankModel):
         """
         try:
             server_url = credentials["server_url"]
-            extra_args = TeiHelper.get_tei_extra_parameter(server_url, model)
+            headers = {"Content-Type": "application/json"}
+            api_key = credentials.get("api_key")
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+            extra_args = TeiHelper.get_tei_extra_parameter(server_url, model, headers)
             if extra_args.model_type != "reranker":
                 raise CredentialsValidateFailedError("Current model is not a rerank model")
 

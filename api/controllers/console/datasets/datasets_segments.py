@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import pandas as pd
 from flask import request
@@ -188,7 +188,7 @@ class DatasetDocumentSegmentApi(Resource):
                 raise InvalidActionError("Segment is already disabled.")
 
             segment.enabled = False
-            segment.disabled_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            segment.disabled_at = datetime.now(UTC).replace(tzinfo=None)
             segment.disabled_by = current_user.id
             db.session.commit()
 

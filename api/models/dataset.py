@@ -23,7 +23,7 @@ from .model import App, Tag, TagBinding, UploadFile
 from .types import StringUUID
 
 
-class DatasetPermissionEnum(str, enum.Enum):
+class DatasetPermissionEnum(enum.StrEnum):
     ONLY_ME = "only_me"
     ALL_TEAM = "all_team_members"
     PARTIAL_TEAM = "partial_members"

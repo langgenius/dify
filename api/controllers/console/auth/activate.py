@@ -65,7 +65,7 @@ class ActivateApi(Resource):
         account.timezone = args["timezone"]
         account.interface_theme = "light"
         account.status = AccountStatus.ACTIVE.value
-        account.initialized_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        account.initialized_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         db.session.commit()
 
         token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))

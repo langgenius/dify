@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from azure.storage.blob import AccountSasPermissions, BlobServiceClient, ResourceTypes, generate_account_sas
 
@@ -67,7 +67,7 @@ class AzureBlobStorage(BaseStorage):
                 account_key=self.account_key,
                 resource_types=ResourceTypes(service=True, container=True, object=True),
                 permission=AccountSasPermissions(read=True, write=True, delete=True, list=True, add=True, create=True),
-                expiry=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=1),
+                expiry=datetime.now(UTC).replace(tzinfo=None) + timedelta(hours=1),
             )
             redis_client.set(cache_key, sas_token, ex=3000)
         return BlobServiceClient(account_url=self.account_url, credential=sas_token)
