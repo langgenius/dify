@@ -3,7 +3,7 @@ import re
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Literal, Optional
 
 import sqlalchemy as sa
@@ -32,7 +32,7 @@ class DifySetup(db.Model):
     setup_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class AppMode(str, Enum):
+class AppMode(StrEnum):
     COMPLETION = "completion"
     WORKFLOW = "workflow"
     CHAT = "chat"

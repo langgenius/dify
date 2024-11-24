@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Optional, Union, cast
 
 from pydantic import BaseModel, Field, field_validator
@@ -137,7 +137,7 @@ class ToolParameterOption(BaseModel):
 
 
 class ToolParameter(BaseModel):
-    class ToolParameterType(str, Enum):
+    class ToolParameterType(StrEnum):
         STRING = "string"
         NUMBER = "number"
         BOOLEAN = "boolean"

@@ -1,7 +1,7 @@
 import json
 import time
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Optional
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -115,7 +115,7 @@ class WorkflowService:
             workflow.graph = json.dumps(graph)
             workflow.features = json.dumps(features)
             workflow.updated_by = account.id
-            workflow.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
 
@@ -148,7 +148,7 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=draft_workflow.type,
-            version=str(datetime.now(timezone.utc).replace(tzinfo=None)),
+            version=str(datetime.now(UTC).replace(tzinfo=None)),
             graph=draft_workflow.graph,
             features=draft_workflow.features,
             created_by=account.id,
@@ -257,8 +257,8 @@ class WorkflowService:
         workflow_node_execution.elapsed_time = time.perf_counter() - start_at
         workflow_node_execution.created_by_role = CreatedByRole.ACCOUNT.value
         workflow_node_execution.created_by = account.id
-        workflow_node_execution.created_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        workflow_node_execution.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow_node_execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
 
         if run_succeeded and node_run_result:
             # create workflow node execution
