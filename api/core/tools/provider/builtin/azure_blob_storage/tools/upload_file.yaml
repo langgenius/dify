@@ -1,0 +1,69 @@
+identity:
+  name: upload_file
+  author: Hiroshi Fujita
+  label:
+    en_US: Upload File
+    ja_JP: ファイルのアップロード
+description:
+  human:
+    en_US: Upload file to Azure Blob Storage
+    ja_JP: ファイルをAzure Blob Storageにアップロード
+  llm: This tool upload file to Azure Blob Storage
+parameters:
+  - name: container_name
+    type: string
+    required: true
+    label:
+      en_US: Container name
+      ja_JP: コンテナ名
+    human_description:
+      en_US: Name of the container to upload to
+      ja_JP: アップロード先のコンテナの名称
+    llm_description: Name of the container to upload to
+    form: llm
+  - name: file_prefix
+    type: string
+    required: false
+    label:
+      en_US: Prefix
+      ja_JP: プレフィックス
+    human_description:
+      en_US: The prefix is a string added to the beginning of the Blob file name during upload. It allows dynamic control of the Blob's file name and virtual folder structure. For example, if prefix="folder1/", the Blob will be saved as folder1/filename. This helps avoid file name conflicts and organizes files into virtual directories.
+      ja_JP: プレフィックスはアップロード時にBlobファイル名の先頭に追加される文字列です。これにより、Blobのファイル名や仮想フォルダ構造を動的に制御できます。例えば、prefix="folder1/" と指定すると、Blobは folder1/filename の形式で保存されます。これにより、ファイル名の重複を回避し、ファイルを仮想フォルダに整理できます。
+    llm_description: The prefix is a string added to the beginning of the Blob file name during upload. It allows dynamic control of the Blob's file name and virtual folder structure. For example, if prefix="folder1/", the Blob will be saved as folder1/filename. This helps avoid file name conflicts and organizes files into virtual directories.
+    form: llm
+  - name: file
+    type: file
+    required: true
+    label:
+      en_US: File to upload
+      ja_JP: アップロードするファイル
+    human_description:
+      en_US: Select the file to upload.
+      ja_JP: アップロードするファイルを選択します。
+    llm_description: Select the file to upload.
+    form: llm
+  - name: overwrite
+    type: boolean
+    required: true
+    label:
+      en_US: Overwrite
+      ja_JP: 上書きする
+    human_description:
+      en_US: Specifies whether to overwrite a file if one with the same name exists.
+      ja_JP: 同じ名前のファイルが存在する場合に上書きするかどうかを指定します。
+    llm_description: Specifies whether to overwrite a file if one with the same name exists.
+    form: form
+    default: false
+  - name: stop_on_error
+    type: boolean
+    required: true
+    label:
+      en_US: Stop on Error
+      ja_JP: エラー時に停止する
+    human_description:
+      en_US: Set whether to stop the flow if the file upload fails.
+      ja_JP: ファイルのアップロードが失敗した場合に、フローを止めるかを設定します。
+    llm_description: Set whether to stop the flow if the file upload fails.
+    form: form
+    default: true

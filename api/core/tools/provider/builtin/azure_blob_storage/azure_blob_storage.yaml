@@ -1,0 +1,32 @@
+identity:
+  author: Hiroshi Fujita
+  name: azure_blob_storage
+  label:
+    en_US: Azure Blob Storage
+  description:
+    en_US: Storing and hosting files.
+    ja_JP: ファイルの保存とホスティング
+  icon: 10780-icon-service-Blob-Block.svg
+  tags:
+    - utilities
+credentials_for_provider:
+  azure_blob_storage_account_name:
+    type: text-input
+    required: true
+    label:
+      en_US: Storage Account Name
+      ja_JP: ストレージアカウント名
+    placeholder:
+      en_US: Enter Storage Account Name
+      ja_JP: ストレージアカウント名を入力
+    url: https://portal.azure.com
+  azure_blob_storage_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: API Key
+      ja_JP: APIキー
+    placeholder:
+      en_US: Enter  API Key
+      ja_JP: APIキーを入力
+    url: https://portal.azure.com
