@@ -66,7 +66,7 @@ class SiliconFlowText2SpeechModel(_CommonOpenAI, TTSModel):
         """
         try:
             # doc: https://docs.siliconflow.cn/capabilities/text-to-speech
-            self._add_custom_parameters(credentials)            
+            self._add_custom_parameters(credentials)
             credentials_kwargs = self._to_credential_kwargs(credentials)
             client = OpenAI(**credentials_kwargs)
             model_support_voice = [
@@ -101,5 +101,5 @@ class SiliconFlowText2SpeechModel(_CommonOpenAI, TTSModel):
 
     @classmethod
     def _add_custom_parameters(cls, credentials: dict) -> None:
-        credentials['openai_api_base'] = 'https://api.siliconflow.cn'
-        credentials['openai_api_key'] = credentials["api_key"]
+        credentials["openai_api_base"] = "https://api.siliconflow.cn"
+        credentials["openai_api_key"] = credentials["api_key"]
