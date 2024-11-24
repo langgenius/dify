@@ -43,6 +43,7 @@ const ParamsConfig = ({
   const {
     defaultModel: rerankDefaultModel,
     currentModel: isRerankDefaultModelValid,
+    currentProvider: rerankDefaultProvider,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
 
   const isValid = () => {
@@ -91,7 +92,10 @@ const ParamsConfig = ({
       reranking_mode: restConfigs.reranking_mode,
       weights: restConfigs.weights,
       reranking_enable: restConfigs.reranking_enable,
-    }, selectedDatasets, selectedDatasets, !!isRerankDefaultModelValid)
+    }, selectedDatasets, selectedDatasets, {
+      provider: rerankDefaultProvider?.provider,
+      model: isRerankDefaultModelValid?.model,
+    })
 
     setTempDataSetConfigs({
       ...retrievalConfig,

@@ -102,6 +102,8 @@ const translation = {
     featuresDescription: 'वेब ऐप उपयोगकर्ता अनुभव को बेहतर बनाएं',
     fileUploadTip: 'छवि अपलोड सुविधाओं को फ़ाइल अपलोड में अपग्रेड किया गया है।',
     ImageUploadLegacyTip: 'अब आप प्रारंभ प्रपत्र में फ़ाइल प्रकार चर बना सकते हैं। हम अब भविष्य में छवि अपलोड सुविधा का समर्थन नहीं करेंगे।',
+    importWarning: 'सावधानी',
+    importWarningDetails: 'डीएसएल संस्करण अंतर कुछ सुविधाओं को प्रभावित कर सकता है',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',
@@ -420,6 +422,11 @@ const translation = {
       },
       type: 'प्रकार',
       binaryFileVariable: 'बाइनरी फ़ाइल चर',
+      extractListPlaceholder: 'सूची आइटम इंडेक्स दर्ज करें, \'/\' इन्सर्ट वेरिएबल टाइप करें',
+      curl: {
+        placeholder: 'यहां cURL स्ट्रिंग पेस्ट करें',
+        title: 'cURL से आयात करें',
+      },
     },
     code: {
       inputVars: 'इनपुट वेरिएबल्स',
@@ -577,6 +584,23 @@ const translation = {
       iteration_one: '{{count}} इटरेशन',
       iteration_other: '{{count}} इटरेशन्स',
       currentIteration: 'वर्तमान इटरेशन',
+      ErrorMethod: {
+        operationTerminated: 'समाप्त',
+        continueOnError: 'जारी रखें-पर-त्रुटि',
+        removeAbnormalOutput: 'निकालें-असामान्य-आउटपुट',
+      },
+      comma: ',',
+      error_other: '{{गिनती}} त्रुटियों',
+      error_one: '{{गिनती}} चूक',
+      parallelMode: 'समानांतर मोड',
+      parallelModeUpper: 'समानांतर मोड',
+      errorResponseMethod: 'त्रुटि प्रतिक्रिया विधि',
+      MaxParallelismTitle: 'अधिकतम समांतरता',
+      parallelModeEnableTitle: 'समानांतर मोड सक्षम किया गया',
+      parallelModeEnableDesc: 'समानांतर मोड में, पुनरावृत्तियों के भीतर कार्य समानांतर निष्पादन का समर्थन करते हैं। आप इसे दाईं ओर गुण पैनल में कॉन्फ़िगर कर सकते हैं।',
+      parallelPanelDesc: 'समानांतर मोड में, पुनरावृत्ति में कार्य समानांतर निष्पादन का समर्थन करते हैं।',
+      MaxParallelismDesc: 'अधिकतम समांतरता का उपयोग एकल पुनरावृत्ति में एक साथ निष्पादित कार्यों की संख्या को नियंत्रित करने के लिए किया जाता है।',
+      answerNodeWarningDesc: 'समानांतर मोड चेतावनी: उत्तर नोड्स, वार्तालाप चर असाइनमेंट, और पुनरावृत्तियों के भीतर लगातार पढ़ने/लिखने की कार्रवाई अपवाद पैदा कर सकती है।',
     },
     note: {
       addNote: 'नोट जोड़ें',
@@ -621,6 +645,7 @@ const translation = {
       filterConditionComparisonOperator: 'फ़िल्टर शर्त तुलन ऑपरेटर',
       selectVariableKeyPlaceholder: 'उप चर कुंजी का चयन करें',
       inputVar: 'इनपुट वेरिएबल',
+      extractsCondition: 'N आइटम निकालें',
     },
   },
   tracing: {

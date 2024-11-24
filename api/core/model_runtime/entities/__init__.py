@@ -2,6 +2,7 @@ from .llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsa
 from .message_entities import (
     AssistantPromptMessage,
     AudioPromptMessageContent,
+    DocumentPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContent,
@@ -12,11 +13,13 @@ from .message_entities import (
     TextPromptMessageContent,
     ToolPromptMessage,
     UserPromptMessage,
+    VideoPromptMessageContent,
 )
 from .model_entities import ModelPropertyKey
 
 __all__ = [
     "ImagePromptMessageContent",
+    "VideoPromptMessageContent",
     "PromptMessage",
     "PromptMessageRole",
     "LLMUsage",
@@ -35,4 +38,5 @@ __all__ = [
     "LLMResultChunk",
     "LLMResultChunkDelta",
     "AudioPromptMessageContent",
+    "DocumentPromptMessageContent",
 ]

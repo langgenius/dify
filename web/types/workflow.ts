@@ -19,6 +19,7 @@ export type NodeTracing = {
   process_data: any
   outputs?: any
   status: string
+  parallel_run_id?: string
   error?: string
   elapsed_time: number
   execution_metadata: {
@@ -31,6 +32,8 @@ export type NodeTracing = {
     parallel_start_node_id?: string
     parent_parallel_id?: string
     parent_parallel_start_node_id?: string
+    parallel_mode_run_id?: string
+    iteration_duration_map?: IterationDurationMap
   }
   metadata: {
     iterator_length: number
@@ -42,6 +45,7 @@ export type NodeTracing = {
     name: string
     email: string
   }
+  iterDurationMap?: IterationDurationMap
   finished_at: number
   extras?: any
   expand?: boolean // for UI
@@ -121,6 +125,7 @@ export type NodeStartedResponse = {
     id: string
     node_id: string
     iteration_id?: string
+    parallel_run_id?: string
     node_type: string
     index: number
     predecessor_node_id?: string
@@ -166,6 +171,7 @@ export type NodeFinishedResponse = {
       parallel_start_node_id?: string
       iteration_index?: number
       iteration_id?: string
+      parallel_mode_run_id: string
     }
     created_at: number
     files?: FileResponse[]
@@ -200,9 +206,13 @@ export type IterationNextResponse = {
     output: any
     extras?: any
     created_at: number
+    parallel_mode_run_id: string
     execution_metadata: {
       parallel_id?: string
+      iteration_index: number
+      parallel_mode_run_id?: string
     }
+    duration?: number
   }
 }
 
@@ -318,3 +328,5 @@ export type ConversationVariableResponse = {
   total: number
   page: number
 }
+
+export type IterationDurationMap = Record<string, number>

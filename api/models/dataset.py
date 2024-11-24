@@ -23,7 +23,7 @@ from .model import App, Tag, TagBinding, UploadFile
 from .types import StringUUID
 
 
-class DatasetPermissionEnum(str, enum.Enum):
+class DatasetPermissionEnum(enum.StrEnum):
     ONLY_ME = "only_me"
     ALL_TEAM = "all_team_members"
     PARTIAL_TEAM = "partial_members"
@@ -679,7 +679,7 @@ class DatasetKeywordTable(db.Model):
                     return json.loads(keyword_table_text.decode("utf-8"), cls=SetDecoder)
                 return None
             except Exception as e:
-                logging.exception(str(e))
+                logging.exception(f"Failed to load keyword table from file: {file_key}")
                 return None
 
 

@@ -1,7 +1,8 @@
 import logging
-from enum import Enum
+from collections.abc import Mapping
+from enum import StrEnum
 from threading import Lock
-from typing import Optional
+from typing import Any, Optional
 
 from httpx import Timeout, post
 from pydantic import BaseModel
@@ -30,7 +31,7 @@ class CodeExecutionResponse(BaseModel):
     data: Data
 
 
-class CodeLanguage(str, Enum):
+class CodeLanguage(StrEnum):
     PYTHON3 = "python3"
     JINJA2 = "jinja2"
     JAVASCRIPT = "javascript"
@@ -117,7 +118,7 @@ class CodeExecutor:
         return response.data.stdout or ""
 
     @classmethod
-    def execute_workflow_code_template(cls, language: CodeLanguage, code: str, inputs: dict) -> dict:
+    def execute_workflow_code_template(cls, language: CodeLanguage, code: str, inputs: Mapping[str, Any]) -> dict:
         """
         Execute code
         :param language: code language

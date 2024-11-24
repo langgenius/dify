@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import cast
 
 from core.model_runtime.entities import (
@@ -14,7 +15,7 @@ from core.prompt.simple_prompt_transform import ModelMode
 
 class PromptMessageUtil:
     @staticmethod
-    def prompt_messages_to_prompt_for_saving(model_mode: str, prompt_messages: list[PromptMessage]) -> list[dict]:
+    def prompt_messages_to_prompt_for_saving(model_mode: str, prompt_messages: Sequence[PromptMessage]) -> list[dict]:
         """
         Prompt messages to prompt for saving.
         :param model_mode: model mode

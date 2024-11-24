@@ -218,6 +218,10 @@ const translation = {
       enableText: 'Features Enabled',
       manage: 'Manage',
     },
+    documentUpload: {
+      title: 'Document',
+      description: 'Enable Document will allows the model to take in documents and answer questions about them.',
+    },
   },
   codegen: {
     title: 'Code Generator',

@@ -11,7 +11,7 @@ import { ArrowLeftIcon, ArrowRightIcon } from '@heroicons/react/24/outline'
 import { Trans, useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import List from './list'
-import Filter from './filter'
+import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
 import { fetchChatConversations, fetchCompletionConversations } from '@/service/log'
@@ -22,7 +22,7 @@ export type ILogsProps = {
 }
 
 export type QueryParam = {
-  period?: number | string
+  period: string
   annotation_status?: string
   keyword?: string
   sort_by?: string
@@ -55,7 +55,7 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
   const [queryParams, setQueryParams] = useState<QueryParam>({
-    period: 7,
+    period: '2',
     annotation_status: 'all',
     sort_by: '-created_at',
   })
@@ -68,9 +68,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const query = {
     page: currPage + 1,
     limit: APP_PAGE_LIMIT,
-    ...(debouncedQueryParams.period !== 'all'
+    ...((debouncedQueryParams.period !== '9')
       ? {
-        start: dayjs().subtract(debouncedQueryParams.period as number, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+        start: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
         end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
       }
       : {}),

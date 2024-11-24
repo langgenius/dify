@@ -99,6 +99,8 @@ const translation = {
     ImageUploadLegacyTip: 'Ahora puede crear variables de tipo de archivo en el formulario de inicio. Ya no admitiremos la función de carga de imágenes en el futuro.',
     featuresDescription: 'Mejorar la experiencia del usuario de la aplicación web',
     featuresDocLink: 'Aprende más',
+    importWarning: 'Cautela',
+    importWarningDetails: 'La diferencia de versión de DSL puede afectar a ciertas características',
   },
   env: {
     envPanelTitle: 'Variables de Entorno',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'Tipo',
       binaryFileVariable: 'Variable de archivo binario',
+      extractListPlaceholder: 'Introduzca el índice de elementos de la lista, escriba \'/\' insertar variable',
+      curl: {
+        title: 'Importar desde cURL',
+        placeholder: 'Pegar la cadena cURL aquí',
+      },
     },
     code: {
       inputVars: 'Variables de entrada',
@@ -557,6 +564,23 @@ const translation = {
       iteration_one: '{{count}} Iteración',
       iteration_other: '{{count}} Iteraciones',
       currentIteration: 'Iteración actual',
+      ErrorMethod: {
+        operationTerminated: 'Terminado',
+        continueOnError: 'Continuar en el error',
+        removeAbnormalOutput: 'eliminar-salida-anormal',
+      },
+      comma: ',',
+      errorResponseMethod: 'Método de respuesta a errores',
+      error_one: '{{conteo}} Error',
+      parallelPanelDesc: 'En el modo paralelo, las tareas de la iteración admiten la ejecución en paralelo.',
+      MaxParallelismTitle: 'Máximo paralelismo',
+      error_other: '{{conteo}} Errores',
+      parallelMode: 'Modo paralelo',
+      parallelModeEnableDesc: 'En el modo paralelo, las tareas dentro de las iteraciones admiten la ejecución en paralelo. Puede configurar esto en el panel de propiedades a la derecha.',
+      parallelModeUpper: 'MODO PARALELO',
+      MaxParallelismDesc: 'El paralelismo máximo se utiliza para controlar el número de tareas ejecutadas simultáneamente en una sola iteración.',
+      answerNodeWarningDesc: 'Advertencia de modo paralelo: Los nodos de respuesta, las asignaciones de variables de conversación y las operaciones de lectura/escritura persistentes dentro de las iteraciones pueden provocar excepciones.',
+      parallelModeEnableTitle: 'Modo paralelo habilitado',
     },
     note: {
       addNote: 'Agregar nota',
@@ -604,6 +628,7 @@ const translation = {
       filterConditionComparisonOperator: 'Operador de comparación de condiciones de filtro',
       asc: 'ASC',
       selectVariableKeyPlaceholder: 'Seleccione la clave de subvariable',
+      extractsCondition: 'Extraiga el elemento N',
     },
   },
   tracing: {

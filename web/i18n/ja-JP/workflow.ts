@@ -99,6 +99,8 @@ const translation = {
     addParallelNode: '並列ノードを追加',
     parallel: '並列',
     branch: 'ブランチ',
+    importWarning: '注意',
+    importWarningDetails: 'DSL のバージョンの違いが特定の機能に影響を与える場合があります',
   },
   env: {
     envPanelTitle: '環境変数',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'タイプ',
       binaryFileVariable: 'バイナリファイル変数',
+      extractListPlaceholder: 'リスト項目のインデックスを入力し、変数を挿入 \'/\' と入力します',
+      curl: {
+        title: 'cURLからのインポート',
+        placeholder: 'ここにcURL文字列を貼り付けます',
+      },
     },
     code: {
       inputVars: '入力変数',
@@ -558,6 +565,23 @@ const translation = {
       iteration_one: '{{count}} イテレーション',
       iteration_other: '{{count}} イテレーション',
       currentIteration: '現在のイテレーション',
+      ErrorMethod: {
+        operationTerminated: '終了',
+        continueOnError: 'エラー時に続行',
+        removeAbnormalOutput: 'アブノーマルアウトプットの削除',
+      },
+      comma: ',',
+      error_other: '{{カウント}}エラー',
+      error_one: '{{カウント}}エラー',
+      parallelModeUpper: 'パラレルモード',
+      parallelMode: 'パラレルモード',
+      MaxParallelismTitle: '最大並列処理',
+      errorResponseMethod: 'エラー応答方式',
+      parallelPanelDesc: '並列モードでは、イテレーションのタスクは並列実行をサポートします。',
+      parallelModeEnableDesc: '並列モードでは、イテレーション内のタスクは並列実行をサポートします。これは、右側のプロパティパネルで構成できます。',
+      parallelModeEnableTitle: 'パラレルモード有効',
+      MaxParallelismDesc: '最大並列処理は、1 回の反復で同時に実行されるタスクの数を制御するために使用されます。',
+      answerNodeWarningDesc: '並列モードの警告: 応答ノード、会話変数の割り当て、およびイテレーション内の永続的な読み取り/書き込み操作により、例外が発生する可能性があります。',
     },
     note: {
       addNote: 'コメントを追加',
@@ -602,6 +626,7 @@ const translation = {
       filterConditionComparisonOperator: 'フィルター条件を比較オペレーター',
       inputVar: '入力変数',
       desc: 'DESC',
+      extractsCondition: 'N個のアイテムを抽出します',
     },
   },
   tracing: {

@@ -99,6 +99,12 @@ const translation = {
   resetPasswordDesc: 'Digite o e-mail que você usou para se inscrever no Dify e enviaremos um e-mail de redefinição de senha.',
   sendVerificationCode: 'Enviar código de verificação',
   usePassword: 'Usar senha',
+  licenseInactiveTip: 'A licença do Dify Enterprise para seu espaço de trabalho está inativa. Entre em contato com o administrador para continuar usando o Dify.',
+  licenseLostTip: 'Falha ao conectar o servidor de licenças Dify. Entre em contato com o administrador para continuar usando o Dify.',
+  licenseExpired: 'Licença expirada',
+  licenseLost: 'Licença perdida',
+  licenseInactive: 'Licença inativa',
+  licenseExpiredTip: 'A licença do Dify Enterprise para seu espaço de trabalho expirou. Entre em contato com o administrador para continuar usando o Dify.',
 }
 
 export default translation

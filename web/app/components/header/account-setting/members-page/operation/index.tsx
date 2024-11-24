@@ -26,11 +26,13 @@ const itemDescClassName = `
 
 type IOperationProps = {
   member: Member
+  operatorRole: string
   onOperate: () => void
 }
 
 const Operation = ({
   member,
+  operatorRole,
   onOperate,
 }: IOperationProps) => {
   const { t } = useTranslation()
@@ -43,11 +45,20 @@ const Operation = ({
     dataset_operator: t('common.members.datasetOperator'),
   }
   const roleList = useMemo(() => {
-    return [
-      ...['admin', 'editor', 'normal'],
-      ...(datasetOperatorEnabled ? ['dataset_operator'] : []),
-    ]
-  }, [datasetOperatorEnabled])
+    if (operatorRole === 'owner') {
+      return [
+        ...['admin', 'editor', 'normal'],
+        ...(datasetOperatorEnabled ? ['dataset_operator'] : []),
+      ]
+    }
+    if (operatorRole === 'admin') {
+      return [
+        ...['editor', 'normal'],
+        ...(datasetOperatorEnabled ? ['dataset_operator'] : []),
+      ]
+    }
+    return []
+  }, [operatorRole, datasetOperatorEnabled])
   const { notify } = useContext(ToastContext)
   const toHump = (name: string) => name.replace(/_(\w)/g, (all, letter) => letter.toUpperCase())
   const handleDeleteMemberOrCancelInvitation = async () => {

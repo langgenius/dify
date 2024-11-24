@@ -592,6 +592,10 @@ const translation = {
     uploadFromComputerReadError: 'Не вдалося прочитати файл, будь ласка, спробуйте ще раз.',
     uploadFromComputerUploadError: 'Не вдалося завантажити файл, будь ласка, завантажте ще раз.',
   },
+  license: {
+    expiring: 'Термін дії закінчується за один день',
+    expiring_plural: 'Термін дії закінчується за {{count}} днів',
+  },
 }
 
 export default translation

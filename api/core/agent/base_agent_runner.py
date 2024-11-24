@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Optional, Union, cast
 
 from core.agent.entities import AgentEntity, AgentToolEntity
@@ -30,6 +30,7 @@ from core.model_runtime.entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -65,7 +66,7 @@ class BaseAgentRunner(AppRunner):
         prompt_messages: Optional[list[PromptMessage]] = None,
         variables_pool: Optional[ToolRuntimeVariablePool] = None,
         db_variables: Optional[ToolConversationVariables] = None,
-        model_instance: ModelInstance = None,
+        model_instance: ModelInstance | None = None,
     ) -> None:
         self.tenant_id = tenant_id
         self.application_generate_entity = application_generate_entity
@@ -113,16 +114,9 @@ class BaseAgentRunner(AppRunner):
         # check if model supports stream tool call
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
-        if model_schema and ModelFeature.STREAM_TOOL_CALL in (model_schema.features or []):
-            self.stream_tool_call = True
-        else:
-            self.stream_tool_call = False
-
-        # check if model supports vision
-        if model_schema and ModelFeature.VISION in (model_schema.features or []):
-            self.files = application_generate_entity.files
-        else:
-            self.files = []
+        features = model_schema.features if model_schema and model_schema.features else []
+        self.stream_tool_call = ModelFeature.STREAM_TOOL_CALL in features
+        self.files = application_generate_entity.files if ModelFeature.VISION in features else []
         self.query = None
         self._current_thoughts: list[PromptMessage] = []
 
@@ -249,7 +243,7 @@ class BaseAgentRunner(AppRunner):
         update prompt message tool
         """
         # try to get tool runtime parameters
-        tool_runtime_parameters = tool.get_runtime_parameters() or []
+        tool_runtime_parameters = tool.get_runtime_parameters()
 
         for parameter in tool_runtime_parameters:
             if parameter.form != ToolParameter.ToolParameterForm.LLM:
@@ -418,7 +412,7 @@ class BaseAgentRunner(AppRunner):
             .first()
         )
 
-        db_variables.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        db_variables.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db_variables.variables_str = json.dumps(jsonable_encoder(tool_variables.pool))
         db.session.commit()
         db.session.close()
@@ -508,24 +502,27 @@ class BaseAgentRunner(AppRunner):
 
     def organize_agent_user_prompt(self, message: Message) -> UserPromptMessage:
         files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
-        if files:
-            file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
-
-            if file_extra_config:
-                file_objs = file_factory.build_from_message_files(
-                    message_files=files, tenant_id=self.tenant_id, config=file_extra_config
-                )
-            else:
-                file_objs = []
-
-            if not file_objs:
-                return UserPromptMessage(content=message.query)
-            else:
-                prompt_message_contents: list[PromptMessageContent] = []
-                prompt_message_contents.append(TextPromptMessageContent(data=message.query))
-                for file_obj in file_objs:
-                    prompt_message_contents.append(file_manager.to_prompt_message_content(file_obj))
-
-                return UserPromptMessage(content=prompt_message_contents)
-        else:
+        if not files:
             return UserPromptMessage(content=message.query)
+        file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
+        if not file_extra_config:
+            return UserPromptMessage(content=message.query)
+
+        image_detail_config = file_extra_config.image_config.detail if file_extra_config.image_config else None
+        image_detail_config = image_detail_config or ImagePromptMessageContent.DETAIL.LOW
+
+        file_objs = file_factory.build_from_message_files(
+            message_files=files, tenant_id=self.tenant_id, config=file_extra_config
+        )
+        if not file_objs:
+            return UserPromptMessage(content=message.query)
+        prompt_message_contents: list[PromptMessageContent] = []
+        prompt_message_contents.append(TextPromptMessageContent(data=message.query))
+        for file in file_objs:
+            prompt_message_contents.append(
+                file_manager.to_prompt_message_content(
+                    file,
+                    image_detail_config=image_detail_config,
+                )
+            )
+        return UserPromptMessage(content=prompt_message_contents)

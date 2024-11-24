@@ -99,6 +99,8 @@ const translation = {
     fileUploadTip: 'Функции загрузки изображений были обновлены до загрузки файлов.',
     featuresDescription: 'Улучшение взаимодействия с пользователем веб-приложения',
     ImageUploadLegacyTip: 'Теперь вы можете создавать переменные типа файла в стартовой форме. В будущем мы больше не будем поддерживать функцию загрузки изображений.',
+    importWarning: 'Осторожность',
+    importWarningDetails: 'Разница в версии DSL может повлиять на некоторые функции',
   },
   env: {
     envPanelTitle: 'Переменные среды',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'Тип',
       binaryFileVariable: 'Переменная двоичного файла',
+      extractListPlaceholder: 'Введите индекс элемента списка, введите \'/\' вставьте переменную',
+      curl: {
+        placeholder: 'Вставьте сюда строку cURL',
+        title: 'Импорт из cURL',
+      },
     },
     code: {
       inputVars: 'Входные переменные',
@@ -557,6 +564,23 @@ const translation = {
       iteration_one: '{{count}} Итерация',
       iteration_other: '{{count}} Итераций',
       currentIteration: 'Текущая итерация',
+      ErrorMethod: {
+        operationTerminated: 'Прекращено',
+        continueOnError: 'продолжить по ошибке',
+        removeAbnormalOutput: 'удалить аномальный вывод',
+      },
+      comma: ',',
+      error_other: '{{Количество}} Ошибки',
+      errorResponseMethod: 'Метод реагирования на ошибку',
+      MaxParallelismTitle: 'Максимальный параллелизм',
+      parallelModeUpper: 'ПАРАЛЛЕЛЬНЫЙ РЕЖИМ',
+      error_one: '{{Количество}} Ошибка',
+      parallelModeEnableTitle: 'Параллельный режим включен',
+      parallelMode: 'Параллельный режим',
+      parallelPanelDesc: 'В параллельном режиме задачи в итерации поддерживают параллельное выполнение.',
+      parallelModeEnableDesc: 'В параллельном режиме задачи в итерациях поддерживают параллельное выполнение. Вы можете настроить это на панели свойств справа.',
+      MaxParallelismDesc: 'Максимальный параллелизм используется для управления количеством задач, выполняемых одновременно в одной итерации.',
+      answerNodeWarningDesc: 'Предупреждение о параллельном режиме: узлы ответов, присвоение переменных диалога и постоянные операции чтения и записи в итерациях могут вызывать исключения.',
     },
     note: {
       addNote: 'Добавить заметку',
@@ -601,6 +625,7 @@ const translation = {
       filterConditionKey: 'Ключ условия фильтра',
       selectVariableKeyPlaceholder: 'Выбор ключа подпеременной',
       filterConditionComparisonValue: 'Значение условия фильтра',
+      extractsCondition: 'Извлечение элемента N',
     },
   },
   tracing: {

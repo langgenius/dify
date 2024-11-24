@@ -99,6 +99,8 @@ const translation = {
     fileUploadTip: '이미지 업로드 기능이 파일 업로드로 업그레이드되었습니다.',
     featuresDescription: '웹앱 사용자 경험 향상',
     ImageUploadLegacyTip: '이제 시작 양식에서 파일 형식 변수를 만들 수 있습니다. 앞으로 이미지 업로드 기능은 더 이상 지원되지 않습니다.',
+    importWarning: '주의',
+    importWarningDetails: 'DSL 버전 차이는 특정 기능에 영향을 미칠 수 있습니다.',
   },
   env: {
     envPanelTitle: '환경 변수',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: '형',
       binaryFileVariable: '바이너리 파일 변수',
+      extractListPlaceholder: '목록 항목 인덱스 입력, \'/\' 변수 삽입',
+      curl: {
+        title: 'cURL에서 가져오기',
+        placeholder: '여기에 cURL 문자열 붙여 넣기',
+      },
     },
     code: {
       inputVars: '입력 변수',
@@ -557,6 +564,23 @@ const translation = {
       iteration_one: '{{count}} 반복',
       iteration_other: '{{count}} 반복',
       currentIteration: '현재 반복',
+      ErrorMethod: {
+        operationTerminated: '종료',
+        continueOnError: '오류 발생 시 계속',
+        removeAbnormalOutput: '비정상 출력 제거',
+      },
+      comma: ',',
+      error_one: '{{개수}} 오류',
+      parallelMode: '병렬 모드',
+      errorResponseMethod: '오류 응답 방법',
+      parallelModeUpper: '병렬 모드',
+      MaxParallelismTitle: '최대 병렬 처리',
+      error_other: '{{개수}} 오류',
+      parallelModeEnableTitle: 'Parallel Mode Enabled(병렬 모드 사용)',
+      parallelPanelDesc: '병렬 모드에서 반복의 작업은 병렬 실행을 지원합니다.',
+      parallelModeEnableDesc: '병렬 모드에서는 반복 내의 작업이 병렬 실행을 지원합니다. 오른쪽의 속성 패널에서 이를 구성할 수 있습니다.',
+      MaxParallelismDesc: '최대 병렬 처리는 단일 반복에서 동시에 실행되는 작업 수를 제어하는 데 사용됩니다.',
+      answerNodeWarningDesc: '병렬 모드 경고: 응답 노드, 대화 변수 할당 및 반복 내의 지속적인 읽기/쓰기 작업으로 인해 예외가 발생할 수 있습니다.',
     },
     note: {
       editor: {
@@ -601,6 +625,7 @@ const translation = {
       orderBy: '정렬 기준',
       selectVariableKeyPlaceholder: '하위 변수 키 선택',
       filterConditionComparisonOperator: '필터 조건 비교 연산자',
+      extractsCondition: 'N 항목을 추출합니다.',
     },
   },
   tracing: {

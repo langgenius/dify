@@ -99,6 +99,8 @@ const translation = {
     fileUploadTip: 'Funkcje przesyłania obrazów zostały zaktualizowane do przesyłania plików.',
     featuresDescription: 'Ulepszanie środowiska użytkownika aplikacji internetowej',
     featuresDocLink: 'Dowiedz się więcej',
+    importWarning: 'Ostrożność',
+    importWarningDetails: 'Różnica w wersji DSL może mieć wpływ na niektóre funkcje',
   },
   env: {
     envPanelTitle: 'Zmienne Środowiskowe',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'Typ',
       binaryFileVariable: 'Binarna zmienna pliku',
+      extractListPlaceholder: 'Wprowadź indeks elementu listy, wpisz "/" wstaw zmienną',
+      curl: {
+        placeholder: 'Wklej tutaj ciąg cURL',
+        title: 'Importowanie z cURL',
+      },
     },
     code: {
       inputVars: 'Zmienne wejściowe',
@@ -557,6 +564,23 @@ const translation = {
       iteration_one: '{{count}} Iteracja',
       iteration_other: '{{count}} Iteracje',
       currentIteration: 'Bieżąca iteracja',
+      ErrorMethod: {
+        continueOnError: 'kontynuacja w przypadku błędu',
+        operationTerminated: 'Zakończone',
+        removeAbnormalOutput: 'usuń-nieprawidłowe-wyjście',
+      },
+      comma: ',',
+      parallelModeUpper: 'TRYB RÓWNOLEGŁY',
+      parallelModeEnableTitle: 'Włączony tryb równoległy',
+      MaxParallelismTitle: 'Maksymalna równoległość',
+      error_one: '{{liczba}} Błąd',
+      error_other: '{{liczba}} Błędy',
+      parallelPanelDesc: 'W trybie równoległym zadania w iteracji obsługują wykonywanie równoległe.',
+      parallelMode: 'Tryb równoległy',
+      MaxParallelismDesc: 'Maksymalna równoległość służy do kontrolowania liczby zadań wykonywanych jednocześnie w jednej iteracji.',
+      parallelModeEnableDesc: 'W trybie równoległym zadania w iteracjach obsługują wykonywanie równoległe. Możesz to skonfigurować w panelu właściwości po prawej stronie.',
+      answerNodeWarningDesc: 'Ostrzeżenie w trybie równoległym: węzły odpowiedzi, przypisania zmiennych konwersacji i trwałe operacje odczytu/zapisu w iteracjach mogą powodować wyjątki.',
+      errorResponseMethod: 'Metoda odpowiedzi na błąd',
     },
     note: {
       editor: {
@@ -601,6 +625,7 @@ const translation = {
       filterCondition: 'Stan filtra',
       filterConditionComparisonValue: 'Wartość warunku filtru',
       selectVariableKeyPlaceholder: 'Wybierz klucz zmiennej podrzędnej',
+      extractsCondition: 'Wyodrębnij element N',
     },
   },
   tracing: {

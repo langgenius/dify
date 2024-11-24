@@ -99,6 +99,8 @@ const translation = {
     featuresDescription: 'Melhore a experiência do usuário do aplicativo Web',
     ImageUploadLegacyTip: 'Agora você pode criar variáveis de tipo de arquivo no formulário inicial. Não daremos mais suporte ao recurso de upload de imagens no futuro.',
     fileUploadTip: 'Os recursos de upload de imagens foram atualizados para upload de arquivos.',
+    importWarning: 'Cuidado',
+    importWarningDetails: 'A diferença de versão DSL pode afetar determinados recursos',
   },
   env: {
     envPanelTitle: 'Variáveis de Ambiente',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'Tipo',
       binaryFileVariable: 'Variável de arquivo binário',
+      extractListPlaceholder: 'Insira o índice do item da lista, digite \'/\' inserir variável',
+      curl: {
+        placeholder: 'Cole a string cURL aqui',
+        title: 'Importar do cURL',
+      },
     },
     code: {
       inputVars: 'Variáveis de entrada',
@@ -557,6 +564,23 @@ const translation = {
       iteration_one: '{{count}} Iteração',
       iteration_other: '{{count}} Iterações',
       currentIteration: 'Iteração atual',
+      ErrorMethod: {
+        continueOnError: 'continuar em erro',
+        removeAbnormalOutput: 'saída anormal de remoção',
+        operationTerminated: 'Terminada',
+      },
+      MaxParallelismTitle: 'Paralelismo máximo',
+      parallelModeEnableTitle: 'Modo paralelo ativado',
+      errorResponseMethod: 'Método de resposta de erro',
+      error_other: '{{contagem}} Erros',
+      parallelMode: 'Modo paralelo',
+      parallelModeUpper: 'MODO PARALELO',
+      error_one: '{{contagem}} Erro',
+      parallelModeEnableDesc: 'No modo paralelo, as tarefas dentro das iterações dão suporte à execução paralela. Você pode configurar isso no painel de propriedades à direita.',
+      comma: ',',
+      MaxParallelismDesc: 'O paralelismo máximo é usado para controlar o número de tarefas executadas simultaneamente em uma única iteração.',
+      answerNodeWarningDesc: 'Aviso de modo paralelo: nós de resposta, atribuições de variáveis de conversação e operações persistentes de leitura/gravação em iterações podem causar exceções.',
+      parallelPanelDesc: 'No modo paralelo, as tarefas na iteração dão suporte à execução paralela.',
     },
     note: {
       editor: {
@@ -601,6 +625,7 @@ const translation = {
       filterConditionKey: 'Chave de condição do filtro',
       filterConditionComparisonOperator: 'Operador de comparação de condição de filtro',
       filterConditionComparisonValue: 'Valor da condição do filtro',
+      extractsCondition: 'Extraia o item N',
     },
   },
   tracing: {

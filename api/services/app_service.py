@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import cast
 
 from flask_login import current_user
@@ -88,7 +88,7 @@ class AppService:
             except (ProviderTokenNotInitError, LLMBadRequestError):
                 model_instance = None
             except Exception as e:
-                logging.exception(e)
+                logging.exception(f"Get default model instance failed, tenant_id: {tenant_id}")
                 model_instance = None
 
             if model_instance:
@@ -155,7 +155,7 @@ class AppService:
         """
         # get original app model config
         if app.mode == AppMode.AGENT_CHAT.value or app.is_agent:
-            model_config: AppModelConfig = app.app_model_config
+            model_config = app.app_model_config
             agent_mode = model_config.agent_mode_dict
             # decrypt agent tool parameters if it's secret-input
             for tool in agent_mode.get("tools") or []:
@@ -223,7 +223,7 @@ class AppService:
         app.icon_background = args.get("icon_background")
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         if app.max_active_requests is not None:
@@ -240,7 +240,7 @@ class AppService:
         """
         app.name = name
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return app
@@ -256,7 +256,7 @@ class AppService:
         app.icon = icon
         app.icon_background = icon_background
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return app
@@ -273,7 +273,7 @@ class AppService:
 
         app.enable_site = enable_site
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return app
@@ -290,7 +290,7 @@ class AppService:
 
         app.enable_api = enable_api
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return app
@@ -341,7 +341,7 @@ class AppService:
             if not app_model_config:
                 return meta
 
-            agent_config = app_model_config.agent_mode_dict or {}
+            agent_config = app_model_config.agent_mode_dict
 
             # get all tools
             tools = agent_config.get("tools", [])

@@ -99,6 +99,8 @@ const translation = {
     ImageUploadLegacyTip: 'Sie können jetzt Dateitypvariablen im Startformular erstellen. Wir werden die Funktion zum Hochladen von Bildern in Zukunft nicht mehr unterstützen.',
     fileUploadTip: 'Die Funktionen zum Hochladen von Bildern wurden auf das Hochladen von Dateien aktualisiert.',
     featuresDescription: 'Verbessern Sie die Benutzererfahrung von Web-Apps',
+    importWarning: 'Vorsicht',
+    importWarningDetails: 'Der Unterschied zwischen den DSL-Versionen kann sich auf bestimmte Funktionen auswirken',
   },
   env: {
     envPanelTitle: 'Umgebungsvariablen',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'Art',
       binaryFileVariable: 'Variable der Binärdatei',
+      extractListPlaceholder: 'Geben Sie den Index des Listeneintrags ein, geben Sie \'/\' ein, fügen Sie die Variable ein',
+      curl: {
+        title: 'Importieren von cURL',
+        placeholder: 'Fügen Sie hier die cURL-Zeichenfolge ein',
+      },
     },
     code: {
       inputVars: 'Eingabevariablen',
@@ -557,6 +564,23 @@ const translation = {
       iteration_one: '{{count}} Iteration',
       iteration_other: '{{count}} Iterationen',
       currentIteration: 'Aktuelle Iteration',
+      ErrorMethod: {
+        operationTerminated: 'beendet',
+        removeAbnormalOutput: 'remove-abnormale_ausgabe',
+        continueOnError: 'Fehler "Fortfahren bei"',
+      },
+      MaxParallelismTitle: 'Maximale Parallelität',
+      parallelMode: 'Paralleler Modus',
+      errorResponseMethod: 'Methode der Fehlerantwort',
+      error_one: '{{Anzahl}} Fehler',
+      error_other: '{{Anzahl}} Irrtümer',
+      MaxParallelismDesc: 'Die maximale Parallelität wird verwendet, um die Anzahl der Aufgaben zu steuern, die gleichzeitig in einer einzigen Iteration ausgeführt werden.',
+      parallelPanelDesc: 'Im parallelen Modus unterstützen Aufgaben in der Iteration die parallele Ausführung.',
+      parallelModeEnableDesc: 'Im parallelen Modus unterstützen Aufgaben innerhalb von Iterationen die parallele Ausführung. Sie können dies im Eigenschaftenbereich auf der rechten Seite konfigurieren.',
+      answerNodeWarningDesc: 'Warnung im parallelen Modus: Antwortknoten, Zuweisungen von Konversationsvariablen und persistente Lese-/Schreibvorgänge innerhalb von Iterationen können Ausnahmen verursachen.',
+      parallelModeEnableTitle: 'Paralleler Modus aktiviert',
+      parallelModeUpper: 'PARALLELER MODUS',
+      comma: ',',
     },
     note: {
       editor: {
@@ -601,6 +625,7 @@ const translation = {
       filterConditionKey: 'Bedingungsschlüssel filtern',
       filterCondition: 'Filter-Bedingung',
       selectVariableKeyPlaceholder: 'Untervariablenschlüssel auswählen',
+      extractsCondition: 'Extrahieren des N-Elements',
     },
   },
   tracing: {

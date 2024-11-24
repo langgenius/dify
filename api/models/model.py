@@ -1,20 +1,19 @@
 import json
 import re
 import uuid
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Literal, Optional
 
 import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
-from pydantic import BaseModel, Field
 from sqlalchemy import Float, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
-from core.file import FILE_MODEL_IDENTITY, File, FileExtraConfig, FileTransferMethod, FileType
+from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
 from extensions.ext_database import db
@@ -25,14 +24,6 @@ from .account import Account, Tenant
 from .types import StringUUID
 
 
-class FileUploadConfig(BaseModel):
-    enabled: bool = Field(default=False)
-    allowed_file_types: Sequence[FileType] = Field(default_factory=list)
-    allowed_extensions: Sequence[str] = Field(default_factory=list)
-    allowed_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
-    number_limits: int = Field(default=0, gt=0, le=10)
-
-
 class DifySetup(db.Model):
     __tablename__ = "dify_setups"
     __table_args__ = (db.PrimaryKeyConstraint("version", name="dify_setup_pkey"),)
@@ -41,7 +32,7 @@ class DifySetup(db.Model):
     setup_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class AppMode(str, Enum):
+class AppMode(StrEnum):
     COMPLETION = "completion"
     WORKFLOW = "workflow"
     CHAT = "chat"
@@ -77,7 +68,7 @@ class App(db.Model):
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
     mode = db.Column(db.String(255), nullable=False)
-    icon_type = db.Column(db.String(255), nullable=True)
+    icon_type = db.Column(db.String(255), nullable=True)  # image, emoji
     icon = db.Column(db.String(255))
     icon_background = db.Column(db.String(255))
     app_model_config_id = db.Column(StringUUID, nullable=True)
@@ -115,7 +106,7 @@ class App(db.Model):
         return site
 
     @property
-    def app_model_config(self) -> Optional["AppModelConfig"]:
+    def app_model_config(self):
         if self.app_model_config_id:
             return db.session.query(AppModelConfig).filter(AppModelConfig.id == self.app_model_config_id).first()
 
@@ -264,7 +255,7 @@ class AppModelConfig(db.Model):
 
     @property
     def model_dict(self) -> dict:
-        return json.loads(self.model) if self.model else None
+        return json.loads(self.model) if self.model else {}
 
     @property
     def suggested_questions_list(self) -> list:
@@ -609,8 +600,8 @@ class Conversation(db.Model):
                 app_model_config = (
                     db.session.query(AppModelConfig).filter(AppModelConfig.id == self.app_model_config_id).first()
                 )
-
-                model_config = app_model_config.to_dict()
+                if app_model_config:
+                    model_config = app_model_config.to_dict()
 
         model_config["model_id"] = self.model_id
         model_config["provider"] = self.model_provider
@@ -728,6 +719,7 @@ class Message(db.Model):
         db.Index("message_end_user_idx", "app_id", "from_source", "from_end_user_id"),
         db.Index("message_account_idx", "app_id", "from_source", "from_account_id"),
         db.Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
+        db.Index("message_created_at_idx", "created_at"),
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
@@ -958,9 +950,6 @@ class Message(db.Model):
                         "type": message_file.type,
                     },
                     tenant_id=current_app.tenant_id,
-                    user_id=self.from_account_id or self.from_end_user_id or "",
-                    role=CreatedByRole(message_file.created_by_role),
-                    config=FileExtraConfig(),
                 )
             elif message_file.transfer_method == "remote_url":
                 if message_file.url is None:
@@ -973,9 +962,6 @@ class Message(db.Model):
                         "url": message_file.url,
                     },
                     tenant_id=current_app.tenant_id,
-                    user_id=self.from_account_id or self.from_end_user_id or "",
-                    role=CreatedByRole(message_file.created_by_role),
-                    config=FileExtraConfig(),
                 )
             elif message_file.transfer_method == "tool_file":
                 if message_file.upload_file_id is None:
@@ -990,9 +976,6 @@ class Message(db.Model):
                 file = file_factory.build_from_mapping(
                     mapping=mapping,
                     tenant_id=current_app.tenant_id,
-                    user_id=self.from_account_id or self.from_end_user_id or "",
-                    role=CreatedByRole(message_file.created_by_role),
-                    config=FileExtraConfig(),
                 )
             else:
                 raise ValueError(
@@ -1307,7 +1290,7 @@ class Site(db.Model):
     privacy_policy = db.Column(db.String(255))
     show_workflow_steps = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
     use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    custom_disclaimer: Mapped[str] = mapped_column(sa.TEXT, default="")
+    _custom_disclaimer: Mapped[str] = mapped_column("custom_disclaimer", sa.TEXT, default="")
     customize_domain = db.Column(db.String(255))
     customize_token_strategy = db.Column(db.String(255), nullable=False)
     prompt_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
@@ -1317,6 +1300,16 @@ class Site(db.Model):
     updated_by = db.Column(StringUUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     code = db.Column(db.String(255))
+
+    @property
+    def custom_disclaimer(self):
+        return self._custom_disclaimer
+
+    @custom_disclaimer.setter
+    def custom_disclaimer(self, value: str):
+        if len(value) > 512:
+            raise ValueError("Custom disclaimer cannot exceed 512 characters.")
+        self._custom_disclaimer = value
 
     @staticmethod
     def generate_code(n):

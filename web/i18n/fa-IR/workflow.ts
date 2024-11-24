@@ -99,6 +99,8 @@ const translation = {
     featuresDescription: 'بهبود تجربه کاربری برنامه وب',
     ImageUploadLegacyTip: 'اکنون می توانید متغیرهای نوع فایل را در فرم شروع ایجاد کنید. ما دیگر از ویژگی آپلود تصویر در آینده پشتیبانی نخواهیم کرد.',
     fileUploadTip: 'ویژگی های آپلود تصویر برای آپلود فایل ارتقا یافته است.',
+    importWarning: 'احتیاط',
+    importWarningDetails: 'تفاوت نسخه DSL ممکن است بر ویژگی های خاصی تأثیر بگذارد',
   },
   env: {
     envPanelTitle: 'متغیرهای محیطی',
@@ -407,6 +409,11 @@ const translation = {
       },
       binaryFileVariable: 'متغیر فایل باینری',
       type: 'نوع',
+      extractListPlaceholder: 'فهرست آیتم لیست را وارد کنید، متغیر درج \'/\' را تایپ کنید',
+      curl: {
+        title: 'وارد کردن از cURL',
+        placeholder: 'رشته cURL را اینجا بچسبانید',
+      },
     },
     code: {
       inputVars: 'متغیرهای ورودی',
@@ -557,6 +564,23 @@ const translation = {
       iteration_one: '{{count}} تکرار',
       iteration_other: '{{count}} تکرارها',
       currentIteration: 'تکرار فعلی',
+      ErrorMethod: {
+        continueOnError: 'ادامه در خطا',
+        operationTerminated: 'فسخ',
+        removeAbnormalOutput: 'حذف خروجی غیرطبیعی',
+      },
+      error_one: '{{تعداد}} خطا',
+      error_other: '{{تعداد}} خطاهای',
+      parallelMode: 'حالت موازی',
+      errorResponseMethod: 'روش پاسخ به خطا',
+      parallelModeEnableTitle: 'حالت موازی فعال است',
+      parallelModeUpper: 'حالت موازی',
+      comma: ',',
+      parallelModeEnableDesc: 'در حالت موازی، وظایف درون تکرارها از اجرای موازی پشتیبانی می کنند. می توانید این را در پانل ویژگی ها در سمت راست پیکربندی کنید.',
+      MaxParallelismTitle: 'حداکثر موازی سازی',
+      parallelPanelDesc: 'در حالت موازی، وظایف در تکرار از اجرای موازی پشتیبانی می کنند.',
+      MaxParallelismDesc: 'حداکثر موازی سازی برای کنترل تعداد وظایف اجرا شده به طور همزمان در یک تکرار واحد استفاده می شود.',
+      answerNodeWarningDesc: 'هشدار حالت موازی: گره های پاسخ، تکالیف متغیر مکالمه و عملیات خواندن/نوشتن مداوم در تکرارها ممکن است باعث استثنائات شود.',
     },
     note: {
       addNote: 'افزودن یادداشت',
@@ -601,6 +625,7 @@ const translation = {
       filterConditionComparisonValue: 'مقدار شرایط فیلتر',
       selectVariableKeyPlaceholder: 'کلید متغیر فرعی را انتخاب کنید',
       asc: 'صعودی',
+      extractsCondition: 'مورد N را استخراج کنید',
     },
   },
   tracing: {

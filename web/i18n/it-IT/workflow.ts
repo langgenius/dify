@@ -103,6 +103,8 @@ const translation = {
     featuresDescription: 'Migliora l\'esperienza utente dell\'app Web',
     fileUploadTip: 'Le funzioni di caricamento delle immagini sono state aggiornate al caricamento dei file.',
     ImageUploadLegacyTip: 'Ora è possibile creare variabili di tipo file nel modulo iniziale. In futuro non supporteremo più la funzione di caricamento delle immagini.',
+    importWarning: 'Cautela',
+    importWarningDetails: 'La differenza di versione DSL può influire su alcune funzionalità',
   },
   env: {
     envPanelTitle: 'Variabili d\'Ambiente',
@@ -424,6 +426,11 @@ const translation = {
       },
       binaryFileVariable: 'Variabile file binario',
       type: 'Digitare',
+      extractListPlaceholder: 'Inserisci l\'indice delle voci dell\'elenco, digita \'/\' inserisci la variabile',
+      curl: {
+        placeholder: 'Incolla qui la stringa cURL',
+        title: 'Importazione da cURL',
+      },
     },
     code: {
       inputVars: 'Variabili di Input',
@@ -584,6 +591,23 @@ const translation = {
       iteration_one: '{{count}} Iterazione',
       iteration_other: '{{count}} Iterazioni',
       currentIteration: 'Iterazione Corrente',
+      ErrorMethod: {
+        operationTerminated: 'Terminato',
+        continueOnError: 'continua sull\'errore',
+        removeAbnormalOutput: 'rimuovi-output-anomalo',
+      },
+      error_one: '{{conteggio}} Errore',
+      parallelMode: 'Modalità parallela',
+      MaxParallelismTitle: 'Parallelismo massimo',
+      error_other: '{{conteggio}} Errori',
+      parallelModeEnableDesc: 'In modalità parallela, le attività all\'interno delle iterazioni supportano l\'esecuzione parallela. È possibile configurare questa opzione nel pannello delle proprietà a destra.',
+      MaxParallelismDesc: 'Il parallelismo massimo viene utilizzato per controllare il numero di attività eseguite contemporaneamente in una singola iterazione.',
+      errorResponseMethod: 'Metodo di risposta all\'errore',
+      parallelModeEnableTitle: 'Modalità parallela abilitata',
+      parallelModeUpper: 'MODALITÀ PARALLELA',
+      comma: ',',
+      parallelPanelDesc: 'In modalità parallela, le attività nell\'iterazione supportano l\'esecuzione parallela.',
+      answerNodeWarningDesc: 'Avviso in modalità parallela: i nodi di risposta, le assegnazioni di variabili di conversazione e le operazioni di lettura/scrittura persistenti all\'interno delle iterazioni possono causare eccezioni.',
     },
     note: {
       addNote: 'Aggiungi Nota',
@@ -628,6 +652,7 @@ const translation = {
       desc: 'DESC',
       filterConditionComparisonValue: 'Valore della condizione di filtro',
       orderBy: 'Ordina per',
+      extractsCondition: 'Estrai l\'elemento N',
     },
   },
   tracing: {

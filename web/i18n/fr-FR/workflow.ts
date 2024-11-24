@@ -99,6 +99,8 @@ const translation = {
     ImageUploadLegacyTip: 'Vous pouvez désormais créer des variables de type de fichier dans le formulaire de démarrage. À l’avenir, nous ne prendrons plus en charge la fonctionnalité de téléchargement d’images.',
     fileUploadTip: 'Les fonctionnalités de téléchargement d’images ont été mises à niveau vers le téléchargement de fichiers.',
     featuresDescription: 'Améliorer l’expérience utilisateur de l’application web',
+    importWarning: 'Prudence',
+    importWarningDetails: 'La différence de version DSL peut affecter certaines fonctionnalités',
   },
   env: {
     envPanelTitle: 'Variables d\'Environnement',
@@ -407,6 +409,11 @@ const translation = {
       },
       binaryFileVariable: 'Variable de fichier binaire',
       type: 'Type',
+      extractListPlaceholder: 'Entrez l’index de l’élément de liste, tapez \'/\' insérer la variable',
+      curl: {
+        placeholder: 'Collez la chaîne cURL ici',
+        title: 'Importer à partir de cURL',
+      },
     },
     code: {
       inputVars: 'Variables de saisie',
@@ -557,6 +564,23 @@ const translation = {
       iteration_one: '{{count}} Itération',
       iteration_other: '{{count}} Itérations',
       currentIteration: 'Itération actuelle',
+      ErrorMethod: {
+        operationTerminated: 'Terminé',
+        removeAbnormalOutput: 'remove-abnormal-output',
+        continueOnError: 'continuer sur l’erreur',
+      },
+      comma: ',',
+      error_one: '{{compte}} Erreur',
+      error_other: '{{compte}} Erreurs',
+      parallelModeEnableDesc: 'En mode parallèle, les tâches au sein des itérations prennent en charge l’exécution parallèle. Vous pouvez le configurer dans le panneau des propriétés à droite.',
+      parallelModeUpper: 'MODE PARALLÈLE',
+      parallelPanelDesc: 'En mode parallèle, les tâches de l’itération prennent en charge l’exécution parallèle.',
+      MaxParallelismDesc: 'Le parallélisme maximal est utilisé pour contrôler le nombre de tâches exécutées simultanément en une seule itération.',
+      errorResponseMethod: 'Méthode de réponse aux erreurs',
+      MaxParallelismTitle: 'Parallélisme maximal',
+      answerNodeWarningDesc: 'Avertissement en mode parallèle : les nœuds de réponse, les affectations de variables de conversation et les opérations de lecture/écriture persistantes au sein des itérations peuvent provoquer des exceptions.',
+      parallelModeEnableTitle: 'Mode parallèle activé',
+      parallelMode: 'Mode parallèle',
     },
     note: {
       addNote: 'Ajouter note',
@@ -601,6 +625,7 @@ const translation = {
       limit: 'Haut N',
       orderBy: 'Trier par',
       filterConditionKey: 'Clé de condition de filtre',
+      extractsCondition: 'Extraire l’élément N',
     },
   },
   tracing: {

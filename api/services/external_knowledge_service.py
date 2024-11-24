@@ -1,14 +1,12 @@
 import json
 from copy import deepcopy
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Optional, Union
 
 import httpx
 import validators
 
 from constants import HIDDEN_VALUE
-
-# from tasks.external_document_indexing_task import external_document_indexing_task
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from models.dataset import (
@@ -101,7 +99,7 @@ class ExternalDatasetService:
         external_knowledge_api.description = args.get("description", "")
         external_knowledge_api.settings = json.dumps(args.get("settings"), ensure_ascii=False)
         external_knowledge_api.updated_by = user_id
-        external_knowledge_api.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        external_knowledge_api.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return external_knowledge_api

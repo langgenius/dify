@@ -329,7 +329,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
   <Col sticky>
     <CodeGroup
       title="Request"
-      tag="POST"
+      tag="GET"
       label="/datasets"
       targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
     >
@@ -1115,7 +1115,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       title="Request"
       tag="POST"
       label="/datasets/{dataset_id}/retrieve"
-      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/retrieve' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/retrieve' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
     "query": "test",
     "retrieval_model": {
         "search_method": "keyword_search",

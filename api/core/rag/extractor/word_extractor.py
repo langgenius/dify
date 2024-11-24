@@ -14,6 +14,7 @@ import requests
 from docx import Document as DocxDocument
 
 from configs import dify_config
+from core.helper import ssrf_proxy
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
@@ -26,7 +27,6 @@ logger = logging.getLogger(__name__)
 
 class WordExtractor(BaseExtractor):
     """Load docx files.
-
 
     Args:
         file_path: Path to the file to load.
@@ -86,7 +86,7 @@ class WordExtractor(BaseExtractor):
                 image_count += 1
                 if rel.is_external:
                     url = rel.reltype
-                    response = requests.get(url, stream=True)
+                    response = ssrf_proxy.get(url, stream=True)
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers["Content-Type"])
                         file_uuid = str(uuid.uuid4())
@@ -114,10 +114,10 @@ class WordExtractor(BaseExtractor):
                     mime_type=mime_type or "",
                     created_by=self.user_id,
                     created_by_role=CreatedByRole.ACCOUNT,
-                    created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                    created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                     used=True,
                     used_by=self.user_id,
-                    used_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                    used_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                 )
 
                 db.session.add(upload_file)
@@ -229,7 +229,7 @@ class WordExtractor(BaseExtractor):
                                 for i in url_pattern.findall(x.text):
                                     hyperlinks_url = str(i)
                     except Exception as e:
-                        logger.error(e)
+                        logger.exception("Failed to parse HYPERLINK xml")
 
         def parse_paragraph(paragraph):
             paragraph_content = []

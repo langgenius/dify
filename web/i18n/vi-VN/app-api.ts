@@ -76,6 +76,7 @@ const translation = {
     requestBody: 'Nội dung yêu cầu',
     pathParams: 'Tham số đường dẫn',
     query: 'Truy vấn',
+    toc: 'Nội dung',
   },
   loading: 'Tải',
   regenerate: 'Tái tạo',

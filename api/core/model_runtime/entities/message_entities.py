@@ -1,6 +1,7 @@
 from abc import ABC
-from enum import Enum
-from typing import Optional
+from collections.abc import Sequence
+from enum import Enum, StrEnum
+from typing import Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -48,7 +49,7 @@ class PromptMessageFunction(BaseModel):
     function: PromptMessageTool
 
 
-class PromptMessageContentType(Enum):
+class PromptMessageContentType(StrEnum):
     """
     Enum class for prompt message content type.
     """
@@ -56,6 +57,8 @@ class PromptMessageContentType(Enum):
     TEXT = "text"
     IMAGE = "image"
     AUDIO = "audio"
+    VIDEO = "video"
+    DOCUMENT = "document"
 
 
 class PromptMessageContent(BaseModel):
@@ -75,6 +78,12 @@ class TextPromptMessageContent(PromptMessageContent):
     type: PromptMessageContentType = PromptMessageContentType.TEXT
 
 
+class VideoPromptMessageContent(PromptMessageContent):
+    type: PromptMessageContentType = PromptMessageContentType.VIDEO
+    data: str = Field(..., description="Base64 encoded video data")
+    format: str = Field(..., description="Video format")
+
+
 class AudioPromptMessageContent(PromptMessageContent):
     type: PromptMessageContentType = PromptMessageContentType.AUDIO
     data: str = Field(..., description="Base64 encoded audio data")
@@ -86,12 +95,19 @@ class ImagePromptMessageContent(PromptMessageContent):
     Model class for image prompt message content.
     """
 
-    class DETAIL(str, Enum):
+    class DETAIL(StrEnum):
         LOW = "low"
         HIGH = "high"
 
     type: PromptMessageContentType = PromptMessageContentType.IMAGE
     detail: DETAIL = DETAIL.LOW
+
+
+class DocumentPromptMessageContent(PromptMessageContent):
+    type: PromptMessageContentType = PromptMessageContentType.DOCUMENT
+    encode_format: Literal["base64"]
+    mime_type: str
+    data: str
 
 
 class PromptMessage(ABC, BaseModel):
@@ -100,7 +116,7 @@ class PromptMessage(ABC, BaseModel):
     """
 
     role: PromptMessageRole
-    content: Optional[str | list[PromptMessageContent]] = None
+    content: Optional[str | Sequence[PromptMessageContent]] = None
     name: Optional[str] = None
 
     def is_empty(self) -> bool:

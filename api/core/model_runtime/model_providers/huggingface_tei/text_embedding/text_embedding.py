@@ -51,6 +51,10 @@ class HuggingfaceTeiTextEmbeddingModel(TextEmbeddingModel):
 
         server_url = server_url.removesuffix("/")
 
+        headers = {"Content-Type": "application/json"}
+        api_key = credentials["api_key"]
+        if api_key:
+            headers["Authorization"] = f"Bearer {api_key}"
         # get model properties
         context_size = self._get_context_size(model, credentials)
         max_chunks = self._get_max_chunks(model, credentials)
@@ -60,7 +64,7 @@ class HuggingfaceTeiTextEmbeddingModel(TextEmbeddingModel):
         used_tokens = 0
 
         # get tokenized results from TEI
-        batched_tokenize_result = TeiHelper.invoke_tokenize(server_url, texts)
+        batched_tokenize_result = TeiHelper.invoke_tokenize(server_url, texts, headers)
 
         for i, (text, tokenize_result) in enumerate(zip(texts, batched_tokenize_result)):
             # Check if the number of tokens is larger than the context size
@@ -97,7 +101,7 @@ class HuggingfaceTeiTextEmbeddingModel(TextEmbeddingModel):
             used_tokens = 0
             for i in _iter:
                 iter_texts = inputs[i : i + max_chunks]
-                results = TeiHelper.invoke_embeddings(server_url, iter_texts)
+                results = TeiHelper.invoke_embeddings(server_url, iter_texts, headers)
                 embeddings = results["data"]
                 embeddings = [embedding["embedding"] for embedding in embeddings]
                 batched_embeddings.extend(embeddings)
@@ -127,7 +131,11 @@ class HuggingfaceTeiTextEmbeddingModel(TextEmbeddingModel):
 
         server_url = server_url.removesuffix("/")
 
-        batch_tokens = TeiHelper.invoke_tokenize(server_url, texts)
+        headers = {
+            "Authorization": f"Bearer {credentials.get('api_key')}",
+        }
+
+        batch_tokens = TeiHelper.invoke_tokenize(server_url, texts, headers)
         num_tokens = sum(len(tokens) for tokens in batch_tokens)
         return num_tokens
 
@@ -141,7 +149,14 @@ class HuggingfaceTeiTextEmbeddingModel(TextEmbeddingModel):
         """
         try:
             server_url = credentials["server_url"]
-            extra_args = TeiHelper.get_tei_extra_parameter(server_url, model)
+            headers = {"Content-Type": "application/json"}
+
+            api_key = credentials.get("api_key")
+
+            if api_key:
+                headers["Authorization"] = f"Bearer {api_key}"
+
+            extra_args = TeiHelper.get_tei_extra_parameter(server_url, model, headers)
             print(extra_args)
             if extra_args.model_type != "embedding":
                 raise CredentialsValidateFailedError("Current model is not a embedding model")

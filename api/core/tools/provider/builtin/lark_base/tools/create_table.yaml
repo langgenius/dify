@@ -1,0 +1,61 @@
+identity:
+  name: create_table
+  author: Doug Lea
+  label:
+    en_US: Create Table
+    zh_Hans: 新增数据表
+description:
+  human:
+    en_US: Add a Data Table to Multidimensional Table
+    zh_Hans: 在多维表格中新增一个数据表
+  llm: A tool for adding a data table to a multidimensional table. (在多维表格中新增一个数据表)
+parameters:
+  - name: app_token
+    type: string
+    required: true
+    label:
+      en_US: app_token
+      zh_Hans: app_token
+    human_description:
+      en_US: Unique identifier for the multidimensional table, supports inputting document URL.
+      zh_Hans: 多维表格的唯一标识符，支持输入文档 URL。
+    llm_description: 多维表格的唯一标识符，支持输入文档 URL。
+    form: llm
+
+  - name: table_name
+    type: string
+    required: true
+    label:
+      en_US: Table Name
+      zh_Hans: 数据表名称
+    human_description:
+      en_US: |
+        The name of the data table, length range: 1 character to 100 characters.
+      zh_Hans: 数据表名称，长度范围：1 字符 ～ 100 字符。
+    llm_description: 数据表名称，长度范围：1 字符 ～ 100 字符。
+    form: llm
+
+  - name: default_view_name
+    type: string
+    required: false
+    label:
+      en_US: Default View Name
+      zh_Hans: 默认表格视图的名称
+    human_description:
+      en_US: The name of the default table view, defaults to "Table" if not filled.
+      zh_Hans: 默认表格视图的名称，不填则默认为"表格"。
+    llm_description: 默认表格视图的名称，不填则默认为"表格"。
+    form: llm
+
+  - name: fields
+    type: string
+    required: true
+    label:
+      en_US: Initial Fields
+      zh_Hans: 初始字段
+    human_description:
+      en_US: |
+        Initial fields of the data table, format: [ { "field_name": "Multi-line Text","type": 1 },{ "field_name": "Number","type": 2 },{ "field_name": "Single Select","type": 3 },{ "field_name": "Multiple Select","type": 4 },{ "field_name": "Date","type": 5 } ]. For field details, refer to: https://open.larkoffice.com/document/server-docs/docs/bitable-v1/app-table-field/guide
+      zh_Hans: 数据表的初始字段，格式为：[{"field_name":"多行文本","type":1},{"field_name":"数字","type":2},{"field_name":"单选","type":3},{"field_name":"多选","type":4},{"field_name":"日期","type":5}]。字段详情参考：https://open.larkoffice.com/document/server-docs/docs/bitable-v1/app-table-field/guide
+    llm_description: 数据表的初始字段，格式为：[{"field_name":"多行文本","type":1},{"field_name":"数字","type":2},{"field_name":"单选","type":3},{"field_name":"多选","type":4},{"field_name":"日期","type":5}]。字段详情参考：https://open.larkoffice.com/document/server-docs/docs/bitable-v1/app-table-field/guide
+    form: llm

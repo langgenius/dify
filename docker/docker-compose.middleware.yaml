@@ -29,11 +29,13 @@ services:
   redis:
     image: redis:6-alpine
     restart: always
+    environment:
+      REDISCLI_AUTH: ${REDIS_PASSWORD:-difyai123456}
     volumes:
       # Mount the redis data directory to the container.
       - ${REDIS_HOST_VOLUME:-./volumes/redis/data}:/data
     # Set the redis password when startup redis server.
-    command: redis-server --requirepass difyai123456
+    command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
     ports:
       - "${EXPOSE_REDIS_PORT:-6379}:6379"
     healthcheck:

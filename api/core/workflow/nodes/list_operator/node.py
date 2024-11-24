@@ -58,6 +58,10 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
             if self.node_data.filter_by.enabled:
                 variable = self._apply_filter(variable)
 
+            # Extract
+            if self.node_data.extract_by.enabled:
+                variable = self._extract_slice(variable)
+
             # Order
             if self.node_data.order_by.enabled:
                 variable = self._apply_order(variable)
@@ -140,6 +144,16 @@ class ListOperatorNode(BaseNode[ListOperatorNodeData]):
         result = variable.value[: self.node_data.limit.size]
         return variable.model_copy(update={"value": result})
 
+    def _extract_slice(
+        self, variable: Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]
+    ) -> Union[ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment]:
+        value = int(self.graph_runtime_state.variable_pool.convert_template(self.node_data.extract_by.serial).text) - 1
+        if len(variable.value) > int(value):
+            result = variable.value[value]
+        else:
+            result = ""
+        return variable.model_copy(update={"value": [result]})
+
 
 def _get_file_extract_number_func(*, key: str) -> Callable[[File], int]:
     match key:
@@ -157,7 +171,7 @@ def _get_file_extract_string_func(*, key: str) -> Callable[[File], str]:
             return lambda x: x.type
         case "extension":
             return lambda x: x.extension or ""
-        case "mimetype":
+        case "mime_type":
             return lambda x: x.mime_type or ""
         case "transfer_method":
             return lambda x: x.transfer_method
@@ -295,4 +309,4 @@ def _order_file(*, order: Literal["asc", "desc"], order_by: str = "", array: Seq
         extract_func = _get_file_extract_number_func(key=order_by)
         return sorted(array, key=lambda x: extract_func(x), reverse=order == "desc")
     else:
-        raise ValueError(f"Invalid order key: {order_by}")
+        raise InvalidKeyError(f"Invalid order key: {order_by}")

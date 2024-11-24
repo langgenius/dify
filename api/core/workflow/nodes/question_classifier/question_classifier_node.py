@@ -4,6 +4,7 @@ from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
+from core.llm_generator.output_parser.errors import OutputParserError
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities import LLMUsage, ModelPropertyKey, PromptMessageRole
@@ -24,6 +25,7 @@ from libs.json_in_md_parser import parse_and_check_json_markdown
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .entities import QuestionClassifierNodeData
+from .exc import InvalidModelTypeError
 from .template_prompts import (
     QUESTION_CLASSIFIER_ASSISTANT_PROMPT_1,
     QUESTION_CLASSIFIER_ASSISTANT_PROMPT_2,
@@ -84,12 +86,14 @@ class QuestionClassifierNode(LLMNode):
         )
         prompt_messages, stop = self._fetch_prompt_messages(
             prompt_template=prompt_template,
-            system_query=query,
+            user_query=query,
             memory=memory,
             model_config=model_config,
-            files=files,
+            user_files=files,
             vision_enabled=node_data.vision.enabled,
             vision_detail=node_data.vision.configs.detail,
+            variable_pool=variable_pool,
+            jinja2_variables=[],
         )
 
         # handle invoke result
@@ -124,8 +128,8 @@ class QuestionClassifierNode(LLMNode):
                     category_name = classes_map[category_id_result]
                     category_id = category_id_result
 
-        except Exception:
-            logging.error(f"Failed to parse result text: {result_text}")
+        except OutputParserError:
+            logging.exception(f"Failed to parse result text: {result_text}")
         try:
             process_data = {
                 "model_mode": model_config.mode,
@@ -309,4 +313,4 @@ class QuestionClassifierNode(LLMNode):
             )
 
         else:
-            raise ValueError(f"Model mode {model_mode} not support.")
+            raise InvalidModelTypeError(f"Model mode {model_mode} not support.")

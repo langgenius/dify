@@ -1,8 +1,14 @@
 import os
+import sys
+
+python_version = sys.version_info
+if not ((3, 11) <= python_version < (3, 13)):
+    print(f"Python 3.11 or 3.12 is required, current version is {python_version.major}.{python_version.minor}")
+    raise SystemExit(1)
 
 from configs import dify_config
 
-if os.environ.get("DEBUG", "false").lower() != "true":
+if not dify_config.DEBUG:
     from gevent import monkey
 
     monkey.patch_all()
@@ -49,7 +55,6 @@ if dify_config.TESTING:
 @app.after_request
 def after_request(response):
     """Add Version headers to the response."""
-    response.set_cookie("remember_token", "", expires=0)
     response.headers.add("X-Version", dify_config.CURRENT_VERSION)
     response.headers.add("X-Env", dify_config.DEPLOY_ENV)
     return response

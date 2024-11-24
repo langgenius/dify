@@ -99,6 +99,8 @@ const translation = {
     fileUploadTip: 'Resim yükleme özellikleri, dosya yüklemeye yükseltildi.',
     ImageUploadLegacyTip: 'Artık başlangıç formunda dosya türü değişkenleri oluşturabilirsiniz. Gelecekte resim yükleme özelliğini artık desteklemeyeceğiz.',
     featuresDescription: 'Web uygulaması kullanıcı deneyimini geliştirin',
+    importWarningDetails: 'DSL sürüm farkı bazı özellikleri etkileyebilir',
+    importWarning: 'Dikkat',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
@@ -408,6 +410,11 @@ const translation = {
       },
       type: 'Tür',
       binaryFileVariable: 'İkili Dosya Değişkeni',
+      extractListPlaceholder: 'Liste öğesi dizinini girin, \'/\' yazın değişken ekle',
+      curl: {
+        placeholder: 'cURL dizesini buraya yapıştırın',
+        title: 'cURL\'den içe aktar',
+      },
     },
     code: {
       inputVars: 'Giriş Değişkenleri',
@@ -558,6 +565,23 @@ const translation = {
       iteration_one: '{{count}} Yineleme',
       iteration_other: '{{count}} Yineleme',
       currentIteration: 'Mevcut Yineleme',
+      ErrorMethod: {
+        operationTerminated: 'Sonlandırıldı',
+        continueOnError: 'Hata Üzerine Devam Et',
+        removeAbnormalOutput: 'anormal çıktıyı kaldır',
+      },
+      parallelModeUpper: 'PARALEL MOD',
+      parallelMode: 'Paralel Mod',
+      MaxParallelismTitle: 'Maksimum paralellik',
+      error_one: '{{sayı}} Hata',
+      errorResponseMethod: 'Hata yanıtı yöntemi',
+      comma: ',',
+      parallelModeEnableTitle: 'Paralel Mod Etkin',
+      error_other: '{{sayı}} Hata',
+      parallelPanelDesc: 'Paralel modda, yinelemedeki görevler paralel yürütmeyi destekler.',
+      answerNodeWarningDesc: 'Paralel mod uyarısı: Yinelemeler içindeki yanıt düğümleri, konuşma değişkeni atamaları ve kalıcı okuma/yazma işlemleri özel durumlara neden olabilir.',
+      parallelModeEnableDesc: 'Paralel modda, yinelemeler içindeki görevler paralel yürütmeyi destekler. Bunu sağdaki özellikler panelinde yapılandırabilirsiniz.',
+      MaxParallelismDesc: 'Maksimum paralellik, tek bir yinelemede aynı anda yürütülen görevlerin sayısını kontrol etmek için kullanılır.',
     },
     note: {
       addNote: 'Not Ekle',
@@ -602,6 +626,7 @@ const translation = {
       filterConditionComparisonValue: 'Filtre Koşulu değeri',
       selectVariableKeyPlaceholder: 'Alt değişken anahtarını seçin',
       desc: 'DESC',
+      extractsCondition: 'N öğesini ayıklayın',
     },
   },
   tracing: {

@@ -99,6 +99,8 @@ const translation = {
     featuresDescription: 'Покращення взаємодії з користувачем веб-додатку',
     fileUploadTip: 'Функції завантаження зображень були оновлені для завантаження файлів.',
     ImageUploadLegacyTip: 'Тепер ви можете створювати змінні типу файлу у початковій формі. У майбутньому ми більше не підтримуватимемо функцію завантаження зображень.',
+    importWarning: 'Обережність',
+    importWarningDetails: 'Різниця у версіях DSL може впливати на певні функції',
   },
   env: {
     envPanelTitle: 'Змінні середовища',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'Тип',
       binaryFileVariable: 'Змінна двійкового файлу',
+      extractListPlaceholder: 'Введіть індекс елемента списку, введіть \'/\' вставити змінну',
+      curl: {
+        title: 'Імпорт з cURL',
+        placeholder: 'Вставте сюди рядок cURL',
+      },
     },
     code: {
       inputVars: 'Вхідні змінні',
@@ -557,6 +564,23 @@ const translation = {
       iteration_one: '{{count}} Ітерація',
       iteration_other: '{{count}} Ітерацій',
       currentIteration: 'Поточна ітерація',
+      ErrorMethod: {
+        operationTerminated: 'Припинено',
+        continueOnError: 'Продовжити після помилки',
+        removeAbnormalOutput: 'видалити-ненормальний-вивід',
+      },
+      error_one: '{{count}} Помилка',
+      comma: ',',
+      MaxParallelismTitle: 'Максимальна паралельність',
+      parallelModeUpper: 'ПАРАЛЕЛЬНИЙ РЕЖИМ',
+      error_other: '{{count}} Помилки',
+      parallelMode: 'Паралельний режим',
+      parallelModeEnableTitle: 'Увімкнено паралельний режим',
+      errorResponseMethod: 'Метод реагування на помилку',
+      parallelPanelDesc: 'У паралельному режимі завдання в ітерації підтримують паралельне виконання.',
+      parallelModeEnableDesc: 'У паралельному режимі завдання всередині ітерацій підтримують паралельне виконання. Ви можете налаштувати це на панелі властивостей праворуч.',
+      MaxParallelismDesc: 'Максимальний паралелізм використовується для контролю числа завдань, що виконуються одночасно за одну ітерацію.',
+      answerNodeWarningDesc: 'Попередження в паралельному режимі: вузли відповідей, призначення змінних розмови та постійні операції читання/запису в межах ітерацій можуть спричинити винятки.',
     },
     note: {
       editor: {
@@ -601,6 +625,7 @@ const translation = {
       orderBy: 'Замовити по',
       filterConditionComparisonOperator: 'Оператор порівняння умов фільтра',
       filterConditionComparisonValue: 'Значення умови фільтра',
+      extractsCondition: 'Витягніть елемент N',
     },
   },
   tracing: {
