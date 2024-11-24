@@ -6,6 +6,7 @@ model_properties:
   mode: chat
 features:
   - vision
+  - video
 parameter_rules:
   - name: temperature
     use_template: temperature

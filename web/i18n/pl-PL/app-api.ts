@@ -96,6 +96,7 @@ const translation = {
     requestBody: 'Ciało żądania',
     pathParams: 'Parametry ścieżki',
     query: 'Zapytanie',
+    toc: 'Treść',
   },
   regenerate: 'Ponownie wygenerować',
 }

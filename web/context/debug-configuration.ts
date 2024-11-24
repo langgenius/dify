@@ -97,6 +97,8 @@ type IDebugConfiguration = {
   isShowVisionConfig: boolean
   visionConfig: VisionSettings
   setVisionConfig: (visionConfig: VisionSettings, noNotice?: boolean) => void
+  isAllowVideoUpload: boolean
+  isShowDocumentConfig: boolean
   rerankSettingModalOpen: boolean
   setRerankSettingModalOpen: (rerankSettingModalOpen: boolean) => void
 }
@@ -244,6 +246,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     transfer_methods: [TransferMethod.remote_url],
   },
   setVisionConfig: () => { },
+  isAllowVideoUpload: false,
+  isShowDocumentConfig: false,
   rerankSettingModalOpen: false,
   setRerankSettingModalOpen: () => { },
 })
