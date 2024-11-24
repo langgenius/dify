@@ -38,6 +38,7 @@ from core.variables import (
     ObjectSegment,
     StringSegment,
 )
+from core.workflow.constants import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.variable_pool import VariablePool
@@ -133,11 +134,15 @@ class LLMNode(BaseNode[LLMNodeData]):
             # fetch memory
             memory = self._fetch_memory(node_data_memory=self.node_data.memory, model_instance=model_instance)
 
-            # fetch prompt messages
+            query = None
             if self.node_data.memory:
                 query = self.node_data.memory.query_prompt_template
-            else:
-                query = None
+            if query is None and (
+                query_variable := self.graph_runtime_state.variable_pool.get(
+                    (SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY)
+                )
+            ):
+                query = query_variable.text
 
             prompt_messages, stop = self._fetch_prompt_messages(
                 user_query=query,
