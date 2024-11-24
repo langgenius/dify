@@ -22,6 +22,7 @@ import type {
   OnSelectBlock,
 } from './types'
 import { NodeRunningStatus } from './types'
+import { getEdgeColor } from './utils'
 import { ITERATION_CHILDREN_Z_INDEX } from './constants'
 import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
 import cn from '@/utils/classnames'
@@ -100,9 +101,9 @@ const CustomEdge = ({
       return `url(#${linearGradientId})`
 
     if (selected || data?._connectedNodeIsHovering || data?._run)
-      return 'blue'
+      return getEdgeColor(NodeRunningStatus.Running)
 
-    return '#D0D5DD'
+    return getEdgeColor()
   }, [data._connectedNodeIsHovering, data._run, linearGradientId, selected])
 
   return (
@@ -111,8 +112,8 @@ const CustomEdge = ({
         linearGradientId && (
           <CustomEdgeLinearGradientRender
             id={linearGradientId}
-            startColor='#2970FF'
-            stopColor='#FF3D71'
+            startColor={getEdgeColor(_sourceRunningStatus)}
+            stopColor={getEdgeColor(_targetRunningStatus)}
           />
         )
       }

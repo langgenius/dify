@@ -324,6 +324,9 @@ html[data-theme="light"] {
   --color-workflow-link-line-active: #296DFF;
   --color-workflow-link-line-normal: #D0D5DC;
   --color-workflow-link-line-handle: #296DFF;
+  --color-workflow-link-line-success-handle: #47CD89;
+  --color-workflow-link-line-failure-handle: #F79009;
+  --color-workflow-link-line-error-handle: #F04438;
 
   --color-workflow-minimap-bg: #E9EBF0;
   --color-workflow-minimap-block: #C8CEDA4D;
