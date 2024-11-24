@@ -1,0 +1,66 @@
+identity:
+  name: getPromptByNameAndVersion
+  author: Ranger Tao
+  label:
+    en_US: Fetch prompt from LangFuse
+    zh_Hans: 获取提示词模版
+description:
+  human:
+    en_US: A tool for retrieving prompt for a specific prompt's name and version.
+    zh_Hans: 用于获取特定LangFuse上的提示词模版的工具。
+  llm: A tool for retrieving prompt for a specific prompt's name and version.
+parameters:
+  - name: hostUrl
+    type: string
+    required: true
+    label:
+      en_US: Host url
+      zh_Hans: LangFuse的域名
+    human_description:
+      en_US: The url of LangFuse to fetch prompt.
+      zh_Hans: 要获取prompt的langfuse服务域名。
+    llm_description: The url of LangFuse.
+    form: llm
+  - name: publicKey
+    type: string
+    required: true
+    label:
+      en_US: Public Key
+      zh_Hans: LangFuse的pubic key
+    human_description:
+      en_US: The public key of LangFuse.
+      zh_Hans: Langfuse的public key。
+    llm_description: The public key of LangFuse.
+    form: llm
+  - name: secretKey
+    type: string
+    required: true
+    label:
+      en_US: Secret Key
+      zh_Hans: LangFuse的secret key
+    human_description:
+      en_US: The Secret Key of LangFuse.
+      zh_Hans: langfuse的Secret key。
+    llm_description: The secret key of LangFuse.
+    form: llm
+  - name: name
+    type: string
+    required: true
+    label:
+      en_US: Prompt's name
+      zh_Hans: 提示词的名字
+    human_description:
+      en_US: The name of the prompt to be retrieved
+      zh_Hans: 要查询的提示词的名字
+    llm_description: The name of the prompt to be retrieved
+    form: llm
+  - name: version
+    type: string
+    required: true
+    label:
+      en_US: Version
+      zh_Hans: 版本号
+    human_description:
+      en_US: The version of the prompt to be retrieved.
+      zh_Hans: 要查询的提示词的版本号。
+    form: llm

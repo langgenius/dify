@@ -1,0 +1,110 @@
+identity:
+  name: getAllItems
+  author: Ranger Tao
+  label:
+    en_US: Fetch all items from a dataset
+    zh_Hans: 获取所有items
+description:
+  human:
+    en_US: A tool for retrieving all items in a dataset.
+    zh_Hans: 用于获取dataset中所有的item。
+  llm: A tool for retrieving all items in a dataset.
+parameters:
+  - name: hostUrl
+    type: string
+    required: true
+    label:
+      en_US: Host url
+      zh_Hans: LangFuse的域名
+    human_description:
+      en_US: The url of LangFuse.
+      zh_Hans: langfuse服务域名。
+    llm_description: The url of LangFuse.
+    form: llm
+  - name: publicKey
+    type: string
+    required: true
+    label:
+      en_US: Public Key
+      zh_Hans: LangFuse的public key
+    human_description:
+      en_US: The public key of LangFuse.
+      zh_Hans: Langfuse的public key。
+    llm_description: The public key of LangFuse.
+    form: llm
+  - name: secretKey
+    type: string
+    required: true
+    label:
+      en_US: Secret Key
+      zh_Hans: LangFuse的secret key
+    human_description:
+      en_US: The Secret Key of LangFuse.
+      zh_Hans: langfuse的Secret key。
+    llm_description: The secret key of LangFuse.
+    form: llm
+  - name: itemID
+    type: string
+    required: false
+    label:
+      en_US: item's id
+      zh_Hans: 数据item id
+    human_description:
+      en_US: The id of the item
+      zh_Hans: 数据item id
+    llm_description: The id of the item
+    form: llm
+  - name: datasetName
+    type: string
+    required: false
+    label:
+      en_US: Dataset Name
+      zh_Hans: 数据集名称
+    human_description:
+      en_US: The name of the dataset
+      zh_Hans: 数据集的名称
+    llm_description: The name of the dataset
+    form: llm
+  - name: sourceTraceId
+    type: string
+    required: false
+    label:
+      en_US: Source Trace ID
+      zh_Hans: 源跟踪ID
+    human_description:
+      en_US: The trace ID of the source
+      zh_Hans: 数据源的跟踪ID
+    llm_description: The trace ID of the source
+    form: llm
+  - name: sourceObservationId
+    type: string
+    required: false
+    label:
+      en_US: Source Observation ID
+      zh_Hans: 源观测ID
+    human_description:
+      en_US: The observation ID of the source
+      zh_Hans: 数据源的观测ID
+    llm_description: The observation ID of the source
+    form: llm
+  - name: page
+    type: number
+    required: false
+    label:
+      en_US: page number
+      zh_Hans: 页号
+    human_description:
+      en_US: The page number of items
+      zh_Hans: item的页数
+    llm_description: The page number of items
+    form: form
+  - name: limit
+    type: number
+    required: false
+    label:
+      en_US: Limit
+      zh_Hans: 每页个数
+    human_description:
+      en_US: The limit of items in each page.
+      zh_Hans: 每页的item个数。
+    form: form

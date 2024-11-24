@@ -1,0 +1,66 @@
+identity:
+  name: getAllDatasets
+  author: Ranger Tao
+  label:
+    en_US: Fetch datasets from LangFuse
+    zh_Hans: 获取所有datasets
+description:
+  human:
+    en_US: A tool for retrieving all datasets on langfuse.
+    zh_Hans: 用于获取特定LangFuse上的Datasets列表。
+  llm: A tool for retrieving all datasets on langfuse.
+parameters:
+  - name: hostUrl
+    type: string
+    required: true
+    label:
+      en_US: Host url
+      zh_Hans: LangFuse的域名
+    human_description:
+      en_US: The url of LangFuse.
+      zh_Hans: langfuse服务域名。
+    llm_description: The url of LangFuse.
+    form: llm
+  - name: publicKey
+    type: string
+    required: true
+    label:
+      en_US: Public Key
+      zh_Hans: LangFuse的pubic key
+    human_description:
+      en_US: The public key of LangFuse.
+      zh_Hans: Langfuse的public key。
+    llm_description: The public key of LangFuse.
+    form: llm
+  - name: secretKey
+    type: string
+    required: true
+    label:
+      en_US: Secret Key
+      zh_Hans: LangFuse的secret key
+    human_description:
+      en_US: The Secret Key of LangFuse.
+      zh_Hans: langfuse的Secret key。
+    llm_description: The secret key of LangFuse.
+    form: llm
+  - name: page
+    type: number
+    required: false
+    label:
+      en_US: page number
+      zh_Hans: 页号
+    human_description:
+      en_US: The page number of datasets
+      zh_Hans: datasets 的页数
+    llm_description: The page number of datasets
+    form: form
+  - name: limit
+    type: number
+    required: false
+    label:
+      en_US: Limit
+      zh_Hans: 每页个数
+    human_description:
+      en_US: The limit of datasets in each page.
+      zh_Hans: 每页的dataset个数。
+    form: form

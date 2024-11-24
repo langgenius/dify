@@ -1,0 +1,10 @@
+identity:
+  author: Ranger Tao
+  name: langfuse
+  label:
+    en_US: LangFuse
+    zh_Hans: LangFuse
+  description:
+    en_US: Access prompts and datasets from LangFuse.
+    zh_Hans: 从 LangFuse服务上获取提示词及数据集等信息。
+  icon: icon.svg
