@@ -7,9 +7,16 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
 exclude=[
-    "migrations/*",
+    ".git",
+    ".venv",
+    "__pycache__",
+    "build",
+    "dist",
+    "core/tools/provider/builtin/flexport/generated",
+    "migrations",
 ]
 line-length = 120
+target-version = "py38"
 
 [tool.ruff.lint]
 preview = true
@@ -284,3 +291,5 @@ optional = true
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
 ruff = "~0.7.3"
+
+
