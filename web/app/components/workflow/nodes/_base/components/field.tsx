@@ -47,7 +47,6 @@ const Field: FC<Props> = ({
               triggerClassName='w-4 h-4 ml-1'
             />
           )}
-
         </div>
         <div className='flex'>
           {operations && <div>{operations}</div>}

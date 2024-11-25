@@ -223,7 +223,7 @@ const translation = {
     'code': '代码执行',
     'template-transform': '模板转换',
     'http-request': 'HTTP 请求',
-    'variable-assigner': '变量聚合器',
+    'variable-assigner': '变量赋值器',
     'variable-aggregator': '变量聚合器',
     'assigner': '变量赋值',
     'iteration-start': '迭代开始',
@@ -489,6 +489,7 @@ const translation = {
     },
     assigner: {
       'assignedVariable': '赋值的变量',
+      'varNotSet': '未设置变量',
       'writeMode': '写入模式',
       'writeModeTip': '使用追加模式时，赋值的变量必须是数组类型。',
       'over-write': '覆盖',
@@ -497,6 +498,7 @@ const translation = {
       'clear': '清空',
       'setVariable': '设置变量',
       'variable': '变量',
+      'variables': '变量',
     },
     tool: {
       toAuthorize: '授权',

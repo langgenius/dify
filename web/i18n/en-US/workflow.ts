@@ -489,6 +489,8 @@ const translation = {
     },
     assigner: {
       'assignedVariable': 'Assigned Variable',
+      'varNotSet': 'Variable NOT Set',
+      'variables': 'Variables',
       'writeMode': 'Write Mode',
       'writeModeTip': 'Append mode: Available for array variables only.',
       'over-write': 'Overwrite',

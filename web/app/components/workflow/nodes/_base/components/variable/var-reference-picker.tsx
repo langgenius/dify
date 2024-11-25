@@ -327,11 +327,11 @@ const VarReferencePicker: FC<Props> = ({
                                     {!hasValue && <Variable02 className='w-3.5 h-3.5' />}
                                     {isEnv && <Env className='w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
                                     {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
-                                    <div className={cn('ml-0.5 text-xs font-medium truncate', (isEnv || isChatVar) && '!text-text-secondary')} title={varName} style={{
+                                    <div className={cn('ml-0.5 text-xs font-medium truncate', isEnv && '!text-text-secondary', isChatVar && 'text-util-colors-teal-teal-700')} title={varName} style={{
                                       maxWidth: maxVarNameWidth,
                                     }}>{varName}</div>
                                   </div>
-                                  <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize truncate' title={type} style={{
+                                  <div className='ml-0.5 capitalize truncate text-text-tertiary text-center system-xs-regular' title={type} style={{
                                     maxWidth: maxTypeWidth,
                                   }}>{type}</div>
                                   {!isValidVar && <RiErrorWarningFill className='ml-0.5 w-3 h-3 text-[#D92D20]' />}

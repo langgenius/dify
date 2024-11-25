@@ -1,15 +1,15 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-
+import {
+  RiAddLine,
+  RiDeleteBinLine,
+} from '@remixicon/react'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
-import OptionCard from '../_base/components/option-card'
 import useConfig from './use-config'
-import { WriteMode } from './types'
 import type { AssignerNodeType } from './types'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
+import ActionButton from '@/app/components/base/action-button'
 import { type NodePanelProps } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.assigner'
 
@@ -33,21 +33,33 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
   } = useConfig(id, data)
 
   return (
-    <div className='mt-2'>
-      <div className='px-4 pb-4 space-y-4'>
-        <Field
-          title={t(`${i18nPrefix}.assignedVariable`)}
-        >
-          <VarReferencePicker
-            readonly={readOnly}
-            nodeId={id}
-            isShowNodeName
-            value={inputs.assigned_variable_selector || []}
-            onChange={handleAssignedVarChanges}
-            filterVar={filterAssignedVar}
-          />
-        </Field>
-        <Field
+    <div className='flex py-2 flex-col items-start self-stretch'>
+      <div className='flex flex-col justify-center items-start gap-1 px-4 py-2 w-full self-stretch'>
+        <div className='flex items-start gap-2 self-stretch'>
+          <div className='flex flex-col justify-center items-start flex-grow text-text-secondary system-sm-semibold-uppercase'>{t(`${i18nPrefix}.variables`)}</div>
+          <ActionButton>
+            <RiAddLine className='w-4 h-4 shrink-0 text-text-tertiary' />
+          </ActionButton>
+        </div>
+        <div className='flex items-start gap-1 self-stretch'>
+          <div className='flex flex-col items-start gap-1 flex-grow'>
+            <div className='flex items-center gap-1 self-stretch'>
+              <VarReferencePicker
+                readonly={readOnly}
+                nodeId={id}
+                isShowNodeName
+                value={inputs.assigned_variable_selector || []}
+                onChange={handleAssignedVarChanges}
+                filterVar={filterAssignedVar}
+                className='w-full'
+              />
+            </div>
+          </div>
+          <ActionButton size='l' className='flex-shrink-0 group hover:!bg-state-destructive-hover'>
+            <RiDeleteBinLine className='text-text-tertiary w-4 h-4 group-hover:text-text-destructive' />
+          </ActionButton>
+        </div>
+        {/* <Field
           title={t(`${i18nPrefix}.writeMode`)}
         >
           <div className={cn('grid gap-2 grid-cols-3')}>
@@ -62,8 +74,8 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
               />
             ))}
           </div>
-        </Field>
-        {inputs.write_mode !== WriteMode.Clear && (
+        </Field> */}
+        {/* {inputs.write_mode !== WriteMode.Clear && (
           <Field
             title={t(`${i18nPrefix}.setVariable`)}
           >
@@ -77,7 +89,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
               valueTypePlaceHolder={toAssignedVarType}
             />
           </Field>
-        )}
+        )} */}
 
       </div>
     </div>
