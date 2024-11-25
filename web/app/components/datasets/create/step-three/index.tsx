@@ -7,15 +7,17 @@ import s from './index.module.css'
 import cn from '@/utils/classnames'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import type { FullDocumentDetail, createDocumentResponse } from '@/models/datasets'
+import AppIcon from '@/app/components/base/app-icon'
 
 type StepThreeProps = {
   datasetId?: string
   datasetName?: string
   indexingType?: string
+  retrievalMethod?: string
   creationCache?: createDocumentResponse
 }
 
-const StepThree = ({ datasetId, datasetName, indexingType, creationCache }: StepThreeProps) => {
+const StepThree = ({ datasetId, datasetName, indexingType, creationCache, retrievalMethod }: StepThreeProps) => {
   const { t } = useTranslation()
 
   const media = useBreakpoints()
@@ -30,8 +32,13 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache }: Step
               <div className={s.creationInfo}>
                 <div className={s.title}>{t('datasetCreation.stepThree.creationTitle')}</div>
                 <div className={s.content}>{t('datasetCreation.stepThree.creationContent')}</div>
-                <div className={s.label}>{t('datasetCreation.stepThree.label')}</div>
-                <div className={s.datasetName}>{datasetName || creationCache?.dataset?.name}</div>
+                <div className='flex gap-4'>
+                  <AppIcon {...creationCache?.dataset} className='size-14' />
+                  <div className='w-full'>
+                    <div className={s.label}>{t('datasetCreation.stepThree.label')}</div>
+                    <div className={s.datasetName}>{datasetName || creationCache?.dataset?.name}</div>
+                  </div>
+                </div>
               </div>
               <div className={s.dividerLine} />
             </>
@@ -47,6 +54,7 @@ const StepThree = ({ datasetId, datasetName, indexingType, creationCache }: Step
             batchId={creationCache?.batch || ''}
             documents={creationCache?.documents as FullDocumentDetail[]}
             indexingType={indexingType || creationCache?.dataset?.indexing_technique}
+            retrievalMethod={retrievalMethod || creationCache?.dataset?.retrieval_model?.search_method}
           />
         </div>
       </div>

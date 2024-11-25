@@ -36,6 +36,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   const [dataSourceType, setDataSourceType] = useState<DataSourceType>(DataSourceType.FILE)
   const [step, setStep] = useState(1)
   const [indexingTypeCache, setIndexTypeCache] = useState('')
+  const [retrievalMethodCache, setRetrievalMethodCache] = useState('')
   const [fileList, setFiles] = useState<FileItem[]>([])
   const [result, setResult] = useState<createDocumentResponse | undefined>()
   const [hasError, setHasError] = useState(false)
@@ -79,6 +80,9 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   }
   const updateResultCache = (res?: createDocumentResponse) => {
     setResult(res)
+  }
+  const updateRetrievalMethodCache = (method: string) => {
+    setRetrievalMethodCache(method)
   }
 
   const nextStep = useCallback(() => {
@@ -156,6 +160,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           websiteCrawlJobId={websiteCrawlJobId}
           onStepChange={changeStep}
           updateIndexingTypeCache={updateIndexingTypeCache}
+          updateRetrievalMethodCache={updateRetrievalMethodCache}
           updateResultCache={updateResultCache}
           crawlOptions={crawlOptions}
         />}
@@ -163,6 +168,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
           datasetId={datasetId}
           datasetName={detail?.name}
           indexingType={detail?.indexing_technique || indexingTypeCache}
+          retrievalMethod={detail?.retrieval_model?.search_method || retrievalMethodCache}
           creationCache={result}
         />}
       </div>

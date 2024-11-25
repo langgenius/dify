@@ -7,7 +7,11 @@ import { omit } from 'lodash-es'
 import { ArrowRightIcon } from '@heroicons/react/24/solid'
 import {
   RiErrorWarningFill,
+  RiLoader2Fill,
+  RiTerminalBoxLine,
 } from '@remixicon/react'
+import Image from 'next/image'
+import { indexMethodIcon, retrievalIcon } from '../icons'
 import s from './index.module.css'
 import cn from '@/utils/classnames'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
@@ -23,15 +27,21 @@ import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useProviderContext } from '@/context/provider-context'
 import Tooltip from '@/app/components/base/tooltip'
 import { sleep } from '@/utils'
+import { RETRIEVE_METHOD } from '@/types/app'
 
 type Props = {
   datasetId: string
   batchId: string
   documents?: FullDocumentDetail[]
   indexingType?: string
+  retrievalMethod?: string
 }
 
-const RuleDetail: FC<{ sourceData?: ProcessRuleResponse }> = ({ sourceData }) => {
+const RuleDetail: FC<{
+  sourceData?: ProcessRuleResponse
+  indexingType?: string
+  retrievalMethod?: string
+}> = ({ sourceData, indexingType, retrievalMethod }) => {
   const { t } = useTranslation()
 
   const segmentationRuleMap = {
@@ -81,10 +91,40 @@ const RuleDetail: FC<{ sourceData?: ProcessRuleResponse }> = ({ sourceData }) =>
         displayedValue={String(getValue(field))}
       />
     })}
+    <FieldInfo
+      label={t('datasetCreation.stepTwo.indexMode')}
+      displayedValue={t(`datasetCreation.stepTwo.${indexingType}`) as string}
+      valueIcon={
+        <Image
+          src={
+            indexingType === 'economy'
+              ? indexMethodIcon.economical
+              : indexMethodIcon.high_quality
+          }
+          alt=''
+        />
+      }
+    />
+    <FieldInfo
+      label={t('datasetSettings.form.retrievalSetting.title')}
+      displayedValue={t(`datasetSettings.form.retrievalSetting.${retrievalMethod}`) as string}
+      valueIcon={
+        <Image
+          src={
+            retrievalMethod === RETRIEVE_METHOD.fullText
+              ? retrievalIcon.fullText
+              : RETRIEVE_METHOD.semantic
+                ? retrievalIcon.vector
+                : retrievalIcon.hybrid
+          }
+          alt=''
+        />
+      }
+    />
   </div>
 }
 
-const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], indexingType }) => {
+const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], indexingType, retrievalMethod }) => {
   const { t } = useTranslation()
   const { enableBilling, plan } = useProviderContext()
 
@@ -146,6 +186,9 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
   const navToDocumentList = () => {
     router.push(`/datasets/${datasetId}/documents`)
   }
+  const navToApiDocs = () => {
+    router.push('/datasets?category=api')
+  }
 
   const isEmbedding = useMemo(() => {
     return indexingStatusBatchDetail.some(indexingStatusDetail => ['indexing', 'splitting', 'parsing', 'cleaning'].includes(indexingStatusDetail?.indexing_status || ''))
@@ -177,13 +220,17 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
 
     return doc?.data_source_info.notion_page_icon
   }
-  const isSourceEmbedding = (detail: IndexingStatusResponse) => ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'].includes(detail.indexing_status || '')
+  const isSourceEmbedding = (detail: IndexingStatusResponse) =>
+    ['indexing', 'splitting', 'parsing', 'cleaning', 'waiting'].includes(detail.indexing_status || '')
 
   return (
     <>
       <div className='h-5 flex items-center mb-5'>
         <div className={s.embeddingStatus}>
-          {isEmbedding && t('datasetDocuments.embedding.processing')}
+          {isEmbedding && <div className='flex items-center'>
+            <RiLoader2Fill className='size-4 mr-1 animate-spin' />
+            {t('datasetDocuments.embedding.processing')}
+          </div>}
           {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
         </div>
       </div>
@@ -258,11 +305,19 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
           </div>
         ))}
       </div>
-      <RuleDetail sourceData={ruleDetail} />
-      <div className='flex items-center gap-2 mt-10'>
+      <RuleDetail sourceData={ruleDetail} indexingType={
+        indexingType
+      }
+      retrievalMethod={retrievalMethod}
+      />
+      <div className='flex items-center gap-2 my-10'>
+        <Button className='w-fit' onClick={navToApiDocs}>
+          <RiTerminalBoxLine className='size-4 mr-2' />
+          <span>Access the API</span>
+        </Button>
         <Button className='w-fit' variant='primary' onClick={navToDocumentList}>
           <span>{t('datasetCreation.stepThree.navTo')}</span>
-          <ArrowRightIcon className='h-4 w-4 ml-2 stroke-current stroke-1' />
+          <ArrowRightIcon className='size-4 ml-2 stroke-current stroke-1' />
         </Button>
       </div>
     </>

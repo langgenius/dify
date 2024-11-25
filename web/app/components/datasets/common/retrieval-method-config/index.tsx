@@ -5,10 +5,8 @@ import { useTranslation } from 'react-i18next'
 import Image from 'next/image'
 import RetrievalParamConfig from '../retrieval-param-config'
 import { OptionCard } from '../../create/step-two/option-card'
-import Selection from '../../create/assets/selection-mod.svg'
-import Research from '../../create/assets/research-mod.svg'
-import PatternRecognition from '../../create/assets/pattern-recognition-mod.svg'
 import Effect from '../../create/assets/option-card-effect-purple.svg'
+import { retrievalIcon } from '../../create/icons'
 import type { RetrievalConfig } from '@/types/app'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { useProviderContext } from '@/context/provider-context'
@@ -59,7 +57,7 @@ const RetrievalMethodConfig: FC<Props> = ({
   return (
     <div className='space-y-2'>
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
-        <OptionCard icon={<Image className='w-4 h-4' src={Selection} alt='' />}
+        <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.vector} alt='' />}
           title={t('dataset.retrieval.semantic_search.title')}
           description={t('dataset.retrieval.semantic_search.description')}
           isActive={
@@ -80,7 +78,7 @@ const RetrievalMethodConfig: FC<Props> = ({
         </OptionCard>
       )}
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
-        <OptionCard icon={<Image className='w-4 h-4' src={Research} alt='' />}
+        <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.fullText} alt='' />}
           title={t('dataset.retrieval.full_text_search.title')}
           description={t('dataset.retrieval.full_text_search.description')}
           isActive={
@@ -101,7 +99,7 @@ const RetrievalMethodConfig: FC<Props> = ({
         </OptionCard>
       )}
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
-        <OptionCard icon={<Image className='w-4 h-4' src={PatternRecognition} alt='' />}
+        <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.hybrid} alt='' />}
           title={
             <div className='flex items-center space-x-1'>
               <div>{t('dataset.retrieval.hybrid_search.title')}</div>

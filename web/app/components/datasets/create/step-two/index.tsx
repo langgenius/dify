@@ -16,10 +16,9 @@ import Image from 'next/image'
 import SettingCog from '../assets/setting-gear-mod.svg'
 import OrangeEffect from '../assets/option-card-effect-orange.svg'
 import FamilyMod from '../assets/family-mod.svg'
-import GoldIcon from '../assets/gold.svg'
-import Piggybank from '../assets/piggy-bank-mod.svg'
 import Note from '../assets/note-mod.svg'
 import FileList from '../assets/file-list-3-fill.svg'
+import { indexMethodIcon } from '../icons'
 import PreviewItem, { PreviewType } from './preview-item'
 import s from './index.module.css'
 import unescape from './unescape'
@@ -80,6 +79,7 @@ type StepTwoProps = {
   onSetting: () => void
   datasetId?: string
   indexingType?: ValueOf<IndexingType>
+  retrievalMethod?: string
   dataSourceType: DataSourceType
   files: CustomFile[]
   notionPages?: NotionPage[]
@@ -89,6 +89,7 @@ type StepTwoProps = {
   websiteCrawlJobId?: string
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
+  updateRetrievalMethodCache?: (method: string) => void
   updateResultCache?: (res: createDocumentResponse) => void
   onSave?: () => void
   onCancel?: () => void
@@ -137,6 +138,7 @@ const StepTwo = ({
   updateResultCache,
   onSave,
   onCancel,
+  updateRetrievalMethodCache,
 }: StepTwoProps) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
@@ -507,6 +509,8 @@ const StepTwo = ({
         })
         updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
         updateResultCache && updateResultCache(res)
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
       }
       else {
         res = await createDocument({
@@ -643,19 +647,21 @@ const StepTwo = ({
           <div className='max-w-[640px]'>
             <div className='space-y-4'>
               <OptionCard
-                title={'General'}
-                icon={<Image src={SettingCog} alt='General' />}
+                title={t('datasetCreation.stepTwo.general')}
+                icon={<Image src={SettingCog} alt={t('datasetCreation.stepTwo.general')} />}
                 activeHeaderClassName='bg-gradient-to-r from-[#EFF0F9] to-[#F9FAFB]'
-                description={'General text chunking mode, the chunks retrieved and recalled are the same.'}
+                description={t('datasetCreation.stepTwo.generalTip')}
                 isActive={SegmentType.AUTO === segmentationType}
                 onClick={() => setSegmentationType(SegmentType.AUTO)}
                 actions={
                   <>
                     <Button variant={'secondary-accent'}>
                       <RiSearchEyeLine className='h-4 w-4 mr-1.5' />
-                      Preview Chunk
+                      {t('datasetCreation.stepTwo.previewChunk')}
                     </Button>
-                    <Button variant={'ghost'} disabled>Reset</Button>
+                    <Button variant={'ghost'} disabled>
+                      {t('datasetCreation.stepTwo.reset')}
+                    </Button>
                   </>
                 }
               >
@@ -666,13 +672,13 @@ const StepTwo = ({
                       onChange={e => setSegmentIdentifier(e.target.value)}
                     />
                     <MaxLengthInput
-                      value={max}
-                      onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                      defaultValue={max}
+                      onChange={setMax}
                     />
                     <OverlapInput
-                      value={overlap}
+                      defaultValue={overlap}
                       min={1}
-                      onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                      onChange={setOverlap}
                     />
                   </div>
                   <div className='space-y-2'>
@@ -695,32 +701,34 @@ const StepTwo = ({
                 </div>
               </OptionCard>
               <OptionCard
-                title={'Parent-child'}
-                icon={<Image src={FamilyMod} alt='Parent-child' />}
+                title={t('datasetCreation.stepTwo.parentChild')}
+                icon={<Image src={FamilyMod} alt={t('datasetCreation.stepTwo.parentChild')} />}
                 effectImg={OrangeEffect.src}
                 activeHeaderClassName='bg-gradient-to-r from-[#F9F1EE] to-[#F9FAFB]'
-                description={'When using the parent-child mode, the child-chunk is used for retrieval and the parent-chunk is used for recall as context.'}
+                description={t('datasetCreation.stepTwo.parentChildTip')}
                 isActive={SegmentType.CUSTOM === segmentationType}
                 onClick={() => setSegmentationType(SegmentType.CUSTOM)}
                 actions={
                   <>
                     <Button variant={'secondary-accent'}>
                       <RiSearchEyeLine className='h-4 w-4 mr-1.5' />
-                      Preview Chunk
+                      {t('datasetCreation.stepTwo.previewChunk')}
                     </Button>
-                    <Button variant={'ghost'} onClick={resetRules}>Reset</Button>
+                    <Button variant={'ghost'} onClick={resetRules}>
+                      {t('datasetCreation.stepTwo.reset')}
+                    </Button>
                   </>
                 }
               >
                 <div className='space-y-4'>
                   <div className='space-y-2'>
                     <TextLabel>
-                    Parent-chunk for Context
+                      {t('datasetCreation.stepTwo.parentChunkForContext')}
                     </TextLabel>
                     <RadioCard
                       icon={<Image src={Note} alt='' />}
-                      title={'Paragraph'}
-                      description={'This mode splits the text in to paragraphs based on delimiters and the maximum chunk length, using the split text as the parent chunk for retrieval.'}
+                      title={t('datasetCreation.stepTwo.paragraph')}
+                      description={t('datasetCreation.stepTwo.paragraphTip')}
                       isChosen={parentChildConfig.chunkForContext === 'paragraph'}
                       onChosen={() => setParentChildConfig(
                         {
@@ -741,12 +749,12 @@ const StepTwo = ({
                             })}
                           />
                           <MaxLengthInput
-                            value={parentChildConfig.parent.maxLength}
-                            onChange={e => setParentChildConfig({
+                            defaultValue={parentChildConfig.parent.maxLength}
+                            onChange={value => setParentChildConfig({
                               ...parentChildConfig,
                               parent: {
                                 ...parentChildConfig.parent,
-                                maxLength: parseInt(e.target.value.replace(/^0+/, ''), 10),
+                                maxLength: value,
                               },
                             })}
                           />
@@ -755,8 +763,8 @@ const StepTwo = ({
                     />
                     <RadioCard
                       icon={<Image src={FileList} alt='' />}
-                      title={'Full Doc'}
-                      description={'The entire document is used as the parent chunk and retrieved directly. Please note that for performance reasons, text exceeding 10000 tokens will be automatically truncated.'}
+                      title={t('datasetCreation.stepTwo.fullDoc')}
+                      description={t('datasetCreation.stepTwo.fullDocTip')}
                       onChosen={() => setParentChildConfig(
                         {
                           ...parentChildConfig,
@@ -769,7 +777,7 @@ const StepTwo = ({
 
                   <div className='space-y-2'>
                     <TextLabel>
-                      Child-chunk for Retrieval
+                      {t('datasetCreation.stepTwo.childChunkForRetrieval')}
                     </TextLabel>
                     <div className='flex gap-2'>
                       <DelimiterInput
@@ -783,20 +791,20 @@ const StepTwo = ({
                         })}
                       />
                       <MaxLengthInput
-                        value={parentChildConfig.child.maxLength}
+                        defaultValue={parentChildConfig.child.maxLength}
 
-                        onChange={e => setParentChildConfig({
+                        onChange={value => setParentChildConfig({
                           ...parentChildConfig,
                           child: {
                             ...parentChildConfig.child,
-                            maxLength: parseInt(e.target.value.replace(/^0+/, ''), 10),
+                            maxLength: value,
                           },
                         })}
                       />
                     </div>
 
                     <TextLabel>
-                    Text Pre-processing Rules
+                      {t('datasetCreation.stepTwo.rules')}
                     </TextLabel>
                     <div className='space-y-2'>
                       {rules.map(rule => (
@@ -834,7 +842,7 @@ const StepTwo = ({
                   }}
                 >
                   <div className='h-8 p-1.5 bg-white rounded-lg border border-[#101828]/10 justify-center items-center inline-flex absolute left-5 top-[18px]'>
-                    <Image src={GoldIcon} alt='Gold Icon' width={20} height={20} />
+                    <Image src={indexMethodIcon.high_quality} alt='Gold Icon' width={20} height={20} />
                   </div>
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
                   <div className={s.typeHeader}>
@@ -865,7 +873,7 @@ const StepTwo = ({
                   onClick={changeToEconomicalType}
                 >
                   <div className='h-8 p-1.5 bg-white rounded-lg border border-[#101828]/10 justify-center items-center inline-flex absolute left-5 top-[18px]'>
-                    <Image src={Piggybank} alt='Economical Icon' width={20} height={20} />
+                    <Image src={indexMethodIcon.economical} alt='Economical Icon' width={20} height={20} />
                   </div>
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
                   <div className={s.typeHeader}>

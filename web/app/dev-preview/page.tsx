@@ -1,16 +1,12 @@
 'use client'
 
-import { Stepper } from '../components/datasets/create/stepper'
+import { useState } from 'react'
+import { InputNumber } from '../components/base/input-number'
+// import { Stepper } from '../components/datasets/create/stepper'
 
 export default function Page() {
+  const [step, setStep] = useState(0)
   return <div className='p-4'>
-    <Stepper
-      steps={[
-        { name: 'Data Source' },
-        { name: 'Document Processing' },
-        { name: 'Execute & Finish' },
-      ]}
-      activeStepIndex={1}
-    />
+    <InputNumber onChange={setStep} unit={'tokens'} />
   </div>
 }

@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import Image from 'next/image'
 import RetrievalParamConfig from '../retrieval-param-config'
 import { OptionCard } from '../../create/step-two/option-card'
-import Selection from '../../create/assets/selection-mod.svg'
+import { retrievalIcon } from '../../create/icons'
 import { RETRIEVE_METHOD } from '@/types/app'
 import type { RetrievalConfig } from '@/types/app'
 
@@ -22,7 +22,7 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
 
   return (
     <div className='space-y-2'>
-      <OptionCard icon={<Image className='w-4 h-4' src={Selection} alt='' />}
+      <OptionCard icon={<Image className='w-4 h-4' src={retrievalIcon.vector} alt='' />}
         title={t('dataset.retrieval.invertedIndex.title')}
         description={t('dataset.retrieval.invertedIndex.description')} isActive
         activeHeaderClassName='bg-gradient-to-r from-[#F0EEFA] to-[#F9FAFB]'

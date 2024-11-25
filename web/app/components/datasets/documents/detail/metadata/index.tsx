@@ -1,5 +1,5 @@
 'use client'
-import type { FC } from 'react'
+import type { FC, ReactNode } from 'react'
 import React, { useEffect, useState } from 'react'
 import { PencilIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
@@ -24,6 +24,7 @@ import type { DocType, FullDocumentDetail } from '@/models/datasets'
 import { CUSTOMIZABLE_DOC_TYPES } from '@/models/datasets'
 import type { inputType, metadataType } from '@/hooks/use-metadata'
 import { useBookCategories, useBusinessDocCategories, useLanguages, useMetadataMap, usePersonalDocCategories } from '@/hooks/use-metadata'
+import classNames from '@/utils/classnames'
 
 const map2Options = (map: { [key: string]: string }) => {
   return Object.keys(map).map(key => ({ value: key, name: map[key] }))
@@ -32,6 +33,7 @@ const map2Options = (map: { [key: string]: string }) => {
 type IFieldInfoProps = {
   label: string
   value?: string
+  valueIcon?: ReactNode
   displayedValue?: string
   defaultValue?: string
   showEdit?: boolean
@@ -43,6 +45,7 @@ type IFieldInfoProps = {
 export const FieldInfo: FC<IFieldInfoProps> = ({
   label,
   value = '',
+  valueIcon,
   displayedValue = '',
   defaultValue,
   showEdit = false,
@@ -58,7 +61,8 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
   return (
     <div className={cn(s.fieldInfo, editAlignTop && '!items-start', readAlignTop && '!items-start pt-1')}>
       <div className={cn(s.label, editAlignTop && 'pt-1')}>{label}</div>
-      <div className={s.value}>
+      <div className={classNames(s.value, 'flex items-center gap-1')}>
+        {valueIcon}
         {!showEdit
           ? displayedValue
           : inputType === 'select'

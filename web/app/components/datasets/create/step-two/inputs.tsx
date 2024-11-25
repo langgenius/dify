@@ -3,6 +3,8 @@ import { useTranslation } from 'react-i18next'
 import type { InputProps } from '@/app/components/base/input'
 import Input from '@/app/components/base/input'
 import Tooltip from '@/app/components/base/tooltip'
+import type { InputNumberProps } from '@/app/components/base/input-number'
+import { InputNumber } from '@/app/components/base/input-number'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-[#354052] text-xs font-semibold leading-none'>{props.children}</label>
@@ -36,12 +38,12 @@ export const DelimiterInput: FC<InputProps> = (props) => {
   </FormField>
 }
 
-export const MaxLengthInput: FC<InputProps> = (props) => {
+export const MaxLengthInput: FC<InputNumberProps> = (props) => {
   const { t } = useTranslation()
-  return <FormField label={<div>
+  return <FormField label={<div className='h-[14px]'>
     {t('datasetCreation.stepTwo.maxLength')}
   </div>}>
-    <Input
+    <InputNumber
       type="number"
       className='h-9'
       placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
@@ -52,7 +54,7 @@ export const MaxLengthInput: FC<InputProps> = (props) => {
   </FormField>
 }
 
-export const OverlapInput: FC<InputProps> = (props) => {
+export const OverlapInput: FC<InputNumberProps> = (props) => {
   const { t } = useTranslation()
   return <FormField label={<div className='flex'>
     {t('datasetCreation.stepTwo.overlap')}
@@ -64,7 +66,7 @@ export const OverlapInput: FC<InputProps> = (props) => {
       }
     />
   </div>}>
-    <Input
+    <InputNumber
       type="number"
       className='h-9'
       placeholder={t('datasetCreation.stepTwo.overlap') || ''}
