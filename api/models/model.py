@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Optional
 if TYPE_CHECKING:
     from models.workflow import Workflow
 
+from enum import StrEnum
 from typing import Any, Literal
 
 import sqlalchemy as sa
@@ -38,7 +39,7 @@ class DifySetup(Base):
     setup_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class AppMode(str, Enum):
+class AppMode(StrEnum):
     COMPLETION = "completion"
     WORKFLOW = "workflow"
     CHAT = "chat"
@@ -74,7 +75,7 @@ class App(Base):
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
     mode = db.Column(db.String(255), nullable=False)
-    icon_type = db.Column(db.String(255), nullable=True)
+    icon_type = db.Column(db.String(255), nullable=True)  # image, emoji
     icon = db.Column(db.String(255))
     icon_background = db.Column(db.String(255))
     app_model_config_id = db.Column(StringUUID, nullable=True)
@@ -261,8 +262,8 @@ class AppModelConfig(Base):
         return app
 
     @property
-    def model_dict(self):
-        return json.loads(self.model) if self.model else None
+    def model_dict(self) -> dict:
+        return json.loads(self.model) if self.model else {}
 
     @property
     def suggested_questions_list(self) -> list:
@@ -610,11 +611,8 @@ class Conversation(Base):
                 app_model_config = (
                     db.session.query(AppModelConfig).filter(AppModelConfig.id == self.app_model_config_id).first()
                 )
-
-                if not app_model_config:
-                    return {}
-
-                model_config = app_model_config.to_dict()
+                if app_model_config:
+                    model_config = app_model_config.to_dict()
 
         model_config["model_id"] = self.model_id
         model_config["provider"] = self.model_provider

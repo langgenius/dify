@@ -305,6 +305,20 @@ class PluginDeleteInstallTaskApi(Resource):
             raise ValueError(e)
 
 
+class PluginDeleteAllInstallTaskItemsApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @plugin_permission_required(debug_required=True)
+    def post(self):
+        tenant_id = current_user.current_tenant_id
+
+        try:
+            return {"success": PluginService.delete_all_install_task_items(tenant_id)}
+        except PluginDaemonBadRequestError as e:
+            raise ValueError(e)
+
+
 class PluginDeleteInstallTaskItemApi(Resource):
     @setup_required
     @login_required
@@ -453,6 +467,7 @@ api.add_resource(PluginFetchManifestApi, "/workspaces/current/plugin/fetch-manif
 api.add_resource(PluginFetchInstallTasksApi, "/workspaces/current/plugin/tasks")
 api.add_resource(PluginFetchInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>")
 api.add_resource(PluginDeleteInstallTaskApi, "/workspaces/current/plugin/tasks/<task_id>/delete")
+api.add_resource(PluginDeleteAllInstallTaskItemsApi, "/workspaces/current/plugin/tasks/delete_all")
 api.add_resource(PluginDeleteInstallTaskItemApi, "/workspaces/current/plugin/tasks/<task_id>/delete/<path:identifier>")
 api.add_resource(PluginUninstallApi, "/workspaces/current/plugin/uninstall")
 

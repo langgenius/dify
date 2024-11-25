@@ -336,7 +336,7 @@ const vars = {
   'text-logo-text': 'var(--color-text-logo-text)',
   'text-empty-state-icon': 'var(--color-text-empty-state-icon)',
   'text-inverted': 'var(--color-text-inverted)',
-  'text-inverted-dimm': 'var(--color-text-inverted-dimm)',
+  'text-inverted-dimmed': 'var(--color-text-inverted-dimmed)',
 
   'background-body': 'var(--color-background-body)',
   'background-default-subtle': 'var(--color-background-default-subtle)',
@@ -368,7 +368,7 @@ const vars = {
   'background-section-burn': 'var(--color-background-section-burn)',
   'background-default-dodge': 'var(--color-background-default-dodge)',
   'background-overlay': 'var(--color-background-overlay)',
-  'background-default-dimm': 'var(--color-background-default-dimm)',
+  'background-default-dimmed': 'var(--color-background-default-dimmed)',
   'background-default-hover': 'var(--color-background-default-hover)',
   'background-overlay-alt': 'var(--color-background-overlay-alt)',
   'background-surface-white': 'var(--color-background-surface-white)',

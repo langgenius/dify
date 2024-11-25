@@ -126,6 +126,16 @@ class PluginInstallationManager(BasePluginManager):
             bool,
         )
 
+    def delete_all_plugin_installation_task_items(self, tenant_id: str) -> bool:
+        """
+        Delete all plugin installation task items.
+        """
+        return self._request_with_plugin_daemon_response(
+            "POST",
+            f"plugin/{tenant_id}/management/install/tasks/delete_all",
+            bool,
+        )
+
     def delete_plugin_installation_task_item(self, tenant_id: str, task_id: str, identifier: str) -> bool:
         """
         Delete a plugin installation task item.

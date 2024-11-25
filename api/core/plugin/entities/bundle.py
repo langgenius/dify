@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel
 
@@ -6,7 +6,7 @@ from core.plugin.entities.plugin import PluginDeclaration, PluginInstallationSou
 
 
 class PluginBundleDependency(BaseModel):
-    class Type(str, Enum):
+    class Type(StrEnum):
         Github = PluginInstallationSource.Github.value
         Marketplace = PluginInstallationSource.Marketplace.value
         Package = PluginInstallationSource.Package.value

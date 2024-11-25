@@ -336,7 +336,7 @@ html[data-theme="light"] {
   --color-text-logo-text: #18222F;
   --color-text-empty-state-icon: #D0D5DC;
   --color-text-inverted: #000000;
-  --color-text-inverted-dimm: #000000F2;
+  --color-text-inverted-dimmed: #000000F2;
 
   --color-background-body: #F2F4F7;
   --color-background-default-subtle: #FCFCFD;
@@ -368,7 +368,7 @@ html[data-theme="light"] {
   --color-background-section-burn: #F2F4F7;
   --color-background-default-dodge: #FFFFFF;
   --color-background-overlay: #10182899;
-  --color-background-default-dimm: #E9EBF0;
+  --color-background-default-dimmed: #E9EBF0;
   --color-background-default-hover: #F9FAFB;
   --color-background-overlay-alt: #10182866;
   --color-background-surface-white: #FFFFFFF2;
@@ -686,9 +686,10 @@ html[data-theme="light"] {
   --color-third-party-Langfuse: #000000;
 
   --color-third-party-Github: #1B1F24;
-  --color-third-party-Github-tertiary: #1B1F24;
+  <<<<<<< HEAD --color-third-party-Github-tertiary: #1B1F24;
   --color-third-party-Github-secondary: #1B1F24;
   --color-third-party-model-bg-openai: #E3E5E8;
   --color-third-party-model-bg-anthropic: #EEEDE7;
   --color-third-party-model-bg-default: #F9FAFB;
+  =======>>>>>>>fix/chore-fix
 }

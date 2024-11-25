@@ -10,7 +10,7 @@ from models.base import Base
 from .types import StringUUID
 
 
-class AccountStatus(str, enum.Enum):
+class AccountStatus(enum.StrEnum):
     PENDING = "pending"
     UNINITIALIZED = "uninitialized"
     ACTIVE = "active"
@@ -102,14 +102,14 @@ class Account(UserMixin, Base):
             return db.session.query(Account).filter(Account.id == account_integrate.account_id).one_or_none()
         return None
 
-    def get_integrates(self) -> list[db.Model]:
-        ai = db.Model
-        return db.session.query(ai).filter(ai.account_id == self.id).all()
-
     # check current_user.current_tenant.current_role in ['admin', 'owner']
     @property
     def is_admin_or_owner(self):
         return TenantAccountRole.is_privileged_role(self._current_tenant.current_role)
+
+    @property
+    def is_admin(self):
+        return TenantAccountRole.is_admin_role(self._current_tenant.current_role)
 
     @property
     def is_editor(self):
@@ -124,12 +124,12 @@ class Account(UserMixin, Base):
         return self._current_tenant.current_role == TenantAccountRole.DATASET_OPERATOR
 
 
-class TenantStatus(str, enum.Enum):
+class TenantStatus(enum.StrEnum):
     NORMAL = "normal"
     ARCHIVE = "archive"
 
 
-class TenantAccountRole(str, enum.Enum):
+class TenantAccountRole(enum.StrEnum):
     OWNER = "owner"
     ADMIN = "admin"
     EDITOR = "editor"
@@ -138,7 +138,9 @@ class TenantAccountRole(str, enum.Enum):
 
     @staticmethod
     def is_valid_role(role: str) -> bool:
-        return role and role in {
+        if not role:
+            return False
+        return role in {
             TenantAccountRole.OWNER,
             TenantAccountRole.ADMIN,
             TenantAccountRole.EDITOR,
@@ -148,11 +150,21 @@ class TenantAccountRole(str, enum.Enum):
 
     @staticmethod
     def is_privileged_role(role: str) -> bool:
-        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
+        if not role:
+            return False
+        return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
+
+    @staticmethod
+    def is_admin_role(role: str) -> bool:
+        if not role:
+            return False
+        return role == TenantAccountRole.ADMIN
 
     @staticmethod
     def is_non_owner_role(role: str) -> bool:
-        return role and role in {
+        if not role:
+            return False
+        return role in {
             TenantAccountRole.ADMIN,
             TenantAccountRole.EDITOR,
             TenantAccountRole.NORMAL,
@@ -161,11 +173,15 @@ class TenantAccountRole(str, enum.Enum):
 
     @staticmethod
     def is_editing_role(role: str) -> bool:
-        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
+        if not role:
+            return False
+        return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
 
     @staticmethod
     def is_dataset_edit_role(role: str) -> bool:
-        return role and role in {
+        if not role:
+            return False
+        return role in {
             TenantAccountRole.OWNER,
             TenantAccountRole.ADMIN,
             TenantAccountRole.EDITOR,
@@ -265,12 +281,12 @@ class InvitationCode(db.Model):
 
 
 class TenantPluginPermission(Base):
-    class InstallPermission(str, enum.Enum):
+    class InstallPermission(enum.StrEnum):
         EVERYONE = "everyone"
         ADMINS = "admins"
         NOBODY = "noone"
 
-    class DebugPermission(str, enum.Enum):
+    class DebugPermission(enum.StrEnum):
         EVERYONE = "everyone"
         ADMINS = "admins"
         NOBODY = "noone"

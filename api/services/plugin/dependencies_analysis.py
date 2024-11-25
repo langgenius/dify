@@ -30,7 +30,7 @@ class DependenciesAnalysisService:
             raise e
 
     @classmethod
-    def check_dependencies(cls, tenant_id: str, dependencies: list[PluginDependency]) -> list[PluginDependency]:
+    def get_leaked_dependencies(cls, tenant_id: str, dependencies: list[PluginDependency]) -> list[PluginDependency]:
         """
         Check dependencies, returns the leaked dependencies in current workspace
         """

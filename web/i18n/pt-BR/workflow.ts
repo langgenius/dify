@@ -99,6 +99,8 @@ const translation = {
     featuresDescription: 'Melhore a experiência do usuário do aplicativo Web',
     ImageUploadLegacyTip: 'Agora você pode criar variáveis de tipo de arquivo no formulário inicial. Não daremos mais suporte ao recurso de upload de imagens no futuro.',
     fileUploadTip: 'Os recursos de upload de imagens foram atualizados para upload de arquivos.',
+    importWarning: 'Cuidado',
+    importWarningDetails: 'A diferença de versão DSL pode afetar determinados recursos',
   },
   env: {
     envPanelTitle: 'Variáveis de Ambiente',
@@ -408,6 +410,10 @@ const translation = {
       type: 'Tipo',
       binaryFileVariable: 'Variável de arquivo binário',
       extractListPlaceholder: 'Insira o índice do item da lista, digite \'/\' inserir variável',
+      curl: {
+        placeholder: 'Cole a string cURL aqui',
+        title: 'Importar do cURL',
+      },
     },
     code: {
       inputVars: 'Variáveis de entrada',

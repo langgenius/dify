@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict
 
@@ -22,7 +22,7 @@ class LimitationModel(BaseModel):
     limit: int = 0
 
 
-class LicenseStatus(str, Enum):
+class LicenseStatus(StrEnum):
     NONE = "none"
     INACTIVE = "inactive"
     ACTIVE = "active"

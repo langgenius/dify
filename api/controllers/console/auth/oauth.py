@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Optional
 
 import requests
@@ -108,7 +108,7 @@ class OAuthCallback(Resource):
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
-            account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            account.initialized_at = datetime.now(UTC).replace(tzinfo=None)
             db.session.commit()
 
         try:
