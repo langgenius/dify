@@ -73,7 +73,7 @@ Dify yêu cầu các phụ thuộc sau để build, hãy đảm bảo chúng đ�
 - [Docker Compose](https://docs.docker.com/compose/install/)
 - [Node.js v18.x (LTS)](http://nodejs.org)
 - [npm](https://www.npmjs.com/) phiên bản 8.x.x hoặc [Yarn](https://yarnpkg.com/)
-- [Python](https://www.python.org/) phiên bản 3.10.x
+- [Python](https://www.python.org/) phiên bản 3.11.x hoặc 3.12.x
 
 ### 4. Cài đặt
 

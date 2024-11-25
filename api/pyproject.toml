@@ -1,5 +1,5 @@
 [project]
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.11,<3.13"
 
 [build-system]
 requires = ["poetry-core"]
@@ -131,7 +131,7 @@ flask-login = "~0.6.3"
 flask-migrate = "~4.0.5"
 flask-restful = "~0.3.10"
 flask-sqlalchemy = "~3.1.1"
-gevent = "~23.9.1"
+gevent = "~24.11.1"
 gmpy2 = "~2.2.1"
 google-ai-generativelanguage = "0.6.9"
 google-api-core = "2.18.0"
@@ -163,7 +163,7 @@ pydantic-settings = "~2.6.0"
 pydantic_extra_types = "~2.9.0"
 pyjwt = "~2.8.0"
 pypdfium2 = "~4.17.0"
-python = ">=3.10,<3.13"
+python = ">=3.11,<3.13"
 python-docx = "~1.1.0"
 python-dotenv = "1.0.0"
 pyyaml = "~6.0.1"
@@ -268,6 +268,7 @@ weaviate-client = "~3.21.0"
 optional = true
 [tool.poetry.group.dev.dependencies]
 coverage = "~7.2.4"
+faker = "~32.1.0"
 pytest = "~8.3.2"
 pytest-benchmark = "~4.0.0"
 pytest-env = "~1.1.3"
