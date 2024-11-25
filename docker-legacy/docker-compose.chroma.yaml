@@ -1,7 +1,7 @@
 services:
   # Chroma vector store.
   chroma:
-    image: ghcr.io/chroma-core/chroma:0.5.1
+    image: ghcr.io/chroma-core/chroma:0.5.20
     restart: always
     volumes:
       - ./volumes/chroma:/chroma/chroma

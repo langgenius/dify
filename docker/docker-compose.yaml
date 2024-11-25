@@ -605,7 +605,7 @@ services:
 
   # Chroma vector database
   chroma:
-    image: ghcr.io/chroma-core/chroma:0.5.1
+    image: ghcr.io/chroma-core/chroma:0.5.20
     profiles:
       - chroma
     restart: always
