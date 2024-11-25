@@ -3,7 +3,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 import grpc
 from google.protobuf import json_format
@@ -35,11 +35,11 @@ class FlexportGrpcTool(BuiltinTool):
 
     def __init__(
         self,
-        identity: dict = None,
-        credentials: dict = None,
-        description: dict = None,
-        parameters: list = None,
-        runtime: dict = None,
+        identity: Optional[dict] = None,
+        credentials: Optional[dict] = None,
+        description: Optional[dict] = None,
+        parameters: Optional[list] = None,
+        runtime: Optional[dict] = None,
     ):
         # 如果参数是字典列表，先转换为 ToolParameter 对象
         if parameters and isinstance(parameters[0], dict):
@@ -89,91 +89,91 @@ class FlexportGrpcTool(BuiltinTool):
             for file in files:
                 if file.endswith("_pb2_grpc.py"):
                     try:
-                        with open(os.path.join(root, file)) as f:
-                            content = f.read()
-                            # 检查文件是否包含服务定义
-                            if "class" in content and "Stub" in content:
-                                print(f"\nFound service in file: {file}")
-                                print(content)
+                        # 使用 Path 读取文件内容
+                        content = Path(root).joinpath(file).read_text()
+                        # 检查文件是否包含服务定义
+                        if "class" in content and "Stub" in content:
+                            print(f"\nFound service in file: {file}")
+                            print(content)
 
-                                rel_path = os.path.relpath(os.path.join(root, file), base_dir)
-                                module_path = os.path.splitext(rel_path)[0].replace(os.sep, ".")
-                                module_path = module_path.removeprefix("flexport.")
+                            rel_path = os.path.relpath(os.path.join(root, file), base_dir)
+                            module_path = os.path.splitext(rel_path)[0].replace(os.sep, ".")
+                            module_path = module_path.removeprefix("flexport.")
 
-                                # 检查是否是需要忽略的包
-                                should_ignore = any(module_path.startswith(prefix) for prefix in ignored_prefixes)
-                                if should_ignore:
+                            # 检查是否是需要忽略的包
+                            should_ignore = any(module_path.startswith(prefix) for prefix in ignored_prefixes)
+                            if should_ignore:
+                                continue
+
+                            base_module_name = os.path.splitext(file)[0].replace("_grpc", "")
+
+                            print(f"\nTrying to import gRPC module: {module_path}")
+                            print(f"Module file: {os.path.join(root, file)}")
+
+                            try:
+                                # 导入 grpc 模块
+                                spec = importlib.util.spec_from_file_location(module_path, os.path.join(root, file))
+                                if spec is None:
+                                    print(f"Could not create spec for {file}")
                                     continue
 
-                                base_module_name = os.path.splitext(file)[0].replace("_grpc", "")
+                                grpc_module = importlib.util.module_from_spec(spec)
+                                sys.modules[module_path] = grpc_module
+                                spec.loader.exec_module(grpc_module)
 
-                                print(f"\nTrying to import gRPC module: {module_path}")
-                                print(f"Module file: {os.path.join(root, file)}")
-
-                                try:
-                                    # 导入 grpc 模块
-                                    spec = importlib.util.spec_from_file_location(module_path, os.path.join(root, file))
-                                    if spec is None:
-                                        print(f"Could not create spec for {file}")
-                                        continue
-
-                                    grpc_module = importlib.util.module_from_spec(spec)
-                                    sys.modules[module_path] = grpc_module
-                                    spec.loader.exec_module(grpc_module)
-
-                                    # 导入对应的 pb2 模块
-                                    pb2_file = os.path.join(root, f"{base_module_name}.py")
-                                    if not os.path.exists(pb2_file):
-                                        print(f"pb2 file not found: {pb2_file}")
-                                        continue
-
-                                    pb2_module_path = module_path.replace("_grpc", "")
-                                    spec = importlib.util.spec_from_file_location(pb2_module_path, pb2_file)
-                                    if spec is None:
-                                        print(f"Could not create spec for {base_module_name}")
-                                        continue
-
-                                    pb2_module = importlib.util.module_from_spec(spec)
-                                    sys.modules[pb2_module_path] = pb2_module
-                                    spec.loader.exec_module(pb2_module)
-
-                                    # 查找所有服务类
-                                    print(f"Looking for service classes in {module_path}")
-                                    print(f"Module content: {dir(grpc_module)}")
-
-                                    # 检查模块中的所有类
-                                    for attr_name in dir(grpc_module):
-                                        attr = getattr(grpc_module, attr_name)
-                                        print(f"Found attribute: {attr_name} ({type(attr)})")
-                                        if attr_name.endswith("Stub"):
-                                            try:
-                                                service_name = attr_name[:-4]
-                                                package_parts = module_path.split(".")
-                                                package_name = ".".join(package_parts[:-1])
-                                                full_service_name = f"{package_name}.{service_name}"
-
-                                                methods = self._get_service_methods(grpc_module, attr_name)
-                                                print(f"Found service class: {attr_name}")
-                                                print(f"Methods: {methods}")
-
-                                                if methods:  # 只添加有方法的服务
-                                                    service_map[full_service_name] = {
-                                                        "stub_class": attr,
-                                                        "messages": pb2_module,
-                                                        "methods": methods,
-                                                    }
-                                                    print(f"Loaded service: {full_service_name}")
-                                                    print(f"Available methods: {methods}")
-                                            except Exception as e:
-                                                print(f"Error processing service {attr_name}: {str(e)}")
-                                                continue
-
-                                except ImportError as e:
-                                    print(f"Import error loading service from {module_path}: {str(e)}")
+                                # 导入对应的 pb2 模块
+                                pb2_file = os.path.join(root, f"{base_module_name}.py")
+                                if not os.path.exists(pb2_file):
+                                    print(f"pb2 file not found: {pb2_file}")
                                     continue
-                                except Exception as e:
-                                    print(f"Error loading service from {module_path}: {str(e)}")
+
+                                pb2_module_path = module_path.replace("_grpc", "")
+                                spec = importlib.util.spec_from_file_location(pb2_module_path, pb2_file)
+                                if spec is None:
+                                    print(f"Could not create spec for {base_module_name}")
                                     continue
+
+                                pb2_module = importlib.util.module_from_spec(spec)
+                                sys.modules[pb2_module_path] = pb2_module
+                                spec.loader.exec_module(pb2_module)
+
+                                # 查找所有服务类
+                                print(f"Looking for service classes in {module_path}")
+                                print(f"Module content: {dir(grpc_module)}")
+
+                                # 检查模块中的所有类
+                                for attr_name in dir(grpc_module):
+                                    attr = getattr(grpc_module, attr_name)
+                                    print(f"Found attribute: {attr_name} ({type(attr)})")
+                                    if attr_name.endswith("Stub"):
+                                        try:
+                                            service_name = attr_name[:-4]
+                                            package_parts = module_path.split(".")
+                                            package_name = ".".join(package_parts[:-1])
+                                            full_service_name = f"{package_name}.{service_name}"
+
+                                            methods = self._get_service_methods(grpc_module, attr_name)
+                                            print(f"Found service class: {attr_name}")
+                                            print(f"Methods: {methods}")
+
+                                            if methods:  # 只添加有方法的服务
+                                                service_map[full_service_name] = {
+                                                    "stub_class": attr,
+                                                    "messages": pb2_module,
+                                                    "methods": methods,
+                                                }
+                                                print(f"Loaded service: {full_service_name}")
+                                                print(f"Available methods: {methods}")
+                                        except Exception as e:
+                                            print(f"Error processing service {attr_name}: {str(e)}")
+                                            continue
+
+                            except ImportError as e:
+                                print(f"Import error loading service from {module_path}: {str(e)}")
+                                continue
+                            except Exception as e:
+                                print(f"Error loading service from {module_path}: {str(e)}")
+                                continue
 
                     except Exception as e:
                         print(f"Error processing file {file}: {str(e)}")
