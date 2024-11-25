@@ -15,9 +15,9 @@ parameter_rules:
     use_template: max_tokens
     required: true
     type: int
-    default: 4096
+    default: 8192
     min: 1
-    max: 4096
+    max: 8192
     help:
       zh_Hans: 停止前生成的最大令牌数。请注意，Anthropic Claude 模型可能会在达到 max_tokens 的值之前停止生成令牌。不同的 Anthropic Claude 模型对此参数具有不同的最大值。
       en_US: The maximum number of tokens to generate before stopping. Note that Anthropic Claude models might stop generating tokens before reaching the value of max_tokens. Different Anthropic Claude models have different maximum values for this parameter.

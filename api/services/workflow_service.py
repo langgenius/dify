@@ -1,7 +1,7 @@
 import json
 import time
 from collections.abc import Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Optional
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
@@ -115,7 +115,7 @@ class WorkflowService:
             workflow.graph = json.dumps(graph)
             workflow.features = json.dumps(features)
             workflow.updated_by = account.id
-            workflow.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            workflow.updated_at = datetime.now(UTC).replace(tzinfo=None)
             workflow.environment_variables = environment_variables
             workflow.conversation_variables = conversation_variables
 
@@ -148,7 +148,7 @@ class WorkflowService:
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
             type=draft_workflow.type,
-            version=str(datetime.now(timezone.utc).replace(tzinfo=None)),
+            version=str(datetime.now(UTC).replace(tzinfo=None)),
             graph=draft_workflow.graph,
             features=draft_workflow.features,
             created_by=account.id,
@@ -257,18 +257,22 @@ class WorkflowService:
         workflow_node_execution.elapsed_time = time.perf_counter() - start_at
         workflow_node_execution.created_by_role = CreatedByRole.ACCOUNT.value
         workflow_node_execution.created_by = account.id
-        workflow_node_execution.created_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        workflow_node_execution.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow_node_execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
 
         if run_succeeded and node_run_result:
             # create workflow node execution
-            workflow_node_execution.inputs = json.dumps(node_run_result.inputs) if node_run_result.inputs else None
-            workflow_node_execution.process_data = (
-                json.dumps(node_run_result.process_data) if node_run_result.process_data else None
+            inputs = WorkflowEntry.handle_special_values(node_run_result.inputs) if node_run_result.inputs else None
+            process_data = (
+                WorkflowEntry.handle_special_values(node_run_result.process_data)
+                if node_run_result.process_data
+                else None
             )
-            workflow_node_execution.outputs = (
-                json.dumps(jsonable_encoder(node_run_result.outputs)) if node_run_result.outputs else None
-            )
+            outputs = WorkflowEntry.handle_special_values(node_run_result.outputs) if node_run_result.outputs else None
+
+            workflow_node_execution.inputs = json.dumps(inputs)
+            workflow_node_execution.process_data = json.dumps(process_data)
+            workflow_node_execution.outputs = json.dumps(outputs)
             workflow_node_execution.execution_metadata = (
                 json.dumps(jsonable_encoder(node_run_result.metadata)) if node_run_result.metadata else None
             )
@@ -303,10 +307,10 @@ class WorkflowService:
         new_app = workflow_converter.convert_to_workflow(
             app_model=app_model,
             account=account,
-            name=args.get("name"),
-            icon_type=args.get("icon_type"),
-            icon=args.get("icon"),
-            icon_background=args.get("icon_background"),
+            name=args.get("name", "Default Name"),
+            icon_type=args.get("icon_type", "emoji"),
+            icon=args.get("icon", "🤖"),
+            icon_background=args.get("icon_background", "#FFEAD5"),
         )
 
         return new_app
