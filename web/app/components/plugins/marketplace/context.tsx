@@ -29,6 +29,7 @@ import {
   useMarketplaceCollectionsAndPlugins,
   useMarketplacePlugins,
 } from './hooks'
+import { getMarketplaceListCondition } from './utils'
 
 export type MarketplaceContextValue = {
   intersected: boolean
@@ -134,6 +135,7 @@ export const MarketplaceContextProvider = ({
     if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
       queryMarketplaceCollectionsAndPlugins({
         category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
+        condition: getMarketplaceListCondition(activePluginTypeRef.current),
       })
       resetPlugins()
 
@@ -156,6 +158,7 @@ export const MarketplaceContextProvider = ({
     if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
       queryMarketplaceCollectionsAndPlugins({
         category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
+        condition: getMarketplaceListCondition(activePluginTypeRef.current),
       })
       resetPlugins()
 
@@ -178,6 +181,7 @@ export const MarketplaceContextProvider = ({
     if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
       queryMarketplaceCollectionsAndPlugins({
         category: type === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : type,
+        condition: getMarketplaceListCondition(type),
       })
       resetPlugins()
 

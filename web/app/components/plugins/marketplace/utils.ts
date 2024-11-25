@@ -1,4 +1,5 @@
 import type { Plugin } from '@/app/components/plugins/types'
+import { PluginType } from '@/app/components/plugins/types'
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
@@ -14,7 +15,10 @@ export const getMarketplaceCollectionsAndPlugins = async (query?: CollectionsAnd
   let marketplaceCollections = [] as MarketplaceCollection[]
   let marketplaceCollectionPluginsMap = {} as Record<string, Plugin[]>
   try {
-    const marketplaceCollectionsData = await globalThis.fetch(`${MARKETPLACE_API_PREFIX}/collections?page=1&page_size=100`, { cache: 'no-store' })
+    let marketplaceUrl = `${MARKETPLACE_API_PREFIX}/collections?page=1&page_size=100`
+    if (query?.condition)
+      marketplaceUrl += `&condition=${query.condition}`
+    const marketplaceCollectionsData = await globalThis.fetch(marketplaceUrl, { cache: 'no-store' })
     const marketplaceCollectionsDataJson = await marketplaceCollectionsData.json()
     marketplaceCollections = marketplaceCollectionsDataJson.data.collections
     await Promise.all(marketplaceCollections.map(async (collection: MarketplaceCollection) => {
@@ -82,4 +86,17 @@ export const getMarketplacePlugins = async (query: PluginsSearchParams) => {
   return {
     marketplacePlugins,
   }
+}
+
+export const getMarketplaceListCondition = (pluginType: string) => {
+  if (pluginType === PluginType.tool)
+    return 'category=tool'
+
+  if (pluginType === PluginType.model)
+    return 'category=model'
+
+  if (pluginType === PluginType.extension)
+    return 'category=endpoint'
+
+  return ''
 }

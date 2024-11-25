@@ -8,6 +8,5 @@ export const getValidTagKeys = (tags: string[]) => {
 }
 
 export const getValidCategoryKeys = (category?: string) => {
-  const currentCategory = categoryKeys.find(key => key === category)
-  return currentCategory ? `${currentCategory}s` : ''
+  return categoryKeys.find(key => key === category)
 }
