@@ -19,8 +19,8 @@ class FlexportGrpcTool(BuiltinTool):
 
     @model_validator(mode="after")
     def initialize_services(self):
-        """初始化服务"""
-        # 添加generated目录到Python路径
+        """Initialize services"""
+        # Add generated directory to Python path
         generated_dir = Path(__file__).parent.parent / "generated"
         if str(generated_dir) not in sys.path:
             sys.path.insert(0, str(generated_dir))
@@ -41,7 +41,7 @@ class FlexportGrpcTool(BuiltinTool):
         parameters: Optional[list] = None,
         runtime: Optional[dict] = None,
     ):
-        # 如果参数是字典列表，先转换为 ToolParameter 对象
+        # If parameters are dictionaries, convert them to ToolParameter objects
         if parameters and isinstance(parameters[0], dict):
             parameters = [
                 ToolParameter(
@@ -55,12 +55,12 @@ class FlexportGrpcTool(BuiltinTool):
                     llm_description=param.get("llm_description"),
                     form=ToolParameter.ToolParameterForm(param["form"]),
                     default=param.get("default", ""),
-                    options=[],  # 初始为空，会在 get_runtime_parameters 中设置
+                    options=[],  # Initially empty, will be set in get_runtime_parameters
                 )
                 for param in parameters
             ]
 
-        # 调用父类的初始化
+        # Call the parent class's initialization
         super().__init__(
             identity=identity, credentials=credentials, description=description, parameters=parameters, runtime=runtime
         )
@@ -71,12 +71,9 @@ class FlexportGrpcTool(BuiltinTool):
         base_dir = Path(__file__).parent.parent / "generated"
 
         if not base_dir.exists():
-            print(f"Warning: Generated directory not found at {base_dir}")
             return service_map
 
-        print(f"Scanning directory: {base_dir}")
-
-        # 忽略的包前缀列表
+        # List of package prefixes to ignore
         ignored_prefixes = {
             "google.type",
             "google.api",
@@ -84,67 +81,51 @@ class FlexportGrpcTool(BuiltinTool):
             "grpc.health",
         }
 
-        # 首先检查 proto 文件中的服务定义
+        # First check service definitions in proto files
         for root, _, files in os.walk(base_dir):
             for file in files:
                 if file.endswith("_pb2_grpc.py"):
                     try:
-                        # 使用 Path 读取文件内容
                         content = Path(root).joinpath(file).read_text()
-                        # 检查文件是否包含服务定义
                         if "class" in content and "Stub" in content:
-                            print(f"\nFound service in file: {file}")
-                            print(content)
-
                             rel_path = os.path.relpath(os.path.join(root, file), base_dir)
                             module_path = os.path.splitext(rel_path)[0].replace(os.sep, ".")
                             module_path = module_path.removeprefix("flexport.")
 
-                            # 检查是否是需要忽略的包
+                            # Check if package should be ignored
                             should_ignore = any(module_path.startswith(prefix) for prefix in ignored_prefixes)
                             if should_ignore:
                                 continue
 
                             base_module_name = os.path.splitext(file)[0].replace("_grpc", "")
 
-                            print(f"\nTrying to import gRPC module: {module_path}")
-                            print(f"Module file: {os.path.join(root, file)}")
-
                             try:
-                                # 导入 grpc 模块
+                                # Import gRPC module
                                 spec = importlib.util.spec_from_file_location(module_path, os.path.join(root, file))
                                 if spec is None:
-                                    print(f"Could not create spec for {file}")
                                     continue
 
                                 grpc_module = importlib.util.module_from_spec(spec)
                                 sys.modules[module_path] = grpc_module
                                 spec.loader.exec_module(grpc_module)
 
-                                # 导入对应的 pb2 模块
+                                # Import corresponding pb2 module
                                 pb2_file = os.path.join(root, f"{base_module_name}.py")
                                 if not os.path.exists(pb2_file):
-                                    print(f"pb2 file not found: {pb2_file}")
                                     continue
 
                                 pb2_module_path = module_path.replace("_grpc", "")
                                 spec = importlib.util.spec_from_file_location(pb2_module_path, pb2_file)
                                 if spec is None:
-                                    print(f"Could not create spec for {base_module_name}")
                                     continue
 
                                 pb2_module = importlib.util.module_from_spec(spec)
                                 sys.modules[pb2_module_path] = pb2_module
                                 spec.loader.exec_module(pb2_module)
 
-                                # 查找所有服务类
-                                print(f"Looking for service classes in {module_path}")
-                                print(f"Module content: {dir(grpc_module)}")
-
-                                # 检查模块中的所有类
+                                # Find all service classes
                                 for attr_name in dir(grpc_module):
                                     attr = getattr(grpc_module, attr_name)
-                                    print(f"Found attribute: {attr_name} ({type(attr)})")
                                     if attr_name.endswith("Stub"):
                                         try:
                                             service_name = attr_name[:-4]
@@ -153,60 +134,41 @@ class FlexportGrpcTool(BuiltinTool):
                                             full_service_name = f"{package_name}.{service_name}"
 
                                             methods = self._get_service_methods(grpc_module, attr_name)
-                                            print(f"Found service class: {attr_name}")
-                                            print(f"Methods: {methods}")
 
-                                            if methods:  # 只添加有方法的服务
+                                            # Only add services with methods
+                                            if methods:
                                                 service_map[full_service_name] = {
                                                     "stub_class": attr,
                                                     "messages": pb2_module,
                                                     "methods": methods,
                                                 }
-                                                print(f"Loaded service: {full_service_name}")
-                                                print(f"Available methods: {methods}")
-                                        except Exception as e:
-                                            print(f"Error processing service {attr_name}: {str(e)}")
+                                        except Exception:
                                             continue
 
-                            except ImportError as e:
-                                print(f"Import error loading service from {module_path}: {str(e)}")
+                            except ImportError:
                                 continue
-                            except Exception as e:
-                                print(f"Error loading service from {module_path}: {str(e)}")
+                            except Exception:
                                 continue
 
-                    except Exception as e:
-                        print(f"Error processing file {file}: {str(e)}")
+                    except Exception:
                         continue
 
-        print(f"\nFinal service_map: {service_map}")
         return service_map
 
     def _get_service_methods(self, grpc_module: Any, stub_name: str) -> list[str]:
         """Get all available methods for a service"""
         methods = []
-        print(f"Checking methods for stub: {stub_name}")
-
-        # 获取 Stub 类
         stub_class = getattr(grpc_module, stub_name)
-        print(f"Stub class: {stub_class}")
-
-        # 获取 __init__ 方法的源代码
+        
         import inspect
-
         init_source = inspect.getsource(stub_class.__init__)
-        print(f"Init source:\n{init_source}")
-
-        # 从源代码中解析方法名
+        
         import re
-
         method_matches = re.finditer(r"self\.(\w+)\s*=\s*channel\.unary_unary", init_source)
         for match in method_matches:
             method_name = match.group(1)
-            print(f"Found method from source: {method_name}")
             methods.append(method_name)
-
-        print(f"Found methods: {methods}")
+        
         return methods
 
     def _get_stub(self, service_name: str, host: str) -> Any:
@@ -268,16 +230,11 @@ class FlexportGrpcTool(BuiltinTool):
             return self.create_text_message(text=error_message)
 
     def get_runtime_parameters(self) -> list[ToolParameter]:
-        """获取运行时参数，返回参数列表"""
+        """Get runtime parameters and return parameter list"""
         try:
-            print("Getting runtime parameters...")
-            print(f"Available services: {list(self.service_map.keys())}")
-
-            # 构建服务和方法的组合选项
             service_method_options = []
             for service_name, service_info in self.service_map.items():
                 methods = service_info.get("methods", [])
-                print(f"Service {service_name} has methods: {methods}")
                 for method in methods:
                     option_value = f"{service_name}::{method}"
                     option_label = f"{service_name} - {method}"
@@ -287,21 +244,18 @@ class FlexportGrpcTool(BuiltinTool):
                         )
                     )
 
-            # 按字母顺序排序选项
+            # Sort options alphabetically
             service_method_options.sort(key=lambda x: x.value)
-            print(f"Total options generated: {len(service_method_options)}")
-            if service_method_options:
-                print("Sample options:", service_method_options[:2])
 
             parameters = [
                 ToolParameter(
                     name="host",
                     type=ToolParameter.ToolParameterType.STRING,
                     required=True,
-                    label=I18nObject(en_US="Host Address", zh_Hans="服务器地址"),
+                    label=I18nObject(en_US="Host Address", zh_Hans="Server Address"),
                     human_description=I18nObject(
                         en_US="The host address of the gRPC server (e.g. localhost:50051)",
-                        zh_Hans="gRPC服务器地址（例如 localhost:50051）",
+                        zh_Hans="gRPC server address (e.g. localhost:50051)"
                     ),
                     llm_description="The host address and port of the gRPC server",
                     form=ToolParameter.ToolParameterForm.FORM,
@@ -310,9 +264,10 @@ class FlexportGrpcTool(BuiltinTool):
                     name="service_method",
                     type=ToolParameter.ToolParameterType.SELECT,
                     required=True,
-                    label=I18nObject(en_US="Service and Method", zh_Hans="服务和方法"),
+                    label=I18nObject(en_US="Service and Method", zh_Hans="Service and Method"),
                     human_description=I18nObject(
-                        en_US="Select the gRPC service and method to call", zh_Hans="选择要调用的gRPC服务和方法"
+                        en_US="Select the gRPC service and method to call",
+                        zh_Hans="选择要调用的gRPC服务和方法"
                     ),
                     llm_description="The full service name and method to call",
                     form=ToolParameter.ToolParameterForm.FORM,
@@ -322,21 +277,17 @@ class FlexportGrpcTool(BuiltinTool):
                     name="method_parameters",
                     type=ToolParameter.ToolParameterType.STRING,
                     required=True,
-                    label=I18nObject(en_US="Method Parameters", zh_Hans="方法参数"),
+                    label=I18nObject(en_US="Method Parameters", zh_Hans="Method Parameters"),
                     human_description=I18nObject(
-                        en_US="JSON string of parameters for the method", zh_Hans="方法参数的JSON字符串"
+                        en_US="JSON string of parameters for the method",
+                        zh_Hans="方法参数的JSON字符串"
                     ),
                     llm_description="JSON formatted string containing the parameters for the method call",
                     form=ToolParameter.ToolParameterForm.LLM,
                 ),
             ]
 
-            print("Returning parameters with options")
             return parameters
 
-        except Exception as e:
-            print(f"Error getting runtime parameters: {str(e)}")
-            import traceback
-
-            traceback.print_exc()
+        except Exception:
             return []
