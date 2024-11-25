@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Optional, Union
 
 from sqlalchemy import asc, desc, or_
@@ -104,7 +104,7 @@ class ConversationService:
             return cls.auto_generate_name(app_model, conversation)
         else:
             conversation.name = name
-            conversation.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
             db.session.commit()
 
         return conversation

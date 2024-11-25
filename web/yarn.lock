@@ -2568,9 +2568,9 @@
     zustand "^4.4.1"
 
 "@remixicon/react@^4.2.0":
-  version "4.2.0"
-  resolved "https://registry.npmjs.org/@remixicon/react/-/react-4.2.0.tgz"
-  integrity sha512-eGhKpZ88OU0qkcY9pJu6khBmItDV82nU130E6C68yc+FbljueHlUYy/4CrJsmf860RIDMay2Rpzl27OSJ81miw==
+  version "4.5.0"
+  resolved "https://registry.yarnpkg.com/@remixicon/react/-/react-4.5.0.tgz#5600d122ee4995bff2c4442cb056eeb4f11ecb5a"
+  integrity sha512-Xr20SxMpRNlgXZnoF5BCMyZuQEhXY3yJCyms8kxB/vJCCiV1nWdiO48XqRG5LBd1192iSHC4m658AIWi6rmBFg==
 
 "@rgrove/parse-xml@^4.1.0":
   version "4.1.0"

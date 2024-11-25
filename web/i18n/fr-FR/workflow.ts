@@ -99,6 +99,8 @@ const translation = {
     ImageUploadLegacyTip: 'Vous pouvez désormais créer des variables de type de fichier dans le formulaire de démarrage. À l’avenir, nous ne prendrons plus en charge la fonctionnalité de téléchargement d’images.',
     fileUploadTip: 'Les fonctionnalités de téléchargement d’images ont été mises à niveau vers le téléchargement de fichiers.',
     featuresDescription: 'Améliorer l’expérience utilisateur de l’application web',
+    importWarning: 'Prudence',
+    importWarningDetails: 'La différence de version DSL peut affecter certaines fonctionnalités',
   },
   env: {
     envPanelTitle: 'Variables d\'Environnement',
@@ -408,6 +410,10 @@ const translation = {
       binaryFileVariable: 'Variable de fichier binaire',
       type: 'Type',
       extractListPlaceholder: 'Entrez l’index de l’élément de liste, tapez \'/\' insérer la variable',
+      curl: {
+        placeholder: 'Collez la chaîne cURL ici',
+        title: 'Importer à partir de cURL',
+      },
     },
     code: {
       inputVars: 'Variables de saisie',

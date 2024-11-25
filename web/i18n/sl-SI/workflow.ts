@@ -99,6 +99,8 @@ const translation = {
     featuresDocLink: 'Izvedi več',
     featuresDescription: 'Izboljšajte uporabniško izkušnjo spletne aplikacije',
     ImageUploadLegacyTip: 'Zdaj lahko ustvarite spremenljivke vrste datoteke v začetnem obrazcu. V prihodnje ne bomo več podpirali funkcije nalaganja slik.',
+    importWarning: 'Previdnost',
+    importWarningDetails: 'Razlika v različici DSL lahko vpliva na nekatere funkcije',
   },
   env: {
     envPanelTitle: 'Spremenljivke okolja',
@@ -845,6 +847,10 @@ const translation = {
       apiPlaceholder: 'Vnesite URL, vnesite \'/\' vstavi spremenljivko',
       extractListPlaceholder: 'Vnesite indeks elementa seznama, vnesite \'/\' vstavi spremenljivko',
       params: 'Params',
+      curl: {
+        title: 'Uvoz iz cURL',
+        placeholder: 'Tukaj prilepite niz cURL',
+      },
     },
     code: {
       inputVars: 'Vhodne spremenljivke',

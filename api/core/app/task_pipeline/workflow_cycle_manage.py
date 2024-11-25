@@ -1,7 +1,7 @@
 import json
 import time
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any, Optional, Union, cast
 
 from sqlalchemy.orm import Session
@@ -144,7 +144,7 @@ class WorkflowCycleManage:
         workflow_run.elapsed_time = time.perf_counter() - start_at
         workflow_run.total_tokens = total_tokens
         workflow_run.total_steps = total_steps
-        workflow_run.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
 
         db.session.commit()
         db.session.refresh(workflow_run)
@@ -191,7 +191,7 @@ class WorkflowCycleManage:
         workflow_run.elapsed_time = time.perf_counter() - start_at
         workflow_run.total_tokens = total_tokens
         workflow_run.total_steps = total_steps
-        workflow_run.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
 
         db.session.commit()
 
@@ -211,14 +211,17 @@ class WorkflowCycleManage:
         for workflow_node_execution in running_workflow_node_executions:
             workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
             workflow_node_execution.error = error
-            workflow_node_execution.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            workflow_node_execution.finished_at = datetime.now(UTC).replace(tzinfo=None)
             workflow_node_execution.elapsed_time = (
                 workflow_node_execution.finished_at - workflow_node_execution.created_at
             ).total_seconds()
             db.session.commit()
 
-        db.session.refresh(workflow_run)
         db.session.close()
+
+        with Session(db.engine, expire_on_commit=False) as session:
+            session.add(workflow_run)
+            session.refresh(workflow_run)
 
         if trace_manager:
             trace_manager.add_trace_task(
@@ -259,7 +262,7 @@ class WorkflowCycleManage:
                     NodeRunMetadataKey.ITERATION_ID: event.in_iteration_id,
                 }
             )
-            workflow_node_execution.created_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            workflow_node_execution.created_at = datetime.now(UTC).replace(tzinfo=None)
 
             session.add(workflow_node_execution)
             session.commit()
@@ -282,7 +285,7 @@ class WorkflowCycleManage:
         execution_metadata = (
             json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
         )
-        finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
 
         db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
@@ -326,7 +329,7 @@ class WorkflowCycleManage:
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         process_data = WorkflowEntry.handle_special_values(event.process_data)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
-        finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        finished_at = datetime.now(UTC).replace(tzinfo=None)
         elapsed_time = (finished_at - event.start_at).total_seconds()
         execution_metadata = (
             json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
@@ -654,7 +657,7 @@ class WorkflowCycleManage:
                 if event.error is None
                 else WorkflowNodeExecutionStatus.FAILED,
                 error=None,
-                elapsed_time=(datetime.now(timezone.utc).replace(tzinfo=None) - event.start_at).total_seconds(),
+                elapsed_time=(datetime.now(UTC).replace(tzinfo=None) - event.start_at).total_seconds(),
                 total_tokens=event.metadata.get("total_tokens", 0) if event.metadata else 0,
                 execution_metadata=event.metadata,
                 finished_at=int(time.time()),
