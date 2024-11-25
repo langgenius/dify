@@ -1,13 +1,13 @@
-from typing import Any, Union
-
-
+from typing import Any
 from urllib.parse import urlencode
+
 import requests
 from requests.auth import HTTPBasicAuth
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.errors import ToolProviderCredentialValidationError
+from core.tools.tool.builtin_tool import BuiltinTool
+
 
 class FetchPromptTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage:
@@ -50,7 +50,7 @@ class FetchPromptTool(BuiltinTool):
         full_url = f"{requestUrl}?{urlencode(paramRequest)}"
         print(full_url)
 
-        response = requests.get(requestUrl, params=paramRequest, auth=HTTPBasicAuth(publicKey,secretKey))
+        response = requests.get(requestUrl, params=paramRequest, auth=HTTPBasicAuth(publicKey, secretKey))
 
         if response.status_code == 200:
             print(response.text)
