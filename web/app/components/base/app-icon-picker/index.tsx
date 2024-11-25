@@ -69,7 +69,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
     },
   })
 
-  const [imageCropInfo, setImageCropInfo] = useState<{ tempUrl: string; croppedAreaPixels: Area; fileName: string }>()
+  const [imageCropInfo, setImageCropInfo] = useState<{ tempUrl: string; croppedAreaPixels: Area; fileName: string; file?: File }>()
   const handleImageCropped = async (tempUrl: string, croppedAreaPixels: Area, fileName: string) => {
     setImageCropInfo({ tempUrl, croppedAreaPixels, fileName })
   }
@@ -93,13 +93,15 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
       if (!imageCropInfo && !uploadImageInfo)
         return
       setUploading(true)
-      if (imageCropInfo.file) {
+      if (imageCropInfo?.file) {
         handleLocalFileUpload(imageCropInfo.file)
         return
       }
-      const blob = await getCroppedImg(imageCropInfo.tempUrl, imageCropInfo.croppedAreaPixels, imageCropInfo.fileName)
-      const file = new File([blob], imageCropInfo.fileName, { type: blob.type })
-      handleLocalFileUpload(file)
+      if (imageCropInfo) {
+        const blob = await getCroppedImg(imageCropInfo.tempUrl, imageCropInfo.croppedAreaPixels, imageCropInfo.fileName)
+        const file = new File([blob], imageCropInfo.fileName, { type: blob.type })
+        handleLocalFileUpload(file)
+      }
     }
   }
 
