@@ -627,7 +627,7 @@ class AppDslService:
             # reranking model
             dataset_configs = model_config.dataset_configs_dict
             if dataset_configs:
-                for dataset_config in dataset_configs:
+                for dataset_config in dataset_configs.get("datasets", {}).get("datasets", []):
                     if dataset_config.get("reranking_model"):
                         dependencies.append(
                             DependenciesAnalysisService.analyze_model_provider_dependency(
@@ -640,12 +640,11 @@ class AppDslService:
             # tools
             agent_configs = model_config.agent_mode_dict
             if agent_configs:
-                for agent_config in agent_configs:
-                    if agent_config.get("tools"):
-                        for tool in agent_config.get("tools", []):
-                            dependencies.append(
-                                DependenciesAnalysisService.analyze_tool_dependency(tool.get("provider_id"))
-                            )
+                for agent_config in agent_configs.get("tools", []):
+                    dependencies.append(
+                        DependenciesAnalysisService.analyze_tool_dependency(agent_config.get("provider_id"))
+                    )
+
         except Exception as e:
             logger.exception("Error extracting model config dependency", exc_info=e)
 
