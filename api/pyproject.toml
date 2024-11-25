@@ -144,6 +144,7 @@ googleapis-common-protos = "1.63.0"
 gunicorn = "~22.0.0"
 httpx = { version = "~0.27.0", extras = ["socks"] }
 huggingface-hub = "~0.16.4"
+ibm-watsonx-ai = "~1.1.24"
 jieba = "0.42.1"
 langfuse = "~2.51.3"
 langsmith = "~0.1.77"
@@ -155,7 +156,7 @@ numpy = "~1.26.4"
 oci = "~2.135.1"
 openai = "~1.52.0"
 openpyxl = "~3.1.5"
-pandas = { version = "~2.2.2", extras = ["performance", "excel"] }
+pandas = { version = "~2.1.4", extras = ["performance", "excel"] }
 psycopg2-binary = "~2.9.6"
 pycryptodome = "3.19.1"
 pydantic = "~2.9.2"
