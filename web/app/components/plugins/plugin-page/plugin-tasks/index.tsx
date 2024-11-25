@@ -28,37 +28,42 @@ const PluginTasks = () => {
   const [open, setOpen] = useState(false)
   const {
     errorPlugins,
-    runningPlugins,
-    successPlugins,
+    runningPluginsLength,
+    successPluginsLength,
+    errorPluginsLength,
     totalPluginsLength,
+    isInstalling,
+    isInstallingWithSuccess,
+    isInstallingWithError,
+    isSuccess,
+    isFailed,
     handleClearErrorPlugin,
+    opacity,
   } = usePluginTaskStatus()
   const { getIconUrl } = useGetIcon()
-  const runningPluginsLength = runningPlugins.length
-  const errorPluginsLength = errorPlugins.length
-  const successPluginsLength = successPlugins.length
-
-  const isInstalling = runningPluginsLength > 0 && errorPluginsLength === 0
-  const isInstallingWithError = runningPluginsLength > 0 && errorPluginsLength > 0
-  const isSuccess = successPluginsLength === totalPluginsLength && totalPluginsLength > 0
-  const isFailed = runningPluginsLength === 0 && (errorPluginsLength + successPluginsLength) === totalPluginsLength && totalPluginsLength > 0
 
   const tip = useMemo(() => {
     if (isInstalling)
-      return t('plugin.task.installing', { installingLength: runningPlugins.length, totalLength: totalPluginsLength })
+      return t('plugin.task.installing', { installingLength: runningPluginsLength })
+
+    if (isInstallingWithSuccess)
+      return t('plugin.task.installingWithSuccess', { installingLength: runningPluginsLength, successLength: successPluginsLength })
 
     if (isInstallingWithError)
-      return t('plugin.task.installingWithError', { installingLength: runningPlugins.length, totalLength: totalPluginsLength, errorLength: errorPlugins.length })
+      return t('plugin.task.installingWithError', { installingLength: runningPluginsLength, successLength: successPluginsLength, errorLength: errorPluginsLength })
 
     if (isFailed)
-      return t('plugin.task.installError', { errorLength: errorPlugins.length })
-  }, [isInstalling, isInstallingWithError, isFailed, errorPlugins, runningPlugins, totalPluginsLength, t])
+      return t('plugin.task.installError', { errorLength: errorPluginsLength })
+  }, [isInstalling, isInstallingWithSuccess, isInstallingWithError, isFailed, errorPluginsLength, runningPluginsLength, successPluginsLength, t])
 
   if (!totalPluginsLength)
     return null
 
   return (
-    <div className='flex items-center'>
+    <div
+      className='flex items-center'
+      style={{ opacity }}
+    >
       <PortalToFollowElem
         open={open}
         onOpenChange={setOpen}
@@ -70,7 +75,7 @@ const PluginTasks = () => {
       >
         <PortalToFollowElemTrigger
           onClick={() => {
-            if (isFailed || isInstallingWithError)
+            if (isFailed)
               setOpen(v => !v)
           }}
         >
@@ -89,16 +94,17 @@ const PluginTasks = () => {
               />
               <div className='absolute -right-1 -top-1'>
                 {
-                  isInstalling && (
+                  (isInstalling || isInstallingWithSuccess) && (
                     <ProgressCircle
-                      percentage={runningPlugins.length / totalPluginsLength * 100}
+                      percentage={successPluginsLength / totalPluginsLength * 100}
+                      circleFillColor='fill-components-progress-brand-bg'
                     />
                   )
                 }
                 {
                   isInstallingWithError && (
                     <ProgressCircle
-                      percentage={runningPlugins.length / totalPluginsLength * 100}
+                      percentage={runningPluginsLength / totalPluginsLength * 100}
                       circleFillColor='fill-components-progress-brand-bg'
                       sectorFillColor='fill-components-progress-error-border'
                       circleStrokeColor='stroke-components-progress-error-border'
@@ -121,35 +127,50 @@ const PluginTasks = () => {
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[11]'>
           <div className='p-1 pb-2 w-[320px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
-            <div className='flex items-center px-2 pt-1 h-7 system-sm-semibold-uppercase'>
-              {t('plugin.task.installedError', { errorLength: errorPlugins.length })}
+            <div className='sticky top-0 flex items-center justify-between px-2 pt-1 h-7 system-sm-semibold-uppercase'>
+              {t('plugin.task.installedError', { errorLength: errorPluginsLength })}
+              <Button
+                className='shrink-0'
+                size='small'
+                variant='ghost'
+              >
+                {t('plugin.task.clearAll')}
+              </Button>
             </div>
-            {
-              errorPlugins.map(errorPlugin => (
-                <div
-                  key={errorPlugin.plugin_unique_identifier}
-                  className='flex items-center p-1 pl-2 h-8 rounded-lg hover:bg-state-base-hover'
-                >
-                  <div className='relative flex items-center justify-center mr-2 w-6 h-6 rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'>
-                    <RiErrorWarningFill className='absolute -right-0.5 -bottom-0.5 z-10 w-3 h-3 text-text-destructive' />
-                    <CardIcon
-                      size='tiny'
-                      src={getIconUrl(errorPlugin.icon)}
-                    />
-                  </div>
-                  <div className='grow system-md-regular text-text-secondary truncate'>
-                    {errorPlugin.labels[language]}
-                  </div>
-                  <Button
-                    size='small'
-                    variant='ghost-accent'
-                    onClick={() => handleClearErrorPlugin(errorPlugin.taskId, errorPlugin.plugin_unique_identifier)}
+            <div className='max-h-[400px] overflow-y-auto'>
+              {
+                errorPlugins.map(errorPlugin => (
+                  <div
+                    key={errorPlugin.plugin_unique_identifier}
+                    className='flex p-2 rounded-lg hover:bg-state-base-hover'
                   >
-                    {t('common.operation.clear')}
-                  </Button>
-                </div>
-              ))
-            }
+                    <div className='relative flex items-center justify-center mr-2 w-6 h-6 rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'>
+                      <RiErrorWarningFill className='absolute -right-0.5 -bottom-0.5 z-10 w-3 h-3 text-text-destructive' />
+                      <CardIcon
+                        size='tiny'
+                        src={getIconUrl(errorPlugin.icon)}
+                      />
+                    </div>
+                    <div className='grow'>
+                      <div className='system-md-regular text-text-secondary truncate'>
+                        {errorPlugin.labels[language]}
+                      </div>
+                      <div className='system-xs-regular text-text-destructive break-all'>
+                        {errorPlugin.message}
+                      </div>
+                    </div>
+                    <Button
+                      className='shrink-0'
+                      size='small'
+                      variant='ghost'
+                      onClick={() => handleClearErrorPlugin(errorPlugin.taskId, errorPlugin.plugin_unique_identifier)}
+                    >
+                      {t('common.operation.clear')}
+                    </Button>
+                  </div>
+                ))
+              }
+            </div>
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>

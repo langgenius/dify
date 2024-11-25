@@ -1,4 +1,9 @@
-import { useCallback } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react'
 import { TaskStatus } from '@/app/components/plugins/types'
 import type { PluginStatus } from '@/app/components/plugins/types'
 import {
@@ -36,12 +41,49 @@ export const usePluginTaskStatus = () => {
       pluginId,
     })
   }, [mutate])
+  const totalPluginsLength = allPlugins.length
+  const runningPluginsLength = runningPlugins.length
+  const errorPluginsLength = errorPlugins.length
+  const successPluginsLength = successPlugins.length
+
+  const isInstalling = runningPluginsLength > 0 && errorPluginsLength === 0 && successPluginsLength === 0
+  const isInstallingWithSuccess = runningPluginsLength > 0 && successPluginsLength > 0 && errorPluginsLength === 0
+  const isInstallingWithError = runningPluginsLength > 0 && errorPluginsLength > 0
+  const isSuccess = successPluginsLength === totalPluginsLength && totalPluginsLength > 0
+  const isFailed = runningPluginsLength === 0 && (errorPluginsLength + successPluginsLength) === totalPluginsLength && totalPluginsLength > 0 && errorPluginsLength > 0
+
+  const [opacity, setOpacity] = useState(1)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    if (isSuccess && opacity > 0) {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current)
+        timerRef.current = null
+      }
+      timerRef.current = setTimeout(() => {
+        setOpacity(v => v - 0.1)
+      }, 200)
+    }
+
+    if (!isSuccess)
+      setOpacity(1)
+  }, [isSuccess, opacity])
 
   return {
     errorPlugins,
     successPlugins,
     runningPlugins,
-    totalPluginsLength: allPlugins.length,
+    runningPluginsLength,
+    errorPluginsLength,
+    successPluginsLength,
+    totalPluginsLength,
+    isInstalling,
+    isInstallingWithSuccess,
+    isInstallingWithError,
+    isSuccess,
+    isFailed,
     handleClearErrorPlugin,
+    opacity,
   }
 }
