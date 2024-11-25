@@ -107,7 +107,7 @@ class Account(UserMixin, db.Model):
     @property
     def is_admin_or_owner(self):
         return TenantAccountRole.is_privileged_role(self._current_tenant.current_role)
-    
+
     @property
     def is_admin(self):
         return TenantAccountRole.is_admin_role(self._current_tenant.current_role)
