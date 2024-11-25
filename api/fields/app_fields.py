@@ -149,6 +149,12 @@ site_fields = {
     "updated_at": TimestampField,
 }
 
+deleted_tool_fields = {
+    "type": fields.String,
+    "tool_name": fields.String,
+    "provider_id": fields.String,
+}
+
 app_detail_fields_with_site = {
     "id": fields.String,
     "name": fields.String,
@@ -169,8 +175,9 @@ app_detail_fields_with_site = {
     "created_at": TimestampField,
     "updated_by": fields.String,
     "updated_at": TimestampField,
-    "deleted_tools": fields.List(fields.String),
+    "deleted_tools": fields.List(fields.Nested(deleted_tool_fields)),
 }
+
 
 app_site_fields = {
     "app_id": fields.String,

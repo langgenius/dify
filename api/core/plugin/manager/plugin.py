@@ -4,6 +4,7 @@ from pydantic import BaseModel
 
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
+    GenericProviderID,
     PluginDeclaration,
     PluginEntity,
     PluginInstallation,
@@ -221,6 +222,26 @@ class PluginInstallationManager(BasePluginManager):
                 "new_plugin_unique_identifier": new_plugin_unique_identifier,
                 "source": source,
                 "meta": meta,
+            },
+            headers={"Content-Type": "application/json"},
+        )
+
+    def check_tools_existence(self, tenant_id: str, provider_ids: Sequence[GenericProviderID]) -> Sequence[bool]:
+        """
+        Check if the tools exist
+        """
+        return self._request_with_plugin_daemon_response(
+            "POST",
+            f"plugin/{tenant_id}/management/tools/check_existence",
+            list[bool],
+            data={
+                "provider_ids": [
+                    {
+                        "plugin_id": provider_id.plugin_id,
+                        "provider_name": provider_id.provider_name,
+                    }
+                    for provider_id in provider_ids
+                ]
             },
             headers={"Content-Type": "application/json"},
         )
