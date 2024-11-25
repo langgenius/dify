@@ -54,7 +54,7 @@ class Import(BaseModel):
     app_id: Optional[str] = None
     current_dsl_version: str = CURRENT_DSL_VERSION
     imported_dsl_version: str = ""
-    dependencies: list[PluginDependency] = Field(default_factory=list)
+    leaked_dependencies: list[PluginDependency] = Field(default_factory=list)
     error: str = ""
 
 
@@ -240,7 +240,7 @@ class AppDslService:
                 )
 
             try:
-                dependencies = self.check_dependencies(account.current_tenant_id, data.get("dependencies", []))
+                dependencies = self.get_leaked_dependencies(account.current_tenant_id, data.get("dependencies", []))
             except Exception as e:
                 return Import(
                     id=import_id,
@@ -254,7 +254,7 @@ class AppDslService:
                     status=ImportStatus.PENDING,
                     app_id=app_id,
                     imported_dsl_version=imported_version,
-                    dependencies=dependencies,
+                    leaked_dependencies=dependencies,
                 )
 
             # Create or update app
@@ -652,7 +652,7 @@ class AppDslService:
         return dependencies
 
     @classmethod
-    def check_dependencies(cls, tenant_id: str, dsl_dependencies: list[dict]) -> list[PluginDependency]:
+    def get_leaked_dependencies(cls, tenant_id: str, dsl_dependencies: list[dict]) -> list[PluginDependency]:
         """
         Returns the leaked dependencies in current workspace
         """
@@ -660,4 +660,4 @@ class AppDslService:
         if not dependencies:
             return []
 
-        return DependenciesAnalysisService.check_dependencies(tenant_id=tenant_id, dependencies=dependencies)
+        return DependenciesAnalysisService.get_leaked_dependencies(tenant_id=tenant_id, dependencies=dependencies)
