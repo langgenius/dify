@@ -30,7 +30,7 @@ const AppCard = ({
             background={app.app.icon_background}
             imageUrl={app.app.icon_url}
           />
-          <span className='absolute -bottom-0.5 -right-0.5 rounded w-4 h-4 border border-components-panel-on-panel-item-bg'>
+          <div className='absolute -bottom-0.5 -right-0.5 w-4 h-4 flex items-center justify-center rounded border border-components-panel-on-panel-item-bg'>
             {appBasicInfo.mode === 'advanced-chat' && (
               <ChatFlow className='w-full h-full' />
             )}
@@ -46,7 +46,7 @@ const AppCard = ({
             {appBasicInfo.mode === 'workflow' && (
               <Workflow className='w-full h-full' />
             )}
-          </span>
+          </div>
         </div>
         <div className='grow flex flex-col gap-1'>
           <div className='line-clamp-1'>

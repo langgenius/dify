@@ -58,7 +58,7 @@ const Apps = ({
   const [currentType, setCurrentType] = useState<string>('')
   const [currCategory, setCurrCategory] = useTabSearchParams({
     defaultTab: allCategoriesEn,
-    // disableSearchParams: pageType !== PageType.EXPLORE,
+    disableSearchParams: true,
   })
 
   const {
@@ -160,7 +160,7 @@ const Apps = ({
     <div className='flex flex-col h-full'>
       <div className='flex justify-between items-center py-3 border-b border-divider-burn'>
         <div className='w-[180px] text-center'>
-          <span className='title-xl-semi-bold'>{t('app.newApp.startFromTemplate')}</span>
+          <span className='title-xl-semi-bold text-text-primary'>{t('app.newApp.startFromTemplate')}</span>
         </div>
         <div className='flex-1 max-w-[548px] p-1.5 flex items-center rounded-xl bg-components-panel-bg-blur border border-components-panel-border'>
           <AppTypeSelector value={currentType} onChange={setCurrentType} />

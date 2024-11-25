@@ -50,7 +50,7 @@ focus:bg-state-base-active active:bg-state-base-active hover:bg-state-base-hover
       active ? 'bg-components-icon-bg-blue-solid' : '')}>
       <AppCategoryIcon category={category} />
     </div>
-    <span className='system-sm-semibold
+    <span className='system-sm-semibold text-components-menu-item-text
   group-focus:text-components-menu-item-text-active
   group-active:text-components-menu-item-text-active
   group-hover:text-components-menu-item-text-hover'>{t(`app.newAppFromTemplate.sidebar.${category}`)}</span>
