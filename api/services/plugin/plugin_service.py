@@ -106,6 +106,16 @@ class PluginService:
         return manager.delete_plugin_installation_task(tenant_id, task_id)
 
     @staticmethod
+    def delete_all_install_task_items(
+        tenant_id: str,
+    ) -> bool:
+        """
+        Delete all plugin installation task items
+        """
+        manager = PluginInstallationManager()
+        return manager.delete_all_plugin_installation_task_items(tenant_id)
+
+    @staticmethod
     def delete_install_task_item(tenant_id: str, task_id: str, identifier: str) -> bool:
         """
         Delete a plugin installation task item
