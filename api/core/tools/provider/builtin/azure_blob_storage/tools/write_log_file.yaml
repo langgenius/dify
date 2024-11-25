@@ -1,0 +1,69 @@
+identity:
+  name: write_log_file
+  author: Hiroshi Fujita
+  label:
+    en_US: Write Log File
+    ja_JP: ログに書き出し
+description:
+  human:
+    en_US: Write logs to Azure Blob Storage
+    ja_JP: ログをAzure Blob Storageに書き出し
+  llm: This tool write logs to Azure Blob Storage
+parameters:
+  - name: log_string
+    type: string
+    required: true
+    label:
+      en_US: Log contents
+      ja_JP: ログの内容
+    human_description:
+      en_US: SSelect what you want to write to the log.
+      ja_JP: ログに書き出す内容を選択します。
+    llm_description: Select what you want to write to the log.
+    form: llm
+  - name: container_name
+    type: string
+    required: true
+    label:
+      en_US: Container name
+      ja_JP: コンテナ名
+    human_description:
+      en_US: Name of the container to upload to
+      ja_JP: アップロード先のコンテナの名称
+    llm_description: Name of the container to upload to
+    form: llm
+  - name: resource_name
+    type: string
+    required: true
+    label:
+      en_US: Resource Name
+      ja_JP: リソース名
+    human_description:
+      en_US: The resource name is an identifier to distinguish the log category. A virtual folder with this name will be created just under the container root.
+      ja_JP: リソース名は、ログのカテゴリを区別するための識別名です。コンテナのルートのすぐ下に、この名前の仮想フォルダで作成されます。
+    llm_description: The resource name is an identifier to distinguish the log category. A virtual folder with this name will be created just under the container root.
+    form: llm
+    default: default
+  - name: file_suffix
+    type: string
+    required: false
+    label:
+      en_US: File Suffix
+      ja_JP: ファイルサフィックス
+    human_description:
+      en_US: Blob names are classified into virtual folders by date and time to make them chronologically sortable, and consist of a timestamp and random characters to separate duplicates. You can add any characters to the end of this blob name. The extension .log is automatically added.
+      ja_JP: Blobの名称は時間軸でソート可能にするために、日時の仮想フォルダに分類され、タイムスタンプと重複を裂けるためのランダムな文字で構成されます。このblob名称の末尾には自由な文字を付与できます。拡張子は自動で.logが付与されます。
+    llm_description: Blob names are classified into virtual folders by date and time to make them chronologically sortable, and consist of a timestamp and random characters to separate duplicates. You can add any characters to the end of this blob name. The extension .log is automatically added.
+    form: llm
+  - name: stop_on_error
+    type: boolean
+    required: true
+    label:
+      en_US: Stop on Error
+      ja_JP: エラー時に停止する
+    human_description:
+      en_US: Set whether to stop the flow if the file upload fails.
+      ja_JP: ファイルのアップロードが失敗した場合に、フローを止めるかを設定します。
+    llm_description: Set whether to stop the flow if the file upload fails.
+    form: form
+    default: true
