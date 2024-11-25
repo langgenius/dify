@@ -7,7 +7,13 @@ from core.helper import marketplace
 from core.helper.download import download_with_size_limit
 from core.helper.marketplace import download_plugin_pkg
 from core.plugin.entities.bundle import PluginBundleDependency
-from core.plugin.entities.plugin import PluginDeclaration, PluginEntity, PluginInstallation, PluginInstallationSource
+from core.plugin.entities.plugin import (
+    GenericProviderID,
+    PluginDeclaration,
+    PluginEntity,
+    PluginInstallation,
+    PluginInstallationSource,
+)
 from core.plugin.entities.plugin_daemon import PluginInstallTask, PluginUploadResponse
 from core.plugin.manager.asset import PluginAssetManager
 from core.plugin.manager.debugging import PluginDebuggingManager
@@ -279,3 +285,11 @@ class PluginService:
     def uninstall(tenant_id: str, plugin_installation_id: str) -> bool:
         manager = PluginInstallationManager()
         return manager.uninstall(tenant_id, plugin_installation_id)
+
+    @staticmethod
+    def check_tools_existence(tenant_id: str, provider_ids: Sequence[GenericProviderID]) -> Sequence[bool]:
+        """
+        Check if the tools exist
+        """
+        manager = PluginInstallationManager()
+        return manager.check_tools_existence(tenant_id, provider_ids)

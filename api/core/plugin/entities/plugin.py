@@ -139,6 +139,7 @@ class GenericProviderID:
     organization: str
     plugin_name: str
     provider_name: str
+    is_hardcoded: bool
 
     def to_string(self) -> str:
         return str(self)
@@ -146,7 +147,7 @@ class GenericProviderID:
     def __str__(self) -> str:
         return f"{self.organization}/{self.plugin_name}/{self.provider_name}"
 
-    def __init__(self, value: str) -> None:
+    def __init__(self, value: str, is_hardcoded: bool = False) -> None:
         # check if the value is a valid plugin id with format: $organization/$plugin_name/$provider_name
         if not re.match(r"^[a-z0-9_-]+\/[a-z0-9_-]+\/[a-z0-9_-]+$", value):
             # check if matches [a-z0-9_-]+, if yes, append with langgenius/$value/$value
@@ -156,6 +157,7 @@ class GenericProviderID:
                 raise ValueError("Invalid plugin id")
 
         self.organization, self.plugin_name, self.provider_name = value.split("/")
+        self.is_hardcoded = is_hardcoded
 
     @property
     def plugin_id(self) -> str:

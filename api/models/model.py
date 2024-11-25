@@ -1,10 +1,15 @@
 import json
+import logging
 import re
 import uuid
 from collections.abc import Mapping
 from datetime import datetime
 from enum import Enum
 from typing import TYPE_CHECKING, Optional
+
+from core.plugin.entities.plugin import GenericProviderID
+from core.tools.entities.tool_entities import ToolProviderType
+from services.plugin.plugin_service import PluginService
 
 if TYPE_CHECKING:
     from models.workflow import Workflow
@@ -16,7 +21,7 @@ import sqlalchemy as sa
 from flask import request
 from flask_login import UserMixin
 from sqlalchemy import Float, Index, PrimaryKeyConstraint, func, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, Session, mapped_column
 
 from configs import dify_config
 from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod, FileType
@@ -29,6 +34,8 @@ from models.enums import CreatedByRole
 
 from .account import Account, Tenant
 from .types import StringUUID
+
+logger = logging.getLogger(__name__)
 
 
 class DifySetup(Base):
@@ -162,47 +169,114 @@ class App(Base):
 
     @property
     def deleted_tools(self) -> list:
+        from core.tools.tool_manager import ToolManager
+
         # get agent mode tools
         app_model_config = self.app_model_config
         if not app_model_config:
             return []
+
         if not app_model_config.agent_mode:
             return []
+
         agent_mode = app_model_config.agent_mode_dict
         tools = agent_mode.get("tools", [])
 
-        provider_ids = []
+        api_provider_ids: list[str] = []
+        builtin_provider_ids: list[GenericProviderID] = []
 
         for tool in tools:
             keys = list(tool.keys())
             if len(keys) >= 4:
                 provider_type = tool.get("provider_type", "")
                 provider_id = tool.get("provider_id", "")
-                if provider_type == "api":
-                    # check if provider id is a uuid string, if not, skip
+                if provider_type == ToolProviderType.API.value:
                     try:
                         uuid.UUID(provider_id)
                     except Exception:
                         continue
-                    provider_ids.append(provider_id)
+                    api_provider_ids.append(provider_id)
+                if provider_type == ToolProviderType.BUILT_IN.value:
+                    try:
+                        # check if it's hardcoded
+                        try:
+                            ToolManager.get_hardcoded_provider(provider_id)
+                            is_hardcoded = True
+                        except Exception:
+                            is_hardcoded = False
 
-        if not provider_ids:
+                        provider_id = GenericProviderID(provider_id, is_hardcoded)
+                    except Exception:
+                        logger.exception(f"Invalid builtin provider id: {provider_id}")
+                        continue
+
+                    builtin_provider_ids.append(provider_id)
+
+        if not api_provider_ids and not builtin_provider_ids:
             return []
 
-        api_providers = db.session.execute(
-            text("SELECT id FROM tool_api_providers WHERE id IN :provider_ids"), {"provider_ids": tuple(provider_ids)}
-        ).fetchall()
+        with Session(db.engine) as session:
+            if api_provider_ids:
+                existing_api_providers = [
+                    api_provider.id
+                    for api_provider in session.execute(
+                        text("SELECT id FROM tool_api_providers WHERE id IN :provider_ids"),
+                        {"provider_ids": tuple(api_provider_ids)},
+                    ).fetchall()
+                ]
+            else:
+                existing_api_providers = []
+
+        if builtin_provider_ids:
+            # get the non-hardcoded builtin providers
+            non_hardcoded_builtin_providers = [
+                provider_id for provider_id in builtin_provider_ids if not provider_id.is_hardcoded
+            ]
+            if non_hardcoded_builtin_providers:
+                existence = list(PluginService.check_tools_existence(self.tenant_id, non_hardcoded_builtin_providers))
+            else:
+                existence = []
+            # add the hardcoded builtin providers
+            existence.extend([True] * (len(builtin_provider_ids) - len(non_hardcoded_builtin_providers)))
+            builtin_provider_ids = non_hardcoded_builtin_providers + [
+                provider_id for provider_id in builtin_provider_ids if provider_id.is_hardcoded
+            ]
+        else:
+            existence = []
+
+        existing_builtin_providers = {
+            provider_id.provider_name: existence[i] for i, provider_id in enumerate(builtin_provider_ids)
+        }
 
         deleted_tools = []
-        current_api_provider_ids = [str(api_provider.id) for api_provider in api_providers]
 
         for tool in tools:
             keys = list(tool.keys())
             if len(keys) >= 4:
                 provider_type = tool.get("provider_type", "")
                 provider_id = tool.get("provider_id", "")
-                if provider_type == "api" and provider_id not in current_api_provider_ids:
-                    deleted_tools.append(tool["tool_name"])
+
+                if provider_type == ToolProviderType.API.value:
+                    if provider_id not in existing_api_providers:
+                        deleted_tools.append(
+                            {
+                                "type": ToolProviderType.API.value,
+                                "tool_name": tool["tool_name"],
+                                "provider_id": provider_id,
+                            }
+                        )
+
+                if provider_type == ToolProviderType.BUILT_IN.value:
+                    generic_provider_id = GenericProviderID(provider_id)
+
+                    if not existing_builtin_providers[generic_provider_id.provider_name]:
+                        deleted_tools.append(
+                            {
+                                "type": ToolProviderType.BUILT_IN.value,
+                                "tool_name": tool["tool_name"],
+                                "provider_id": provider_id,  # use the original one
+                            }
+                        )
 
         return deleted_tools
 
