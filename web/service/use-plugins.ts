@@ -110,6 +110,7 @@ export const useUploadGitHub = (payload: {
     queryFn: () => post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
       body: payload,
     }),
+    retry: 0,
   })
 }
 

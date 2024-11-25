@@ -1,6 +1,7 @@
 import type { Fetcher } from 'swr'
 import { get, getMarketplace, post, upload } from './base'
 import type {
+  Dependency,
   InstallPackageResponse,
   Permissions,
   PluginDeclaration,
@@ -64,6 +65,14 @@ export const fetchManifest = async (uniqueIdentifier: string) => {
 
 export const fetchManifestFromMarketPlace = async (uniqueIdentifier: string) => {
   return getMarketplace<{ data: { plugin: PluginManifestInMarket, version: { version: string } } }>(`/plugins/identifier?unique_identifier=${uniqueIdentifier}`)
+}
+
+export const fetchBundleInfoFromMarketPlace = async ({
+  org,
+  name,
+  version,
+}: Record<string, string>) => {
+  return getMarketplace<{ data: { version: { dependencies: Dependency[] } } }>(`/bundles/${org}/${name}/${version}`)
 }
 
 export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse, { url: string; }> = ({ url }) => {

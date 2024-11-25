@@ -28,13 +28,15 @@ import {
   useRouter,
   useSearchParams,
 } from 'next/navigation'
+import type { Dependency } from '../types'
 import type { PluginDeclaration, PluginManifestInMarket } from '../types'
 import { sleep } from '@/utils'
-import { fetchManifestFromMarketPlace } from '@/service/plugins'
+import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
 import { marketplaceApiPrefix } from '@/config'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 
 const PACKAGE_IDS_KEY = 'package-ids'
+const BUNDLE_INFO_KEY = 'bundle-info'
 
 export type PluginPageProps = {
   plugins: React.ReactNode
@@ -58,6 +60,18 @@ const PluginPage = ({
       return ''
     }
   }, [searchParams])
+
+  const [dependencies, setDependencies] = useState<Dependency[]>([])
+  const bundleInfo = useMemo(() => {
+    const info = searchParams.get(BUNDLE_INFO_KEY)
+    try {
+      return info ? JSON.parse(info) : undefined
+    }
+    catch (e) {
+      return undefined
+    }
+  }, [searchParams])
+
   const [isShowInstallFromMarketplace, {
     setTrue: showInstallFromMarketplace,
     setFalse: doHideInstallFromMarketplace,
@@ -67,6 +81,7 @@ const PluginPage = ({
     doHideInstallFromMarketplace()
     const url = new URL(window.location.href)
     url.searchParams.delete(PACKAGE_IDS_KEY)
+    url.searchParams.delete(BUNDLE_INFO_KEY)
     replace(url.toString())
   }
   const [manifest, setManifest] = useState<PluginDeclaration | PluginManifestInMarket | null>(null)
@@ -83,10 +98,16 @@ const PluginPage = ({
           icon: `${marketplaceApiPrefix}/plugins/${plugin.org}/${plugin.name}/icon`,
         })
         showInstallFromMarketplace()
+        return
+      }
+      if (bundleInfo) {
+        const { data } = await fetchBundleInfoFromMarketPlace(bundleInfo)
+        setDependencies(data.version.dependencies)
+        showInstallFromMarketplace()
       }
     })()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [packageId])
+  }, [packageId, bundleInfo])
 
   const {
     canManagement,
@@ -211,6 +232,8 @@ const PluginPage = ({
           <InstallFromMarketplace
             manifest={manifest! as PluginManifestInMarket}
             uniqueIdentifier={packageId}
+            isBundle={!!bundleInfo}
+            dependencies={dependencies}
             onClose={hideInstallFromMarketplace}
             onSuccess={hideInstallFromMarketplace}
           />

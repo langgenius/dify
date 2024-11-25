@@ -94,7 +94,7 @@ const Installed: FC<Props> = ({
           </>
         )
     }</>)
-  }, [payload.latest_version, supportCheckInstalled])
+  }, [payload.latest_version, payload.version, supportCheckInstalled])
 
   return (
     <>

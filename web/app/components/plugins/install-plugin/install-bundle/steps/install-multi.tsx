@@ -22,8 +22,10 @@ const InstallByDSLList: FC<Props> = ({
   onSelect,
   onLoadedAllPlugin,
 }) => {
-  const { isLoading: isFetchingMarketplaceDataFromDSL, data: marketplaceFromDSLRes } = useFetchPluginsInMarketPlaceByIds(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value.plugin_unique_identifier!))
-  const { isLoading: isFetchingMarketplaceDataFromLocal, data: marketplaceResFromLocalRes } = useFetchPluginsInMarketPlaceByInfo(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value!))
+  // DSL has id, to get plugin info to show more info
+  const { isLoading: isFetchingMarketplaceDataById, data: infoGetById, error: infoByIdError } = useFetchPluginsInMarketPlaceByIds(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value.plugin_unique_identifier!))
+  // has meta(org,name,version), to get id
+  const { isLoading: isFetchingDataByMeta, data: infoByMeta, error: infoByMetaError } = useFetchPluginsInMarketPlaceByInfo(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value!))
   const [plugins, doSetPlugins] = useState<(Plugin | undefined)[]>((() => {
     const hasLocalPackage = allPlugins.some(d => d.type === 'package')
     if (!hasLocalPackage)
@@ -75,8 +77,8 @@ const InstallByDSLList: FC<Props> = ({
   }, [allPlugins])
 
   useEffect(() => {
-    if (!isFetchingMarketplaceDataFromDSL && marketplaceFromDSLRes?.data.plugins) {
-      const payloads = marketplaceFromDSLRes?.data.plugins
+    if (!isFetchingMarketplaceDataById && infoGetById?.data.plugins) {
+      const payloads = infoGetById?.data.plugins
       const failedIndex: number[] = []
       const nextPlugins = produce(pluginsRef.current, (draft) => {
         marketPlaceInDSLIndex.forEach((index, i) => {
@@ -92,11 +94,11 @@ const InstallByDSLList: FC<Props> = ({
         setErrorIndexes([...errorIndexes, ...failedIndex])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFetchingMarketplaceDataFromDSL])
+  }, [isFetchingMarketplaceDataById])
 
   useEffect(() => {
-    if (!isFetchingMarketplaceDataFromLocal && marketplaceResFromLocalRes?.data.list) {
-      const payloads = marketplaceResFromLocalRes?.data.list
+    if (!isFetchingDataByMeta && infoByMeta?.data.list) {
+      const payloads = infoByMeta?.data.list
       const failedIndex: number[] = []
       const nextPlugins = produce(pluginsRef.current, (draft) => {
         marketPlaceInDSLIndex.forEach((index, i) => {
@@ -117,7 +119,15 @@ const InstallByDSLList: FC<Props> = ({
         setErrorIndexes([...errorIndexes, ...failedIndex])
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isFetchingMarketplaceDataFromLocal])
+  }, [isFetchingDataByMeta])
+
+  useEffect(() => {
+    // get info all failed
+    if (infoByMetaError || infoByIdError)
+      setErrorIndexes([...errorIndexes, ...marketPlaceInDSLIndex])
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [infoByMetaError, infoByIdError])
 
   const isLoadedAllData = (plugins.filter(p => !!p).length + errorIndexes.length) === allPlugins.length
   useEffect(() => {
