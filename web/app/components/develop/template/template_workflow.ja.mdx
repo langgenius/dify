@@ -54,7 +54,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用されます。
         アプリケーション内で開発者によって一意に定義される必要があります。
       - `files` (array[object]) オプション
-        ファイルリスト、テキストの理解と質問への回答を組み合わせたファイルの入力に適しており、モデルがビジョン機能をサポートしている場合にのみ利用可能です。
+        ファイルリストは、テキスト理解と質問への回答を組み合わせたファイルの入力に適しています。モデルがファイルの解析と理解機能をサポートしている場合にのみ使用できます。
           - `type` (string) サポートされているタイプ: 
             - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
             - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
@@ -189,6 +189,19 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ```
 
     </CodeGroup>
+    <CodeGroup title="ファイル変数の例">
+      ```json {{ title: 'ファイル変数の例' }}
+      {
+        "inputs": {
+          "{variable_name}": {
+            "transfer_method": "local_file",
+            "upload_file_id": "{upload_file_id}",
+            "type": "{document_type}"
+          }
+        }
+      }
+      ```
+    </CodeGroup>
     ### ブロッキングモード
     <CodeGroup title="応答">
     ```json {{ title: '応答' }}
@@ -223,7 +236,88 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
     ```
     </CodeGroup>
+    <CodeGroup title="ファイルアップロードのサンプルコード">
+      ```json {{ title: 'ファイルアップロードのサンプルコード' }}
+      {
+        import requests
+        import json
 
+        def upload_file(file_path, user):
+            upload_url = "https://api.dify.ai/v1/files/upload"
+            headers = {
+                "Authorization": "Bearer app-xxxxxxxx",
+            }
+            
+            try:
+                print("ファイルをアップロードしています...")
+                with open(file_path, 'rb') as file:
+                    files = {
+                        'file': (file_path, file, 'text/plain')  # ファイルが適切な MIME タイプでアップロードされていることを確認してください
+                    }
+                    data = {
+                        "user": user,
+                        "type": "TXT"  # ファイルタイプをTXTに設定します
+                    }
+                    
+                    response = requests.post(upload_url, headers=headers, files=files, data=data)
+                    if response.status_code == 201:  # 201 は作成が成功したことを意味します
+                        print("ファイルが正常にアップロードされました")
+                        return response.json().get("id")  # アップロードされたファイルIDを取得する
+                    else:
+                        print(f"ファイルのアップロードに失敗しました。ステータス コード: {response.status_code}")
+                        return None
+            except Exception as e:
+                print(f"エラーが発生しました: {str(e)}")
+                return None
+
+        def run_workflow(file_id, user, response_mode="blocking"):
+            workflow_url = "https://api.dify.ai/v1/workflows/run"
+            headers = {
+                "Authorization": "Bearer app-xxxxxxxxx",
+                "Content-Type": "application/json"
+            }
+
+            data = {
+                "inputs": {
+                    "orig_mail": {
+                        "transfer_method": "local_file",
+                        "upload_file_id": file_id,
+                        "type": "document"
+                    }
+                },
+                "response_mode": response_mode,
+                "user": user
+            }
+
+            try:
+                print("ワークフローを実行...")
+                response = requests.post(workflow_url, headers=headers, json=data)
+                if response.status_code == 200:
+                    print("ワークフローが正常に実行されました")
+                    return response.json()
+                else:
+                    print(f"ワークフローの実行がステータス コードで失敗しました: {response.status_code}")
+                    return {"status": "error", "message": f"Failed to execute workflow, status code: {response.status_code}"}
+            except Exception as e:
+                print(f"エラーが発生しました: {str(e)}")
+                return {"status": "error", "message": str(e)}
+
+        # 使用例
+        file_path = "{your_file_path}"
+        user = "difyuser"
+
+        # ファイルをアップロードする
+        file_id = upload_file(file_path, user)
+        if file_id:
+            # ファイルは正常にアップロードされました。ワークフローの実行を続行します
+            result = run_workflow(file_id, user)
+            print(result)
+        else:
+            print("ファイルのアップロードに失敗し、ワークフローを実行できません")
+
+      }
+      ```
+    </CodeGroup>
   </Col>
 </Row>
 
