@@ -158,7 +158,7 @@ export default function AccountPage() {
           </div>
         </div>
       </div>
-      {
+      {/* {
         systemFeatures.enable_email_password_login && (
           <div className='mb-8 flex justify-between gap-2'>
             <div>
@@ -168,7 +168,7 @@ export default function AccountPage() {
             <Button onClick={() => setEditPasswordModalVisible(true)}>{userProfile.is_password_set ? t('common.account.resetPassword') : t('common.account.setPassword')}</Button>
           </div>
         )
-      }
+      } */}
       <div className='mb-6 border-[0.5px] border-gray-100' />
       <div className='mb-8'>
         <div className={titleClassName}>{t('common.account.langGeniusAccount')}</div>

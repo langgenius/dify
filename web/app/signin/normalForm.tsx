@@ -140,13 +140,14 @@ const NormalForm = () => {
           </div>}
         <div className="bg-white">
           <div className="flex flex-col gap-3 mt-6">
-            {systemFeatures.enable_social_oauth_login && <SocialAuth />}
+            {/* {systemFeatures.enable_social_oauth_login && <SocialAuth />} */}
+            <SocialAuth />
             {systemFeatures.sso_enforced_for_signin && <div className='w-full'>
               <SSOAuth protocol={systemFeatures.sso_enforced_for_signin_protocol} />
             </div>}
           </div>
 
-          {showORLine && <div className="relative mt-6">
+          {/* {showORLine && <div className="relative mt-6">
             <div className="absolute inset-0 flex items-center" aria-hidden="true">
               <div className='bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px w-full'></div>
             </div>
@@ -169,7 +170,7 @@ const NormalForm = () => {
                 </div>}
               </>}
             </>
-          }
+          } */}
           {allMethodsAreDisabled && <>
             <div className="p-4 rounded-lg bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2">
               <div className='flex items-center justify-center w-10 h-10 rounded-xl bg-components-card-bg shadow shadows-shadow-lg mb-2'>
@@ -199,14 +200,14 @@ const NormalForm = () => {
               href='https://dify.ai/privacy'
             >{t('login.pp')}</Link>
           </div>
-          {IS_CE_EDITION && <div className="w-hull block mt-2 system-xs-regular text-text-tertiary">
+          {/* {IS_CE_EDITION && <div className="w-hull block mt-2 system-xs-regular text-text-tertiary">
             {t('login.goToInit')}
             &nbsp;
             <Link
               className='system-xs-medium text-text-secondary hover:underline'
               href='/install'
             >{t('login.setAdminAccount')}</Link>
-          </div>}
+          </div>} */}
 
         </div>
       </div>
