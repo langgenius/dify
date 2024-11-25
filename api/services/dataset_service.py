@@ -742,7 +742,6 @@ class DocumentService:
                     dataset.retrieval_model = knowledge_config.retrieval_model.model_dump() or default_retrieval_model
 
         documents = []
-        batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
         if knowledge_config.original_document_id:
             document = DocumentService.update_document_with_dataset_id(dataset, knowledge_config, account)
             documents.append(document)
@@ -1099,14 +1098,14 @@ class DocumentService:
 
         if features.billing.enabled:
             count = 0
-            if knowledge_config.data_source.data_source_type == "upload_file":
+            if knowledge_config.data_source.info_list.data_source_type == "upload_file":
                 upload_file_list = knowledge_config.data_source.file_info_list.file_ids
                 count = len(upload_file_list)
-            elif knowledge_config.data_source.data_source_type == "notion_import":
+            elif knowledge_config.data_source.info_list.data_source_type == "notion_import":
                 notion_info_list = knowledge_config.data_source.notion_info_list
                 for notion_info in notion_info_list:
                     count = count + len(notion_info["pages"])
-            elif knowledge_config.data_source.data_source_type == "website_crawl":
+            elif knowledge_config.data_source.info_list.data_source_type == "website_crawl":
                 website_info = knowledge_config.data_source.website_info_list
                 count = len(website_info.urls)
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
@@ -1137,7 +1136,7 @@ class DocumentService:
         dataset = Dataset(
             tenant_id=tenant_id,
             name="",
-            data_source_type=knowledge_config.data_source.data_source_type,
+            data_source_type=knowledge_config.data_source.info_list.data_source_type,
             indexing_technique=knowledge_config.indexing_technique,
             created_by=account.id,
             embedding_model=knowledge_config.embedding_model,
@@ -1161,27 +1160,20 @@ class DocumentService:
 
     @classmethod
     def document_create_args_validate(cls, knowledge_config: KnowledgeConfig):
-        if knowledge_config.data_source.data_source_type == "upload_file":
-            DocumentService.data_source_args_validate(knowledge_config.data_source)
-        if knowledge_config.process_rule.mode == "custom":
-            DocumentService.process_rule_args_validate(knowledge_config.process_rule)
+        if not knowledge_config.data_source and not knowledge_config.process_rule:
+            raise ValueError("Data source or Process rule is required")
         else:
-            if ("data_source" not in knowledge_config.data_source or not knowledge_config.data_source) and (
-                "process_rule" not in knowledge_config.process_rule or not knowledge_config.process_rule
-            ):
-                raise ValueError("Data source or Process rule is required")
-            else:
-                if knowledge_config.data_source:
-                    DocumentService.data_source_args_validate(knowledge_config.data_source)
-                if knowledge_config.process_rule:
-                    DocumentService.process_rule_args_validate(knowledge_config.process_rule)
+            if knowledge_config.data_source:
+                DocumentService.data_source_args_validate(knowledge_config)
+            if knowledge_config.process_rule:
+                DocumentService.process_rule_args_validate(knowledge_config)
 
     @classmethod
     def data_source_args_validate(cls, knowledge_config: KnowledgeConfig):
         if not knowledge_config.data_source:
             raise ValueError("Data source is required")
 
-        if knowledge_config.data_source.data_source_type not in Document.DATA_SOURCES:
+        if knowledge_config.data_source.info_list.data_source_type not in Document.DATA_SOURCES:
             raise ValueError("Data source type is invalid")
 
         if not knowledge_config.data_source.info_list:

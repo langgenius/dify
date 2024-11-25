@@ -73,8 +73,8 @@ class ProcessRule(BaseModel):
 
 
 class RerankingModel(BaseModel):
-    reranking_provider_name: str
-    reranking_model_name: str
+    reranking_provider_name: Optional[str] = None
+    reranking_model_name: Optional[str] = None
 
 
 class RetrievalModel(BaseModel):
@@ -92,7 +92,7 @@ class KnowledgeConfig(BaseModel):
     indexing_technique: Literal["high_quality", "economy"]
     data_source: DataSource
     process_rule: Optional[ProcessRule] = None
-    retrieval_model: RetrievalModel
+    retrieval_model: Optional[RetrievalModel] = None
     doc_form: str = "text_model"
     doc_language: str = "English"
     embedding_model: Optional[str] = None

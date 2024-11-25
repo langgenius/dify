@@ -257,7 +257,6 @@ class DatasetDocumentListApi(Resource):
         parser.add_argument(
             "doc_language", type=str, default="English", required=False, nullable=False, location="json"
         )
-        parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
         args = parser.parse_args()
         knowledge_config = KnowledgeConfig(**args)
 
