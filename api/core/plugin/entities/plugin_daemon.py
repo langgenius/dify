@@ -1,3 +1,4 @@
+import enum
 from datetime import datetime
 from enum import Enum
 from typing import Generic, Optional, TypeVar
@@ -119,7 +120,7 @@ class PluginDaemonInnerError(Exception):
         self.message = message
 
 
-class PluginInstallTaskStatus(str, Enum):
+class PluginInstallTaskStatus(enum.StrEnum):
     Pending = "pending"
     Running = "running"
     Success = "success"

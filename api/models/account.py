@@ -142,7 +142,9 @@ class TenantAccountRole(enum.StrEnum):
 
     @staticmethod
     def is_valid_role(role: str) -> bool:
-        return role and role in {
+        if not role:
+            return False
+        return role in {
             TenantAccountRole.OWNER,
             TenantAccountRole.ADMIN,
             TenantAccountRole.EDITOR,
@@ -152,15 +154,21 @@ class TenantAccountRole(enum.StrEnum):
 
     @staticmethod
     def is_privileged_role(role: str) -> bool:
-        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
+        if not role:
+            return False
+        return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
 
     @staticmethod
     def is_admin_role(role: str) -> bool:
-        return role and role == TenantAccountRole.ADMIN
+        if not role:
+            return False
+        return role == TenantAccountRole.ADMIN
 
     @staticmethod
     def is_non_owner_role(role: str) -> bool:
-        return role and role in {
+        if not role:
+            return False
+        return role in {
             TenantAccountRole.ADMIN,
             TenantAccountRole.EDITOR,
             TenantAccountRole.NORMAL,
@@ -169,11 +177,15 @@ class TenantAccountRole(enum.StrEnum):
 
     @staticmethod
     def is_editing_role(role: str) -> bool:
-        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
+        if not role:
+            return False
+        return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
 
     @staticmethod
     def is_dataset_edit_role(role: str) -> bool:
-        return role and role in {
+        if not role:
+            return False
+        return role in {
             TenantAccountRole.OWNER,
             TenantAccountRole.ADMIN,
             TenantAccountRole.EDITOR,
@@ -273,12 +285,12 @@ class InvitationCode(db.Model):
 
 
 class TenantPluginPermission(Base):
-    class InstallPermission(str, enum.Enum):
+    class InstallPermission(enum.StrEnum):
         EVERYONE = "everyone"
         ADMINS = "admins"
         NOBODY = "noone"
 
-    class DebugPermission(str, enum.Enum):
+    class DebugPermission(enum.StrEnum):
         EVERYONE = "everyone"
         ADMINS = "admins"
         NOBODY = "noone"

@@ -1,4 +1,5 @@
 import base64
+import enum
 from enum import Enum
 from typing import Any, Optional, Union
 
@@ -33,7 +34,7 @@ class ToolLabelEnum(Enum):
     OTHER = "other"
 
 
-class ToolProviderType(str, Enum):
+class ToolProviderType(enum.StrEnum):
     """
     Enum class for tool provider
     """
@@ -205,7 +206,7 @@ class ToolParameterOption(BaseModel):
 
 
 class ToolParameter(BaseModel):
-    class ToolParameterType(str, Enum):
+    class ToolParameterType(enum.StrEnum):
         STRING = CommonParameterType.STRING.value
         NUMBER = CommonParameterType.NUMBER.value
         BOOLEAN = CommonParameterType.BOOLEAN.value

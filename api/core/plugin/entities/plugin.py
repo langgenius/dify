@@ -1,7 +1,7 @@
 import datetime
+import enum
 import re
 from collections.abc import Mapping
-from enum import Enum
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, model_validator
@@ -13,7 +13,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderEntity
 
 
-class PluginInstallationSource(str, Enum):
+class PluginInstallationSource(enum.StrEnum):
     Github = "github"
     Marketplace = "marketplace"
     Package = "package"
@@ -55,7 +55,7 @@ class PluginResourceRequirements(BaseModel):
     permission: Optional[Permission]
 
 
-class PluginCategory(str, Enum):
+class PluginCategory(enum.StrEnum):
     Tool = "tool"
     Model = "model"
     Extension = "extension"
@@ -163,7 +163,7 @@ class GenericProviderID:
 
 
 class PluginDependency(BaseModel):
-    class Type(str, Enum):
+    class Type(enum.StrEnum):
         Github = PluginInstallationSource.Github.value
         Marketplace = PluginInstallationSource.Marketplace.value
         Package = PluginInstallationSource.Package.value
