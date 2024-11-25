@@ -123,6 +123,7 @@ const translation = {
     agent: 'Agent',
     workflow: 'Workflow',
     completion: 'Completion',
+    advanced: 'Chatflow',
   },
   tracing: {
     title: 'Tracing app performance',

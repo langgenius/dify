@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 
 import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
-import { RiArrowRightLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
+import { RiArrowRightLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 import Link from 'next/link'
 import { useDebounceFn, useKeyPress } from 'ahooks'
 import AppIconPicker from '../../base/app-icon-picker'
@@ -22,7 +22,7 @@ import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { Agent, ChatFlow, Chatbot, TextGenerator, Workflow } from '@/app/components/base/icons/src/public/app'
+import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import Tooltip from '@/app/components/base/tooltip'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
@@ -113,7 +113,7 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
                   title={t('app.types.chatbot')}
                   description={t('app.newApp.chatbotShortDescription')}
                   tooltipContent={t('app.newApp.chatbotDescription')}
-                  icon={<Chatbot className='w-6 h-6' />}
+                  icon={<ChatBot className='w-6 h-6' />}
                   onClick={() => {
                     setAppMode('chat')
                   }} />
@@ -122,7 +122,7 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
                   title={t('app.types.agent')}
                   description={t('app.newApp.agentShortDescription')}
                   tooltipContent={t('app.newApp.agentDescription')}
-                  icon={<Agent className='w-6 h-6' />}
+                  icon={<Logic className='w-6 h-6' />}
                   onClick={() => {
                     setAppMode('agent-chat')
                   }} />
@@ -131,7 +131,7 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
                   title={t('app.newApp.completeApp')}
                   description={t('app.newApp.completionShortDescription')}
                   tooltipContent={t('app.newApp.completionDescription')}
-                  icon={<TextGenerator className='w-6 h-6' />}
+                  icon={<ListSparkle className='w-6 h-6' />}
                   onClick={() => {
                     setAppMode('completion')
                   }} />
@@ -148,7 +148,7 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
                   title={t('app.types.advanced')}
                   description={t('app.newApp.advancedShortDescription')}
                   tooltipContent={t('app.newApp.advancedDescription')}
-                  icon={<ChatFlow className='w-6 h-6' />}
+                  icon={<BubbleTextMod className='w-6 h-6' />}
                   onClick={() => {
                     setAppMode('advanced-chat')
                   }} />
@@ -158,7 +158,7 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
                   title={t('app.types.workflow')}
                   description={t('app.newApp.workflowShortDescription')}
                   tooltipContent={t('app.newApp.workflowDescription')}
-                  icon={<Workflow className='w-6 h-6' />}
+                  icon={<RiExchange2Fill className='w-6 h-6' />}
                   onClick={() => {
                     setAppMode('workflow')
                   }} />
@@ -285,9 +285,8 @@ function AppTypeCard({ icon, title, beta = false, description, tooltipContent, a
   >
     <div
       className={cn(`w-[191px] h-[84px] p-3 border-[0.5px] relative box-content
-        rounded-xl border-components-option-card-option-border 
-        bg-components-panel-on-panel-item-bg shadow-xs cursor-pointer`,
-      active ? 'outline outline-[1.5px] outline-components-option-card-option-selected-border' : '')}
+      rounded-xl border-components-option-card-option-border
+      bg-components-panel-on-panel-item-bg shadow-xs cursor-pointer`, active ? 'outline outline-[1.5px] outline-components-option-card-option-selected-border' : '')}
       onClick={onClick}
     >
       {beta && <div className='px-[5px] py-[3px]

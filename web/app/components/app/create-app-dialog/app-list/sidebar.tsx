@@ -25,7 +25,7 @@ export default function Sidebar({ current, onClick }: SidebarProps) {
       <CategoryItem category={AppCategories.RECOMMENDED} active={current === AppCategories.RECOMMENDED} onClick={onClick} />
     </ul>
     <div className='px-3 pt-2 pb-1 system-xs-medium-uppercase text-text-tertiary'>{t('app.newAppFromTemplate.byCategories')}</div>
-    <ul className='flex flex-col gap-1'>
+    <ul className='flex flex-col gap-0.5'>
       <CategoryItem category={AppCategories.ASSISTANT} active={current === AppCategories.ASSISTANT} onClick={onClick} />
       <CategoryItem category={AppCategories.AGENT} active={current === AppCategories.AGENT} onClick={onClick} />
       <CategoryItem category={AppCategories.HR} active={current === AppCategories.HR} onClick={onClick} />
