@@ -121,6 +121,10 @@ export function checkIsAnimatedImage(file: Blob) {
     const fileReader = new FileReader()
 
     fileReader.onload = function (e) {
+      if (!e.target || !(e.target.result instanceof ArrayBuffer)) {
+        reject(new Error('File reading error'))
+        return
+      }
       const arr = new Uint8Array(e.target.result)
 
       // Check file extension
