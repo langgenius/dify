@@ -162,10 +162,12 @@ const translation = {
     },
   },
   task: {
-    installing: 'Installing {{installingLength}}/{{totalLength}} plugins...',
-    installingWithError: 'Installing {{installingLength}} of {{totalLength}} plugins, {{errorLength}} failed, click to view',
+    installing: 'Installing {{installingLength}} plugins, 0 done.',
+    installingWithSuccess: 'Installing {{installingLength}} plugins, {{successLength}} success.',
+    installingWithError: 'Installing {{installingLength}} plugins, {{successLength}} success, {{errorLength}} failed',
     installError: '{{errorLength}} plugins failed to install, click to view',
     installedError: '{{errorLength}} plugins failed to install',
+    clearAll: 'Clear all',
   },
 }
 

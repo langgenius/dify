@@ -162,10 +162,12 @@ const translation = {
     },
   },
   task: {
-    installing: '{{installingLength}}/{{totalLength}} 插件安装中...',
-    installingWithError: '{{installingLength}}/{{totalLength}} 插件安装中，{{errorLength}} 安装失败。点击查看',
+    installing: '{{installingLength}} 个插件安装中，0 已完成',
+    installingWithSuccess: '{{installingLength}} 个插件安装中，{{successLength}} 安装成功',
+    installingWithError: '{{installingLength}} 个插件安装中，{{successLength}} 安装成功，{{errorLength}} 安装失败',
     installError: '{{errorLength}} 个插件安装失败，点击查看',
     installedError: '{{errorLength}} 个插件安装失败',
+    clearAll: '清除所有',
   },
 }
 

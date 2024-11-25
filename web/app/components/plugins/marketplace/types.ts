@@ -36,6 +36,7 @@ export type PluginsSort = {
 
 export type CollectionsAndPluginsSearchParams = {
   category?: string
+  condition?: string
 }
 
 export type SearchParams = {
