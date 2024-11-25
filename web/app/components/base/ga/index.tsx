@@ -50,7 +50,7 @@ gtag('config', '${gaIdMaps[gaType]}');
       {/* Cookie banner */}
       <Script
         id="cookieyes"
-        src='https://cdn-cookieyes.com/client_data/24a891b692e67c92306e9f09/script.js'
+        src='https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js'
         nonce={nonce!}
       ></Script>
     </>
