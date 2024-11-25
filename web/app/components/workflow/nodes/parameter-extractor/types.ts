@@ -1,4 +1,4 @@
-import type { CommonNodeType, Memory, ModelConfig, ValueSelector } from '@/app/components/workflow/types'
+import type { CommonNodeType, Memory, ModelConfig, ValueSelector, VisionSetting } from '@/app/components/workflow/types'
 
 export enum ParamType {
   string = 'string',
@@ -30,4 +30,8 @@ export type ParameterExtractorNodeType = CommonNodeType & {
   parameters: Param[]
   instruction: string
   memory?: Memory
+  vision: {
+    enabled: boolean
+    configs?: VisionSetting
+  }
 }

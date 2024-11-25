@@ -690,6 +690,11 @@ Chat applications support session persistence, allowing previous chat history to
       <Property name='pinned' type='bool' key='pinned'>
         Return only pinned conversations as `true`, only non-pinned as `false`
       </Property>
+      <Property name='sort_by' type='string' key='sort_by'>
+        Sorting Field (Optional), Default: -updated_at (sorted in descending order by update time)
+        - Available Values: created_at, -created_at, updated_at, -updated_at
+        - The symbol before the field represents the order or reverse, "-" represents reverse order.
+      </Property>
     </Properties>
 
     ### Response
@@ -803,6 +808,10 @@ Chat applications support session persistence, allowing previous chat history to
 <Row>
   <Col>
     ### Request Body
+    Rename the session, the session name is used for display on clients that support multiple sessions.
+
+    ### Path
+    - `conversation_id` (string) Conversation ID
 
     <Properties>
       <Property name='name' type='string' key='name'>
@@ -825,10 +834,10 @@ Chat applications support session persistence, allowing previous chat history to
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \
+    curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
     --header 'Content-Type: application/json' \
     --header 'Authorization: Bearer {api_key}' \
     --data-raw '{
@@ -1007,7 +1016,10 @@ Chat applications support session persistence, allowing previous chat history to
         - `number_limits` (int) Image number limit, default is 3
         - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
     - `system_parameters` (object) System parameters
-      - `image_file_size_limit` (string) Image file upload size limit (MB)
+      - `file_size_limit` (int) Document upload size limit (MB)
+      - `image_file_size_limit` (int) Image file upload size limit (MB)
+      - `audio_file_size_limit` (int) Audio file upload size limit (MB)
+      - `video_file_size_limit` (int) Video file upload size limit (MB)
 
   </Col>
   <Col sticky>
@@ -1059,7 +1071,10 @@ Chat applications support session persistence, allowing previous chat history to
           }
       },
       "system_parameters": {
-          "image_file_size_limit": "10"
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
       }
     }
     ```

@@ -1,8 +1,10 @@
 from flask import Flask
 
+from configs import dify_config
+
 
 def init_app(app: Flask):
-    if app.config.get("API_COMPRESSION_ENABLED"):
+    if dify_config.API_COMPRESSION_ENABLED:
         from flask_compress import Compress
 
         app.config["COMPRESS_MIMETYPES"] = [

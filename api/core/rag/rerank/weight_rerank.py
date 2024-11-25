@@ -4,15 +4,16 @@ from typing import Optional
 
 import numpy as np
 
-from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
+from core.rag.embedding.cached_embedding import CacheEmbedding
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import VectorSetting, Weights
+from core.rag.rerank.rerank_base import BaseRerankRunner
 
 
-class WeightRerankRunner:
+class WeightRerankRunner(BaseRerankRunner):
     def __init__(self, tenant_id: str, weights: Weights) -> None:
         self.tenant_id = tenant_id
         self.weights = weights

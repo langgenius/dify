@@ -14,6 +14,7 @@ export enum FormTypeEnum {
   radio = 'radio',
   boolean = 'boolean',
   files = 'files',
+  file = 'file',
 }
 
 export type FormOption = {

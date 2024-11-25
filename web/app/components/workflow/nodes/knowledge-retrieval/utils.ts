@@ -1,4 +1,7 @@
-import { uniq } from 'lodash-es'
+import {
+  uniq,
+  xorBy,
+} from 'lodash-es'
 import type { MultipleRetrievalConfig } from './types'
 import type {
   DataSet,
@@ -15,7 +18,9 @@ export const checkNodeValid = () => {
   return true
 }
 
-export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
+export const getSelectedDatasetsMode = (datasets: DataSet[] = []) => {
+  if (datasets === null)
+    datasets = []
   let allHighQuality = true
   let allHighQualityVectorSearch = true
   let allHighQualityFullTextSearch = true
@@ -85,7 +90,15 @@ export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
   } as SelectedDatasetsMode
 }
 
-export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetrievalConfig, selectedDatasets: DataSet[]) => {
+export const getMultipleRetrievalConfig = (
+  multipleRetrievalConfig: MultipleRetrievalConfig,
+  selectedDatasets: DataSet[],
+  originalDatasets: DataSet[],
+  validRerankModel?: { provider?: string; model?: string },
+) => {
+  const shouldSetWeightDefaultValue = xorBy(selectedDatasets, originalDatasets, 'id').length > 0
+  const rerankModelIsValid = validRerankModel?.provider && validRerankModel?.model
+
   const {
     allHighQuality,
     allHighQualityVectorSearch,
@@ -113,16 +126,13 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
     reranking_mode,
     reranking_model,
     weights,
-    reranking_enable: allEconomic ? reranking_enable : true,
+    reranking_enable: ((allInternal && allEconomic) || allExternal) ? reranking_enable : true,
   }
 
-  if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || allExternal || mixtureInternalAndExternal)
-    result.reranking_mode = RerankingModeEnum.RerankingModel
+  if (!rerankModelIsValid)
+    result.reranking_model = undefined
 
-  if (allHighQuality && !inconsistentEmbeddingModel && reranking_mode === undefined && allInternal)
-    result.reranking_mode = RerankingModeEnum.WeightedScore
-
-  if (allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined) && allInternal && !weights) {
+  const setDefaultWeights = () => {
     result.weights = {
       vector_setting: {
         vector_weight: allHighQualityVectorSearch
@@ -143,5 +153,85 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
     }
   }
 
+  if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel || allExternal || mixtureInternalAndExternal) {
+    result.reranking_mode = RerankingModeEnum.RerankingModel
+
+    if (rerankModelIsValid) {
+      result.reranking_mode = RerankingModeEnum.RerankingModel
+      result.reranking_model = {
+        provider: validRerankModel?.provider || '',
+        model: validRerankModel?.model || '',
+      }
+    }
+    else {
+      result.reranking_model = undefined
+    }
+  }
+
+  if (allHighQuality && !inconsistentEmbeddingModel && allInternal) {
+    if (!reranking_mode) {
+      if (validRerankModel?.provider && validRerankModel?.model) {
+        result.reranking_mode = RerankingModeEnum.RerankingModel
+        result.reranking_model = {
+          provider: validRerankModel.provider,
+          model: validRerankModel.model,
+        }
+      }
+      else {
+        result.reranking_mode = RerankingModeEnum.WeightedScore
+        setDefaultWeights()
+      }
+    }
+
+    if (reranking_mode === RerankingModeEnum.WeightedScore && !weights)
+      setDefaultWeights()
+
+    if (reranking_mode === RerankingModeEnum.WeightedScore && weights && shouldSetWeightDefaultValue) {
+      if (rerankModelIsValid) {
+        result.reranking_mode = RerankingModeEnum.RerankingModel
+        result.reranking_model = {
+          provider: validRerankModel.provider || '',
+          model: validRerankModel.model || '',
+        }
+      }
+      else {
+        setDefaultWeights()
+      }
+    }
+
+    if (reranking_mode === RerankingModeEnum.RerankingModel && !rerankModelIsValid && shouldSetWeightDefaultValue) {
+      result.reranking_mode = RerankingModeEnum.WeightedScore
+      setDefaultWeights()
+    }
+  }
+
   return result
+}
+
+export const checkoutRerankModelConfigedInRetrievalSettings = (
+  datasets: DataSet[],
+  multipleRetrievalConfig?: MultipleRetrievalConfig,
+) => {
+  if (!multipleRetrievalConfig)
+    return true
+
+  const {
+    allEconomic,
+    allExternal,
+  } = getSelectedDatasetsMode(datasets)
+
+  const {
+    reranking_enable,
+    reranking_mode,
+    reranking_model,
+  } = multipleRetrievalConfig
+
+  if (reranking_mode === RerankingModeEnum.RerankingModel && (!reranking_model?.provider || !reranking_model?.model)) {
+    if ((allEconomic || allExternal) && !reranking_enable)
+      return true
+
+    return false
+  }
+
+  return true
 }

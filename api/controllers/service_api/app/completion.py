@@ -4,7 +4,6 @@ from flask_restful import Resource, reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
-from constants import UUID_NIL
 from controllers.service_api import api
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -108,7 +107,6 @@ class ChatApi(Resource):
         parser.add_argument("conversation_id", type=uuid_value, location="json")
         parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
         parser.add_argument("auto_generate_name", type=bool, required=False, default=True, location="json")
-        parser.add_argument("parent_message_id", type=uuid_value, required=False, default=UUID_NIL, location="json")
 
         args = parser.parse_args()
 

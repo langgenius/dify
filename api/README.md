@@ -76,12 +76,13 @@
 1. Install dependencies for both the backend and the test environment
 
    ```bash
-   poetry install --with dev
+   poetry install -C api --with dev
    ```
 
 2. Run the tests locally with mocked system environment variables in `tool.pytest_env` section in `pyproject.toml`
 
    ```bash
-   cd ../
    poetry run -C api bash dev/pytest/pytest_all_tests.sh
    ```
+
+

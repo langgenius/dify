@@ -103,6 +103,7 @@ const translation = {
     separatorTip: 'A delimiter is the character used to separate text. \\n\\n and \\n are commonly used delimiters for separating paragraphs and lines. Combined with commas (\\n\\n,\\n), paragraphs will be segmented by lines when exceeding the maximum chunk length. You can also use special delimiters defined by yourself (e.g. ***).',
     separatorPlaceholder: '\\n\\n for separating paragraphs; \\n for separating lines',
     maxLength: 'Maximum chunk length',
+    maxLengthCheck: 'Maximum chunk length should be less than 4000',
     overlap: 'Chunk overlap',
     overlapTip: 'Setting the chunk overlap can maintain the semantic relevance between them, enhancing the retrieve effect. It is recommended to set 10%-25% of the maximum chunk size.',
     overlapCheck: 'chunk overlap should not bigger than maximum chunk length',

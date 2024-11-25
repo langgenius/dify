@@ -3,6 +3,7 @@ import logging
 
 import requests
 from flask_restful import Resource, reqparse
+from packaging import version
 
 from configs import dify_config
 
@@ -47,43 +48,15 @@ class VersionApi(Resource):
 
 
 def _has_new_version(*, latest_version: str, current_version: str) -> bool:
-    def parse_version(version: str) -> tuple:
-        # Split version into parts and pre-release suffix if any
-        parts = version.split("-")
-        version_parts = parts[0].split(".")
-        pre_release = parts[1] if len(parts) > 1 else None
+    try:
+        latest = version.parse(latest_version)
+        current = version.parse(current_version)
 
-        # Validate version format
-        if len(version_parts) != 3:
-            raise ValueError(f"Invalid version format: {version}")
-
-        try:
-            # Convert version parts to integers
-            major, minor, patch = map(int, version_parts)
-            return (major, minor, patch, pre_release)
-        except ValueError:
-            raise ValueError(f"Invalid version format: {version}")
-
-    latest = parse_version(latest_version)
-    current = parse_version(current_version)
-
-    # Compare major, minor, and patch versions
-    for latest_part, current_part in zip(latest[:3], current[:3]):
-        if latest_part > current_part:
-            return True
-        elif latest_part < current_part:
-            return False
-
-    # If versions are equal, check pre-release suffixes
-    if latest[3] is None and current[3] is not None:
-        return True
-    elif latest[3] is not None and current[3] is None:
+        # Compare versions
+        return latest > current
+    except version.InvalidVersion:
+        logging.warning(f"Invalid version format: latest={latest_version}, current={current_version}")
         return False
-    elif latest[3] is not None and current[3] is not None:
-        # Simple string comparison for pre-release versions
-        return latest[3] > current[3]
-
-    return False
 
 
 api.add_resource(VersionApi, "/version")

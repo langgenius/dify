@@ -64,6 +64,7 @@ const ConditionAdd = ({
         <div className='w-[296px] bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg'>
           <VarReferenceVars
             vars={variables}
+            isSupportFileVar
             onChange={handleSelectVariable}
           />
         </div>

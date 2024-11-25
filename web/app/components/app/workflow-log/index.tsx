@@ -36,12 +36,12 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
   const pathSegments = pathname.split('/')
   pathSegments.pop()
   return <div className='flex items-center justify-center h-full'>
-    <div className='bg-gray-50 w-[560px] h-fit box-border px-5 py-4 rounded-2xl'>
-      <span className='text-gray-700 font-semibold'>{t('appLog.table.empty.element.title')}<ThreeDotsIcon className='inline relative -top-3 -left-1.5' /></span>
-      <div className='mt-2 text-gray-500 text-sm font-normal'>
+    <div className='bg-background-section-burn w-[560px] h-fit box-border px-5 py-4 rounded-2xl'>
+      <span className='text-text-secondary system-md-semibold'>{t('appLog.table.empty.element.title')}<ThreeDotsIcon className='inline relative -top-3 -left-1.5' /></span>
+      <div className='mt-2 text-text-tertiary system-sm-regular'>
         <Trans
           i18nKey="appLog.table.empty.element.content"
-          components={{ shareLink: <Link href={`${pathSegments.join('/')}/overview`} className='text-primary-600' />, testLink: <Link href={appUrl} className='text-primary-600' target='_blank' rel='noopener noreferrer' /> }}
+          components={{ shareLink: <Link href={`${pathSegments.join('/')}/overview`} className='text-util-colors-blue-blue-600' />, testLink: <Link href={appUrl} className='text-util-colors-blue-blue-600' target='_blank' rel='noopener noreferrer' /> }}
         />
       </div>
     </div>
@@ -75,8 +75,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   return (
     <div className='flex flex-col h-full'>
-      <h1 className='text-md font-semibold text-gray-900'>{t('appLog.workflowTitle')}</h1>
-      <p className='flex text-sm font-normal text-gray-500'>{t('appLog.workflowSubtitle')}</p>
+      <h1 className='text-text-primary system-xl-semibold'>{t('appLog.workflowTitle')}</h1>
+      <p className='text-text-tertiary system-sm-regular'>{t('appLog.workflowSubtitle')}</p>
       <div className='flex flex-col py-4 flex-1'>
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
         {/* workflow log */}

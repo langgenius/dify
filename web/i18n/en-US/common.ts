@@ -38,6 +38,10 @@ const translation = {
     duplicate: 'Duplicate',
     rename: 'Rename',
     audioSourceUnavailable: 'AudioSource is unavailable',
+    copyImage: 'Copy Image',
+    zoomOut: 'Zoom Out',
+    zoomIn: 'Zoom In',
+    openInNewTab: 'Open in new tab',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',
@@ -503,6 +507,7 @@ const translation = {
       vectorHash: 'Vector hash:',
       hitScore: 'Retrieval Score:',
     },
+    inputPlaceholder: 'Talk to Bot',
   },
   promptEditor: {
     placeholder: 'Write your prompt word here, enter \'{\' to insert a variable, enter \'/\' to insert a prompt content block',
@@ -561,6 +566,16 @@ const translation = {
     pasteImageLinkInvalid: 'Invalid image link',
     imageUpload: 'Image Upload',
   },
+  fileUploader: {
+    uploadFromComputer: 'Local upload',
+    pasteFileLink: 'Paste file link',
+    pasteFileLinkInputPlaceholder: 'Enter URL...',
+    uploadFromComputerReadError: 'File reading failed, please try again.',
+    uploadFromComputerUploadError: 'File upload failed, please upload again.',
+    uploadFromComputerLimit: 'Upload {{type}} cannot exceed {{size}}',
+    pasteFileLinkInvalid: 'Invalid file link',
+    fileExtensionNotSupport: 'File extension not supported',
+  },
   tag: {
     placeholder: 'All Tags',
     addNew: 'Add new tag',
@@ -575,6 +590,10 @@ const translation = {
     deleteTip: 'The tag is being used, delete it?',
     created: 'Tag created successfully',
     failed: 'Tag creation failed',
+  },
+  license: {
+    expiring: 'Expiring in one day',
+    expiring_plural: 'Expiring in {{count}} days',
   },
 }
 

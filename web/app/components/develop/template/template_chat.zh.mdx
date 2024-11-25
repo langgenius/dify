@@ -705,6 +705,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='pinned' type='bool' key='pinned'>
         只返回置顶 true，只返回非置顶 false
       </Property>
+      <Property name='sort_by' type='string' key='sort_by'>
+        排序字段（选题），默认 -updated_at(按更新时间倒序排列)
+        - 可选值：created_at, -created_at, updated_at, -updated_at
+        - 字段前面的符号代表顺序或倒序，-代表倒序
+      </Property>
     </Properties>
 
     ### Response
@@ -819,6 +824,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   <Col>
     对会话进行重命名，会话名称用于显示在支持多会话的客户端上。
 
+    ### Path
+    - `conversation_id` (string) 会话 ID
+
     ### Request Body
 
     <Properties>
@@ -842,10 +850,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \
+    curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
@@ -1017,7 +1025,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - `number_limits` (int) 图片数量限制，默认 3
         - `transfer_methods` (array[string]) 传递方式列表，remote_url , local_file，必选一个
     - `system_parameters` (object) 系统参数
-      - `image_file_size_limit` (string) 图片文件上传大小限制（MB）
+      - `file_size_limit` (int) 文档上传大小限制 (MB)
+      - `image_file_size_limit` (int) 图片文件上传大小限制（MB）
+      - `audio_file_size_limit` (int) 音频文件上传大小限制 (MB)
+      - `video_file_size_limit` (int) 视频文件上传大小限制 (MB)
   </Col>
   <Col sticky>
 
@@ -1057,6 +1068,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
             "local_file"
           ]
         }
+      },
+      "system_parameters": {
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
       }
     }
     ```

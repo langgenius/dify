@@ -9,7 +9,7 @@ from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate
 from core.rag.retrieval.output_parser.react_output import ReactAction
 from core.rag.retrieval.output_parser.structured_chat import StructuredChatOutputParser
-from core.workflow.nodes.llm.llm_node import LLMNode
+from core.workflow.nodes.llm import LLMNode
 
 PREFIX = """Respond to the human as helpfully and accurately as possible. You have access to the following tools:"""
 

@@ -27,6 +27,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
 
   const {
     readOnly,
+    isDataReady,
     inputs,
     handleMethodChange,
     handleUrlChange,
@@ -53,6 +54,9 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     setInputVarValues,
     runResult,
   } = useConfig(id, data)
+  // To prevent prompt editor in body not update data.
+  if (!isDataReady)
+    return null
 
   return (
     <div className='mt-2'>

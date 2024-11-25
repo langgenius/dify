@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Generator
+from typing import Optional
 
 from volcenginesdkarkruntime.types.chat import ChatCompletion, ChatCompletionChunk
 
@@ -298,7 +299,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
         chunks = client.stream_chat(prompt_messages, **req_params)
         return _handle_stream_chat_response(chunks)
 
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         """
         used to define customizable model schema
         """

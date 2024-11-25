@@ -8,12 +8,13 @@ import {
   useWorkflow,
 } from '../../hooks'
 import { VarType } from '../../types'
-import type { ValueSelector, Var } from '../../types'
+import type { ErrorHandleMode, ValueSelector, Var } from '../../types'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar, toNodeOutputVars } from '../_base/components/variable/utils'
 import useOneStepRun from '../_base/hooks/use-one-step-run'
 import type { IterationNodeType } from './types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import type { Item } from '@/app/components/base/select'
 
 const DELIMITER = '@@@@@'
 const useConfig = (id: string, payload: IterationNodeType) => {
@@ -24,7 +25,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   const { inputs, setInputs } = useNodeCrud<IterationNodeType>(id, payload)
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varPayload.type)
+    return [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject, VarType.arrayFile].includes(varPayload.type)
   }, [])
 
   const handleInputChange = useCallback((input: ValueSelector | string) => {
@@ -50,6 +51,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
         [VarType.string]: VarType.arrayString,
         [VarType.number]: VarType.arrayNumber,
         [VarType.object]: VarType.arrayObject,
+        [VarType.file]: VarType.arrayFile,
       } as Record<VarType, VarType>)[outputItemType] || VarType.arrayString
     })
     setInputs(newInputs)
@@ -183,6 +185,25 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     })
   }, [iteratorInputKey, runInputData, setRunInputData])
 
+  const changeParallel = useCallback((value: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.is_parallel = value
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const changeErrorResponseMode = useCallback((item: Item) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.error_handle_mode = item.value as ErrorHandleMode
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+  const changeParallelNums = useCallback((num: number) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.parallel_nums = num
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
   return {
     readOnly,
     inputs,
@@ -209,6 +230,9 @@ const useConfig = (id: string, payload: IterationNodeType) => {
     setIterator,
     iteratorInputKey,
     iterationRunResult,
+    changeParallel,
+    changeErrorResponseMode,
+    changeParallelNums,
   }
 }
 

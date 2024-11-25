@@ -1,11 +1,16 @@
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from core.app.app_config.entities import ModelConfigEntity
-from core.file.file_obj import FileExtraConfig, FileTransferMethod, FileType, FileVar
+from core.file import File, FileTransferMethod, FileType, FileUploadConfig, ImageConfig
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessageRole, UserPromptMessage
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    PromptMessageRole,
+    UserPromptMessage,
+)
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -123,32 +128,29 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
     model_config_mock, _, messages, inputs, context = get_chat_model_args
 
     files = [
-        FileVar(
+        File(
             id="file1",
             tenant_id="tenant1",
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
-            url="https://example.com/image1.jpg",
-            extra_config=FileExtraConfig(
-                image_config={
-                    "detail": "high",
-                }
-            ),
+            remote_url="https://example.com/image1.jpg",
         )
     ]
 
     prompt_transform = AdvancedPromptTransform()
     prompt_transform._calculate_rest_token = MagicMock(return_value=2000)
-    prompt_messages = prompt_transform._get_chat_model_prompt_messages(
-        prompt_template=messages,
-        inputs=inputs,
-        query=None,
-        files=files,
-        context=context,
-        memory_config=None,
-        memory=None,
-        model_config=model_config_mock,
-    )
+    with patch("core.file.file_manager.to_prompt_message_content") as mock_get_encoded_string:
+        mock_get_encoded_string.return_value = ImagePromptMessageContent(data=str(files[0].remote_url))
+        prompt_messages = prompt_transform._get_chat_model_prompt_messages(
+            prompt_template=messages,
+            inputs=inputs,
+            query=None,
+            files=files,
+            context=context,
+            memory_config=None,
+            memory=None,
+            model_config=model_config_mock,
+        )
 
     assert len(prompt_messages) == 4
     assert prompt_messages[0].role == PromptMessageRole.SYSTEM
@@ -157,7 +159,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
     )
     assert isinstance(prompt_messages[3].content, list)
     assert len(prompt_messages[3].content) == 2
-    assert prompt_messages[3].content[1].data == files[0].url
+    assert prompt_messages[3].content[1].data == files[0].remote_url
 
 
 @pytest.fixture

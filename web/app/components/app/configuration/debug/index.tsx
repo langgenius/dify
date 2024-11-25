@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { setAutoFreeze } from 'immer'
+import produce, { setAutoFreeze } from 'immer'
 import { useBoolean } from 'ahooks'
 import {
   RiAddLine,
+  RiEqualizer2Line,
+  RiSparklingFill,
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
@@ -23,17 +24,20 @@ import {
   APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
 } from './types'
 import { AppType, ModelModeType, TransferMethod } from '@/types/app'
+import ChatUserInput from '@/app/components/app/configuration/debug/chat-user-input'
 import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
 import ConfigContext from '@/context/debug-configuration'
 import { ToastContext } from '@/app/components/base/toast'
 import { sendCompletionMessage } from '@/service/debug'
 import Button from '@/app/components/base/button'
-import type { ModelConfig as BackendModelConfig, VisionFile } from '@/types/app'
+import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
+import TooltipPlus from '@/app/components/base/tooltip'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
 import type { Inputs } from '@/models/debug'
-import { fetchFileUploadConfig } from '@/service/common'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelFeatureEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
@@ -42,6 +46,7 @@ import { useProviderContext } from '@/context/provider-context'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 
 type IDebug = {
   isAPIKeySet: boolean
@@ -77,8 +82,6 @@ const Debug: FC<IDebug> = ({
     speechToTextConfig,
     textToSpeechConfig,
     citationConfig,
-    moderationConfig,
-    moreLikeThisConfig,
     formattingChanged,
     setFormattingChanged,
     dataSets,
@@ -86,12 +89,9 @@ const Debug: FC<IDebug> = ({
     completionParams,
     hasSetContextVar,
     datasetConfigs,
-    visionConfig,
-    setVisionConfig,
   } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
-  const { data: fileUploadConfigResponse } = useSWR({ url: '/files/upload' }, fetchFileUploadConfig)
   useEffect(() => {
     setAutoFreeze(false)
     return () => {
@@ -175,7 +175,7 @@ const Debug: FC<IDebug> = ({
     }
 
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
       return false
     }
     return !hasEmptyInput
@@ -195,6 +195,8 @@ const Debug: FC<IDebug> = ({
 
   const [completionRes, setCompletionRes] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
+  const features = useFeatures(s => s.features)
+  const featuresStore = useFeaturesStore()
 
   const sendTextCompletion = async () => {
     if (isResponding) {
@@ -225,36 +227,30 @@ const Debug: FC<IDebug> = ({
       completion_prompt_config: {},
       user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
       dataset_query_variable: contextVar || '',
-      opening_statement: introduction,
-      suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
-      speech_to_text: speechToTextConfig,
-      retriever_resource: citationConfig,
-      sensitive_word_avoidance: moderationConfig,
-      more_like_this: moreLikeThisConfig,
-      model: {
-        provider: modelConfig.provider,
-        name: modelConfig.model_id,
-        mode: modelConfig.mode,
-        completion_params: completionParams as any,
-      },
-      text_to_speech: {
-        enabled: false,
-        voice: '',
-        language: '',
-      },
-      agent_mode: {
-        enabled: false,
-        tools: [],
-      },
       dataset_configs: {
         ...datasetConfigs,
         datasets: {
           datasets: [...postDatasets],
         } as any,
       },
-      file_upload: {
-        image: visionConfig,
+      agent_mode: {
+        enabled: false,
+        tools: [],
       },
+      model: {
+        provider: modelConfig.provider,
+        name: modelConfig.model_id,
+        mode: modelConfig.mode,
+        completion_params: completionParams as any,
+      },
+      more_like_this: features.moreLikeThis as any,
+      sensitive_word_avoidance: features.moderation as any,
+      text_to_speech: features.text2speech as any,
+      file_upload: features.file as any,
+      opening_statement: introduction,
+      suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
+      speech_to_text: speechToTextConfig,
+      retriever_resource: citationConfig,
     }
 
     if (isAdvancedMode) {
@@ -267,7 +263,7 @@ const Debug: FC<IDebug> = ({
       model_config: postModelConfig,
     }
 
-    if (visionConfig.enabled && completionFiles && completionFiles?.length > 0) {
+    if ((features.file as any).enabled && completionFiles && completionFiles?.length > 0) {
       data.files = completionFiles.map((item) => {
         if (item.transfer_method === TransferMethod.local_file) {
           return {
@@ -343,7 +339,7 @@ const Debug: FC<IDebug> = ({
     )
   }
 
-  const handleVisionConfigInMultipleModel = () => {
+  const handleVisionConfigInMultipleModel = useCallback(() => {
     if (debugWithMultipleModel && mode) {
       const supportedVision = multipleModelConfigs.some((modelConfig) => {
         const currentProvider = textGenerationModelList.find(modelItem => modelItem.provider === modelConfig.provider)
@@ -351,25 +347,24 @@ const Debug: FC<IDebug> = ({
 
         return currentModel?.features?.includes(ModelFeatureEnum.vision)
       })
+      const {
+        features,
+        setFeatures,
+      } = featuresStore!.getState()
 
-      if (supportedVision) {
-        setVisionConfig({
-          ...visionConfig,
-          enabled: true,
-        }, true)
-      }
-      else {
-        setVisionConfig({
-          ...visionConfig,
-          enabled: false,
-        }, true)
-      }
+      const newFeatures = produce(features, (draft) => {
+        draft.file = {
+          ...draft.file,
+          enabled: supportedVision,
+        }
+      })
+      setFeatures(newFeatures)
     }
-  }
+  }, [debugWithMultipleModel, featuresStore, mode, multipleModelConfigs, textGenerationModelList])
 
   useEffect(() => {
     handleVisionConfigInMultipleModel()
-  }, [multipleModelConfigs, mode])
+  }, [multipleModelConfigs, mode, handleVisionConfigInMultipleModel])
 
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
@@ -391,49 +386,74 @@ const Debug: FC<IDebug> = ({
     adjustModalWidth()
   }, [])
 
+  const [expanded, setExpanded] = useState(true)
+
   return (
     <>
-      <div className="shrink-0 pt-4 px-6">
-        <div className='flex items-center justify-between mb-2'>
-          <div className='h2 '>{t('appDebug.inputs.title')}</div>
+      <div className="shrink-0">
+        <div className='flex items-center justify-between px-4 pt-3 pb-2'>
+          <div className='text-text-primary system-xl-semibold'>{t('appDebug.inputs.title')}</div>
           <div className='flex items-center'>
             {
               debugWithMultipleModel
                 ? (
                   <>
                     <Button
-                      variant='secondary-accent'
+                      variant='ghost-accent'
                       onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
                       disabled={multipleModelConfigs.length >= 4}
                     >
                       <RiAddLine className='mr-1 w-3.5 h-3.5' />
                       {t('common.modelProvider.addModel')}({multipleModelConfigs.length}/4)
                     </Button>
-                    <div className='mx-2 w-[1px] h-[14px] bg-gray-200' />
+                    <div className='mx-2 w-[1px] h-[14px] bg-divider-regular' />
                   </>
                 )
                 : null
             }
             {mode !== AppType.completion && (
-              <Button variant='secondary-accent' className='gap-1' onClick={clearConversation}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M2.66663 2.66629V5.99963H3.05463M3.05463 5.99963C3.49719 4.90505 4.29041 3.98823 5.30998 3.39287C6.32954 2.7975 7.51783 2.55724 8.68861 2.70972C9.85938 2.8622 10.9465 3.39882 11.7795 4.23548C12.6126 5.07213 13.1445 6.16154 13.292 7.33296M3.05463 5.99963H5.99996M13.3333 13.333V9.99963H12.946M12.946 9.99963C12.5028 11.0936 11.7093 12.0097 10.6898 12.6045C9.67038 13.1993 8.48245 13.4393 7.31203 13.2869C6.1416 13.1344 5.05476 12.5982 4.22165 11.7621C3.38854 10.926 2.8562 9.83726 2.70796 8.66629M12.946 9.99963H9.99996" stroke="#1C64F2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span className='text-primary-600 text-[13px] font-semibold'>{t('common.operation.refresh')}</span>
-              </Button>
+              <>
+                <TooltipPlus
+                  popupContent={t('common.operation.refresh')}
+                >
+                  <ActionButton onClick={clearConversation}>
+                    <RefreshCcw01 className='w-4 h-4' />
+                  </ActionButton>
+                </TooltipPlus>
+                {varList.length > 0 && (
+                  <div className='relative ml-1 mr-2'>
+                    <TooltipPlus
+                      popupContent={t('workflow.panel.userInputField')}
+                    >
+                      <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
+                        <RiEqualizer2Line className='w-4 h-4' />
+                      </ActionButton>
+                    </TooltipPlus>
+                    {expanded && <div className='absolute z-10 bottom-[-14px] right-[5px] w-3 h-3 bg-components-panel-on-panel-item-bg border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle rotate-45' />}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
-        <PromptValuePanel
-          appType={mode as AppType}
-          onSend={handleSendTextCompletion}
-          inputs={inputs}
-          visionConfig={{
-            ...visionConfig,
-            image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
-          }}
-          onVisionFilesChange={setCompletionFiles}
-        />
+        {mode !== AppType.completion && expanded && (
+          <div className='mx-3'>
+            <ChatUserInput inputs={inputs} />
+          </div>
+        )}
+        {mode === AppType.completion && (
+          <PromptValuePanel
+            appType={mode as AppType}
+            onSend={handleSendTextCompletion}
+            inputs={inputs}
+            visionConfig={{
+              ...features.file! as VisionSettings,
+              transfer_methods: features.file!.allowed_file_upload_methods || [],
+              image_file_size_limit: features.file?.fileUploadConfig?.image_file_size_limit,
+            }}
+            onVisionFilesChange={setCompletionFiles}
+          />
+        )}
       </div>
       {
         debugWithMultipleModel && (
@@ -481,26 +501,36 @@ const Debug: FC<IDebug> = ({
             )}
             {/* Text  Generation */}
             {mode === AppType.completion && (
-              <div className="mt-6 px-6 pb-4">
-                <GroupName name={t('appDebug.result')} />
+              <>
                 {(completionRes || isResponding) && (
-                  <TextGeneration
-                    className="mt-2"
-                    content={completionRes}
-                    isLoading={!completionRes && isResponding}
-                    isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
-                    isResponding={isResponding}
-                    isInstalledApp={false}
-                    messageId={messageId}
-                    isError={false}
-                    onRetry={() => { }}
-                    supportAnnotation
-                    appId={appId}
-                    varList={varList}
-                    siteInfo={null}
-                  />
+                  <>
+                    <div className='mx-4 mt-3'><GroupName name={t('appDebug.result')} /></div>
+                    <div className='mx-3 mb-8'>
+                      <TextGeneration
+                        className="mt-2"
+                        content={completionRes}
+                        isLoading={!completionRes && isResponding}
+                        isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
+                        isResponding={isResponding}
+                        isInstalledApp={false}
+                        messageId={messageId}
+                        isError={false}
+                        onRetry={() => { }}
+                        supportAnnotation
+                        appId={appId}
+                        varList={varList}
+                        siteInfo={null}
+                      />
+                    </div>
+                  </>
                 )}
-              </div>
+                {!completionRes && !isResponding && (
+                  <div className='grow flex flex-col items-center justify-center gap-2'>
+                    <RiSparklingFill className='w-12 h-12 text-text-empty-state-icon' />
+                    <div className='text-text-quaternary system-sm-regular'>{t('appDebug.noResult')}</div>
+                  </div>
+                )}
+              </>
             )}
             {mode === AppType.completion && showPromptLogModal && (
               <PromptLogModal

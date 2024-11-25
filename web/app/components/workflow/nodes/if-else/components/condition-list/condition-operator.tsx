@@ -17,14 +17,18 @@ import cn from '@/utils/classnames'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 type ConditionOperatorProps = {
+  className?: string
   disabled?: boolean
   varType: VarType
+  file?: { key: string }
   value?: string
   onSelect: (value: ComparisonOperator) => void
 }
 const ConditionOperator = ({
+  className,
   disabled,
   varType,
+  file,
   value,
   onSelect,
 }: ConditionOperatorProps) => {
@@ -32,15 +36,14 @@ const ConditionOperator = ({
   const [open, setOpen] = useState(false)
 
   const options = useMemo(() => {
-    return getOperators(varType).map((o) => {
+    return getOperators(varType, file).map((o) => {
       return {
         label: isComparisonOperatorNeedTranslate(o) ? t(`${i18nPrefix}.comparisonOperator.${o}`) : o,
         value: o,
       }
     })
-  }, [t, varType])
-  const selectedOption = options.find(o => o.value === value)
-
+  }, [t, varType, file])
+  const selectedOption = options.find(o => Array.isArray(value) ? o.value === value[0] : o.value === value)
   return (
     <PortalToFollowElem
       open={open}
@@ -53,7 +56,7 @@ const ConditionOperator = ({
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <Button
-          className={cn('shrink-0', !selectedOption && 'opacity-50')}
+          className={cn('shrink-0', !selectedOption && 'opacity-50', className)}
           size='small'
           variant='ghost'
           disabled={disabled}
@@ -61,7 +64,7 @@ const ConditionOperator = ({
           {
             selectedOption
               ? selectedOption.label
-              : 'select'
+              : t(`${i18nPrefix}.select`)
           }
           <RiArrowDownSLine className='ml-1 w-3.5 h-3.5' />
         </Button>

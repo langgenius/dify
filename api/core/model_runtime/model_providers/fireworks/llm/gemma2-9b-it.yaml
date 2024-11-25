@@ -43,3 +43,4 @@ pricing:
   output: '0.2'
   unit: '0.000001'
   currency: USD
+deprecated: true

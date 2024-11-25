@@ -16,7 +16,7 @@ services:
                -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
                -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
     volumes:
-      - ./volumes/db/data:/var/lib/postgresql/data
+      - ${PGDATA_HOST_VOLUME:-./volumes/db/data}:/var/lib/postgresql/data
     ports:
       - "${EXPOSE_POSTGRES_PORT:-5432}:5432"
     healthcheck:
@@ -31,7 +31,7 @@ services:
     restart: always
     volumes:
       # Mount the redis data directory to the container.
-      - ./volumes/redis/data:/data
+      - ${REDIS_HOST_VOLUME:-./volumes/redis/data}:/data
     # Set the redis password when startup redis server.
     command: redis-server --requirepass difyai123456
     ports:
@@ -41,7 +41,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.9
+    image: langgenius/dify-sandbox:0.2.10
     restart: always
     environment:
       # The DifySandbox configurations
@@ -56,6 +56,7 @@ services:
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
+      - ./volumes/sandbox/conf:/conf
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:8194/health" ]
     networks:
@@ -94,7 +95,7 @@ services:
     restart: always
     volumes:
       # Mount the Weaviate data directory to the container.
-      - ./volumes/weaviate:/var/lib/weaviate
+      - ${WEAVIATE_HOST_VOLUME:-./volumes/weaviate}:/var/lib/weaviate
     env_file:
       - ./middleware.env
     environment:

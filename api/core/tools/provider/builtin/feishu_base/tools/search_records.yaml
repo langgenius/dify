@@ -1,0 +1,163 @@
+identity:
+  name: search_records
+  author: Doug Lea
+  label:
+    en_US: Search Records
+    zh_Hans: 查询记录
+description:
+  human:
+    en_US: Query records in a multidimensional table, up to 500 rows per query.
+    zh_Hans: 查询多维表格数据表中的记录，单次最多查询 500 行记录。
+  llm: A tool for querying records in a multidimensional table, up to 500 rows per query. (查询多维表格数据表中的记录，单次最多查询 500 行记录)
+parameters:
+  - name: app_token
+    type: string
+    required: true
+    label:
+      en_US: app_token
+      zh_Hans: app_token
+    human_description:
+      en_US: Unique identifier for the multidimensional table, supports inputting document URL.
+      zh_Hans: 多维表格的唯一标识符，支持输入文档 URL。
+    llm_description: 多维表格的唯一标识符，支持输入文档 URL。
+    form: llm
+
+  - name: table_id
+    type: string
+    required: false
+    label:
+      en_US: table_id
+      zh_Hans: table_id
+    human_description:
+      en_US: Unique identifier for the multidimensional table data, either table_id or table_name must be provided, cannot be empty simultaneously.
+      zh_Hans: 多维表格数据表的唯一标识符，table_id 和 table_name 至少需要提供一个，不能同时为空。
+    llm_description: 多维表格数据表的唯一标识符，table_id 和 table_name 至少需要提供一个，不能同时为空。
+    form: llm
+
+  - name: table_name
+    type: string
+    required: false
+    label:
+      en_US: table_name
+      zh_Hans: table_name
+    human_description:
+      en_US: Name of the multidimensional table data, either table_name or table_id must be provided, cannot be empty simultaneously.
+      zh_Hans: 多维表格数据表的名称，table_name 和 table_id 至少需要提供一个，不能同时为空。
+    llm_description: 多维表格数据表的名称，table_name 和 table_id 至少需要提供一个，不能同时为空。
+    form: llm
+
+  - name: view_id
+    type: string
+    required: false
+    label:
+      en_US: view_id
+      zh_Hans: 视图唯一标识
+    human_description:
+      en_US: |
+        Unique identifier for a view in a multidimensional table. It can be found in the URL's query parameter with the key 'view'. For example: https://svi136aogf123.feishu.cn/base/KWC8bYsYXahYqGsTtqectNn9n3e?table=tblE8a2fmBIEflaE&view=vewlkAVpRx.
+      zh_Hans: 多维表格中视图的唯一标识，可在多维表格的 URL 地址栏中找到，query 参数中 key 为 view 的部分。例如：https://svi136aogf123.feishu.cn/base/KWC8bYsYXahYqGsTtqectNn9n3e?table=tblE8a2fmBIEflaE&view=vewlkAVpRx。
+    llm_description: 多维表格中视图的唯一标识，可在多维表格的 URL 地址栏中找到，query 参数中 key 为 view 的部分。例如：https://svi136aogf123.feishu.cn/base/KWC8bYsYXahYqGsTtqectNn9n3e?table=tblE8a2fmBIEflaE&view=vewlkAVpRx。
+    form: llm
+
+  - name: field_names
+    type: string
+    required: false
+    label:
+      en_US: field_names
+      zh_Hans: 字段名称
+    human_description:
+      en_US: |
+        Field names to specify which fields to include in the returned records. Example value: ["Field1", "Field2"].
+      zh_Hans: 字段名称，用于指定本次查询返回记录中包含的字段。示例值：["字段1","字段2"]。
+    llm_description: 字段名称，用于指定本次查询返回记录中包含的字段。示例值：["字段1","字段2"]。
+    form: llm
+
+  - name: sort
+    type: string
+    required: false
+    label:
+      en_US: sort
+      zh_Hans: 排序条件
+    human_description:
+      en_US: |
+        Sorting conditions, for example: [{"field_name":"Multiline Text","desc":true}].
+      zh_Hans: 排序条件，例如：[{"field_name":"多行文本","desc":true}]。
+    llm_description: 排序条件，例如：[{"field_name":"多行文本","desc":true}]。
+    form: llm
+
+  - name: filter
+    type: string
+    required: false
+    label:
+      en_US: filter
+      zh_Hans: 筛选条件
+    human_description:
+      en_US: Object containing filter information. For details on how to fill in the filter, refer to the record filter parameter guide (https://open.larkoffice.com/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-table-record/record-filter-guide).
+      zh_Hans: 包含条件筛选信息的对象。了解如何填写 filter，参考记录筛选参数填写指南(https://open.larkoffice.com/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-table-record/record-filter-guide)。
+    llm_description: 包含条件筛选信息的对象。了解如何填写 filter，参考记录筛选参数填写指南(https://open.larkoffice.com/document/uAjLw4CM/ukTMukTMukTM/reference/bitable-v1/app-table-record/record-filter-guide)。
+    form: llm
+
+  - name: automatic_fields
+    type: boolean
+    required: false
+    label:
+      en_US: automatic_fields
+      zh_Hans: automatic_fields
+    human_description:
+      en_US: Whether to return automatically calculated fields. Default is false, meaning they are not returned.
+      zh_Hans: 是否返回自动计算的字段。默认为 false，表示不返回。
+    llm_description: 是否返回自动计算的字段。默认为 false，表示不返回。
+    form: form
+
+  - name: user_id_type
+    type: select
+    required: false
+    options:
+      - value: open_id
+        label:
+          en_US: open_id
+          zh_Hans: open_id
+      - value: union_id
+        label:
+          en_US: union_id
+          zh_Hans: union_id
+      - value: user_id
+        label:
+          en_US: user_id
+          zh_Hans: user_id
+    default: "open_id"
+    label:
+      en_US: user_id_type
+      zh_Hans: 用户 ID 类型
+    human_description:
+      en_US: User ID type, optional values are open_id, union_id, user_id, with a default value of open_id.
+      zh_Hans: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    llm_description: 用户 ID 类型，可选值有 open_id、union_id、user_id，默认值为 open_id。
+    form: form
+
+  - name: page_size
+    type: number
+    required: false
+    default: 20
+    label:
+      en_US: page_size
+      zh_Hans: 分页大小
+    human_description:
+      en_US: |
+        Page size, default value: 20, maximum value: 500.
+      zh_Hans: 分页大小，默认值：20，最大值：500。
+    llm_description: 分页大小，默认值：20，最大值：500。
+    form: form
+
+  - name: page_token
+    type: string
+    required: false
+    label:
+      en_US: page_token
+      zh_Hans: 分页标记
+    human_description:
+      en_US: |
+        Page token, leave empty for the first request to start from the beginning; a new page_token will be returned if there are more items in the paginated query results, which can be used for the next traversal. Example value: "tblsRc9GRRXKqhvW".
+      zh_Hans: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。示例值："tblsRc9GRRXKqhvW"。
+    llm_description: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。示例值："tblsRc9GRRXKqhvW"。
+    form: llm

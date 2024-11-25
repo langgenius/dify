@@ -110,7 +110,7 @@ const VarGroupItem: FC<Props> = ({
             <Folder className='mr-0.5 w-3.5 h-3.5' />
             {(!isEditGroupName)
               ? (
-                <div className='flex items-center h-6 px-1 rounded-lg cursor-text hover:bg-gray-100' onClick={setEditGroupName}>
+                <div className='flex items-center h-6 px-1 rounded-lg cursor-text text-text-secondary system-sm-semibold hover:bg-gray-100' onClick={setEditGroupName}>
                   {payload.group_name}
                 </div>
               )
@@ -145,7 +145,7 @@ const VarGroupItem: FC<Props> = ({
       operations={
         <div className='flex items-center h-6  space-x-2'>
           {payload.variables.length > 0 && (
-            <div className='flex items-center h-[18px] px-1 border border-black/8 rounded-[5px] text-xs font-medium text-gray-500 capitalize'>{payload.output_type}</div>
+            <div className='flex items-center h-[18px] px-1 border border-divider-deep rounded-[5px] text-text-tertiary system-2xs-medium-uppercase'>{payload.output_type}</div>
           )}
           {
             !readOnly

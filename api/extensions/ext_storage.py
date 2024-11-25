@@ -15,7 +15,8 @@ class Storage:
 
     def init_app(self, app: Flask):
         storage_factory = self.get_storage_factory(dify_config.STORAGE_TYPE)
-        self.storage_runner = storage_factory(app=app)
+        with app.app_context():
+            self.storage_runner = storage_factory()
 
     @staticmethod
     def get_storage_factory(storage_type: str) -> type[BaseStorage]:
@@ -69,52 +70,52 @@ class Storage:
         try:
             self.storage_runner.save(filename, data)
         except Exception as e:
-            logging.exception("Failed to save file: %s", e)
+            logging.exception(f"Failed to save file {filename}")
             raise e
 
-    def load(self, filename: str, stream: bool = False) -> Union[bytes, Generator]:
+    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
         try:
             if stream:
                 return self.load_stream(filename)
             else:
                 return self.load_once(filename)
         except Exception as e:
-            logging.exception("Failed to load file: %s", e)
+            logging.exception(f"Failed to load file {filename}")
             raise e
 
     def load_once(self, filename: str) -> bytes:
         try:
             return self.storage_runner.load_once(filename)
         except Exception as e:
-            logging.exception("Failed to load_once file: %s", e)
+            logging.exception(f"Failed to load_once file {filename}")
             raise e
 
     def load_stream(self, filename: str) -> Generator:
         try:
             return self.storage_runner.load_stream(filename)
         except Exception as e:
-            logging.exception("Failed to load_stream file: %s", e)
+            logging.exception(f"Failed to load_stream file {filename}")
             raise e
 
     def download(self, filename, target_filepath):
         try:
             self.storage_runner.download(filename, target_filepath)
         except Exception as e:
-            logging.exception("Failed to download file: %s", e)
+            logging.exception(f"Failed to download file {filename}")
             raise e
 
     def exists(self, filename):
         try:
             return self.storage_runner.exists(filename)
         except Exception as e:
-            logging.exception("Failed to check file exists: %s", e)
+            logging.exception(f"Failed to check file exists {filename}")
             raise e
 
     def delete(self, filename):
         try:
             return self.storage_runner.delete(filename)
         except Exception as e:
-            logging.exception("Failed to delete file: %s", e)
+            logging.exception(f"Failed to delete file {filename}")
             raise e
 
 
