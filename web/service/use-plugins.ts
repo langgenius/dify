@@ -315,6 +315,14 @@ export const useMutationClearTaskPlugin = () => {
   })
 }
 
+export const useMutationClearAllTaskPlugin = () => {
+  return useMutation({
+    mutationFn: () => {
+      return post<{ success: boolean }>('/workspaces/current/plugin/tasks/delete_all')
+    },
+  })
+}
+
 export const useMutationCheckDependenciesBeforeImportDSL = () => {
   const mutation = useMutation({
     mutationFn: ({ dslString, url }: { dslString?: string, url?: string }) => {

@@ -38,6 +38,7 @@ const PluginTasks = () => {
     isSuccess,
     isFailed,
     handleClearErrorPlugin,
+    handleClearAllErrorPlugin,
     opacity,
   } = usePluginTaskStatus()
   const { getIconUrl } = useGetIcon()
@@ -133,6 +134,7 @@ const PluginTasks = () => {
                 className='shrink-0'
                 size='small'
                 variant='ghost'
+                onClick={() => handleClearAllErrorPlugin()}
               >
                 {t('plugin.task.clearAll')}
               </Button>
