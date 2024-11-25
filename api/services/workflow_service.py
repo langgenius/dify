@@ -262,13 +262,17 @@ class WorkflowService:
 
         if run_succeeded and node_run_result:
             # create workflow node execution
-            workflow_node_execution.inputs = json.dumps(node_run_result.inputs) if node_run_result.inputs else None
-            workflow_node_execution.process_data = (
-                json.dumps(node_run_result.process_data) if node_run_result.process_data else None
+            inputs = WorkflowEntry.handle_special_values(node_run_result.inputs) if node_run_result.inputs else None
+            process_data = (
+                WorkflowEntry.handle_special_values(node_run_result.process_data)
+                if node_run_result.process_data
+                else None
             )
-            workflow_node_execution.outputs = (
-                json.dumps(jsonable_encoder(node_run_result.outputs)) if node_run_result.outputs else None
-            )
+            outputs = WorkflowEntry.handle_special_values(node_run_result.outputs) if node_run_result.outputs else None
+
+            workflow_node_execution.inputs = json.dumps(inputs)
+            workflow_node_execution.process_data = json.dumps(process_data)
+            workflow_node_execution.outputs = json.dumps(outputs)
             workflow_node_execution.execution_metadata = (
                 json.dumps(jsonable_encoder(node_run_result.metadata)) if node_run_result.metadata else None
             )
