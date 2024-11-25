@@ -3,6 +3,7 @@ import time
 from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any, Optional, Union, cast
+from uuid import uuid4
 
 from sqlalchemy.orm import Session
 
@@ -80,38 +81,38 @@ class WorkflowCycleManage:
 
             inputs[f"sys.{key.value}"] = value
 
-        inputs = WorkflowEntry.handle_special_values(inputs)
-
         triggered_from = (
             WorkflowRunTriggeredFrom.DEBUGGING
             if self._application_generate_entity.invoke_from == InvokeFrom.DEBUGGER
             else WorkflowRunTriggeredFrom.APP_RUN
         )
 
-        # init workflow run
-        workflow_run = WorkflowRun()
-        workflow_run_id = self._workflow_system_variables[SystemVariableKey.WORKFLOW_RUN_ID]
-        if workflow_run_id:
-            workflow_run.id = workflow_run_id
-        workflow_run.tenant_id = self._workflow.tenant_id
-        workflow_run.app_id = self._workflow.app_id
-        workflow_run.sequence_number = new_sequence_number
-        workflow_run.workflow_id = self._workflow.id
-        workflow_run.type = self._workflow.type
-        workflow_run.triggered_from = triggered_from.value
-        workflow_run.version = self._workflow.version
-        workflow_run.graph = self._workflow.graph
-        workflow_run.inputs = json.dumps(inputs)
-        workflow_run.status = WorkflowRunStatus.RUNNING.value
-        workflow_run.created_by_role = (
-            CreatedByRole.ACCOUNT.value if isinstance(self._user, Account) else CreatedByRole.END_USER.value
-        )
-        workflow_run.created_by = self._user.id
+        # handle special values
+        inputs = WorkflowEntry.handle_special_values(inputs)
 
-        db.session.add(workflow_run)
-        db.session.commit()
-        db.session.refresh(workflow_run)
-        db.session.close()
+        # init workflow run
+        with Session(db.engine, expire_on_commit=False) as session:
+            workflow_run = WorkflowRun()
+            system_id = self._workflow_system_variables[SystemVariableKey.WORKFLOW_RUN_ID]
+            workflow_run.id = system_id or str(uuid4())
+            workflow_run.tenant_id = self._workflow.tenant_id
+            workflow_run.app_id = self._workflow.app_id
+            workflow_run.sequence_number = new_sequence_number
+            workflow_run.workflow_id = self._workflow.id
+            workflow_run.type = self._workflow.type
+            workflow_run.triggered_from = triggered_from.value
+            workflow_run.version = self._workflow.version
+            workflow_run.graph = self._workflow.graph
+            workflow_run.inputs = json.dumps(inputs)
+            workflow_run.status = WorkflowRunStatus.RUNNING
+            workflow_run.created_by_role = (
+                CreatedByRole.ACCOUNT if isinstance(self._user, Account) else CreatedByRole.END_USER
+            )
+            workflow_run.created_by = self._user.id
+            workflow_run.created_at = datetime.now(UTC).replace(tzinfo=None)
+
+            session.add(workflow_run)
+            session.commit()
 
         return workflow_run
 
