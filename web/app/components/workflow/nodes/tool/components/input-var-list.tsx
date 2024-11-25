@@ -46,6 +46,8 @@ const InputVarList: FC<Props> = ({
   const paramType = (type: string) => {
     if (type === FormTypeEnum.textNumber)
       return 'Number'
+    else if (type === FormTypeEnum.file)
+      return 'File'
     else if (type === FormTypeEnum.files)
       return 'Files'
     else if (type === FormTypeEnum.select)

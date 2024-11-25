@@ -114,10 +114,10 @@ class WordExtractor(BaseExtractor):
                     mime_type=mime_type or "",
                     created_by=self.user_id,
                     created_by_role=CreatedByRole.ACCOUNT,
-                    created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                    created_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                     used=True,
                     used_by=self.user_id,
-                    used_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                    used_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                 )
 
                 db.session.add(upload_file)

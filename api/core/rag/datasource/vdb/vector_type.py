@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class VectorType(str, Enum):
+class VectorType(StrEnum):
     ANALYTICDB = "analyticdb"
     CHROMA = "chroma"
     MILVUS = "milvus"

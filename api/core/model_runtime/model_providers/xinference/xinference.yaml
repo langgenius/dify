@@ -56,3 +56,23 @@ model_credential_schema:
       placeholder:
         zh_Hans: 在此输入您的API密钥
         en_US: Enter the api key
+    - variable: invoke_timeout
+      label:
+        zh_Hans: 调用超时时间 (单位:秒)
+        en_US: invoke timeout (unit:second)
+      type: text-input
+      required: true
+      default: '60'
+      placeholder:
+        zh_Hans: 在此输入调用超时时间
+        en_US: Enter invoke timeout value
+    - variable: max_retries
+      label:
+        zh_Hans: 调用重试次数
+        en_US: max retries
+      type: text-input
+      required: true
+      default: '3'
+      placeholder:
+        zh_Hans: 在此输入调用重试次数
+        en_US: Enter max retries

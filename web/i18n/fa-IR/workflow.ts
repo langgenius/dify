@@ -99,6 +99,8 @@ const translation = {
     featuresDescription: 'بهبود تجربه کاربری برنامه وب',
     ImageUploadLegacyTip: 'اکنون می توانید متغیرهای نوع فایل را در فرم شروع ایجاد کنید. ما دیگر از ویژگی آپلود تصویر در آینده پشتیبانی نخواهیم کرد.',
     fileUploadTip: 'ویژگی های آپلود تصویر برای آپلود فایل ارتقا یافته است.',
+    importWarning: 'احتیاط',
+    importWarningDetails: 'تفاوت نسخه DSL ممکن است بر ویژگی های خاصی تأثیر بگذارد',
   },
   env: {
     envPanelTitle: 'متغیرهای محیطی',
@@ -408,6 +410,10 @@ const translation = {
       binaryFileVariable: 'متغیر فایل باینری',
       type: 'نوع',
       extractListPlaceholder: 'فهرست آیتم لیست را وارد کنید، متغیر درج \'/\' را تایپ کنید',
+      curl: {
+        title: 'وارد کردن از cURL',
+        placeholder: 'رشته cURL را اینجا بچسبانید',
+      },
     },
     code: {
       inputVars: 'متغیرهای ورودی',
