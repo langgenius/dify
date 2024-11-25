@@ -8,7 +8,7 @@ from extensions.ext_database import db
 from .types import StringUUID
 
 
-class AccountStatus(str, enum.Enum):
+class AccountStatus(enum.StrEnum):
     PENDING = "pending"
     UNINITIALIZED = "uninitialized"
     ACTIVE = "active"
@@ -121,12 +121,12 @@ class Account(UserMixin, db.Model):
         return self._current_tenant.current_role == TenantAccountRole.DATASET_OPERATOR
 
 
-class TenantStatus(str, enum.Enum):
+class TenantStatus(enum.StrEnum):
     NORMAL = "normal"
     ARCHIVE = "archive"
 
 
-class TenantAccountRole(str, enum.Enum):
+class TenantAccountRole(enum.StrEnum):
     OWNER = "owner"
     ADMIN = "admin"
     EDITOR = "editor"

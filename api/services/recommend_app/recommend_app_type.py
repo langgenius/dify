@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class RecommendAppType(str, Enum):
+class RecommendAppType(StrEnum):
     REMOTE = "remote"
     BUILDIN = "builtin"
     DATABASE = "db"

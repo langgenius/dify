@@ -1,6 +1,6 @@
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import cast
 
 from flask_login import current_user
@@ -223,7 +223,7 @@ class AppService:
         app.icon_background = args.get("icon_background")
         app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         if app.max_active_requests is not None:
@@ -240,7 +240,7 @@ class AppService:
         """
         app.name = name
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return app
@@ -256,7 +256,7 @@ class AppService:
         app.icon = icon
         app.icon_background = icon_background
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return app
@@ -273,7 +273,7 @@ class AppService:
 
         app.enable_site = enable_site
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return app
@@ -290,7 +290,7 @@ class AppService:
 
         app.enable_api = enable_api
         app.updated_by = current_user.id
-        app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        app.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return app

@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Mapping
-from enum import Enum
+from enum import StrEnum
 from threading import Lock
 from typing import Any, Optional
 
@@ -31,7 +31,7 @@ class CodeExecutionResponse(BaseModel):
     data: Data
 
 
-class CodeLanguage(str, Enum):
+class CodeLanguage(StrEnum):
     PYTHON3 = "python3"
     JINJA2 = "jinja2"
     JAVASCRIPT = "javascript"

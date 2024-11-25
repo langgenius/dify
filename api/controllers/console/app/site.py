@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse
@@ -75,7 +75,7 @@ class AppSite(Resource):
                 setattr(site, attr_name, value)
 
         site.updated_by = current_user.id
-        site.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        site.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return site
@@ -99,7 +99,7 @@ class AppSiteAccessTokenReset(Resource):
 
         site.code = Site.generate_code(16)
         site.updated_by = current_user.id
-        site.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        site.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db.session.commit()
 
         return site
