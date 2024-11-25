@@ -88,7 +88,7 @@ class DataSourceApi(Resource):
         if action == "enable":
             if data_source_binding.disabled:
                 data_source_binding.disabled = False
-                data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                data_source_binding.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 db.session.add(data_source_binding)
                 db.session.commit()
             else:
@@ -97,7 +97,7 @@ class DataSourceApi(Resource):
         if action == "disable":
             if not data_source_binding.disabled:
                 data_source_binding.disabled = True
-                data_source_binding.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                data_source_binding.updated_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
                 db.session.add(data_source_binding)
                 db.session.commit()
             else:

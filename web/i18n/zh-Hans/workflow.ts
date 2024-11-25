@@ -80,6 +80,8 @@ const translation = {
     chooseDSL: '选择 DSL(yml) 文件',
     overwriteAndImport: '覆盖并导入',
     importFailure: '导入失败',
+    importWarning: '注意',
+    importWarningDetails: 'DSL 版本差异可能影响部分功能表现',
     importSuccess: '导入成功',
     parallelRun: '并行运行',
     parallelTip: {
@@ -407,6 +409,10 @@ const translation = {
         readPlaceholder: '输入读取超时（以秒为单位）',
         writeLabel: '写入超时',
         writePlaceholder: '输入写入超时（以秒为单位）',
+      },
+      curl: {
+        title: '导入cURL',
+        placeholder: '粘贴 cURL 字符串',
       },
     },
     code: {

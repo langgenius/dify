@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class FileType(str, Enum):
+class FileType(StrEnum):
     IMAGE = "image"
     DOCUMENT = "document"
     AUDIO = "audio"
@@ -16,7 +16,7 @@ class FileType(str, Enum):
         raise ValueError(f"No matching enum found for value '{value}'")
 
 
-class FileTransferMethod(str, Enum):
+class FileTransferMethod(StrEnum):
     REMOTE_URL = "remote_url"
     LOCAL_FILE = "local_file"
     TOOL_FILE = "tool_file"
@@ -29,7 +29,7 @@ class FileTransferMethod(str, Enum):
         raise ValueError(f"No matching enum found for value '{value}'")
 
 
-class FileBelongsTo(str, Enum):
+class FileBelongsTo(StrEnum):
     USER = "user"
     ASSISTANT = "assistant"
 
@@ -41,7 +41,7 @@ class FileBelongsTo(str, Enum):
         raise ValueError(f"No matching enum found for value '{value}'")
 
 
-class FileAttribute(str, Enum):
+class FileAttribute(StrEnum):
     TYPE = "type"
     SIZE = "size"
     NAME = "name"
@@ -51,5 +51,5 @@ class FileAttribute(str, Enum):
     EXTENSION = "extension"
 
 
-class ArrayFileAttribute(str, Enum):
+class ArrayFileAttribute(StrEnum):
     LENGTH = "length"

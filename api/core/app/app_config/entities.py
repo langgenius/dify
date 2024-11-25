@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field, field_validator
@@ -88,7 +88,7 @@ class PromptTemplateEntity(BaseModel):
     advanced_completion_prompt_template: Optional[AdvancedCompletionPromptTemplateEntity] = None
 
 
-class VariableEntityType(str, Enum):
+class VariableEntityType(StrEnum):
     TEXT_INPUT = "text-input"
     SELECT = "select"
     PARAGRAPH = "paragraph"
