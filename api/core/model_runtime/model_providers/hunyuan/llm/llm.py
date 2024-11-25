@@ -305,7 +305,7 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
         elif isinstance(message, ToolPromptMessage):
             message_text = f"{tool_prompt} {content}"
         elif isinstance(message, SystemPromptMessage):
-            message_text = content
+            message_text = content if isinstance(content, str) else ""
         else:
             raise ValueError(f"Got unknown type {message}")
 

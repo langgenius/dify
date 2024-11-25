@@ -561,7 +561,10 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 del extras["metadata"]["annotation_reply"]
 
         return MessageEndStreamResponse(
-            task_id=self._application_generate_entity.task_id, id=self._message.id, files=self._recorded_files, **extras
+            task_id=self._application_generate_entity.task_id,
+            id=self._message.id,
+            files=self._recorded_files,
+            metadata=extras.get("metadata", {}),
         )
 
     def _handle_output_moderation_chunk(self, text: str) -> bool:

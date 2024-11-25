@@ -390,7 +390,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         if prompt_messages and not isinstance(prompt_messages[0], SystemPromptMessage) and prompt_template:
             prompt_messages.insert(0, SystemPromptMessage(content=prompt_template))
 
-        return prompt_messages
+        return prompt_messages or []
 
     def _organize_user_query(self, query: str, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """

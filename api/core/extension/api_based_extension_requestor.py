@@ -5,7 +5,7 @@ from models.api_based_extension import APIBasedExtensionPoint
 
 
 class APIBasedExtensionRequestor:
-    timeout: (int, int) = (5, 60)
+    timeout: tuple[int, int] = (5, 60)
     """timeout for request connect and read"""
 
     def __init__(self, api_endpoint: str, api_key: str) -> None:

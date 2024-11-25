@@ -62,7 +62,7 @@ class CohereRerankModel(RerankModel):
             # format document
             rerank_document = RerankDocument(
                 index=result.index,
-                text=result.document.text,
+                text=result.document.text if result.document else "",
                 score=result.relevance_score,
             )
 

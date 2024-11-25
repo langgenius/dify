@@ -23,7 +23,8 @@ class ExternalDataToolFactory:
         """
         code_based_extension.validate_form_schema(ExtensionModule.EXTERNAL_DATA_TOOL, name, config)
         extension_class = code_based_extension.extension_class(ExtensionModule.EXTERNAL_DATA_TOOL, name)
-        extension_class.validate_config(tenant_id, config)
+        # FIXME mypy issue here, figure out how to fix it
+        extension_class.validate_config(tenant_id, config)  # type: ignore
 
     def query(self, inputs: dict, query: Optional[str] = None) -> str:
         """

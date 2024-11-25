@@ -1,7 +1,7 @@
 import json
 import logging
 import sys
-from typing import Optional
+from typing import Optional, cast
 
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
@@ -94,7 +94,7 @@ class LoggingCallback(Callback):
         :param stream: is stream response
         :param user: unique user id
         """
-        sys.stdout.write(chunk.delta.message.content)
+        sys.stdout.write(cast(str, chunk.delta.message.content))
         sys.stdout.flush()
 
     def on_after_invoke(

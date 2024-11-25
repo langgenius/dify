@@ -67,6 +67,7 @@ class SageMakerSpeech2TextModel(Speech2TextModel):
             s3_prefix = "dify/speech2text/"
             sagemaker_endpoint = credentials.get("sagemaker_endpoint")
             bucket = credentials.get("audio_s3_cache_bucket")
+            assert bucket is not None, "audio_s3_cache_bucket is required in credentials"
 
             s3_presign_url = generate_presigned_url(self.s3_client, file, bucket, s3_prefix)
             payload = {"audio_s3_presign_uri": s3_presign_url}
