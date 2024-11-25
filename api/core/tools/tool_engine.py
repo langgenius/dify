@@ -61,7 +61,12 @@ class ToolEngine:
             if parameters and len(parameters) == 1:
                 tool_parameters = {parameters[0].name: tool_parameters}
             else:
-                raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
+                try:
+                    tool_parameters = json.loads(tool_parameters)
+                except Exception as e:
+                    pass
+                if not isinstance(tool_parameters, dict):
+                    raise ValueError(f"tool_parameters should be a dict, but got a string: {tool_parameters}")
 
         # invoke the tool
         try:
