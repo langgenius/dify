@@ -7,6 +7,7 @@ import {
 import { TaskStatus } from '@/app/components/plugins/types'
 import type { PluginStatus } from '@/app/components/plugins/types'
 import {
+  useMutationClearAllTaskPlugin,
   useMutationClearTaskPlugin,
   usePluginTaskList,
 } from '@/service/use-plugins'
@@ -14,8 +15,10 @@ import {
 export const usePluginTaskStatus = () => {
   const {
     pluginTasks,
+    handleRefetch,
   } = usePluginTaskList()
-  const { mutate } = useMutationClearTaskPlugin()
+  const { mutateAsync } = useMutationClearTaskPlugin()
+  const { mutateAsync: mutateAsyncClearAll } = useMutationClearAllTaskPlugin()
   const allPlugins = pluginTasks.filter(task => task.status !== TaskStatus.success).map(task => task.plugins.map((plugin) => {
     return {
       ...plugin,
@@ -35,12 +38,17 @@ export const usePluginTaskStatus = () => {
       successPlugins.push(plugin)
   })
 
-  const handleClearErrorPlugin = useCallback((taskId: string, pluginId: string) => {
-    mutate({
+  const handleClearErrorPlugin = useCallback(async (taskId: string, pluginId: string) => {
+    await mutateAsync({
       taskId,
       pluginId,
     })
-  }, [mutate])
+    handleRefetch()
+  }, [mutateAsync, handleRefetch])
+  const handleClearAllErrorPlugin = useCallback(async () => {
+    await mutateAsyncClearAll()
+    handleRefetch()
+  }, [mutateAsyncClearAll, handleRefetch])
   const totalPluginsLength = allPlugins.length
   const runningPluginsLength = runningPlugins.length
   const errorPluginsLength = errorPlugins.length
@@ -84,6 +92,7 @@ export const usePluginTaskStatus = () => {
     isSuccess,
     isFailed,
     handleClearErrorPlugin,
+    handleClearAllErrorPlugin,
     opacity,
   }
 }
