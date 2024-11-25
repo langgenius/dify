@@ -22,7 +22,7 @@ export default function SocialAuth(props: SocialAuthProps) {
     return url
   }
   return <>
-    <div className='w-full'>
+    {/* <div className='w-full'>
       <a href={getOAuthLink('/oauth/login/github')}>
         <Button
           disabled={props.disabled}
@@ -39,12 +39,12 @@ export default function SocialAuth(props: SocialAuthProps) {
           </>
         </Button>
       </a>
-    </div>
+    </div> */}
     <div className='w-full'>
       <a href={getOAuthLink('/oauth/login/google')}>
         <Button
           disabled={props.disabled}
-          className='w-full'
+          className='w-full h-10 mb-2'
         >
           <>
             <span className={
