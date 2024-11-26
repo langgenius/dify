@@ -55,10 +55,8 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
             max={max}
             step={step}
             size='sm'
+            value={value}
             onChange={(value) => {
-              if (value < min || value > max)
-                return
-
               onChange(id, value)
             }}
           />

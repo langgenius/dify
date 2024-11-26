@@ -672,11 +672,11 @@ const StepTwo = ({
                       onChange={e => setSegmentIdentifier(e.target.value)}
                     />
                     <MaxLengthInput
-                      defaultValue={max}
+                      value={max}
                       onChange={setMax}
                     />
                     <OverlapInput
-                      defaultValue={overlap}
+                      value={overlap}
                       min={1}
                       onChange={setOverlap}
                     />
@@ -749,7 +749,7 @@ const StepTwo = ({
                             })}
                           />
                           <MaxLengthInput
-                            defaultValue={parentChildConfig.parent.maxLength}
+                            value={parentChildConfig.parent.maxLength}
                             onChange={value => setParentChildConfig({
                               ...parentChildConfig,
                               parent: {
@@ -791,8 +791,7 @@ const StepTwo = ({
                         })}
                       />
                       <MaxLengthInput
-                        defaultValue={parentChildConfig.child.maxLength}
-
+                        value={parentChildConfig.child.maxLength}
                         onChange={value => setParentChildConfig({
                           ...parentChildConfig,
                           child: {
