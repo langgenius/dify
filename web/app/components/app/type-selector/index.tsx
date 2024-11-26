@@ -12,7 +12,7 @@ import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { ChatBot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { type AppMode } from '@/types/app'
 export type AppSelectorProps = {
-  value: Array<AppMode> | null
+  value: Array<AppMode>
   onChange: (value: AppSelectorProps['value']) => void
 }
 
@@ -49,7 +49,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
           <ul className='relative p-1 w-[240px] bg-components-panel-bg-blur rounded-xl shadow-lg border border-components-panel-border'>
             {allTypes.map(mode => (
               <AppTypeSelectorItem key={mode} mode={mode}
-                checked={Boolean(value && value?.indexOf(mode) !== -1)}
+                checked={Boolean(value.length > 0 && value?.indexOf(mode) !== -1)}
                 onClick={() => {
                   if (value?.indexOf(mode) !== -1)
                     onChange(value?.filter(v => v !== mode) ?? [])
@@ -64,7 +64,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
   )
 }
 
-export default React.memo(AppTypeSelector)
+export default AppTypeSelector
 
 function AppTypeSelectTrigger({ values }: { values: AppSelectorProps['value'] }) {
   const { t } = useTranslation()

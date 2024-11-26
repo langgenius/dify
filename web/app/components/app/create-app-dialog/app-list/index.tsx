@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import useSWR from 'swr'
 import { useDebounceFn } from 'ahooks'
+import { RiRobot2Line } from '@remixicon/react'
 import AppCard from '../app-card'
 import Sidebar, { AppCategories } from './sidebar'
 import Toast from '@/app/components/base/toast'
@@ -24,6 +25,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { getRedirection } from '@/utils/app-redirection'
 import Input from '@/app/components/base/input'
+import type { AppMode } from '@/types/app'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -55,7 +57,7 @@ const Apps = ({
     handleSearch()
   }
 
-  const [currentType, setCurrentType] = useState<string>('')
+  const [currentType, setCurrentType] = useState<AppMode[]>([])
   const [currCategory, setCurrCategory] = useTabSearchParams({
     defaultTab: allCategoriesEn,
     disableSearchParams: true,
@@ -79,26 +81,24 @@ const Apps = ({
   )
 
   const filteredList = useMemo(() => {
-    if (currCategory === allCategoriesEn) {
-      if (!currentType)
-        return allList
-      else if (currentType === 'chatbot')
-        return allList.filter(item => (item.app.mode === 'chat' || item.app.mode === 'advanced-chat'))
-      else if (currentType === 'agent')
-        return allList.filter(item => (item.app.mode === 'agent-chat'))
-      else
-        return allList.filter(item => (item.app.mode === 'workflow'))
-    }
-    else {
-      if (!currentType)
-        return allList.filter(item => item.category === currCategory)
-      else if (currentType === 'chatbot')
-        return allList.filter(item => (item.app.mode === 'chat' || item.app.mode === 'advanced-chat') && item.category === currCategory)
-      else if (currentType === 'agent')
-        return allList.filter(item => (item.app.mode === 'agent-chat') && item.category === currCategory)
-      else
-        return allList.filter(item => (item.app.mode === 'workflow') && item.category === currCategory)
-    }
+    const filteredByCategory = allList.filter((item) => {
+      if (currCategory === allCategoriesEn)
+        return true
+      return item.category === currCategory
+    })
+    if (currentType.length === 0)
+      return filteredByCategory
+    return filteredByCategory.filter((item) => {
+      if (currentType.includes('chat') && (item.app.mode === 'chat' || item.app.mode === 'advanced-chat'))
+        return true
+      if (currentType.includes('agent-chat') && item.app.mode === 'agent-chat')
+        return true
+      if (currentType.includes('completion') && item.app.mode === 'completion')
+        return true
+      if (currentType.includes('workflow') && item.app.mode === 'workflow')
+        return true
+      return false
+    })
   }, [currentType, currCategory, allCategoriesEn, allList])
 
   const searchFilteredList = useMemo(() => {
@@ -222,3 +222,13 @@ const Apps = ({
 }
 
 export default React.memo(Apps)
+
+function NoTemplate() {
+  return <div className='p-4 bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2'>
+    <div className='w-8 h-8 rounded-lg inline-flex items-center justify-center mb-2'>
+      <RiRobot2Line />
+    </div>
+    <p>No templates found.</p>
+    <p>There are plenty of other options to choose from. Check out our most popular ones here.</p>
+  </div>
+}
