@@ -1,0 +1,13 @@
+identity: # 工具供应商的基本信息
+  author: alan.li # 作者
+  name: shopee # 名称，唯一，不允许和其他供应商重名
+  label: # 标签，用于前端展示
+    en_US: Shopee # 英文标签
+    zh_Hans: Shopee # 中文标签
+  description: # 描述，用于前端展示
+    en_US: Shopee # 英文描述
+    zh_Hans: Shopee # 中文描述
+  icon: img.png # 图标，需要放置在当前模块的_assets文件夹下
+  tags: # 标签，用于前端展示
+    - image
+credentials_for_provider:

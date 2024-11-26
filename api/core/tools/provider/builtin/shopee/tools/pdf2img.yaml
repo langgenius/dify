@@ -1,0 +1,23 @@
+identity: # 工具的基本信息
+  name: pdf2img # 工具名称，唯一，不允许和其他工具重名
+  author: alan.li # 作者
+  label: # 标签，用于前端展示
+    en_US: pdf2img # 英文标签
+    zh_Hans: pdf2img # 中文标签
+description: # 描述，用于前端展示
+  human: # 用于前端展示的介绍，支持多语言
+    en_US: pdf2img
+    zh_Hans: pdf2img
+  llm: pdf2img
+parameters: # 参数列表
+  - name: file # 参数名称
+    type: file # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: pdf # 英文标签
+      zh_Hans: pdf文件 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: pdf
+      zh_Hans: pdf
+    llm_description: pdf # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+    form: llm
