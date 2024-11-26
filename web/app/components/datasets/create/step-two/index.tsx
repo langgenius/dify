@@ -59,6 +59,7 @@ import RadioCard from '@/app/components/base/radio-card'
 import { MessageChatSquare } from '@/app/components/base/icons/src/public/common'
 import { IS_CE_EDITION } from '@/config'
 import Switch from '@/app/components/base/switch'
+import Divider from '@/app/components/base/divider'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
@@ -827,6 +828,7 @@ const StepTwo = ({
               </OptionCard>
             </div>
           </div>
+          <Divider className='my-5' />
           <div className={s.label}>{t('datasetCreation.stepTwo.indexMode')}</div>
           <div className='max-w-[640px]'>
             <div className='flex items-center gap-3 flex-wrap sm:flex-nowrap'>
@@ -894,7 +896,7 @@ const StepTwo = ({
               </div>
             )}
             {IS_CE_EDITION && indexType === IndexingType.QUALIFIED && (
-              <div className='mt-3 rounded-xl bg-gray-50 border border-gray-100'>
+              <div className='mt-2 rounded-xl bg-gray-50 border border-gray-100'>
                 <div className='flex justify-between items-center px-5 py-4'>
                   <div className='flex justify-center items-center w-8 h-8 rounded-lg bg-indigo-50'>
                     <MessageChatSquare className='w-4 h-4' />
@@ -922,7 +924,7 @@ const StepTwo = ({
             )}
             {/* Embedding model */}
             {indexType === IndexingType.QUALIFIED && (
-              <div className='mb-2'>
+              <div className='mt-6 my-2'>
                 <div className={cn(s.label, datasetId && 'flex justify-between items-center')}>{t('datasetSettings.form.embeddingModel')}</div>
                 <ModelSelector
                   readonly={!!datasetId}
@@ -940,6 +942,7 @@ const StepTwo = ({
                 )}
               </div>
             )}
+            <Divider className='my-5' />
             {/* Retrieval Method Config */}
             <div>
               {!datasetId
