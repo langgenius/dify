@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import React, { useState } from 'react'
-import { RiArrowDownSLine, RiExchange2Fill, RiFilter3Line } from '@remixicon/react'
+import { RiArrowDownSLine, RiCloseCircleFill, RiExchange2Fill, RiFilter3Line } from '@remixicon/react'
 import Checkbox from '../../base/checkbox'
 import cn from '@/utils/classnames'
 import {
@@ -8,8 +8,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import { ChatBot } from '@/app/components/base/icons/src/vender/solid/communication'
+import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import { type AppMode } from '@/types/app'
 export type AppSelectorProps = {
   value: Array<AppMode>
@@ -41,7 +40,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
               e.stopPropagation()
               onChange([])
             }}>
-              <XCircle className='w-3.5 h-3.5 text-text-quaternary hover:text-text-tertiary cursor-pointer' />
+              <RiCloseCircleFill className='w-3.5 h-3.5 text-text-quaternary hover:text-text-tertiary cursor-pointer' />
             </div>}
           </div>
         </PortalToFollowElemTrigger>
@@ -115,33 +114,38 @@ type AppTypeIconProps = {
   mode: AppMode
   style?: React.CSSProperties
   className?: string
+  wrapperClassName?: string
 }
-function AppTypeIcon({ mode, className, style }: AppTypeIconProps) {
+
+export function AppTypeIcon({ mode, className, wrapperClassName, style }: AppTypeIconProps) {
+  const wrapperClassNames = cn('w-5 h-5 inline-flex items-center justify-center rounded-md border border-divider-regular', wrapperClassName)
+  const iconClassNames = cn('w-3.5 h-3.5 text-components-avatar-shape-fill-stop-100', className)
   if (mode === 'chat') {
-    return <div style={style} className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-blue-solid rounded-md border border-divider-regular', className)}>
-      <ChatBot className='w-3.5 h-3.5 text-components-avatar-shape-fill-stop-100' />
+    return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-solid')}>
+      <ChatBot className={iconClassNames} />
     </div>
   }
   if (mode === 'agent-chat') {
-    return <div style={style} className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-violet-solid rounded-md border border-divider-regular', className)}>
-      <ChatBot className='w-3.5 h-3.5 text-components-avatar-shape-fill-stop-100' />
+    return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-violet-solid')}>
+      <Logic className={iconClassNames} />
     </div>
   }
   if (mode === 'advanced-chat') {
-    return <div style={style} className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-blue-light-solid rounded-md border border-divider-regular', className)}>
-      <ChatBot className='w-3.5 h-3.5 text-components-avatar-shape-fill-stop-100' />
+    return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-light-solid')}>
+      <BubbleTextMod className={iconClassNames} />
     </div>
   }
   if (mode === 'workflow') {
-    return <div style={style} className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-indigo-solid rounded-md border border-divider-regular', className)}>
-      <RiExchange2Fill className='w-3.5 h-3.5 text-components-avatar-shape-fill-stop-100' />
+    return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-indigo-solid')}>
+      <RiExchange2Fill className={iconClassNames} />
     </div>
   }
   if (mode === 'completion') {
-    return <div style={style} className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-teal-solid rounded-md border border-divider-regular', className)}>
-      <ChatBot className='w-3.5 h-3.5 text-components-avatar-shape-fill-stop-100' />
+    return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-teal-solid')}>
+      <ListSparkle className={iconClassNames} />
     </div>
   }
+  return null
 }
 
 type AppTypeLabelProps = {

@@ -1,12 +1,11 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { PlusIcon } from '@heroicons/react/20/solid'
-import { RiExchange2Fill } from '@remixicon/react'
+import { AppTypeIcon } from '../../type-selector'
 import Button from '@/app/components/base/button'
 import cn from '@/utils/classnames'
 import type { App } from '@/models/explore'
 import AppIcon from '@/app/components/base/app-icon'
-import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 
 export type AppCardProps = {
   app: App
@@ -31,23 +30,7 @@ const AppCard = ({
             background={app.app.icon_background}
             imageUrl={app.app.icon_url}
           />
-          <div className='absolute -bottom-0.5 -right-0.5 w-4 h-4 flex items-center justify-center rounded border border-components-panel-on-panel-item-bg'>
-            {appBasicInfo.mode === 'advanced-chat' && (
-              <BubbleTextMod className='w-full h-full' />
-            )}
-            {appBasicInfo.mode === 'agent-chat' && (
-              <Logic className='w-full h-full' />
-            )}
-            {appBasicInfo.mode === 'chat' && (
-              <ChatBot className='w-full h-full' />
-            )}
-            {appBasicInfo.mode === 'completion' && (
-              <ListSparkle className='w-full h-full' />
-            )}
-            {appBasicInfo.mode === 'workflow' && (
-              <RiExchange2Fill className='w-full h-full' />
-            )}
-          </div>
+          <AppTypeIcon wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4' className='w-3 h-3' mode={appBasicInfo.mode} />
         </div>
         <div className='grow flex flex-col gap-1'>
           <div className='line-clamp-1'>

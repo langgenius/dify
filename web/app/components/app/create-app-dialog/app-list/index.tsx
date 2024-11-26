@@ -8,7 +8,7 @@ import useSWR from 'swr'
 import { useDebounceFn } from 'ahooks'
 import { RiRobot2Line } from '@remixicon/react'
 import AppCard from '../app-card'
-import Sidebar, { AppCategories } from './sidebar'
+import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 import Toast from '@/app/components/base/toast'
 import Divider from '@/app/components/base/divider'
 import cn from '@/utils/classnames'
@@ -157,7 +157,7 @@ const Apps = ({
   }
 
   return (
-    <div className='flex flex-col h-full'>
+    <div className='h-full flex flex-col'>
       <div className='flex justify-between items-center py-3 border-b border-divider-burn'>
         <div className='w-[180px] text-center'>
           <span className='title-xl-semi-bold text-text-primary'>{t('app.newApp.startFromTemplate')}</span>
@@ -179,29 +179,35 @@ const Apps = ({
         </div>
         <div className='w-[180px] h-8'></div>
       </div>
-      <div className='relative flex flex-1'>
+      <div className='relative flex flex-1 overflow-y-auto'>
         <div className='w-[200px] h-full p-4'>
           <Sidebar current={currCategory as AppCategories} onClick={(category) => { setCurrCategory(category) }} />
         </div>
-        <div className={cn(
-          'flex-1 h-full overflow-auto shrink-0 grow p-6 pt-2 border-l border-divider-burn',
-        )}>
-          <div
-            className={cn(
-              'grid content-start shrink-0 gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6',
-            )}>
-            {searchFilteredList.map(app => (
-              <AppCard
-                key={app.app_id}
-                app={app}
-                canCreate={hasEditPermission}
-                onCreate={() => {
-                  setCurrApp(app)
-                  setIsShowCreateModal(true)
-                }}
-              />
-            ))}
-          </div>
+        <div className='flex-1 h-full overflow-auto shrink-0 grow p-6 pt-2 border-l border-divider-burn'>
+          {searchFilteredList && searchFilteredList.length > 0 && <>
+            <div className='pt-4 pb-1'>
+              {searchKeywords
+                ? <p className='title-md-semi-bold text-text-tertiary'>Search results for {searchFilteredList.length}</p>
+                : <AppCategoryLabel category={currCategory as AppCategories} className='title-md-semi-bold text-text-primary' />}
+            </div>
+            <div
+              className={cn(
+                'grid content-start shrink-0 gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6',
+              )}>
+              {searchFilteredList.map(app => (
+                <AppCard
+                  key={app.app_id}
+                  app={app}
+                  canCreate={hasEditPermission}
+                  onCreate={() => {
+                    setCurrApp(app)
+                    setIsShowCreateModal(true)
+                  }}
+                />
+              ))}
+            </div>
+          </>}
+          {(!searchFilteredList || searchFilteredList.length === 0) && <NoTemplateFound />}
         </div>
       </div>
       {isShowCreateModal && (
@@ -223,12 +229,12 @@ const Apps = ({
 
 export default React.memo(Apps)
 
-function NoTemplate() {
-  return <div className='p-4 bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2'>
-    <div className='w-8 h-8 rounded-lg inline-flex items-center justify-center mb-2'>
-      <RiRobot2Line />
+function NoTemplateFound() {
+  return <div className='p-4 rounded-lg w-full bg-workflow-process-bg'>
+    <div className='w-8 h-8 rounded-lg inline-flex items-center justify-center mb-2 shadow-lg bg-components-card-bg'>
+      <RiRobot2Line className='w-5 h-5 text-text-tertiary' />
     </div>
-    <p>No templates found.</p>
-    <p>There are plenty of other options to choose from. Check out our most popular ones here.</p>
+    <p className='title-md-semi-bold text-text-primary'>No templates found.</p>
+    <p className='system-sm-regular text-text-tertiary'>There are plenty of other options to choose from. Check out our most popular ones here.</p>
   </div>
 }
