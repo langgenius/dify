@@ -119,6 +119,19 @@ type ParentChildConfig = {
   rules: PreProcessingRule[]
 }
 
+const defaultParentChildConfig: ParentChildConfig = {
+  chunkForContext: 'paragraph',
+  parent: {
+    delimiter: '\\n\\n',
+    maxLength: 4000,
+  },
+  child: {
+    delimiter: '\\n\\n',
+    maxLength: 4000,
+  },
+  rules: [],
+}
+
 const StepTwo = ({
   isSetting,
   documentDetail,
@@ -186,18 +199,7 @@ const StepTwo = ({
   })()
   const [isCreating, setIsCreating] = useState(false)
 
-  const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>({
-    chunkForContext: 'paragraph',
-    parent: {
-      delimiter: '\\n\\n',
-      maxLength: 4000,
-    },
-    child: {
-      delimiter: '\\n\\n',
-      maxLength: 4000,
-    },
-    rules: [],
-  })
+  const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
 
   const scrollHandle = (e: Event) => {
     if ((e.target as HTMLDivElement).scrollTop > 0)
@@ -248,6 +250,7 @@ const StepTwo = ({
       setOverlap(defaultConfig.segmentation.chunk_overlap)
       setRules(defaultConfig.pre_processing_rules)
     }
+    setParentChildConfig(defaultParentChildConfig)
   }
 
   const fetchFileIndexingEstimate = async (docForm = DocForm.TEXT, language?: string) => {
@@ -659,7 +662,7 @@ const StepTwo = ({
                       <RiSearchEyeLine className='h-4 w-4 mr-1.5' />
                       {t('datasetCreation.stepTwo.previewChunk')}
                     </Button>
-                    <Button variant={'ghost'} disabled>
+                    <Button variant={'ghost'} onClick={resetRules}>
                       {t('datasetCreation.stepTwo.reset')}
                     </Button>
                   </>
