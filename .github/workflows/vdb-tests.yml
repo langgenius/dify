@@ -8,6 +8,8 @@ on:
       - api/core/rag/datasource/**
       - docker/**
       - .github/workflows/vdb-tests.yml
+      - api/poetry.lock
+      - api/pyproject.toml
 
 concurrency:
   group: vdb-tests-${{ github.head_ref || github.run_id }}
@@ -20,7 +22,6 @@ jobs:
     strategy:
       matrix:
         python-version:
-          - "3.10"
           - "3.11"
           - "3.12"
 

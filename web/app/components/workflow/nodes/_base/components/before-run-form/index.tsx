@@ -16,6 +16,7 @@ import { InputVarType, NodeRunningStatus } from '@/app/components/workflow/types
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import Toast from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
+import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 
 const i18nPrefix = 'workflow.singleRun'
 
@@ -39,6 +40,11 @@ function formatValue(value: string | any, type: InputVarType) {
       return JSON.parse(item)
     })
   }
+  if (type === InputVarType.multiFiles)
+    return getProcessedFiles(value)
+
+  if (type === InputVarType.singleFile)
+    return getProcessedFiles([value])[0]
 
   return value
 }

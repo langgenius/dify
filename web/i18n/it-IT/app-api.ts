@@ -98,6 +98,7 @@ const translation = {
     requestBody: 'Corpo della Richiesta',
     pathParams: 'Parametri del Percorso',
     query: 'Query',
+    toc: 'Contenuto',
   },
   regenerate: 'Rigenerare',
 }

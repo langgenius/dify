@@ -451,7 +451,8 @@ const Configuration: FC = () => {
   }
 
   const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
-
+  const isShowDocumentConfig = !!currModel?.features?.includes(ModelFeatureEnum.document)
+  const isAllowVideoUpload = !!currModel?.features?.includes(ModelFeatureEnum.video)
   // *** web app features ***
   const featuresData: FeaturesData = useMemo(() => {
     return {
@@ -472,7 +473,7 @@ const Configuration: FC = () => {
           transfer_methods: modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
         },
         enabled: !!(modelConfig.file_upload?.enabled || modelConfig.file_upload?.image?.enabled),
-        allowed_file_types: modelConfig.file_upload?.allowed_file_types || [SupportUploadFileTypes.image, SupportUploadFileTypes.video],
+        allowed_file_types: modelConfig.file_upload?.allowed_file_types || [],
         allowed_file_extensions: modelConfig.file_upload?.allowed_file_extensions || [...FILE_EXTS[SupportUploadFileTypes.image], ...FILE_EXTS[SupportUploadFileTypes.video]].map(ext => `.${ext}`),
         allowed_file_upload_methods: modelConfig.file_upload?.allowed_file_upload_methods || modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
         number_limits: modelConfig.file_upload?.number_limits || modelConfig.file_upload?.image?.number_limits || 3,
@@ -861,6 +862,8 @@ const Configuration: FC = () => {
       isShowVisionConfig,
       visionConfig,
       setVisionConfig: handleSetVisionConfig,
+      isAllowVideoUpload,
+      isShowDocumentConfig,
       rerankSettingModalOpen,
       setRerankSettingModalOpen,
     }}
