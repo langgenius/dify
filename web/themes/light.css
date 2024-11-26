@@ -377,7 +377,7 @@ html[data-theme="light"] {
 
   --color-background-body: #F2F4F7;
   --color-background-default-subtle: #FCFCFD;
-  --color-background-neurtral-subtle: #F9FAFB;
+  --color-background-neutral-subtle: #F9FAFB;
   --color-background-sidenav-bg: #FFFFFFCC;
   --color-background-default: #FFFFFF;
   --color-background-soft: #F9FAFB;
@@ -494,8 +494,8 @@ html[data-theme="light"] {
   --color-divider-deep: #10182824;
   --color-divider-burn: #1018280A;
   --color-divider-intense: #1018284D;
-  --color-divider-soild: #D0D5DC;
-  --color-divider-soild-alt: #98A2B2;
+  --color-divider-solid: #D0D5DC;
+  --color-divider-solid-alt: #98A2B2;
 
   --color-state-base-hover: #C8CEDA33;
   --color-state-base-active: #C8CEDA66;
@@ -506,24 +506,24 @@ html[data-theme="light"] {
   --color-state-accent-hover: #EFF4FF;
   --color-state-accent-active: #155AEF14;
   --color-state-accent-hover-alt: #D1E0FF;
-  --color-state-accent-soild: #296DFF;
+  --color-state-accent-solid: #296DFF;
   --color-state-accent-active-alt: #155AEF24;
 
   --color-state-destructive-hover: #FEF3F2;
   --color-state-destructive-hover-alt: #FEE4E2;
   --color-state-destructive-active: #FECDCA;
-  --color-state-destructive-soild: #F04438;
+  --color-state-destructive-solid: #F04438;
   --color-state-destructive-border: #FDA29B;
 
   --color-state-success-hover: #ECFDF3;
   --color-state-success-hover-alt: #DCFAE6;
   --color-state-success-active: #ABEFC6;
-  --color-state-success-soild: #17B26A;
+  --color-state-success-solid: #17B26A;
 
   --color-state-warning-hover: #FFFAEB;
   --color-state-warning-hover-alt: #FEF0C7;
   --color-state-warning-active: #FEDF89;
-  --color-state-warning-soild: #F79009;
+  --color-state-warning-solid: #F79009;
 
   --color-effects-highlight: #FFFFFF;
   --color-effects-highlight-lightmode-off: #FFFFFF00;

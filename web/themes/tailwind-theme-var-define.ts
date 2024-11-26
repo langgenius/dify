@@ -377,7 +377,7 @@ const vars = {
 
   'background-body': 'var(--color-background-body)',
   'background-default-subtle': 'var(--color-background-default-subtle)',
-  'background-neurtral-subtle': 'var(--color-background-neurtral-subtle)',
+  'background-neutral-subtle': 'var(--color-background-neutral-subtle)',
   'background-sidenav-bg': 'var(--color-background-sidenav-bg)',
   'background-default': 'var(--color-background-default)',
   'background-soft': 'var(--color-background-soft)',
@@ -494,8 +494,8 @@ const vars = {
   'divider-deep': 'var(--color-divider-deep)',
   'divider-burn': 'var(--color-divider-burn)',
   'divider-intense': 'var(--color-divider-intense)',
-  'divider-soild': 'var(--color-divider-soild)',
-  'divider-soild-alt': 'var(--color-divider-soild-alt)',
+  'divider-solid': 'var(--color-divider-solid)',
+  'divider-solid-alt': 'var(--color-divider-solid-alt)',
 
   'state-base-hover': 'var(--color-state-base-hover)',
   'state-base-active': 'var(--color-state-base-active)',
@@ -506,24 +506,24 @@ const vars = {
   'state-accent-hover': 'var(--color-state-accent-hover)',
   'state-accent-active': 'var(--color-state-accent-active)',
   'state-accent-hover-alt': 'var(--color-state-accent-hover-alt)',
-  'state-accent-soild': 'var(--color-state-accent-soild)',
+  'state-accent-solid': 'var(--color-state-accent-solid)',
   'state-accent-active-alt': 'var(--color-state-accent-active-alt)',
 
   'state-destructive-hover': 'var(--color-state-destructive-hover)',
   'state-destructive-hover-alt': 'var(--color-state-destructive-hover-alt)',
   'state-destructive-active': 'var(--color-state-destructive-active)',
-  'state-destructive-soild': 'var(--color-state-destructive-soild)',
+  'state-destructive-solid': 'var(--color-state-destructive-solid)',
   'state-destructive-border': 'var(--color-state-destructive-border)',
 
   'state-success-hover': 'var(--color-state-success-hover)',
   'state-success-hover-alt': 'var(--color-state-success-hover-alt)',
   'state-success-active': 'var(--color-state-success-active)',
-  'state-success-soild': 'var(--color-state-success-soild)',
+  'state-success-solid': 'var(--color-state-success-solid)',
 
   'state-warning-hover': 'var(--color-state-warning-hover)',
   'state-warning-hover-alt': 'var(--color-state-warning-hover-alt)',
   'state-warning-active': 'var(--color-state-warning-active)',
-  'state-warning-soild': 'var(--color-state-warning-soild)',
+  'state-warning-solid': 'var(--color-state-warning-solid)',
 
   'effects-highlight': 'var(--color-effects-highlight)',
   'effects-highlight-lightmode-off': 'var(--color-effects-highlight-lightmode-off)',
