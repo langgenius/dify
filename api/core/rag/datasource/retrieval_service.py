@@ -106,16 +106,15 @@ class RetrievalService:
             exception_message = ";\n".join(exceptions)
             raise Exception(exception_message)
 
-
         if retrieval_method == RetrievalMethod.HYBRID_SEARCH.value:
             data_post_processor = DataPostProcessor(
                 str(dataset.tenant_id), reranking_mode, reranking_model, weights, False
             )
             all_documents = data_post_processor.invoke(
-                query=query, 
-                documents=all_documents, 
-                score_threshold=score_threshold, 
-                top_n=DifyConfig.RETRIEVAL_TOP_N if DifyConfig.RETRIEVAL_TOP_N else top_k
+                query=query,
+                documents=all_documents,
+                score_threshold=score_threshold,
+                top_n=DifyConfig.RETRIEVAL_TOP_N or top_k,
             )
 
         return all_documents
@@ -184,10 +183,10 @@ class RetrievalService:
                         )
                         all_documents.extend(
                             data_post_processor.invoke(
-                                query=query, 
-                                documents=documents, 
-                                score_threshold=score_threshold, 
-                                top_n=DifyConfig.RETRIEVAL_TOP_N if DifyConfig.RETRIEVAL_TOP_N else len(documents)
+                                query=query,
+                                documents=documents,
+                                score_threshold=score_threshold,
+                                top_n=DifyConfig.RETRIEVAL_TOP_N or len(documents),
                             )
                         )
                     else:
@@ -229,10 +228,10 @@ class RetrievalService:
                         )
                         all_documents.extend(
                             data_post_processor.invoke(
-                                query=query, 
-                                documents=documents, 
-                                score_threshold=score_threshold, 
-                                top_n=DifyConfig.RETRIEVAL_TOP_N if DifyConfig.RETRIEVAL_TOP_N else len(documents)
+                                query=query,
+                                documents=documents,
+                                score_threshold=score_threshold,
+                                top_n=DifyConfig.RETRIEVAL_TOP_N or len(documents),
                             )
                         )
                     else:
