@@ -58,12 +58,16 @@ def batch_create_segment_to_index_task(
                 model=dataset.embedding_model,
             )
         word_count_change = 0
-        for segment in content:
+        if embedding_model:
+            tokens_list = embedding_model.get_text_embedding_num_tokens(
+                texts=[segment["content"] for segment in content]
+            )
+        else:
+            tokens_list = [0] * len(content)
+        for segment, tokens in zip(content, tokens_list):
             content = segment["content"]
             doc_id = str(uuid.uuid4())
             segment_hash = helper.generate_text_hash(content)
-            # calc embedding use tokens
-            tokens = embedding_model.get_text_embedding_num_tokens(texts=[content]) if embedding_model else 0
             max_position = (
                 db.session.query(func.max(DocumentSegment.position))
                 .filter(DocumentSegment.document_id == dataset_document.id)

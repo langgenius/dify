@@ -45,7 +45,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         self,
         chunk_size: int = 4000,
         chunk_overlap: int = 200,
-        length_function: Callable[[str], int] = len,
+        length_function: Callable[[list[str]], list[int]] = lambda x: [len(x) for x in x],
         keep_separator: bool = False,
         add_start_index: bool = False,
     ) -> None:
@@ -224,8 +224,8 @@ class CharacterTextSplitter(TextSplitter):
         splits = _split_text_with_regex(text, self._separator, self._keep_separator)
         _separator = "" if self._keep_separator else self._separator
         _good_splits_lengths = []  # cache the lengths of the splits
-        for split in splits:
-            _good_splits_lengths.append(self._length_function(split))
+        if splits:
+            _good_splits_lengths.extend(self._length_function(splits))
         return self._merge_splits(splits, _separator, _good_splits_lengths)
 
 
@@ -478,9 +478,8 @@ class RecursiveCharacterTextSplitter(TextSplitter):
         _good_splits = []
         _good_splits_lengths = []  # cache the lengths of the splits
         _separator = "" if self._keep_separator else separator
-
-        for s in splits:
-            s_len = self._length_function(s)
+        s_lens = self._length_function(splits)
+        for s, s_len in zip(splits, s_lens):
             if s_len < self._chunk_size:
                 _good_splits.append(s)
                 _good_splits_lengths.append(s_len)
