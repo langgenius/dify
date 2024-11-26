@@ -86,7 +86,7 @@ def init_app(app: Flask) -> Celery:
         },
         "update_tidb_serverless_status_task": {
             "task": "schedule.update_tidb_serverless_status_task.update_tidb_serverless_status_task",
-            "schedule": crontab(minute="30", hour="*"),
+            "schedule": timedelta(minutes=10),
         },
         "clean_messages": {
             "task": "schedule.clean_messages.clean_messages",
