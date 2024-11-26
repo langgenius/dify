@@ -819,6 +819,7 @@ class RegisterService:
             db.session.commit()
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()
+            raise AccountRegisterError("Workspace is not allowed to create.")
         except Exception as e:
             db.session.rollback()
             logging.exception("Register failed")
