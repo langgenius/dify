@@ -97,6 +97,8 @@ module.exports = {
         'chatbot-bg': 'var(--color-chatbot-bg)',
         'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
         'workflow-process-bg': 'var(--color-workflow-process-bg)',
+        'dataset-chunk-process-success-bg': 'var(--color-dataset-chunk-process-success-bg)',
+        'dataset-chunk-process-error-bg': 'var(--color-dataset-chunk-process-error-bg)',
       },
     },
   },
