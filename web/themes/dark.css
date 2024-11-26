@@ -336,11 +336,7 @@ html[data-theme="dark"] {
   --color-text-logo-text: #E9E9EC;
   --color-text-empty-state-icon: #C8CEDA4D;
   --color-text-inverted: #FFFFFF;
-<<<<<<< HEAD
-  --color-text-inverted-dimm: #FFFFFFCC;
-=======
   --color-text-inverted-dimmed: #FFFFFFCC;
->>>>>>> main
 
   --color-background-body: #1D1D20;
   --color-background-default-subtle: #222225;
@@ -694,7 +690,6 @@ html[data-theme="dark"] {
 
   --color-third-party-LangChain: #FFFFFF;
   --color-third-party-Langfuse: #FFFFFF;
-<<<<<<< HEAD
 
   --color-third-party-Github: #FFFFFF;
   --color-third-party-Github-tertiary: #C8CEDA99;
@@ -702,7 +697,4 @@ html[data-theme="dark"] {
   --color-third-party-model-bg-openai: #121212;
   --color-third-party-model-bg-anthropic: #1D1917;
   --color-third-party-model-bg-default: #0B0B0E;
-=======
-  --color-third-party-Github: #FFFFFF;
->>>>>>> main
 }
