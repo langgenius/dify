@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Stepper, type StepperProps } from '../stepper'
 import classNames from '@/utils/classnames'
 
-export type TopbarProps = Pick<StepperProps, 'activeStepIndex'> & {
+export type TopbarProps = Pick<StepperProps, 'activeIndex'> & {
   className?: string
 }
 
@@ -21,7 +21,7 @@ export const Topbar: FC<TopbarProps> = (props) => {
   return <div className={classNames('flex items-center justify-between relative', className)}>
     <Link href={'/datasets'} className="h-12 pl-2 pr-6 py-2 justify-start items-center gap-1 inline-flex">
       <RiArrowLeftLine className='size-4 mr-2' />
-      <p className="text-[#101827] text-[13px] font-semibold uppercase leading-none">
+      <p className="text-text-primary text-[13px] font-semibold uppercase leading-none">
         {t('datasetCreation.steps.header.creation')}
       </p>
     </Link>

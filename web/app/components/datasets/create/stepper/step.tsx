@@ -30,7 +30,7 @@ export const StepperStep: FC<StepperStepProps> = (props) => {
           ? 'text-white'
           : !isDisabled
             ? 'text-text-tertiary'
-            : 'text-text-tertiary/30',
+            : 'text-text-tertiary opacity-30',
       )}>
         {label}
       </div>
@@ -41,7 +41,7 @@ export const StepperStep: FC<StepperStepProps> = (props) => {
         ? 'text-text-accent'
         : !isDisabled
           ? 'text-text-tertiary'
-          : 'text-text-tertiary/30',
+          : 'text-text-tertiary opacity-30',
     )}>{name}</div>
   </div>
 }
