@@ -85,6 +85,10 @@ const vars = {
   'components-button-secondary-accent-border-hover': 'var(--color-components-button-secondary-accent-border-hover)',
   'components-button-secondary-accent-border-disabled': 'var(--color-components-button-secondary-accent-border-disabled)',
 
+  'components-button-indigo-bg': 'var(--color-components-button-indigo-bg)',
+  'components-button-indigo-bg-hover': 'var(--color-components-button-indigo-bg-hover)',
+  'components-button-indigo-bg-disabled': 'var(--color-components-button-indigo-bg-disabled)',
+
   'components-checkbox-icon': 'var(--color-components-checkbox-icon)',
   'components-checkbox-icon-disabled': 'var(--color-components-checkbox-icon-disabled)',
   'components-checkbox-bg': 'var(--color-components-checkbox-bg)',
@@ -314,6 +318,39 @@ const vars = {
   'components-premium-badge-orange-bg-stop-100-hover': 'var(--color-components-premium-badge-orange-bg-stop-100-hover)',
   'components-premium-badge-orange-stroke-stop-0-hover': 'var(--color-components-premium-badge-orange-stroke-stop-0-hover)',
   'components-premium-badge-orange-stroke-stop-100-hover': 'var(--color-components-premium-badge-orange-stroke-stop-100-hover)',
+
+  'components-progress-bar-bg': 'var(--color-components-progress-bar-bg)',
+  'components-progress-bar-progress': 'var(--color-components-progress-bar-progress)',
+  'components-progress-bar-border': 'var(--color-components-progress-bar-border)',
+  'components-progress-bar-progress-solid': 'var(--color-components-progress-bar-progress-solid)',
+  'components-progress-bar-progress-highlight': 'var(--color-components-progress-bar-progress-highlight)',
+
+  'components-icon-bg-red-solid': 'var(--color-components-icon-bg-red-solid)',
+  'components-icon-bg-rose-solid': 'var(--color-components-icon-bg-rose-solid)',
+  'components-icon-bg-pink-solid': 'var(--color-components-icon-bg-pink-solid)',
+  'components-icon-bg-orange-dark-solid': 'var(--color-components-icon-bg-orange-dark-solid)',
+  'components-icon-bg-yellow-solid': 'var(--color-components-icon-bg-yellow-solid)',
+  'components-icon-bg-green-solid': 'var(--color-components-icon-bg-green-solid)',
+  'components-icon-bg-teal-solid': 'var(--color-components-icon-bg-teal-solid)',
+  'components-icon-bg-blue-light-solid': 'var(--color-components-icon-bg-blue-light-solid)',
+  'components-icon-bg-blue-solid': 'var(--color-components-icon-bg-blue-solid)',
+  'components-icon-bg-indigo-solid': 'var(--color-components-icon-bg-indigo-solid)',
+  'components-icon-bg-violet-solid': 'var(--color-components-icon-bg-violet-solid)',
+  'components-icon-bg-midnight-solid': 'var(--color-components-icon-bg-midnight-solid)',
+  'components-icon-bg-rose-soft': 'var(--color-components-icon-bg-rose-soft)',
+  'components-icon-bg-pink-soft': 'var(--color-components-icon-bg-pink-soft)',
+  'components-icon-bg-orange-dark-soft': 'var(--color-components-icon-bg-orange-dark-soft)',
+  'components-icon-bg-yellow-soft': 'var(--color-components-icon-bg-yellow-soft)',
+  'components-icon-bg-green-soft': 'var(--color-components-icon-bg-green-soft)',
+  'components-icon-bg-teal-soft': 'var(--color-components-icon-bg-teal-soft)',
+  'components-icon-bg-blue-light-soft': 'var(--color-components-icon-bg-blue-light-soft)',
+  'components-icon-bg-blue-soft': 'var(--color-components-icon-bg-blue-soft)',
+  'components-icon-bg-indigo-soft': 'var(--color-components-icon-bg-indigo-soft)',
+  'components-icon-bg-violet-soft': 'var(--color-components-icon-bg-violet-soft)',
+  'components-icon-bg-midnight-soft': 'var(--color-components-icon-bg-midnight-soft)',
+  'components-icon-bg-red-soft': 'var(--color-components-icon-bg-red-soft)',
+  'components-icon-bg-orange-solid': 'var(--color-components-icon-bg-orange-solid)',
+  'components-icon-bg-orange-soft': 'var(--color-components-icon-bg-orange-soft)',
 
   'text-primary': 'var(--color-text-primary)',
   'text-secondary': 'var(--color-text-secondary)',
@@ -690,6 +727,12 @@ const vars = {
   'third-party-model-bg-openai': 'var(--color-third-party-model-bg-openai)',
   'third-party-model-bg-anthropic': 'var(--color-third-party-model-bg-anthropic)',
   'third-party-model-bg-default': 'var(--color-third-party-model-bg-default)',
-}
 
+  'third-party-aws': 'var(--color-third-party-aws)',
+  'third-party-aws-alt': 'var(--color-third-party-aws-alt)',
+
+  'saas-background': 'var(--color-saas-background)',
+  'saas-pricing-grid-bg': 'var(--color-saas-pricing-grid-bg)',
+
+}
 export default vars
