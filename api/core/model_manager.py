@@ -183,7 +183,7 @@ class ModelInstance:
             input_type=input_type,
         )
 
-    def get_text_embedding_num_tokens(self, texts: list[str]) -> int:
+    def get_text_embedding_num_tokens(self, texts: list[str]) -> list[int]:
         """
         Get number of tokens for text embedding
 

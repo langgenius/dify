@@ -720,10 +720,8 @@ class IndexingRunner:
 
             tokens = 0
             if embedding_model_instance:
-                tokens += sum(
-                    embedding_model_instance.get_text_embedding_num_tokens([document.page_content])
-                    for document in chunk_documents
-                )
+                page_content_list = [document.page_content for document in chunk_documents]
+                tokens += sum(embedding_model_instance.get_text_embedding_num_tokens(page_content_list))
 
             # load index
             index_processor.load(dataset, chunk_documents, with_keywords=False)
