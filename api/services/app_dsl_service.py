@@ -1,6 +1,6 @@
 import logging
 import uuid
-from enum import Enum
+from enum import StrEnum
 from typing import Optional
 from uuid import uuid4
 
@@ -22,15 +22,15 @@ logger = logging.getLogger(__name__)
 
 IMPORT_INFO_REDIS_KEY_PREFIX = "app_import_info:"
 IMPORT_INFO_REDIS_EXPIRY = 180  # 3 minutes
-CURRENT_DSL_VERSION = "0.2.0"
+CURRENT_DSL_VERSION = "0.1.3"
 
 
-class ImportMode(str, Enum):
+class ImportMode(StrEnum):
     YAML_CONTENT = "yaml-content"
     YAML_URL = "yaml-url"
 
 
-class ImportStatus(str, Enum):
+class ImportStatus(StrEnum):
     COMPLETED = "completed"
     COMPLETED_WITH_WARNINGS = "completed-with-warnings"
     PENDING = "pending"

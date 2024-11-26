@@ -2,7 +2,7 @@ import json
 import logging
 import uuid
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Optional, Union, cast
 
 from core.agent.entities import AgentEntity, AgentToolEntity
@@ -412,7 +412,7 @@ class BaseAgentRunner(AppRunner):
             .first()
         )
 
-        db_variables.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        db_variables.updated_at = datetime.now(UTC).replace(tzinfo=None)
         db_variables.variables_str = json.dumps(jsonable_encoder(tool_variables.pool))
         db.session.commit()
         db.session.close()

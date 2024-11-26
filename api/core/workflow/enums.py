@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class SystemVariableKey(str, Enum):
+class SystemVariableKey(StrEnum):
     """
     System Variables.
     """

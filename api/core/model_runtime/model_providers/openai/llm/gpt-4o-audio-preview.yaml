@@ -7,6 +7,7 @@ features:
   - multi-tool-call
   - agent-thought
   - stream-tool-call
+  - audio
 model_properties:
   mode: chat
   context_size: 128000

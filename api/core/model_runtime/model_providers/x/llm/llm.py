@@ -35,3 +35,5 @@ class XAILargeLanguageModel(OAIAPICompatLargeLanguageModel):
         credentials["endpoint_url"] = str(URL(credentials["endpoint_url"])) or "https://api.x.ai/v1"
         credentials["mode"] = LLMMode.CHAT.value
         credentials["function_calling_type"] = "tool_call"
+        credentials["stream_function_calling"] = "support"
+        credentials["vision_support"] = "support"

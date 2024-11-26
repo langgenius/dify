@@ -1,3 +1,4 @@
+import uuid
 from typing import Optional
 
 from core.app.app_config.entities import DatasetEntity, DatasetRetrieveConfigEntity

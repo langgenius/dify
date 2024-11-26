@@ -434,7 +434,12 @@ html[data-theme="dark"] {
 
   --color-workflow-link-line-active: #5289FF;
   --color-workflow-link-line-normal: #676F83;
-  --color-workflow-link-line-handle: #296DFF;
+  --color-workflow-link-line-handle: #5289FF;
+  --color-workflow-link-line-normal-transparent: #676F8333;
+  --color-workflow-link-line-failure-active: #FDB022;
+  --color-workflow-link-line-failure-handle: #FDB022;
+  --color-workflow-link-line-failure-button-bg: #F79009;
+  --color-workflow-link-line-failure-button-hover: #DC6803;
 
   --color-workflow-link-line-success-active: #47CD89;
   --color-workflow-link-line-success-handle: #47CD89;
