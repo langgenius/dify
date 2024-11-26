@@ -7,7 +7,7 @@ import type { InputNumberProps } from '@/app/components/base/input-number'
 import { InputNumber } from '@/app/components/base/input-number'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
-  return <label className='text-[#354052] text-xs font-semibold leading-none'>{props.children}</label>
+  return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
 }
 
 const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {

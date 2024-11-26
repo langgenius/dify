@@ -97,7 +97,7 @@ const CSVDownload: FC<{ docForm: DocForm }> = ({ docForm }) => {
         bom={true}
         data={getTemplate()}
       >
-        <div className='flex items-center h-[18px] space-x-1 text-[#155EEF] text-xs font-medium'>
+        <div className='flex items-center h-[18px] space-x-1 text-text-accent text-xs font-medium'>
           <DownloadIcon className='w-3 h-3 mr-1' />
           {t('datasetDocuments.list.batchModal.template')}
         </div>

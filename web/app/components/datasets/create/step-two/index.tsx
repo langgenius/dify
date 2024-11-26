@@ -61,7 +61,7 @@ import { IS_CE_EDITION } from '@/config'
 import Switch from '@/app/components/base/switch'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
-  return <label className='text-[#354052] text-xs font-semibold leading-none'>{props.children}</label>
+  return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
 }
 
 const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
@@ -779,7 +779,7 @@ const StepTwo = ({
                     <TextLabel>
                       {t('datasetCreation.stepTwo.childChunkForRetrieval')}
                     </TextLabel>
-                    <div className='flex gap-2'>
+                    <div className='flex gap-2 mt-2'>
                       <DelimiterInput
                         value={parentChildConfig.child.delimiter}
                         onChange={e => setParentChildConfig({
@@ -841,7 +841,7 @@ const StepTwo = ({
                       setIndexType(IndexingType.QUALIFIED)
                   }}
                 >
-                  <div className='h-8 p-1.5 bg-white rounded-lg border border-[#101828]/10 justify-center items-center inline-flex absolute left-5 top-[18px]'>
+                  <div className='h-8 p-1.5 bg-white rounded-lg border border-components-panel-border-subtle justify-center items-center inline-flex absolute left-5 top-[18px]'>
                     <Image src={indexMethodIcon.high_quality} alt='Gold Icon' width={20} height={20} />
                   </div>
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
@@ -872,7 +872,7 @@ const StepTwo = ({
                   )}
                   onClick={changeToEconomicalType}
                 >
-                  <div className='h-8 p-1.5 bg-white rounded-lg border border-[#101828]/10 justify-center items-center inline-flex absolute left-5 top-[18px]'>
+                  <div className='h-8 p-1.5 bg-white rounded-lg border border-components-panel-border-subtle justify-center items-center inline-flex absolute left-5 top-[18px]'>
                     <Image src={indexMethodIcon.economical} alt='Economical Icon' width={20} height={20} />
                   </div>
                   {!hasSetIndexType && <span className={cn(s.radio)} />}
@@ -886,7 +886,7 @@ const StepTwo = ({
             {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
               <div className='mt-2 text-xs text-gray-500 font-medium'>
                 {t('datasetCreation.stepTwo.indexSettingTip')}
-                <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
+                <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
             )}
             {IS_CE_EDITION && indexType === IndexingType.QUALIFIED && (
@@ -931,7 +931,7 @@ const StepTwo = ({
                 {!!datasetId && (
                   <div className='mt-2 text-xs text-gray-500 font-medium'>
                     {t('datasetCreation.stepTwo.indexSettingTip')}
-                    <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
+                    <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
                   </div>
                 )}
               </div>
@@ -943,7 +943,7 @@ const StepTwo = ({
                   <div className={s.label}>
                     <div className='shrink-0 mr-4'>{t('datasetSettings.form.retrievalSetting.title')}</div>
                     <div className='leading-[18px] text-xs font-normal text-gray-500'>
-                      <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                      <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                       {t('datasetSettings.form.retrievalSetting.longDescription')}
                     </div>
                   </div>

@@ -4,7 +4,7 @@ import { StepperStep } from './step'
 
 export type StepperProps = {
   steps: Step[]
-  activeStepIndex: number
+  activeIndex: number
 }
 
 function join<T, R = T>(array: T[], sep: R): Array<T | R> {
@@ -17,18 +17,18 @@ function join<T, R = T>(array: T[], sep: R): Array<T | R> {
 }
 
 export const Stepper: FC<StepperProps> = (props) => {
-  const { steps, activeStepIndex } = props
+  const { steps, activeIndex } = props
   return <div className='flex items-center gap-3'>
     {join(
       steps.map((step, index) => (
         <StepperStep
           key={index}
           {...step}
-          isActive={index === activeStepIndex}
+          activeIndex={activeIndex}
           index={index}
         />
       )),
-      <div className="w-4 h-px bg-[#101828]/30" />,
+      <div className="w-4 h-px bg-text-quaternary" />,
     )}
   </div>
 }

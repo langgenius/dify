@@ -27,7 +27,7 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   )}>
     <div className='size-14 flex items-center justify-center relative overflow-hidden'>
       {isActive && <Image src={effectImg || Effect.src} className='absolute top-0 left-0 w-full h-full' alt='' width={56} height={56} />}
-      <div className='size-8 rounded-lg border p-1.5 shadow border-[#101828]/10 justify-center flex bg-white'>
+      <div className='size-8 rounded-lg border p-1.5 shadow border-components-panel-border-subtle justify-center flex bg-white'>
         {icon || <Image src={piggyBank.src} className='size-5' alt={description} width={20} height={20} />}
       </div>
     </div>
@@ -35,8 +35,8 @@ export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
       className='absolute left-4 -bottom-1.5'
     />
     <div className='flex-1 space-y-1 py-3 pr-4'>
-      <div className='text-[#354052] text-sm font-semibold leading-tight'>{title}</div>
-      <div className='text-[#676f83] text-xs font-normal leading-none'>{description}</div>
+      <div className='text-text-secondary text-sm font-semibold leading-tight'>{title}</div>
+      <div className='text-text-tertiary text-xs font-normal leading-none'>{description}</div>
     </div>
   </div>
 }
@@ -57,7 +57,7 @@ export const OptionCard: FC<OptionCardProps> = (props) => {
   return <div
     className={classNames(
       'rounded-xl overflow-hidden',
-      isActive ? 'border-[#296cff] bg-white' : 'border-[#e9ebf0] bg-[#FCFCFD]',
+      isActive ? 'border-components-option-card-option-selected-border bg-components-panel-bg' : 'border-components-option-card-option-border bg-components-option-card-option-bg',
       className,
     )}
     style={{

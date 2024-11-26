@@ -17,6 +17,7 @@ import {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import Badge from '@/app/components/base/badge'
 
 type Props = {
   value: RetrievalConfig
@@ -103,7 +104,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           title={
             <div className='flex items-center space-x-1'>
               <div>{t('dataset.retrieval.hybrid_search.title')}</div>
-              <div className='flex h-full items-center px-1.5 rounded-md border border-[#296cff] text-xs font-medium text-[#296cff] text-[10px]'>{t('dataset.retrieval.hybrid_search.recommend')}</div>
+              <Badge text={t('dataset.retrieval.hybrid_search.recommend')} className='border-text-accent-secondary text-text-accent-secondary ml-2' uppercase />
             </div>
           }
           description={t('dataset.retrieval.hybrid_search.description')} isActive={
