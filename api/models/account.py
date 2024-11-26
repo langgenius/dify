@@ -59,8 +59,8 @@ class Account(UserMixin, Base):
         self._current_tenant = tenant
 
     @property
-    def current_tenant_id(self):
-        return self._current_tenant.id
+    def current_tenant_id(self) -> str | None:
+        return self._current_tenant.id if self._current_tenant else None
 
     @current_tenant_id.setter
     def current_tenant_id(self, value: str):

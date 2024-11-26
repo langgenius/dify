@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any, Optional, Union
 
 if TYPE_CHECKING:
     from models.model import AppMode
+from enum import StrEnum
 
 import sqlalchemy as sa
 from sqlalchemy import Index, PrimaryKeyConstraint, func
@@ -318,7 +319,7 @@ class Workflow(Base):
         )
 
 
-class WorkflowRunStatus(Enum):
+class WorkflowRunStatus(StrEnum):
     """
     Workflow Run Status Enum
     """
@@ -397,13 +398,13 @@ class WorkflowRun(Base):
     version = db.Column(db.String(255), nullable=False)
     graph = db.Column(db.Text)
     inputs = db.Column(db.Text)
-    status = db.Column(db.String(255), nullable=False)
-    outputs: Mapped[str] = db.Column(db.Text)
+    status = db.Column(db.String(255), nullable=False)  # running, succeeded, failed, stopped
+    outputs: Mapped[str] = mapped_column(sa.Text, default="{}")
     error = db.Column(db.Text)
     elapsed_time = db.Column(db.Float, nullable=False, server_default=db.text("0"))
     total_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     total_steps = db.Column(db.Integer, server_default=db.text("0"))
-    created_by_role = db.Column(db.String(255), nullable=False)
+    created_by_role = db.Column(db.String(255), nullable=False)  # account, end_user
     created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     finished_at = db.Column(db.DateTime)
