@@ -1,0 +1,46 @@
+identity:
+  name: chinese_toxicity_detector
+  author: AWS
+  label:
+    en_US: Chinese Toxicity Detector
+    zh_Hans: 中文有害内容检测
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool to detect Chinese toxicity
+    zh_Hans: 检测中文有害内容的工具
+  llm: A tool that checks if Chinese content is safe for work
+parameters:
+  - name: sagemaker_endpoint
+    type: string
+    required: true
+    label:
+      en_US: sagemaker endpoint for moderation
+      zh_Hans: 内容审核的SageMaker端点
+    human_description:
+      en_US: sagemaker endpoint for content moderation
+      zh_Hans: 内容审核的SageMaker端点
+    llm_description: sagemaker endpoint for content moderation
+    form: form
+  - name: content_text
+    type: string
+    required: true
+    label:
+      en_US: content text
+      zh_Hans: 待审核文本
+    human_description:
+      en_US: text content to be moderated
+      zh_Hans: 需要审核的文本内容
+    llm_description: text content to be moderated
+    form: llm
+  - name: aws_region
+    type: string
+    required: false
+    label:
+      en_US: region of sagemaker endpoint
+      zh_Hans: SageMaker 端点所在的region
+    human_description:
+      en_US: region of sagemaker endpoint
+      zh_Hans: SageMaker 端点所在的region
+    llm_description: region of sagemaker endpoint
+    form: form
