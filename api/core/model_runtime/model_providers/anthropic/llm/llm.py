@@ -453,7 +453,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
 
         return credentials_kwargs
 
-    def _convert_prompt_messages(self, prompt_messages: list[PromptMessage]) -> tuple[str, list[dict]]:
+    def _convert_prompt_messages(self, prompt_messages: Sequence[PromptMessage]) -> tuple[str, list[dict]]:
         """
         Convert prompt messages to dict list and system
         """
