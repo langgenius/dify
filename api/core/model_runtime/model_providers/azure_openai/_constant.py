@@ -779,7 +779,7 @@ LLM_BASE_MODELS = [
                     name="frequency_penalty",
                     **PARAMETER_RULE_TEMPLATE[DefaultParameterName.FREQUENCY_PENALTY],
                 ),
-                _get_max_tokens(default=512, min_val=1, max_val=4096),
+                _get_max_tokens(default=512, min_val=1, max_val=16384),
                 ParameterRule(
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),

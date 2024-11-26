@@ -26,7 +26,7 @@ import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, 
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Collection } from '@/app/components/tools/types'
 
-interface IDebugConfiguration {
+type IDebugConfiguration = {
   appId: string
   isAPIKeySet: boolean
   isTrailFinished: boolean
@@ -97,6 +97,8 @@ interface IDebugConfiguration {
   isShowVisionConfig: boolean
   visionConfig: VisionSettings
   setVisionConfig: (visionConfig: VisionSettings, noNotice?: boolean) => void
+  isAllowVideoUpload: boolean
+  isShowDocumentConfig: boolean
   rerankSettingModalOpen: boolean
   setRerankSettingModalOpen: (rerankSettingModalOpen: boolean) => void
 }
@@ -244,6 +246,8 @@ const DebugConfigurationContext = createContext<IDebugConfiguration>({
     transfer_methods: [TransferMethod.remote_url],
   },
   setVisionConfig: () => { },
+  isAllowVideoUpload: false,
+  isShowDocumentConfig: false,
   rerankSettingModalOpen: false,
   setRerankSettingModalOpen: () => { },
 })

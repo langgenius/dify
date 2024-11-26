@@ -9,7 +9,7 @@ import Input from '@/app/components/base/input'
 import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
-interface Props {
+type Props = {
   nodeId: string
   readonly: boolean
   list: Variable[]
@@ -18,6 +18,7 @@ interface Props {
   isSupportConstantValue?: boolean
   onlyLeafNodeVar?: boolean
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
+  isSupportFileVar?: boolean
 }
 
 const VarList: FC<Props> = ({
@@ -29,6 +30,7 @@ const VarList: FC<Props> = ({
   isSupportConstantValue,
   onlyLeafNodeVar,
   filterVar,
+  isSupportFileVar = true,
 }) => {
   const { t } = useTranslation()
 
@@ -94,6 +96,7 @@ const VarList: FC<Props> = ({
             defaultVarKindType={item.variable_type}
             onlyLeafNodeVar={onlyLeafNodeVar}
             filterVar={filterVar}
+            isSupportFileVar={isSupportFileVar}
           />
           {!readonly && (
             <RemoveButton

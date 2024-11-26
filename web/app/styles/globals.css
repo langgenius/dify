@@ -2,8 +2,13 @@
 @tailwind base;
 @tailwind components;
 
+<<<<<<< HEAD
 @import "../../themes/light.css";
 @import "../../themes/dark.css";
+=======
+@import '../../themes/light.css';
+@import '../../themes/dark.css';
+>>>>>>> main
 @import "../../themes/manual-light.css";
 @import "../../themes/manual-dark.css";
 

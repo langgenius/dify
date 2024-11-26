@@ -51,8 +51,8 @@ class WebsiteService:
                 excludes = options.get("excludes").split(",") if options.get("excludes") else []
                 params = {
                     "crawlerOptions": {
-                        "includes": includes or [],
-                        "excludes": excludes or [],
+                        "includes": includes,
+                        "excludes": excludes,
                         "generateImgAltText": True,
                         "limit": options.get("limit", 1),
                         "returnOnlyUrls": False,
