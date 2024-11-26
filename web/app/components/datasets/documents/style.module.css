@@ -8,12 +8,6 @@
   box-sizing: border-box;
   max-width: 200px;
 }
-.title {
-  @apply text-xl font-medium text-gray-900;
-}
-.desc {
-  @apply text-sm font-normal text-gray-500;
-}
 .actionIconWrapperList {
   @apply h-6 w-6 rounded-md border-none p-1 hover:bg-gray-100 !important;
 }
