@@ -1,0 +1,58 @@
+provider: lindormai
+label:
+  en_US: Lindorm AI
+icon_small:
+  en_US: icon_s_en.png
+icon_large:
+  en_US: icon_l_en.png
+background: "#FAF5FF"
+help:
+  title:
+    en_US: How to deploy LindormAI
+    zh_Hans: 如何部署 LindormAI
+  url:
+    en_US: https://help.aliyun.com/document_detail/2393245.html?spm=a2c4g.11186623.help-menu-172543.d_2_7.4b0f1513fp0y82&scm=20140722.H_2393245._.OR_help-T_cn#DAS#zh-V_1
+supported_model_types:
+#  - llm
+  - text-embedding
+  - rerank
+#  - speech2text
+#  - tts
+configurate_methods:
+  - customizable-model
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter your model name
+      zh_Hans: 输入模型名称
+  credential_form_schemas:
+    - variable: lindormai_endpoint
+      label:
+        zh_Hans: 服务器ENDPOINT
+        en_US: Server Endpoint
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入Lindorm的AI连接地址，如 http://ld-xxxxxxxxxxxxx-proxy-ai-pub.lindorm.aliyuncs.com:9002
+        en_US: Enter the endpoint of you LindormAI, e.g. http://ld-xxxxxxxxxxxxx-proxy-ai-pub.lindorm.aliyuncs.com:9002
+    - variable: lindormai_username
+      label:
+        zh_Hans: lindorm 用户名
+        en_US: Model uid
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的用户名
+        en_US: Enter your lindorm username
+    - variable: lindormai_password
+      label:
+        zh_Hans: 密码
+        en_US: password
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的密码
+        en_US: Enter the password
