@@ -75,7 +75,7 @@ export const OptionCard: FC<OptionCardProps> = (props) => {
     />
     {/** Body */}
     {isActive && <div className='p-3'>{children}
-      {actions && <div className='flex gap-2 mt-3'>
+      {actions && <div className='flex gap-2 mt-4'>
         {actions}
       </div>}
     </div>}

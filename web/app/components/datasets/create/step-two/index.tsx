@@ -666,7 +666,7 @@ const StepTwo = ({
                 }
               >
                 <div className='space-y-4'>
-                  <div className='flex gap-2'>
+                  <div className='flex gap-3'>
                     <DelimiterInput
                       value={segmentIdentifier}
                       onChange={e => setSegmentIdentifier(e.target.value)}
@@ -775,11 +775,11 @@ const StepTwo = ({
                     />
                   </div>
 
-                  <div className='space-y-2'>
+                  <div className='space-y-4'>
                     <TextLabel>
                       {t('datasetCreation.stepTwo.childChunkForRetrieval')}
                     </TextLabel>
-                    <div className='flex gap-2 mt-2'>
+                    <div className='flex gap-3 mt-2'>
                       <DelimiterInput
                         value={parentChildConfig.child.delimiter}
                         onChange={e => setParentChildConfig({
@@ -803,20 +803,22 @@ const StepTwo = ({
                       />
                     </div>
 
-                    <TextLabel>
-                      {t('datasetCreation.stepTwo.rules')}
-                    </TextLabel>
                     <div className='space-y-2'>
-                      {rules.map(rule => (
-                        <div key={rule.id} className={s.ruleItem} onClick={() => {
-                          ruleChangeHandle(rule.id)
-                        }}>
-                          <Checkbox
-                            checked={rule.enabled}
-                          />
-                          <label className="ml-2 text-sm font-normal cursor-pointer text-gray-800">{getRuleName(rule.id)}</label>
-                        </div>
-                      ))}
+                      <TextLabel>
+                        {t('datasetCreation.stepTwo.rules')}
+                      </TextLabel>
+                      <div className='space-y-2 mt-2'>
+                        {rules.map(rule => (
+                          <div key={rule.id} className={s.ruleItem} onClick={() => {
+                            ruleChangeHandle(rule.id)
+                          }}>
+                            <Checkbox
+                              checked={rule.enabled}
+                            />
+                            <label className="ml-2 text-sm font-normal cursor-pointer text-gray-800">{getRuleName(rule.id)}</label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
