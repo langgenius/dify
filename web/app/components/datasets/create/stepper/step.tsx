@@ -27,7 +27,7 @@ export const StepperStep: FC<StepperStepProps> = (props) => {
       <div className={classNames(
         'text-center text-[10px] font-semibold uppercase leading-3',
         isActive
-          ? 'text-white'
+          ? 'text-text-primary-on-surface'
           : !isDisabled
             ? 'text-text-tertiary'
             : 'text-text-tertiary opacity-30',
