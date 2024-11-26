@@ -137,7 +137,7 @@ class LLMNode(BaseNode[LLMNodeData]):
             query = None
             if self.node_data.memory:
                 query = self.node_data.memory.query_prompt_template
-            if query is None and (
+            if not query and (
                 query_variable := self.graph_runtime_state.variable_pool.get(
                     (SYSTEM_VARIABLE_NODE_ID, SystemVariableKey.QUERY)
                 )
