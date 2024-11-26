@@ -90,9 +90,9 @@ function AppTypeSelectTrigger({ values }: { values: AppSelectorProps['value'] })
     </div>
   }
   return <div className={cn(
-    'flex items-center justify-between h-8 -space-x-2',
+    'flex items-center justify-between h-8 -space-x-2 relative',
   )}>
-    {values.map((mode, index) => (<AppTypeIcon key={mode} mode={mode} className='border border-components-panel-on-panel-item-bg' />))}
+    {values.map((mode, index) => (<AppTypeIcon key={mode} mode={mode} className='border border-components-panel-on-panel-item-bg' style={{ zIndex: 5 - index }} />))}
   </div>
 }
 
@@ -113,31 +113,32 @@ function AppTypeSelectorItem({ checked, mode, onClick }: AppTypeSelectorItemProp
 
 type AppTypeIconProps = {
   mode: AppMode
+  style?: React.CSSProperties
   className?: string
 }
-function AppTypeIcon({ mode, className }: AppTypeIconProps) {
+function AppTypeIcon({ mode, className, style }: AppTypeIconProps) {
   if (mode === 'chat') {
-    return <div className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-blue-solid rounded-md border border-divider-regular', className)}>
+    return <div style={style} className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-blue-solid rounded-md border border-divider-regular', className)}>
       <ChatBot className='w-3.5 h-3.5 text-components-avatar-shape-fill-stop-100' />
     </div>
   }
   if (mode === 'agent-chat') {
-    return <div className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-violet-solid rounded-md border border-divider-regular', className)}>
+    return <div style={style} className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-violet-solid rounded-md border border-divider-regular', className)}>
       <ChatBot className='w-3.5 h-3.5 text-components-avatar-shape-fill-stop-100' />
     </div>
   }
   if (mode === 'advanced-chat') {
-    return <div className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-blue-light-solid rounded-md border border-divider-regular', className)}>
+    return <div style={style} className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-blue-light-solid rounded-md border border-divider-regular', className)}>
       <ChatBot className='w-3.5 h-3.5 text-components-avatar-shape-fill-stop-100' />
     </div>
   }
   if (mode === 'workflow') {
-    return <div className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-indigo-solid rounded-md border border-divider-regular', className)}>
+    return <div style={style} className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-indigo-solid rounded-md border border-divider-regular', className)}>
       <RiExchange2Fill className='w-3.5 h-3.5 text-components-avatar-shape-fill-stop-100' />
     </div>
   }
   if (mode === 'completion') {
-    return <div className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-teal-solid rounded-md border border-divider-regular', className)}>
+    return <div style={style} className={cn('w-5 h-5 inline-flex items-center justify-center bg-components-icon-bg-teal-solid rounded-md border border-divider-regular', className)}>
       <ChatBot className='w-3.5 h-3.5 text-components-avatar-shape-fill-stop-100' />
     </div>
   }
