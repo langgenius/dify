@@ -31,9 +31,12 @@ class AppIconUrlField(fields.Raw):
         if obj is None:
             return None
 
-        from models.model import IconType
+        from models.model import App, IconType, Site
 
-        if obj.icon_type == IconType.IMAGE.value:
+        if isinstance(obj, dict) and "app" in obj:
+            obj = obj["app"]
+
+        if isinstance(obj, App | Site) and obj.icon_type == IconType.IMAGE.value:
             return file_helpers.get_signed_file_url(obj.icon)
         return None
 

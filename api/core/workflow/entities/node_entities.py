@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from enum import Enum
+from enum import StrEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel
@@ -8,7 +8,7 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 from models.workflow import WorkflowNodeExecutionStatus
 
 
-class NodeRunMetadataKey(str, Enum):
+class NodeRunMetadataKey(StrEnum):
     """
     Node Run Metadata Key.
     """
@@ -36,7 +36,7 @@ class NodeRunResult(BaseModel):
 
     inputs: Optional[Mapping[str, Any]] = None  # node inputs
     process_data: Optional[dict[str, Any]] = None  # process data
-    outputs: Optional[dict[str, Any]] = None  # node outputs
+    outputs: Optional[Mapping[str, Any]] = None  # node outputs
     metadata: Optional[dict[NodeRunMetadataKey, Any]] = None  # node metadata
     llm_usage: Optional[LLMUsage] = None  # llm usage
 
