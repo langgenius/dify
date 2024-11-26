@@ -453,7 +453,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
 
         return credentials_kwargs
 
-    def _convert_prompt_messages(self, prompt_messages: list[PromptMessage]) -> tuple[str, list[dict]]:
+    def _convert_prompt_messages(self, prompt_messages: Sequence[PromptMessage]) -> tuple[str, list[dict]]:
         """
         Convert prompt messages to dict list and system
         """
@@ -461,7 +461,15 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         first_loop = True
         for message in prompt_messages:
             if isinstance(message, SystemPromptMessage):
-                message.content = message.content.strip()
+                if isinstance(message.content, str):
+                    message.content = message.content.strip()
+                elif isinstance(message.content, list):
+                    # System prompt only support text
+                    message.content = "".join(
+                        c.data.strip() for c in message.content if isinstance(c, TextPromptMessageContent)
+                    )
+                else:
+                    raise ValueError(f"Unknown system prompt message content type {type(message.content)}")
                 if first_loop:
                     system = message.content
                     first_loop = False

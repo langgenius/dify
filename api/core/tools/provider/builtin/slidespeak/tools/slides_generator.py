@@ -149,7 +149,7 @@ class SlidesGeneratorTool(BuiltinTool):
                     presentation_bytes = await self._fetch_presentation(session, download_url)
 
                 return [
-                    self.create_text_message("Presentation generated successfully"),
+                    self.create_text_message(download_url),
                     self.create_blob_message(
                         blob=presentation_bytes,
                         meta={"mime_type": "application/vnd.openxmlformats-officedocument.presentationml.presentation"},
