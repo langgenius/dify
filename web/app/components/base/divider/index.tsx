@@ -3,17 +3,21 @@ import React from 'react'
 import { type VariantProps, cva } from 'class-variance-authority'
 import classNames from '@/utils/classnames'
 
-const dividerVariants = cva(
-  'bg-divider-regular',
+const dividerVariants = cva('',
   {
     variants: {
       type: {
-        horizontal: 'w-full h-[0.5px] my-2',
+        horizontal: 'w-full h-[0.5px] my-2 ',
         vertical: 'w-[1px] h-full mx-2',
+      },
+      bgStyle: {
+        gradient: 'bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent',
+        solid: 'bg-divider-regular',
       },
     },
     defaultVariants: {
       type: 'horizontal',
+      bgStyle: 'solid',
     },
   },
 )
@@ -23,9 +27,9 @@ type DividerProps = {
   style?: CSSProperties
 } & VariantProps<typeof dividerVariants>
 
-const Divider: FC<DividerProps> = ({ type, className = '', style }) => {
+const Divider: FC<DividerProps> = ({ type, bgStyle, className = '', style }) => {
   return (
-    <div className={classNames(dividerVariants({ type }), className)} style={style}></div>
+    <div className={classNames(dividerVariants({ type, bgStyle }), className)} style={style}></div>
   )
 }
 

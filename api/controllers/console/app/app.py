@@ -190,7 +190,7 @@ class AppCopyApi(Resource):
             )
             session.commit()
 
-            stmt = select(App).where(App.id == result.app.id)
+            stmt = select(App).where(App.id == result.app_id)
             app = session.scalar(stmt)
 
         return app, 201
