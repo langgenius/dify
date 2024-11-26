@@ -201,7 +201,15 @@ const DetailHeader = ({
               }
             />
             {(hasNewVersion || isFromGitHub) && (
-              <Button variant='secondary-accent' size='small' className='!h-5' onClick={handleUpdate}>{t('plugin.detailPanel.operation.update')}</Button>
+              <Button variant='secondary-accent' size='small' className='!h-5' onClick={() => {
+                if (isFromMarketplace) {
+                  setTargetVersion({
+                    version: latest_version,
+                    unique_identifier: latest_unique_identifier,
+                  })
+                }
+                handleUpdate()
+              }}>{t('plugin.detailPanel.operation.update')}</Button>
             )}
           </div>
           <div className='mb-1 flex justify-between items-center h-4'>
