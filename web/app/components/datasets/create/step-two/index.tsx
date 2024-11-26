@@ -97,7 +97,8 @@ type StepTwoProps = {
 
 enum SegmentType {
   AUTO = 'automatic',
-  CUSTOM = 'custom',
+  GENERAL = 'general',
+  PARENT_CHILD = 'parent_child',
 }
 enum IndexingType {
   QUALIFIED = 'high_quality',
@@ -165,7 +166,7 @@ const StepTwo = ({
   const [scrolled, setScrolled] = useState(false)
   const previewScrollRef = useRef<HTMLDivElement>(null)
   const [previewScrolled, setPreviewScrolled] = useState(false)
-  const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.AUTO)
+  const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.GENERAL)
   const [segmentIdentifier, doSetSegmentIdentifier] = useState(DEFAULT_SEGMENT_IDENTIFIER)
   const setSegmentIdentifier = useCallback((value: string) => {
     doSetSegmentIdentifier(value ? escape(value) : DEFAULT_SEGMENT_IDENTIFIER)
@@ -191,11 +192,12 @@ const StepTwo = ({
   const [QATipHide, setQATipHide] = useState(false)
   const [previewSwitched, setPreviewSwitched] = useState(false)
   const [showPreview, { setTrue: setShowPreview, setFalse: hidePreview }] = useBoolean()
-  const [customFileIndexingEstimate, setCustomFileIndexingEstimate] = useState<FileIndexingEstimateResponse | null>(null)
+  const [generalFileIndexingEstimate, setGeneralFileIndexingEstimate] = useState<FileIndexingEstimateResponse | null>(null)
   const [automaticFileIndexingEstimate, setAutomaticFileIndexingEstimate] = useState<FileIndexingEstimateResponse | null>(null)
 
+  // TODO: refactor this
   const fileIndexingEstimate = (() => {
-    return segmentationType === SegmentType.AUTO ? automaticFileIndexingEstimate : customFileIndexingEstimate
+    return segmentationType === SegmentType.AUTO ? automaticFileIndexingEstimate : generalFileIndexingEstimate
   })()
   const [isCreating, setIsCreating] = useState(false)
 
@@ -247,7 +249,7 @@ const StepTwo = ({
     if (defaultConfig) {
       setSegmentIdentifier(defaultConfig.segmentation.separator)
       setMax(defaultConfig.segmentation.max_tokens)
-      setOverlap(defaultConfig.segmentation.chunk_overlap)
+      setOverlap(defaultConfig.segmentation.chunk_overlap!)
       setRules(defaultConfig.pre_processing_rules)
     }
     setParentChildConfig(defaultParentChildConfig)
@@ -256,18 +258,18 @@ const StepTwo = ({
   const fetchFileIndexingEstimate = async (docForm = DocForm.TEXT, language?: string) => {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     const res = await didFetchFileIndexingEstimate(getFileIndexingEstimateParams(docForm, language)!)
-    if (segmentationType === SegmentType.CUSTOM)
-      setCustomFileIndexingEstimate(res)
+    if (segmentationType === SegmentType.GENERAL)
+      setGeneralFileIndexingEstimate(res)
     else
       setAutomaticFileIndexingEstimate(res)
   }
 
   const confirmChangeCustomConfig = () => {
-    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
+    if (segmentationType === SegmentType.GENERAL && max > 4000) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
       return
     }
-    setCustomFileIndexingEstimate(null)
+    setGeneralFileIndexingEstimate(null)
     setShowPreview()
     fetchFileIndexingEstimate()
     setPreviewSwitched(false)
@@ -280,7 +282,7 @@ const StepTwo = ({
       rules: {} as any, // api will check this. It will be removed after api refactored.
       mode: segmentationType,
     }
-    if (segmentationType === SegmentType.CUSTOM) {
+    if (segmentationType === SegmentType.GENERAL) {
       const ruleObj = {
         pre_processing_rules: rules,
         segmentation: {
@@ -390,11 +392,11 @@ const StepTwo = ({
   )
   const getCreationParams = () => {
     let params
-    if (segmentationType === SegmentType.CUSTOM && overlap > max) {
+    if (segmentationType === SegmentType.GENERAL && overlap > max) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.overlapCheck') })
       return
     }
-    if (segmentationType === SegmentType.CUSTOM && max > 4000) {
+    if (segmentationType === SegmentType.GENERAL && max > 4000) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
       return
     }
@@ -549,10 +551,8 @@ const StepTwo = ({
   const previewSwitch = async (language?: string) => {
     setPreviewSwitched(true)
     setIsLanguageSelectDisabled(true)
-    if (segmentationType === SegmentType.AUTO)
-      setAutomaticFileIndexingEstimate(null)
-    else
-      setCustomFileIndexingEstimate(null)
+    if (segmentationType === SegmentType.GENERAL)
+      setGeneralFileIndexingEstimate(null)
     try {
       await fetchFileIndexingEstimate(DocForm.QA, language)
     }
@@ -617,17 +617,9 @@ const StepTwo = ({
   }, [isAPIKeySet, indexingType, datasetId])
 
   useEffect(() => {
-    if (segmentationType === SegmentType.AUTO) {
-      setAutomaticFileIndexingEstimate(null)
-      !isMobile && setShowPreview()
-      fetchFileIndexingEstimate()
-      setPreviewSwitched(false)
-    }
-    else {
-      hidePreview()
-      setCustomFileIndexingEstimate(null)
-      setPreviewSwitched(false)
-    }
+    hidePreview()
+    setGeneralFileIndexingEstimate(null)
+    setPreviewSwitched(false)
   }, [segmentationType, indexType])
 
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
@@ -654,8 +646,8 @@ const StepTwo = ({
                 icon={<Image src={SettingCog} alt={t('datasetCreation.stepTwo.general')} />}
                 activeHeaderClassName='bg-gradient-to-r from-[#EFF0F9] to-[#F9FAFB]'
                 description={t('datasetCreation.stepTwo.generalTip')}
-                isActive={SegmentType.AUTO === segmentationType}
-                onClick={() => setSegmentationType(SegmentType.AUTO)}
+                isActive={SegmentType.GENERAL === segmentationType}
+                onClick={() => setSegmentationType(SegmentType.GENERAL)}
                 actions={
                   <>
                     <Button variant={'secondary-accent'}>
@@ -709,8 +701,8 @@ const StepTwo = ({
                 effectImg={OrangeEffect.src}
                 activeHeaderClassName='bg-gradient-to-r from-[#F9F1EE] to-[#F9FAFB]'
                 description={t('datasetCreation.stepTwo.parentChildTip')}
-                isActive={SegmentType.CUSTOM === segmentationType}
-                onClick={() => setSegmentationType(SegmentType.CUSTOM)}
+                isActive={SegmentType.PARENT_CHILD === segmentationType}
+                onClick={() => setSegmentationType(SegmentType.PARENT_CHILD)}
                 actions={
                   <>
                     <Button variant={'secondary-accent'}>
