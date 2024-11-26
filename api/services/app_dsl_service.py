@@ -113,6 +113,10 @@ class AppDslService:
                 )
             try:
                 max_size = 10 * 1024 * 1024  # 10MB
+                # tricky way to handle url from github to github raw url
+                if yaml_url.startswith("https://github.com") and yaml_url.endswith((".yml", ".yaml")):
+                    yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
+                    yaml_url = yaml_url.replace("/blob/", "/")
                 response = ssrf_proxy.get(yaml_url.strip(), follow_redirects=True, timeout=(10, 10))
                 response.raise_for_status()
                 content = response.content
