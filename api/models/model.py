@@ -596,13 +596,15 @@ class Conversation(db.Model):
                     model_config = app_model_config.to_dict()
                 else:
                     model_config["configs"] = override_model_configs
+
             else:
                 app_model_config = (
                     db.session.query(AppModelConfig).filter(AppModelConfig.id == self.app_model_config_id).first()
                 )
                 if app_model_config:
-                    model_config = app_model_config.to_dict()
-
+                    model_config = app_model_config.to_dict() 
+                    model_config["model_dict"] = app_model_config.model_dict
+    
         model_config["model_id"] = self.model_id
         model_config["provider"] = self.model_provider
 
