@@ -198,6 +198,8 @@ app_site_fields = {
     "use_icon_as_answer_icon": fields.Boolean,
 }
 
+leaked_dependency_fields = {"type": fields.String, "value": fields.Raw}
+
 app_import_fields = {
     "id": fields.String,
     "status": fields.String,
@@ -205,4 +207,5 @@ app_import_fields = {
     "current_dsl_version": fields.String,
     "imported_dsl_version": fields.String,
     "error": fields.String,
+    "leaked_dependencies": fields.List(fields.Nested(leaked_dependency_fields)),
 }
