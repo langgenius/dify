@@ -122,6 +122,7 @@ const translation = {
     removeUrlEmails: 'Delete all URLs and email addresses',
     removeStopwords: 'Remove stopwords such as "a", "an", "the"',
     preview: 'Confirm & Preview',
+    previewChunk: 'Preview Chunk',
     reset: 'Reset',
     indexMode: 'Index mode',
     qualified: 'High Quality',
