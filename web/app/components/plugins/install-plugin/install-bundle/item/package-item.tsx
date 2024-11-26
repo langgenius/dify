@@ -11,12 +11,14 @@ type Props = {
   checked: boolean
   onCheckedChange: (plugin: Plugin) => void
   payload: PackageDependency
+  isFromMarketPlace?: boolean
 }
 
 const PackageItem: FC<Props> = ({
   payload,
   checked,
   onCheckedChange,
+  isFromMarketPlace,
 }) => {
   if (!payload.value?.manifest)
     return <LoadingError />
@@ -27,6 +29,7 @@ const PackageItem: FC<Props> = ({
       payload={plugin}
       checked={checked}
       onCheckedChange={onCheckedChange}
+      isFromMarketPlace={isFromMarketPlace}
     />
   )
 }

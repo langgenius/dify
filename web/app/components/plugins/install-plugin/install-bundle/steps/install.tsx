@@ -14,12 +14,14 @@ type Props = {
   allPlugins: Dependency[]
   onInstalled: (plugins: Plugin[], installStatus: InstallStatusResponse[]) => void
   onCancel: () => void
+  isFromMarketPlace?: boolean
 }
 
 const Install: FC<Props> = ({
   allPlugins,
   onInstalled,
   onCancel,
+  isFromMarketPlace,
 }) => {
   const { t } = useTranslation()
   const [selectedPlugins, setSelectedPlugins] = React.useState<Plugin[]>([])
@@ -75,6 +77,7 @@ const Install: FC<Props> = ({
             selectedPlugins={selectedPlugins}
             onSelect={handleSelect}
             onLoadedAllPlugin={handleLoadedAllPlugin}
+            isFromMarketPlace={isFromMarketPlace}
           />
         </div>
       </div>

@@ -11,6 +11,7 @@ type Props = {
   onStepChange: (step: InstallStep) => void,
   allPlugins: Dependency[]
   onClose: () => void
+  isFromMarketPlace?: boolean
 }
 
 const ReadyToInstall: FC<Props> = ({
@@ -18,6 +19,7 @@ const ReadyToInstall: FC<Props> = ({
   onStepChange,
   allPlugins,
   onClose,
+  isFromMarketPlace,
 }) => {
   const [installedPlugins, setInstalledPlugins] = useState<Plugin[]>([])
   const [installStatus, setInstallStatus] = useState<InstallStatusResponse[]>([])
@@ -33,6 +35,7 @@ const ReadyToInstall: FC<Props> = ({
           allPlugins={allPlugins}
           onCancel={onClose}
           onInstalled={handleInstalled}
+          isFromMarketPlace={isFromMarketPlace}
         />
       )}
       {step === InstallStep.installed && (

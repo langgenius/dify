@@ -83,6 +83,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
             onStepChange={setStep}
             onClose={onClose}
             allPlugins={dependencies!}
+            isFromMarketPlace
           />
         ) : (<>
           {

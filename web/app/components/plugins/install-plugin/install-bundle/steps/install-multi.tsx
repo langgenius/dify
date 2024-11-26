@@ -14,6 +14,7 @@ type Props = {
   selectedPlugins: Plugin[]
   onSelect: (plugin: Plugin, selectedIndex: number) => void
   onLoadedAllPlugin: () => void
+  isFromMarketPlace?: boolean
 }
 
 const InstallByDSLList: FC<Props> = ({
@@ -21,6 +22,7 @@ const InstallByDSLList: FC<Props> = ({
   selectedPlugins,
   onSelect,
   onLoadedAllPlugin,
+  isFromMarketPlace,
 }) => {
   // DSL has id, to get plugin info to show more info
   const { isLoading: isFetchingMarketplaceDataById, data: infoGetById, error: infoByIdError } = useFetchPluginsInMarketPlaceByIds(allPlugins.filter(d => d.type === 'marketplace').map(d => (d as GitHubItemAndMarketPlaceDependency).value.plugin_unique_identifier!))
@@ -171,12 +173,14 @@ const InstallByDSLList: FC<Props> = ({
           )
         }
 
+        // Local package
         return (
           <PackageItem
             key={index}
             checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
             onCheckedChange={handleSelect(index)}
             payload={d as PackageDependency}
+            isFromMarketPlace={isFromMarketPlace}
           />
         )
       })
