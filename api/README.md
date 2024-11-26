@@ -22,6 +22,12 @@
    ```cli
    cp .env.example .env 
    ```
+   ```
+   Please note:dify supports loading env file configuration from the configuration-center(apollo). 
+   If you use apollo, first configure the dify configuration on apollo, 
+   and then before starting the project, configure the following parameters in the environment variables: 
+   CONFIGURATION_TYPE=apollo,APOLLO_APP_ID=xxx,APOLLO_CLUSTER=xxx,APOLLO_CONFIG_URL=xxx,APOLLO_NAMESPACE=xxx
+   ```
 3. Generate a `SECRET_KEY` in the `.env` file.
 
    bash for Linux
