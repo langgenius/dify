@@ -1467,7 +1467,9 @@ class SegmentService:
                 if dataset.indexing_technique == "high_quality" and embedding_model:
                     # calc embedding use tokens
                     if document.doc_form == "qa_model":
-                        tokens = embedding_model.get_text_embedding_num_tokens(texts=[content + segment_item["answer"]])[0]
+                        tokens = embedding_model.get_text_embedding_num_tokens(
+                            texts=[content + segment_item["answer"]]
+                        )[0]
                     else:
                         tokens = embedding_model.get_text_embedding_num_tokens(texts=[content])[0]
                 segment_document = DocumentSegment(

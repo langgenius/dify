@@ -59,7 +59,9 @@ def batch_create_segment_to_index_task(
             )
         word_count_change = 0
         if embedding_model:
-            tokens_list = embedding_model.get_text_embedding_num_tokens(texts=[segment["content"] for segment in content])
+            tokens_list = embedding_model.get_text_embedding_num_tokens(
+                texts=[segment["content"] for segment in content]
+            )
         else:
             tokens_list = [0] * len(content)
         for segment, tokens in zip(content, tokens_list):
