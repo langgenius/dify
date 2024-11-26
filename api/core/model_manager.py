@@ -175,7 +175,7 @@ class ModelInstance:
 
     def get_llm_num_tokens(
         self, prompt_messages: list[PromptMessage], tools: Optional[list[PromptMessageTool]] = None
-    ) -> int:
+    ) -> list[int]:
         """
         Get number of tokens for llm
 
@@ -235,7 +235,7 @@ class ModelInstance:
             model=self.model,
             credentials=self.credentials,
             texts=texts,
-        )[0]  # TODO: fix this, this is only for temporary compatibility with old
+        )
 
     def invoke_rerank(
         self,
