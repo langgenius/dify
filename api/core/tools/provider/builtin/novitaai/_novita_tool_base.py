@@ -12,7 +12,7 @@ class NovitaAiToolBase:
         if not loras_str:
             return []
 
-        loras_ori_list = lora_str.strip().split(";")
+        loras_ori_list = loras_str.strip().split(";")
         result_list = []
         for lora_str in loras_ori_list:
             lora_info = lora_str.strip().split(",")

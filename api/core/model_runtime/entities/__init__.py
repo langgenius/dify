@@ -2,6 +2,7 @@ from .llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsa
 from .message_entities import (
     AssistantPromptMessage,
     AudioPromptMessageContent,
+    DocumentPromptMessageContent,
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContent,
@@ -37,4 +38,5 @@ __all__ = [
     "LLMResultChunk",
     "LLMResultChunkDelta",
     "AudioPromptMessageContent",
+    "DocumentPromptMessageContent",
 ]

@@ -1,0 +1,701 @@
+import { CodeGroup } from '../code.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '../md.tsx'
+
+# ワークフローアプリAPI
+
+ワークフローアプリケーションは、セッションをサポートせず、翻訳、記事作成、要約AIなどに最適です。
+
+<div>
+  ### ベースURL
+  <CodeGroup title="コード" targetCode={props.appDetail.api_base_url}>
+    ```javascript
+    ```
+  </CodeGroup>
+
+  ### 認証
+
+  サービスAPIは`API-Key`認証を使用します。
+  <i>**APIキーの漏洩を防ぐため、APIキーはクライアント側で共有または保存せず、サーバー側で保存することを強くお勧めします。**</i>
+
+  すべてのAPIリクエストにおいて、以下のように`Authorization`HTTPヘッダーにAPIキーを含めてください：
+
+  <CodeGroup title="コード">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+
+    ```
+  </CodeGroup>
+</div>
+
+---
+
+<Heading
+  url='/workflows/run'
+  method='POST'
+  title='ワークフローを実行'
+  name='#Execute-Workflow'
+/>
+<Row>
+  <Col>
+    ワークフローを実行します。公開されたワークフローがないと実行できません。
+
+    ### リクエストボディ
+      - `inputs` (object) 必須
+        アプリで定義されたさまざまな変数値の入力を許可します。
+        `inputs`パラメータには複数のキー/値ペアが含まれ、各キーは特定の変数に対応し、各値はその変数の特定の値です。
+        ワークフローアプリケーションは少なくとも1つのキー/値ペアの入力を必要とします。
+        変数がファイルタイプの場合、以下の`files`で説明されているキーを持つオブジェクトを指定してください。
+      - `response_mode` (string) 必須
+        応答の返却モードを指定します。サポートされているモード：
+        - `streaming` ストリーミングモード（推奨）、SSE（[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)）を通じてタイプライターのような出力を実装します。
+        - `blocking` ブロッキングモード、実行完了後に結果を返します。（プロセスが長い場合、リクエストが中断される可能性があります）
+        <i>Cloudflareの制限により、100秒後に応答がない場合、リクエストは中断されます。</i>
+      - `user` (string) 必須
+        ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用されます。
+        アプリケーション内で開発者によって一意に定義される必要があります。
+      - `files` (array[object]) オプション
+        ファイルリストは、テキスト理解と質問への回答を組み合わせたファイルの入力に適しています。モデルがファイルの解析と理解機能をサポートしている場合にのみ使用できます。
+          - `type` (string) サポートされているタイプ: 
+            - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
+            - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
+            - `audio` ('MP3', 'M4A', 'WAV', 'WEBM', 'AMR')
+            - `video` ('MP4', 'MOV', 'MPEG', 'MPGA')
+          - `transfer_method` (string) 転送方法、画像URLの場合は`remote_url` / ファイルアップロードの場合は`local_file`
+          - `url` (string) 画像URL（転送方法が`remote_url`の場合）
+          - `upload_file_id` (string) アップロードされたファイルID、事前にファイルアップロードAPIを通じて取得する必要があります（転送方法が`local_file`の場合）
+
+    ### 応答
+    `response_mode`が`blocking`の場合、CompletionResponseオブジェクトを返します。
+    `response_mode`が`streaming`の場合、ChunkCompletionResponseストリームを返します。
+
+    ### CompletionResponse
+    アプリの結果を返します。`Content-Type`は`application/json`です。
+    - `workflow_run_id` (string) ワークフロー実行の一意のID
+    - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+    - `data` (object) 結果の詳細
+      - `id` (string) ワークフロー実行のID
+      - `workflow_id` (string) 関連するワークフローのID
+      - `status` (string) 実行のステータス、`running` / `succeeded` / `failed` / `stopped`
+      - `outputs` (json) オプションの出力内容
+      - `error` (string) オプションのエラー理由
+      - `elapsed_time` (float) オプションの使用時間（秒）
+      - `total_tokens` (int) オプションの使用トークン数
+      - `total_steps` (int) デフォルト0
+      - `created_at` (timestamp) 開始時間
+      - `finished_at` (timestamp) 終了時間
+
+    ### ChunkCompletionResponse
+    アプリによって出力されたストリームチャンクを返します。`Content-Type`は`text/event-stream`です。
+    各ストリーミングチャンクは`data:`で始まり、2つの改行文字`\n\n`で区切られます。以下のように表示されます：
+    <CodeGroup>
+    ```streaming {{ title: '応答' }}
+    data: {"event": "message", "task_id": "900bbd43-dc0b-4383-a372-aa6e6c414227", "id": "663c5084-a254-4040-8ad3-51f2a3c1a77c", "answer": "Hi", "created_at": 1705398420}\n\n
+    ```
+    </CodeGroup>
+    ストリーミングチャンクの構造は`event`に応じて異なります：
+    - `event: workflow_started` ワークフローが実行を開始
+      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+      - `workflow_run_id` (string) ワークフロー実行の一意のID
+      - `event` (string) `workflow_started`に固定
+      - `data` (object) 詳細
+        - `id` (string) ワークフロー実行の一意のID
+        - `workflow_id` (string) 関連するワークフローのID
+        - `sequence_number` (int) 自己増加シリアル番号、アプリ内で自己増加し、1から始まります
+        - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
+    - `event: node_started` ノード実行開始
+      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+      - `workflow_run_id` (string) ワークフロー実行の一意のID
+      - `event` (string) `node_started`に固定
+      - `data` (object) 詳細
+        - `id` (string) ワークフロー実行の一意のID
+        - `node_id` (string) ノードのID
+        - `node_type` (string) ノードのタイプ
+        - `title` (string) ノードの名前
+        - `index` (int) 実行シーケンス番号、トレースノードシーケンスを表示するために使用
+        - `predecessor_node_id` (string) オプションのプレフィックスノードID、キャンバス表示実行パスに使用
+        - `inputs` (array[object]) ノードで使用されるすべての前のノード変数の内容
+        - `created_at` (timestamp) 開始のタイムスタンプ、例：1705395332
+    - `event: node_finished` ノード実行終了、同じイベントで異なる状態で成功または失敗
+      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+      - `workflow_run_id` (string) ワークフロー実行の一意のID
+      - `event` (string) `node_finished`に固定
+      - `data` (object) 詳細
+        - `id` (string) ワークフロー実行の一意のID
+        - `node_id` (string) ノードのID
+        - `node_type` (string) ノードのタイプ
+        - `title` (string) ノードの名前
+        - `index` (int) 実行シーケンス番号、トレースノードシーケンスを表示するために使用
+        - `predecessor_node_id` (string) オプションのプレフィックスノードID、キャンバス表示実行パスに使用
+        - `inputs` (array[object]) ノードで使用されるすべての前のノード変数の内容
+        - `process_data` (json) オプションのノードプロセスデータ
+        - `outputs` (json) オプションの出力内容
+        - `status` (string) 実行のステータス、`running` / `succeeded` / `failed` / `stopped`
+        - `error` (string) オプションのエラー理由
+        - `elapsed_time` (float) オプションの使用時間（秒）
+        - `execution_metadata` (json) メタデータ
+          - `total_tokens` (int) オプションの使用トークン数
+          - `total_price` (decimal) オプションの総コスト
+          - `currency` (string) オプション 例：`USD` / `RMB`
+        - `created_at` (timestamp) 開始のタイムスタンプ、例：1705395332
+    - `event: workflow_finished` ワークフロー実行終了、同じイベントで異なる状態で成功または失敗
+      - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
+      - `workflow_run_id` (string) ワークフロー実行の一意のID
+      - `event` (string) `workflow_finished`に固定
+      - `data` (object) 詳細
+        - `id` (string) ワークフロー実行のID
+        - `workflow_id` (string) 関連するワークフローのID
+        - `status` (string) 実行のステータス、`running` / `succeeded` / `failed` / `stopped`
+        - `outputs` (json) オプションの出力内容
+        - `error` (string) オプションのエラー理由
+        - `elapsed_time` (float) オプションの使用時間（秒）
+        - `total_tokens` (int) オプションの使用トークン数
+        - `total_steps` (int) デフォルト0
+        - `created_at` (timestamp) 開始時間
+        - `finished_at` (timestamp) 終了時間
+    - `event: tts_message` TTSオーディオストリームイベント、つまり音声合成出力。内容はMp3形式のオーディオブロックで、base64文字列としてエンコードされています。再生時には、base64をデコードしてプレーヤーに入力するだけです。（このメッセージは自動再生が有効な場合にのみ利用可能）
+      - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
+      - `message_id` (string) 一意のメッセージID
+      - `audio` (string) 音声合成後のオーディオ、base64テキストコンテンツとしてエンコードされており、再生時にはbase64をデコードしてプレーヤーに入力するだけです
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+    - `event: tts_message_end` TTSオーディオストリーム終了イベント。このイベントを受信すると、オーディオストリームの終了を示します。
+      - `task_id` (string) タスクID、リクエスト追跡と以下の停止応答インターフェースに使用
+      - `message_id` (string) 一意のメッセージID
+      - `audio` (string) 終了イベントにはオーディオがないため、これは空の文字列です
+      - `created_at` (int) 作成タイムスタンプ、例：1705395332
+    - `event: ping` 接続を維持するために10秒ごとに送信されるPingイベント。
+
+    ### エラー
+    - 400, `invalid_param`, 異常なパラメータ入力
+    - 400, `app_unavailable`, アプリの設定が利用できません
+    - 400, `provider_not_initialize`, 利用可能なモデル資格情報の設定がありません
+    - 400, `provider_quota_exceeded`, モデル呼び出しのクォータが不足しています
+    - 400, `model_currently_not_support`, 現在のモデルは利用できません
+    - 400, `workflow_request_error`, ワークフロー実行に失敗しました
+    - 500, 内部サーバーエラー
+
+  </Col>
+  <Col sticky>
+     <CodeGroup title="リクエスト" tag="POST" label="/workflows/run" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": ${JSON.stringify(props.inputs)},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/workflows/run' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "inputs": {},
+        "response_mode": "streaming",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+    <CodeGroup title="ファイル変数の例">
+      ```json {{ title: 'ファイル変数の例' }}
+      {
+        "inputs": {
+          "{variable_name}": {
+            "transfer_method": "local_file",
+            "upload_file_id": "{upload_file_id}",
+            "type": "{document_type}"
+          }
+        }
+      }
+      ```
+    </CodeGroup>
+    ### ブロッキングモード
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+        "workflow_run_id": "djflajgkldjgd",
+        "task_id": "9da23599-e713-473b-982c-4328d4f5c78a",
+        "data": {
+            "id": "fdlsjfjejkghjda",
+            "workflow_id": "fldjaslkfjlsda",
+            "status": "succeeded",
+            "outputs": {
+              "text": "Nice to meet you."
+            },
+            "error": null,
+            "elapsed_time": 0.875,
+            "total_tokens": 3562,
+            "total_steps": 8,
+            "created_at": 1705407629,
+            "finished_at": 1727807631
+        }
+    }
+    ```
+    </CodeGroup>
+    ### ストリーミングモード
+    <CodeGroup title="応答">
+    ```streaming {{ title: '応答' }}
+      data: {"event": "workflow_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "sequence_number": 1, "created_at": 1679586595}}
+      data: {"event": "node_started", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "created_at": 1679586595}}
+      data: {"event": "node_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "node_id": "dfjasklfjdslag", "node_type": "start", "title": "Start", "index": 0, "predecessor_node_id": "fdljewklfklgejlglsd", "inputs": {}, "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "execution_metadata": {"total_tokens": 63127864, "total_price": 2.378, "currency": "USD"},  "created_at": 1679586595}}
+      data: {"event": "workflow_finished", "task_id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "workflow_run_id": "5ad498-f0c7-4085-b384-88cbe6290", "data": {"id": "5ad498-f0c7-4085-b384-88cbe6290", "workflow_id": "dfjasklfjdslag", "outputs": {}, "status": "succeeded", "elapsed_time": 0.324, "total_tokens": 63127864, "total_steps": "1", "created_at": 1679586595, "finished_at": 1679976595}}
+      data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
+      data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
+    ```
+    </CodeGroup>
+    <CodeGroup title="ファイルアップロードのサンプルコード">
+      ```json {{ title: 'ファイルアップロードのサンプルコード' }}
+      {
+        import requests
+        import json
+
+        def upload_file(file_path, user):
+            upload_url = "https://api.dify.ai/v1/files/upload"
+            headers = {
+                "Authorization": "Bearer app-xxxxxxxx",
+            }
+            
+            try:
+                print("ファイルをアップロードしています...")
+                with open(file_path, 'rb') as file:
+                    files = {
+                        'file': (file_path, file, 'text/plain')  # ファイルが適切な MIME タイプでアップロードされていることを確認してください
+                    }
+                    data = {
+                        "user": user,
+                        "type": "TXT"  # ファイルタイプをTXTに設定します
+                    }
+                    
+                    response = requests.post(upload_url, headers=headers, files=files, data=data)
+                    if response.status_code == 201:  # 201 は作成が成功したことを意味します
+                        print("ファイルが正常にアップロードされました")
+                        return response.json().get("id")  # アップロードされたファイルIDを取得する
+                    else:
+                        print(f"ファイルのアップロードに失敗しました。ステータス コード: {response.status_code}")
+                        return None
+            except Exception as e:
+                print(f"エラーが発生しました: {str(e)}")
+                return None
+
+        def run_workflow(file_id, user, response_mode="blocking"):
+            workflow_url = "https://api.dify.ai/v1/workflows/run"
+            headers = {
+                "Authorization": "Bearer app-xxxxxxxxx",
+                "Content-Type": "application/json"
+            }
+
+            data = {
+                "inputs": {
+                    "orig_mail": {
+                        "transfer_method": "local_file",
+                        "upload_file_id": file_id,
+                        "type": "document"
+                    }
+                },
+                "response_mode": response_mode,
+                "user": user
+            }
+
+            try:
+                print("ワークフローを実行...")
+                response = requests.post(workflow_url, headers=headers, json=data)
+                if response.status_code == 200:
+                    print("ワークフローが正常に実行されました")
+                    return response.json()
+                else:
+                    print(f"ワークフローの実行がステータス コードで失敗しました: {response.status_code}")
+                    return {"status": "error", "message": f"Failed to execute workflow, status code: {response.status_code}"}
+            except Exception as e:
+                print(f"エラーが発生しました: {str(e)}")
+                return {"status": "error", "message": str(e)}
+
+        # 使用例
+        file_path = "{your_file_path}"
+        user = "difyuser"
+
+        # ファイルをアップロードする
+        file_id = upload_file(file_path, user)
+        if file_id:
+            # ファイルは正常にアップロードされました。ワークフローの実行を続行します
+            result = run_workflow(file_id, user)
+            print(result)
+        else:
+            print("ファイルのアップロードに失敗し、ワークフローを実行できません")
+
+      }
+      ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflows/run/:workflow_id'
+  method='GET'
+  title='ワークフロー実行詳細を取得'
+  name='#get-workflow-run-detail'
+/>
+<Row>
+  <Col>
+    ワークフロー実行IDに基づいて、ワークフロータスクの現在の実行結果を取得します。
+    ### パス
+    - `workflow_id` (string) ワークフローID、ストリーミングチャンクの返り値から取得可能
+    ### 応答
+    - `id` (string) ワークフロー実行のID
+    - `workflow_id` (string) 関連するワークフローのID
+    - `status` (string) 実行のステータス、`running` / `succeeded` / `failed` / `stopped`
+    - `inputs` (json) 入力内容
+    - `outputs` (json) 出力内容
+    - `error` (string) エラー理由
+    - `total_steps` (int) タスクの総ステップ数
+    - `total_tokens` (int) 使用されるトークンの総数
+    - `created_at` (timestamp) 開始時間
+    - `finished_at` (timestamp) 終了時間
+    - `elapsed_time` (float) 使用される総秒数
+  </Col>
+  <Col sticky>
+    ### リクエスト例
+    <CodeGroup title="リクエスト" tag="GET" label="/workflows/run/:workflow_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \
+      -H 'Authorization: Bearer {api_key}' \
+      -H 'Content-Type: application/json'
+      ```
+    </CodeGroup>
+
+    ### 応答例
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+        "id": "b1ad3277-089e-42c6-9dff-6820d94fbc76",
+        "workflow_id": "19eff89f-ec03-4f75-b0fc-897e7effea02",
+        "status": "succeeded",
+        "inputs": "{\"sys.files\": [], \"sys.user_id\": \"abc-123\"}",
+        "outputs": null,
+        "error": null,
+        "total_steps": 3,
+        "total_tokens": 0,
+        "created_at": "Thu, 18 Jul 2024 03:17:40 -0000",
+        "finished_at": "Thu, 18 Jul 2024 03:18:10 -0000",
+        "elapsed_time": 30.098514399956912
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflows/tasks/:task_id/stop'
+  method='POST'
+  title='生成を停止'
+  name='#stop-generatebacks'
+/>
+<Row>
+  <Col>
+  ストリーミングモードでのみサポートされています。
+  ### パス
+  - `task_id` (string) タスクID、ストリーミングチャンクの返り値から取得可能
+  ### リクエストボディ
+  - `user` (string) 必須
+    ユーザー識別子、エンドユーザーのアイデンティティを定義するために使用され、送信メッセージインターフェースで渡されたユーザーと一致している必要があります。
+  ### 応答
+  - `result` (string) 常に"success"を返します
+  </Col>
+  <Col sticky>
+  ### リクエスト例
+  <CodeGroup title="リクエスト" tag="POST" label="/workflows/tasks/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{"user": "abc-123"}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \
+    -H 'Authorization: Bearer {api_key}' \
+    -H 'Content-Type: application/json' \
+    --data-raw '{
+        "user": "abc-123"
+    }'
+    ```
+    </CodeGroup>
+
+    ### 応答例
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/files/upload'
+  method='POST'
+  title='ファイルアップロード'
+  name='#file-upload'
+/>
+<Row>
+  <Col>
+  メッセージ送信時に使用するためのファイルをアップロードし、画像とテキストのマルチモーダル理解を可能にします。
+  ワークフローでサポートされている任意の形式をサポートします。
+  アップロードされたファイルは、現在のエンドユーザーのみが使用できます。
+
+  ### リクエストボディ
+  このインターフェースは`multipart/form-data`リクエストを必要とします。
+  - `file` (File) 必須
+    アップロードするファイル。
+  - `user` (string) 必須
+    ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
+
+  ### 応答
+  アップロードが成功すると、サーバーはファイルのIDと関連情報を返します。
+  - `id` (uuid) ID
+  - `name` (string) ファイル名
+  - `size` (int) ファイルサイズ（バイト）
+  - `extension` (string) ファイル拡張子
+  - `mime_type` (string) ファイルのMIMEタイプ
+  - `created_by` (uuid) エンドユーザーID
+  - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
+
+  ### エラー
+  - 400, `no_file_uploaded`, ファイルが提供されていません
+  - 400, `too_many_files`, 現在は1つのファイルのみ受け付けています
+  - 400, `unsupported_preview`, ファイルはプレビューをサポートしていません
+  - 400, `unsupported_estimate`, ファイルは推定をサポートしていません
+  - 413, `file_too_large`, ファイルが大きすぎます
+  - 415, `unsupported_file_type`, サポートされていない拡張子、現在はドキュメントファイルのみ受け付けています
+  - 503, `s3_connection_failed`, S3サービスに接続できません
+  - 503, `s3_permission_denied`, S3にファイルをアップロードする権限がありません
+  - 503, `s3_file_too_large`, ファイルがS3のサイズ制限を超えています
+  - 500, 内部サーバーエラー
+
+
+  </Col>
+  <Col sticky>
+  ### リクエスト例
+  <CodeGroup title="リクエスト" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/files/upload' \
+    --header 'Authorization: Bearer {api_key}' \
+    --form 'file=@"/path/to/file"'
+    ```
+
+    </CodeGroup>
+
+
+  ### 応答例
+  <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",
+      "name": "example.png",
+      "size": 1024,
+      "extension": "png",
+      "mime_type": "image/png",
+      "created_by": "6ad1ab0a-73ff-4ac1-b9e4-cdb312f71f13",
+      "created_at": 1577836800,
+    }
+  ```
+  </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='アプリケーション情報を取得'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    ページに入る際に、機能、入力パラメータ名、タイプ、デフォルト値などの情報を取得するために使用されます。
+
+    ### クエリ
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+          ユーザー識別子、開発者のルールで定義され、アプリケーション内で一意でなければなりません。
+      </Property>
+    </Properties>
+
+    ### 応答
+    - `user_input_form` (array[object]) ユーザー入力フォームの設定
+      - `text-input` (object) テキスト入力コントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+      - `paragraph` (object) 段落テキスト入力コントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+      - `select` (object) ドロップダウンコントロール
+        - `label` (string) 変数表示ラベル名
+        - `variable` (string) 変数ID
+        - `required` (bool) 必須かどうか
+        - `default` (string) デフォルト値
+        - `options` (array[string]) オプション値
+    - `file_upload` (object) ファイルアップロード設定
+      - `image` (object) 画像設定
+        現在サポートされている画像タイプのみ：`png`, `jpg`, `jpeg`, `webp`, `gif`
+        - `enabled` (bool) 有効かどうか
+        - `number_limits` (int) 画像数の制限、デフォルトは3
+        - `transfer_methods` (array[string]) 転送方法のリスト、remote_url, local_file、いずれかを選択する必要があります
+    - `system_parameters` (object) システムパラメータ
+      - `file_size_limit` (int) ドキュメントアップロードサイズ制限（MB）
+      - `image_file_size_limit` (int) 画像ファイルアップロードサイズ制限（MB）
+      - `audio_file_size_limit` (int) オーディオファイルアップロードサイズ制限（MB）
+      - `video_file_size_limit` (int) ビデオファイルアップロードサイズ制限（MB）
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+      "user_input_form": [
+          {
+              "paragraph": {
+                  "label": "Query",
+                  "variable": "query",
+                  "required": true,
+                  "default": ""
+              }
+          }
+      ],
+      "file_upload": {
+          "image": {
+              "enabled": false,
+              "number_limits": 3,
+              "detail": "high",
+              "transfer_methods": [
+                  "remote_url",
+                  "local_file"
+              ]
+          }
+      },
+      "system_parameters": {
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflows/logs'
+  method='GET'
+  title='ワークフローログを取得'
+  name='#Get-Workflow-Logs'
+/>
+<Row>
+  <Col>
+    ワークフローログを返します。最初のページは最新の`{limit}`メッセージを返します。つまり、逆順です。
+
+    ### クエリ
+
+    <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        検索するキーワード
+      </Property>
+      <Property name='status' type='string' key='status'>
+        succeeded/failed/stopped
+      </Property>
+      <Property name='page' type='int' key='page'>
+        現在のページ、デフォルトは1。
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+          1回のリクエストで返すチャット履歴メッセージの数、デフォルトは20。
+      </Property>
+    </Properties>
+
+    ### 応答
+  - `page` (int) 現在のページ
+  - `limit` (int) 返されたアイテムの数、入力がシステム制限を超える場合、システム制限量を返します
+  - `total` (int) 合計アイテム数
+  - `has_more` (bool) 次のページがあるかどうか
+  - `data` (array[object]) ログリスト
+    - `id` (string) ID
+    - `workflow_run` (object) ワークフロー実行
+      - `id` (string) ID
+      - `version` (string) バージョン
+      - `status` (string) 実行のステータス、`running` / `succeeded` / `failed` / `stopped`
+      - `error` (string) オプションのエラー理由
+      - `elapsed_time` (float) 使用される総秒数
+      - `total_tokens` (int) 使用されるトークン数
+      - `total_steps` (int) デフォルト0
+      - `created_at` (timestamp) 開始時間
+      - `finished_at` (timestamp) 終了時間
+    - `created_from` (string) 作成元
+    - `created_by_role` (string) 作成者の役割
+    - `created_by_account` (string) オプションの作成者アカウント
+    - `created_by_end_user` (object) エンドユーザーによって作成
+      - `id` (string) ID
+      - `type` (string) タイプ
+      - `is_anonymous` (bool) 匿名かどうか
+      - `session_id` (string) セッションID
+    - `created_at` (timestamp) 作成時間
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="リクエスト" tag="GET" label="/workflows/logs" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/logs'\\\n --header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/workflows/logs?limit=1'
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+    ### 応答例
+    <CodeGroup title="応答">
+    ```json {{ title: '応答' }}
+    {
+        "page": 1,
+        "limit": 1,
+        "total": 7,
+        "has_more": true,
+        "data": [
+            {
+                "id": "e41b93f1-7ca2-40fd-b3a8-999aeb499cc0",
+                "workflow_run": {
+                    "id": "c0640fc8-03ef-4481-a96c-8a13b732a36e",
+                    "version": "2024-08-01 12:17:09.771832",
+                    "status": "succeeded",
+                    "error": null,
+                    "elapsed_time": 1.3588523610014818,
+                    "total_tokens": 0,
+                    "total_steps": 3,
+                    "created_at": 1726139643,
+                    "finished_at": 1726139644
+                },
+                "created_from": "service-api",
+                "created_by_role": "end_user",
+                "created_by_account": null,
+                "created_by_end_user": {
+                    "id": "7f7d9117-dd9d-441d-8970-87e5e7e687a3",
+                    "type": "service_api",
+                    "is_anonymous": false,
+                    "session_id": "abc-123"
+                },
+                "created_at": 1726139644
+            }
+        ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>

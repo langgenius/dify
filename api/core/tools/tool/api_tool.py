@@ -5,6 +5,7 @@ from urllib.parse import urlencode
 
 import httpx
 
+from core.file.file_manager import download
 from core.helper import ssrf_proxy
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
@@ -138,6 +139,7 @@ class ApiTool(Tool):
         path_params = {}
         body = {}
         cookies = {}
+        files = []
 
         # check parameters
         for parameter in self.api_bundle.openapi.get("parameters", []):
@@ -166,8 +168,12 @@ class ApiTool(Tool):
                     properties = body_schema.get("properties", {})
                     for name, property in properties.items():
                         if name in parameters:
-                            # convert type
-                            body[name] = self._convert_body_property_type(property, parameters[name])
+                            if property.get("format") == "binary":
+                                f = parameters[name]
+                                files.append((name, (f.filename, download(f), f.mime_type)))
+                            else:
+                                # convert type
+                                body[name] = self._convert_body_property_type(property, parameters[name])
                         elif name in required:
                             raise ToolParameterValidationError(
                                 f"Missing required parameter {name} in operation {self.api_bundle.operation_id}"
@@ -182,7 +188,7 @@ class ApiTool(Tool):
         for name, value in path_params.items():
             url = url.replace(f"{{{name}}}", f"{value}")
 
-        # parse http body data if needed, for GET/HEAD/OPTIONS/TRACE, the body is ignored
+        # parse http body data if needed
         if "Content-Type" in headers:
             if headers["Content-Type"] == "application/json":
                 body = json.dumps(body)
@@ -198,6 +204,7 @@ class ApiTool(Tool):
                 headers=headers,
                 cookies=cookies,
                 data=body,
+                files=files,
                 timeout=API_TOOL_DEFAULT_TIMEOUT,
                 follow_redirects=True,
             )

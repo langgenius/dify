@@ -59,6 +59,7 @@ type Props = {
   isInTable?: boolean
   onRemove?: () => void
   typePlaceHolder?: string
+  isSupportFileVar?: boolean
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -81,6 +82,7 @@ const VarReferencePicker: FC<Props> = ({
   isInTable,
   onRemove,
   typePlaceHolder,
+  isSupportFileVar = true,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -382,6 +384,7 @@ const VarReferencePicker: FC<Props> = ({
               vars={outputVars}
               onChange={handleVarReferenceChange}
               itemWidth={isAddBtnTrigger ? 260 : triggerWidth}
+              isSupportFileVar={isSupportFileVar}
             />
           )}
         </PortalToFollowElemContent>

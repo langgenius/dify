@@ -56,6 +56,7 @@ export const fetchNodeDefault = (appId: string, blockType: BlockEnum, query = {}
   })
 }
 
+// TODO: archived
 export const updateWorkflowDraftFromDSL = (appId: string, data: string) => {
   return post<FetchWorkflowDraftResponse>(`apps/${appId}/workflows/draft/import`, { body: { data } })
 }

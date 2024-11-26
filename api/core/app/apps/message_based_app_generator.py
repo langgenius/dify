@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Optional, Union
 
 from sqlalchemy import and_
@@ -200,7 +200,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             db.session.commit()
             db.session.refresh(conversation)
         else:
-            conversation.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            conversation.updated_at = datetime.now(UTC).replace(tzinfo=None)
             db.session.commit()
 
         message = Message(

@@ -60,7 +60,7 @@ class AccountInitApi(Resource):
                 raise InvalidInvitationCodeError()
 
             invitation_code.status = "used"
-            invitation_code.used_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            invitation_code.used_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             invitation_code.used_by_tenant_id = account.current_tenant_id
             invitation_code.used_by_account_id = account.id
 
@@ -68,7 +68,7 @@ class AccountInitApi(Resource):
         account.timezone = args["timezone"]
         account.interface_theme = "light"
         account.status = "active"
-        account.initialized_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        account.initialized_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         db.session.commit()
 
         return {"result": "success"}
