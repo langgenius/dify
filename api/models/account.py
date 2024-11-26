@@ -56,8 +56,8 @@ class Account(UserMixin, db.Model):
         self._current_tenant = tenant
 
     @property
-    def current_tenant_id(self):
-        return self._current_tenant.id
+    def current_tenant_id(self) -> str | None:
+        return self._current_tenant.id if self._current_tenant else None
 
     @current_tenant_id.setter
     def current_tenant_id(self, value: str):
@@ -109,6 +109,10 @@ class Account(UserMixin, db.Model):
         return TenantAccountRole.is_privileged_role(self._current_tenant.current_role)
 
     @property
+    def is_admin(self):
+        return TenantAccountRole.is_admin_role(self._current_tenant.current_role)
+
+    @property
     def is_editor(self):
         return TenantAccountRole.is_editing_role(self._current_tenant.current_role)
 
@@ -146,6 +150,10 @@ class TenantAccountRole(enum.StrEnum):
     @staticmethod
     def is_privileged_role(role: str) -> bool:
         return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
+
+    @staticmethod
+    def is_admin_role(role: str) -> bool:
+        return role and role == TenantAccountRole.ADMIN
 
     @staticmethod
     def is_non_owner_role(role: str) -> bool:

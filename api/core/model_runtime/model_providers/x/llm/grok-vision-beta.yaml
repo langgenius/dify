@@ -1,15 +1,13 @@
-model: grok-beta
+model: grok-vision-beta
 label:
-  en_US: Grok Beta
+  en_US: Grok Vision Beta
 model_type: llm
 features:
   - agent-thought
-  - tool-call
-  - multi-tool-call
-  - stream-tool-call
+  - vision
 model_properties:
   mode: chat
-  context_size: 131072
+  context_size: 8192
 parameter_rules:
   - name: temperature
     label:

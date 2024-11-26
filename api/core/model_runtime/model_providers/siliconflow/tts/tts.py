@@ -1,20 +1,17 @@
 import concurrent.futures
-import copy
 from typing import Any, Optional
 
-from openai import AzureOpenAI
+from openai import OpenAI
 
-from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
-from core.model_runtime.model_providers.azure_openai._common import _CommonAzureOpenAI
-from core.model_runtime.model_providers.azure_openai._constant import TTS_BASE_MODELS, AzureBaseModel
+from core.model_runtime.model_providers.openai._common import _CommonOpenAI
 
 
-class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
+class SiliconFlowText2SpeechModel(_CommonOpenAI, TTSModel):
     """
-    Model class for OpenAI text2speech model.
+    Model class for SiliconFlow Speech to text model.
     """
 
     def _invoke(
@@ -35,22 +32,23 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
             d["value"] for d in self.get_tts_model_voices(model=model, credentials=credentials)
         ]:
             voice = self._get_model_default_voice(model, credentials)
-
+        # if streaming:
         return self._tts_invoke_streaming(model=model, credentials=credentials, content_text=content_text, voice=voice)
 
-    def validate_credentials(self, model: str, credentials: dict) -> None:
+    def validate_credentials(self, model: str, credentials: dict, user: Optional[str] = None) -> None:
         """
         validate credentials text2speech model
 
         :param model: model name
         :param credentials: model credentials
+        :param user: unique user id
         :return: text translated to audio file
         """
         try:
             self._tts_invoke_streaming(
                 model=model,
                 credentials=credentials,
-                content_text="Hello Dify!",
+                content_text="Hello SiliconFlow!",
                 voice=self._get_model_default_voice(model, credentials),
             )
         except Exception as ex:
@@ -59,6 +57,7 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
     def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, voice: str) -> Any:
         """
         _tts_invoke_streaming text2speech model
+
         :param model: model name
         :param credentials: model credentials
         :param content_text: text content to be translated
@@ -66,13 +65,17 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
         :return: text translated to audio file
         """
         try:
-            # doc: https://platform.openai.com/docs/guides/text-to-speech
+            # doc: https://docs.siliconflow.cn/capabilities/text-to-speech
+            self._add_custom_parameters(credentials)
             credentials_kwargs = self._to_credential_kwargs(credentials)
-            client = AzureOpenAI(**credentials_kwargs)
-            # max length is 4096 characters, there is 3500 limit for each request
-            max_length = 3500
-            if len(content_text) > max_length:
-                sentences = self._split_text_into_sentences(content_text, max_length=max_length)
+            client = OpenAI(**credentials_kwargs)
+            model_support_voice = [
+                x.get("value") for x in self.get_tts_model_voices(model=model, credentials=credentials)
+            ]
+            if not voice or voice not in model_support_voice:
+                voice = self._get_model_default_voice(model, credentials)
+            if len(content_text) > 4096:
+                sentences = self._split_text_into_sentences(content_text, max_length=4096)
                 executor = concurrent.futures.ThreadPoolExecutor(max_workers=min(3, len(sentences)))
                 futures = [
                     executor.submit(
@@ -96,33 +99,7 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 
-    def _process_sentence(self, sentence: str, model: str, voice, credentials: dict):
-        """
-        _tts_invoke openai text2speech model api
-
-        :param model: model name
-        :param credentials: model credentials
-        :param voice: model timbre
-        :param sentence: text content to be translated
-        :return: text translated to audio file
-        """
-        credentials_kwargs = self._to_credential_kwargs(credentials)
-        client = AzureOpenAI(**credentials_kwargs)
-        response = client.audio.speech.create(model=model, voice=voice, input=sentence.strip())
-        if isinstance(response.read(), bytes):
-            return response.read()
-
-    def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
-        ai_model_entity = self._get_ai_model_entity(credentials["base_model_name"], model)
-        return ai_model_entity.entity
-
-    @staticmethod
-    def _get_ai_model_entity(base_model_name: str, model: str) -> AzureBaseModel | None:
-        for ai_model_entity in TTS_BASE_MODELS:
-            if ai_model_entity.base_model_name == base_model_name:
-                ai_model_entity_copy = copy.deepcopy(ai_model_entity)
-                ai_model_entity_copy.entity.model = model
-                ai_model_entity_copy.entity.label.en_US = model
-                ai_model_entity_copy.entity.label.zh_Hans = model
-                return ai_model_entity_copy
-        return None
+    @classmethod
+    def _add_custom_parameters(cls, credentials: dict) -> None:
+        credentials["openai_api_base"] = "https://api.siliconflow.cn"
+        credentials["openai_api_key"] = credentials["api_key"]
