@@ -116,6 +116,8 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
             server_url = credentials["server_url"]
             model_uid = credentials["model_uid"]
             api_key = credentials.get("api_key")
+            if api_key is None:
+                raise CredentialsValidateFailedError("api_key is required")
             extra_args = XinferenceHelper.get_xinference_extra_parameter(
                 server_url=server_url,
                 model_uid=model_uid,
@@ -134,7 +136,7 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
             try:
                 handle = client.get_model(model_uid=model_uid)
             except RuntimeError as e:
-                raise InvokeAuthorizationError(e)
+                raise InvokeAuthorizationError(str(e))
 
             if not isinstance(handle, RESTfulEmbeddingModelHandle):
                 raise InvokeBadRequestError(

@@ -160,7 +160,10 @@ class WorkflowClient(DifyClient):
 
 class KnowledgeBaseClient(DifyClient):
     def __init__(
-        self, api_key, base_url: str = "https://api.dify.ai/v1", dataset_id: str | None = None
+        self,
+        api_key,
+        base_url: str = "https://api.dify.ai/v1",
+        dataset_id: str | None = None,
     ):
         """
         Construct a KnowledgeBaseClient object.
@@ -187,7 +190,9 @@ class KnowledgeBaseClient(DifyClient):
             "GET", f"/datasets?page={page}&limit={page_size}", **kwargs
         )
 
-    def create_document_by_text(self, name, text, extra_params: dict | None = None, **kwargs):
+    def create_document_by_text(
+        self, name, text, extra_params: dict | None = None, **kwargs
+    ):
         """
         Create a document by text.
 
@@ -372,7 +377,11 @@ class KnowledgeBaseClient(DifyClient):
         return self._send_request("DELETE", url)
 
     def list_documents(
-        self, page: int | None = None, page_size: int | None = None, keyword: str | None = None, **kwargs
+        self,
+        page: int | None = None,
+        page_size: int | None = None,
+        keyword: str | None = None,
+        **kwargs,
     ):
         """
         Get a list of documents in this dataset.
@@ -402,7 +411,11 @@ class KnowledgeBaseClient(DifyClient):
         return self._send_request("POST", url, json=data, **kwargs)
 
     def query_segments(
-        self, document_id, keyword: str | None = None, status: str | None = None, **kwargs
+        self,
+        document_id,
+        keyword: str | None = None,
+        status: str | None = None,
+        **kwargs,
     ):
         """
         Query segments in this document.

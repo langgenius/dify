@@ -1,6 +1,6 @@
 from threading import Lock
 from time import time
-from typing import Optional
+from typing import Any, Optional
 
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError, MissingSchema, Timeout
@@ -39,7 +39,7 @@ class XinferenceModelExtraParameter:
         self.model_family = model_family
 
 
-cache = {}
+cache: dict[str, dict[str, Any]] = {}
 cache_lock = Lock()
 
 
