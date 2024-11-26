@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import type { FC, SetStateAction } from 'react'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
 import Input, { type InputProps } from '../input'
@@ -6,35 +5,34 @@ import classNames from '@/utils/classnames'
 
 export type InputNumberProps = {
   unit?: string
+  value: number
   onChange: (value: number) => void
   amount?: number
   size?: 'sm' | 'md'
 } & Omit<InputProps, 'value' | 'onChange' | 'size'>
 
 export const InputNumber: FC<InputNumberProps> = (props) => {
-  const { unit, className, onChange, defaultValue = 0, amount = 1, size = 'sm', max, min, ...rest } = props
-  const [val, setVal] = useState<number>(defaultValue as number)
-  const update = (value: SetStateAction<number>) => {
-    const current = typeof value === 'function' ? value(val) : value as number
+  const { unit, className, onChange, amount = 1, value, size = 'sm', max, min, ...rest } = props
+  const update = (input: SetStateAction<number>) => {
+    const current = typeof input === 'function' ? input(value) : input as number
     if (max && current >= (max as number))
       return
     if (min && current <= (min as number))
       return
-    setVal(value)
+    onChange(current)
   }
   const inc = () => update(val => val + amount)
   const dec = () => update(val => val - amount)
   return <div className='flex'>
     <Input {...rest}
       className={classNames('rounded-r-none', className)}
-      value={val}
+      value={value}
       max={max}
       min={min}
       onChange={(e) => {
         const parsed = Number(e.target.value)
         if (Number.isNaN(parsed))
           return
-        setVal(parsed)
         onChange(parsed)
       }}
     />

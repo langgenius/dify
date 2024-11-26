@@ -119,6 +119,19 @@ type ParentChildConfig = {
   rules: PreProcessingRule[]
 }
 
+const defaultParentChildConfig: ParentChildConfig = {
+  chunkForContext: 'paragraph',
+  parent: {
+    delimiter: '\\n\\n',
+    maxLength: 4000,
+  },
+  child: {
+    delimiter: '\\n\\n',
+    maxLength: 4000,
+  },
+  rules: [],
+}
+
 const StepTwo = ({
   isSetting,
   documentDetail,
@@ -186,18 +199,7 @@ const StepTwo = ({
   })()
   const [isCreating, setIsCreating] = useState(false)
 
-  const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>({
-    chunkForContext: 'paragraph',
-    parent: {
-      delimiter: '\\n\\n',
-      maxLength: 4000,
-    },
-    child: {
-      delimiter: '\\n\\n',
-      maxLength: 4000,
-    },
-    rules: [],
-  })
+  const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
 
   const scrollHandle = (e: Event) => {
     if ((e.target as HTMLDivElement).scrollTop > 0)
@@ -248,6 +250,7 @@ const StepTwo = ({
       setOverlap(defaultConfig.segmentation.chunk_overlap)
       setRules(defaultConfig.pre_processing_rules)
     }
+    setParentChildConfig(defaultParentChildConfig)
   }
 
   const fetchFileIndexingEstimate = async (docForm = DocForm.TEXT, language?: string) => {
@@ -659,24 +662,24 @@ const StepTwo = ({
                       <RiSearchEyeLine className='h-4 w-4 mr-1.5' />
                       {t('datasetCreation.stepTwo.previewChunk')}
                     </Button>
-                    <Button variant={'ghost'} disabled>
+                    <Button variant={'ghost'} onClick={resetRules}>
                       {t('datasetCreation.stepTwo.reset')}
                     </Button>
                   </>
                 }
               >
                 <div className='space-y-4'>
-                  <div className='flex gap-2'>
+                  <div className='flex gap-3'>
                     <DelimiterInput
                       value={segmentIdentifier}
                       onChange={e => setSegmentIdentifier(e.target.value)}
                     />
                     <MaxLengthInput
-                      defaultValue={max}
+                      value={max}
                       onChange={setMax}
                     />
                     <OverlapInput
-                      defaultValue={overlap}
+                      value={overlap}
                       min={1}
                       onChange={setOverlap}
                     />
@@ -749,7 +752,7 @@ const StepTwo = ({
                             })}
                           />
                           <MaxLengthInput
-                            defaultValue={parentChildConfig.parent.maxLength}
+                            value={parentChildConfig.parent.maxLength}
                             onChange={value => setParentChildConfig({
                               ...parentChildConfig,
                               parent: {
@@ -775,11 +778,11 @@ const StepTwo = ({
                     />
                   </div>
 
-                  <div className='space-y-2'>
+                  <div className='space-y-4'>
                     <TextLabel>
                       {t('datasetCreation.stepTwo.childChunkForRetrieval')}
                     </TextLabel>
-                    <div className='flex gap-2 mt-2'>
+                    <div className='flex gap-3 mt-2'>
                       <DelimiterInput
                         value={parentChildConfig.child.delimiter}
                         onChange={e => setParentChildConfig({
@@ -791,8 +794,7 @@ const StepTwo = ({
                         })}
                       />
                       <MaxLengthInput
-                        defaultValue={parentChildConfig.child.maxLength}
-
+                        value={parentChildConfig.child.maxLength}
                         onChange={value => setParentChildConfig({
                           ...parentChildConfig,
                           child: {
@@ -803,20 +805,22 @@ const StepTwo = ({
                       />
                     </div>
 
-                    <TextLabel>
-                      {t('datasetCreation.stepTwo.rules')}
-                    </TextLabel>
                     <div className='space-y-2'>
-                      {rules.map(rule => (
-                        <div key={rule.id} className={s.ruleItem} onClick={() => {
-                          ruleChangeHandle(rule.id)
-                        }}>
-                          <Checkbox
-                            checked={rule.enabled}
-                          />
-                          <label className="ml-2 text-sm font-normal cursor-pointer text-gray-800">{getRuleName(rule.id)}</label>
-                        </div>
-                      ))}
+                      <TextLabel>
+                        {t('datasetCreation.stepTwo.rules')}
+                      </TextLabel>
+                      <div className='space-y-2 mt-2'>
+                        {rules.map(rule => (
+                          <div key={rule.id} className={s.ruleItem} onClick={() => {
+                            ruleChangeHandle(rule.id)
+                          }}>
+                            <Checkbox
+                              checked={rule.enabled}
+                            />
+                            <label className="ml-2 text-sm font-normal cursor-pointer text-gray-800">{getRuleName(rule.id)}</label>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                 </div>
