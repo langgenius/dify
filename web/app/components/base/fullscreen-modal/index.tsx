@@ -40,7 +40,7 @@ export default function FullScreenModal({
         </Transition.Child>
 
         <div
-          className="fixed inset-0 h-screen w-screen p-4 overflow-y-auto"
+          className="fixed inset-0 h-screen w-screen p-4"
           onClick={(e) => {
             e.preventDefault()
             e.stopPropagation()
