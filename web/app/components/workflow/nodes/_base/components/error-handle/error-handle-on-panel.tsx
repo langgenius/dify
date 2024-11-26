@@ -2,16 +2,16 @@ import {
   useCallback,
   useState,
 } from 'react'
-import { RiArrowDropRightLine } from '@remixicon/react'
+import Collapse from '../collapse'
 import { ErrorHandleTypeEnum } from './types'
 import ErrorHandleTypeSelector from './error-handle-type-selector'
 import FailBranchCard from './fail-branch-card'
 import DefaultValue from './default-value'
-import cn from '@/utils/classnames'
 import type { Node } from '@/app/components/workflow/types'
 import {
   useNodeDataUpdate,
 } from '@/app/components/workflow/hooks'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
 
 type ErrorHandleProps = Pick<Node, 'id' | 'data'>
 const ErrorHandle = ({
@@ -44,45 +44,38 @@ const ErrorHandle = ({
   }, [id, handleNodeDataUpdateWithSyncDraft])
 
   return (
-    <div>
-      <div
-        className='flex justify-between items-center pt-2 pr-4'
-        onClick={() => {
-          if (error_strategy)
-            setCollapsed(!collapsed)
-        }}
-      >
-        <div className='flex items-center'>
-          <div className='w-4 h-4'>
+    <>
+      <Split />
+      <div className='py-4'>
+        <Collapse
+          disabled={!error_strategy}
+          collapsed={collapsed}
+          onCollapse={setCollapsed}
+          trigger={
+            <div className='grow flex items-center justify-between pr-4'>
+              <div className='system-sm-semibold-uppercase text-text-secondary'>ERROR HANDLING</div>
+              <ErrorHandleTypeSelector
+                value={error_strategy || ErrorHandleTypeEnum.none}
+                onSelected={handleErrorHandleTypeChange}
+              />
+            </div>
+          }
+        >
+          <>
             {
-              error_strategy && (
-                <RiArrowDropRightLine
-                  className={cn(
-                    'w-4 h-4 text-text-tertiary',
-                    !collapsed && 'transform rotate-90',
-                  )}
-                />
+              error_strategy === ErrorHandleTypeEnum.failBranch && !collapsed && (
+                <FailBranchCard />
               )
             }
-          </div>
-          <div className='system-sm-semibold-uppercase text-text-secondary'>ERROR HANDLING</div>
-        </div>
-        <ErrorHandleTypeSelector
-          value={error_strategy || ErrorHandleTypeEnum.none}
-          onSelected={handleErrorHandleTypeChange}
-        />
+            {
+              error_strategy === ErrorHandleTypeEnum.defaultValue && !collapsed && (
+                <DefaultValue />
+              )
+            }
+          </>
+        </Collapse>
       </div>
-      {
-        error_strategy === ErrorHandleTypeEnum.failBranch && !collapsed && (
-          <FailBranchCard />
-        )
-      }
-      {
-        error_strategy === ErrorHandleTypeEnum.defaultValue && !collapsed && (
-          <DefaultValue />
-        )
-      }
-    </div>
+    </>
   )
 }
 

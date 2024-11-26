@@ -165,7 +165,7 @@ const BasePanel: FC<BasePanelProps> = ({
             />
           </div>
         </div>
-        <div className='py-2'>
+        <div>
           {cloneElement(children, { id, data })}
         </div>
         {
