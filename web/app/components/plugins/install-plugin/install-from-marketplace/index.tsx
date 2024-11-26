@@ -41,12 +41,14 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   // TODO: check installed in beta version.
 
   const getTitle = useCallback(() => {
+    if (isBundle && step === InstallStep.installed)
+      return t(`${i18nPrefix}.installComplete`)
     if (step === InstallStep.installed)
       return t(`${i18nPrefix}.installedSuccessfully`)
     if (step === InstallStep.installFailed)
       return t(`${i18nPrefix}.installFailed`)
     return t(`${i18nPrefix}.installPlugin`)
-  }, [step, t])
+  }, [isBundle, step, t])
 
   const handleInstalled = useCallback(() => {
     setStep(InstallStep.installed)
