@@ -67,7 +67,6 @@ from .entities import (
     ModelConfig,
 )
 from .exc import (
-    FileTypeNotSupportError,
     InvalidContextStructureError,
     InvalidVariableTypeError,
     LLMModeRequiredError,
@@ -676,7 +675,7 @@ class LLMNode(BaseNode[LLMNodeData]):
                             and ModelFeature.AUDIO not in model_config.model_schema.features
                         )
                     ):
-                        raise FileTypeNotSupportError(type_name=content_item.type)
+                        continue
                     prompt_message_content.append(content_item)
                 if len(prompt_message_content) == 1 and prompt_message_content[0].type == PromptMessageContentType.TEXT:
                     prompt_message.content = prompt_message_content[0].data
