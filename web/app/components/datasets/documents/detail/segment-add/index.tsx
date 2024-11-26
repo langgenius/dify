@@ -26,7 +26,6 @@ export enum ProcessStatus {
   ERROR = 'error',
 }
 
-// todo: Modify processing status
 const SegmentAdd: FC<ISegmentAddProps> = ({
   importStatus,
   clearProcessStatus,
@@ -39,25 +38,36 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
     return (
       <>
         {(importStatus === ProcessStatus.WAITING || importStatus === ProcessStatus.PROCESSING) && (
-          <div className='relative overflow-hidden inline-flex items-center mr-2 px-3 py-[6px] text-blue-700 bg-[#F5F8FF] rounded-lg border border-black/5'>
-            {importStatus === ProcessStatus.WAITING && <div className='absolute left-0 top-0 w-3/12 h-full bg-[#D1E0FF] z-0' />}
-            {importStatus === ProcessStatus.PROCESSING && <div className='absolute left-0 top-0 w-2/3 h-full bg-[#D1E0FF] z-0' />}
-            <RiLoader2Line className='animate-spin mr-2 w-4 h-4' />
-            <span className='font-medium text-[13px] leading-[18px] z-10'>{t('datasetDocuments.list.batchModal.processing')}</span>
+          <div className='relative overflow-hidden inline-flex items-center mr-2 px-2.5 py-2 text-components-button-secondary-accent-text
+            bg-components-progress-bar-border rounded-lg border-[0.5px] border-components-progress-bar-border
+            shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]'>
+            <div className={cn('absolute left-0 top-0 h-full bg-components-progress-bar-progress border-r-[1.5px] border-r-components-progress-bar-progress-highlight z-0', importStatus === ProcessStatus.WAITING ? 'w-3/12' : 'w-2/3')} />
+            <RiLoader2Line className='animate-spin mr-1 w-4 h-4' />
+            <span className='system-sm-medium z-10 pr-0.5'>{t('datasetDocuments.list.batchModal.processing')}</span>
           </div>
         )}
         {importStatus === ProcessStatus.COMPLETED && (
-          <div className='inline-flex items-center mr-2 px-3 py-[6px] text-gray-700 bg-[#F6FEF9] rounded-lg border border-black/5'>
-            <CheckCircle className='mr-2 w-4 h-4 text-[#039855]' />
-            <span className='font-medium text-[13px] leading-[18px]'>{t('datasetDocuments.list.batchModal.completed')}</span>
-            <span className='pl-2 font-medium text-[13px] leading-[18px] text-text-accent cursor-pointer' onClick={clearProcessStatus}>{t('datasetDocuments.list.batchModal.ok')}</span>
+          <div className='relative inline-flex items-center mr-2 bg-components-panel-bg rounded-lg border-[0.5px] border-components-panel-border shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] overflow-hidden'>
+            <div className='inline-flex items-center px-2.5 py-2 text-text-success border-r border-r-divider-subtle'>
+              <CheckCircle className='mr-1 w-4 h-4' />
+              <span className='system-sm-medium pr-0.5'>{t('datasetDocuments.list.batchModal.completed')}</span>
+            </div>
+            <div className='m-1 inline-flex items-center'>
+              <span className='system-xs-medium text-components-button-ghost-text hover:bg-components-button-ghost-bg-hover px-1.5 py-1 rounded-md cursor-pointer' onClick={clearProcessStatus}>{t('datasetDocuments.list.batchModal.ok')}</span>
+            </div>
+            <div className='absolute top-0 left-0 w-full h-full bg-dataset-chunk-process-success-bg opacity-40 -z-10' />
           </div>
         )}
         {importStatus === ProcessStatus.ERROR && (
-          <div className='inline-flex items-center mr-2 px-3 py-[6px] text-red-600 bg-red-100 rounded-lg border border-black/5'>
-            <RiErrorWarningFill className='mr-2 w-4 h-4 text-[#D92D20]' />
-            <span className='font-medium text-[13px] leading-[18px]'>{t('datasetDocuments.list.batchModal.error')}</span>
-            <span className='pl-2 font-medium text-[13px] leading-[18px] text-text-accent cursor-pointer' onClick={clearProcessStatus}>{t('datasetDocuments.list.batchModal.ok')}</span>
+          <div className='relative inline-flex items-center mr-2 bg-components-panel-bg rounded-lg border-[0.5px] border-components-panel-border shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] overflow-hidden'>
+            <div className='inline-flex items-center px-2.5 py-2 text-text-destructive border-r border-r-divider-subtle'>
+              <RiErrorWarningFill className='mr-1 w-4 h-4' />
+              <span className='system-sm-medium pr-0.5'>{t('datasetDocuments.list.batchModal.error')}</span>
+            </div>
+            <div className='m-1 inline-flex items-center'>
+              <span className='system-xs-medium text-components-button-ghost-text hover:bg-components-button-ghost-bg-hover px-1.5 py-1 rounded-md cursor-pointer' onClick={clearProcessStatus}>{t('datasetDocuments.list.batchModal.ok')}</span>
+            </div>
+            <div className='absolute top-0 left-0 w-full h-full bg-dataset-chunk-process-error-bg opacity-40 -z-10' />
           </div>
         )}
       </>
@@ -68,7 +78,7 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
     <div className='flex items-center rounded-lg border-[0.5px] border-components-button-secondary-border
       bg-components-button-secondary-bg shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] relative z-20'>
       <div
-        className='inline-flex items-center px-2.5 py-2 border-r-[1px] border-r-divider-subtle cursor-pointer'
+        className='inline-flex items-center px-2.5 py-2 rounded-l-lg border-r-[1px] border-r-divider-subtle cursor-pointer hover:bg-state-base-hover'
         onClick={showNewSegmentModal}
       >
         <RiAddLine className='w-4 h-4 text-components-button-secondary-accent-text' />
