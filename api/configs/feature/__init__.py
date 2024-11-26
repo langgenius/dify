@@ -619,6 +619,11 @@ class DataSetConfig(BaseSettings):
     PLAN_SANDBOX_CLEAN_MESSAGE_DAY_SETTING: PositiveInt = Field(
         description="Interval in days for message cleanup operations - plan: sandbox",
         default=30,
+    ) 
+    
+    RETRIEVAL_TOP_N: Optional[PositiveInt] = Field(
+        description="number of retrieval top_n", 
+        default=None
     )
 
 
