@@ -45,7 +45,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         self,
         chunk_size: int = 4000,
         chunk_overlap: int = 200,
-        length_function: Callable[[str], int] = len,
+        length_function: Callable[[str], [int]] = len,
         keep_separator: bool = False,
         add_start_index: bool = False,
     ) -> None:
