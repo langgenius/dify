@@ -34,10 +34,10 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
           className='block'
         >
           <div className={cn(
-            'flex items-center justify-between rounded-md cursor-pointer px-2 hover:bg-state-base-hover',
+            'flex items-center justify-between rounded-md cursor-pointer px-2 space-x-1 hover:bg-state-base-hover',
           )}>
             <AppTypeSelectTrigger values={value} />
-            {value && value.length > 0 && <div className='w-4 h-4 ml-1' onClick={(e) => {
+            {value && value.length > 0 && <div className='w-4 h-4' onClick={(e) => {
               e.stopPropagation()
               onChange([])
             }}>
@@ -81,10 +81,12 @@ function AppTypeSelectTrigger({ values }: { values: AppSelectorProps['value'] })
   }
   if (values.length === 1) {
     return <div className={cn(
-      'flex items-center justify-between gap-1 h-8',
+      'flex items-center justify-between gap-1 h-8 flex-nowrap',
     )}>
       <AppTypeIcon mode={values[0]} />
-      <AppTypeLabel mode={values[0]} />
+      <div className='flex flex-1 items-center text-center line-clamp-1'>
+        <AppTypeLabel mode={values[0]} />
+      </div>
     </div>
   }
   return <div className={cn(
@@ -143,8 +145,9 @@ function AppTypeIcon({ mode, className }: AppTypeIconProps) {
 
 type AppTypeLabelProps = {
   mode: AppMode
+  className?: string
 }
-function AppTypeLabel({ mode }: AppTypeLabelProps) {
+function AppTypeLabel({ mode, className }: AppTypeLabelProps) {
   const { t } = useTranslation()
   let label = ''
   if (mode === 'chat')
@@ -158,5 +161,5 @@ function AppTypeLabel({ mode }: AppTypeLabelProps) {
   if (mode === 'workflow')
     label = t('app.typeSelector.workflow')
 
-  return <span className='system-sm-medium text-components-menu-item-text'>{label}</span>
+  return <span className={cn('system-sm-medium text-components-menu-item-text', className)}>{label}</span>
 }

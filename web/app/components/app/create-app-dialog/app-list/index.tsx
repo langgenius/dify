@@ -169,7 +169,7 @@ const Apps = ({
           </div>
           <Input
             showClearIcon
-            wrapperClassName='w-full'
+            wrapperClassName='w-full flex-1'
             className='bg-transparent hover:bg-transparent focus:bg-transparent hover:border-transparent focus:border-transparent focus:shadow-none'
             placeholder='Search all templates...'
             value={keywords}
