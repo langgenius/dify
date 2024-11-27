@@ -2,7 +2,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Any, Literal, Union, overload
+from typing import Any, Union
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -24,32 +24,12 @@ from extensions.ext_database import db
 from factories import file_factory
 from models.account import Account
 from models.model import App, EndUser
+from services.errors.message import MessageNotExistsError
 
 logger = logging.getLogger(__name__)
 
 
 class ChatAppGenerator(MessageBasedAppGenerator):
-    @overload
-    def generate(
-        self,
-        app_model: App,
-        user: Union[Account, EndUser],
-        args: Any,
-        invoke_from: InvokeFrom,
-        stream: Literal[True] = True,
-    ) -> Generator[str, None, None]: ...
-
-    @overload
-    def generate(
-        self,
-        app_model: App,
-        user: Union[Account, EndUser],
-        args: Any,
-        invoke_from: InvokeFrom,
-        stream: Literal[False] = False,
-    ) -> dict: ...
-
-    @overload
     def generate(
         self,
         app_model: App,
@@ -131,13 +111,15 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             model_conf=ModelConfigConverter.convert(app_config),
             file_upload_config=file_extra_config,
             conversation_id=conversation.id if conversation else None,
-            inputs=conversation.inputs
-            if conversation
-            else self._prepare_user_inputs(
-                user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+            inputs=dict(
+                conversation.inputs
+                if conversation
+                else self._prepare_user_inputs(
+                    user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+                )
             ),
             query=query,
-            files=file_objs,
+            files=list(file_objs),
             parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
             user_id=user.id,
             invoke_from=invoke_from,
@@ -207,6 +189,8 @@ class ChatAppGenerator(MessageBasedAppGenerator):
                 # get conversation and message
                 conversation = self._get_conversation(conversation_id)
                 message = self._get_message(message_id)
+                if message is None:
+                    raise MessageNotExistsError("Message not exists")
 
                 # chatbot app
                 runner = ChatAppRunner()

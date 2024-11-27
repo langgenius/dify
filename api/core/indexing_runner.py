@@ -535,7 +535,7 @@ class IndexingRunner:
                     document_format_thread = threading.Thread(
                         target=self.format_qa_document,
                         kwargs={
-                            "flask_app": current_app._get_current_object(),
+                            "flask_app": current_app._get_current_object(),  # type: ignore
                             "tenant_id": tenant_id,
                             "document_node": doc,
                             "all_qa_documents": all_qa_documents,

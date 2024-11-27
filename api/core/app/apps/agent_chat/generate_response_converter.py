@@ -16,7 +16,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
     _blocking_response_type = ChatbotAppBlockingResponse
 
     @classmethod
-    def convert_blocking_full_response(cls, blocking_response: ChatbotAppBlockingResponse) -> dict:
+    def convert_blocking_full_response(cls, blocking_response: ChatbotAppBlockingResponse) -> dict:  # type: ignore[override]
         """
         Convert blocking full response.
         :param blocking_response: blocking response
@@ -37,7 +37,7 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
         return response
 
     @classmethod
-    def convert_blocking_simple_response(cls, blocking_response: ChatbotAppBlockingResponse) -> dict:
+    def convert_blocking_simple_response(cls, blocking_response: ChatbotAppBlockingResponse) -> dict:  # type: ignore[override]
         """
         Convert blocking simple response.
         :param blocking_response: blocking response
@@ -52,7 +52,8 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
 
     @classmethod
     def convert_stream_full_response(
-        cls, stream_response: Generator[ChatbotAppStreamResponse, None, None]
+        cls,
+        stream_response: Generator[ChatbotAppStreamResponse, None, None],  # type: ignore[override]
     ) -> Generator[str, None, None]:
         """
         Convert stream full response.
@@ -83,7 +84,8 @@ class AgentChatAppGenerateResponseConverter(AppGenerateResponseConverter):
 
     @classmethod
     def convert_stream_simple_response(
-        cls, stream_response: Generator[ChatbotAppStreamResponse, None, None]
+        cls,
+        stream_response: Generator[ChatbotAppStreamResponse, None, None],  # type: ignore[override]
     ) -> Generator[str, None, None]:
         """
         Convert stream simple response.

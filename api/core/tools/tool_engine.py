@@ -46,7 +46,7 @@ class ToolEngine:
         invoke_from: InvokeFrom,
         agent_tool_callback: DifyAgentCallbackHandler,
         trace_manager: Optional[TraceQueueManager] = None,
-    ) -> tuple[str, list[tuple[MessageFile, bool]], ToolInvokeMeta]:
+    ) -> tuple[str, list[tuple[MessageFile, str]], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
         """

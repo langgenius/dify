@@ -1,4 +1,4 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Optional
 
 from core.app.app_config.entities import VariableEntityType
@@ -13,8 +13,8 @@ class BaseAppGenerator:
     def _prepare_user_inputs(
         self,
         *,
-        user_inputs: Optional[Mapping[str, Any]],
-        variables: Sequence["VariableEntity"],
+        user_inputs: Optional[dict[str, Any]],
+        variables: list["VariableEntity"],
         tenant_id: str,
     ) -> Mapping[str, Any]:
         user_inputs = user_inputs or {}

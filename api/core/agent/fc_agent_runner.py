@@ -2,7 +2,7 @@ import json
 import logging
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Any, Optional, Union
+from typing import Any, Optional, Union, cast
 
 from core.agent.base_agent_runner import BaseAgentRunner
 from core.app.apps.base_app_queue_manager import PublishFrom
@@ -40,6 +40,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         app_generate_entity = self.application_generate_entity
 
         app_config = self.app_config
+        assert app_config is not None, "app_config is required"
+        assert app_config.agent is not None, "app_config.agent is required"
 
         # convert tools into ModelRuntime Tool format
         tool_instances, prompt_messages_tools = self._init_prompt_tools()
@@ -49,7 +51,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         # continue to run until there is not any tool call
         function_call_state = True
-        llm_usage = {"usage": None}
+        llm_usage: dict[str, LLMUsage] = {"usage": LLMUsage.empty_usage()}
         final_answer = ""
 
         # get tracing instance
@@ -108,7 +110,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             if self.stream_tool_call:
                 is_first_chunk = True
-                for chunk in chunks:
+                for chunk in cast(Generator[LLMResultChunk, None, None], chunks):
                     if is_first_chunk:
                         self.queue_manager.publish(
                             QueueAgentThoughtEvent(agent_thought_id=agent_thought.id), PublishFrom.APPLICATION_MANAGER
@@ -117,7 +119,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     # check if there is any tool call
                     if self.check_tool_calls(chunk):
                         function_call_state = True
-                        tool_calls.extend(self.extract_tool_calls(chunk))
+                        tool_calls.extend(self.extract_tool_calls(chunk) or [])
                         tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
                         try:
                             tool_call_inputs = json.dumps(
@@ -132,7 +134,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             for content in chunk.delta.message.content:
                                 response += content.data
                         else:
-                            response += chunk.delta.message.content
+                            response += str(chunk.delta.message.content)
 
                     if chunk.delta.usage:
                         increase_usage(llm_usage, chunk.delta.usage)
@@ -140,11 +142,11 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
                     yield chunk
             else:
-                result: LLMResult = chunks
+                result: LLMResult = cast(LLMResult, chunks)
                 # check if there is any tool call
                 if self.check_blocking_tool_calls(result):
                     function_call_state = True
-                    tool_calls.extend(self.extract_blocking_tool_calls(result))
+                    tool_calls.extend(self.extract_blocking_tool_calls(result) or [])
                     tool_call_names = ";".join([tool_call[1] for tool_call in tool_calls])
                     try:
                         tool_call_inputs = json.dumps(
@@ -163,7 +165,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         for content in result.message.content:
                             response += content.data
                     else:
-                        response += result.message.content
+                        response += str(result.message.content)
 
                 if not result.message.content:
                     result.message.content = ""
@@ -244,7 +246,10 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     # publish files
                     for message_file_id, save_as in message_files:
                         if save_as:
-                            self.variables_pool.set_file(tool_name=tool_call_name, value=message_file_id, name=save_as)
+                            if self.variables_pool:
+                                self.variables_pool.set_file(
+                                    tool_name=tool_call_name, value=message_file_id, name=save_as
+                                )
 
                         # publish message file
                         self.queue_manager.publish(
@@ -264,7 +269,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 if tool_response["tool_response"] is not None:
                     self._current_thoughts.append(
                         ToolPromptMessage(
-                            content=tool_response["tool_response"],
+                            content=str(tool_response["tool_response"]),
                             tool_call_id=tool_call_id,
                             name=tool_call_name,
                         )
@@ -274,9 +279,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 # save agent thought
                 self.save_agent_thought(
                     agent_thought=agent_thought,
-                    tool_name=None,
-                    tool_input=None,
-                    thought=None,
+                    tool_name="",
+                    tool_input="",
+                    thought="",
                     tool_invoke_meta={
                         tool_response["tool_call_name"]: tool_response["meta"] for tool_response in tool_responses
                     },
@@ -284,7 +289,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         tool_response["tool_call_name"]: tool_response["tool_response"]
                         for tool_response in tool_responses
                     },
-                    answer=None,
+                    answer="",
                     messages_ids=message_file_ids,
                 )
                 self.queue_manager.publish(
@@ -297,7 +302,8 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             iteration_step += 1
 
-        self.update_db_variables(self.variables_pool, self.db_variables_pool)
+        if self.variables_pool and self.db_variables_pool:
+            self.update_db_variables(self.variables_pool, self.db_variables_pool)
         # publish end event
         self.queue_manager.publish(
             QueueMessageEndEvent(

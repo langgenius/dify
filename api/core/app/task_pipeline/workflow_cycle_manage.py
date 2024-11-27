@@ -88,7 +88,7 @@ class WorkflowCycleManage:
         )
 
         # handle special values
-        inputs = WorkflowEntry.handle_special_values(inputs)
+        inputs = WorkflowEntry.handle_special_values(inputs) or {}
 
         # init workflow run
         with Session(db.engine, expire_on_commit=False) as session:
@@ -122,7 +122,7 @@ class WorkflowCycleManage:
         start_at: float,
         total_tokens: int,
         total_steps: int,
-        outputs: Mapping[str, Any] | None = None,
+        outputs: dict[str, Any] | None = None,
         conversation_id: Optional[str] = None,
         trace_manager: Optional[TraceQueueManager] = None,
     ) -> WorkflowRun:

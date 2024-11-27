@@ -114,6 +114,7 @@ class SageMakerRerankModel(RerankModel):
 
         except Exception as e:
             logger.exception(f"Failed to invoke rerank model, model: {model}")
+            raise InvokeError(f"Failed to invoke rerank model, model: {model}, error: {str(e)}")
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """

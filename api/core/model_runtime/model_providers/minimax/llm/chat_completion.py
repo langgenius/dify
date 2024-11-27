@@ -162,5 +162,5 @@ class MinimaxChatCompletion:
                 continue
 
             for choice in choices:
-                message = choice["delta"]
-                yield MinimaxMessage(content=message, role=MinimaxMessage.Role.ASSISTANT.value)
+                message_choice = choice["delta"]
+                yield MinimaxMessage(content=message_choice, role=MinimaxMessage.Role.ASSISTANT.value)

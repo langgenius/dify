@@ -198,7 +198,7 @@ class WorkflowEntry:
         return node_instance, generator
 
     @staticmethod
-    def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+    def handle_special_values(value: Optional[dict[str, Any]]) -> dict[str, Any] | None:
         return WorkflowEntry._handle_special_values(value)
 
     @staticmethod

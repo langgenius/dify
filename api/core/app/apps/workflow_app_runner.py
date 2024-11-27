@@ -213,7 +213,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     process_data=event.route_node_state.node_run_result.process_data
                     if event.route_node_state.node_run_result
                     else {},
-                    outputs=event.route_node_state.node_run_result.outputs
+                    outputs=dict(event.route_node_state.node_run_result.outputs or {})
                     if event.route_node_state.node_run_result
                     else {},
                     execution_metadata=event.route_node_state.node_run_result.metadata
@@ -240,7 +240,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     process_data=event.route_node_state.node_run_result.process_data
                     if event.route_node_state.node_run_result
                     else {},
-                    outputs=event.route_node_state.node_run_result.outputs
+                    outputs=dict(event.route_node_state.node_run_result.outputs or {})
                     if event.route_node_state.node_run_result
                     else {},
                     error=event.route_node_state.node_run_result.error
@@ -270,7 +270,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     process_data=event.route_node_state.node_run_result.process_data
                     if event.route_node_state.node_run_result
                     else {},
-                    outputs=event.route_node_state.node_run_result.outputs
+                    outputs=dict(event.route_node_state.node_run_result.outputs or {})
                     if event.route_node_state.node_run_result
                     else {},
                     execution_metadata=event.route_node_state.node_run_result.metadata

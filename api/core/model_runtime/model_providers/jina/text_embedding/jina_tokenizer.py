@@ -5,7 +5,7 @@ from transformers import AutoTokenizer  # type: ignore
 
 
 class JinaTokenizer:
-    _tokenizer = None
+    _tokenizer: AutoTokenizer | None = None
     _lock = Lock()
 
     @classmethod

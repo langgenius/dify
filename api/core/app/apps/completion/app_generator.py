@@ -2,7 +2,7 @@ import logging
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Any, Literal, Union, overload
+from typing import Any, Union
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -29,27 +29,6 @@ logger = logging.getLogger(__name__)
 
 
 class CompletionAppGenerator(MessageBasedAppGenerator):
-    @overload
-    def generate(
-        self,
-        app_model: App,
-        user: Union[Account, EndUser],
-        args: dict,
-        invoke_from: InvokeFrom,
-        stream: Literal[True] = True,
-    ) -> Generator[str, None, None]: ...
-
-    @overload
-    def generate(
-        self,
-        app_model: App,
-        user: Union[Account, EndUser],
-        args: dict,
-        invoke_from: InvokeFrom,
-        stream: Literal[False] = False,
-    ) -> dict: ...
-
-    @overload
     def generate(
         self, app_model: App, user: Union[Account, EndUser], args: Any, invoke_from: InvokeFrom, stream: bool = True
     ) -> Union[dict, Generator[str, None, None]]:
@@ -68,8 +47,6 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
         query = query.replace("\x00", "")
         inputs = args["inputs"]
-
-        extras = {}
 
         # get conversation
         conversation = None
@@ -114,15 +91,17 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             app_config=app_config,
             model_conf=ModelConfigConverter.convert(app_config),
             file_upload_config=file_extra_config,
-            inputs=self._prepare_user_inputs(
-                user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+            inputs=dict(
+                self._prepare_user_inputs(
+                    user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
+                )
             ),
             query=query,
-            files=file_objs,
+            files=list(file_objs),
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,
-            extras=extras,
+            extras={},
             trace_manager=trace_manager,
         )
 
@@ -143,7 +122,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),
+                "flask_app": current_app._get_current_object(),  # type: ignore
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "message_id": message.id,
@@ -183,6 +162,8 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             try:
                 # get message
                 message = self._get_message(message_id)
+                if message is None:
+                    raise MessageNotExistsError()
 
                 # chatbot app
                 runner = CompletionAppRunner()
@@ -279,7 +260,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             model_conf=ModelConfigConverter.convert(app_config),
             inputs=message.inputs,
             query=message.query,
-            files=file_objs,
+            files=list(file_objs),
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,
@@ -303,7 +284,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),
+                "flask_app": current_app._get_current_object(),  # type: ignore
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "message_id": message.id,
