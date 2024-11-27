@@ -24,19 +24,19 @@ parameters:
       en_US: video or audio file url for transcribe
       zh_Hans: 语音或者视频文件url
       pt_BR: video or audio file url for transcribe
-    llm_description:  video or audio file url for transcribe
+    llm_description: video or audio file url for transcribe
     form: llm
   - name: language_code
     type: string
     required: false
     label:
-      en_US:  Language Code
+      en_US: Language Code
       zh_Hans: 语言编码
       pt_BR: Language Code
     human_description:
       en_US: The language code used to create your transcription job.  refer to :https://docs.aws.amazon.com/transcribe/latest/dg/supported-languages.html
       zh_Hans: 语言编码,例如zh-CN, en-US 可参考 https://docs.aws.amazon.com/transcribe/latest/dg/supported-languages.html
-      pt_BR: The language code used to create your transcription job.  refer to :https://docs.aws.amazon.com/transcribe/latest/dg/supported-languages.html. 
+      pt_BR: The language code used to create your transcription job.  refer to :https://docs.aws.amazon.com/transcribe/latest/dg/supported-languages.html
     llm_description: The language code used to create your transcription job.
     form: llm
   - name: identify_language
