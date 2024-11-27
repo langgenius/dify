@@ -63,6 +63,7 @@ export type CommonNodeType<T = {}> = {
   _iterationLength?: number
   _iterationIndex?: number
   _inParallelHovering?: boolean
+  _waitingRun?: boolean
   isInIteration?: boolean
   iteration_id?: string
   selected?: boolean
@@ -82,6 +83,7 @@ export type CommonEdgeType = {
   _isBundled?: boolean
   _sourceRunningStatus?: NodeRunningStatus
   _targetRunningStatus?: NodeRunningStatus
+  _waitingRun?: boolean
   isInIteration?: boolean
   iteration_id?: string
   sourceType: BlockEnum

@@ -172,6 +172,8 @@ export const useWorkflowRun = () => {
             setIterParallelLogMap,
           } = workflowStore.getState()
           const {
+            getNodes,
+            setNodes,
             edges,
             setEdges,
           } = store.getState()
@@ -184,13 +186,20 @@ export const useWorkflowRun = () => {
               status: WorkflowRunningStatus.Running,
             }
           }))
-
+          const nodes = getNodes()
+          const newNodes = produce(nodes, (draft) => {
+            draft.forEach((node) => {
+              node.data._waitingRun = true
+            })
+          })
+          setNodes(newNodes)
           const newEdges = produce(edges, (draft) => {
             draft.forEach((edge) => {
               edge.data = {
                 ...edge.data,
                 _sourceRunningStatus: undefined,
                 _targetRunningStatus: undefined,
+                _waitingRun: true,
               }
             })
           })
@@ -305,6 +314,7 @@ export const useWorkflowRun = () => {
             }
             const newNodes = produce(nodes, (draft) => {
               draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Running
+              draft[currentNodeIndex].data._waitingRun = false
             })
             setNodes(newNodes)
             const newEdges = produce(edges, (draft) => {
@@ -315,6 +325,7 @@ export const useWorkflowRun = () => {
                   ...edge.data,
                   _sourceRunningStatus: nodes.find(node => node.id === edge.source)!.data._runningStatus,
                   _targetRunningStatus: NodeRunningStatus.Running,
+                  _waitingRun: false,
                 }
               })
             })
@@ -483,6 +494,7 @@ export const useWorkflowRun = () => {
           const newNodes = produce(nodes, (draft) => {
             draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Running
             draft[currentNodeIndex].data._iterationLength = data.metadata.iterator_length
+            draft[currentNodeIndex].data._waitingRun = false
           })
           setNodes(newNodes)
           const newEdges = produce(edges, (draft) => {
@@ -493,6 +505,7 @@ export const useWorkflowRun = () => {
                 ...edge.data,
                 _sourceRunningStatus: nodes.find(node => node.id === edge.source)!.data._runningStatus,
                 _targetRunningStatus: NodeRunningStatus.Running,
+                _waitingRun: false,
               }
             })
           })

@@ -90,6 +90,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         'flex border-[2px] rounded-2xl',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
         !showSelectedBorder && data._inParallelHovering && 'border-workflow-block-border-highlight',
+        data._waitingRun && 'opacity-70',
       )}
       ref={nodeRef}
       style={{

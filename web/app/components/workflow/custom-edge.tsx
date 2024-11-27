@@ -99,10 +99,13 @@ const CustomEdge = ({
   }, [handleNodeAdd, source, sourceHandleId, target, targetHandleId])
 
   const stroke = useMemo(() => {
+    if (selected)
+      return getEdgeColor(NodeRunningStatus.Running)
+
     if (linearGradientId)
       return `url(#${linearGradientId})`
 
-    if (selected || data?._connectedNodeIsHovering)
+    if (data?._connectedNodeIsHovering)
       return getEdgeColor(NodeRunningStatus.Running, sourceHandleId === ErrorHandleTypeEnum.failBranch)
 
     return getEdgeColor()
@@ -125,6 +128,7 @@ const CustomEdge = ({
         style={{
           stroke,
           strokeWidth: 2,
+          opacity: data._waitingRun ? 0.7 : 1,
         }}
       />
       <EdgeLabelRenderer>
@@ -139,6 +143,7 @@ const CustomEdge = ({
             position: 'absolute',
             transform: `translate(-50%, -50%) translate(${labelX}px, ${labelY}px)`,
             pointerEvents: 'all',
+            opacity: data._waitingRun ? 0.7 : 1,
           }}
         >
           <BlockSelector

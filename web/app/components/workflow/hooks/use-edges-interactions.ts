@@ -161,6 +161,7 @@ export const useEdgesInteractions = () => {
       draft.forEach((edge) => {
         edge.data._sourceRunningStatus = undefined
         edge.data._targetRunningStatus = undefined
+        edge.data._waitingRun = false
       })
     })
     setEdges(newEdges)
