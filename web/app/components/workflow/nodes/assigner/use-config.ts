@@ -5,7 +5,7 @@ import { isEqual } from 'lodash-es'
 import { VarType } from '../../types'
 import type { ValueSelector, Var } from '../../types'
 import { WriteMode } from './types'
-import type { AssignerNodeOperation, type AssignerNodeType } from './types'
+import type { AssignerNodeOperation, AssignerNodeType } from './types'
 import { useGetAvailableVars } from './hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
