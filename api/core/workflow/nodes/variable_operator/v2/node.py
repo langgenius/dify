@@ -112,9 +112,9 @@ class VariableOperatorNode(BaseNode[VariableOperatorNodeData]):
             case Operation.CLEAR:
                 return EMPTY_VALUE_MAPPING[variable.value_type]
             case Operation.APPEND:
-                return variable.value.append(value)
+                return variable.value + [value]
             case Operation.EXTEND:
-                return variable.value.extend(value)
+                return variable.value + value
             case Operation.SET:
                 return value
             case Operation.ADD:
