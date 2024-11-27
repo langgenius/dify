@@ -17,7 +17,9 @@ import {
   getPluginIconInMarketplace,
 } from './utils'
 import i18n from '@/i18n/i18next-config'
-import { useMutationPluginsFromMarketplace } from '@/service/use-plugins'
+import {
+  useMutationPluginsFromMarketplace,
+} from '@/service/use-plugins'
 
 export const useMarketplaceCollectionsAndPlugins = () => {
   const [isLoading, setIsLoading] = useState(false)
@@ -55,7 +57,7 @@ export const useMarketplacePlugins = () => {
     mutate(pluginsSearchParams)
   }, [mutate])
 
-  const { run: queryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams) => {
+  const { run: queryPluginsWithDebounced } = useDebounceFn((pluginsSearchParams: PluginsSearchParams) => {
     mutate(pluginsSearchParams)
   }, {
     wait: 500,

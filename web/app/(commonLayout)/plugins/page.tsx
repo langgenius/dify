@@ -8,7 +8,7 @@ const PluginList = async () => {
   return (
     <PluginPage
       plugins={<PluginsPanel />}
-      marketplace={<Marketplace locale={locale} />}
+      marketplace={<Marketplace locale={locale} shouldExclude />}
     />
   )
 }

@@ -29,10 +29,12 @@ import { useInvalidateAllBuiltInTools } from './use-tools'
 const NAME_SPACE = 'plugins'
 
 const useInstalledPluginListKey = [NAME_SPACE, 'installedPluginList']
-export const useInstalledPluginList = () => {
+export const useInstalledPluginList = (disable?: boolean) => {
   return useQuery<InstalledPluginListResponse>({
     queryKey: useInstalledPluginListKey,
     queryFn: () => get<InstalledPluginListResponse>('/workspaces/current/plugin/list'),
+    enabled: !disable,
+    initialData: !disable ? undefined : { plugins: [] },
   })
 }
 
@@ -225,6 +227,7 @@ export const useMutationPluginsFromMarketplace = () => {
         sortOrder,
         category,
         tags,
+        exclude,
       } = pluginsSearchParams
       return postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/search/basic', {
         body: {
@@ -235,6 +238,7 @@ export const useMutationPluginsFromMarketplace = () => {
           sort_order: sortOrder,
           category: category !== 'all' ? category : '',
           tags,
+          exclude,
         },
       })
     },
