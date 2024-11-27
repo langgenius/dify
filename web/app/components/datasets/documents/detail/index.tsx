@@ -6,9 +6,9 @@ import { createContext, useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { omit } from 'lodash-es'
-import { RiArrowDownSLine, RiArrowLeftLine, RiLayoutRight2Line } from '@remixicon/react'
+import { RiArrowLeftLine, RiLayoutRight2Line } from '@remixicon/react'
 import { OperationAction, StatusItem } from '../list'
-import s from '../style.module.css'
+import DocumentPicker from '../../common/document-picker'
 import Completed from './completed'
 import Embedding from './embedding'
 import Metadata from './metadata'
@@ -25,7 +25,6 @@ import type { DocForm, ParentMode, ProcessMode } from '@/models/datasets'
 import { useDatasetDetailContext } from '@/context/dataset-detail'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-
 export const DocumentContext = createContext<{ datasetId?: string; documentId?: string; docForm: string }>({ docForm: '' })
 
 type DocumentTitleProps = {
@@ -39,26 +38,18 @@ type DocumentTitleProps = {
 }
 
 export const DocumentTitle: FC<DocumentTitleProps> = ({ extension, name, processMode, parent_mode, iconCls, textCls, wrapperCls }) => {
-  const localExtension = extension?.toLowerCase() || name?.split('.')?.pop()?.toLowerCase()
   return (
     <div className={cn('flex items-center justify-start flex-1 cursor-pointer', wrapperCls)}>
-      {/* // todo: add file switcher */}
-      <div className='flex items-center ml-1 px-2 py-0.5 rounded-lg hover:bg-state-base-hover'>
-        {/* // todo: add icons map */}
-        <div className={cn(s[`${localExtension || 'txt'}Icon`], style.titleIcon, iconCls)}></div>
-        <div className='flex flex-col items-start ml-1 mr-0.5'>
-          <div className='flex items-center'>
-            <span className={cn('system-md-semibold', textCls)}> {name || '--'}</span>
-            <RiArrowDownSLine className='h-4 w-4 text-text-primary'/>
-          </div>
-          <div className='flex items-center gap-x-0.5'>
-            <div className='w-3 h-3 bg-text-tertiary'/>
-            <span className={'system-2xs-medium-uppercase'}>
-              {`${processMode || '--'}${processMode === 'hierarchical' ? `·${parent_mode || '--'}` : ''}`}
-            </span>
-          </div>
-        </div>
-      </div>
+      {/* // todo: handle file change */}
+      <DocumentPicker
+        value={{
+          name,
+          extension,
+          processMode,
+          parentMode: parent_mode,
+        }}
+        onChange={() => { }}
+      />
     </div>
   )
 }
@@ -168,7 +159,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
                 showBatchModal={showBatchModal}
               />
             )}
-            <Divider type='vertical' className='!bg-divider-regular !h-[14px] !mx-3'/>
+            <Divider type='vertical' className='!bg-divider-regular !h-[14px] !mx-3' />
             <StatusItem
               status={documentDetail?.display_status || 'available'}
               scene='detail'
