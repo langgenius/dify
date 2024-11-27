@@ -3,9 +3,8 @@ from datetime import timedelta
 import pytz
 from celery import Celery, Task
 from celery.schedules import crontab
-from flask import Flask
-
 from configs import dify_config
+from flask import Flask
 
 
 def init_app(app: Flask) -> Celery:
@@ -40,6 +39,19 @@ def init_app(app: Flask) -> Celery:
         "ssl_keyfile": None,
     }
 
+    if dify_config.BROKER_USE_SSL:
+        if dify_config.REDIS_SSL_CA_CERT:
+            ssl_options["ssl_cert_reqs"] = "CERT_REQUIRED"  # Require valid certificate
+            ssl_options["ssl_ca_certs"] = dify_config.REDIS_SSL_CA_CERT
+        else:
+            ssl_options["ssl_cert_reqs"] = "CERT_NONE"  # Disable verification
+
+        # Add optional client certificates
+        if dify_config.REDIS_SSL_CERTFILE:
+            ssl_options["ssl_certfile"] = dify_config.REDIS_SSL_CERTFILE
+        if dify_config.REDIS_SSL_KEYFILE:
+            ssl_options["ssl_keyfile"] = dify_config.REDIS_SSL_KEYFILE
+
     celery_app.conf.update(
         result_backend=dify_config.CELERY_RESULT_BACKEND,
         broker_transport_options=broker_transport_options,
@@ -53,6 +65,7 @@ def init_app(app: Flask) -> Celery:
     if dify_config.BROKER_USE_SSL:
         celery_app.conf.update(
             broker_use_ssl=ssl_options,  # Add the SSL options to the broker configuration
+            redis_backend_use_ssl=ssl_options,  # Add the SSL options to the backend configuration
         )
 
     if dify_config.LOG_FILE:

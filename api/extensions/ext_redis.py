@@ -1,9 +1,10 @@
+import logging
+
 import redis
+from configs import dify_config
 from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
 from redis.sentinel import Sentinel
-
-from configs import dify_config
 
 
 class RedisClientWrapper:
@@ -45,9 +46,6 @@ redis_client = RedisClientWrapper()
 
 def init_app(app):
     global redis_client
-    connection_class = Connection
-    if dify_config.REDIS_USE_SSL:
-        connection_class = SSLConnection
 
     redis_params = {
         "username": dify_config.REDIS_USERNAME,
@@ -57,6 +55,24 @@ def init_app(app):
         "encoding_errors": "strict",
         "decode_responses": False,
     }
+
+    ssl_config = {}
+    connection_class = Connection
+    if dify_config.REDIS_USE_SSL:
+        logging.info("Enabling SSL/TLS for Redis connection")
+
+        connection_class = SSLConnection
+        ssl_config["ssl"] = True
+        if dify_config.REDIS_SSL_CA_CERT:
+            ssl_config["ssl_ca_certs"] = dify_config.REDIS_SSL_CA_CERT
+        else:
+            ssl_config["ssl_cert_reqs"] = None  # disable verification
+        if dify_config.REDIS_SSL_CERTFILE:
+            ssl_config["ssl_certfile"] = dify_config.REDIS_SSL_CERTFILE
+        if dify_config.REDIS_SSL_KEYFILE:
+            ssl_config["ssl_keyfile"] = dify_config.REDIS_SSL_KEYFILE
+
+    redis_params.update(ssl_config)
 
     if dify_config.REDIS_USE_SENTINEL:
         sentinel_hosts = [
@@ -74,10 +90,16 @@ def init_app(app):
         redis_client.initialize(master)
     elif dify_config.REDIS_USE_CLUSTERS:
         nodes = [
-            ClusterNode(host=node.split(":")[0], port=int(node.split.split(":")[1]))
+            ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))
             for node in dify_config.REDIS_CLUSTERS.split(",")
         ]
-        redis_client.initialize(RedisCluster(startup_nodes=nodes, password=dify_config.REDIS_CLUSTERS_PASSWORD))
+        redis_client.initialize(
+            RedisCluster(
+                startup_nodes=nodes,
+                password=dify_config.REDIS_CLUSTERS_PASSWORD,
+                **ssl_config,
+            )
+        )
     else:
         redis_params.update(
             {

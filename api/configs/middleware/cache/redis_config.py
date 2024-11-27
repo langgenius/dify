@@ -39,6 +39,21 @@ class RedisConfig(BaseSettings):
         default=False,
     )
 
+    REDIS_SSL_CA_CERT: Optional[str] = Field(
+        description="Path to the CA certificate file for SSL/TLS connection",
+        default=None,
+    )
+
+    REDIS_SSL_CERTFILE: Optional[str] = Field(
+        description="Path to the certificate file for SSL/TLS connection",
+        default=None,
+    )
+
+    REDIS_SSL_KEYFILE: Optional[str] = Field(
+        description="Path to the private key file for SSL/TLS connection",
+        default=None,
+    )
+
     REDIS_USE_SENTINEL: Optional[bool] = Field(
         description="Enable Redis Sentinel mode for high availability",
         default=False,
