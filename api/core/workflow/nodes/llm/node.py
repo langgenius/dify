@@ -197,7 +197,6 @@ class LLMNode(BaseNode[LLMNodeData]):
             )
             return
         except Exception as e:
-            logger.exception(f"Node {self.node_id} failed to run")
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
