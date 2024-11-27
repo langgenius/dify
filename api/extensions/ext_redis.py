@@ -54,26 +54,22 @@ def init_app(app):
         "encoding": "utf-8",
         "encoding_errors": "strict",
         "decode_responses": False,
+        "connection_class": Connection,
     }
 
-    ssl_config = {}
-    connection_class = Connection
     if dify_config.REDIS_USE_SSL:
         logging.info("Enabling SSL/TLS for Redis connection")
 
-        connection_class = SSLConnection
-        ssl_config["ssl"] = True
-        ssl_config["connection_class"] = connection_class
+        redis_params["ssl"] = True
+        redis_params["connection_class"] = SSLConnection
         if dify_config.REDIS_SSL_CA_CERT:
-            ssl_config["ssl_ca_certs"] = dify_config.REDIS_SSL_CA_CERT
+            redis_params["ssl_ca_certs"] = dify_config.REDIS_SSL_CA_CERT
         else:
-            ssl_config["ssl_cert_reqs"] = None  # disable verification
+            redis_params["ssl_cert_reqs"] = None  # disable verification
         if dify_config.REDIS_SSL_CERTFILE:
-            ssl_config["ssl_certfile"] = dify_config.REDIS_SSL_CERTFILE
+            redis_params["ssl_certfile"] = dify_config.REDIS_SSL_CERTFILE
         if dify_config.REDIS_SSL_KEYFILE:
-            ssl_config["ssl_keyfile"] = dify_config.REDIS_SSL_KEYFILE
-
-    redis_params.update(ssl_config)
+            redis_params["ssl_keyfile"] = dify_config.REDIS_SSL_KEYFILE
 
     if dify_config.REDIS_USE_SENTINEL:
         sentinel_hosts = [
@@ -94,11 +90,11 @@ def init_app(app):
             ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))
             for node in dify_config.REDIS_CLUSTERS.split(",")
         ]
+        redis_params.update({'password': dify_config.REDIS_CLUSTERS_PASSWORD})
         redis_client.initialize(
             RedisCluster(
                 startup_nodes=nodes,
-                password=dify_config.REDIS_CLUSTERS_PASSWORD,
-                **ssl_config,
+                **redis_params,
             )
         )
     else:
@@ -106,7 +102,6 @@ def init_app(app):
             {
                 "host": dify_config.REDIS_HOST,
                 "port": dify_config.REDIS_PORT,
-                "connection_class": connection_class,
             }
         )
         pool = redis.ConnectionPool(**redis_params)
