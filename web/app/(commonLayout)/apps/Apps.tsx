@@ -171,7 +171,7 @@ function NoAppsFound() {
   const { t } = useTranslation()
   function renderDefaultCard() {
     const defaultCards = Array.from({ length: 36 }, (_, index) => (
-      <div key={index} className='h-[160px] min-w-[296px] inline-flex rounded-xl bg-background-default-lighter'></div>
+      <div key={index} className='h-[160px] inline-flex rounded-xl bg-background-default-lighter'></div>
     ))
     return defaultCards
   }

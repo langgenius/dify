@@ -40,7 +40,7 @@ const CreateAppCard = forwardRef<HTMLDivElement, CreateAppCardProps>(({ classNam
   return (
     <div
       ref={ref}
-      className={cn('relative col-span-1 inline-flex flex-col justify-between h-[160px] min-w-[296px] bg-gray-200 rounded-xl border-[0.5px] border-black/5', className)}
+      className={cn('relative col-span-1 inline-flex flex-col justify-between h-[160px] bg-gray-200 rounded-xl border-[0.5px] border-black/5', className)}
     >
       <div className='grow p-2 rounded-t-xl'>
         <div className='px-6 pt-2 pb-1 text-xs font-medium leading-[18px] text-gray-500'>{t('app.createApp')}</div>
