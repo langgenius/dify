@@ -135,7 +135,7 @@ const NewSegmentModal: FC<NewSegmentModalProps> = ({
         <div className='mb-8'>
           <TagInput items={keywords} onChange={newKeywords => setKeywords(newKeywords)} />
         </div>
-        <div className='flex justify-end'>
+        <div className='flex justify-end space-x-2'>
           <Button
             onClick={handleCancel}>
             {t('common.operation.cancel')}
