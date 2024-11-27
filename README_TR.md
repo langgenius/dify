@@ -211,7 +211,7 @@ Dify'ı bulut platformuna tek tıklamayla dağıtın [terraform](https://www.ter
 ##### Google Cloud
 - [Google Cloud Terraform tarafından @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
-### AWS CDK ile Dağıtım
+#### AWS CDK ile Dağıtım
 
 [CDK](https://aws.amazon.com/cdk/) kullanarak Dify'ı AWS'ye dağıtın
 

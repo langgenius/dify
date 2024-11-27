@@ -190,6 +190,13 @@ docker compose up -d
 ##### Google Cloud
 - [Google Cloud Terraform بواسطة @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
+#### استخدام AWS CDK للنشر
+
+انشر Dify على AWS باستخدام [CDK](https://aws.amazon.com/cdk/)
+
+##### AWS 
+- [AWS CDK بواسطة @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+
 ## المساهمة
 
 لأولئك الذين يرغبون في المساهمة، انظر إلى [دليل المساهمة](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) لدينا. 

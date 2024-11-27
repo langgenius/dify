@@ -213,7 +213,7 @@ docker compose up -d
 ##### Google Cloud
 - [Google Cloud Terraform by @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
-### 使用 AWS CDK 部署
+#### 使用 AWS CDK 部署
 
 使用 [CDK](https://aws.amazon.com/cdk/) 将 Dify 部署到 AWS
 

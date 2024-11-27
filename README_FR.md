@@ -213,7 +213,7 @@ Déployez Dify sur une plateforme cloud en un clic en utilisant [terraform](http
 ##### Google Cloud
 - [Google Cloud Terraform par @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
-### Utilisation d'AWS CDK pour le déploiement
+#### Utilisation d'AWS CDK pour le déploiement
 
 Déployez Dify sur AWS en utilisant [CDK](https://aws.amazon.com/cdk/)
 

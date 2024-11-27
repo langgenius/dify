@@ -205,7 +205,7 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 ##### Google Cloud
 - [sotazum의 Google Cloud Terraform](https://github.com/DeNA/dify-google-cloud-terraform)
 
-### AWS CDK를 사용한 배포
+#### AWS CDK를 사용한 배포
 
 [CDK](https://aws.amazon.com/cdk/)를 사용하여 AWS에 Dify 배포
 

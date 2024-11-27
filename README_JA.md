@@ -212,7 +212,7 @@ docker compose up -d
 ##### Google Cloud
 - [@sotazumによるGoogle Cloud Terraform](https://github.com/DeNA/dify-google-cloud-terraform)
 
-### AWS CDK を使用したデプロイ
+#### AWS CDK を使用したデプロイ
 
 [CDK](https://aws.amazon.com/cdk/) を使用して、DifyをAWSにデプロイします
 

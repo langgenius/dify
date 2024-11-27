@@ -145,7 +145,7 @@ namestite Dify v Cloud Platform z enim klikom z uporabo [terraform](https://www.
 ##### Google Cloud
 - [Google Cloud Terraform by @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
-### Uporaba AWS CDK za uvajanje
+#### Uporaba AWS CDK za uvajanje
 
 Uvedite Dify v AWS z uporabo [CDK](https://aws.amazon.com/cdk/)
 

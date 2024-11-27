@@ -213,7 +213,7 @@ wa'logh nIqHom neH ghun deployment toy'wI' [terraform](https://www.terraform.io/
 ##### Google Cloud
 - [Google Cloud Terraform qachlot @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
-### AWS CDK atorlugh pilersitsineq
+#### AWS CDK atorlugh pilersitsineq
 
 wa'logh nIqHom neH ghun deployment toy'wI' [CDK](https://aws.amazon.com/cdk/) lo'laH.
 
