@@ -248,3 +248,10 @@ Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En
 ## Licencia
 
 Este repositorio está disponible bajo la [Licencia de Código Abierto de Dify](LICENSE), que es esencialmente Apache 2.0 con algunas restricciones adicionales.
+## Divulgación de Seguridad
+
+Para proteger tu privacidad, evita publicar problemas de seguridad en GitHub. En su lugar, envía tus preguntas a security@dify.ai y te proporcionaremos una respuesta más detallada.
+
+## Licencia
+
+Este repositorio está disponible bajo la [Licencia de Código Abierto de Dify](LICENSE), que es esencialmente Apache 2.0 con algunas restricciones adicionales.
