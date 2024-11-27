@@ -24,7 +24,7 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
   const { replace } = useRouter()
   const dslUrl = searchParams.get('remoteInstallUrl') || undefined
 
-  const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(true)
+  const [showNewAppTemplateDialog, setShowNewAppTemplateDialog] = useState(false)
   const [showNewAppModal, setShowNewAppModal] = useState(false)
   const [showCreateFromDSLModal, setShowCreateFromDSLModal] = useState(!!dslUrl)
 
@@ -68,6 +68,10 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
           if (onSuccess)
             onSuccess()
         }}
+        onCreateFromTemplate={() => {
+          setShowNewAppTemplateDialog(true)
+          setShowNewAppModal(false)
+        }}
       />
       <CreateAppTemplateDialog
         show={showNewAppTemplateDialog}
@@ -76,6 +80,10 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
           onPlanInfoChanged()
           if (onSuccess)
             onSuccess()
+        }}
+        onCreateFromBlank={() => {
+          setShowNewAppModal(true)
+          setShowNewAppTemplateDialog(false)
         }}
       />
       <CreateFromDSLModal

@@ -29,6 +29,7 @@ import type { AppMode } from '@/types/app'
 
 type AppsProps = {
   onSuccess?: () => void
+  onCreateFromBlank?: () => void
 }
 
 // export enum PageType {
@@ -38,6 +39,7 @@ type AppsProps = {
 
 const Apps = ({
   onSuccess,
+  onCreateFromBlank,
 }: AppsProps) => {
   const { t } = useTranslation()
   const { isCurrentWorkspaceEditor } = useAppContext()
@@ -171,7 +173,7 @@ const Apps = ({
             showClearIcon
             wrapperClassName='w-full flex-1'
             className='bg-transparent hover:bg-transparent focus:bg-transparent hover:border-transparent focus:border-transparent focus:shadow-none'
-            placeholder='Search all templates...'
+            placeholder={t('app.newAppFromTemplate.searchAllTemplate') as string}
             value={keywords}
             onChange={e => handleKeywordsChange(e.target.value)}
             onClear={() => handleKeywordsChange('')}
@@ -180,14 +182,14 @@ const Apps = ({
         <div className='w-[180px] h-8'></div>
       </div>
       <div className='relative flex flex-1 overflow-y-auto'>
-        <div className='w-[200px] h-full p-4'>
-          <Sidebar current={currCategory as AppCategories} onClick={(category) => { setCurrCategory(category) }} />
-        </div>
+        {!searchKeywords && <div className='w-[200px] h-full p-4'>
+          <Sidebar current={currCategory as AppCategories} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
+        </div>}
         <div className='flex-1 h-full overflow-auto shrink-0 grow p-6 pt-2 border-l border-divider-burn'>
           {searchFilteredList && searchFilteredList.length > 0 && <>
             <div className='pt-4 pb-1'>
               {searchKeywords
-                ? <p className='title-md-semi-bold text-text-tertiary'>Search results for {searchFilteredList.length}</p>
+                ? <p className='title-md-semi-bold text-text-tertiary'>{searchFilteredList.length > 1 ? t('app.newApp.foundResults', { count: searchFilteredList.length }) : t('app.newApp.foundResult', { count: searchFilteredList.length })}</p>
                 : <AppCategoryLabel category={currCategory as AppCategories} className='title-md-semi-bold text-text-primary' />}
             </div>
             <div
@@ -230,11 +232,12 @@ const Apps = ({
 export default React.memo(Apps)
 
 function NoTemplateFound() {
+  const { t } = useTranslation()
   return <div className='p-4 rounded-lg w-full bg-workflow-process-bg'>
     <div className='w-8 h-8 rounded-lg inline-flex items-center justify-center mb-2 shadow-lg bg-components-card-bg'>
       <RiRobot2Line className='w-5 h-5 text-text-tertiary' />
     </div>
-    <p className='title-md-semi-bold text-text-primary'>No templates found.</p>
-    <p className='system-sm-regular text-text-tertiary'>There are plenty of other options to choose from. Check out our most popular ones here.</p>
+    <p className='title-md-semi-bold text-text-primary'>{t('app.newApp.noTemplateFound')}</p>
+    <p className='system-sm-regular text-text-tertiary'>{t('app.newApp.noTemplateFoundTip')}</p>
   </div>
 }

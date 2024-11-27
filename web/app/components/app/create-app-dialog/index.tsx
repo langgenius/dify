@@ -6,16 +6,17 @@ type CreateAppDialogProps = {
   show: boolean
   onSuccess: () => void
   onClose: () => void
+  onCreateFromBlank?: () => void
 }
 
-const CreateAppTemplateDialog = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
+const CreateAppTemplateDialog = ({ show, onSuccess, onClose, onCreateFromBlank }: CreateAppDialogProps) => {
   return (
     <FullScreenModal
       open={show}
       closable
       onClose={onClose}
     >
-      <AppList onSuccess={() => {
+      <AppList onCreateFromBlank={onCreateFromBlank} onSuccess={() => {
         onSuccess()
         onClose()
       }} />

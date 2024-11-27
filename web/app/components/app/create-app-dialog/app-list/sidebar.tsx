@@ -17,9 +17,10 @@ export enum AppCategories {
 type SidebarProps = {
   current: AppCategories
   onClick?: (category: AppCategories) => void
+  onCreateFromBlank?: () => void
 }
 
-export default function Sidebar({ current, onClick }: SidebarProps) {
+export default function Sidebar({ current, onClick, onCreateFromBlank }: SidebarProps) {
   const { t } = useTranslation()
   return <div className="w-full h-full flex flex-col">
     <ul>
@@ -35,9 +36,9 @@ export default function Sidebar({ current, onClick }: SidebarProps) {
       <CategoryItem category={AppCategories.WRITING} active={current === AppCategories.WRITING} onClick={onClick} />
     </ul>
     <Divider bgStyle='gradient' />
-    <div className='flex items-center'>
-      <RiStickyNoteAddLine />
-      <span>Create from Blank</span>
+    <div className='px-3 py-1 flex items-center gap-1 text-text-tertiary cursor-pointer' onClick={onCreateFromBlank}>
+      <RiStickyNoteAddLine className='w-3.5 h-3.5' />
+      <span className='system-xs-regular'>{t('app.newApp.startFromBlank')}</span>
     </div>
   </div>
 }

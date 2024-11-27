@@ -31,6 +31,11 @@ const translation = {
     learnMore: 'Learn more',
     startFromBlank: 'Create from Blank',
     startFromTemplate: 'Create from Template',
+    foundResult: '{{count}} Result',
+    foundResults: '{{count}} Results',
+    noAppsFound: 'No apps found',
+    noTemplateFound: 'No templates found',
+    noTemplateFoundTip: 'Try searching using different keywords.',
     chatbotDescription: 'Build a chat-based application. This app uses a question-and-answer format, allowing for multiple rounds of continuous conversation.',
     chatbotShortDescription: 'LLM-based chatbot with simple setup',
     chatbotUserDescription: 'Quickly build an LLM-based chatbot with simple configuration. You can switch to Chatflow later.',
@@ -48,7 +53,7 @@ const translation = {
     advancedShortDescription: 'Workflow for complex multi-turn dialogues with memory',
     advancedUserDescription: 'Workflow orchestration for multi-round complex dialogue tasks with memory capabilities.',
     chooseAppType: 'Choose App Type',
-    forBeginner: 'FOR BEGINNERS',
+    forBeginners: 'FOR BEGINNERS',
     forAdvanced: 'FOR ADVANCED USERS',
     noIdeaTip: 'No ideas? Check out our templates',
     captionName: 'App icon & name',
@@ -85,6 +90,7 @@ const translation = {
   },
   newAppFromTemplate: {
     byCategories: 'BY CATEGORIES',
+    searchAllTemplate: 'Search all templates...',
     sidebar: {
       Recommended: 'Recommended',
       Agent: 'Agent',

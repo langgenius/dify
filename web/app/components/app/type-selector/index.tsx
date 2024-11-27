@@ -91,7 +91,7 @@ function AppTypeSelectTrigger({ values }: { values: AppSelectorProps['value'] })
   return <div className={cn(
     'flex items-center justify-between h-8 -space-x-2 relative',
   )}>
-    {values.map((mode, index) => (<AppTypeIcon key={mode} mode={mode} className='border border-components-panel-on-panel-item-bg' style={{ zIndex: 5 - index }} />))}
+    {values.map((mode, index) => (<AppTypeIcon key={mode} mode={mode} wrapperClassName='border border-components-panel-on-panel-item-bg' style={{ zIndex: 5 - index }} />))}
   </div>
 }
 

@@ -31,9 +31,10 @@ import FullScreenModal from '@/app/components/base/fullscreen-modal'
 type CreateAppProps = {
   onSuccess: () => void
   onClose: () => void
+  onCreateFromTemplate?: () => void
 }
 
-function CreateApp({ onClose, onSuccess }: CreateAppProps) {
+function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps) {
   const { t } = useTranslation()
   const { push } = useRouter()
   const { notify } = useContext(ToastContext)
@@ -113,7 +114,9 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
                   title={t('app.types.chatbot')}
                   description={t('app.newApp.chatbotShortDescription')}
                   tooltipContent={t('app.newApp.chatbotDescription')}
-                  icon={<ChatBot className='w-6 h-6' />}
+                  icon={<div className='w-6 h-6 bg-components-icon-bg-blue-solid rounded-md flex items-center justify-center'>
+                    <ChatBot className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
+                  </div>}
                   onClick={() => {
                     setAppMode('chat')
                   }} />
@@ -122,7 +125,9 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
                   title={t('app.types.agent')}
                   description={t('app.newApp.agentShortDescription')}
                   tooltipContent={t('app.newApp.agentDescription')}
-                  icon={<Logic className='w-6 h-6' />}
+                  icon={<div className='w-6 h-6 bg-components-icon-bg-violet-solid rounded-md flex items-center justify-center'>
+                    <Logic className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
+                  </div>}
                   onClick={() => {
                     setAppMode('agent-chat')
                   }} />
@@ -131,7 +136,9 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
                   title={t('app.newApp.completeApp')}
                   description={t('app.newApp.completionShortDescription')}
                   tooltipContent={t('app.newApp.completionDescription')}
-                  icon={<ListSparkle className='w-6 h-6' />}
+                  icon={<div className='w-6 h-6 bg-components-icon-bg-teal-solid rounded-md flex items-center justify-center'>
+                    <ListSparkle className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
+                  </div>}
                   onClick={() => {
                     setAppMode('completion')
                   }} />
@@ -148,7 +155,9 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
                   title={t('app.types.advanced')}
                   description={t('app.newApp.advancedShortDescription')}
                   tooltipContent={t('app.newApp.advancedDescription')}
-                  icon={<BubbleTextMod className='w-6 h-6' />}
+                  icon={<div className='w-6 h-6 bg-components-icon-bg-blue-light-solid rounded-md flex items-center justify-center'>
+                    <BubbleTextMod className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
+                  </div>}
                   onClick={() => {
                     setAppMode('advanced-chat')
                   }} />
@@ -158,7 +167,9 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
                   title={t('app.types.workflow')}
                   description={t('app.newApp.workflowShortDescription')}
                   tooltipContent={t('app.newApp.workflowDescription')}
-                  icon={<RiExchange2Fill className='w-6 h-6' />}
+                  icon={<div className='w-6 h-6 bg-components-icon-bg-indigo-solid rounded-md flex items-center justify-center'>
+                    <RiExchange2Fill className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
+                  </div>}
                   onClick={() => {
                     setAppMode('workflow')
                   }} />
@@ -208,7 +219,7 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
             </div>
           </div>
           <div className='pt-5 pb-10 flex justify-between items-center'>
-            <div className='flex gap-1 items-center system-xs-regular text-text-tertiary cursor-pointer'>
+            <div className='flex gap-1 items-center system-xs-regular text-text-tertiary cursor-pointer' onClick={onCreateFromTemplate}>
               <span>{t('app.newApp.noIdeaTip')}</span>
               <div className='p-[1px]'>
                 <RiArrowRightLine className='w-3.5 h-3.5' />
@@ -252,7 +263,7 @@ function CreateApp({ onClose, onSuccess }: CreateAppProps) {
 type CreateAppDialogProps = CreateAppProps & {
   show: boolean
 }
-const CreateAppModal = ({ show, onClose, onSuccess }: CreateAppDialogProps) => {
+const CreateAppModal = ({ show, onClose, onSuccess, onCreateFromTemplate }: CreateAppDialogProps) => {
   return (
     <FullScreenModal
       overflowVisible
@@ -260,7 +271,7 @@ const CreateAppModal = ({ show, onClose, onSuccess }: CreateAppDialogProps) => {
       open={show}
       onClose={onClose}
     >
-      <CreateApp onClose={onClose} onSuccess={onSuccess} />
+      <CreateApp onClose={onClose} onSuccess={onSuccess} onCreateFromTemplate={onCreateFromTemplate} />
     </FullScreenModal>
   )
 }
@@ -341,7 +352,7 @@ function AppPreview({ mode }: { mode: AppMode }) {
 function AppScreenShot({ mode }: { mode: AppMode }) {
   const modeToImageMap = {
     'chat': 'Chatbot',
-    'advanced-chat': 'Chatflow',
+    'advanced-chat': 'ChatFlow',
     'agent-chat': 'Agent',
     'completion': 'TextGenerator',
     'workflow': 'Workflow',
