@@ -11,13 +11,15 @@ import CreateAppModal from '@/app/components/app/create-app-modal'
 import CreateFromDSLModal, { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
 import { useProviderContext } from '@/context/provider-context'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import cn from '@/utils/classnames'
 
 export type CreateAppCardProps = {
+  className?: string
   onSuccess?: () => void
 }
 
 // eslint-disable-next-line react/display-name
-const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuccess }, ref) => {
+const CreateAppCard = forwardRef<HTMLDivElement, CreateAppCardProps>(({ className, onSuccess }, ref) => {
   const { t } = useTranslation()
   const { onPlanInfoChanged } = useProviderContext()
   const searchParams = useSearchParams()
@@ -36,9 +38,9 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
   }, [dslUrl])
 
   return (
-    <a
+    <div
       ref={ref}
-      className='relative col-span-1 flex flex-col justify-between min-h-[160px] bg-gray-200 rounded-xl border-[0.5px] border-black/5'
+      className={cn('relative col-span-1 inline-flex flex-col justify-between h-[160px] min-w-[296px] bg-gray-200 rounded-xl border-[0.5px] border-black/5', className)}
     >
       <div className='grow p-2 rounded-t-xl'>
         <div className='px-6 pt-2 pb-1 text-xs font-medium leading-[18px] text-gray-500'>{t('app.createApp')}</div>
@@ -102,7 +104,7 @@ const CreateAppCard = forwardRef<HTMLAnchorElement, CreateAppCardProps>(({ onSuc
             onSuccess()
         }}
       />
-    </a>
+    </div>
   )
 })
 
