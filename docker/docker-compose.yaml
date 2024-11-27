@@ -307,6 +307,8 @@ services:
     networks:
       - ssrf_proxy_network
       - default
+    ports:
+      - "5001:5001"
 
   # worker service
   # The Celery worker for processing the queue.
