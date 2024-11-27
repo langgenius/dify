@@ -79,7 +79,6 @@ export type CommonEdgeType = {
   _hovering?: boolean
   _connectedNodeIsHovering?: boolean
   _connectedNodeIsSelected?: boolean
-  _run?: boolean
   _isBundled?: boolean
   _sourceRunningStatus?: NodeRunningStatus
   _targetRunningStatus?: NodeRunningStatus

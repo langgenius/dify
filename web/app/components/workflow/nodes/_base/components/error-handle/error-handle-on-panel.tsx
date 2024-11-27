@@ -1,16 +1,13 @@
-import {
-  useCallback,
-  useState,
-} from 'react'
 import Collapse from '../collapse'
 import { ErrorHandleTypeEnum } from './types'
 import ErrorHandleTypeSelector from './error-handle-type-selector'
 import FailBranchCard from './fail-branch-card'
 import DefaultValue from './default-value'
-import type { Node } from '@/app/components/workflow/types'
 import {
-  useNodeDataUpdate,
-} from '@/app/components/workflow/hooks'
+  useErrorHandle,
+  useGetDefaultValueForms,
+} from './hooks'
+import type { Node } from '@/app/components/workflow/types'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 
 type ErrorHandleProps = Pick<Node, 'id' | 'data'>
@@ -18,30 +15,13 @@ const ErrorHandle = ({
   id,
   data,
 }: ErrorHandleProps) => {
-  const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const { error_strategy } = data
-  const [collapsed, setCollapsed] = useState(true)
-
-  const handleErrorHandleTypeChange = useCallback((value: ErrorHandleTypeEnum) => {
-    if (value === ErrorHandleTypeEnum.none) {
-      handleNodeDataUpdateWithSyncDraft({
-        id,
-        data: {
-          error_strategy: undefined,
-        },
-      })
-      setCollapsed(true)
-    }
-    else {
-      handleNodeDataUpdateWithSyncDraft({
-        id,
-        data: {
-          error_strategy: value,
-        },
-      })
-      setCollapsed(false)
-    }
-  }, [id, handleNodeDataUpdateWithSyncDraft])
+  const defaultValueForms = useGetDefaultValueForms({ id, data })
+  const {
+    collapsed,
+    setCollapsed,
+    handleErrorHandleTypeChange,
+  } = useErrorHandle({ id, data })
 
   return (
     <>
@@ -69,7 +49,7 @@ const ErrorHandle = ({
             }
             {
               error_strategy === ErrorHandleTypeEnum.defaultValue && !collapsed && (
-                <DefaultValue />
+                <DefaultValue forms={defaultValueForms} />
               )
             }
           </>

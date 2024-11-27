@@ -25,7 +25,7 @@ const CustomEdgeLinearGradientRender = ({
           }}
         />
         <stop
-          offset='100%'
+          offset='1'
           style={{
             stopColor,
             stopOpacity: 1,

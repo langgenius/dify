@@ -33,8 +33,8 @@ const ErrorHandleOnNode = ({
             <NodeSourceHandle
               id={id}
               data={data}
-              handleId='source'
-              handleClassName='!top-1/2 !-right-[21px] !-translate-y-1/2 !after:bg-workflow-link-line-failure-button-bg'
+              handleId={ErrorHandleTypeEnum.failBranch}
+              handleClassName='!top-1/2 !-right-[21px] !-translate-y-1/2 after:!bg-workflow-link-line-failure-button-bg'
               nodeSelectorClassName='!bg-workflow-link-line-failure-button-bg'
             />
           )

@@ -10,7 +10,10 @@ import {
   Position,
 } from 'reactflow'
 import { useTranslation } from 'react-i18next'
-import { BlockEnum } from '../../../types'
+import {
+  BlockEnum,
+  NodeRunningStatus,
+} from '../../../types'
 import type { Node } from '../../../types'
 import BlockSelector from '../../../block-selector'
 import type { ToolDefaultValue } from '../../../block-selector/types'
@@ -24,6 +27,7 @@ import {
 import {
   useStore,
 } from '../../../store'
+import cn from '@/utils/classnames'
 
 type NodeHandleProps = {
   handleId: string
@@ -72,14 +76,17 @@ export const NodeTargetHandle = memo(({
         id={handleId}
         type='target'
         position={Position.Left}
-        className={`
-          !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none z-[1]
-          after:absolute after:w-0.5 after:h-2 after:left-1.5 after:top-1 after:bg-primary-500
-          hover:scale-125 transition-all
-          ${!connected && 'after:opacity-0'}
-          ${data.type === BlockEnum.Start && 'opacity-0'}
-          ${handleClassName}
-        `}
+        className={cn(
+          '!w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none z-[1]',
+          'after:absolute after:w-0.5 after:h-2 after:left-1.5 after:top-1 after:bg-workflow-link-line-handle',
+          'hover:scale-125 transition-all',
+          data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
+          data._runningStatus === NodeRunningStatus.Failed && 'after:bg-workflow-link-line-error-handle',
+          data._runningStatus === NodeRunningStatus.Exception && 'after:bg-workflow-link-line-failure-handle',
+          !connected && 'after:opacity-0',
+          data.type === BlockEnum.Start && 'opacity-0',
+          handleClassName,
+        )}
         isConnectable={isConnectable}
         onClick={handleHandleClick}
       >
@@ -157,13 +164,16 @@ export const NodeSourceHandle = memo(({
       id={handleId}
       type='source'
       position={Position.Right}
-      className={`
-        group/handle !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none z-[1]
-        after:absolute after:w-0.5 after:h-2 after:right-1.5 after:top-1 after:bg-primary-500
-        hover:scale-125 transition-all
-        ${!connected && 'after:opacity-0'}
-        ${handleClassName}
-      `}
+      className={cn(
+        'group/handle !w-4 !h-4 !bg-transparent !rounded-none !outline-none !border-none z-[1]',
+        'after:absolute after:w-0.5 after:h-2 after:right-1.5 after:top-1 after:bg-workflow-link-line-handle',
+        'hover:scale-125 transition-all',
+        data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
+        data._runningStatus === NodeRunningStatus.Failed && 'after:bg-workflow-link-line-error-handle',
+        data._runningStatus === NodeRunningStatus.Exception && 'after:bg-workflow-link-line-failure-handle',
+        !connected && 'after:opacity-0',
+        handleClassName,
+      )}
       isConnectable={isConnectable}
       onClick={handleHandleClick}
     >

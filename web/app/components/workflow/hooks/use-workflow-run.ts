@@ -1,6 +1,5 @@
 import { useCallback } from 'react'
 import {
-  getIncomers,
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
@@ -9,7 +8,6 @@ import { v4 as uuidV4 } from 'uuid'
 import { usePathname } from 'next/navigation'
 import { useWorkflowStore } from '../store'
 import { useNodesSyncDraft } from '../hooks'
-import type { Node } from '../types'
 import {
   NodeRunningStatus,
   WorkflowRunningStatus,
@@ -191,7 +189,8 @@ export const useWorkflowRun = () => {
             draft.forEach((edge) => {
               edge.data = {
                 ...edge.data,
-                _run: false,
+                _sourceRunningStatus: undefined,
+                _targetRunningStatus: undefined,
               }
             })
           })
@@ -308,11 +307,15 @@ export const useWorkflowRun = () => {
               draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Running
             })
             setNodes(newNodes)
-            const incomeNodesId = getIncomers({ id: data.node_id } as Node, newNodes, edges).filter(node => node.data._runningStatus === NodeRunningStatus.Succeeded).map(node => node.id)
             const newEdges = produce(edges, (draft) => {
-              draft.forEach((edge) => {
-                if (edge.target === data.node_id && incomeNodesId.includes(edge.source))
-                  edge.data = { ...edge.data, _run: true } as any
+              const incomeEdges = draft.filter(edge => edge.target === data.node_id)
+
+              incomeEdges.forEach((edge) => {
+                edge.data = {
+                  ...edge.data,
+                  _sourceRunningStatus: nodes.find(node => node.id === edge.source)!.data._runningStatus,
+                  _targetRunningStatus: NodeRunningStatus.Running,
+                }
               })
             })
             setEdges(newEdges)
@@ -331,6 +334,8 @@ export const useWorkflowRun = () => {
           const {
             getNodes,
             setNodes,
+            edges,
+            setEdges,
           } = store.getState()
           const nodes = getNodes()
           const nodeParentId = nodes.find(node => node.id === data.node_id)!.parentId
@@ -418,6 +423,17 @@ export const useWorkflowRun = () => {
               currentNode.data._runningStatus = data.status as any
             })
             setNodes(newNodes)
+            const newEdges = produce(edges, (draft) => {
+              const currentEdge = draft.find(edge => edge.target === data.node_id)!
+
+              if (currentEdge) {
+                currentEdge.data = {
+                  ...currentEdge.data,
+                  _targetRunningStatus: data.status as any,
+                }
+              }
+            })
+            setEdges(newEdges)
             prevNodeId = data.node_id
           }
 
@@ -470,10 +486,15 @@ export const useWorkflowRun = () => {
           })
           setNodes(newNodes)
           const newEdges = produce(edges, (draft) => {
-            const edge = draft.find(edge => edge.target === data.node_id && edge.source === prevNodeId)
+            const incomeEdges = draft.filter(edge => edge.target === data.node_id)
 
-            if (edge)
-              edge.data = { ...edge.data, _run: true } as any
+            incomeEdges.forEach((edge) => {
+              edge.data = {
+                ...edge.data,
+                _sourceRunningStatus: nodes.find(node => node.id === edge.source)!.data._runningStatus,
+                _targetRunningStatus: NodeRunningStatus.Running,
+              }
+            })
           })
           setEdges(newEdges)
 

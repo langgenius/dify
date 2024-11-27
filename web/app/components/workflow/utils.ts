@@ -770,7 +770,7 @@ export const hasErrorHandleNode = (nodeType: BlockEnum) => {
   return nodeType === BlockEnum.LLM || nodeType === BlockEnum.Tool || nodeType === BlockEnum.HttpRequest || nodeType === BlockEnum.Code
 }
 
-export const getEdgeColor = (nodeRunningStatus?: NodeRunningStatus) => {
+export const getEdgeColor = (nodeRunningStatus?: NodeRunningStatus, isFailBranch?: boolean) => {
   if (nodeRunningStatus === NodeRunningStatus.Succeeded)
     return 'var(--color-workflow-link-line-success-handle)'
 
@@ -780,8 +780,12 @@ export const getEdgeColor = (nodeRunningStatus?: NodeRunningStatus) => {
   if (nodeRunningStatus === NodeRunningStatus.Exception)
     return 'var(--color-workflow-link-line-failure-handle)'
 
-  if (nodeRunningStatus === NodeRunningStatus.Running)
+  if (nodeRunningStatus === NodeRunningStatus.Running) {
+    if (isFailBranch)
+      return 'var(--color-workflow-link-line-failure-handle)'
+
     return 'var(--color-workflow-link-line-handle)'
+  }
 
   return 'var(--color-workflow-link-line-normal)'
 }

@@ -10,8 +10,9 @@ import {
   useRef,
 } from 'react'
 import {
-  RiCheckboxCircleLine,
-  RiErrorWarningLine,
+  RiAlertFill,
+  RiCheckboxCircleFill,
+  RiErrorWarningFill,
   RiLoader2Line,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
@@ -73,11 +74,13 @@ const BaseNode: FC<BaseNodeProps> = ({
     showRunningBorder,
     showSuccessBorder,
     showFailedBorder,
+    showExceptionBorder,
   } = useMemo(() => {
     return {
       showRunningBorder: data._runningStatus === NodeRunningStatus.Running && !showSelectedBorder,
       showSuccessBorder: data._runningStatus === NodeRunningStatus.Succeeded && !showSelectedBorder,
       showFailedBorder: data._runningStatus === NodeRunningStatus.Failed && !showSelectedBorder,
+      showExceptionBorder: data._runningStatus === NodeRunningStatus.Exception && !showSelectedBorder,
     }
   }, [data._runningStatus, showSelectedBorder])
 
@@ -101,9 +104,10 @@ const BaseNode: FC<BaseNodeProps> = ({
           data.type !== BlockEnum.Iteration && 'w-[240px] bg-workflow-block-bg',
           data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-[#fcfdff]/80',
           !data._runningStatus && 'hover:shadow-lg',
-          showRunningBorder && '!border-primary-500',
-          showSuccessBorder && '!border-[#12B76A]',
-          showFailedBorder && '!border-[#F04438]',
+          showRunningBorder && '!border-state-accent-solid',
+          showSuccessBorder && '!border-state-success-solid',
+          showFailedBorder && '!border-state-destructive-solid',
+          showExceptionBorder && '!border-state-warning-solid',
           data._isBundled && '!shadow-lg',
         )}
       >
@@ -194,24 +198,29 @@ const BaseNode: FC<BaseNodeProps> = ({
           </div>
           {
             data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running && (
-              <div className='mr-1.5 text-xs font-medium text-primary-600'>
+              <div className='mr-1.5 text-xs font-medium text-text-accent'>
                 {data._iterationIndex > data._iterationLength ? data._iterationLength : data._iterationIndex}/{data._iterationLength}
               </div>
             )
           }
           {
             (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
-              <RiLoader2Line className='w-3.5 h-3.5 text-primary-600 animate-spin' />
+              <RiLoader2Line className='w-3.5 h-3.5 text-text-accent animate-spin' />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Succeeded && (
-              <RiCheckboxCircleLine className='w-3.5 h-3.5 text-[#12B76A]' />
+              <RiCheckboxCircleFill className='w-3.5 h-3.5 text-text-success' />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Failed && (
-              <RiErrorWarningLine className='w-3.5 h-3.5 text-[#F04438]' />
+              <RiErrorWarningFill className='w-3.5 h-3.5 text-text-destructive' />
+            )
+          }
+          {
+            data._runningStatus === NodeRunningStatus.Exception && (
+              <RiAlertFill className='w-3.5 h-3.5 text-text-warning-secondary' />
             )
           }
         </div>

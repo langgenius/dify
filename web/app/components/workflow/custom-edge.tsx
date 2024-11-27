@@ -26,6 +26,7 @@ import { getEdgeColor } from './utils'
 import { ITERATION_CHILDREN_Z_INDEX } from './constants'
 import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
 import cn from '@/utils/classnames'
+import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
 const CustomEdge = ({
   id,
@@ -72,6 +73,7 @@ const CustomEdge = ({
         _targetRunningStatus === NodeRunningStatus.Succeeded
         || _targetRunningStatus === NodeRunningStatus.Failed
         || _targetRunningStatus === NodeRunningStatus.Exception
+        || _targetRunningStatus === NodeRunningStatus.Running
       )
     )
       return id
@@ -100,11 +102,11 @@ const CustomEdge = ({
     if (linearGradientId)
       return `url(#${linearGradientId})`
 
-    if (selected || data?._connectedNodeIsHovering || data?._run)
-      return getEdgeColor(NodeRunningStatus.Running)
+    if (selected || data?._connectedNodeIsHovering)
+      return getEdgeColor(NodeRunningStatus.Running, sourceHandleId === ErrorHandleTypeEnum.failBranch)
 
     return getEdgeColor()
-  }, [data._connectedNodeIsHovering, data._run, linearGradientId, selected])
+  }, [data._connectedNodeIsHovering, linearGradientId, selected, sourceHandleId])
 
   return (
     <>
