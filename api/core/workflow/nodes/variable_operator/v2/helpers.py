@@ -51,6 +51,8 @@ def is_constant_input_supported(*, variable_type: SegmentType, operation: Operat
 
 
 def is_input_value_valid(*, variable_type: SegmentType, operation: Operation, value: Any):
+    if operation == Operation.CLEAR:
+        return True
     match variable_type:
         case SegmentType.STRING:
             return isinstance(value, str)
