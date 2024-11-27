@@ -17,6 +17,7 @@ from configs import dify_config
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from extensions.ext_storage import storage
+from services.entities.knowledge_entities.knowledge_entities import ParentMode, Rule
 
 from .account import Account
 from .model import App, Tag, TagBinding, UploadFile
@@ -561,8 +562,13 @@ class DocumentSegment(db.Model):
 
     @property
     def child_chunks(self):
-        child_chunks = db.session.query(ChildChunk).filter(ChildChunk.segment_id == self.id).all()
-        return child_chunks or []
+        process_rule = self.document.dataset_process_rule
+        rules = Rule(**process_rule.rules)
+        if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
+            child_chunks = db.session.query(ChildChunk).filter(ChildChunk.segment_id == self.id).all()
+            return child_chunks or []
+        else:
+            return []
 
     def get_sign_content(self):
         signed_urls = []

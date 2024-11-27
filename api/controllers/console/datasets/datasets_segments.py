@@ -59,15 +59,16 @@ class DatasetDocumentSegmentListApi(Resource):
             raise NotFound("Document not found.")
 
         parser = reqparse.RequestParser()
-        parser.add_argument("last_id", type=str, default=None, location="args")
         parser.add_argument("limit", type=int, default=20, location="args")
         parser.add_argument("status", type=str, action="append", default=[], location="args")
         parser.add_argument("hit_count_gte", type=int, default=None, location="args")
         parser.add_argument("enabled", type=str, default="all", location="args")
         parser.add_argument("keyword", type=str, default=None, location="args")
+        parser.add_argument("page", type=int, default=1, location="args")
+
         args = parser.parse_args()
 
-        last_id = args["last_id"]
+        page = args["page"]
         limit = min(args["limit"], 100)
         status_list = args["status"]
         hit_count_gte = args["hit_count_gte"]
@@ -76,13 +77,6 @@ class DatasetDocumentSegmentListApi(Resource):
         query = DocumentSegment.query.filter(
             DocumentSegment.document_id == str(document_id), DocumentSegment.tenant_id == current_user.current_tenant_id
         )
-
-        if last_id is not None:
-            last_segment = db.session.get(DocumentSegment, str(last_id))
-            if last_segment:
-                query = query.filter(DocumentSegment.position > last_segment.position)
-            else:
-                return {"data": [], "has_more": False, "limit": limit}, 200
 
         if status_list:
             query = query.filter(DocumentSegment.status.in_(status_list))
@@ -99,21 +93,16 @@ class DatasetDocumentSegmentListApi(Resource):
             elif args["enabled"].lower() == "false":
                 query = query.filter(DocumentSegment.enabled == False)
 
-        total = query.count()
-        segments = query.order_by(DocumentSegment.position).limit(limit + 1).all()
+        segments = query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
 
-        has_more = False
-        if len(segments) > limit:
-            has_more = True
-            segments = segments[:-1]
-
-        return {
-            "data": marshal(segments, segment_fields),
-            "doc_form": document.doc_form,
-            "has_more": has_more,
+        response = {
+            "data": marshal(segments.items, segment_fields),
             "limit": limit,
-            "total": total,
-        }, 200
+            "total": segments.total,
+            "total_pages": segments.pages,
+            "page": page,
+        }
+        return response, 200
 
     @setup_required
     @login_required
@@ -491,8 +480,25 @@ class ChildChunkAddApi(Resource):
         ).first()
         if not segment:
             raise NotFound("Segment not found.")
-        child_chunks = SegmentService.get_child_chunks(segment_id, document_id, dataset_id)
-        return {"data": marshal(child_chunks, child_chunk_fields)}, 200
+        parser = reqparse.RequestParser()
+        parser.add_argument("limit", type=int, default=20, location="args")
+        parser.add_argument("keyword", type=str, default=None, location="args")
+        parser.add_argument("page", type=int, default=1, location="args")
+
+        args = parser.parse_args()
+
+        page = args["page"]
+        limit = min(args["limit"], 100)
+        keyword = args["keyword"]
+
+        child_chunks = SegmentService.get_child_chunks(segment_id, document_id, dataset_id, page, limit, keyword)
+        return {
+            "data": marshal(child_chunks.items, child_chunk_fields),
+            "total": child_chunks.total,
+            "total_pages": child_chunks.pages,
+            "page": page,
+            "limit": limit,
+        }, 200
 
     @setup_required
     @login_required

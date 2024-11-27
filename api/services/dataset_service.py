@@ -981,31 +981,31 @@ class DocumentService:
     @staticmethod
     def update_document_with_dataset_id(
         dataset: Dataset,
-        document_data: dict,
+        document_data: KnowledgeConfig,
         account: Account,
         dataset_process_rule: Optional[DatasetProcessRule] = None,
         created_from: str = "web",
     ):
         DatasetService.check_dataset_model_setting(dataset)
-        document = DocumentService.get_document(dataset.id, document_data["original_document_id"])
+        document = DocumentService.get_document(dataset.id, document_data.original_document_id)
         if document is None:
             raise NotFound("Document not found")
         if document.display_status != "available":
             raise ValueError("Document is not available")
         # save process rule
-        if document_data.get("process_rule"):
-            process_rule = document_data["process_rule"]
-            if process_rule["mode"] == "custom":
+        if document_data.process_rule:
+            process_rule = document_data.process_rule
+            if process_rule.mode == "custom":
                 dataset_process_rule = DatasetProcessRule(
                     dataset_id=dataset.id,
-                    mode=process_rule["mode"],
-                    rules=json.dumps(process_rule["rules"]),
+                    mode=process_rule.mode,
+                    rules=process_rule.rules.model_dump_json(),
                     created_by=account.id,
                 )
-            elif process_rule["mode"] == "automatic":
+            elif process_rule.mode == "automatic":
                 dataset_process_rule = DatasetProcessRule(
                     dataset_id=dataset.id,
-                    mode=process_rule["mode"],
+                    mode=process_rule.mode,
                     rules=json.dumps(DatasetProcessRule.AUTOMATIC_RULES),
                     created_by=account.id,
                 )
@@ -1013,11 +1013,11 @@ class DocumentService:
             db.session.commit()
             document.dataset_process_rule_id = dataset_process_rule.id
         # update document data source
-        if document_data.get("data_source"):
+        if document_data.data_source:
             file_name = ""
             data_source_info = {}
-            if document_data["data_source"]["type"] == "upload_file":
-                upload_file_list = document_data["data_source"]["info_list"]["file_info_list"]["file_ids"]
+            if document_data.data_source.info_list.data_source_type == "upload_file":
+                upload_file_list = document_data.data_source.info_list.file_info_list.file_ids
                 for file_id in upload_file_list:
                     file = (
                         db.session.query(UploadFile)
@@ -1033,10 +1033,10 @@ class DocumentService:
                     data_source_info = {
                         "upload_file_id": file_id,
                     }
-            elif document_data["data_source"]["type"] == "notion_import":
-                notion_info_list = document_data["data_source"]["info_list"]["notion_info_list"]
+            elif document_data.data_source.info_list.data_source_type == "notion_import":
+                notion_info_list = document_data.data_source.info_list.notion_info_list
                 for notion_info in notion_info_list:
-                    workspace_id = notion_info["workspace_id"]
+                    workspace_id = notion_info.workspace_id
                     data_source_binding = DataSourceOauthBinding.query.filter(
                         db.and_(
                             DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
@@ -1047,25 +1047,25 @@ class DocumentService:
                     ).first()
                     if not data_source_binding:
                         raise ValueError("Data source binding not found.")
-                    for page in notion_info["pages"]:
+                    for page in notion_info.pages:
                         data_source_info = {
                             "notion_workspace_id": workspace_id,
-                            "notion_page_id": page["page_id"],
-                            "notion_page_icon": page["page_icon"],
-                            "type": page["type"],
+                            "notion_page_id": page.page_id,
+                            "notion_page_icon": page.page_icon,
+                            "type": page.type,
                         }
-            elif document_data["data_source"]["type"] == "website_crawl":
-                website_info = document_data["data_source"]["info_list"]["website_info_list"]
-                urls = website_info["urls"]
+            elif document_data.data_source.info_list.data_source_type == "website_crawl":
+                website_info = document_data.data_source.info_list.website_info_list
+                urls = website_info.urls
                 for url in urls:
                     data_source_info = {
                         "url": url,
-                        "provider": website_info["provider"],
-                        "job_id": website_info["job_id"],
-                        "only_main_content": website_info.get("only_main_content", False),
+                        "provider": website_info.provider,
+                        "job_id": website_info.job_id,
+                        "only_main_content": website_info.only_main_content,
                         "mode": "crawl",
                     }
-            document.data_source_type = document_data["data_source"]["type"]
+            document.data_source_type = document_data.data_source.info_list.data_source_type
             document.data_source_info = json.dumps(data_source_info)
             document.name = file_name
 
@@ -1081,7 +1081,7 @@ class DocumentService:
         document.splitting_completed_at = None
         document.updated_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         document.created_from = created_from
-        document.doc_form = document_data["doc_form"]
+        document.doc_form = document_data.doc_form
         db.session.add(document)
         db.session.commit()
         # update document segment
@@ -1881,17 +1881,15 @@ class SegmentService:
         db.session.commit()
 
     @classmethod
-    def get_child_chunks(cls, segment_id: str, document_id: str, dataset_id: str):
-        return (
-            db.session.query(ChildChunk)
-            .filter(
-                ChildChunk.tenant_id == current_user.current_tenant_id,
-                ChildChunk.dataset_id == dataset_id,
-                ChildChunk.document_id == document_id,
-                ChildChunk.segment_id == segment_id,
-            )
-            .all()
-        )
+    def get_child_chunks(cls, segment_id: str, document_id: str, dataset_id: str, 
+                         page: int, limit: int, keyword: Optional[str] = None):
+        query = ChildChunk.query.filter_by(tenant_id=current_user.current_tenant_id, 
+                                           dataset_id=dataset_id, 
+                                           document_id=document_id, 
+                                           segment_id=segment_id)
+        if keyword:
+            query = query.where(ChildChunk.content.ilike(f"%{keyword}%"))
+        return query.paginate(page=page, per_page=limit, max_per_page=100, error_out=False)
 
 
 class DatasetCollectionBindingService:

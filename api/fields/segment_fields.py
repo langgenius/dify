@@ -30,6 +30,8 @@ segment_fields = {
     "status": fields.String,
     "created_by": fields.String,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
+    "updated_by": fields.String,
     "indexing_at": TimestampField,
     "completed_at": TimestampField,
     "error": fields.String,
