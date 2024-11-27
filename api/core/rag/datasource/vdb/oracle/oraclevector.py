@@ -230,7 +230,6 @@ class OracleVector(BaseVector):
                 except LookupError:
                     nltk.download("punkt")
                     nltk.download("stopwords")
-                    print("run download")
                 e_str = re.sub(r"[^\w ]", "", query)
                 all_tokens = nltk.word_tokenize(e_str)
                 stop_words = stopwords.words("english")

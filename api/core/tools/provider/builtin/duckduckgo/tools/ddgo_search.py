@@ -7,7 +7,7 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
 SUMMARY_PROMPT = """
-User's query: 
+User's query:
 {query}
 
 Here is the search engine result:
@@ -26,7 +26,12 @@ class DuckDuckGoSearchTool(BuiltinTool):
         query = tool_parameters.get("query")
         max_results = tool_parameters.get("max_results", 5)
         require_summary = tool_parameters.get("require_summary", False)
-        response = DDGS().text(query, max_results=max_results)
+
+        # Add query_prefix handling
+        query_prefix = tool_parameters.get("query_prefix", "").strip()
+        final_query = f"{query_prefix} {query}".strip()
+
+        response = DDGS().text(final_query, max_results=max_results)
         if require_summary:
             results = "\n".join([res.get("body") for res in response])
             results = self.summary_results(user_id=user_id, content=results, query=query)

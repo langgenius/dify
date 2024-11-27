@@ -1,3 +1,4 @@
+import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.font_manager import FontProperties, fontManager
 
@@ -5,7 +6,7 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 
 
 def set_chinese_font():
-    font_list = [
+    to_find_fonts = [
         "PingFang SC",
         "SimHei",
         "Microsoft YaHei",
@@ -15,16 +16,16 @@ def set_chinese_font():
         "Noto Sans CJK SC",
         "Noto Sans CJK JP",
     ]
-
-    for font in font_list:
-        if font in fontManager.ttflist:
-            chinese_font = FontProperties(font)
-            if chinese_font.get_name() == font:
-                return chinese_font
+    installed_fonts = frozenset(fontInfo.name for fontInfo in fontManager.ttflist)
+    for font in to_find_fonts:
+        if font in installed_fonts:
+            return FontProperties(font)
 
     return FontProperties()
 
 
+# use non-interactive backend to prevent `RuntimeError: main thread is not in main loop`
+matplotlib.use("Agg")
 # use a business theme
 plt.style.use("seaborn-v0_8-darkgrid")
 plt.rcParams["axes.unicode_minus"] = False

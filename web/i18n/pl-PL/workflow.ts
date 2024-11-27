@@ -99,6 +99,8 @@ const translation = {
     fileUploadTip: 'Funkcje przesyłania obrazów zostały zaktualizowane do przesyłania plików.',
     featuresDescription: 'Ulepszanie środowiska użytkownika aplikacji internetowej',
     featuresDocLink: 'Dowiedz się więcej',
+    importWarning: 'Ostrożność',
+    importWarningDetails: 'Różnica w wersji DSL może mieć wpływ na niektóre funkcje',
   },
   env: {
     envPanelTitle: 'Zmienne Środowiskowe',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'Typ',
       binaryFileVariable: 'Binarna zmienna pliku',
+      extractListPlaceholder: 'Wprowadź indeks elementu listy, wpisz "/" wstaw zmienną',
+      curl: {
+        placeholder: 'Wklej tutaj ciąg cURL',
+        title: 'Importowanie z cURL',
+      },
     },
     code: {
       inputVars: 'Zmienne wejściowe',
@@ -618,6 +625,7 @@ const translation = {
       filterCondition: 'Stan filtra',
       filterConditionComparisonValue: 'Wartość warunku filtru',
       selectVariableKeyPlaceholder: 'Wybierz klucz zmiennej podrzędnej',
+      extractsCondition: 'Wyodrębnij element N',
     },
   },
   tracing: {

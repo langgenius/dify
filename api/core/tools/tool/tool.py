@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from copy import deepcopy
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -62,7 +62,7 @@ class Tool(BaseModel, ABC):
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-    class VariableKey(str, Enum):
+    class VariableKey(StrEnum):
         IMAGE = "image"
         DOCUMENT = "document"
         VIDEO = "video"
@@ -261,7 +261,7 @@ class Tool(BaseModel, ABC):
         """
         parameters = self.parameters or []
         parameters = parameters.copy()
-        user_parameters = self.get_runtime_parameters() or []
+        user_parameters = self.get_runtime_parameters()
         user_parameters = user_parameters.copy()
 
         # override parameters

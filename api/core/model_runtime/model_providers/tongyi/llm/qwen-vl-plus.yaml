@@ -6,6 +6,7 @@ model_type: llm
 features:
   - vision
   - agent-thought
+  - video
 model_properties:
   mode: chat
   context_size: 8000

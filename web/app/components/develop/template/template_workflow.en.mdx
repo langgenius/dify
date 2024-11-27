@@ -32,7 +32,7 @@ Workflow applications offers non-session support and is ideal for translation, a
 <Heading
   url='/workflows/run'
   method='POST'
-  title='Execute workflow'
+  title='Execute Workflow'
   name='#Execute-Workflow'
 />
 <Row>
@@ -54,7 +54,7 @@ Workflow applications offers non-session support and is ideal for translation, a
         User identifier, used to define the identity of the end-user for retrieval and statistics.
         Should be uniquely defined by the developer within the application.
       - `files` (array[object]) Optional
-        File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports Vision capability.
+        File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports file parsing and understanding capability.
           - `type` (string) Supported type: 
             - `document` ('TXT', 'MD', 'MARKDOWN', 'PDF', 'HTML', 'XLSX', 'XLS', 'DOCX', 'CSV', 'EML', 'MSG', 'PPTX', 'PPT', 'XML', 'EPUB')
             - `image` ('JPG', 'JPEG', 'PNG', 'GIF', 'WEBP', 'SVG')
@@ -189,6 +189,19 @@ Workflow applications offers non-session support and is ideal for translation, a
     ```
 
     </CodeGroup>
+    <CodeGroup title="File variable example">
+      ```json {{ title: 'File variable example' }}
+      {
+        "inputs": {
+          "{variable_name}": {
+            "transfer_method": "local_file",
+            "upload_file_id": "{upload_file_id}",
+            "type": "{document_type}"
+          }
+        }
+      }
+      ```
+    </CodeGroup>
     ### Blocking Mode
     <CodeGroup title="Response">
     ```json {{ title: 'Response' }}
@@ -223,7 +236,88 @@ Workflow applications offers non-session support and is ideal for translation, a
       data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
     ```
     </CodeGroup>
+    <CodeGroup title="File upload sample code">
+      ```json {{ title: 'File upload sample code' }}
+      {
+        import requests
+        import json
 
+        def upload_file(file_path, user):
+            upload_url = "https://api.dify.ai/v1/files/upload"
+            headers = {
+                "Authorization": "Bearer app-xxxxxxxx",
+            }
+            
+            try:
+                print("Upload file...")
+                with open(file_path, 'rb') as file:
+                    files = {
+                        'file': (file_path, file, 'text/plain')  # Make sure the file is uploaded with the appropriate MIME type
+                    }
+                    data = {
+                        "user": user,
+                        "type": "TXT"  # Set the file type to TXT
+                    }
+                    
+                    response = requests.post(upload_url, headers=headers, files=files, data=data)
+                    if response.status_code == 201:  # 201 means creation is successful
+                        print("File uploaded successfully")
+                        return response.json().get("id")  # Get the uploaded file ID
+                    else:
+                        print(f"File upload failed, status code: {response.status_code}")
+                        return None
+            except Exception as e:
+                print(f"Error occurred: {str(e)}")
+                return None
+
+        def run_workflow(file_id, user, response_mode="blocking"):
+            workflow_url = "https://api.dify.ai/v1/workflows/run"
+            headers = {
+                "Authorization": "Bearer app-xxxxxxxxx",
+                "Content-Type": "application/json"
+            }
+
+            data = {
+                "inputs": {
+                    "orig_mail": {
+                        "transfer_method": "local_file",
+                        "upload_file_id": file_id,
+                        "type": "document"
+                    }
+                },
+                "response_mode": response_mode,
+                "user": user
+            }
+
+            try:
+                print("Run Workflow...")
+                response = requests.post(workflow_url, headers=headers, json=data)
+                if response.status_code == 200:
+                    print("Workflow execution successful")
+                    return response.json()
+                else:
+                    print(f"Workflow execution failed, status code: {response.status_code}")
+                    return {"status": "error", "message": f"Failed to execute workflow, status code: {response.status_code}"}
+            except Exception as e:
+                print(f"Error occurred: {str(e)}")
+                return {"status": "error", "message": str(e)}
+
+        # Usage Examples
+        file_path = "{your_file_path}"
+        user = "difyuser"
+
+        # Upload files
+        file_id = upload_file(file_path, user)
+        if file_id:
+            # The file was uploaded successfully, and the workflow continues to run
+            result = run_workflow(file_id, user)
+            print(result)
+        else:
+            print("File upload failed and workflow cannot be executed")
+
+      }
+      ```
+    </CodeGroup>
   </Col>
 </Row>
 
@@ -505,7 +599,7 @@ Workflow applications offers non-session support and is ideal for translation, a
 <Heading
   url='/workflows/logs'
   method='GET'
-  title='Get workflow logs'
+  title='Get Workflow Logs'
   name='#Get-Workflow-Logs'
 />
 <Row>

@@ -99,6 +99,8 @@ const translation = {
     ImageUploadLegacyTip: 'Sie können jetzt Dateitypvariablen im Startformular erstellen. Wir werden die Funktion zum Hochladen von Bildern in Zukunft nicht mehr unterstützen.',
     fileUploadTip: 'Die Funktionen zum Hochladen von Bildern wurden auf das Hochladen von Dateien aktualisiert.',
     featuresDescription: 'Verbessern Sie die Benutzererfahrung von Web-Apps',
+    importWarning: 'Vorsicht',
+    importWarningDetails: 'Der Unterschied zwischen den DSL-Versionen kann sich auf bestimmte Funktionen auswirken',
   },
   env: {
     envPanelTitle: 'Umgebungsvariablen',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'Art',
       binaryFileVariable: 'Variable der Binärdatei',
+      extractListPlaceholder: 'Geben Sie den Index des Listeneintrags ein, geben Sie \'/\' ein, fügen Sie die Variable ein',
+      curl: {
+        title: 'Importieren von cURL',
+        placeholder: 'Fügen Sie hier die cURL-Zeichenfolge ein',
+      },
     },
     code: {
       inputVars: 'Eingabevariablen',
@@ -618,6 +625,7 @@ const translation = {
       filterConditionKey: 'Bedingungsschlüssel filtern',
       filterCondition: 'Filter-Bedingung',
       selectVariableKeyPlaceholder: 'Untervariablenschlüssel auswählen',
+      extractsCondition: 'Extrahieren des N-Elements',
     },
   },
   tracing: {

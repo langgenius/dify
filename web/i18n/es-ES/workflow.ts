@@ -99,6 +99,8 @@ const translation = {
     ImageUploadLegacyTip: 'Ahora puede crear variables de tipo de archivo en el formulario de inicio. Ya no admitiremos la función de carga de imágenes en el futuro.',
     featuresDescription: 'Mejorar la experiencia del usuario de la aplicación web',
     featuresDocLink: 'Aprende más',
+    importWarning: 'Cautela',
+    importWarningDetails: 'La diferencia de versión de DSL puede afectar a ciertas características',
   },
   env: {
     envPanelTitle: 'Variables de Entorno',
@@ -407,6 +409,11 @@ const translation = {
       },
       type: 'Tipo',
       binaryFileVariable: 'Variable de archivo binario',
+      extractListPlaceholder: 'Introduzca el índice de elementos de la lista, escriba \'/\' insertar variable',
+      curl: {
+        title: 'Importar desde cURL',
+        placeholder: 'Pegar la cadena cURL aquí',
+      },
     },
     code: {
       inputVars: 'Variables de entrada',
@@ -621,6 +628,7 @@ const translation = {
       filterConditionComparisonOperator: 'Operador de comparación de condiciones de filtro',
       asc: 'ASC',
       selectVariableKeyPlaceholder: 'Seleccione la clave de subvariable',
+      extractsCondition: 'Extraiga el elemento N',
     },
   },
   tracing: {

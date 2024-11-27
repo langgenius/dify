@@ -99,6 +99,8 @@ const translation = {
     fileUploadTip: 'Resim yükleme özellikleri, dosya yüklemeye yükseltildi.',
     ImageUploadLegacyTip: 'Artık başlangıç formunda dosya türü değişkenleri oluşturabilirsiniz. Gelecekte resim yükleme özelliğini artık desteklemeyeceğiz.',
     featuresDescription: 'Web uygulaması kullanıcı deneyimini geliştirin',
+    importWarningDetails: 'DSL sürüm farkı bazı özellikleri etkileyebilir',
+    importWarning: 'Dikkat',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
@@ -408,6 +410,11 @@ const translation = {
       },
       type: 'Tür',
       binaryFileVariable: 'İkili Dosya Değişkeni',
+      extractListPlaceholder: 'Liste öğesi dizinini girin, \'/\' yazın değişken ekle',
+      curl: {
+        placeholder: 'cURL dizesini buraya yapıştırın',
+        title: 'cURL\'den içe aktar',
+      },
     },
     code: {
       inputVars: 'Giriş Değişkenleri',
@@ -619,6 +626,7 @@ const translation = {
       filterConditionComparisonValue: 'Filtre Koşulu değeri',
       selectVariableKeyPlaceholder: 'Alt değişken anahtarını seçin',
       desc: 'DESC',
+      extractsCondition: 'N öğesini ayıklayın',
     },
   },
   tracing: {

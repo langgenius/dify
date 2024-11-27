@@ -7,6 +7,7 @@ import mixedTestMessages from './mixedTestMessages.json'
 import multiRootNodesMessages from './multiRootNodesMessages.json'
 import multiRootNodesWithLegacyTestMessages from './multiRootNodesWithLegacyTestMessages.json'
 import realWorldMessages from './realWorldMessages.json'
+import partialMessages from './partialMessages.json'
 
 function visitNode(tree: ChatItemInTree | ChatItemInTree[], path: string): ChatItemInTree {
   return get(tree, path)
@@ -256,9 +257,15 @@ describe('build chat item tree and get thread messages', () => {
     expect(threadMessages6_2).toMatchSnapshot()
   })
 
-  const partialMessages = (realWorldMessages as ChatItemInTree[]).slice(-10)
-  const tree7 = buildChatItemTree(partialMessages)
-  it('should work with partial messages', () => {
+  const partialMessages1 = (realWorldMessages as ChatItemInTree[]).slice(-10)
+  const tree7 = buildChatItemTree(partialMessages1)
+  it('should work with partial messages 1', () => {
     expect(tree7).toMatchSnapshot()
+  })
+
+  const partialMessages2 = (partialMessages as ChatItemInTree[])
+  const tree8 = buildChatItemTree(partialMessages2)
+  it('should work with partial messages 2', () => {
+    expect(tree8).toMatchSnapshot()
   })
 })
