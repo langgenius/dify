@@ -63,6 +63,7 @@ def init_app(app):
 
         connection_class = SSLConnection
         ssl_config["ssl"] = True
+        ssl_config["connection_class"] = connection_class
         if dify_config.REDIS_SSL_CA_CERT:
             ssl_config["ssl_ca_certs"] = dify_config.REDIS_SSL_CA_CERT
         else:
