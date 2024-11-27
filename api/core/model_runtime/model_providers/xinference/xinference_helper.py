@@ -45,7 +45,7 @@ cache_lock = Lock()
 
 class XinferenceHelper:
     @staticmethod
-    def get_xinference_extra_parameter(server_url: str, model_uid: str, api_key: str) -> XinferenceModelExtraParameter:
+    def get_xinference_extra_parameter(server_url: str, model_uid: str, api_key: str | None) -> XinferenceModelExtraParameter:
         XinferenceHelper._clean_cache()
         with cache_lock:
             if model_uid not in cache:
@@ -66,7 +66,7 @@ class XinferenceHelper:
             pass
 
     @staticmethod
-    def _get_xinference_extra_parameter(server_url: str, model_uid: str, api_key: str) -> XinferenceModelExtraParameter:
+    def _get_xinference_extra_parameter(server_url: str, model_uid: str, api_key: str | None) -> XinferenceModelExtraParameter:
         """
         get xinference model extra parameter like model_format and model_handle_type
         """
