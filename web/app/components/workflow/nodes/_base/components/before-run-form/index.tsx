@@ -32,7 +32,7 @@ type BeforeRunFormProps = {
 
 function formatValue(value: string | any, type: InputVarType) {
   if (type === InputVarType.number)
-    return parseFloat(value)
+    return Number.parseFloat(value)
   if (type === InputVarType.json)
     return JSON.parse(value)
   if (type === InputVarType.contexts) {

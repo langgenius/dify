@@ -25,7 +25,8 @@ import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import cn from '@/utils/classnames'
-import { useMutationCheckDependenciesBeforeImportDSL } from '@/service/use-plugins'
+import { useStore as usePluginDependencyStore } from '@/app/components/workflow/plugin-dependency/store'
+import PluginDependency from '@/app/components/workflow/plugin-dependency'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -48,7 +49,6 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
   const [fileContent, setFileContent] = useState<string>()
   const [currentTab, setCurrentTab] = useState(activeTab)
   const [dslUrlValue, setDslUrlValue] = useState(dslUrl)
-  const { mutateAsync } = useMutationCheckDependenciesBeforeImportDSL()
   const [showErrorModal, setShowErrorModal] = useState(false)
   const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
   const [importId, setImportId] = useState<string>()
@@ -92,20 +92,22 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           mode: DSLImportMode.YAML_CONTENT,
           yaml_content: fileContent || '',
         })
-        await mutateAsync({ dslString: fileContent })
       }
       if (currentTab === CreateFromDSLModalTab.FROM_URL) {
         response = await importDSL({
           mode: DSLImportMode.YAML_URL,
           yaml_url: dslUrlValue || '',
         })
-        await mutateAsync({ url: dslUrlValue })
       }
 
       if (!response)
         return
 
-      const { id, status, app_id, imported_dsl_version, current_dsl_version } = response
+      const { id, status, app_id, imported_dsl_version, current_dsl_version, leaked_dependencies } = response
+      if (leaked_dependencies?.length) {
+        const { setDependencies } = usePluginDependencyStore.getState()
+        setDependencies(leaked_dependencies)
+      }
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
         if (onSuccess)
           onSuccess()
@@ -272,7 +274,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       >
         <div className='flex pb-4 flex-col items-start gap-2 self-stretch'>
           <div className='text-text-primary title-2xl-semi-bold'>{t('app.newApp.appCreateDSLErrorTitle')}</div>
-          <div className='flex flex-grow flex-col text-text-secondary system-md-regular'>
+          <div className='flex grow flex-col text-text-secondary system-md-regular'>
             <div>{t('app.newApp.appCreateDSLErrorPart1')}</div>
             <div>{t('app.newApp.appCreateDSLErrorPart2')}</div>
             <br />
@@ -280,6 +282,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             <div>{t('app.newApp.appCreateDSLErrorPart4')}<span className='system-md-medium'>{versions?.systemVersion}</span></div>
           </div>
         </div>
+        <PluginDependency />
         <div className='flex pt-6 justify-end items-start gap-2 self-stretch'>
           <Button variant='secondary' onClick={() => setShowErrorModal(false)}>{t('app.newApp.Cancel')}</Button>
           <Button variant='primary' destructive onClick={onDSLConfirm}>{t('app.newApp.Confirm')}</Button>

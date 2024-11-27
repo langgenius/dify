@@ -6,6 +6,7 @@ import type {
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -30,6 +31,7 @@ import {
   useMarketplacePlugins,
 } from './hooks'
 import { getMarketplaceListCondition } from './utils'
+import { useInstalledPluginList } from '@/service/use-plugins'
 
 export type MarketplaceContextValue = {
   intersected: boolean
@@ -74,6 +76,7 @@ export const MarketplaceContext = createContext<MarketplaceContextValue>({
 type MarketplaceContextProviderProps = {
   children: ReactNode
   searchParams?: SearchParams
+  shouldExclude?: boolean
 }
 
 export function useMarketplaceContext(selector: (value: MarketplaceContextValue) => any) {
@@ -83,7 +86,13 @@ export function useMarketplaceContext(selector: (value: MarketplaceContextValue)
 export const MarketplaceContextProvider = ({
   children,
   searchParams,
+  shouldExclude,
 }: MarketplaceContextProviderProps) => {
+  const { data, isSuccess } = useInstalledPluginList(!shouldExclude)
+  const exclude = useMemo(() => {
+    if (shouldExclude)
+      return data?.plugins.map(plugin => plugin.plugin_id)
+  }, [data?.plugins, shouldExclude])
   const queryFromSearchParams = searchParams?.q || ''
   const tagsFromSearchParams = searchParams?.tags ? getValidTagKeys(searchParams.tags.split(',')) : []
   const hasValidTags = !!tagsFromSearchParams.length
@@ -125,8 +134,15 @@ export const MarketplaceContextProvider = ({
       })
       history.pushState({}, '', `/${searchParams?.language ? `?language=${searchParams?.language}` : ''}`)
     }
+    else {
+      if (shouldExclude && isSuccess) {
+        queryMarketplaceCollectionsAndPlugins({
+          exclude,
+        })
+      }
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queryPlugins])
+  }, [queryPlugins, queryMarketplaceCollectionsAndPlugins, isSuccess, exclude])
 
   const handleSearchPluginTextChange = useCallback((text: string) => {
     setSearchPluginText(text)
@@ -136,6 +152,7 @@ export const MarketplaceContextProvider = ({
       queryMarketplaceCollectionsAndPlugins({
         category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
         condition: getMarketplaceListCondition(activePluginTypeRef.current),
+        exclude,
       })
       resetPlugins()
 
@@ -148,8 +165,9 @@ export const MarketplaceContextProvider = ({
       tags: filterPluginTagsRef.current,
       sortBy: sortRef.current.sortBy,
       sortOrder: sortRef.current.sortOrder,
+      exclude,
     })
-  }, [queryPluginsWithDebounced, queryMarketplaceCollectionsAndPlugins, resetPlugins])
+  }, [queryPluginsWithDebounced, queryMarketplaceCollectionsAndPlugins, resetPlugins, exclude])
 
   const handleFilterPluginTagsChange = useCallback((tags: string[]) => {
     setFilterPluginTags(tags)
@@ -159,6 +177,7 @@ export const MarketplaceContextProvider = ({
       queryMarketplaceCollectionsAndPlugins({
         category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
         condition: getMarketplaceListCondition(activePluginTypeRef.current),
+        exclude,
       })
       resetPlugins()
 
@@ -171,8 +190,9 @@ export const MarketplaceContextProvider = ({
       tags,
       sortBy: sortRef.current.sortBy,
       sortOrder: sortRef.current.sortOrder,
+      exclude,
     })
-  }, [queryPlugins, resetPlugins, queryMarketplaceCollectionsAndPlugins])
+  }, [queryPlugins, resetPlugins, queryMarketplaceCollectionsAndPlugins, exclude])
 
   const handleActivePluginTypeChange = useCallback((type: string) => {
     setActivePluginType(type)
@@ -182,6 +202,7 @@ export const MarketplaceContextProvider = ({
       queryMarketplaceCollectionsAndPlugins({
         category: type === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : type,
         condition: getMarketplaceListCondition(type),
+        exclude,
       })
       resetPlugins()
 
@@ -194,8 +215,9 @@ export const MarketplaceContextProvider = ({
       tags: filterPluginTagsRef.current,
       sortBy: sortRef.current.sortBy,
       sortOrder: sortRef.current.sortOrder,
+      exclude,
     })
-  }, [queryPlugins, resetPlugins, queryMarketplaceCollectionsAndPlugins])
+  }, [queryPlugins, resetPlugins, queryMarketplaceCollectionsAndPlugins, exclude])
 
   const handleSortChange = useCallback((sort: PluginsSort) => {
     setSort(sort)
@@ -207,8 +229,9 @@ export const MarketplaceContextProvider = ({
       tags: filterPluginTagsRef.current,
       sortBy: sortRef.current.sortBy,
       sortOrder: sortRef.current.sortOrder,
+      exclude,
     })
-  }, [queryPlugins])
+  }, [queryPlugins, exclude])
 
   return (
     <MarketplaceContext.Provider

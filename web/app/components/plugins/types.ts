@@ -79,7 +79,7 @@ export type PluginManifestInMarket = {
   icon: string
   label: Record<Locale, string>
   category: PluginType
-  version: string // TODO: wait api return current plugin version
+  version: string // conbine the other place to it
   latest_version: string
   brief: Record<Locale, string>
   introduction: string

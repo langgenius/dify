@@ -11,18 +11,26 @@ import { TanstackQueryIniter } from '@/context/query-client'
 type MarketplaceProps = {
   locale: string
   showInstallButton?: boolean
+  shouldExclude?: boolean
   searchParams?: SearchParams
 }
 const Marketplace = async ({
   locale,
   showInstallButton = true,
+  shouldExclude,
   searchParams,
 }: MarketplaceProps) => {
-  const { marketplaceCollections, marketplaceCollectionPluginsMap } = await getMarketplaceCollectionsAndPlugins()
+  let marketplaceCollections: any = []
+  let marketplaceCollectionPluginsMap = {}
+  if (!shouldExclude) {
+    const marketplaceCollectionsAndPluginsData = await getMarketplaceCollectionsAndPlugins()
+    marketplaceCollections = marketplaceCollectionsAndPluginsData.marketplaceCollections
+    marketplaceCollectionPluginsMap = marketplaceCollectionsAndPluginsData.marketplaceCollectionPluginsMap
+  }
 
   return (
     <TanstackQueryIniter>
-      <MarketplaceContextProvider searchParams={searchParams}>
+      <MarketplaceContextProvider searchParams={searchParams} shouldExclude={shouldExclude}>
         <Description locale={locale} />
         <IntersectionLine />
         <SearchBoxWrapper locale={locale} />

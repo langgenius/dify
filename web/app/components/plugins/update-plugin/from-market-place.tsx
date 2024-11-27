@@ -89,6 +89,7 @@ const UpdatePluginModal: FC<Props> = ({
         })
         onSave()
       }
+      // eslint-disable-next-line unused-imports/no-unused-vars
       catch (e) {
         setUploadStep(UploadStep.notStarted)
       }

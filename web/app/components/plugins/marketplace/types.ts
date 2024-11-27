@@ -27,6 +27,7 @@ export type PluginsSearchParams = {
   sortOrder?: string
   category?: string
   tags?: string[]
+  exclude?: string[]
 }
 
 export type PluginsSort = {
@@ -37,6 +38,7 @@ export type PluginsSort = {
 export type CollectionsAndPluginsSearchParams = {
   category?: string
   condition?: string
+  exclude?: string[]
 }
 
 export type SearchParams = {

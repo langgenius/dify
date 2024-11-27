@@ -41,12 +41,14 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
   // TODO: check installed in beta version.
 
   const getTitle = useCallback(() => {
+    if (isBundle && step === InstallStep.installed)
+      return t(`${i18nPrefix}.installComplete`)
     if (step === InstallStep.installed)
       return t(`${i18nPrefix}.installedSuccessfully`)
     if (step === InstallStep.installFailed)
       return t(`${i18nPrefix}.installFailed`)
     return t(`${i18nPrefix}.installPlugin`)
-  }, [step, t])
+  }, [isBundle, step, t])
 
   const handleInstalled = useCallback(() => {
     setStep(InstallStep.installed)
@@ -55,7 +57,7 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
       updateModelProviders()
     if (PluginType.tool.includes(manifest.category))
       invalidateAllToolProviders()
-  }, [invalidateAllToolProviders, invalidateInstalledPluginList, manifest.category, updateModelProviders])
+  }, [invalidateAllToolProviders, invalidateInstalledPluginList, manifest, updateModelProviders])
 
   const handleFailed = useCallback((errorMsg?: string) => {
     setStep(InstallStep.installFailed)
@@ -77,35 +79,40 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
         </div>
       </div>
       {
-        step === InstallStep.readyToInstall && (
-          <Install
-            uniqueIdentifier={uniqueIdentifier}
-            payload={manifest!}
-            onCancel={onClose}
-            onInstalled={handleInstalled}
-            onFailed={handleFailed}
-          />
-        )
-      }
-      {
         isBundle ? (
           <ReadyToInstallBundle
             step={step}
             onStepChange={setStep}
             onClose={onClose}
             allPlugins={dependencies!}
+            isFromMarketPlace
           />
-        ) : ([InstallStep.installed, InstallStep.installFailed].includes(step)) && (
-          <Installed
-            payload={manifest!}
-            isMarketPayload
-            isFailed={step === InstallStep.installFailed}
-            errMsg={errorMsg}
-            onCancel={onSuccess}
-          />
+        ) : (<>
+          {
+            step === InstallStep.readyToInstall && (
+              <Install
+                uniqueIdentifier={uniqueIdentifier}
+                payload={manifest!}
+                onCancel={onClose}
+                onInstalled={handleInstalled}
+                onFailed={handleFailed}
+              />
+            )}
+          {
+            [InstallStep.installed, InstallStep.installFailed].includes(step) && (
+              <Installed
+                payload={manifest!}
+                isMarketPayload
+                isFailed={step === InstallStep.installFailed}
+                errMsg={errorMsg}
+                onCancel={onSuccess}
+              />
+            )
+          }
+        </>
         )
       }
-    </Modal>
+    </Modal >
   )
 }
 

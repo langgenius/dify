@@ -72,7 +72,6 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 import { fetchFileUploadConfig } from '@/service/common'
 import { correctProvider } from '@/utils'
-import PluginDependency from '@/app/components/workflow/plugin-dependency'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -1042,7 +1041,6 @@ const Configuration: FC = () => {
               onAutoAddPromptVariable={handleAddPromptVariable}
             />
           )}
-          <PluginDependency />
         </>
       </FeaturesProvider>
     </ConfigContext.Provider>
