@@ -109,7 +109,7 @@ class Executor:
                     self.content = self.variable_pool.convert_template(data[0].value).text
                 case "json":
                     json_string = self.variable_pool.convert_template(data[0].value).text
-                    json_object = json.loads(json_string)
+                    json_object = json.loads(json_string, strict=False)
                     self.json = json_object
                     # self.json = self._parse_object_contains_variables(json_object)
                 case "binary":

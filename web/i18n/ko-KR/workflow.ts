@@ -99,6 +99,8 @@ const translation = {
     fileUploadTip: '이미지 업로드 기능이 파일 업로드로 업그레이드되었습니다.',
     featuresDescription: '웹앱 사용자 경험 향상',
     ImageUploadLegacyTip: '이제 시작 양식에서 파일 형식 변수를 만들 수 있습니다. 앞으로 이미지 업로드 기능은 더 이상 지원되지 않습니다.',
+    importWarning: '주의',
+    importWarningDetails: 'DSL 버전 차이는 특정 기능에 영향을 미칠 수 있습니다.',
   },
   env: {
     envPanelTitle: '환경 변수',
@@ -408,6 +410,10 @@ const translation = {
       type: '형',
       binaryFileVariable: '바이너리 파일 변수',
       extractListPlaceholder: '목록 항목 인덱스 입력, \'/\' 변수 삽입',
+      curl: {
+        title: 'cURL에서 가져오기',
+        placeholder: '여기에 cURL 문자열 붙여 넣기',
+      },
     },
     code: {
       inputVars: '입력 변수',

@@ -39,3 +39,14 @@ parameters:
       en_US: Whether to pass the search results to llm for summarization.
       zh_Hans: 是否需要将搜索结果传给大模型总结
     form: form
+  - name: query_prefix
+    label:
+      en_US: Query Prefix
+      zh_Hans: 查询前缀
+    type: string
+    required: false
+    default: ""
+    form: form
+    human_description:
+      en_US: Specific Search e.g. "site:wikipedia.org"
+      zh_Hans: 定向搜索 e.g. "site:wikipedia.org"

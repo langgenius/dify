@@ -33,7 +33,7 @@ def handle(sender, **kwargs):
             raise NotFound("Document not found")
 
         document.indexing_status = "parsing"
-        document.processing_started_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+        document.processing_started_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
         documents.append(document)
         db.session.add(document)
     db.session.commit()

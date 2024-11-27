@@ -73,6 +73,7 @@ const translation = {
     requestBody: 'Corpo da Solicitação',
     pathParams: 'Parâmetros de Caminho',
     query: 'Consulta',
+    toc: 'Conteúdo',
   },
   play: 'Brincar',
   loading: 'Carregamento',

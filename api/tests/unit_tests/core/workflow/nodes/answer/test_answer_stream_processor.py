@@ -1,6 +1,6 @@
 import uuid
 from collections.abc import Generator
-from datetime import datetime, timezone
+from datetime import UTC, datetime, timezone
 
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
@@ -29,7 +29,7 @@ def _recursive_process(graph: Graph, next_node_id: str) -> Generator[GraphEngine
 
 
 def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEvent, None, None]:
-    route_node_state = RouteNodeState(node_id=next_node_id, start_at=datetime.now(timezone.utc).replace(tzinfo=None))
+    route_node_state = RouteNodeState(node_id=next_node_id, start_at=datetime.now(UTC).replace(tzinfo=None))
 
     parallel_id = graph.node_parallel_mapping.get(next_node_id)
     parallel_start_node_id = None
@@ -68,7 +68,7 @@ def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEve
             )
 
     route_node_state.status = RouteNodeState.Status.SUCCESS
-    route_node_state.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+    route_node_state.finished_at = datetime.now(UTC).replace(tzinfo=None)
     yield NodeRunSucceededEvent(
         id=node_execution_id,
         node_id=next_node_id,

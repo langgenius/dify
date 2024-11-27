@@ -77,6 +77,7 @@ const translation = {
     requestBody: 'Cuerpo de la solicitud',
     pathParams: 'Parámetros de ruta',
     query: 'Consulta',
+    toc: 'Contenido',
   },
   regenerate: 'Regenerar',
 }

@@ -1,5 +1,5 @@
 from datetime import datetime
-from enum import Enum
+from enum import Enum, StrEnum
 from typing import Any, Optional
 
 from pydantic import BaseModel, field_validator
@@ -11,7 +11,7 @@ from core.workflow.nodes import NodeType
 from core.workflow.nodes.base import BaseNodeData
 
 
-class QueueEvent(str, Enum):
+class QueueEvent(StrEnum):
     """
     QueueEvent enum
     """

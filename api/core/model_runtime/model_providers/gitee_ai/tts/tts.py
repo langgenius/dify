@@ -10,7 +10,7 @@ from core.model_runtime.model_providers.gitee_ai._common import _CommonGiteeAI
 
 class GiteeAIText2SpeechModel(_CommonGiteeAI, TTSModel):
     """
-    Model class for OpenAI Speech to text model.
+    Model class for OpenAI text2speech model.
     """
 
     def _invoke(
