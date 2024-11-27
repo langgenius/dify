@@ -114,7 +114,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             model_conf=ModelConfigConverter.convert(app_config),
             file_upload_config=file_extra_config,
             inputs=self._prepare_user_inputs(
-                user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.id
+                user_inputs=inputs, variables=app_config.variables, tenant_id=app_model.tenant_id
             ),
             query=query,
             files=file_objs,

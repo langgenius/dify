@@ -14,7 +14,7 @@ from core.model_runtime.model_providers.azure_openai._constant import TTS_BASE_M
 
 class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
     """
-    Model class for OpenAI Speech to text model.
+    Model class for OpenAI text2speech model.
     """
 
     def _invoke(
