@@ -12,7 +12,7 @@ export type InputNumberProps = {
 } & Omit<InputProps, 'value' | 'onChange' | 'size'>
 
 export const InputNumber: FC<InputNumberProps> = (props) => {
-  const { unit, className, onChange, amount = 1, value, size = 'sm', max, min, ...rest } = props
+  const { unit, className, onChange, amount = 1, value, size = 'md', max, min, ...rest } = props
   const update = (input: SetStateAction<number>) => {
     const current = typeof input === 'function' ? input(value) : input as number
     if (max && current >= (max as number))
@@ -25,6 +25,8 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
   const dec = () => update(val => val - amount)
   return <div className='flex'>
     <Input {...rest}
+      // disable default controller
+      type='text'
       className={classNames('rounded-r-none', className)}
       value={value}
       max={max}
@@ -37,7 +39,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
       }}
     />
     {unit && <div className='flex items-center bg-components-input-bg-normal text-[13px] text-text-placeholder pr-2'>{unit}</div>}
-    <div className='flex flex-col bg-components-input-bg-normal rounded-r-md border-l text-text-tertiary'>
+    <div className='flex flex-col bg-components-input-bg-normal rounded-r-md border-l text-text-tertiary focus:shadow-xs'>
       <button onClick={inc} className={classNames(
         size === 'sm' ? 'pt-1' : 'pt-1.5',
         'px-1.5 hover:bg-components-input-bg-hover',
