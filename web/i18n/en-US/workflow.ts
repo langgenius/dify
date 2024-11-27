@@ -491,6 +491,7 @@ const translation = {
       'assignedVariable': 'Assigned Variable',
       'varNotSet': 'Variable NOT Set',
       'variables': 'Variables',
+      'noVarTip': 'Click the "+" button to add variables',
       'writeMode': 'Write Mode',
       'writeModeTip': 'Append mode: Available for array variables only.',
       'over-write': 'Overwrite',

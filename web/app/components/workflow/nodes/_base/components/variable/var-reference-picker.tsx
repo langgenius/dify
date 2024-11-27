@@ -59,6 +59,9 @@ type Props = {
   isInTable?: boolean
   onRemove?: () => void
   typePlaceHolder?: string
+  placeholder?: string
+  minWidth?: number
+  popupFor?: 'assigned' | 'toAssigned'
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -81,6 +84,9 @@ const VarReferencePicker: FC<Props> = ({
   isInTable,
   onRemove,
   typePlaceHolder,
+  placeholder,
+  minWidth,
+  popupFor,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -283,7 +289,7 @@ const VarReferencePicker: FC<Props> = ({
                     />
                   </div>
                   : (!hasValue && <div className='ml-1.5 mr-1'>
-                    <Variable02 className='w-3.5 h-3.5 text-gray-400' />
+                    <Variable02 className='w-4 h-4 text-components-input-text-placeholder' />
                   </div>)}
                 {isConstant
                   ? (
@@ -337,7 +343,7 @@ const VarReferencePicker: FC<Props> = ({
                                   {!isValidVar && <RiErrorWarningFill className='ml-0.5 w-3 h-3 text-[#D92D20]' />}
                                 </>
                               )
-                              : <div className='text-[13px] font-normal text-gray-400'>{t('workflow.common.setVarValuePlaceholder')}</div>}
+                              : <div className='overflow-hidden text-components-input-text-placeholder text-ellipsis system-sm-regular'>{placeholder ?? t('workflow.common.setVarValuePlaceholder')}</div>}
                           </div>
                         </Tooltip>
                       </div>
@@ -376,12 +382,13 @@ const VarReferencePicker: FC<Props> = ({
         </WrapElem>
         <PortalToFollowElemContent style={{
           zIndex: 100,
-        }}>
+        }} className='mt-1'>
           {!isConstant && (
             <VarReferencePopup
               vars={outputVars}
+              popupFor={popupFor}
               onChange={handleVarReferenceChange}
-              itemWidth={isAddBtnTrigger ? 260 : triggerWidth}
+              itemWidth={isAddBtnTrigger ? 260 : (minWidth || triggerWidth)}
             />
           )}
         </PortalToFollowElemContent>

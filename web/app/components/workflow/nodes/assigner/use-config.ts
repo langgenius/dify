@@ -4,7 +4,9 @@ import { useStoreApi } from 'reactflow'
 import { isEqual } from 'lodash-es'
 import { VarType } from '../../types'
 import type { ValueSelector, Var } from '../../types'
-import { type AssignerNodeType, WriteMode } from './types'
+import { WriteMode } from './types'
+import type { AssignerNodeOperation, type AssignerNodeType } from './types'
+import { useGetAvailableVars } from './hooks'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   useIsChatMode,
@@ -16,6 +18,16 @@ import {
 const useConfig = (id: string, payload: AssignerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
+  const getAvailableVars = useGetAvailableVars()
+  const filterVar = (varType: VarType) => {
+    return (v: Var) => {
+      if (varType === VarType.any)
+        return true
+      if (v.type === VarType.any)
+        return true
+      return v.type === varType
+    }
+  }
 
   const store = useStoreApi()
   const { getBeforeNodesInSameBranch } = useWorkflow()
@@ -30,59 +42,41 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     return getBeforeNodesInSameBranch(id)
   }, [getBeforeNodesInSameBranch, id])
   const { inputs, setInputs } = useNodeCrud<AssignerNodeType>(id, payload)
+  const newSetInputs = useCallback((newInputs: AssignerNodeType) => {
+    const finalInputs = produce(newInputs, (draft) => {
+      if (draft.version !== '2')
+        draft.version = '2'
+    })
+    setInputs(finalInputs)
+  }, [setInputs])
 
   const { getCurrentVariableType } = useWorkflowVariables()
-  const assignedVarType = getCurrentVariableType({
-    parentNode: iterationNode,
-    valueSelector: inputs.assigned_variable_selector || [],
-    availableNodes,
-    isChatMode,
-    isConstant: false,
-  })
-
-  const isSupportAppend = useCallback((varType: VarType) => {
-    return [VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varType)
-  }, [])
-
-  const isCurrSupportAppend = useMemo(() => isSupportAppend(assignedVarType), [assignedVarType, isSupportAppend])
-
-  const handleAssignedVarChanges = useCallback((variable: ValueSelector | string) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.assigned_variable_selector = variable as ValueSelector
-      draft.input_variable_selector = []
-
-      const newVarType = getCurrentVariableType({
-        parentNode: iterationNode,
-        valueSelector: draft.assigned_variable_selector || [],
-        availableNodes,
-        isChatMode,
-        isConstant: false,
-      })
-
-      if (inputs.write_mode === WriteMode.Append && !isSupportAppend(newVarType))
-        draft.write_mode = WriteMode.Overwrite
+  const getAssignedVarType = useCallback((valueSelector: ValueSelector) => {
+    return getCurrentVariableType({
+      parentNode: iterationNode,
+      valueSelector: valueSelector || [],
+      availableNodes,
+      isChatMode,
+      isConstant: false,
     })
-    setInputs(newInputs)
-  }, [inputs, setInputs, getCurrentVariableType, iterationNode, availableNodes, isChatMode, isSupportAppend])
+  }, [getCurrentVariableType, iterationNode, availableNodes, isChatMode])
 
-  const writeModeTypes = [WriteMode.Overwrite, WriteMode.Append, WriteMode.Clear]
+  const handleOperationListChanges = useCallback((items: AssignerNodeOperation[]) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.items = [...items]
+    })
+    newSetInputs(newInputs)
+  }, [inputs, newSetInputs])
 
-  const handleWriteModeChange = useCallback((writeMode: WriteMode) => {
-    return () => {
-      const newInputs = produce(inputs, (draft) => {
-        draft.write_mode = writeMode
-        if (inputs.write_mode === WriteMode.Clear)
-          draft.input_variable_selector = []
-      })
-      setInputs(newInputs)
-    }
-  }, [inputs, setInputs])
+  const writeModeTypesArr = [WriteMode.overwrite, WriteMode.clear, WriteMode.append, WriteMode.extend]
+  const writeModeTypes = [WriteMode.overwrite, WriteMode.clear, WriteMode.set]
+  const writeModeTypesNum = [WriteMode.increment, WriteMode.decrement, WriteMode.multiply, WriteMode.divide]
 
-  const toAssignedVarType = useMemo(() => {
-    const { write_mode } = inputs
-    if (write_mode === WriteMode.Overwrite)
+  const getToAssignedVarType = useCallback((assignedVarType: VarType, write_mode: WriteMode) => {
+    if (write_mode === WriteMode.overwrite || write_mode === WriteMode.increment || write_mode === WriteMode.decrement
+      || write_mode === WriteMode.multiply || write_mode === WriteMode.divide || write_mode === WriteMode.extend)
       return assignedVarType
-    if (write_mode === WriteMode.Append) {
+    if (write_mode === WriteMode.append) {
       if (assignedVarType === VarType.arrayString)
         return VarType.string
       if (assignedVarType === VarType.arrayNumber)
@@ -91,20 +85,21 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
         return VarType.object
     }
     return VarType.string
-  }, [assignedVarType, inputs])
+  }, [])
 
   const filterAssignedVar = useCallback((varPayload: Var, selector: ValueSelector) => {
     return selector.join('.').startsWith('conversation')
   }, [])
 
-  const filterToAssignedVar = useCallback((varPayload: Var, selector: ValueSelector) => {
-    if (isEqual(selector, inputs.assigned_variable_selector))
+  const filterToAssignedVar = useCallback((varPayload: Var, selector: ValueSelector, assignedVar: ValueSelector, assignedVarType: VarType, write_mode: WriteMode) => {
+    if (isEqual(selector, assignedVar))
       return false
 
-    if (inputs.write_mode === WriteMode.Overwrite) {
+    if (write_mode === WriteMode.overwrite || write_mode === WriteMode.extend || write_mode === WriteMode.increment
+      || write_mode === WriteMode.decrement || write_mode === WriteMode.multiply || write_mode === WriteMode.divide) {
       return varPayload.type === assignedVarType
     }
-    else if (inputs.write_mode === WriteMode.Append) {
+    else if (write_mode === WriteMode.append) {
       switch (assignedVarType) {
         case VarType.arrayString:
           return varPayload.type === VarType.string
@@ -117,27 +112,21 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
       }
     }
     return true
-  }, [inputs.assigned_variable_selector, inputs.write_mode, assignedVarType])
-
-  const handleToAssignedVarChange = useCallback((value: ValueSelector | string) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.input_variable_selector = value as ValueSelector
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [])
 
   return {
     readOnly,
     inputs,
-    handleAssignedVarChanges,
-    assignedVarType,
-    isSupportAppend: isCurrSupportAppend,
+    handleOperationListChanges,
+    getAssignedVarType,
+    getToAssignedVarType,
     writeModeTypes,
-    handleWriteModeChange,
+    writeModeTypesArr,
+    writeModeTypesNum,
     filterAssignedVar,
     filterToAssignedVar,
-    handleToAssignedVarChange,
-    toAssignedVarType,
+    getAvailableVars,
+    filterVar,
   }
 }
 

@@ -490,6 +490,7 @@ const translation = {
     assigner: {
       'assignedVariable': '赋值的变量',
       'varNotSet': '未设置变量',
+      'noVarTip': '点击 "+" 按钮添加变量',
       'writeMode': '写入模式',
       'writeModeTip': '使用追加模式时，赋值的变量必须是数组类型。',
       'over-write': '覆盖',
