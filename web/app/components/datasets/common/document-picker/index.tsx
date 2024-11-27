@@ -17,6 +17,7 @@ import { useDocumentList } from '@/service/knowledge/use-document'
 import Loading from '@/app/components/base/loading'
 
 type Props = {
+  datasetId: string
   value: {
     name?: string
     extension?: string
@@ -27,6 +28,7 @@ type Props = {
 }
 
 const DocumentPicker: FC<Props> = ({
+  datasetId,
   value,
   onChange,
 }) => {
@@ -39,7 +41,7 @@ const DocumentPicker: FC<Props> = ({
   const [query, setQuery] = useState('')
 
   const { data } = useDocumentList({
-    datasetId: 'b8443630-cd2d-4fb7-aa65-21af8a858a7d',
+    datasetId,
     query: {
       keyword: query,
       page: 1,

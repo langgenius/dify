@@ -28,6 +28,7 @@ import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 export const DocumentContext = createContext<{ datasetId?: string; documentId?: string; docForm: string }>({ docForm: '' })
 
 type DocumentTitleProps = {
+  datasetId: string
   extension?: string
   name?: string
   processMode?: ProcessMode
@@ -37,11 +38,12 @@ type DocumentTitleProps = {
   wrapperCls?: string
 }
 
-export const DocumentTitle: FC<DocumentTitleProps> = ({ extension, name, processMode, parent_mode, iconCls, textCls, wrapperCls }) => {
+export const DocumentTitle: FC<DocumentTitleProps> = ({ datasetId, extension, name, processMode, parent_mode, wrapperCls }) => {
   return (
     <div className={cn('flex items-center justify-start flex-1 cursor-pointer', wrapperCls)}>
       {/* // todo: handle file change */}
       <DocumentPicker
+        datasetId={datasetId}
         value={{
           name,
           extension,
@@ -145,6 +147,7 @@ const DocumentDetail: FC<Props> = ({ datasetId, documentId }) => {
             <RiArrowLeftLine className='text-components-button-ghost-text hover:text-text-tertiary w-4 h-4' />
           </div>
           <DocumentTitle
+            datasetId={datasetId}
             extension={documentDetail?.data_source_info?.upload_file?.extension}
             name={documentDetail?.name}
             wrapperCls='mr-2'
