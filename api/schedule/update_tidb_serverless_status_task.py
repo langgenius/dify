@@ -12,21 +12,18 @@ from models.dataset import TidbAuthBinding
 def update_tidb_serverless_status_task():
     click.echo(click.style("Update tidb serverless status task.", fg="green"))
     start_at = time.perf_counter()
-    while True:
-        try:
-            # check the number of idle tidb serverless
-            tidb_serverless_list = TidbAuthBinding.query.filter(
-                TidbAuthBinding.active == False, TidbAuthBinding.status == "CREATING"
-            ).all()
-            if len(tidb_serverless_list) == 0:
-                break
-            # update tidb serverless status
-            iterations_per_thread = 20
-            update_clusters(tidb_serverless_list)
+    try:
+        # check the number of idle tidb serverless
+        tidb_serverless_list = TidbAuthBinding.query.filter(
+            TidbAuthBinding.active == False, TidbAuthBinding.status == "CREATING"
+        ).all()
+        if len(tidb_serverless_list) == 0:
+            return
+        # update tidb serverless status
+        update_clusters(tidb_serverless_list)
 
-        except Exception as e:
-            click.echo(click.style(f"Error: {e}", fg="red"))
-            break
+    except Exception as e:
+        click.echo(click.style(f"Error: {e}", fg="red"))
 
     end_at = time.perf_counter()
     click.echo(
