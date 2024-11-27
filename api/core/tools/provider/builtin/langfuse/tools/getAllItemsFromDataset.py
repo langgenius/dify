@@ -11,7 +11,6 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 class FetchPromptTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage:
-
         paramRequest = {}
 
         hostUrl = tool_parameters.get("hostUrl")
@@ -31,21 +30,21 @@ class FetchPromptTool(BuiltinTool):
             raise ToolProviderCredentialValidationError("One or more parameters are missing or empty.")
 
         if sourceObservationId != "":
-            paramRequest['sourceObservationId'] = sourceObservationId
+            paramRequest["sourceObservationId"] = sourceObservationId
         if sourceTraceId != "":
-            paramRequest['sourceTraceId'] = sourceTraceId
+            paramRequest["sourceTraceId"] = sourceTraceId
         if datasetName != "":
-            paramRequest['datasetName'] = datasetName
-        
+            paramRequest["datasetName"] = datasetName
+
         requestUrl = hostUrl + "/api/public/dataset-items"
 
         if itemID != "":
             requestUrl = f"{requestUrl}/{itemID}"
         else:
             if page > 0:
-                paramRequest['page'] = page
+                paramRequest["page"] = page
             if limit > 0:
-                paramRequest['limit'] = limit
+                paramRequest["limit"] = limit
 
         full_url = f"{requestUrl}?{urlencode(paramRequest)}"
         print(full_url)

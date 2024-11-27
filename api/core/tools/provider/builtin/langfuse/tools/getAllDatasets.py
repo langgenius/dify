@@ -10,7 +10,6 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 class FetchPromptTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage:
-
         params = {}
 
         hostUrl = tool_parameters.get("hostUrl")
@@ -26,9 +25,9 @@ class FetchPromptTool(BuiltinTool):
             raise ToolProviderCredentialValidationError("One or more parameters are missing or empty.")
 
         if page is not None:
-            params['page'] = page
+            params["page"] = page
         if limit is not None:
-            params['limit'] = limit
+            params["limit"] = limit
         requestUrl = hostUrl + "/api/public/v2/datasets"
 
         response = requests.get(requestUrl, params=params, auth=HTTPBasicAuth(publicKey, secretKey))

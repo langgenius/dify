@@ -10,7 +10,6 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 class FetchPromptTool(BuiltinTool):
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage:
-
         params = {}
 
         hostUrl = tool_parameters.get("hostUrl")
@@ -20,14 +19,14 @@ class FetchPromptTool(BuiltinTool):
         version = tool_parameters.get("version")
 
         if all([hostUrl, publicKey, secretKey, name]):
-            params['version'] = version
+            params["version"] = version
 
         else:
             print("One or more parameters are missing or empty.")
             raise ToolProviderCredentialValidationError("One or more parameters are missing or empty.")
 
         if version == "":
-            params['label'] = "latest"
+            params["label"] = "latest"
 
         requestUrl = hostUrl + "/api/public/v2/prompts/" + name
 
