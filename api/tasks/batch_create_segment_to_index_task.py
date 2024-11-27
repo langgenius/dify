@@ -80,9 +80,9 @@ def batch_create_segment_to_index_task(
                 word_count=len(content),
                 tokens=tokens,
                 created_by=user_id,
-                indexing_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                indexing_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
                 status="completed",
-                completed_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
+                completed_at=datetime.datetime.now(datetime.UTC).replace(tzinfo=None),
             )
             if dataset_document.doc_form == "qa_model":
                 segment_document.answer = segment["answer"]

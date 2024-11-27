@@ -207,6 +207,13 @@ Triển khai Dify lên nền tảng đám mây với một cú nhấp chuột b�
 ##### Google Cloud
 - [Google Cloud Terraform bởi @sotazum](https://github.com/DeNA/dify-google-cloud-terraform)
 
+#### Sử dụng AWS CDK để Triển khai
+
+Triển khai Dify trên AWS bằng [CDK](https://aws.amazon.com/cdk/)
+
+##### AWS 
+- [AWS CDK bởi @KevinZhao](https://github.com/aws-samples/solution-for-deploying-dify-on-aws)
+
 ## Đóng góp
 
 Đối với những người muốn đóng góp mã, xem [Hướng dẫn Đóng góp](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md) của chúng tôi. 

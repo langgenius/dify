@@ -99,6 +99,8 @@ const translation = {
     featuresDocLink: 'Află mai multe',
     fileUploadTip: 'Funcțiile de încărcare a imaginilor au fost actualizate la încărcarea fișierelor.',
     ImageUploadLegacyTip: 'Acum puteți crea variabile de tip de fișier în formularul de pornire. Nu vom mai accepta funcția de încărcare a imaginilor în viitor.',
+    importWarning: 'Prudență',
+    importWarningDetails: 'Diferența de versiune DSL poate afecta anumite caracteristici',
   },
   env: {
     envPanelTitle: 'Variabile de Mediu',
@@ -408,6 +410,10 @@ const translation = {
       type: 'Tip',
       binaryFileVariable: 'Variabilă de fișier binar',
       extractListPlaceholder: 'Introduceți indexul elementelor din listă, tastați "/" inserați variabila',
+      curl: {
+        placeholder: 'Lipiți șirul cURL aici',
+        title: 'Importați din cURL',
+      },
     },
     code: {
       inputVars: 'Variabile de intrare',

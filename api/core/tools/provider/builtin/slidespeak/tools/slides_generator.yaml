@@ -1,0 +1,102 @@
+identity:
+  name: slide_generator
+  author: Kalo Chin
+  label:
+    en_US: Slides Generator
+    zh_Hans: 幻灯片生成器
+description:
+  human:
+    en_US: Generate presentation slides from text using SlideSpeak API.
+    zh_Hans: 使用 SlideSpeak API 从文本生成演示幻灯片。
+  llm: This tool converts text input into a presentation using the SlideSpeak API service, with options for slide length and theme.
+parameters:
+  - name: plain_text
+    type: string
+    required: true
+    label:
+      en_US: Topic or Content
+      zh_Hans: 主题或内容
+    human_description:
+      en_US: The topic or content to be converted into presentation slides.
+      zh_Hans: 需要转换为幻灯片的内容或主题。
+    llm_description: A string containing the topic or content to be transformed into presentation slides.
+    form: llm
+  - name: length
+    type: number
+    required: false
+    label:
+      en_US: Number of Slides
+      zh_Hans: 幻灯片数量
+    human_description:
+      en_US: The desired number of slides in the presentation (optional).
+      zh_Hans: 演示文稿中所需的幻灯片数量（可选）。
+    llm_description: Optional parameter specifying the number of slides to generate.
+    form: form
+  - name: theme
+    type: select
+    required: false
+    label:
+      en_US: Presentation Theme
+      zh_Hans: 演示主题
+    human_description:
+      en_US: The visual theme for the presentation (optional).
+      zh_Hans: 演示文稿的视觉主题（可选）。
+    llm_description: Optional parameter specifying the presentation theme.
+    options:
+      - label:
+          en_US: Adam
+          zh_Hans: Adam
+        value: adam
+      - label:
+          en_US: Aurora
+          zh_Hans: Aurora
+        value: aurora
+      - label:
+          en_US: Bruno
+          zh_Hans: Bruno
+        value: bruno
+      - label:
+          en_US: Clyde
+          zh_Hans: Clyde
+        value: clyde
+      - label:
+          en_US: Daniel
+          zh_Hans: Daniel
+        value: daniel
+      - label:
+          en_US: Default
+          zh_Hans: Default
+        value: default
+      - label:
+          en_US: Eddy
+          zh_Hans: Eddy
+        value: eddy
+      - label:
+          en_US: Felix
+          zh_Hans: Felix
+        value: felix
+      - label:
+          en_US: Gradient
+          zh_Hans: Gradient
+        value: gradient
+      - label:
+          en_US: Iris
+          zh_Hans: Iris
+        value: iris
+      - label:
+          en_US: Lavender
+          zh_Hans: Lavender
+        value: lavender
+      - label:
+          en_US: Monolith
+          zh_Hans: Monolith
+        value: monolith
+      - label:
+          en_US: Nebula
+          zh_Hans: Nebula
+        value: nebula
+      - label:
+          en_US: Nexus
+          zh_Hans: Nexus
+        value: nexus
+    form: form

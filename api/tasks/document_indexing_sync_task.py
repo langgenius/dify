@@ -67,7 +67,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
         # check the page is updated
         if last_edited_time != page_edited_time:
             document.indexing_status = "parsing"
-            document.processing_started_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+            document.processing_started_at = datetime.datetime.now(datetime.UTC).replace(tzinfo=None)
             db.session.commit()
 
             # delete all document segment and index

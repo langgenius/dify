@@ -1,5 +1,5 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class KeyWordType(str, Enum):
+class KeyWordType(StrEnum):
     JIEBA = "jieba"

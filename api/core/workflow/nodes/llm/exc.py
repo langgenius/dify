@@ -24,3 +24,17 @@ class LLMModeRequiredError(LLMNodeError):
 
 class NoPromptFoundError(LLMNodeError):
     """Raised when no prompt is found in the LLM configuration."""
+
+
+class TemplateTypeNotSupportError(LLMNodeError):
+    def __init__(self, *, type_name: str):
+        super().__init__(f"Prompt type {type_name} is not supported.")
+
+
+class MemoryRolePrefixRequiredError(LLMNodeError):
+    """Raised when memory role prefix is required for completion model."""
+
+
+class FileTypeNotSupportError(LLMNodeError):
+    def __init__(self, *, type_name: str):
+        super().__init__(f"{type_name} type is not supported by this model")
