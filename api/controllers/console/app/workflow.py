@@ -101,11 +101,11 @@ class DraftWorkflowApi(Resource):
         try:
             environment_variables_list = args.get("environment_variables") or []
             environment_variables = [
-                variable_factory.build_variable_from_mapping(obj) for obj in environment_variables_list
+                variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
             ]
             conversation_variables_list = args.get("conversation_variables") or []
             conversation_variables = [
-                variable_factory.build_variable_from_mapping(obj) for obj in conversation_variables_list
+                variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
             workflow = workflow_service.sync_draft_workflow(
                 app_model=app_model,

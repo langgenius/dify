@@ -252,11 +252,11 @@ class AppDslService:
         # init draft workflow
         environment_variables_list = workflow_data.get("environment_variables") or []
         environment_variables = [
-            variable_factory.build_variable_from_mapping(obj) for obj in environment_variables_list
+            variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
         ]
         conversation_variables_list = workflow_data.get("conversation_variables") or []
         conversation_variables = [
-            variable_factory.build_variable_from_mapping(obj) for obj in conversation_variables_list
+            variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
         ]
         workflow_service = WorkflowService()
         draft_workflow = workflow_service.sync_draft_workflow(
@@ -299,11 +299,11 @@ class AppDslService:
         # sync draft workflow
         environment_variables_list = workflow_data.get("environment_variables") or []
         environment_variables = [
-            variable_factory.build_variable_from_mapping(obj) for obj in environment_variables_list
+            variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
         ]
         conversation_variables_list = workflow_data.get("conversation_variables") or []
         conversation_variables = [
-            variable_factory.build_variable_from_mapping(obj) for obj in conversation_variables_list
+            variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
         ]
         draft_workflow = workflow_service.sync_draft_workflow(
             app_model=app_model,
