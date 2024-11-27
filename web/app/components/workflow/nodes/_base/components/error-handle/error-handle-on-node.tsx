@@ -1,6 +1,8 @@
 import { NodeSourceHandle } from '../node-handle'
 import { ErrorHandleTypeEnum } from './types'
 import type { Node } from '@/app/components/workflow/types'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
+import cn from '@/utils/classnames'
 
 type ErrorHandleOnNodeProps = Pick<Node, 'id' | 'data'>
 const ErrorHandleOnNode = ({
@@ -14,9 +16,15 @@ const ErrorHandleOnNode = ({
 
   return (
     <div className='relative pt-1 pb-2 px-3'>
-      <div className='relative flex items-center justify-between px-[5px] h-6 bg-workflow-block-parma-bg rounded-md'>
+      <div className={cn(
+        'relative flex items-center justify-between px-[5px] h-6 bg-workflow-block-parma-bg rounded-md',
+        data._runningStatus === NodeRunningStatus.Exception && 'border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover',
+      )}>
         <div className='system-xs-medium-uppercase text-text-tertiary'>on failure</div>
-        <div className='system-xs-medium text-text-secondary'>
+        <div className={cn(
+          'system-xs-medium text-text-secondary',
+          data._runningStatus === NodeRunningStatus.Exception && 'text-text-warning',
+        )}>
           {
             error_strategy === ErrorHandleTypeEnum.defaultValue && (
               'Output Default Value'

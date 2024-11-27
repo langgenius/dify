@@ -119,6 +119,12 @@ const CustomEdge = ({
             id={linearGradientId}
             startColor={getEdgeColor(_sourceRunningStatus)}
             stopColor={getEdgeColor(_targetRunningStatus)}
+            position={{
+              x1: sourceX,
+              y1: sourceY,
+              x2: targetX,
+              y2: targetY,
+            }}
           />
         )
       }

@@ -2,20 +2,34 @@ type CustomEdgeLinearGradientRenderProps = {
   id: string
   startColor: string
   stopColor: string
+  position: {
+    x1: number
+    x2: number
+    y1: number
+    y2: number
+  }
 }
 const CustomEdgeLinearGradientRender = ({
   id,
   startColor,
   stopColor,
+  position,
 }: CustomEdgeLinearGradientRenderProps) => {
+  const {
+    x1,
+    x2,
+    y1,
+    y2,
+  } = position
   return (
     <defs>
       <linearGradient
         id={id}
-        x1='0%'
-        y1='0%'
-        x2='100%'
-        y2='0%'
+        gradientUnits='userSpaceOnUse'
+        x1={x1}
+        y1={y1}
+        x2={x2}
+        y2={y2}
       >
         <stop
           offset='0%'
@@ -25,7 +39,7 @@ const CustomEdgeLinearGradientRender = ({
           }}
         />
         <stop
-          offset='1'
+          offset='100%'
           style={{
             stopColor,
             stopOpacity: 1,

@@ -128,6 +128,9 @@ const NodePanel: FC<Props> = ({
           {nodeInfo.status === 'stopped' && (
             <RiAlertFill className={cn('shrink-0 ml-2 w-4 h-4 text-text-warning-secondary', inMessage && 'w-3.5 h-3.5')} />
           )}
+          {nodeInfo.status === 'exception' && (
+            <RiAlertFill className={cn('shrink-0 ml-2 w-4 h-4 text-text-warning-secondary', inMessage && 'w-3.5 h-3.5')} />
+          )}
           {nodeInfo.status === 'running' && (
             <div className='shrink-0 flex items-center text-text-accent text-[13px] leading-[16px] font-medium'>
               <span className='mr-2 text-xs font-normal'>Running</span>
@@ -166,9 +169,14 @@ const NodePanel: FC<Props> = ({
               </div>
             )}
             <div className={cn('px-[10px]', hideInfo && '!px-2 !py-0.5')}>
-              {nodeInfo.status === 'stopped' && (
+              {(nodeInfo.status === 'stopped') && (
                 <StatusContainer status='stopped'>
                   {t('workflow.tracing.stopBy', { user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
+                </StatusContainer>
+              )}
+              {(nodeInfo.status === 'exception') && (
+                <StatusContainer status='stopped'>
+                  {nodeInfo.error}
                 </StatusContainer>
               )}
               {nodeInfo.status === 'failed' && (

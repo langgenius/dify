@@ -33,6 +33,7 @@ type NodeHandleProps = {
   handleId: string
   handleClassName?: string
   nodeSelectorClassName?: string
+  showExceptionStatus?: boolean
 } & Pick<Node, 'id' | 'data'>
 
 export const NodeTargetHandle = memo(({
@@ -121,6 +122,7 @@ export const NodeSourceHandle = memo(({
   handleId,
   handleClassName,
   nodeSelectorClassName,
+  showExceptionStatus,
 }: NodeHandleProps) => {
   const { t } = useTranslation()
   const notInitialWorkflow = useStore(s => s.notInitialWorkflow)
@@ -170,7 +172,7 @@ export const NodeSourceHandle = memo(({
         'hover:scale-125 transition-all',
         data._runningStatus === NodeRunningStatus.Succeeded && 'after:bg-workflow-link-line-success-handle',
         data._runningStatus === NodeRunningStatus.Failed && 'after:bg-workflow-link-line-error-handle',
-        data._runningStatus === NodeRunningStatus.Exception && 'after:bg-workflow-link-line-failure-handle',
+        showExceptionStatus && data._runningStatus === NodeRunningStatus.Exception && 'after:bg-workflow-link-line-failure-handle',
         !connected && 'after:opacity-0',
         handleClassName,
       )}
