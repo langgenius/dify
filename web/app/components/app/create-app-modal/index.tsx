@@ -8,6 +8,7 @@ import { useContext, useContextSelector } from 'use-context-selector'
 import { RiArrowRightLine, RiCommandLine, RiCornerDownLeftLine, RiExchange2Fill } from '@remixicon/react'
 import Link from 'next/link'
 import { useDebounceFn, useKeyPress } from 'ahooks'
+import Image from 'next/image'
 import AppIconPicker from '../../base/app-icon-picker'
 import type { AppIconSelection } from '../../base/app-icon-picker'
 import Button from '@/app/components/base/button'
@@ -244,7 +245,7 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
           <div className='h-6 xl:h-[139px]' />
           <AppPreview mode={appMode} />
           <div className='absolute left-0 right-0 border-b border-b-divider-subtle'></div>
-          <div className='min-w-[600px] min-h-[400px]' style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 4px, rgba(16,24,40,0.04) 5px,transparent 4px, transparent 8px)' }}>
+          <div className='w-[664px] h-[448px] flex items-center justify-center' style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 4px, rgba(16,24,40,0.04) 5px,transparent 4px, transparent 8px)' }}>
             <AppScreenShot mode={appMode} />
           </div>
           <div className='absolute left-0 right-0 border-b border-b-divider-subtle'></div>
@@ -357,12 +358,13 @@ function AppScreenShot({ mode }: { mode: AppMode }) {
     'completion': 'TextGenerator',
     'workflow': 'Workflow',
   }
-  return <>
-    <img className='dark:hidden' width="100%"
+  return <picture>
+    <source media="(max-width: 768px)" srcSet={`/screenshots/Light/${modeToImageMap[mode]}.png`} />
+    <source media="(max-width: 1200px)" srcSet={`/screenshots/Light/${modeToImageMap[mode]}@2x.png`} />
+    <source media="(max-width: 1920px)" srcSet={`/screenshots/Light/${modeToImageMap[mode]}@3x.png`} />
+    <Image
       src={`/screenshots/Light/${modeToImageMap[mode]}.png`}
-      srcSet={`/screenshots/Light/${modeToImageMap[mode]}@2x.png 2x,/screenshots/Light/${modeToImageMap[mode]}@3x.png 3x`} alt='screen shot' />
-    <img className='hidden dark:inline-block' width="100%"
-      src={`/screenshots/Dark/${modeToImageMap[mode]}.png`}
-      srcSet={`/screenshots/Dark/${modeToImageMap[mode]}@2x.png 2x,/screenshots/Dark/${modeToImageMap[mode]}@3x.png 3x`} alt='screen shot' />
-  </>
+      alt='App Screen Shot'
+      width={664} height={448} />
+  </picture>
 }
