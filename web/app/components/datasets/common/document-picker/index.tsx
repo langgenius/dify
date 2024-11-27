@@ -3,13 +3,13 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useBoolean } from 'ahooks'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
+import FileIcon from '../document-file-icon'
 import type { ParentMode, ProcessMode, SimpleDocumentDetail } from '@/models/datasets'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import s from '@/app/components/datasets/documents/style.module.css'
 import cn from '@/utils/classnames'
 import SearchInput from '@/app/components/base/search-input'
 import { GeneralType, ParentChildType } from '@/app/components/base/icons/src/public/knowledge'
@@ -49,7 +49,6 @@ const DocumentPicker: FC<Props> = ({
     },
   })
   const documentsList = data?.data
-  const localExtension = extension?.toLowerCase() || name?.split('.')?.pop()?.toLowerCase()
   const isParentChild = processMode === 'hierarchical'
   const TypeIcon = isParentChild ? ParentChildType : GeneralType
 
@@ -67,7 +66,7 @@ const DocumentPicker: FC<Props> = ({
     >
       <PortalToFollowElemTrigger onClick={togglePopup}>
         <div className={cn('flex items-center ml-1 px-2 py-0.5 rounded-lg hover:bg-state-base-hover select-none', open && 'bg-state-base-hover')}>
-          <div className={cn(s[`${localExtension || 'txt'}Icon`], 'w-6 h-6 bg-no-repeat bg-center')}></div>
+          <FileIcon name={name} extension={extension} size='lg' />
           <div className='flex flex-col items-start ml-1 mr-0.5'>
             <div className='flex items-center space-x-0.5'>
               <span className={cn('system-md-semibold')}> {name || '--'}</span>
@@ -101,7 +100,7 @@ const DocumentPicker: FC<Props> = ({
                       }
                     }
                   >
-                    <div className={cn(s[`${item.data_source_detail_dict?.upload_file.extension || 'txt'}Icon`], 'shrink-0 w-4 h-4')}></div>
+                    <FileIcon name={item.name} extension={item.data_source_detail_dict?.upload_file.extension} size='sm' />
                     <div className='truncate text-text-secondary text-sm'>{item.name}</div>
                   </div>
                 ))}
