@@ -189,14 +189,12 @@ FAIL_BRANCH_EDGES = [
         "source": "node",
         "target": "success",
         "sourceHandle": "source",
-        "errorHandle": "false",
     },
     {
         "id": "node-false-error-target",
         "source": "node",
         "target": "error",
-        "sourceHandle": "source",
-        "errorHandle": "true",
+        "sourceHandle": "fail-branch",
     },
 ]
 
@@ -285,7 +283,6 @@ def test_code_success_branch_continue_on_error():
 
     graph_engine = ContinueOnErrorTestHelper.create_test_graph_engine(graph_config)
     events = list(graph_engine.run())
-
     assert any(
         isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "node node run successfully"} for e in events
     )

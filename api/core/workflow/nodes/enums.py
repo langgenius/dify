@@ -29,4 +29,9 @@ class ErrorStrategy(str, Enum):
     DEFAULT_VALUE = "default-value"
 
 
+class FailBranchSourceHandle(str, Enum):
+    FAILED = "fail-branch"
+    SUCCESS = "success-branch"
+
+
 CONTINUE_ON_ERROR_NODE_TYPE = [NodeType.LLM, NodeType.CODE, NodeType.TOOL, NodeType.HTTP_REQUEST]

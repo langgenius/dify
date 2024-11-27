@@ -71,6 +71,9 @@ class Graph(BaseModel):
         edge_mapping: dict[str, list[GraphEdge]] = {}
         reverse_edge_mapping: dict[str, list[GraphEdge]] = {}
         target_edge_ids = set()
+        fail_branch_source_node_id = [
+            edge["source"] for edge in edge_configs if edge.get("sourceHandle") == "fail-branch"
+        ]
         for edge_config in edge_configs:
             source_node_id = edge_config.get("source")
             if not source_node_id:
@@ -90,10 +93,17 @@ class Graph(BaseModel):
 
             # parse run condition
             run_condition = None
-            if edge_config.get("sourceHandle") and edge_config.get("sourceHandle") != "source":
-                run_condition = RunCondition(type="branch_identify", branch_identify=edge_config.get("sourceHandle"))
-            if edge_config.get("errorHandle"):
-                run_condition = RunCondition(type="branch_identify", branch_identify=edge_config.get("errorHandle"))
+            if edge_config.get("sourceHandle"):
+                if (
+                    edge_config.get("source") in fail_branch_source_node_id
+                    and edge_config.get("sourceHandle") != "fail-branch"
+                ):
+                    run_condition = RunCondition(type="branch_identify", branch_identify="success-branch")
+                elif edge_config.get("sourceHandle") != "source":
+                    run_condition = RunCondition(
+                        type="branch_identify", branch_identify=edge_config.get("sourceHandle")
+                    )
+
             graph_edge = GraphEdge(
                 source_node_id=source_node_id, target_node_id=target_node_id, run_condition=run_condition
             )
