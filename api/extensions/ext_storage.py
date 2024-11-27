@@ -122,5 +122,8 @@ class Storage:
 storage = Storage()
 
 
-def init_app(app: Flask):
+from dify_app import DifyApp
+
+
+def init_app(app: DifyApp):
     storage.init_app(app)
