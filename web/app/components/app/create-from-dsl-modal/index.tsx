@@ -26,6 +26,7 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import cn from '@/utils/classnames'
 import { useStore as usePluginDependencyStore } from '@/app/components/workflow/plugin-dependency/store'
+import PluginDependency from '@/app/components/workflow/plugin-dependency'
 
 type CreateFromDSLModalProps = {
   show: boolean
@@ -102,10 +103,10 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
       if (!response)
         return
 
-      const { id, status, app_id, imported_dsl_version, current_dsl_version, leaked } = response
-      if (leaked?.length) {
+      const { id, status, app_id, imported_dsl_version, current_dsl_version, leaked_dependencies } = response
+      if (leaked_dependencies?.length) {
         const { setDependencies } = usePluginDependencyStore.getState()
-        setDependencies(leaked)
+        setDependencies(leaked_dependencies)
       }
       if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
         if (onSuccess)
@@ -281,6 +282,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
             <div>{t('app.newApp.appCreateDSLErrorPart4')}<span className='system-md-medium'>{versions?.systemVersion}</span></div>
           </div>
         </div>
+        <PluginDependency />
         <div className='flex pt-6 justify-end items-start gap-2 self-stretch'>
           <Button variant='secondary' onClick={() => setShowErrorModal(false)}>{t('app.newApp.Cancel')}</Button>
           <Button variant='primary' destructive onClick={onDSLConfirm}>{t('app.newApp.Confirm')}</Button>

@@ -38,6 +38,8 @@ import { ToastContext } from '@/app/components/base/toast'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import { useStore as usePluginDependencyStore } from '@/app/components/workflow/plugin-dependency/store'
+import PluginDependency from '@/app/components/workflow/plugin-dependency'
 
 type UpdateDSLModalProps = {
   onCancel: () => void
@@ -135,7 +137,11 @@ const UpdateDSLModal = ({
       if (appDetail && fileContent) {
         setLoading(true)
         const response = await importDSL({ mode: DSLImportMode.YAML_CONTENT, yaml_content: fileContent, app_id: appDetail.id })
-        const { id, status, app_id, imported_dsl_version, current_dsl_version } = response
+        const { id, status, app_id, imported_dsl_version, current_dsl_version, leaked_dependencies } = response
+        if (leaked_dependencies?.length) {
+          const { setDependencies } = usePluginDependencyStore.getState()
+          setDependencies(leaked_dependencies)
+        }
         if (status === DSLImportStatus.COMPLETED || status === DSLImportStatus.COMPLETED_WITH_WARNINGS) {
           if (!app_id) {
             notify({ type: 'error', message: t('workflow.common.importFailure') })
@@ -283,6 +289,7 @@ const UpdateDSLModal = ({
             <div>{t('app.newApp.appCreateDSLErrorPart4')}<span className='system-md-medium'>{versions?.systemVersion}</span></div>
           </div>
         </div>
+        <PluginDependency />
         <div className='flex pt-6 justify-end items-start gap-2 self-stretch'>
           <Button variant='secondary' onClick={() => setShowErrorModal(false)}>{t('app.newApp.Cancel')}</Button>
           <Button variant='primary' destructive onClick={onUpdateDSLConfirm}>{t('app.newApp.Confirm')}</Button>

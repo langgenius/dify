@@ -24,7 +24,6 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { useStore as usePluginDependencyStore } from '@/app/components/workflow/plugin-dependency/store'
 import { useInvalidateAllBuiltInTools } from './use-tools'
 
 const NAME_SPACE = 'plugins'
@@ -322,36 +321,6 @@ export const useMutationClearAllTaskPlugin = () => {
       return post<{ success: boolean }>('/workspaces/current/plugin/tasks/delete_all')
     },
   })
-}
-
-export const useMutationCheckDependenciesBeforeImportDSL = () => {
-  const mutation = useMutation({
-    mutationFn: ({ dslString, url }: { dslString?: string, url?: string }) => {
-      if (url) {
-        return post<{ leaked: Dependency[] }>(
-          '/apps/import/url/dependencies/check',
-          {
-            body: {
-              url,
-            },
-          },
-        )
-      }
-      return post<{ leaked: Dependency[] }>(
-        '/apps/import/dependencies/check',
-        {
-          body: {
-            data: dslString,
-          },
-        })
-    },
-    onSuccess: (data) => {
-      const { setDependencies } = usePluginDependencyStore.getState()
-      setDependencies(data.leaked || [])
-    },
-  })
-
-  return mutation
 }
 
 export const useDownloadPlugin = (info: { organization: string; pluginName: string; version: string }, needDownload: boolean) => {
