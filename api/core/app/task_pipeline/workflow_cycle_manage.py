@@ -292,9 +292,9 @@ class WorkflowCycleManage:
         db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
             {
                 WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.SUCCEEDED.value,
-                WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
-                WorkflowNodeExecution.process_data: json.dumps(process_data) if event.process_data else None,
-                WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
+                WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else "{}",
+                WorkflowNodeExecution.process_data: json.dumps(process_data) if event.process_data else "{}",
+                WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else "{}",
                 WorkflowNodeExecution.execution_metadata: execution_metadata,
                 WorkflowNodeExecution.finished_at: finished_at,
                 WorkflowNodeExecution.elapsed_time: elapsed_time,
@@ -306,9 +306,9 @@ class WorkflowCycleManage:
         process_data = WorkflowEntry.handle_special_values(event.process_data)
 
         workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
-        workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
-        workflow_node_execution.process_data = json.dumps(process_data) if process_data else None
-        workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
+        workflow_node_execution.inputs = json.dumps(inputs) if inputs else "{}"
+        workflow_node_execution.process_data = json.dumps(process_data) if process_data else "{}"
+        workflow_node_execution.outputs = json.dumps(outputs) if outputs else "{}"
         workflow_node_execution.execution_metadata = execution_metadata
         workflow_node_execution.finished_at = finished_at
         workflow_node_execution.elapsed_time = elapsed_time

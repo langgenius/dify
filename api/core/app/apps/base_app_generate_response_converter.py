@@ -22,7 +22,7 @@ class AppGenerateResponseConverter(ABC):
             else:
 
                 def _generate_full_response() -> Generator[dict | str, Any, None]:
-                    yield from cls.convert_stream_simple_response(response)
+                    yield from cls.convert_stream_full_response(response)
 
                 return _generate_full_response()
         else:
