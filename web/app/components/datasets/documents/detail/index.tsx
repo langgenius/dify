@@ -48,7 +48,7 @@ export const DocumentTitle: FC<DocumentTitleProps> = ({ extension, name, process
           processMode,
           parentMode: parent_mode,
         }}
-        onChange={() => { }}
+        onChange={(doc) => { console.log(doc) }}
       />
     </div>
   )

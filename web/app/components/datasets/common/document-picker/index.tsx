@@ -13,6 +13,8 @@ import s from '@/app/components/datasets/documents/style.module.css'
 import cn from '@/utils/classnames'
 import SearchInput from '@/app/components/base/search-input'
 import { GeneralType, ParentChildType } from '@/app/components/base/icons/src/public/knowledge'
+import { useDocumentList } from '@/service/knowledge/use-document'
+import Loading from '@/app/components/base/loading'
 
 type Props = {
   value: {
@@ -34,6 +36,17 @@ const DocumentPicker: FC<Props> = ({
     processMode,
     parentMode,
   } = value
+  const [query, setQuery] = useState('')
+
+  const { data } = useDocumentList({
+    datasetId: 'b8443630-cd2d-4fb7-aa65-21af8a858a7d',
+    query: {
+      keyword: query,
+      page: 1,
+      limit: 20,
+    },
+  })
+  const documentsList = data?.data
   const localExtension = extension?.toLowerCase() || name?.split('.')?.pop()?.toLowerCase()
   const isParentChild = processMode === 'hierarchical'
   const TypeIcon = isParentChild ? ParentChildType : GeneralType
@@ -43,8 +56,6 @@ const DocumentPicker: FC<Props> = ({
     toggle: togglePopup,
   }] = useBoolean(false)
   const ArrowIcon = open ? RiArrowDownSLine : RiArrowUpSLine
-
-  const [query, setQuery] = useState('')
 
   return (
     <PortalToFollowElem
@@ -71,17 +82,34 @@ const DocumentPicker: FC<Props> = ({
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
+
         <div className='w-[360px] p-1 pt-2 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]'>
           <SearchInput value={query} onChange={setQuery} className='mx-1' />
-          <div className='mt-2'>
-            {['EOS R3 Tech Sheet.pdf', 'Steve Jobs The Man Who Thought DifferentSteve Jobs The Man Who Thought DifferentSteve Jobs The Man Who Thought Different'].map(item => (
-              <div className='flex items-center h-8 px-2 hover:bg-state-base-hover rounded-lg space-x-2 cursor-pointer' key={item}>
-                <div className={cn(s[`${localExtension || 'txt'}Icon`], 'shrink-0 w-4 h-4')}></div>
-                <div className='truncate text-text-secondary text-sm'>{item}</div>
+          {documentsList
+            ? (
+              <div className='mt-2'>
+                {documentsList.map(item => (
+                  <div
+                    key={item.id}
+                    className='flex items-center h-8 px-2 hover:bg-state-base-hover rounded-lg space-x-2 cursor-pointer'
+                    onClick={
+                      () => {
+                        onChange(item)
+                        setOpen(false)
+                      }
+                    }
+                  >
+                    <div className={cn(s[`${item.data_source_detail_dict?.upload_file.extension || 'txt'}Icon`], 'shrink-0 w-4 h-4')}></div>
+                    <div className='truncate text-text-secondary text-sm'>{item.name}</div>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            )
+            : (<div className='mt-2 flex items-center justify-center w-[360px] h-[100px]'>
+              <Loading />
+            </div>)}
         </div>
+
       </PortalToFollowElemContent>
     </PortalToFollowElem>
   )
