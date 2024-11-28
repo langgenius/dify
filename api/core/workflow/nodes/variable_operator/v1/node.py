@@ -1,14 +1,10 @@
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from core.variables import SegmentType, Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode, BaseNodeData
 from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.variable_operator.common import helpers as common_helpers
 from core.workflow.nodes.variable_operator.common.exc import VariableOperatorNodeError
-from extensions.ext_database import db
 from factories import variable_factory
-from models import ConversationVariable
 from models.workflow import WorkflowNodeExecutionStatus
 
 from .node_data import VariableOperatorData, WriteMode
@@ -53,7 +49,7 @@ class VariableOperatorNode(BaseNode[VariableOperatorData]):
         conversation_id = self.graph_runtime_state.variable_pool.get(["sys", "conversation_id"])
         if not conversation_id:
             raise VariableOperatorNodeError("conversation_id not found")
-        update_conversation_variable(conversation_id=conversation_id.text, variable=updated_variable)
+        common_helpers.update_conversation_variable(conversation_id=conversation_id.text, variable=updated_variable)
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -61,18 +57,6 @@ class VariableOperatorNode(BaseNode[VariableOperatorData]):
                 "value": income_value.to_object(),
             },
         )
-
-
-def update_conversation_variable(conversation_id: str, variable: Variable):
-    stmt = select(ConversationVariable).where(
-        ConversationVariable.id == variable.id, ConversationVariable.conversation_id == conversation_id
-    )
-    with Session(db.engine) as session:
-        row = session.scalar(stmt)
-        if not row:
-            raise VariableOperatorNodeError("conversation variable not found in the database")
-        row.data = variable.model_dump_json()
-        session.commit()
 
 
 def get_zero_value(t: SegmentType):
