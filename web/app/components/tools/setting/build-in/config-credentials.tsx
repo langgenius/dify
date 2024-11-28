@@ -20,6 +20,7 @@ type Props = {
   onSaved: (value: Record<string, any>) => void
   isHideRemoveBtn?: boolean
   onRemove?: () => void
+  isSaving?: boolean
 }
 
 const ConfigCredential: FC<Props> = ({
@@ -28,6 +29,7 @@ const ConfigCredential: FC<Props> = ({
   onSaved,
   isHideRemoveBtn,
   onRemove = () => { },
+  isSaving,
 }) => {
   const { t } = useTranslation()
   const language = useLanguage()
@@ -54,8 +56,13 @@ const ConfigCredential: FC<Props> = ({
       }
     }
     setIsLoading(true)
-    await onSaved(tempCredential)
-    setIsLoading(false)
+    try {
+      await onSaved(tempCredential)
+      setIsLoading(false)
+    }
+    finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -105,7 +112,7 @@ const ConfigCredential: FC<Props> = ({
                   }
                   < div className='flex space-x-2'>
                     <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-                    <Button loading={isLoading} disabled={isLoading} variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+                    <Button loading={isLoading || isSaving} disabled={isLoading || isSaving} variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
                   </div>
                 </div>
               </>
