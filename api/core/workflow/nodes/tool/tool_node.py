@@ -178,14 +178,12 @@ class ToolNode(BaseNode[ToolNodeData]):
         for message in message_stream:
             if message.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                assert message.meta
 
                 url = message.message.text
-                ext = path.splitext(url)[1]
-                tool_file_id = str(url).split("/")[-1].split(".")[0]
-                mimetype = message.meta.get("mime_type", "image/jpeg")
-                filename = message.save_as or url.split("/")[-1]
-                transfer_method = message.meta.get("transfer_method", FileTransferMethod.TOOL_FILE)
+                if message.meta:
+                    transfer_method = message.meta.get("transfer_method", FileTransferMethod.TOOL_FILE)
+                else:
+                    transfer_method = FileTransferMethod.TOOL_FILE
 
                 with Session(db.engine) as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
