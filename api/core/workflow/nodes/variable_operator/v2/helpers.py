@@ -80,11 +80,11 @@ def is_input_value_valid(*, variable_type: SegmentType, operation: Operation, va
         # Array & Extend
         case SegmentType.ARRAY_ANY if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
             return isinstance(value, list) and all(isinstance(item, str | float | int | dict) for item in value)
-        case SegmentType.ARRAY_STRING if operation == Operation.EXTEND:
+        case SegmentType.ARRAY_STRING if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
             return isinstance(value, list) and all(isinstance(item, str) for item in value)
-        case SegmentType.ARRAY_NUMBER if operation == Operation.EXTEND:
+        case SegmentType.ARRAY_NUMBER if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
             return isinstance(value, list) and all(isinstance(item, int | float) for item in value)
-        case SegmentType.ARRAY_OBJECT if operation == Operation.EXTEND:
+        case SegmentType.ARRAY_OBJECT if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
             return isinstance(value, list) and all(isinstance(item, dict) for item in value)
 
         case _:
