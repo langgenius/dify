@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import React, { useEffect, useMemo } from 'react'
 // import { RiInformation2Line } from '@remixicon/react'
 import type { Plugin, PluginManifestInMarket } from '../../../types'
 import Card from '../../../card'
@@ -50,6 +50,11 @@ const Installed: FC<Props> = ({
     check,
     stop,
   } = checkTaskStatus()
+
+  useEffect(() => {
+    if (hasInstalled && toInstallVersion === installedVersion)
+      onInstalled()
+  }, [hasInstalled, toInstallVersion, installedVersion])
 
   const handleCancel = () => {
     stop()
@@ -107,7 +112,7 @@ const Installed: FC<Props> = ({
     return (<>{
       !installedVersion
         ? (
-          <Badge className='mx-1' size="s" state={BadgeState.Default}>{ }</Badge>
+          <Badge className='mx-1' size="s" state={BadgeState.Default}>{toInstallVersion}</Badge>
         )
         : (
           <>
