@@ -585,6 +585,11 @@ class RagEtlConfig(BaseSettings):
         default=None,
     )
 
+    SCARF_NO_ANALYTICS: Optional[str] = Field(
+        description="This is about whether to disable Scarf analytics in Unstructured library.",
+        default="false",
+    )
+
 
 class DataSetConfig(BaseSettings):
     """
