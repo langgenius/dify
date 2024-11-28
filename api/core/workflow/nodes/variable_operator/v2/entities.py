@@ -12,7 +12,7 @@ class VariableOperationItem(BaseModel):
     variable_selector: Sequence[str]
     input_type: InputType
     operation: Operation
-    value: Any
+    value: Any | None = None
 
 
 class VariableOperatorNodeData(BaseNodeData):
