@@ -117,7 +117,7 @@ const translation = {
     qualified: '高质量',
     recommend: '推荐',
     qualifiedTip: '调用系统默认的嵌入接口进行处理，以在用户查询时提供更高的准确度',
-    warning: '请先完成模型供应商的 API KEY 设置。.',
+    warning: '请先设置默认 embedding 模型',
     click: '前往设置',
     economical: '经济',
     economicalTip: '使用离线的向量引擎、关键词索引等方式，降低了准确度但无需花费 Token',
