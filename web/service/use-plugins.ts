@@ -163,7 +163,7 @@ export const useInstallOrUpdate = ({
 
       return Promise.all(payload.map(async (item, i) => {
         try {
-          const orgAndName = `${plugin[i]?.org}/${plugin[i]?.name}`
+          const orgAndName = `${plugin[i]?.org || plugin[i]?.author}/${plugin[i]?.name}`
           const installedPayload = installedInfo[orgAndName]
           const isInstalled = !!installedPayload
           let uniqueIdentifier = ''

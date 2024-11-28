@@ -136,9 +136,9 @@ const InstallByDSLList: FC<Props> = ({
 
   const isLoadedAllData = (plugins.filter(p => !!p).length + errorIndexes.length) === allPlugins.length
 
-  const { installedInfo, isLoading: isLoadingCheckInstalled } = useCheckInstalled({
+  const { installedInfo } = useCheckInstalled({
     pluginIds: plugins?.filter(p => !!p).map((d) => {
-      return `${d?.org}/${d?.name}`
+      return `${d?.org || d?.author}/${d?.name}`
     }) || [],
     enabled: isLoadedAllData,
   })
@@ -182,7 +182,7 @@ const InstallByDSLList: FC<Props> = ({
             dependency={d as GitHubItemAndMarketPlaceDependency}
             onFetchedPayload={handleGitHubPluginFetched(index)}
             onFetchError={handleGitHubPluginFetchError(index)}
-            versionInfo={getVersionInfo(`${plugin?.org}/${plugin?.name}`)}
+            versionInfo={getVersionInfo(`${plugin?.org || plugin?.author}/${plugin?.name}`)}
           />)
         }
 
@@ -194,7 +194,7 @@ const InstallByDSLList: FC<Props> = ({
               onCheckedChange={handleSelect(index)}
               payload={plugins[index] as Plugin}
               version={(d as GitHubItemAndMarketPlaceDependency).value.version!}
-              versionInfo={getVersionInfo(`${plugin?.org}/${plugin?.name}`)}
+              versionInfo={getVersionInfo(`${plugin?.org || plugin?.author}/${plugin?.name}`)}
             />
           )
         }
@@ -207,7 +207,7 @@ const InstallByDSLList: FC<Props> = ({
             onCheckedChange={handleSelect(index)}
             payload={d as PackageDependency}
             isFromMarketPlace={isFromMarketPlace}
-            versionInfo={getVersionInfo(`${plugin?.org}/${plugin?.name}`)}
+            versionInfo={getVersionInfo(`${plugin?.org || plugin?.author}/${plugin?.name}`)}
           />
         )
       })
