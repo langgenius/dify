@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from 'react'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
-import { isEqual } from 'lodash-es'
 import { VarType } from '../../types'
 import type { ValueSelector, Var } from '../../types'
 import { WriteMode } from './types'
@@ -92,9 +91,6 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
   }, [])
 
   const filterToAssignedVar = useCallback((varPayload: Var, selector: ValueSelector, assignedVar: ValueSelector, assignedVarType: VarType, write_mode: WriteMode) => {
-    if (isEqual(selector, assignedVar))
-      return false
-
     if (write_mode === WriteMode.overwrite || write_mode === WriteMode.extend || write_mode === WriteMode.increment
       || write_mode === WriteMode.decrement || write_mode === WriteMode.multiply || write_mode === WriteMode.divide) {
       return varPayload.type === assignedVarType
