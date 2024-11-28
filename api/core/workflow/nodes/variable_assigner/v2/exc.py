@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Any
 
-from core.workflow.nodes.variable_operator.common.exc import VariableOperatorNodeError
+from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
 
 from .enums import InputType, Operation
 

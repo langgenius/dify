@@ -2,17 +2,17 @@ from core.variables import SegmentType, Variable
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode, BaseNodeData
 from core.workflow.nodes.enums import NodeType
-from core.workflow.nodes.variable_operator.common import helpers as common_helpers
-from core.workflow.nodes.variable_operator.common.exc import VariableOperatorNodeError
+from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
+from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
 from factories import variable_factory
 from models.workflow import WorkflowNodeExecutionStatus
 
-from .node_data import VariableOperatorData, WriteMode
+from .node_data import VariableAssignerData, WriteMode
 
 
-class VariableOperatorNode(BaseNode[VariableOperatorData]):
-    _node_data_cls: type[BaseNodeData] = VariableOperatorData
-    _node_type = NodeType.VARIABLE_OPERATOR
+class VariableAssignerNode(BaseNode[VariableAssignerData]):
+    _node_data_cls: type[BaseNodeData] = VariableAssignerData
+    _node_type = NodeType.VARIABLE_ASSIGNER
 
     def _run(self) -> NodeRunResult:
         # Should be String, Number, Object, ArrayString, ArrayNumber, ArrayObject

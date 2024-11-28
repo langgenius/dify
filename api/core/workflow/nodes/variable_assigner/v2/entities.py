@@ -15,6 +15,6 @@ class VariableOperationItem(BaseModel):
     value: Any | None = None
 
 
-class VariableOperatorNodeData(BaseNodeData):
+class VariableAssignerNodeData(BaseNodeData):
     version: str = "2"
     items: Sequence[VariableOperationItem]

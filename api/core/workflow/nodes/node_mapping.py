@@ -18,8 +18,8 @@ from core.workflow.nodes.start import StartNode
 from core.workflow.nodes.template_transform import TemplateTransformNode
 from core.workflow.nodes.tool import ToolNode
 from core.workflow.nodes.variable_aggregator import VariableAggregatorNode
-from core.workflow.nodes.variable_operator.v1 import VariableOperatorNode as VariableOperatorNodeV1
-from core.workflow.nodes.variable_operator.v2 import VariableOperatorNode as VariableOperatorNodeV2
+from core.workflow.nodes.variable_assigner.v1 import VariableAssignerNode as VariableAssignerNodeV1
+from core.workflow.nodes.variable_assigner.v2 import VariableAssignerNode as VariableAssignerNodeV2
 
 LATEST_VERSION = "latest"
 
@@ -72,7 +72,7 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
         LATEST_VERSION: VariableAggregatorNode,
         "1": VariableAggregatorNode,
     },
-    NodeType.VARIABLE_ASSIGNER: {
+    NodeType.LEGACY_VARIABLE_AGGREGATOR: {
         LATEST_VERSION: VariableAggregatorNode,
         "1": VariableAggregatorNode,
     },  # original name of VARIABLE_AGGREGATOR
@@ -88,10 +88,10 @@ NODE_TYPE_CLASSES_MAPPING: Mapping[NodeType, Mapping[str, type[BaseNode]]] = {
         LATEST_VERSION: ParameterExtractorNode,
         "1": ParameterExtractorNode,
     },
-    NodeType.VARIABLE_OPERATOR: {
-        LATEST_VERSION: VariableOperatorNodeV2,
-        "1": VariableOperatorNodeV1,
-        "2": VariableOperatorNodeV2,
+    NodeType.VARIABLE_ASSIGNER: {
+        LATEST_VERSION: VariableAssignerNodeV2,
+        "1": VariableAssignerNodeV1,
+        "2": VariableAssignerNodeV2,
     },
     NodeType.DOCUMENT_EXTRACTOR: {
         LATEST_VERSION: DocumentExtractorNode,

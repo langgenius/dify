@@ -10,8 +10,8 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.nodes.variable_operator.v1 import VariableOperatorNode
-from core.workflow.nodes.variable_operator.v1.node_data import WriteMode
+from core.workflow.nodes.variable_assigner.v1 import VariableAssignerNode
+from core.workflow.nodes.variable_assigner.v1.node_data import WriteMode
 from models.enums import UserFrom
 from models.workflow import WorkflowType
 
@@ -77,7 +77,7 @@ def test_overwrite_string_variable():
         input_variable,
     )
 
-    node = VariableOperatorNode(
+    node = VariableAssignerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
@@ -93,7 +93,7 @@ def test_overwrite_string_variable():
         },
     )
 
-    with mock.patch("core.workflow.nodes.variable_operator.v1.node.update_conversation_variable") as mock_run:
+    with mock.patch("core.workflow.nodes.variable_assigner.common.helpers.update_conversation_variable") as mock_run:
         list(node.run())
         mock_run.assert_called_once()
 
@@ -160,7 +160,7 @@ def test_append_variable_to_array():
         input_variable,
     )
 
-    node = VariableOperatorNode(
+    node = VariableAssignerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
@@ -176,7 +176,7 @@ def test_append_variable_to_array():
         },
     )
 
-    with mock.patch("core.workflow.nodes.variable_operator.v1.node.update_conversation_variable") as mock_run:
+    with mock.patch("core.workflow.nodes.variable_assigner.common.helpers.update_conversation_variable") as mock_run:
         list(node.run())
         mock_run.assert_called_once()
 
@@ -232,7 +232,7 @@ def test_clear_array():
         conversation_variables=[conversation_variable],
     )
 
-    node = VariableOperatorNode(
+    node = VariableAssignerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
@@ -248,7 +248,7 @@ def test_clear_array():
         },
     )
 
-    with mock.patch("core.workflow.nodes.variable_operator.v1.node.update_conversation_variable") as mock_run:
+    with mock.patch("core.workflow.nodes.variable_assigner.common.helpers.update_conversation_variable") as mock_run:
         list(node.run())
         mock_run.assert_called_once()
 

@@ -2,7 +2,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.variables import Variable
-from core.workflow.nodes.variable_operator.common.exc import VariableOperatorNodeError
+from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
 from extensions.ext_database import db
 from models import ConversationVariable
 

@@ -6,13 +6,13 @@ from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
-from core.workflow.nodes.variable_operator.common import helpers as common_helpers
-from core.workflow.nodes.variable_operator.common.exc import VariableOperatorNodeError
+from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
+from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
 from models.workflow import WorkflowNodeExecutionStatus
 
 from . import helpers
 from .constants import EMPTY_VALUE_MAPPING
-from .entities import VariableOperatorNodeData
+from .entities import VariableAssignerNodeData
 from .enums import InputType, Operation
 from .exc import (
     ConversationIDNotFoundError,
@@ -23,9 +23,9 @@ from .exc import (
 )
 
 
-class VariableOperatorNode(BaseNode[VariableOperatorNodeData]):
-    _node_data_cls = VariableOperatorNodeData
-    _node_type = NodeType.VARIABLE_OPERATOR
+class VariableAssignerNode(BaseNode[VariableAssignerNodeData]):
+    _node_data_cls = VariableAssignerNodeData
+    _node_type = NodeType.VARIABLE_ASSIGNER
 
     def _run(self) -> NodeRunResult:
         inputs = self.node_data.model_dump()
