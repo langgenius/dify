@@ -2,9 +2,11 @@ import json
 from typing import Any
 
 from core.variables import SegmentType, Variable
+from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.enums import NodeType
+from core.workflow.nodes.variable_operator.common import helpers as common_helpers
 from core.workflow.nodes.variable_operator.common.exc import VariableOperatorNodeError
 from models.workflow import WorkflowNodeExecutionStatus
 
@@ -13,6 +15,7 @@ from .constants import EMPTY_VALUE_MAPPING
 from .entities import VariableOperatorNodeData
 from .enums import InputType, Operation
 from .exc import (
+    ConversationIDNotFoundError,
     InputTypeNotSupportedError,
     InvalidInputValueError,
     OperationNotSupportedError,
@@ -108,6 +111,17 @@ class VariableOperatorNode(BaseNode[VariableOperatorNodeData]):
         for variable in updated_variables:
             self.graph_runtime_state.variable_pool.add(variable.selector, variable)
             process_data[variable.name] = variable.value
+
+            if variable.selector[0] == CONVERSATION_VARIABLE_NODE_ID:
+                conversation_id = self.graph_runtime_state.variable_pool.get(["sys", "conversation_id"])
+                if not conversation_id:
+                    raise ConversationIDNotFoundError
+                else:
+                    conversation_id = conversation_id.value
+                common_helpers.update_conversation_variable(
+                    conversation_id=conversation_id,
+                    variable=variable,
+                )
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
