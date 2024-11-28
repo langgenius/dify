@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useEffect } from 'react'
 import type { PluginDeclaration } from '../../../types'
 import Card from '../../../card'
 import { pluginManifestToCardPluginProps } from '../../utils'
@@ -41,6 +41,11 @@ const Installed: FC<Props> = ({
   const installedInfoPayload = installedInfo?.[pluginId]
   const installedVersion = installedInfoPayload?.installedVersion
   const hasInstalled = !!installedVersion
+
+  useEffect(() => {
+    if (hasInstalled && toInstallVersion === installedVersion)
+      onInstalled()
+  }, [hasInstalled, toInstallVersion, installedVersion])
 
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromLocal } = useInstallPackageFromLocal()
