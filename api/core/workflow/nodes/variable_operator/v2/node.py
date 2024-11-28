@@ -70,6 +70,7 @@ class VariableOperatorNode(BaseNode[VariableOperatorNodeData]):
                         continue
                     item.value = value.value
 
+                # If set string / bytes / bytearray to object, try convert string to object.
                 if (
                     item.operation == Operation.SET
                     and variable.value_type == SegmentType.OBJECT
