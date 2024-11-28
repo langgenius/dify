@@ -15,7 +15,7 @@ const NAME_SPACE = 'tools'
 
 const useAllToolProvidersKey = [NAME_SPACE, 'allToolProviders']
 export const useAllToolProviders = () => {
-  return useQuery({
+  return useQuery<Collection[]>({
     queryKey: useAllToolProvidersKey,
     queryFn: () => get<Collection[]>('/workspaces/current/tool-providers'),
   })
