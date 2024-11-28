@@ -78,7 +78,7 @@ def is_input_value_valid(*, variable_type: SegmentType, operation: Operation, va
             return isinstance(value, dict)
 
         # Array & Extend
-        case SegmentType.ARRAY_ANY if operation == Operation.EXTEND:
+        case SegmentType.ARRAY_ANY if operation in {Operation.EXTEND, Operation.OVER_WRITE}:
             return isinstance(value, list) and all(isinstance(item, str | float | int | dict) for item in value)
         case SegmentType.ARRAY_STRING if operation == Operation.EXTEND:
             return isinstance(value, list) and all(isinstance(item, str) for item in value)
