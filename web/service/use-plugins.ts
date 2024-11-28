@@ -8,6 +8,7 @@ import type {
   PackageDependency,
   Permissions,
   Plugin,
+  PluginDetail,
   PluginTask,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
@@ -29,6 +30,25 @@ import { useInvalidateAllBuiltInTools } from './use-tools'
 const NAME_SPACE = 'plugins'
 
 const useInstalledPluginListKey = [NAME_SPACE, 'installedPluginList']
+export const useCheckInstalled = ({
+  pluginIds,
+  enabled,
+}: {
+  pluginIds: string[],
+  enabled: boolean
+}) => {
+  return useQuery<{ plugins: PluginDetail[] }>({
+    queryKey: [NAME_SPACE, 'checkInstalled'],
+    queryFn: () => post<{ plugins: PluginDetail[] }>('/workspaces/current/plugin/list/installations/ids', {
+      body: {
+        plugin_ids: pluginIds,
+      },
+    }),
+    enabled,
+    staleTime: 0, // always fresh
+  })
+}
+
 export const useInstalledPluginList = (disable?: boolean) => {
   return useQuery<InstalledPluginListResponse>({
     queryKey: useInstalledPluginListKey,
@@ -54,6 +74,16 @@ export const useInstallPackageFromMarketPlace = () => {
   return useMutation({
     mutationFn: (uniqueIdentifier: string) => {
       return post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', { body: { plugin_unique_identifiers: [uniqueIdentifier] } })
+    },
+  })
+}
+
+export const useUpdatePackageFromMarketPlace = () => {
+  return useMutation({
+    mutationFn: (body: object) => {
+      return post<InstallPackageResponse>('/workspaces/current/plugin/upgrade/marketplace', {
+        body,
+      })
     },
   })
 }

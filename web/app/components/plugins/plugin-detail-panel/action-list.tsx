@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import Button from '@/app/components/base/button'
@@ -7,9 +7,9 @@ import Indicator from '@/app/components/header/indicator'
 import ToolItem from '@/app/components/tools/provider/tool-item'
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import {
-  useBuiltinProviderInfo,
+  useAllToolProviders,
   useBuiltinTools,
-  useInvalidateBuiltinProviderInfo,
+  useInvalidateAllToolProviders,
   useRemoveProviderCredentials,
   useUpdateProviderCredentials,
 } from '@/service/use-tools'
@@ -26,14 +26,17 @@ const ActionList = ({
   const { isCurrentWorkspaceManager } = useAppContext()
   const providerBriefInfo = detail.declaration.tool.identity
   const providerKey = `${detail.plugin_id}/${providerBriefInfo.name}`
-  const { data: provider } = useBuiltinProviderInfo(providerKey)
-  const invalidateProviderInfo = useInvalidateBuiltinProviderInfo()
+  const { data: collectionList = [] } = useAllToolProviders()
+  const invalidateAllToolProviders = useInvalidateAllToolProviders()
+  const provider = useMemo(() => {
+    return collectionList.find(collection => collection.name === providerKey)
+  }, [collectionList, providerKey])
   const { data } = useBuiltinTools(providerKey)
 
   const [showSettingAuth, setShowSettingAuth] = useState(false)
 
   const handleCredentialSettingUpdate = () => {
-    invalidateProviderInfo(providerKey)
+    invalidateAllToolProviders()
     Toast.notify({
       type: 'success',
       message: t('common.api.actionSuccess'),

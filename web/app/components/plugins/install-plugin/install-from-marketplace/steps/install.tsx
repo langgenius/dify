@@ -1,16 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
-import { RiInformation2Line } from '@remixicon/react'
+import React, { useEffect } from 'react'
+// import { RiInformation2Line } from '@remixicon/react'
 import type { Plugin, PluginManifestInMarket } from '../../../types'
 import Card from '../../../card'
 import { pluginManifestInMarketToPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
-import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import { useInstallPackageFromMarketPlace } from '@/service/use-plugins'
+import { useInstallPackageFromMarketPlace, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
 import checkTaskStatus from '../../base/check-task-status'
+import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
+import Version from '../../base/version'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -32,12 +33,28 @@ const Installed: FC<Props> = ({
   onFailed,
 }) => {
   const { t } = useTranslation()
+  const toInstallVersion = payload.version || payload.latest_version
+  const pluginId = (payload as Plugin).plugin_id
+  const { installedInfo, isLoading } = useCheckInstalled({
+    pluginIds: [pluginId],
+    enabled: !!pluginId,
+  })
+  const installedInfoPayload = installedInfo?.[pluginId]
+  const installedVersion = installedInfoPayload?.installedVersion
+  const hasInstalled = !!installedVersion
+
   const { mutateAsync: installPackageFromMarketPlace } = useInstallPackageFromMarketPlace()
+  const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
   const [isInstalling, setIsInstalling] = React.useState(false)
   const {
     check,
     stop,
   } = checkTaskStatus()
+
+  useEffect(() => {
+    if (hasInstalled && toInstallVersion === installedVersion)
+      onInstalled()
+  }, [hasInstalled, toInstallVersion, installedVersion])
 
   const handleCancel = () => {
     stop()
@@ -50,10 +67,28 @@ const Installed: FC<Props> = ({
     setIsInstalling(true)
 
     try {
-      const {
-        all_installed: isInstalled,
-        task_id: taskId,
-      } = await installPackageFromMarketPlace(uniqueIdentifier)
+      let taskId
+      let isInstalled
+      if (hasInstalled) {
+        const {
+          all_installed,
+          task_id,
+        } = await updatePackageFromMarketPlace({
+          original_plugin_unique_identifier: installedInfoPayload.uniqueIdentifier,
+          new_plugin_unique_identifier: uniqueIdentifier,
+        })
+        taskId = task_id
+        isInstalled = all_installed
+      }
+      else {
+        const {
+          all_installed,
+          task_id,
+        } = await installPackageFromMarketPlace(uniqueIdentifier)
+        taskId = task_id
+        isInstalled = all_installed
+      }
+
       if (isInstalled) {
         onInstalled()
         return
@@ -73,29 +108,6 @@ const Installed: FC<Props> = ({
     }
   }
 
-  const toInstallVersion = '1.3.0'
-  const supportCheckInstalled = false // TODO: check installed in beta version.
-
-  const versionInfo = useMemo(() => {
-    return (<>{
-      payload.latest_version === toInstallVersion || !supportCheckInstalled
-        ? (
-          <Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version || payload.latest_version}</Badge>
-        )
-        : (
-          <>
-            <Badge className='mx-1' size="s" state={BadgeState.Warning}>
-              {`${payload.latest_version} -> ${toInstallVersion}`}
-            </Badge>
-            <div className='flex px-0.5 justify-center items-center gap-0.5'>
-              <div className='text-text-warning system-xs-medium'>Used in 3 apps</div>
-              <RiInformation2Line className='w-4 h-4 text-text-tertiary' />
-            </div>
-          </>
-        )
-    }</>)
-  }, [payload.latest_version, payload.version, supportCheckInstalled])
-
   return (
     <>
       <div className='flex flex-col px-6 py-3 justify-center items-start gap-4 self-stretch'>
@@ -106,7 +118,11 @@ const Installed: FC<Props> = ({
           <Card
             className='w-full'
             payload={pluginManifestInMarketToPluginProps(payload as PluginManifestInMarket)}
-            titleLeft={versionInfo}
+            titleLeft={!isLoading && <Version
+              hasInstalled={hasInstalled}
+              installedVersion={installedVersion}
+              toInstallVersion={toInstallVersion}
+            />}
           />
         </div>
       </div>
@@ -120,7 +136,7 @@ const Installed: FC<Props> = ({
         <Button
           variant='primary'
           className='min-w-[72px] flex space-x-0.5'
-          disabled={isInstalling}
+          disabled={isInstalling || isLoading}
           onClick={handleInstall}
         >
           {isInstalling && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}

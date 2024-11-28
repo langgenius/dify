@@ -45,6 +45,8 @@ const afterResponseErrorCode = (otherOptions: IOtherOptions): AfterResponseHook 
               globalThis.location.href = `${globalThis.location.origin}/signin`
           })
           break
+        case 401:
+          return Promise.reject(response)
         // fall through
         default:
           bodyJson.then((data: ResponseError) => {

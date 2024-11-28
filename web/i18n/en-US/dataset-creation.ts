@@ -117,7 +117,7 @@ const translation = {
     qualified: 'High Quality',
     recommend: 'Recommend',
     qualifiedTip: 'Call default system embedding interface for processing to provide higher accuracy when users query.',
-    warning: 'Please set up the model provider API key first.',
+    warning: 'Please set up the default embedding model first.',
     click: 'Go to settings',
     economical: 'Economical',
     economicalTip: 'Use offline vector engines, keyword indexes, etc. to reduce accuracy without spending tokens',

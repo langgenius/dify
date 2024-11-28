@@ -44,13 +44,17 @@ const AgentTools: FC = () => {
   const [currentTool, setCurrentTool] = useState<AgentToolWithMoreInfo>(null)
   const currentCollection = useMemo(() => {
     if (!currentTool) return null
-    const collection = collectionList.find(collection => collection.id === currentTool?.provider_id.split('/').pop() && collection.type === currentTool?.provider_type)
+    const collection = collectionList.find(collection => collection.id.split('/').pop() === currentTool?.provider_id.split('/').pop() && collection.type === currentTool?.provider_type)
     return collection
   }, [currentTool, collectionList])
   const [isShowSettingTool, setIsShowSettingTool] = useState(false)
   const [isShowSettingAuth, setShowSettingAuth] = useState(false)
   const tools = (modelConfig?.agentConfig?.tools as AgentTool[] || []).map((item) => {
-    const collection = collectionList.find(collection => collection.id === item.provider_id.split('/').pop() && collection.type === item.provider_type)
+    const collection = collectionList.find(
+      collection =>
+        collection.id.split('/').pop() === item.provider_id.split('/').pop()
+        && collection.type === item.provider_type,
+    )
     const icon = collection?.icon
     return {
       ...item,

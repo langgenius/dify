@@ -34,6 +34,7 @@ const ConfigCredential: FC<Props> = ({
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
   const { name: collectionName } = collection
   const [tempCredential, setTempCredential] = React.useState<any>({})
+  const [isLoading, setIsLoading] = React.useState(false)
   useEffect(() => {
     fetchBuiltInToolCredentialSchema(collectionName).then(async (res) => {
       const toolCredentialSchemas = toolCredentialToFormSchemas(res)
@@ -45,14 +46,16 @@ const ConfigCredential: FC<Props> = ({
     })
   }, [])
 
-  const handleSave = () => {
+  const handleSave = async () => {
     for (const field of credentialSchema) {
       if (field.required && !tempCredential[field.name]) {
         Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: field.label[language] || field.label.en_US }) })
         return
       }
     }
-    onSaved(tempCredential)
+    setIsLoading(true)
+    await onSaved(tempCredential)
+    setIsLoading(false)
   }
 
   return (
@@ -102,7 +105,7 @@ const ConfigCredential: FC<Props> = ({
                   }
                   < div className='flex space-x-2'>
                     <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-                    <Button variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+                    <Button loading={isLoading} disabled={isLoading} variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
                   </div>
                 </div>
               </>
