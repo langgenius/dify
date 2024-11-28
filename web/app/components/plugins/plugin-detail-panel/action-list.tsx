@@ -44,7 +44,7 @@ const ActionList = ({
     setShowSettingAuth(false)
   }
 
-  const { mutate: updatePermission } = useUpdateProviderCredentials({
+  const { mutate: updatePermission, isPending } = useUpdateProviderCredentials({
     onSuccess: handleCredentialSettingUpdate,
   })
 
@@ -102,6 +102,7 @@ const ActionList = ({
             credentials: value,
           })}
           onRemove={async () => removePermission(provider.name)}
+          isSaving={isPending}
         />
       )}
     </div>
