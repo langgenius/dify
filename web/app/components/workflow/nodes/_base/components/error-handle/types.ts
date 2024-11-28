@@ -7,6 +7,7 @@ export enum ErrorHandleTypeEnum {
 }
 
 export type DefaultValueForm = {
-  variable: string
+  key: string
   type: VarType
+  value?: any
 }

@@ -13,6 +13,7 @@ import {
   useEdgesInteractions,
   useNodeDataUpdate,
 } from '@/app/components/workflow/hooks'
+import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 
 type UseGetDefaultValueForms = (params: Pick<Node, 'id' | 'data'>) => DefaultValueForm[]
 export const useGetDefaultValueForms: UseGetDefaultValueForms = ({
@@ -23,7 +24,7 @@ export const useGetDefaultValueForms: UseGetDefaultValueForms = ({
   if (error_strategy === ErrorHandleTypeEnum.defaultValue) {
     if (type === BlockEnum.LLM) {
       return [{
-        variable: 'text',
+        key: 'text',
         type: VarType.string,
       }]
     }
@@ -31,20 +32,21 @@ export const useGetDefaultValueForms: UseGetDefaultValueForms = ({
     if (type === BlockEnum.HttpRequest) {
       return [
         {
-          variable: 'body',
+          key: 'body',
           type: VarType.string,
         },
         {
-          variable: 'status_code',
+          key: 'status_code',
           type: VarType.number,
         },
         {
-          variable: 'headers',
+          key: 'headers',
           type: VarType.object,
         },
         {
-          variable: 'files',
+          key: 'files',
           type: VarType.arrayFile,
+          value: [],
         },
       ]
     }
@@ -52,27 +54,30 @@ export const useGetDefaultValueForms: UseGetDefaultValueForms = ({
     if (type === BlockEnum.Tool) {
       return [
         {
-          variable: 'text',
+          key: 'text',
           type: VarType.string,
         },
         {
-          variable: 'files',
+          key: 'files',
           type: VarType.arrayFile,
+          value: [],
         },
         {
-          variable: 'json',
+          key: 'json',
           type: VarType.arrayObject,
         },
       ]
     }
 
     if (type === BlockEnum.Code) {
-      return [
-        {
-          variable: 'output',
-          type: VarType.object,
-        },
-      ]
+      const { outputs } = data as CodeNodeType
+
+      return Object.keys(outputs).map((key) => {
+        return {
+          key,
+          type: outputs[key].type,
+        }
+      })
     }
   }
 
@@ -84,11 +89,39 @@ export const useDefaultValue = ({
   data,
 }: Pick<Node, 'id' | 'data'>) => {
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
-  const handleFormChange = useCallback((variable: string, value: any) => {
+  const handleFormChange = useCallback(({
+    key,
+    value,
+    type,
+  }: DefaultValueForm) => {
+    const default_value = data.default_value || []
+    const index = default_value.findIndex(form => form.key === key)
+
+    console.log(default_value, value)
+
+    if (index > -1) {
+      const newDefaultValue = [...default_value]
+      newDefaultValue[index].value = value
+      handleNodeDataUpdateWithSyncDraft({
+        id,
+        data: {
+          default_value: newDefaultValue,
+        },
+      })
+      return
+    }
+
     handleNodeDataUpdateWithSyncDraft({
       id,
       data: {
-        default_value: data.default_value ? { ...data.default_value, [variable]: value } : { [variable]: value },
+        default_value: [
+          ...default_value,
+          {
+            key,
+            value,
+            type,
+          },
+        ],
       },
     })
   }, [])
@@ -111,11 +144,25 @@ export const useErrorHandle = ({
         id,
         data: {
           error_strategy: undefined,
+          default_value: undefined,
         },
       })
       setCollapsed(true)
+      handleEdgeDeleteByDeleteBranch(id, ErrorHandleTypeEnum.failBranch)
     }
-    else {
+
+    if (value === ErrorHandleTypeEnum.failBranch) {
+      handleNodeDataUpdateWithSyncDraft({
+        id,
+        data: {
+          error_strategy: value,
+          default_value: undefined,
+        },
+      })
+      setCollapsed(false)
+    }
+
+    if (value === ErrorHandleTypeEnum.defaultValue) {
       handleNodeDataUpdateWithSyncDraft({
         id,
         data: {
@@ -123,10 +170,8 @@ export const useErrorHandle = ({
         },
       })
       setCollapsed(false)
-    }
-
-    if (value !== ErrorHandleTypeEnum.failBranch)
       handleEdgeDeleteByDeleteBranch(id, ErrorHandleTypeEnum.failBranch)
+    }
   }, [id, handleNodeDataUpdateWithSyncDraft, handleEdgeDeleteByDeleteBranch])
 
   return {

@@ -9,7 +9,10 @@ import type { VarType as VarKindType } from '@/app/components/workflow/nodes/too
 import type { FileResponse, NodeTracing } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
-import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type {
+  DefaultValueForm,
+  ErrorHandleTypeEnum,
+} from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
 export enum BlockEnum {
   Start = 'start',
@@ -73,7 +76,7 @@ export type CommonNodeType<T = {}> = {
   width?: number
   height?: number
   error_strategy?: ErrorHandleTypeEnum
-  default_value?: any
+  default_value?: DefaultValueForm[]
 } & T & Partial<Pick<ToolDefaultValue, 'provider_id' | 'provider_type' | 'provider_name' | 'tool_name'>>
 
 export type CommonEdgeType = {

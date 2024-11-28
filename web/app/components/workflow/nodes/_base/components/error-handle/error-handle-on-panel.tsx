@@ -4,6 +4,7 @@ import ErrorHandleTypeSelector from './error-handle-type-selector'
 import FailBranchCard from './fail-branch-card'
 import DefaultValue from './default-value'
 import {
+  useDefaultValue,
   useErrorHandle,
   useGetDefaultValueForms,
 } from './hooks'
@@ -22,6 +23,7 @@ const ErrorHandle = ({
     setCollapsed,
     handleErrorHandleTypeChange,
   } = useErrorHandle({ id, data })
+  const { handleFormChange } = useDefaultValue({ id, data })
 
   return (
     <>
@@ -48,8 +50,11 @@ const ErrorHandle = ({
               )
             }
             {
-              error_strategy === ErrorHandleTypeEnum.defaultValue && !collapsed && (
-                <DefaultValue forms={defaultValueForms} />
+              error_strategy === ErrorHandleTypeEnum.defaultValue && !collapsed && !!defaultValueForms.length && (
+                <DefaultValue
+                  forms={defaultValueForms}
+                  onFormChange={handleFormChange}
+                />
               )
             }
           </>
