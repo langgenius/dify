@@ -622,7 +622,7 @@ const Configuration: FC = () => {
               }).map((tool: any) => {
                 return {
                   ...tool,
-                  isDeleted: res.deleted_tools?.includes(tool.tool_name),
+                  isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name),
                   notAuthor: collectionList.find(c => tool.provider_id === c.id)?.is_team_authorization === false,
                   ...(tool.provider_type === 'builtin' ? {
                     provider_id: correctProvider(tool.provider_name),
