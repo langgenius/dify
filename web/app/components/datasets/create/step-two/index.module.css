@@ -14,7 +14,7 @@
 }
 
 .form {
-  @apply px-16 pb-8;
+  @apply px-16 py-8;
 }
 
 .form .label {

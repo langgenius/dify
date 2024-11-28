@@ -999,8 +999,11 @@ const StepTwo = ({
           </div>
         </div>
       </div>
-      <FloatRightContainer isMobile={isMobile} isOpen={showPreview} onClose={hidePreview} footer={null}>
-        {showPreview && <div ref={previewScrollRef} className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll border-l border-[#F2F4F7]')}>
+      <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={() => { }} footer={null}>
+        {showPreview && <div
+          ref={previewScrollRef}
+          className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll border-l border-[#F2F4F7]')}
+        >
           <div className={cn(s.previewHeader, previewScrolled && `${s.fixed} pb-3`)}>
             <div className='flex items-center justify-between px-8'>
               <div className='grow flex items-center'>
