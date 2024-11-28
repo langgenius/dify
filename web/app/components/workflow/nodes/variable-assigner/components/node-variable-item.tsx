@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -17,6 +18,9 @@ type NodeVariableItemProps = {
   showBorder?: boolean
   className?: string
 }
+
+const i18nPrefix = 'workflow.nodes.assigner'
+
 const NodeVariableItem = ({
   isEnv,
   isChatVar,
@@ -26,6 +30,7 @@ const NodeVariableItem = ({
   showBorder,
   className,
 }: NodeVariableItemProps) => {
+  const { t } = useTranslation()
   return (
     <div className={cn(
       'relative flex items-center p-[3px] pl-[5px] gap-1 self-stretch rounded-md bg-workflow-block-param-bg',
@@ -54,7 +59,7 @@ const NodeVariableItem = ({
               <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />
               <div className='max-w-[75px] truncate ml-0.5 system-xs-medium overflow-hidden text-ellipsis text-util-colors-teal-teal-700'>{varName}</div>
             </div>
-            {writeMode && <Badge className='shrink-0' text={writeMode} />}
+            {writeMode && <Badge className='shrink-0' text={t(`${i18nPrefix}.operations.${writeMode}`)} />}
           </div>
         }
       </div>

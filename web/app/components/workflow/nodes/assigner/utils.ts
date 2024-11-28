@@ -24,7 +24,7 @@ export const getOperationItems = (
   if (assignedVarType?.startsWith('array') && writeModeTypesArr) {
     return writeModeTypesArr.map(type => ({
       value: type,
-      name: formatOperationName(type),
+      name: type,
     }))
   }
 
@@ -32,12 +32,12 @@ export const getOperationItems = (
     return [
       ...writeModeTypes.map(type => ({
         value: type,
-        name: formatOperationName(type),
+        name: type,
       })),
       { value: 'divider', name: 'divider' } as Item,
       ...writeModeTypesNum.map(type => ({
         value: type,
-        name: formatOperationName(type),
+        name: type,
       })),
     ]
   }
@@ -45,7 +45,7 @@ export const getOperationItems = (
   if (writeModeTypes && ['string', 'object'].includes(assignedVarType || '')) {
     return writeModeTypes.map(type => ({
       value: type,
-      name: formatOperationName(type),
+      name: type,
     }))
   }
 

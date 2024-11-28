@@ -5,12 +5,16 @@ import React, { useCallback } from 'react'
 import produce from 'immer'
 import { RiDeleteBinLine } from '@remixicon/react'
 import OperationSelector from '../operation-selector'
-import ListNoDataPlaceholder from '../../../_base/components/list-no-data-placeholder'
 import { AssignerNodeInputType, WriteMode } from '../../types'
 import type { AssignerNodeOperation } from '../../types'
+import ListNoDataPlaceholder from '@/app/components/workflow/nodes/_base/components/list-no-data-placeholder'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import type { ValueSelector, Var, VarType } from '@/app/components/workflow/types'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import ActionButton from '@/app/components/base/action-button'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 
 type Props = {
   readonly: boolean
@@ -56,15 +60,19 @@ const VarList: FC<Props> = ({
     return (item: { value: string | number }) => {
       const newList = produce(list, (draft) => {
         draft[index].operation = item.value as WriteMode
-        if (item.value === WriteMode.set)
-          draft[index].value = AssignerNodeInputType.constant
+        draft[index].value = '' // Clear value when operation changes
+        if (item.value === WriteMode.set || item.value === WriteMode.increment || item.value === WriteMode.decrement
+          || item.value === WriteMode.multiply || item.value === WriteMode.divide)
+          draft[index].input_type = AssignerNodeInputType.constant
+        else
+          draft[index].input_type = AssignerNodeInputType.variable
       })
       onChange(newList)
     }
   }, [list, onChange])
 
   const handleToAssignedVarChange = useCallback((index: number) => {
-    return (value: ValueSelector | string) => {
+    return (value: ValueSelector | string | number) => {
       const newList = produce(list, (draft) => {
         draft[index].value = value as ValueSelector
       })
@@ -131,7 +139,7 @@ const VarList: FC<Props> = ({
                   onChange={handleAssignedVarChange(index)}
                   onOpen={handleOpen(index)}
                   filterVar={filterVar}
-                  placeholder='Select assigned variable...'
+                  placeholder={t('workflow.nodes.assigner.selectAssignedVariable') as string}
                   minWidth={352}
                   popupFor='assigned'
                   className='w-full'
@@ -147,19 +155,61 @@ const VarList: FC<Props> = ({
                   writeModeTypesNum={writeModeTypesNum}
                 />
               </div>
-              <VarReferencePicker
-                readonly={readonly}
-                nodeId={nodeId}
-                isShowNodeName
-                value={item.value}
-                onChange={handleToAssignedVarChange(index)}
-                filterVar={handleFilterToAssignedVar(index)}
-                valueTypePlaceHolder={toAssignedVarType}
-                placeholder='Set parameter...'
-                minWidth={352}
-                popupFor='toAssigned'
-                className='w-full'
-              />
+              {item.operation !== WriteMode.clear && item.operation !== WriteMode.set
+                && !writeModeTypesNum?.includes(item.operation)
+                && (
+                  <VarReferencePicker
+                    readonly={readonly}
+                    nodeId={nodeId}
+                    isShowNodeName
+                    value={item.value}
+                    onChange={handleToAssignedVarChange(index)}
+                    filterVar={handleFilterToAssignedVar(index)}
+                    valueTypePlaceHolder={toAssignedVarType}
+                    placeholder={t('workflow.nodes.assigner.setParameter') as string}
+                    minWidth={352}
+                    popupFor='toAssigned'
+                    className='w-full'
+                  />
+                )
+              }
+              {item.operation === WriteMode.set && assignedVarType && (
+                <>
+                  {assignedVarType === 'number' && (
+                    <Input
+                      type="number"
+                      value={item.value as number}
+                      onChange={e => handleToAssignedVarChange(index)(Number(e.target.value))}
+                      className='w-full'
+                    />
+                  )}
+                  {assignedVarType === 'string' && (
+                    <Textarea
+                      value={item.value as string}
+                      onChange={e => handleToAssignedVarChange(index)(e.target.value)}
+                      className='w-full'
+                    />
+                  )}
+                  {assignedVarType === 'object' && (
+                    <CodeEditor
+                      value={item.value as string}
+                      language={CodeLanguage.json}
+                      onChange={value => handleToAssignedVarChange(index)(value)}
+                      className='w-full'
+                      readOnly={readonly}
+                    />
+                  )}
+                </>
+              )}
+              {writeModeTypesNum?.includes(item.operation)
+                && <Input
+                  type="number"
+                  value={item.value as number}
+                  onChange={e => handleToAssignedVarChange(index)(Number(e.target.value))}
+                  placeholder="Enter number value..."
+                  className='w-full'
+                />
+              }
             </div>
             <ActionButton
               size='l'
