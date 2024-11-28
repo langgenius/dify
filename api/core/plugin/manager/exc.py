@@ -21,6 +21,10 @@ class PluginDaemonNotFoundError(PluginDaemonError):
     description: str = "Not Found"
 
 
+class PluginInvokeError(PluginDaemonError):
+    description: str = "Invoke Error"
+
+
 class PluginUniqueIdentifierError(PluginDaemonError):
     description: str = "Unique Identifier Error"
 

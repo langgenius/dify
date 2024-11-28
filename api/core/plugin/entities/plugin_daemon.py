@@ -108,7 +108,6 @@ class PluginDaemonError(BaseModel):
 
     error_type: str
     message: str
-    args: Optional[dict] = None
 
 
 class PluginDaemonInnerError(Exception):

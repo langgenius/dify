@@ -2,7 +2,7 @@ import inspect
 import json
 import logging
 from collections.abc import Callable, Generator
-from typing import Optional, TypeVar
+from typing import TypeVar
 
 import requests
 from pydantic import BaseModel
@@ -16,12 +16,14 @@ from core.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
+from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse, PluginDaemonError, PluginDaemonInnerError
 from core.plugin.manager.exc import (
     PluginDaemonBadRequestError,
     PluginDaemonInternalServerError,
     PluginDaemonNotFoundError,
     PluginDaemonUnauthorizedError,
+    PluginInvokeError,
     PluginPermissionDeniedError,
     PluginUniqueIdentifierError,
 )
@@ -144,7 +146,7 @@ class BasePluginManager:
             except Exception as e:
                 raise ValueError(f"{rep.message}, code: {rep.code}")
 
-            self._handle_plugin_daemon_error(error.error_type, error.message, error.args)
+            self._handle_plugin_daemon_error(error.error_type, error.message)
         if rep.data is None:
             frame = inspect.currentframe()
             raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
@@ -183,32 +185,39 @@ class BasePluginManager:
                     except Exception as e:
                         raise PluginDaemonInnerError(code=rep.code, message=rep.message)
 
-                    self._handle_plugin_daemon_error(error.error_type, error.message, error.args)
+                    self._handle_plugin_daemon_error(error.error_type, error.message)
                 raise ValueError(f"plugin daemon: {rep.message}, code: {rep.code}")
             if rep.data is None:
                 frame = inspect.currentframe()
                 raise ValueError(f"got empty data from plugin daemon: {frame.f_lineno if frame else 'unknown'}")
             yield rep.data
 
-    def _handle_plugin_daemon_error(self, error_type: str, message: str, args: Optional[dict] = None):
+    def _handle_plugin_daemon_error(self, error_type: str, message: str):
         """
         handle the error from plugin daemon
         """
-        args = args or {}
-
         match error_type:
             case PluginDaemonInnerError.__name__:
                 raise PluginDaemonInnerError(code=-500, message=message)
-            case InvokeRateLimitError.__name__:
-                raise InvokeRateLimitError(description=args.get("description"))
-            case InvokeAuthorizationError.__name__:
-                raise InvokeAuthorizationError(description=args.get("description"))
-            case InvokeBadRequestError.__name__:
-                raise InvokeBadRequestError(description=args.get("description"))
-            case InvokeConnectionError.__name__:
-                raise InvokeConnectionError(description=args.get("description"))
-            case InvokeServerUnavailableError.__name__:
-                raise InvokeServerUnavailableError(description=args.get("description"))
+            case PluginInvokeError.__name__:
+                error_object = json.loads(message)
+                invoke_error_type = error_object.get("error_type")
+                args = error_object.get("args")
+                match invoke_error_type:
+                    case InvokeRateLimitError.__name__:
+                        raise InvokeRateLimitError(description=args.get("description"))
+                    case InvokeAuthorizationError.__name__:
+                        raise InvokeAuthorizationError(description=args.get("description"))
+                    case InvokeBadRequestError.__name__:
+                        raise InvokeBadRequestError(description=args.get("description"))
+                    case InvokeConnectionError.__name__:
+                        raise InvokeConnectionError(description=args.get("description"))
+                    case InvokeServerUnavailableError.__name__:
+                        raise InvokeServerUnavailableError(description=args.get("description"))
+                    case CredentialsValidateFailedError.__name__:
+                        raise CredentialsValidateFailedError(error_object.get("message"))
+                    case _:
+                        raise PluginInvokeError(description=message)
             case PluginDaemonInternalServerError.__name__:
                 raise PluginDaemonInternalServerError(description=message)
             case PluginDaemonBadRequestError.__name__:
@@ -222,4 +231,4 @@ class BasePluginManager:
             case PluginPermissionDeniedError.__name__:
                 raise PluginPermissionDeniedError(description=message)
             case _:
-                raise Exception(f"got unknown error from plugin daemon: {error_type}, message: {message}, args: {args}")
+                raise Exception(f"got unknown error from plugin daemon: {error_type}, message: {message}")
