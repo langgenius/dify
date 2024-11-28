@@ -2,14 +2,9 @@
 import type { FC } from 'react'
 import React from 'react'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
+import type { VersionProps } from '../../types'
 
-type Props = {
-  hasInstalled: boolean
-  installedVersion?: string
-  toInstallVersion: string
-}
-
-const Version: FC<Props> = ({
+const Version: FC<VersionProps> = ({
   hasInstalled,
   installedVersion,
   toInstallVersion,

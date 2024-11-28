@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import type { Dependency, InstallStatusResponse, Plugin } from '../../../types'
+import React, { useCallback, useState } from 'react'
+import type { Dependency, InstallStatusResponse, Plugin, VersionInfo } from '../../../types'
 import Button from '@/app/components/base/button'
 import { RiLoader2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import InstallMulti from './install-multi'
-import { useInstallFromMarketplaceAndGitHub } from '@/service/use-plugins'
+import { useInstallOrUpdate } from '@/service/use-plugins'
 import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 const i18nPrefix = 'plugin.installModal'
 
@@ -43,12 +43,15 @@ const Install: FC<Props> = ({
   }
 
   const [canInstall, setCanInstall] = React.useState(false)
-  const handleLoadedAllPlugin = useCallback(() => {
+  const [installedInfo, setInstalledInfo] = useState<Record<string, VersionInfo> | undefined>(undefined)
+
+  const handleLoadedAllPlugin = useCallback((installedInfo: Record<string, VersionInfo> | undefined) => {
+    setInstalledInfo(installedInfo)
     setCanInstall(true)
   }, [])
 
   // Install from marketplace and github
-  const { mutate: installFromMarketplaceAndGitHub, isPending: isInstalling } = useInstallFromMarketplaceAndGitHub({
+  const { mutate: installOrUpdate, isPending: isInstalling } = useInstallOrUpdate({
     onSuccess: (res: InstallStatusResponse[]) => {
       onInstalled(selectedPlugins, res.map((r, i) => {
         return ({
@@ -62,9 +65,10 @@ const Install: FC<Props> = ({
     },
   })
   const handleInstall = () => {
-    installFromMarketplaceAndGitHub({
+    installOrUpdate({
       payload: allPlugins.filter((_d, index) => selectedIndexes.includes(index)),
       plugin: selectedPlugins,
+      installedInfo: installedInfo!,
     })
   }
   return (

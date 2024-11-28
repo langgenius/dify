@@ -12,6 +12,7 @@ import type {
   PluginTask,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
+  VersionInfo,
   VersionListResponse,
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
@@ -145,22 +146,30 @@ export const useUploadGitHub = (payload: {
   })
 }
 
-export const useInstallFromMarketplaceAndGitHub = ({
+export const useInstallOrUpdate = ({
   onSuccess,
 }: {
   onSuccess?: (res: { success: boolean }[]) => void
 }) => {
+  const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
+
   return useMutation({
     mutationFn: (data: {
       payload: Dependency[],
       plugin: Plugin[],
+      installedInfo: Record<string, VersionInfo>
     }) => {
-      const { payload, plugin } = data
+      const { payload, plugin, installedInfo } = data
+
       return Promise.all(payload.map(async (item, i) => {
         try {
+          const orgAndName = `${plugin[i]?.org}/${plugin[i]?.name}`
+          const installedPayload = installedInfo[orgAndName]
+          const isInstalled = !!installedPayload
+          let uniqueIdentifier = ''
+
           if (item.type === 'github') {
             const data = item as GitHubItemAndMarketPlaceDependency
-            let pluginId = ''
             // From local bundle don't have data.value.github_plugin_unique_identifier
             if (!data.value.github_plugin_unique_identifier) {
               const { unique_identifier } = await post<uploadGitHubResponse>('/workspaces/current/plugin/upload/github', {
@@ -170,32 +179,61 @@ export const useInstallFromMarketplaceAndGitHub = ({
                   package: data.value.packages! || data.value.package!,
                 },
               })
-              pluginId = unique_identifier
+              uniqueIdentifier = data.value.github_plugin_unique_identifier! || unique_identifier
+              // has the same version, but not installed
+              if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
+                return {
+                  success: true,
+                }
+              }
             }
-            await post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
-              body: {
-                repo: data.value.repo!,
-                version: data.value.release! || data.value.version!,
-                package: data.value.packages! || data.value.package!,
-                plugin_unique_identifier: data.value.github_plugin_unique_identifier! || pluginId,
-              },
-            })
+            if (!isInstalled) {
+              await post<InstallPackageResponse>('/workspaces/current/plugin/install/github', {
+                body: {
+                  repo: data.value.repo!,
+                  version: data.value.release! || data.value.version!,
+                  package: data.value.packages! || data.value.package!,
+                  plugin_unique_identifier: uniqueIdentifier,
+                },
+              })
+            }
           }
           if (item.type === 'marketplace') {
             const data = item as GitHubItemAndMarketPlaceDependency
-
-            await post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
-              body: {
-                plugin_unique_identifiers: [data.value.plugin_unique_identifier! || plugin[i]?.plugin_id],
-              },
-            })
+            uniqueIdentifier = data.value.plugin_unique_identifier! || plugin[i]?.plugin_id
+            if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
+              return {
+                success: true,
+              }
+            }
+            if (!isInstalled) {
+              await post<InstallPackageResponse>('/workspaces/current/plugin/install/marketplace', {
+                body: {
+                  plugin_unique_identifiers: [uniqueIdentifier],
+                },
+              })
+            }
           }
           if (item.type === 'package') {
             const data = item as PackageDependency
-            await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
-              body: {
-                plugin_unique_identifiers: [data.value.unique_identifier],
-              },
+            uniqueIdentifier = data.value.unique_identifier
+            if (uniqueIdentifier === installedPayload?.uniqueIdentifier) {
+              return {
+                success: true,
+              }
+            }
+            if (!isInstalled) {
+              await post<InstallPackageResponse>('/workspaces/current/plugin/install/pkg', {
+                body: {
+                  plugin_unique_identifiers: [uniqueIdentifier],
+                },
+              })
+            }
+          }
+          if (isInstalled) {
+            await updatePackageFromMarketPlace({
+              original_plugin_unique_identifier: installedPayload?.uniqueIdentifier,
+              new_plugin_unique_identifier: uniqueIdentifier,
             })
           }
           return ({ success: true })
