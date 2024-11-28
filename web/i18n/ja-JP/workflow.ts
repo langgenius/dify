@@ -99,6 +99,8 @@ const translation = {
     addParallelNode: '並列ノードを追加',
     parallel: '並列',
     branch: 'ブランチ',
+    importWarning: '注意',
+    importWarningDetails: 'DSL のバージョンの違いが特定の機能に影響を与える場合があります',
   },
   env: {
     envPanelTitle: '環境変数',
@@ -408,6 +410,10 @@ const translation = {
       type: 'タイプ',
       binaryFileVariable: 'バイナリファイル変数',
       extractListPlaceholder: 'リスト項目のインデックスを入力し、変数を挿入 \'/\' と入力します',
+      curl: {
+        title: 'cURLからのインポート',
+        placeholder: 'ここにcURL文字列を貼り付けます',
+      },
     },
     code: {
       inputVars: '入力変数',

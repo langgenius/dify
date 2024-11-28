@@ -7,7 +7,7 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
 SUMMARY_PROMPT = """
-User's query: 
+User's query:
 {query}
 
 Here are the news results:
@@ -30,6 +30,12 @@ class DuckDuckGoNewsSearchTool(BuiltinTool):
             "safesearch": "moderate",
             "region": "wt-wt",
         }
+
+        # Add query_prefix handling
+        query_prefix = tool_parameters.get("query_prefix", "").strip()
+        final_query = f"{query_prefix} {query_dict['keywords']}".strip()
+        query_dict["keywords"] = final_query
+
         try:
             response = list(DDGS().news(**query_dict))
             if not response:

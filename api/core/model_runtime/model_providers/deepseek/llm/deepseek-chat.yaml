@@ -5,6 +5,7 @@ label:
 model_type: llm
 features:
   - agent-thought
+  - tool-call
   - multi-tool-call
   - stream-tool-call
 model_properties:
@@ -72,7 +73,7 @@ parameter_rules:
       - text
       - json_object
 pricing:
-  input: '1'
-  output: '2'
-  unit: '0.000001'
+  input: "1"
+  output: "2"
+  unit: "0.000001"
   currency: RMB

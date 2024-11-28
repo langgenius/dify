@@ -10,12 +10,14 @@ type Props = {
   popupFor?: 'assigned' | 'toAssigned'
   onChange: (value: ValueSelector, varDetail: Var) => void
   itemWidth?: number
+  isSupportFileVar?: boolean
 }
 const VarReferencePopup: FC<Props> = ({
   vars,
   popupFor,
   onChange,
   itemWidth,
+  isSupportFileVar = true,
 }) => {
   // max-h-[300px] overflow-y-auto todo: use portal to handle long list
   return (
@@ -41,7 +43,7 @@ const VarReferencePopup: FC<Props> = ({
           vars={vars}
           onChange={onChange}
           itemWidth={itemWidth}
-          isSupportFileVar
+          isSupportFileVar={isSupportFileVar}
         />
       }
     </div >

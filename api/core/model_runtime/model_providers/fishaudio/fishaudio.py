@@ -18,7 +18,8 @@ class FishAudioProvider(ModelProvider):
         """
         try:
             model_instance = self.get_model_instance(ModelType.TTS)
-            model_instance.validate_credentials(credentials=credentials)
+            # FIXME fish tts do not have model for now, so set it to empty string instead
+            model_instance.validate_credentials(model="", credentials=credentials)
         except CredentialsValidateFailedError as ex:
             raise ex
         except Exception as ex:

@@ -591,6 +591,9 @@ const translation = {
     expiring_plural: '{{count}}일 후에 만료',
     expiring: '하루 후에 만료',
   },
+  pagination: {
+    perPage: '페이지당 항목 수',
+  },
 }
 
 export default translation

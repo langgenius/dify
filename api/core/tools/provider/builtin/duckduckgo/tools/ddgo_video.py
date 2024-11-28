@@ -24,7 +24,7 @@ max-width: 100%; border-radius: 8px;">
 
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> list[ToolInvokeMessage]:
         query_dict = {
-            "keywords": tool_parameters.get("query"),
+            "keywords": tool_parameters.get("query"),  # LLM's query
             "region": tool_parameters.get("region", "wt-wt"),
             "safesearch": tool_parameters.get("safesearch", "moderate"),
             "timelimit": tool_parameters.get("timelimit"),
@@ -40,6 +40,12 @@ max-width: 100%; border-radius: 8px;">
         # Get proxy URL from parameters
         proxy_url = tool_parameters.get("proxy_url", "").strip()
 
+        query_prefix = tool_parameters.get("query_prefix", "").strip()
+        final_query = f"{query_prefix} {query_dict['keywords']}".strip()
+
+        # Update the keywords in query_dict with the final_query
+        query_dict["keywords"] = final_query
+
         response = DDGS().videos(**query_dict)
 
         # Create HTML result with embedded iframes
@@ -51,9 +57,13 @@ max-width: 100%; border-radius: 8px;">
             embed_html = res.get("embed_html", "")
             description = res.get("description", "")
             content_url = res.get("content", "")
+            transcript_url = None
 
             # Handle TED.com videos
-            if not embed_html and "ted.com/talks" in content_url:
+            if "ted.com/talks" in content_url:
+                # Create transcript URL
+                transcript_url = f"{content_url}/transcript"
+                # Create embed URL
                 embed_url = content_url.replace("www.ted.com", "embed.ted.com")
                 if proxy_url:
                     embed_url = f"{proxy_url}{embed_url}"
@@ -68,8 +78,14 @@ max-width: 100%; border-radius: 8px;">
 
             markdown_result += f"{title}\n\n"
             markdown_result += f"{embed_html}\n\n"
+            if description:
+                markdown_result += f"{description}\n\n"
             markdown_result += "---\n\n"
 
-            json_result.append(self.create_json_message(res))
+            # Add transcript_url to the JSON result if available
+            result_dict = res.copy()
+            if transcript_url:
+                result_dict["transcript_url"] = transcript_url
+            json_result.append(self.create_json_message(result_dict))
 
         return [self.create_text_message(markdown_result)] + json_result

@@ -59,6 +59,7 @@ type Props = {
   isInTable?: boolean
   onRemove?: () => void
   typePlaceHolder?: string
+  isSupportFileVar?: boolean
   placeholder?: string
   minWidth?: number
   popupFor?: 'assigned' | 'toAssigned'
@@ -84,6 +85,7 @@ const VarReferencePicker: FC<Props> = ({
   isInTable,
   onRemove,
   typePlaceHolder,
+  isSupportFileVar = true,
   placeholder,
   minWidth,
   popupFor,
@@ -389,6 +391,7 @@ const VarReferencePicker: FC<Props> = ({
               popupFor={popupFor}
               onChange={handleVarReferenceChange}
               itemWidth={isAddBtnTrigger ? 260 : (minWidth || triggerWidth)}
+              isSupportFileVar={isSupportFileVar}
             />
           )}
         </PortalToFollowElemContent>

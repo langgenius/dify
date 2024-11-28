@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class SegmentType(str, Enum):
+class SegmentType(StrEnum):
     NUMBER = "number"
     STRING = "string"
     OBJECT = "object"

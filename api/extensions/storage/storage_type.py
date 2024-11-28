@@ -1,7 +1,7 @@
-from enum import Enum
+from enum import StrEnum
 
 
-class StorageType(str, Enum):
+class StorageType(StrEnum):
     ALIYUN_OSS = "aliyun-oss"
     AZURE_BLOB = "azure-blob"
     BAIDU_OBS = "baidu-obs"
