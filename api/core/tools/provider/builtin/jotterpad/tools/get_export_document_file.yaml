@@ -1,0 +1,20 @@
+identity:
+  name: get_export_document_file
+  author: JotterPad
+  label:
+    en_US: Get Export Document File
+description:
+  human:
+    en_US: Get export document file.
+  llm: Get export document file.
+parameters:
+  - name: export_id
+    type: string
+    required: true
+    label:
+      en_US: Export ID
+    human_description:
+      en_US: Export Document ID
+    llm_description: Export ID of a document file.
+    form: llm
+

@@ -1,0 +1,9 @@
+identity:
+  name: clear_export_document_files
+  author: JotterPad
+  label:
+    en_US: Clear Export Document Files
+description:
+  human:
+    en_US: Clear export document files.
+  llm: Clear export document files.

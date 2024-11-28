@@ -1,0 +1,21 @@
+identity:
+  author: JotterPad
+  name: jotterpad
+  label:
+    en_US: JotterPad
+  description:
+    en_US: JotterPad prints and exports Markdown to PDF.
+  icon: icon.svg
+  tags:
+    - utilities
+credentials_for_provider:
+  jotterpad_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: JotterPad API Key
+    placeholder:
+      en_US: Please input your JotterPad API key
+    help:
+      en_US: Get your JotterPad API key from your JotterPad account settings.
+    url: https://jotterpad.app/app/editor/local?new=markdown&openSettings=true

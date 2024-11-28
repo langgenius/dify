@@ -1,0 +1,56 @@
+identity:
+  name: initiate_export
+  author: JotterPad
+  label:
+    en_US: Initiate Export
+description:
+  human:
+    en_US: Initiate export of document.
+  llm: Initiate export of document.
+parameters:
+  - name: in_type
+    type: string
+    required: true
+    label:
+      en_US: In Type
+    human_description:
+      en_US: Input type of content to export. Possible values are md, fountain, html, latex.
+    llm_description: Input type of content to export. Possible values are md, fountain, html, latex.
+    form: llm
+  - name: out_type
+    type: string
+    required: true
+    label:
+      en_US: Out Type
+    human_description:
+      en_US: Output type of the exported document file. Possible values are docx, epub, fdx, pdf, zip.
+    llm_description: Output type of the exported document file. Possible values are docx, epub, fdx, pdf, zip.
+    form: llm
+  - name: input_content
+    type: string
+    required: true
+    label:
+      en_US: Input Content
+    human_description:
+      en_US: Content of the input to export.
+    llm_description: Content of the input to export.
+    form: llm
+  - name: metadata
+    type: string
+    required: false
+    label:
+      en_US: Metadata
+    human_description:
+      en_US: Metadata of the document in JSON string.
+    llm_description: Metadata of the document in JSON string.
+    form: llm
+  - name: name
+    type: string
+    required: true
+    label:
+      en_US: File Name
+    human_description:
+      en_US: Preferred file name of the document (Exclude extension).
+    llm_description: Preferred file name of the document (Exclude extension).
+    form: llm
+
