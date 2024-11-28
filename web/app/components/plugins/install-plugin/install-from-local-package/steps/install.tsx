@@ -34,7 +34,7 @@ const Installed: FC<Props> = ({
   const { t } = useTranslation()
   const toInstallVersion = payload.version
   const pluginId = `${payload.author}/${payload.name}`
-  const { installedInfo } = useCheckInstalled({
+  const { installedInfo, isLoading } = useCheckInstalled({
     pluginIds: [pluginId],
     enabled: !!pluginId,
   })
@@ -126,7 +126,7 @@ const Installed: FC<Props> = ({
           <Card
             className='w-full'
             payload={pluginManifestToCardPluginProps(payload)}
-            titleLeft={<Version
+            titleLeft={!isLoading && <Version
               hasInstalled={hasInstalled}
               installedVersion={installedVersion}
               toInstallVersion={toInstallVersion}
@@ -144,7 +144,7 @@ const Installed: FC<Props> = ({
         <Button
           variant='primary'
           className='min-w-[72px] flex space-x-0.5'
-          disabled={isInstalling}
+          disabled={isInstalling || isLoading}
           onClick={handleInstall}
         >
           {isInstalling && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}

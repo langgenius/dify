@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useMemo } from 'react'
+import React, { useEffect } from 'react'
 // import { RiInformation2Line } from '@remixicon/react'
 import type { Plugin, PluginManifestInMarket } from '../../../types'
 import Card from '../../../card'
@@ -35,7 +35,7 @@ const Installed: FC<Props> = ({
   const { t } = useTranslation()
   const toInstallVersion = payload.version || payload.latest_version
   const pluginId = (payload as Plugin).plugin_id
-  const { installedInfo } = useCheckInstalled({
+  const { installedInfo, isLoading } = useCheckInstalled({
     pluginIds: [pluginId],
     enabled: !!pluginId,
   })
@@ -108,10 +108,6 @@ const Installed: FC<Props> = ({
     }
   }
 
-  const versionInfo = useMemo(() => {
-    return (<></>)
-  }, [installedVersion, payload])
-
   return (
     <>
       <div className='flex flex-col px-6 py-3 justify-center items-start gap-4 self-stretch'>
@@ -122,7 +118,7 @@ const Installed: FC<Props> = ({
           <Card
             className='w-full'
             payload={pluginManifestInMarketToPluginProps(payload as PluginManifestInMarket)}
-            titleLeft={<Version
+            titleLeft={!isLoading && <Version
               hasInstalled={hasInstalled}
               installedVersion={installedVersion}
               toInstallVersion={toInstallVersion}
@@ -140,7 +136,7 @@ const Installed: FC<Props> = ({
         <Button
           variant='primary'
           className='min-w-[72px] flex space-x-0.5'
-          disabled={isInstalling}
+          disabled={isInstalling || isLoading}
           onClick={handleInstall}
         >
           {isInstalling && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}
