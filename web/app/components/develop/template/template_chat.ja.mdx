@@ -685,7 +685,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           (Optional)現在のページの最後のレコードのID、デフォルトはnullです。
       </Property>
       <Property name='limit' type='int' key='limit'>
-          (Optional)1回のリクエストで返すレコードの数、デフォルトは最新の20件です。
+          (Optional)1回のリクエストで返すレコードの数、デフォルトは最新の20件です。最大100、最小1。
       </Property>
       <Property name='sort_by' type='string' key='sort_by'>
         (Optional)ソートフィールド、デフォルト：-updated_at（更新時間で降順にソート）

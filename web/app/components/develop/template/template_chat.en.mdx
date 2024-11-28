@@ -685,7 +685,7 @@ Chat applications support session persistence, allowing previous chat history to
           (Optional) The ID of the last record on the current page, default is null.
       </Property>
       <Property name='limit' type='int' key='limit'>
-          (Optional) How many records to return in one request, default is the most recent 20 entries.
+          (Optional) How many records to return in one request, default is the most recent 20 entries. Maximum 100, minimum 1.
       </Property>
       <Property name='sort_by' type='string' key='sort_by'>
         (Optional) Sorting Field, Default: -updated_at (sorted in descending order by update time)
