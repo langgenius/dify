@@ -613,6 +613,9 @@ const translation = {
     expiring_plural: 'Wygasa za {{count}} dni',
     expiring: 'Wygasa w ciągu jednego dnia',
   },
+  pagination: {
+    perPage: 'Ilość elementów na stronie',
+  },
 }
 
 export default translation
