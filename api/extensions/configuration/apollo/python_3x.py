@@ -16,6 +16,8 @@ opener = urllib.request.build_opener(urllib.request.HTTPSHandler(context=ssl_con
 
 urllib.request.install_opener(opener)
 
+logger = logging.getLogger(__name__)
+
 
 def http_request(url, timeout, headers={}):
     try:
@@ -25,9 +27,9 @@ def http_request(url, timeout, headers={}):
         return res.code, body
     except HTTPError as e:
         if e.code == 304:
-            logging.getLogger(__name__).warning("http_request error,code is 304, maybe you should check secret")
+            logger.warning("http_request error,code is 304, maybe you should check secret")
             return 304, None
-        logging.getLogger(__name__).warning("http_request error,code is %d, msg is %s", e.code, e.msg)
+        logger.warning("http_request error,code is %d, msg is %s", e.code, e.msg)
         raise e
 
 

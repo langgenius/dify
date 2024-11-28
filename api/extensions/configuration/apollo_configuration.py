@@ -16,7 +16,8 @@ class ApolloConfiguration(BaseConfiguration):
         env_path = os.path.join(os.getcwd(), '.env')
 
         apollo_config_dicts = client.get_all_dicts(os.environ.get("APOLLO_NAMESPACE"))
-        # Obtain the value of the configuration item from the Apollo configuration center and write it to the .env file
+        # Obtain the value of the configuration item from the Apollo configuration center
+        # and write it to the .env file
         with open(env_path, 'w') as f:
             for key, value in apollo_config_dicts.items():
                 f.write(f"{key}={value}\n")

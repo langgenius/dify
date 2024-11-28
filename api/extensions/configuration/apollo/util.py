@@ -1,7 +1,7 @@
 import hashlib
 import socket
 
-from .python_3x import *
+from extensions.configuration.apollo.python_3x import url_encode
 
 # define constants
 CONFIGURATIONS = "configurations"
@@ -38,11 +38,11 @@ def get_value_from_dict(namespace_cache, key):
 
 
 def init_ip():
+    ip = ""
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         s.connect(('8.8.8.8', 53))
         ip = s.getsockname()[0]
-        return ip
     finally:
         s.close()
-        return ""
+    return ip

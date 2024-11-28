@@ -1,8 +1,16 @@
+import hashlib
 import json
+import logging
+import os
 import threading
 import time
+from pathlib import Path
 
-from .util import *
+from extensions.configuration.apollo.python_3x import http_request, makedirs_wrapper
+from extensions.configuration.apollo.util import init_ip, CONFIGURATIONS, get_value_from_dict, \
+    no_key_cache_key, NOTIFICATION_ID, NAMESPACE_NAME, url_encode_wrapper, signature
+
+logger = logging.getLogger(__name__)
 
 
 class ApolloClient:
@@ -41,7 +49,7 @@ class ApolloClient:
             self._start_hot_update()
 
         # start the heartbeat thread
-        heartbeat = threading.Thread(target=self._heartBeat)
+        heartbeat = threading.Thread(target=self._heart_beat)
         heartbeat.daemon = True
         heartbeat.start()
 
@@ -49,7 +57,7 @@ class ApolloClient:
         url = '{}/configs/{}/{}/{}?releaseKey={}&ip={}'.format(self.config_url, self.app_id, self.cluster, namespace,
                                                                "", self.ip)
         try:
-            code, body = http_request(url, timeout=3, headers=self._signHeaders(url))
+            code, body = http_request(url, timeout=3, headers=self._sign_headers(url))
             if code == 200:
                 data = json.loads(body)
                 data = data["configurations"]
@@ -58,7 +66,7 @@ class ApolloClient:
             else:
                 return None
         except Exception as e:
-            logging.getLogger(__name__).error(str(e))
+            logger.error(str(e))
             return None
 
     def get_value(self, key, default_val=None, namespace='application'):
@@ -87,29 +95,33 @@ class ApolloClient:
                 self._update_cache_and_file(namespace_cache, namespace)
                 return val
 
-            # If all of them are not obtained, the default value is returned and the local cache is set to None
+            # If all of them are not obtained, the default value is returned
+            # and the local cache is set to None
             self._set_local_cache_none(namespace, key)
             return default_val
         except Exception as e:
-            logging.getLogger(__name__).error("get_value has error, [key is %s], [namespace is %s], [error is %s], ",
-                                              key, namespace, e)
+            logger.error("get_value has error, [key is %s], [namespace is %s], [error is %s], ",
+                         key, namespace, e)
             return default_val
 
-    # Set the key of a namespace to none, and do not set default val to ensure the real-time correctness of the function call.
-    # If the user does not have the same default val twice and the default val is used here, there may be a problem.
+    # Set the key of a namespace to none, and do not set default val
+    # to ensure the real-time correctness of the function call.
+    # If the user does not have the same default val twice
+    # and the default val is used here, there may be a problem.
     def _set_local_cache_none(self, namespace, key):
         no_key = no_key_cache_key(namespace, key)
         self._no_key[no_key] = key
 
     def _start_hot_update(self):
         self._long_poll_thread = threading.Thread(target=self._listener)
-        # When the asynchronous thread is started, the daemon thread will automatically exit when the main thread is launched.
+        # When the asynchronous thread is started, the daemon thread will automatically exit
+        # when the main thread is launched.
         self._long_poll_thread.daemon = True
         self._long_poll_thread.start()
 
     def stop(self):
         self._stopping = True
-        logging.getLogger(__name__).info("Stopping listener...")
+        logger.info("Stopping listener...")
 
     # Call the set callback function, and if it is abnormal, try it out
     def _call_listener(self, namespace, old_kv, new_kv):
@@ -136,7 +148,7 @@ class ApolloClient:
                 if old_value is None:
                     self._change_listener("add", namespace, key, new_value)
         except BaseException as e:
-            logging.getLogger(__name__).warning(str(e))
+            logger.warning(str(e))
 
     def _path_checker(self):
         if not os.path.isdir(self._cache_file_path):
@@ -152,14 +164,13 @@ class ApolloClient:
         if self._hash.get(namespace) == new_hash:
             pass
         else:
-            with open(os.path.join(self._cache_file_path, '%s_configuration_%s.txt' % (self.app_id, namespace)),
-                      'w') as f:
-                f.write(new_string)
+            file_path = Path(self._cache_file_path) / f"{self.app_id}_configuration_{namespace}.txt"
+            file_path.write_text(new_string)
             self._hash[namespace] = new_hash
 
     # get the configuration from the local file
     def _get_local_cache(self, namespace='application'):
-        cache_file_path = os.path.join(self._cache_file_path, '%s_configuration_%s.txt' % (self.app_id, namespace))
+        cache_file_path = os.path.join(self._cache_file_path, f"{self.app_id}_configuration_{namespace}.txt")
         if os.path.isfile(cache_file_path):
             with open(cache_file_path) as f:
                 result = json.loads(f.readline())
@@ -189,23 +200,23 @@ class ApolloClient:
             }
             param_str = url_encode_wrapper(params)
             url = url + '?' + param_str
-            code, body = http_request(url, self._pull_timeout, headers=self._signHeaders(url))
+            code, body = http_request(url, self._pull_timeout, headers=self._sign_headers(url))
             http_code = code
             if http_code == 304:
-                logging.getLogger(__name__).debug('No change, loop...')
+                logger.debug('No change, loop...')
                 return
             if http_code == 200:
                 data = json.loads(body)
                 for entry in data:
                     namespace = entry[NAMESPACE_NAME]
                     n_id = entry[NOTIFICATION_ID]
-                    logging.getLogger(__name__).info("%s has changes: notificationId=%d", namespace, n_id)
+                    logger.info("%s has changes: notificationId=%d", namespace, n_id)
                     self._get_net_and_set_local(namespace, n_id, call_change=True)
                     return
             else:
-                logging.getLogger(__name__).warning('Sleep...')
+                logger.warning('Sleep...')
         except Exception as e:
-            logging.getLogger(__name__).warning(str(e))
+            logger.warning(str(e))
 
     def _get_net_and_set_local(self, namespace, n_id, call_change=False):
         namespace_data = self.get_json_from_net(namespace)
@@ -218,14 +229,14 @@ class ApolloClient:
             self._call_listener(namespace, old_kv, new_kv)
 
     def _listener(self):
-        logging.getLogger(__name__).info('start long_poll')
+        logger.info('start long_poll')
         while not self._stopping:
             self._long_poll()
             time.sleep(self._cycle_time)
-        logging.getLogger(__name__).info("stopped, long_poll")
+        logger.info("stopped, long_poll")
 
     # add the need for endorsement to the header
-    def _signHeaders(self, url):
+    def _sign_headers(self, url):
         headers = {}
         if self.secret == '':
             return headers
@@ -235,17 +246,17 @@ class ApolloClient:
         headers['Timestamp'] = time_unix_now
         return headers
 
-    def _heartBeat(self):
+    def _heart_beat(self):
         while not self._stopping:
             for namespace in self._notification_map:
-                self._do_heartBeat(namespace)
+                self._do_heart_beat(namespace)
             time.sleep(60 * 10)  # 10分钟
 
-    def _do_heartBeat(self, namespace):
+    def _do_heart_beat(self, namespace):
         url = '{}/configs/{}/{}/{}?ip={}'.format(self.config_url, self.app_id, self.cluster, namespace,
                                                  self.ip)
         try:
-            code, body = http_request(url, timeout=3, headers=self._signHeaders(url))
+            code, body = http_request(url, timeout=3, headers=self._sign_headers(url))
             if code == 200:
                 data = json.loads(body)
                 if self.last_release_key == data["releaseKey"]:
@@ -256,7 +267,7 @@ class ApolloClient:
             else:
                 return None
         except Exception as e:
-            logging.getLogger(__name__).error(str(e))
+            logger.error(str(e))
             return None
 
     def get_all_dicts(self, namespace):
