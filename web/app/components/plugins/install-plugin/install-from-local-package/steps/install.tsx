@@ -7,10 +7,10 @@ import { pluginManifestToCardPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
 import { Trans, useTranslation } from 'react-i18next'
 import { RiLoader2Line } from '@remixicon/react'
-import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import { useInstallPackageFromLocal } from '@/service/use-plugins'
 import checkTaskStatus from '../../base/check-task-status'
-import { usePluginTaskList } from '@/service/use-plugins'
+import { useInstallPackageFromLocal, usePluginTaskList, useUpdatePackageFromMarketPlace } from '@/service/use-plugins'
+import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
+import Version from '../../base/version'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -32,8 +32,19 @@ const Installed: FC<Props> = ({
   onFailed,
 }) => {
   const { t } = useTranslation()
+  const toInstallVersion = payload.version
+  const pluginId = `${payload.author}/${payload.name}`
+  const { installedInfo } = useCheckInstalled({
+    pluginIds: [pluginId],
+    enabled: !!pluginId,
+  })
+  const installedInfoPayload = installedInfo?.[pluginId]
+  const installedVersion = installedInfoPayload?.installedVersion
+  const hasInstalled = !!installedVersion
+
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromLocal } = useInstallPackageFromLocal()
+  const { mutateAsync: updatePackageFromMarketPlace } = useUpdatePackageFromMarketPlace()
 
   const {
     check,
@@ -52,10 +63,28 @@ const Installed: FC<Props> = ({
     onStartToInstall?.()
 
     try {
-      const {
-        all_installed: isInstalled,
-        task_id: taskId,
-      } = await installPackageFromLocal(uniqueIdentifier)
+      let taskId
+      let isInstalled
+      if (hasInstalled) {
+        const {
+          all_installed,
+          task_id,
+        } = await updatePackageFromMarketPlace({
+          original_plugin_unique_identifier: installedInfoPayload.uniqueIdentifier,
+          new_plugin_unique_identifier: uniqueIdentifier,
+        })
+        taskId = task_id
+        isInstalled = all_installed
+      }
+      else {
+        const {
+          all_installed,
+          task_id,
+        } = await installPackageFromLocal(uniqueIdentifier)
+        taskId = task_id
+        isInstalled = all_installed
+      }
+
       if (isInstalled) {
         onInstalled()
         return
@@ -92,7 +121,11 @@ const Installed: FC<Props> = ({
           <Card
             className='w-full'
             payload={pluginManifestToCardPluginProps(payload)}
-            titleLeft={<Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version}</Badge>}
+            titleLeft={<Version
+              hasInstalled={hasInstalled}
+              installedVersion={installedVersion}
+              toInstallVersion={toInstallVersion}
+            />}
           />
         </div>
       </div>
