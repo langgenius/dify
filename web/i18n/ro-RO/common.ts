@@ -595,6 +595,9 @@ const translation = {
     expiring: 'Expiră într-o zi',
     expiring_plural: 'Expiră în {{count}} zile',
   },
+  pagination: {
+    perPage: 'Articole pe pagină',
+  },
 }
 
 export default translation

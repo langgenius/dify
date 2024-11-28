@@ -595,6 +595,9 @@ const translation = {
     expiring_plural: 'Hết hạn sau {{count}} ngày',
     expiring: 'Hết hạn trong một ngày',
   },
+  pagination: {
+    perPage: 'Mục trên mỗi trang',
+  },
 }
 
 export default translation

@@ -595,6 +595,9 @@ const translation = {
     expiring: '將在1天內過期',
     expiring_plural: '將在 {{count}} 天后過期',
   },
+  pagination: {
+    perPage: '每頁項目數',
+  },
 }
 
 export default translation
