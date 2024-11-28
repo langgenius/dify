@@ -6,6 +6,7 @@ from configs import dify_config
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin import GenericProviderID
+from core.plugin.manager.exc import PluginInvokeError
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
@@ -137,7 +138,12 @@ class BuiltinToolManageService:
             provider_controller.validate_credentials(user_id, credentials)
             # encrypt credentials
             credentials = tool_configuration.encrypt(credentials)
-        except (ToolProviderNotFoundError, ToolNotFoundError, ToolProviderCredentialValidationError) as e:
+        except (
+            PluginInvokeError,
+            ToolProviderNotFoundError,
+            ToolNotFoundError,
+            ToolProviderCredentialValidationError,
+        ) as e:
             raise ValueError(str(e))
 
         if provider is None:
