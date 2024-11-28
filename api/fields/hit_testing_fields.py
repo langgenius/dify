@@ -36,11 +36,8 @@ segment_fields = {
 
 child_chunk_fields = {
     "id": fields.String,
-    "position": fields.Integer,
     "content": fields.String,
-    "word_count": fields.Integer,
-    "index_node_id": fields.String,
-    "index_node_hash": fields.String,
+    "score": fields.Float,
 }
 
 hit_testing_record_fields = {

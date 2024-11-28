@@ -1201,7 +1201,7 @@ class DocumentService:
             raise ValueError("Process rule mode is invalid")
 
         if knowledge_config.process_rule.mode == "automatic":
-            knowledge_config.process_rule["rules"] = {}
+            knowledge_config.process_rule.rules = None
         else:
             if not knowledge_config.process_rule.rules:
                 raise ValueError("Process rule rules is required")

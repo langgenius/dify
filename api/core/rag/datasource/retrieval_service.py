@@ -263,9 +263,14 @@ class RetrievalService:
                         continue
                     if segment.id not in include_segment_ids:
                         include_segment_ids.append(segment.id)
+                        child_chunk_detail = {
+                            "id": child_chunk.id,
+                            "content": child_chunk.content,
+                            "score": document.metadata.get("score", 0.0),
+                        }
                         map_detail = {
                             "max_score": document.metadata.get("score", 0.0),
-                            "child_chunks": [child_chunk],
+                            "child_chunks": [child_chunk_detail],
                         }
                         segment_child_map[segment.id] = map_detail
                         record = {
@@ -273,7 +278,12 @@ class RetrievalService:
                         }
                         records.append(record)
                     else:
-                        segment_child_map[segment.id]["child_chunks"].append(child_chunk)
+                        child_chunk_detail = {
+                            "id": child_chunk.id,
+                            "content": child_chunk.content,
+                            "score": document.metadata.get("score", 0.0),
+                        }
+                        segment_child_map[segment.id]["child_chunks"].append(child_chunk_detail)
                         segment_child_map[segment.id]["max_score"] = max(
                             segment_child_map[segment.id]["max_score"], document.metadata.get("score", 0.0)
                         )
@@ -304,6 +314,7 @@ class RetrievalService:
                 records.append(record)
             for record in records:
                 if record["segment"].id in segment_child_map:
-                    record["child_chunks"] = segment_child_map[record["segment"].id]
+                    record["child_chunks"] = segment_child_map[record["segment"].id].get("child_chunks", None)
                     record["score"] = segment_child_map[record["segment"].id]["max_score"]
+
         return [RetrievalSegments(**record) for record in records]

@@ -553,8 +553,8 @@ class IndexingRunner:
 
                 for future in futures:
                     tokens += future.result()
-
-        create_keyword_thread.join()
+        if dataset_document.doc_form != IndexType.PARENT_CHILD_INDEX:
+            create_keyword_thread.join()
         indexing_end_at = time.perf_counter()
 
         # update document status to completed

@@ -563,10 +563,13 @@ class DocumentSegment(db.Model):
     @property
     def child_chunks(self):
         process_rule = self.document.dataset_process_rule
-        rules = Rule(**process_rule.rules)
-        if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
-            child_chunks = db.session.query(ChildChunk).filter(ChildChunk.segment_id == self.id).all()
-            return child_chunks or []
+        if process_rule.mode == "hierarchical":
+            rules = Rule(**process_rule.rules_dict)
+            if rules.parent_mode and rules.parent_mode != ParentMode.FULL_DOC:
+                child_chunks = db.session.query(ChildChunk).filter(ChildChunk.segment_id == self.id).all()
+                return child_chunks or []
+            else:
+                return []
         else:
             return []
 
