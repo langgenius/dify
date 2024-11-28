@@ -13,12 +13,14 @@ type Props = {
   list: Plugin[]
   installStatus: InstallStatusResponse[]
   onCancel: () => void
+  isHideButton?: boolean
 }
 
 const Installed: FC<Props> = ({
   list,
   installStatus,
   onCancel,
+  isHideButton,
 }) => {
   const { t } = useTranslation()
   const { getIconUrl } = useGetIcon()
@@ -45,15 +47,17 @@ const Installed: FC<Props> = ({
         </div>
       </div>
       {/* Action Buttons */}
-      <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
-        <Button
-          variant='primary'
-          className='min-w-[72px]'
-          onClick={onCancel}
-        >
-          {t('common.operation.close')}
-        </Button>
-      </div>
+      {!isHideButton && (
+        <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
+          <Button
+            variant='primary'
+            className='min-w-[72px]'
+            onClick={onCancel}
+          >
+            {t('common.operation.close')}
+          </Button>
+        </div>
+      )}
     </>
   )
 }

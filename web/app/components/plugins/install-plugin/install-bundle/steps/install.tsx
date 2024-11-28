@@ -15,6 +15,7 @@ type Props = {
   onInstalled: (plugins: Plugin[], installStatus: InstallStatusResponse[]) => void
   onCancel: () => void
   isFromMarketPlace?: boolean
+  isHideButton?: boolean
 }
 
 const Install: FC<Props> = ({
@@ -22,6 +23,7 @@ const Install: FC<Props> = ({
   onInstalled,
   onCancel,
   isFromMarketPlace,
+  isHideButton,
 }) => {
   const { t } = useTranslation()
   const [selectedPlugins, setSelectedPlugins] = React.useState<Plugin[]>([])
@@ -82,22 +84,25 @@ const Install: FC<Props> = ({
         </div>
       </div>
       {/* Action Buttons */}
-      <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
-        {!canInstall && (
-          <Button variant='secondary' className='min-w-[72px]' onClick={onCancel}>
-            {t('common.operation.cancel')}
+      {!isHideButton && (
+        <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
+          {!canInstall && (
+            <Button variant='secondary' className='min-w-[72px]' onClick={onCancel}>
+              {t('common.operation.cancel')}
+            </Button>
+          )}
+          <Button
+            variant='primary'
+            className='min-w-[72px] flex space-x-0.5'
+            disabled={!canInstall || isInstalling || selectedPlugins.length === 0}
+            onClick={handleInstall}
+          >
+            {isInstalling && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}
+            <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
           </Button>
-        )}
-        <Button
-          variant='primary'
-          className='min-w-[72px] flex space-x-0.5'
-          disabled={!canInstall || isInstalling || selectedPlugins.length === 0}
-          onClick={handleInstall}
-        >
-          {isInstalling && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}
-          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
-        </Button>
-      </div>
+        </div>
+      )}
+
     </>
   )
 }
