@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file import File, FileTransferMethod, FileType
-from core.plugin.manager.exc import PluginInvokeError
+from core.plugin.manager.exc import PluginDaemonClientSideError
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
@@ -105,7 +105,7 @@ class ToolNode(BaseNode[ToolNodeData]):
         try:
             # convert tool messages
             yield from self._transform_message(message_stream, tool_info, parameters_for_log)
-        except PluginInvokeError as e:
+        except PluginDaemonClientSideError as e:
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,

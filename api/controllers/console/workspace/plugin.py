@@ -10,7 +10,7 @@ from controllers.console import api
 from controllers.console.workspace import plugin_permission_required
 from controllers.console.wraps import account_initialization_required, setup_required
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.plugin.manager.exc import PluginDaemonBadRequestError
+from core.plugin.manager.exc import PluginDaemonClientSideError
 from libs.login import login_required
 from models.account import TenantPluginPermission
 from services.plugin.plugin_permission_service import PluginPermissionService
@@ -31,7 +31,7 @@ class PluginDebuggingKeyApi(Resource):
                 "host": dify_config.PLUGIN_REMOTE_INSTALL_HOST,
                 "port": dify_config.PLUGIN_REMOTE_INSTALL_PORT,
             }
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
 
@@ -43,7 +43,7 @@ class PluginListApi(Resource):
         tenant_id = current_user.current_tenant_id
         try:
             plugins = PluginService.list(tenant_id)
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
         return jsonable_encoder({"plugins": plugins})
@@ -62,7 +62,7 @@ class PluginListInstallationsFromIdsApi(Resource):
 
         try:
             plugins = PluginService.list_installations_from_ids(tenant_id, args["plugin_ids"])
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
         return jsonable_encoder({"plugins": plugins})
@@ -78,7 +78,7 @@ class PluginIconApi(Resource):
 
         try:
             icon_bytes, mimetype = PluginService.get_asset(args["tenant_id"], args["filename"])
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
@@ -102,7 +102,7 @@ class PluginUploadFromPkgApi(Resource):
         content = file.read()
         try:
             response = PluginService.upload_pkg(tenant_id, content)
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
         return jsonable_encoder(response)
@@ -124,7 +124,7 @@ class PluginUploadFromGithubApi(Resource):
 
         try:
             response = PluginService.upload_pkg_from_github(tenant_id, args["repo"], args["version"], args["package"])
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
         return jsonable_encoder(response)
@@ -147,7 +147,7 @@ class PluginUploadFromBundleApi(Resource):
         content = file.read()
         try:
             response = PluginService.upload_bundle(tenant_id, content)
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
         return jsonable_encoder(response)
@@ -172,7 +172,7 @@ class PluginInstallFromPkgApi(Resource):
 
         try:
             response = PluginService.install_from_local_pkg(tenant_id, args["plugin_unique_identifiers"])
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
         return jsonable_encoder(response)
@@ -201,7 +201,7 @@ class PluginInstallFromGithubApi(Resource):
                 args["version"],
                 args["package"],
             )
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
         return jsonable_encoder(response)
@@ -226,7 +226,7 @@ class PluginInstallFromMarketplaceApi(Resource):
 
         try:
             response = PluginService.install_from_marketplace_pkg(tenant_id, args["plugin_unique_identifiers"])
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
         return jsonable_encoder(response)
@@ -252,7 +252,7 @@ class PluginFetchManifestApi(Resource):
                     ).model_dump()
                 }
             )
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
 
@@ -273,7 +273,7 @@ class PluginFetchInstallTasksApi(Resource):
             return jsonable_encoder(
                 {"tasks": PluginService.fetch_install_tasks(tenant_id, args["page"], args["page_size"])}
             )
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
 
@@ -287,7 +287,7 @@ class PluginFetchInstallTaskApi(Resource):
 
         try:
             return jsonable_encoder({"task": PluginService.fetch_install_task(tenant_id, task_id)})
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
 
@@ -301,7 +301,7 @@ class PluginDeleteInstallTaskApi(Resource):
 
         try:
             return {"success": PluginService.delete_install_task(tenant_id, task_id)}
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
 
@@ -315,7 +315,7 @@ class PluginDeleteAllInstallTaskItemsApi(Resource):
 
         try:
             return {"success": PluginService.delete_all_install_task_items(tenant_id)}
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
 
@@ -329,7 +329,7 @@ class PluginDeleteInstallTaskItemApi(Resource):
 
         try:
             return {"success": PluginService.delete_install_task_item(tenant_id, task_id, identifier)}
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
 
@@ -352,7 +352,7 @@ class PluginUpgradeFromMarketplaceApi(Resource):
                     tenant_id, args["original_plugin_unique_identifier"], args["new_plugin_unique_identifier"]
                 )
             )
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
 
@@ -383,7 +383,7 @@ class PluginUpgradeFromGithubApi(Resource):
                     args["package"],
                 )
             )
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
 
@@ -401,7 +401,7 @@ class PluginUninstallApi(Resource):
 
         try:
             return {"success": PluginService.uninstall(tenant_id, args["plugin_installation_id"])}
-        except PluginDaemonBadRequestError as e:
+        except PluginDaemonClientSideError as e:
             raise ValueError(e)
 
 
