@@ -1,5 +1,6 @@
 import datetime
 import json
+from typing import Any
 
 import requests
 from flask_login import current_user  # type: ignore
@@ -168,12 +169,14 @@ class WebsiteService:
         credentials = ApiKeyAuthService.get_auth_credentials(tenant_id, "website", provider)
         # decrypt api_key
         api_key = encrypter.decrypt_token(tenant_id=tenant_id, token=credentials.get("config").get("api_key"))
+        # FIXME data is redefine too many times here, use Any to ease the type checking, fix it later
+        data: Any
         if provider == "firecrawl":
             file_key = "website_files/" + job_id + ".txt"
             if storage.exists(file_key):
-                data = storage.load_once(file_key)
-                if data:
-                    data = json.loads(data.decode("utf-8"))
+                d = storage.load_once(file_key)
+                if d:
+                    data = json.loads(d.decode("utf-8"))
             else:
                 firecrawl_app = FirecrawlApp(api_key=api_key, base_url=credentials.get("config").get("base_url", None))
                 result = firecrawl_app.check_crawl_status(job_id)
@@ -186,12 +189,7 @@ class WebsiteService:
                         return item
             return None
         elif provider == "jinareader":
-            file_key = "website_files/" + job_id + ".txt"
-            if storage.exists(file_key):
-                data = storage.load_once(file_key)
-                if data:
-                    data = json.loads(data.decode("utf-8"))
-            elif not job_id:
+            if not job_id:
                 response = requests.get(
                     f"https://r.jina.ai/{url}",
                     headers={"Accept": "application/json", "Authorization": f"Bearer {api_key}"},
@@ -219,11 +217,12 @@ class WebsiteService:
                 for item in data.get("processed", {}).values():
                     if item.get("data", {}).get("url") == url:
                         return item.get("data", {})
+            return None
         else:
             raise ValueError("Invalid provider")
 
     @classmethod
-    def get_scrape_url_data(cls, provider: str, url: str, tenant_id: str, only_main_content: bool) -> dict | None:
+    def get_scrape_url_data(cls, provider: str, url: str, tenant_id: str, only_main_content: bool) -> dict:
         credentials = ApiKeyAuthService.get_auth_credentials(tenant_id, "website", provider)
         if provider == "firecrawl":
             # decrypt api_key

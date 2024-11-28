@@ -69,6 +69,8 @@ def build_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
         raise VariableError("missing name")
     if (value := mapping.get("value")) is None:
         raise VariableError("missing value")
+    # FIXME: using Any here, fix it later
+    result: Any
     match value_type:
         case SegmentType.STRING:
             result = StringVariable.model_validate(mapping)

@@ -278,6 +278,7 @@ def _get_file_type_by_extension(extension: str) -> FileType | None:
         return FileType.AUDIO
     elif extension in DOCUMENT_EXTENSIONS:
         return FileType.DOCUMENT
+    return None
 
 
 def _get_file_type_by_mimetype(mime_type: str) -> FileType | None:

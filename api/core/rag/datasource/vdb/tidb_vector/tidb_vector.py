@@ -243,11 +243,11 @@ class TiDBVectorFactory(AbstractVectorFactory):
         return TiDBVector(
             collection_name=collection_name,
             config=TiDBVectorConfig(
-                host=dify_config.TIDB_VECTOR_HOST,
-                port=dify_config.TIDB_VECTOR_PORT,
-                user=dify_config.TIDB_VECTOR_USER,
-                password=dify_config.TIDB_VECTOR_PASSWORD,
-                database=dify_config.TIDB_VECTOR_DATABASE,
+                host=dify_config.TIDB_VECTOR_HOST or "",
+                port=dify_config.TIDB_VECTOR_PORT or 0,
+                user=dify_config.TIDB_VECTOR_USER or "",
+                password=dify_config.TIDB_VECTOR_PASSWORD or "",
+                database=dify_config.TIDB_VECTOR_DATABASE or "",
                 program_name=dify_config.APPLICATION_NAME,
             ),
         )

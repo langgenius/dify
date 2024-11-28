@@ -51,6 +51,8 @@ class DatasetRetrieverTool(Tool):
             invoke_from=invoke_from,
             hit_callback=hit_callback,
         )
+        if retrieval_tools is None:
+            return []
         # restore retrieve strategy
         retrieve_config.retrieve_strategy = original_retriever_mode
 

@@ -386,6 +386,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             application_generate_entity=self._application_generate_entity,
             conversation=self._conversation,
             is_first_message=self._application_generate_entity.app_config.app_mode in {AppMode.AGENT_CHAT, AppMode.CHAT}
+            and hasattr(self._application_generate_entity, "conversation_id")
             and self._application_generate_entity.conversation_id is None,
             extras=self._application_generate_entity.extras,
         )
@@ -432,7 +433,9 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             extras["metadata"] = self._task_state.metadata
 
         return MessageEndStreamResponse(
-            task_id=self._application_generate_entity.task_id, id=self._message.id, **extras
+            task_id=self._application_generate_entity.task_id,
+            id=self._message.id,
+            metadata=extras.get("metadata", {}),
         )
 
     def _agent_message_to_stream_response(self, answer: str, message_id: str) -> AgentMessageStreamResponse:

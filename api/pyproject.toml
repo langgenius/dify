@@ -105,6 +105,12 @@ exclude = [
 name = "dify-api"
 package-mode = false
 
+[tool.mypy]
+exclude = [
+  "core/tools", 
+  "core/model_runtime/model_providers",
+]
+
 ############################################################
 # [ Main ] Dependency group
 ############################################################

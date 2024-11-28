@@ -89,7 +89,7 @@ class Account(UserMixin, db.Model):  # type: ignore[name-defined]
         return AccountStatus(status_str)
 
     @classmethod
-    def get_by_openid(cls, provider: str, open_id: str) -> db.Model:
+    def get_by_openid(cls, provider: str, open_id: str):
         account_integrate = (
             db.session.query(AccountIntegrate)
             .filter(AccountIntegrate.provider == provider, AccountIntegrate.open_id == open_id)
@@ -99,7 +99,7 @@ class Account(UserMixin, db.Model):  # type: ignore[name-defined]
             return db.session.query(Account).filter(Account.id == account_integrate.account_id).one_or_none()
         return None
 
-    def get_integrates(self) -> list[db.Model]:
+    def get_integrates(self):
         ai = db.Model
         return db.session.query(ai).filter(ai.account_id == self.id).all()
 
@@ -139,7 +139,7 @@ class TenantAccountRole(enum.StrEnum):
 
     @staticmethod
     def is_valid_role(role: str) -> bool:
-        return role and role in {
+        return role in {
             TenantAccountRole.OWNER,
             TenantAccountRole.ADMIN,
             TenantAccountRole.EDITOR,
@@ -149,15 +149,15 @@ class TenantAccountRole(enum.StrEnum):
 
     @staticmethod
     def is_privileged_role(role: str) -> bool:
-        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
+        return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN}
 
     @staticmethod
     def is_admin_role(role: str) -> bool:
-        return role and role == TenantAccountRole.ADMIN
+        return role == TenantAccountRole.ADMIN
 
     @staticmethod
     def is_non_owner_role(role: str) -> bool:
-        return role and role in {
+        return role in {
             TenantAccountRole.ADMIN,
             TenantAccountRole.EDITOR,
             TenantAccountRole.NORMAL,
@@ -166,11 +166,11 @@ class TenantAccountRole(enum.StrEnum):
 
     @staticmethod
     def is_editing_role(role: str) -> bool:
-        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
+        return role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
 
     @staticmethod
     def is_dataset_edit_role(role: str) -> bool:
-        return role and role in {
+        return role in {
             TenantAccountRole.OWNER,
             TenantAccountRole.ADMIN,
             TenantAccountRole.EDITOR,

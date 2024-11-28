@@ -1,7 +1,7 @@
 import os
 from collections import OrderedDict
 from collections.abc import Callable
-from typing import Any
+from typing import Any, cast
 
 from configs import dify_config
 from core.tools.utils.yaml_utils import load_yaml_file
@@ -31,7 +31,7 @@ def get_tool_position_map(folder_path: str, file_name: str = "_position.yaml") -
 
     return pin_position_map(
         position_map,
-        pin_list=dify_config.POSITION_TOOL_PINS_LIST,
+        pin_list=cast(list, dify_config.POSITION_TOOL_PINS_LIST),
     )
 
 
@@ -45,7 +45,7 @@ def get_provider_position_map(folder_path: str, file_name: str = "_position.yaml
     position_map = get_position_map(folder_path, file_name=file_name)
     return pin_position_map(
         position_map,
-        pin_list=dify_config.POSITION_PROVIDER_PINS_LIST,
+        pin_list=cast(list, dify_config.POSITION_PROVIDER_PINS_LIST),
     )
 
 
