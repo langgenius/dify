@@ -44,7 +44,7 @@ const AgentTools: FC = () => {
   const [currentTool, setCurrentTool] = useState<AgentToolWithMoreInfo>(null)
   const currentCollection = useMemo(() => {
     if (!currentTool) return null
-    const collection = collectionList.find(collection => collection.id === currentTool?.provider_id.split('/').pop() && collection.type === currentTool?.provider_type)
+    const collection = collectionList.find(collection => collection.id.split('/').pop() === currentTool?.provider_id.split('/').pop() && collection.type === currentTool?.provider_type)
     return collection
   }, [currentTool, collectionList])
   const [isShowSettingTool, setIsShowSettingTool] = useState(false)
