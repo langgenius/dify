@@ -11,6 +11,7 @@ import type {
   DefaultModel,
   DefaultModelResponse,
   Model,
+  ModelProvider,
   ModelTypeEnum,
 } from './declarations'
 import {
@@ -26,6 +27,12 @@ import {
   getPayUrl,
 } from '@/service/common'
 import { useProviderContext } from '@/context/provider-context'
+import {
+  useMarketplaceCollectionsAndPlugins,
+  useMarketplacePlugins,
+} from '@/app/components/plugins/marketplace/hooks'
+import { PluginType } from '@/app/components/plugins/types'
+import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
 
 type UseDefaultModelAndModelList = (
   defaultModel: DefaultModelResponse | undefined,
@@ -232,4 +239,47 @@ export const useUpdateModelProviders = () => {
   }, [mutate])
 
   return updateModelProviders
+}
+
+export const useMarketplace = (providers: ModelProvider[], searchText: string) => {
+  const exclude = useMemo(() => {
+    return providers.map(provider => provider.provider.replace(/(.+)\/([^/]+)$/, '$1'))
+  }, [providers])
+  const {
+    isLoading,
+    marketplaceCollections,
+    marketplaceCollectionPluginsMap,
+    queryMarketplaceCollectionsAndPlugins,
+  } = useMarketplaceCollectionsAndPlugins()
+  const {
+    plugins,
+    resetPlugins,
+    queryPluginsWithDebounced,
+    isLoading: isPluginsLoading,
+  } = useMarketplacePlugins()
+
+  useEffect(() => {
+    if (searchText) {
+      queryPluginsWithDebounced({
+        query: searchText,
+        category: PluginType.model,
+        exclude,
+      })
+    }
+    else {
+      queryMarketplaceCollectionsAndPlugins({
+        category: PluginType.model,
+        condition: getMarketplaceListCondition(PluginType.model),
+        exclude,
+      })
+      resetPlugins()
+    }
+  }, [searchText, queryMarketplaceCollectionsAndPlugins, queryPluginsWithDebounced, resetPlugins, exclude])
+
+  return {
+    isLoading: isLoading || isPluginsLoading,
+    marketplaceCollections,
+    marketplaceCollectionPluginsMap,
+    plugins: plugins?.filter(plugin => plugin.type !== 'bundle'),
+  }
 }

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { useDebounce } from 'ahooks'
@@ -21,21 +21,21 @@ import {
 } from './declarations'
 import {
   useDefaultModel,
+  useMarketplace,
   useUpdateModelList,
   useUpdateModelProviders,
 } from './hooks'
 import Divider from '@/app/components/base/divider'
 import Loading from '@/app/components/base/loading'
 import ProviderCard from '@/app/components/plugins/provider-card'
+import List from '@/app/components/plugins/marketplace/list'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import {
-  useMarketplacePlugins,
-} from '@/app/components/plugins/marketplace/hooks'
-import { PluginType } from '@/app/components/plugins/types'
+import type { Plugin } from '@/app/components/plugins/types'
 import { MARKETPLACE_URL_PREFIX } from '@/config'
 import cn from '@/utils/classnames'
+import { getLocaleOnClient } from '@/i18n'
 
 type Props = {
   searchText: string
@@ -121,28 +121,20 @@ const ModelProviderPage = ({ searchText }: Props) => {
   }
 
   const [collapse, setCollapse] = useState(false)
-
+  const locale = getLocaleOnClient()
   const {
-    plugins = [],
-    queryPlugins,
-    queryPluginsWithDebounced,
+    plugins,
+    marketplaceCollections,
+    marketplaceCollectionPluginsMap,
     isLoading: isPluginsLoading,
-  } = useMarketplacePlugins()
+  } = useMarketplace(providers, searchText)
 
-  useEffect(() => {
-    if (searchText) {
-      queryPluginsWithDebounced({
-        query: searchText,
-        category: PluginType.model,
-      })
-    }
-    else {
-      queryPlugins({
-        query: searchText,
-        category: PluginType.model,
-      })
-    }
-  }, [queryPlugins, queryPluginsWithDebounced, searchText])
+  const cardRender = useCallback((plugin: Plugin) => {
+    if (plugin.type === 'bundle')
+      return null
+
+    return <ProviderCard key={plugin.plugin_id} payload={plugin} />
+  }, [])
 
   return (
     <div className='relative pt-1 -mt-2'>
@@ -219,14 +211,20 @@ const ModelProviderPage = ({ searchText }: Props) => {
             </Link>
           </div>
         </div>
-        {!collapse && !isPluginsLoading && (
-          <div className='grid grid-cols-2 gap-2'>
-            {plugins.map(plugin => (
-              <ProviderCard key={plugin.plugin_id} payload={plugin} />
-            ))}
-          </div>
-        )}
         {!collapse && isPluginsLoading && <Loading type='area' />}
+        {
+          !isPluginsLoading && (
+            <List
+              marketplaceCollections={marketplaceCollections || []}
+              marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
+              plugins={plugins}
+              showInstallButton
+              locale={locale}
+              cardContainerClassName='grid grid-cols-2 gap-2'
+              cardRender={cardRender}
+            />
+          )
+        }
       </div>
     </div>
   )

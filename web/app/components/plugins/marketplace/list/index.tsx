@@ -4,6 +4,7 @@ import type { MarketplaceCollection } from '../types'
 import ListWithCollection from './list-with-collection'
 import CardWrapper from './card-wrapper'
 import Empty from '../empty'
+import cn from '@/utils/classnames'
 
 type ListProps = {
   marketplaceCollections: MarketplaceCollection[]
@@ -11,6 +12,8 @@ type ListProps = {
   plugins?: Plugin[]
   showInstallButton?: boolean
   locale: string
+  cardContainerClassName?: string
+  cardRender?: (plugin: Plugin) => JSX.Element | null
 }
 const List = ({
   marketplaceCollections,
@@ -18,6 +21,8 @@ const List = ({
   plugins,
   showInstallButton,
   locale,
+  cardContainerClassName,
+  cardRender,
 }: ListProps) => {
   return (
     <>
@@ -28,21 +33,31 @@ const List = ({
             marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap}
             showInstallButton={showInstallButton}
             locale={locale}
+            cardContainerClassName={cardContainerClassName}
+            cardRender={cardRender}
           />
         )
       }
       {
         plugins && !!plugins.length && (
-          <div className='grid grid-cols-4 gap-3'>
+          <div className={cn(
+            'grid grid-cols-4 gap-3',
+            cardContainerClassName,
+          )}>
             {
-              plugins.map(plugin => (
-                <CardWrapper
-                  key={plugin.name}
-                  plugin={plugin}
-                  showInstallButton={showInstallButton}
-                  locale={locale}
-                />
-              ))
+              plugins.map((plugin) => {
+                if (cardRender)
+                  return cardRender(plugin)
+
+                return (
+                  <CardWrapper
+                    key={plugin.name}
+                    plugin={plugin}
+                    showInstallButton={showInstallButton}
+                    locale={locale}
+                  />
+                )
+              })
             }
           </div>
         )
