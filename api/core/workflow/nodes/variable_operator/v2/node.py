@@ -1,3 +1,4 @@
+import json
 from typing import Any
 
 from core.variables import SegmentType, Variable
@@ -68,6 +69,16 @@ class VariableOperatorNode(BaseNode[VariableOperatorNodeData]):
                     if value.value_type == SegmentType.NONE:
                         continue
                     item.value = value.value
+
+                if (
+                    item.operation == Operation.SET
+                    and variable.value_type == SegmentType.OBJECT
+                    and isinstance(item.value, str | bytes | bytearray)
+                ):
+                    try:
+                        item.value = json.loads(item.value)
+                    except json.JSONDecodeError:
+                        raise InvalidInputValueError(value=item.value)
 
                 # Check if input value is valid
                 if not helpers.is_input_value_valid(
