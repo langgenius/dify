@@ -56,7 +56,11 @@ class VariableOperatorNode(BaseNode[VariableOperatorNodeData]):
                     raise InputTypeNotSupportedError(input_type=InputType.CONSTANT, operation=item.operation)
 
                 # Get value from variable pool
-                if item.input_type == InputType.VARIABLE and item.operation != Operation.CLEAR:
+                if (
+                    item.input_type == InputType.VARIABLE
+                    and item.operation != Operation.CLEAR
+                    and item.value is not None
+                ):
                     value = self.graph_runtime_state.variable_pool.get(item.value)
                     if value is None:
                         raise VariableNotFoundError(variable_selector=item.value)
