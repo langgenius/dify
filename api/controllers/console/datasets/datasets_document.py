@@ -38,7 +38,7 @@ from core.indexing_runner import IndexingRunner
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
-from core.plugin.manager.exc import PluginNotFoundError
+from core.plugin.manager.exc import PluginDaemonClientSideError
 from core.rag.extractor.entity.extract_setting import ExtractSetting
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -416,7 +416,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
                     )
                 except ProviderTokenNotInitError as ex:
                     raise ProviderNotInitializeError(ex.description)
-                except PluginNotFoundError as ex:
+                except PluginDaemonClientSideError as ex:
                     raise ProviderNotInitializeError(ex.description)
                 except Exception as e:
                     raise IndexingEstimateError(str(e))
@@ -519,7 +519,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                 )
             except ProviderTokenNotInitError as ex:
                 raise ProviderNotInitializeError(ex.description)
-            except PluginNotFoundError as ex:
+            except PluginDaemonClientSideError as ex:
                 raise ProviderNotInitializeError(ex.description)
             except Exception as e:
                 raise IndexingEstimateError(str(e))

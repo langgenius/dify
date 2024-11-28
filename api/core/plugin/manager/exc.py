@@ -9,33 +9,41 @@ class PluginDaemonError(Exception):
         return f"{self.__class__.__name__}: {self.description}"
 
 
-class PluginDaemonInternalServerError(PluginDaemonError):
+class PluginDaemonInternalError(PluginDaemonError):
+    pass
+
+
+class PluginDaemonClientSideError(PluginDaemonError):
+    pass
+
+
+class PluginDaemonInternalServerError(PluginDaemonInternalError):
     description: str = "Internal Server Error"
 
 
-class PluginDaemonBadRequestError(PluginDaemonError):
-    description: str = "Bad Request"
-
-
-class PluginDaemonNotFoundError(PluginDaemonError):
-    description: str = "Not Found"
-
-
-class PluginInvokeError(PluginDaemonError):
-    description: str = "Invoke Error"
-
-
-class PluginUniqueIdentifierError(PluginDaemonError):
-    description: str = "Unique Identifier Error"
-
-
-class PluginNotFoundError(PluginDaemonError):
-    description: str = "Plugin Not Found"
-
-
-class PluginDaemonUnauthorizedError(PluginDaemonError):
+class PluginDaemonUnauthorizedError(PluginDaemonInternalError):
     description: str = "Unauthorized"
 
 
-class PluginPermissionDeniedError(PluginDaemonError):
+class PluginDaemonNotFoundError(PluginDaemonInternalError):
+    description: str = "Not Found"
+
+
+class PluginDaemonBadRequestError(PluginDaemonClientSideError):
+    description: str = "Bad Request"
+
+
+class PluginInvokeError(PluginDaemonClientSideError):
+    description: str = "Invoke Error"
+
+
+class PluginUniqueIdentifierError(PluginDaemonClientSideError):
+    description: str = "Unique Identifier Error"
+
+
+class PluginNotFoundError(PluginDaemonClientSideError):
+    description: str = "Plugin Not Found"
+
+
+class PluginPermissionDeniedError(PluginDaemonClientSideError):
     description: str = "Permission Denied"
