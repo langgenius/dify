@@ -5,6 +5,7 @@ from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt, computed
 from pydantic_settings import BaseSettings
 
 from configs.middleware.cache.redis_config import RedisConfig
+from configs.middleware.configuration import ConfigurationCenterConfig
 from configs.middleware.storage.aliyun_oss_storage_config import AliyunOSSStorageConfig
 from configs.middleware.storage.amazon_s3_storage_config import S3StorageConfig
 from configs.middleware.storage.azure_blob_storage_config import AzureBlobStorageConfig
@@ -41,8 +42,8 @@ from configs.middleware.vdb.weaviate_config import WeaviateConfig
 class StorageConfig(BaseSettings):
     STORAGE_TYPE: str = Field(
         description="Type of storage to use."
-        " Options: 'local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', 'google-storage', 'huawei-obs', "
-        "'oci-storage', 'tencent-cos', 'volcengine-tos', 'supabase'. Default is 'local'.",
+                    " Options: 'local', 's3', 'aliyun-oss', 'azure-blob', 'baidu-obs', 'google-storage', 'huawei-obs', "
+                    "'oci-storage', 'tencent-cos', 'volcengine-tos', 'supabase'. Default is 'local'.",
         default="local",
     )
 
@@ -55,7 +56,7 @@ class StorageConfig(BaseSettings):
 class VectorStoreConfig(BaseSettings):
     VECTOR_STORE: Optional[str] = Field(
         description="Type of vector store to use for efficient similarity search."
-        " Set to None if not using a vector store.",
+                    " Set to None if not using a vector store.",
         default=None,
     )
 
@@ -68,7 +69,7 @@ class VectorStoreConfig(BaseSettings):
 class KeywordStoreConfig(BaseSettings):
     KEYWORD_STORE: str = Field(
         description="Method for keyword extraction and storage."
-        " Default is 'jieba', a Chinese text segmentation library.",
+                    " Default is 'jieba', a Chinese text segmentation library.",
         default="jieba",
     )
 
@@ -224,6 +225,7 @@ class InternalTestConfig(BaseSettings):
 class MiddlewareConfig(
     # place the configs in alphabet order
     CeleryConfig,
+    ConfigurationCenterConfig,
     DatabaseConfig,
     KeywordStoreConfig,
     RedisConfig,
