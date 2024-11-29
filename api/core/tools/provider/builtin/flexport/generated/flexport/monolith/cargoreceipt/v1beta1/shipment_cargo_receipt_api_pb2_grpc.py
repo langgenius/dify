@@ -19,12 +19,23 @@ class ShipmentCargoReceiptAPIStub(object):
                 request_serializer=flexport_dot_monolith_dot_cargoreceipt_dot_v1beta1_dot_shipment__cargo__receipt__api__pb2.ListShipmentCargoReceiptsByShipmentIdRequest.SerializeToString,
                 response_deserializer=flexport_dot_monolith_dot_cargoreceipt_dot_v1beta1_dot_shipment__cargo__receipt__api__pb2.ListShipmentCargoReceiptsByShipmentIdResponse.FromString,
                 )
+        self.ListShipmentCargoReceiptsByShipmentIds = channel.unary_unary(
+                '/flexport.monolith.cargoreceipt.v1beta1.ShipmentCargoReceiptAPI/ListShipmentCargoReceiptsByShipmentIds',
+                request_serializer=flexport_dot_monolith_dot_cargoreceipt_dot_v1beta1_dot_shipment__cargo__receipt__api__pb2.ListShipmentCargoReceiptsByShipmentIdsRequest.SerializeToString,
+                response_deserializer=flexport_dot_monolith_dot_cargoreceipt_dot_v1beta1_dot_shipment__cargo__receipt__api__pb2.ListShipmentCargoReceiptsByShipmentIdsResponse.FromString,
+                )
 
 
 class ShipmentCargoReceiptAPIServicer(object):
     """Missing associated documentation comment in .proto file."""
 
     def ListShipmentCargoReceiptsByShipmentId(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListShipmentCargoReceiptsByShipmentIds(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -37,6 +48,11 @@ def add_ShipmentCargoReceiptAPIServicer_to_server(servicer, server):
                     servicer.ListShipmentCargoReceiptsByShipmentId,
                     request_deserializer=flexport_dot_monolith_dot_cargoreceipt_dot_v1beta1_dot_shipment__cargo__receipt__api__pb2.ListShipmentCargoReceiptsByShipmentIdRequest.FromString,
                     response_serializer=flexport_dot_monolith_dot_cargoreceipt_dot_v1beta1_dot_shipment__cargo__receipt__api__pb2.ListShipmentCargoReceiptsByShipmentIdResponse.SerializeToString,
+            ),
+            'ListShipmentCargoReceiptsByShipmentIds': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListShipmentCargoReceiptsByShipmentIds,
+                    request_deserializer=flexport_dot_monolith_dot_cargoreceipt_dot_v1beta1_dot_shipment__cargo__receipt__api__pb2.ListShipmentCargoReceiptsByShipmentIdsRequest.FromString,
+                    response_serializer=flexport_dot_monolith_dot_cargoreceipt_dot_v1beta1_dot_shipment__cargo__receipt__api__pb2.ListShipmentCargoReceiptsByShipmentIdsResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -62,5 +78,22 @@ class ShipmentCargoReceiptAPI(object):
         return grpc.experimental.unary_unary(request, target, '/flexport.monolith.cargoreceipt.v1beta1.ShipmentCargoReceiptAPI/ListShipmentCargoReceiptsByShipmentId',
             flexport_dot_monolith_dot_cargoreceipt_dot_v1beta1_dot_shipment__cargo__receipt__api__pb2.ListShipmentCargoReceiptsByShipmentIdRequest.SerializeToString,
             flexport_dot_monolith_dot_cargoreceipt_dot_v1beta1_dot_shipment__cargo__receipt__api__pb2.ListShipmentCargoReceiptsByShipmentIdResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ListShipmentCargoReceiptsByShipmentIds(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/flexport.monolith.cargoreceipt.v1beta1.ShipmentCargoReceiptAPI/ListShipmentCargoReceiptsByShipmentIds',
+            flexport_dot_monolith_dot_cargoreceipt_dot_v1beta1_dot_shipment__cargo__receipt__api__pb2.ListShipmentCargoReceiptsByShipmentIdsRequest.SerializeToString,
+            flexport_dot_monolith_dot_cargoreceipt_dot_v1beta1_dot_shipment__cargo__receipt__api__pb2.ListShipmentCargoReceiptsByShipmentIdsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

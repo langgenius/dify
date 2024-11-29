@@ -42,4 +42,6 @@ message VasReportEntity {
   int32 number_of_carton_rework = 29;
   bool need_dunnage = 30;
   bool need_block_and_brace = 31;
+  string inbound_load_pk = 32;
+  google.protobuf.Timestamp available_for_pickup_date = 33;
 }

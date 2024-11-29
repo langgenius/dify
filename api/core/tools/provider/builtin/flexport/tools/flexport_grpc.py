@@ -1,6 +1,8 @@
 import importlib
+import inspect
 import json
 import os
+import re
 import sys
 from pathlib import Path
 from typing import Any, Optional, Union
@@ -90,8 +92,7 @@ class FlexportGrpcTool(BuiltinTool):
                         if "class" in content and "Stub" in content:
                             rel_path = os.path.relpath(os.path.join(root, file), base_dir)
                             module_path = os.path.splitext(rel_path)[0].replace(os.sep, ".")
-                            module_path = module_path.removeprefix("flexport.")
-
+                            
                             # Check if package should be ignored
                             should_ignore = any(module_path.startswith(prefix) for prefix in ignored_prefixes)
                             if should_ignore:
@@ -128,20 +129,19 @@ class FlexportGrpcTool(BuiltinTool):
                                     attr = getattr(grpc_module, attr_name)
                                     if attr_name.endswith("Stub"):
                                         try:
-                                            service_name = attr_name[:-4]
-                                            package_parts = module_path.split(".")
-                                            package_name = ".".join(package_parts[:-1])
-                                            full_service_name = f"{package_name}.{service_name}"
-
-                                            methods = self._get_service_methods(grpc_module, attr_name)
-
-                                            # Only add services with methods
-                                            if methods:
-                                                service_map[full_service_name] = {
-                                                    "stub_class": attr,
-                                                    "messages": pb2_module,
-                                                    "methods": methods,
-                                                }
+                                            # Get the full service name from the generic handler
+                                            handler_source = content
+                                            # Look for the generic_handler line which contains the full service name
+                                            match = re.search(r"generic_handler\s*=\s*grpc\.method_handlers_generic_handler\s*\(\s*'([^']+)'", handler_source)
+                                            if match:
+                                                full_service_name = match.group(1)
+                                                methods = self._get_service_methods(grpc_module, attr_name)
+                                                if methods:
+                                                    service_map[full_service_name] = {
+                                                        "stub_class": attr,
+                                                        "messages": pb2_module,
+                                                        "methods": methods,
+                                                    }
                                         except Exception:
                                             continue
 
@@ -160,10 +160,10 @@ class FlexportGrpcTool(BuiltinTool):
         methods = []
         stub_class = getattr(grpc_module, stub_name)
         
-        import inspect
+        # Get methods from __init__ method
         init_source = inspect.getsource(stub_class.__init__)
         
-        import re
+        # Find all self.{method} = channel.unary_unary assignments
         method_matches = re.finditer(r"self\.(\w+)\s*=\s*channel\.unary_unary", init_source)
         for match in method_matches:
             method_name = match.group(1)
@@ -191,43 +191,81 @@ class FlexportGrpcTool(BuiltinTool):
         try:
             host = tool_parameters.get("host")
             service_method = tool_parameters.get("service_method", "")
+            
+            if "::" not in service_method:
+                return self.create_text_message(
+                    text="Invalid service_method format. Expected format: 'service::method'"
+                )
+            
             service, method = service_method.split("::")
-            method_parameters = json.loads(tool_parameters.get("method_parameters", "{}"))
-
+            
+            # Add flexport prefix if not present
+            if not service.startswith("flexport."):
+                service = f"flexport.{service}"
+            
             service_config = self.service_map.get(service)
             if not service_config:
-                available_services = list(self.service_map.keys())
-                raise ValueError(f"Unknown service: {service}. Available services: {available_services}")
+                # Try without flexport prefix
+                alt_service = service.replace("flexport.", "", 1)
+                service_config = self.service_map.get(alt_service)
+                if service_config:
+                    service = alt_service
+                else:
+                    available_services = list(self.service_map.keys())
+                    return self.create_text_message(
+                        text=f"Unknown service: {service}\nAvailable services:\n" + 
+                             "\n".join(f"- {s}" for s in available_services)
+                    )
 
+            # Add method validation
             if method not in service_config["methods"]:
-                raise ValueError(f"Unknown method: {method}. Available methods: {service_config['methods']}")
+                available_methods = service_config["methods"]
+                return self.create_text_message(
+                    text=f"Unknown method: {method}\nAvailable methods for {service}:\n" +
+                         "\n".join(f"- {m}" for m in available_methods)
+                )
 
+            # Validate method parameters
+            method_parameters_str = tool_parameters.get("method_parameters", "{}")
+            if not method_parameters_str or not method_parameters_str.strip():
+                method_parameters_str = "{}"
+            
+            try:
+                method_parameters = json.loads(method_parameters_str)
+            except json.JSONDecodeError:
+                return self.create_text_message(text="Invalid JSON format in method_parameters")
+
+            # Get stub and make the call
             stub = self._get_stub(service, host)
             messages = service_config["messages"]
 
             grpc_method = getattr(stub, method, None)
             if not grpc_method:
-                raise ValueError(f"Method not found: {method}")
+                return self.create_text_message(text=f"Method implementation not found: {method}")
 
             request_type = getattr(messages, f"{method}Request", None)
             if not request_type:
-                raise ValueError(f"Request message type not found for method: {method}")
+                return self.create_text_message(text=f"Request message type not found for method: {method}")
 
             request = json_format.ParseDict(method_parameters, request_type())
-
             response = grpc_method(request)
-
             response_dict = json_format.MessageToDict(response, preserving_proto_field_name=True)
-
+            
             result = "\n".join([f"{k}: {v}" for k, v in response_dict.items()])
-
             return self.create_text_message(text=result)
 
-        except Exception as e:
-            error_message = f"Error calling gRPC service: {str(e)}"
-            if isinstance(e, grpc.RpcError):
-                error_message += f"\nRPC Error code: {e.code()}\nDetails: {e.details()}"
+        except grpc.RpcError as e:
+            error_message = (
+                f"gRPC Error:\n"
+                f"Code: {e.code()}\n"
+                f"Details: {e.details()}\n"
+                f"Service: {service}\n"
+                f"Method: {method}\n"
+                f"Host: {host}"
+            )
             return self.create_text_message(text=error_message)
+        except Exception as e:
+            return self.create_text_message(text=f"Error calling gRPC service: {str(e)}")
 
     def get_runtime_parameters(self) -> list[ToolParameter]:
         """Get runtime parameters and return parameter list"""
@@ -236,8 +274,9 @@ class FlexportGrpcTool(BuiltinTool):
             for service_name, service_info in self.service_map.items():
                 methods = service_info.get("methods", [])
                 for method in methods:
+                    # Use full service name in both value and label
                     option_value = f"{service_name}::{method}"
-                    option_label = f"{service_name} - {method}"
+                    option_label = option_value  # Keep the same format for display
                     service_method_options.append(
                         ToolParameterOption(
                             value=option_value, label=I18nObject(en_US=option_label, zh_Hans=option_label)

@@ -39,12 +39,14 @@ message GetMasterBillOfLadingListResponse {
 }
 
 // MBL only has three required fields, shipment_id, bill_number, and transmission mode.
+// NEXT: 24
 message MasterBillOfLading {
   int32 id = 1;
   string master_bill_of_lading_number = 2;
   optional string execution_task_fid = 3;
   TransmissionMode transmission_mode = 4;
   optional ReleaseMethod release_method = 5;
+  optional string bill_number_source = 23;
 
   optional string carrier_fid = 6;
   string shipment_fid = 7;

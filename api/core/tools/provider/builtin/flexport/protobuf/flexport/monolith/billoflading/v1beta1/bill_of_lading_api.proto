@@ -177,6 +177,7 @@ message ContainerAssignmentHtml {
   bool has_package_details = 13;
 }
 
+// next number 60
 message BillOfLadingDTO {
   // HBL owned data
   int32 id = 1;
@@ -205,6 +206,7 @@ message BillOfLadingDTO {
   int32 shipment_id = 17;
   string shipper_si_fid = 18;
   string shipper_fid = 39;
+  string shipper_entity_fid = 59;
 
   // Network Refs
   int32 port_of_loading_id = 19;

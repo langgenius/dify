@@ -32,6 +32,8 @@ message TransmissionHeader {
   optional int64 charges_amount = 17;
   optional google.type.Date arrival_date = 18;
   optional int64 gross_weight = 19;
+  optional string broker_reference_number = 20;
+  optional string customer_reference_number = 21;
 }
 
 enum PaymentType {

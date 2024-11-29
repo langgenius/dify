@@ -5,6 +5,7 @@ syntax = "proto3";
 package flexport.commerce.merchandising.catalog.data_authority.offering.v1beta1;
 
 import "flexport/catalog/rate/v1/rate.proto";
+import "flexport/commerce/merchandising/catalog/data_authority/configuration/v1beta1/attribute.proto";
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
@@ -52,6 +53,8 @@ message PricingSchedule {
   // Schedule creation timestamp.
   // Internally used for calculating schedule override.
   optional google.protobuf.Timestamp created_at = 8;
+  // The PricingSchedule attributes define in CDA offering schema.
+  repeated flexport.commerce.merchandising.catalog.data_authority.configuration.v1beta1.Attribute attributes = 9;
 }
 
 // The offering restriction bound to pricing schedule.

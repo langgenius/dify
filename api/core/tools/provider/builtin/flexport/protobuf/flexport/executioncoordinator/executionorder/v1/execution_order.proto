@@ -555,6 +555,8 @@ message CanceledInfo {
 message OperationProgress {
   // shipment marked as complete
   OperationProgressInfo completed = 1;
+  // global cargo ready date confirmation status set
+  OperationProgressInfo global_cargo_ready_date_confirmed = 2;
 }
 
 // Holds financial progress related to the shipment

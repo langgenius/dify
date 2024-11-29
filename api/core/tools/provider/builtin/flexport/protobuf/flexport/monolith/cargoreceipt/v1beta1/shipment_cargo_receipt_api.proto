@@ -13,6 +13,7 @@ option ruby_package = "Flexport::Monolith::CargoReceipt::V1Beta1";
 
 service ShipmentCargoReceiptAPI {
   rpc ListShipmentCargoReceiptsByShipmentId(ListShipmentCargoReceiptsByShipmentIdRequest) returns (ListShipmentCargoReceiptsByShipmentIdResponse);
+  rpc ListShipmentCargoReceiptsByShipmentIds(ListShipmentCargoReceiptsByShipmentIdsRequest) returns (ListShipmentCargoReceiptsByShipmentIdsResponse);
 }
 
 message ListShipmentCargoReceiptsByShipmentIdRequest {
@@ -20,6 +21,14 @@ message ListShipmentCargoReceiptsByShipmentIdRequest {
 }
 
 message ListShipmentCargoReceiptsByShipmentIdResponse {
+  repeated ShipmentCargoReceipt shipment_cargo_receipts = 1;
+}
+
+message ListShipmentCargoReceiptsByShipmentIdsRequest {
+  repeated int32 shipment_ids = 1;
+}
+
+message ListShipmentCargoReceiptsByShipmentIdsResponse {
   repeated ShipmentCargoReceipt shipment_cargo_receipts = 1;
 }
 
@@ -32,6 +41,8 @@ message ShipmentCargoReceipt {
   repeated MeasurementGroup measurement_groups = 5;
   int32 document_id = 6;
   google.protobuf.Timestamp created_at = 7;
+  Damage damage = 8;
+  int32 shipment_id = 9;
 }
 
 message MeasurementGroup {
@@ -44,4 +55,8 @@ message MeasurementGroup {
   float length = 7;
   float width = 8;
   float height = 9;
+}
+
+message Damage {
+  string remarks = 1;
 }

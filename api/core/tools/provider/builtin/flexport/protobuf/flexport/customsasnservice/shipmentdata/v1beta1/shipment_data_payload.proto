@@ -41,6 +41,7 @@ message ShipmentDataPayload {
   repeated string purchase_order_numbers = 25;
   string source_entity_fid = 26;
   ForeignTradeZoneDetails foreign_trade_zone = 27;
+  optional string country_of_origin = 28;
 }
 
 message AddressDetails {

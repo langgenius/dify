@@ -14,11 +14,14 @@ option ruby_package = "Flexport::Monolith::Warehouse::V1Beta1";
 message FetchWarehouseMessagesRequest {
   string flex_id = 1;
   optional MessageType type = 2;
+  string warehouse_code = 3;
+  string user_fid = 4;
 }
 
 message FetchWarehouseMessagesResponse {
   string flex_id = 1;
   repeated Message message = 2;
+  repeated string errors = 3;
 }
 
 message Message {
