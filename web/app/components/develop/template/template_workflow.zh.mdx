@@ -111,7 +111,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
         - `title` (string) 节点名称
         - `index` (int) 执行序号，用于展示 Tracing Node 顺序
         - `predecessor_node_id` (string) 前置节点 ID，用于画布展示执行路径
-        - `inputs` (array[object]) 节点中所有使用到的前置节点变量内容
+        - `inputs` (object) 节点中所有使用到的前置节点变量内容
         - `created_at` (timestamp) 开始时间
     - `event: node_finished` node 执行结束，成功失败同一事件中不同状态
       - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
@@ -122,7 +122,7 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
         - `node_id` (string) 节点 ID
         - `index` (int) 执行序号，用于展示 Tracing Node 顺序
         - `predecessor_node_id` (string) optional 前置节点 ID，用于画布展示执行路径
-        - `inputs` (array[object]) 节点中所有使用到的前置节点变量内容
+        - `inputs` (object) 节点中所有使用到的前置节点变量内容
         - `process_data` (json) Optional 节点过程数据
         - `outputs` (json) Optional 输出内容
         - `status` (string) 执行状态 `running` / `succeeded` / `failed` / `stopped`

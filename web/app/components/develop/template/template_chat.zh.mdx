@@ -543,7 +543,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `data` (array[object])  消息列表
     - `id`  (string) 消息 ID
     - `conversation_id` (string)  会话 ID
-    - `inputs` (array[object]) 用户输入参数。
+    - `inputs` (object) 用户输入参数。
     - `query`  (string) 用户输入 / 提问内容。
     - `message_files` (array[object]) 消息文件
       - `id` (string) ID
@@ -713,7 +713,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `data` (array[object]) 会话列表
       - `id`  (string) 会话 ID
       - `name`  (string) 会话名称，默认为会话中用户最开始问题的截取。
-      - `inputs` (array[object]) 用户输入参数。
+      - `inputs` (object) 用户输入参数。
       - `status` (string) 会话状态
       - `introduction` (string) 开场白
       - `created_at` (timestamp) 创建时间
@@ -844,7 +844,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ### Response
     - `id`  (string) 会话 ID
     - `name`  (string) 会话名称
-    - `inputs` array[object] 用户输入参数
+    - `inputs` (object) 用户输入参数
     - `status` (string) 会话状态
     - `introduction` (string) 开场白
     - `created_at` (timestamp) 创建时间
