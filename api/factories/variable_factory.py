@@ -76,6 +76,10 @@ def build_environment_variable_from_mapping(mapping: Mapping[str, Any], /) -> Va
 
 
 def _build_variable_from_mapping(*, mapping: Mapping[str, Any], selector: Sequence[str]) -> Variable:
+    """
+    This factory function is used to create the environment variable or the conversation variable,
+    not support the File type.
+    """
     if (value_type := mapping.get("value_type")) is None:
         raise VariableError("missing value type")
     if (value := mapping.get("value")) is None:
