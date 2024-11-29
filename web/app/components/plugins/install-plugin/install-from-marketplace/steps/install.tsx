@@ -52,9 +52,9 @@ const Installed: FC<Props> = ({
   } = checkTaskStatus()
 
   useEffect(() => {
-    if (hasInstalled && toInstallVersion === installedVersion)
+    if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
       onInstalled()
-  }, [hasInstalled, toInstallVersion, installedVersion])
+  }, [hasInstalled])
 
   const handleCancel = () => {
     stop()

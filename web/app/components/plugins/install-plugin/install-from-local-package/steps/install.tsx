@@ -43,9 +43,9 @@ const Installed: FC<Props> = ({
   const hasInstalled = !!installedVersion
 
   useEffect(() => {
-    if (hasInstalled && toInstallVersion === installedVersion)
+    if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
       onInstalled()
-  }, [hasInstalled, toInstallVersion, installedVersion])
+  }, [hasInstalled])
 
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromLocal } = useInstallPackageFromLocal()
