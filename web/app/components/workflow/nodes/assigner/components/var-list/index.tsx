@@ -23,7 +23,7 @@ type Props = {
   onChange: (list: AssignerNodeOperation[], value?: ValueSelector) => void
   onOpen?: (index: number) => void
   filterVar?: (payload: Var, valueSelector: ValueSelector) => boolean
-  filterToAssignedVar?: (payload: Var, valueSelector: ValueSelector, assignedVar: ValueSelector, assignedVarType: VarType, write_mode: WriteMode) => boolean
+  filterToAssignedVar?: (payload: Var, assignedVarType: VarType, write_mode: WriteMode) => boolean
   getAssignedVarType?: (valueSelector: ValueSelector) => VarType
   getToAssignedVarType?: (assignedVarType: VarType, write_mode: WriteMode) => VarType
   writeModeTypes?: WriteMode[]
@@ -50,6 +50,7 @@ const VarList: FC<Props> = ({
     return (value: ValueSelector | string) => {
       const newList = produce(list, (draft) => {
         draft[index].variable_selector = value as ValueSelector
+        draft[index].operation = WriteMode.overwrite
         draft[index].value = undefined
       })
       onChange(newList, value as ValueSelector)
@@ -103,8 +104,6 @@ const VarList: FC<Props> = ({
 
       return filterToAssignedVar(
         payload,
-        valueSelector,
-        item.variable_selector,
         assignedVarType,
         item.operation,
       )
@@ -159,7 +158,7 @@ const VarList: FC<Props> = ({
                 && !writeModeTypesNum?.includes(item.operation)
                 && (
                   <VarReferencePicker
-                    readonly={readonly}
+                    readonly={readonly || !item.variable_selector || !item.operation}
                     nodeId={nodeId}
                     isShowNodeName
                     value={item.value}

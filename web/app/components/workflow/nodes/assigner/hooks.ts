@@ -12,7 +12,7 @@ import type {
   Node,
   Var,
 } from '../../types'
-import { AssignerNodeInputType } from './types'
+import { AssignerNodeInputType, WriteMode } from './types'
 
 export const useGetAvailableVars = () => {
   const nodes: Node[] = useNodes()
@@ -61,7 +61,7 @@ export const useHandleAddOperationItem = () => {
   return useCallback((list: any[]) => {
     const newItem = {
       variable_selector: [],
-      write_mode: undefined,
+      write_mode: WriteMode.overwrite,
       input_type: AssignerNodeInputType.variable,
       value: '',
     }

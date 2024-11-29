@@ -267,7 +267,7 @@ const VarReferencePicker: FC<Props> = ({
                   <AddButton onClick={() => { }}></AddButton>
                 </div>
               )
-              : (<div ref={!isSupportConstantValue ? triggerRef : null} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'relative group/wrap flex items-center w-full h-8', !isSupportConstantValue && 'p-1 rounded-lg bg-gray-100 border', isInTable && 'bg-transparent border-none')}>
+              : (<div ref={!isSupportConstantValue ? triggerRef : null} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'relative group/wrap flex items-center w-full h-8', !isSupportConstantValue && 'p-1 rounded-lg bg-gray-100 border', isInTable && 'bg-transparent border-none', readonly && 'bg-components-input-bg-disabled')}>
                 {isSupportConstantValue
                   ? <div onClick={(e) => {
                     e.stopPropagation()
@@ -291,7 +291,7 @@ const VarReferencePicker: FC<Props> = ({
                     />
                   </div>
                   : (!hasValue && <div className='ml-1.5 mr-1'>
-                    <Variable02 className='w-4 h-4 text-components-input-text-placeholder' />
+                    <Variable02 className={`w-4 h-4 ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'}`} />
                   </div>)}
                 {isConstant
                   ? (
@@ -345,7 +345,7 @@ const VarReferencePicker: FC<Props> = ({
                                   {!isValidVar && <RiErrorWarningFill className='ml-0.5 w-3 h-3 text-[#D92D20]' />}
                                 </>
                               )
-                              : <div className='overflow-hidden text-components-input-text-placeholder text-ellipsis system-sm-regular'>{placeholder ?? t('workflow.common.setVarValuePlaceholder')}</div>}
+                              : <div className={`overflow-hidden ${readonly ? 'text-components-input-text-disabled' : 'text-components-input-text-placeholder'} text-ellipsis system-sm-regular`}>{placeholder ?? t('workflow.common.setVarValuePlaceholder')}</div>}
                           </div>
                         </Tooltip>
                       </div>

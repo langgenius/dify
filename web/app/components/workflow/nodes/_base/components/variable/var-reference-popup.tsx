@@ -24,7 +24,7 @@ const VarReferencePopup: FC<Props> = ({
     <div className='p-1 bg-white rounded-lg border border-gray-200 shadow-lg space-y-1' style={{
       width: itemWidth || 228,
     }}>
-      {(!vars || vars.length === 0)
+      {((!vars || vars.length === 0) && popupFor)
         ? (popupFor === 'toAssigned'
           ? (
             <ListEmpty

@@ -1,3 +1,4 @@
+import React from 'react'
 import { Variable02 } from '../icons/src/vender/solid/development'
 import VerticalLine from './vertical-line'
 import HorizontalLine from './horizontal-line'
