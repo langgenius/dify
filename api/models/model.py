@@ -603,7 +603,6 @@ class Conversation(db.Model):
                 )
                 if app_model_config:
                     model_config = app_model_config.to_dict()
-                    model_config["model_dict"] = app_model_config.model_dict
 
         model_config["model_id"] = self.model_id
         model_config["provider"] = self.model_provider

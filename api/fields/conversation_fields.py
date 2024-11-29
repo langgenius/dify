@@ -100,7 +100,7 @@ simple_configs_fields = {
 }
 
 simple_model_config_fields = {
-    "model": fields.Raw(attribute="model_dict"),
+    "model": fields.Raw(attribute="model"),
     "pre_prompt": fields.String,
 }
 
