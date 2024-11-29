@@ -86,7 +86,7 @@ def initialize_extensions(app: DifyApp):
         ext_commands,
     ]
     for ext in extensions:
-        short_name = ext.__name__.split(".")[1]
+        short_name = ext.__name__.split(".")[-1]
         is_enabled = ext.is_enabled() if hasattr(ext, "is_enabled") else True
         if not is_enabled:
             if dify_config.DEBUG:
