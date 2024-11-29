@@ -2,7 +2,7 @@
 
 import React from 'react'
 import Button from '@/app/components/base/button'
-import type { PluginDeclaration, PluginType, UpdateFromGitHubPayload } from '../../../types'
+import { type PluginDeclaration, type PluginType, TaskStatus, type UpdateFromGitHubPayload } from '../../../types'
 import Card from '../../../card'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { pluginManifestToCardPluginProps } from '../../utils'
@@ -53,8 +53,9 @@ const Loaded: React.FC<LoadedProps> = ({
 
     try {
       const { owner, repo } = parseGitHubUrl(repoUrl)
+      let taskId
       if (updatePayload) {
-        const { all_installed: isInstalled, task_id: taskId } = await updateFromGitHub(
+        const { all_installed: isInstalled, task_id } = await updateFromGitHub(
           `${owner}/${repo}`,
           selectedVersion,
           selectedPackage,
@@ -62,40 +63,42 @@ const Loaded: React.FC<LoadedProps> = ({
           uniqueIdentifier,
         )
 
+        taskId = task_id
+
         if (isInstalled) {
           onInstalled()
           return
         }
 
         handleRefetch()
-        await check({
-          taskId,
-          pluginUniqueIdentifier: uniqueIdentifier,
-        })
-
-        onInstalled()
       }
       else {
-        const { all_installed: isInstalled, task_id: taskId } = await installPackageFromGitHub({
+        const { all_installed: isInstalled, task_id } = await installPackageFromGitHub({
           repoUrl: `${owner}/${repo}`,
           selectedVersion,
           selectedPackage,
           uniqueIdentifier,
         })
 
+        taskId = task_id
+
         if (isInstalled) {
           onInstalled()
           return
         }
 
         handleRefetch()
-        await check({
-          taskId,
-          pluginUniqueIdentifier: uniqueIdentifier,
-        })
-
-        onInstalled()
       }
+
+      const { status, error } = await check({
+        taskId,
+        pluginUniqueIdentifier: uniqueIdentifier,
+      })
+      if (status === TaskStatus.failed) {
+        onFailed(error)
+        return
+      }
+      onInstalled()
     }
     catch (e) {
       if (typeof e === 'string') {

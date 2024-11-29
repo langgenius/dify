@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useEffect } from 'react'
 // import { RiInformation2Line } from '@remixicon/react'
-import type { Plugin, PluginManifestInMarket } from '../../../types'
+import { type Plugin, type PluginManifestInMarket, TaskStatus } from '../../../types'
 import Card from '../../../card'
 import { pluginManifestInMarketToPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
@@ -93,10 +93,14 @@ const Installed: FC<Props> = ({
         onInstalled()
         return
       }
-      await check({
+      const { status, error } = await check({
         taskId,
         pluginUniqueIdentifier: uniqueIdentifier,
       })
+      if (status === TaskStatus.failed) {
+        onFailed(error)
+        return
+      }
       onInstalled()
     }
     catch (e) {
