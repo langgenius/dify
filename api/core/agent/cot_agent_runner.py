@@ -59,8 +59,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
 
         # init instruction
         inputs = inputs or {}
-        assert app_config.prompt_template.simple_prompt_template
-        instruction = app_config.prompt_template.simple_prompt_template
+        instruction = app_config.prompt_template.simple_prompt_template or ""
         self._instruction = self._fill_in_inputs_from_external_data_tools(instruction, inputs)
 
         iteration_step = 1
