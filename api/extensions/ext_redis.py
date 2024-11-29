@@ -74,7 +74,7 @@ def init_app(app):
         redis_client.initialize(master)
     elif dify_config.REDIS_USE_CLUSTERS:
         nodes = [
-            ClusterNode(host=node.split(":")[0], port=int(node.split.split(":")[1]))
+            ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))
             for node in dify_config.REDIS_CLUSTERS.split(",")
         ]
         redis_client.initialize(RedisCluster(startup_nodes=nodes, password=dify_config.REDIS_CLUSTERS_PASSWORD))
