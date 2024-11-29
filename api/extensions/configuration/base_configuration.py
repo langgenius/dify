@@ -2,8 +2,6 @@
 
 from abc import ABC, abstractmethod
 
-from extensions.configuration.config_env import ConfigurationEnv
-
 
 class BaseConfiguration(ABC):
     """Interface for configuration center."""
@@ -12,5 +10,5 @@ class BaseConfiguration(ABC):
         pass
 
     @abstractmethod
-    def load_config_to_env_file(self, config_env: ConfigurationEnv):
+    def load_config_to_env_file(self):
         raise NotImplementedError

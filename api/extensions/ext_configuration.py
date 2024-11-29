@@ -1,24 +1,30 @@
+import logging
+
+import configs
 from extensions.configuration.base_configuration import BaseConfiguration
-from extensions.configuration.config_env import ConfigurationEnv
 from extensions.configuration.configuration_type import ConfigurationType
 
+log = logging.getLogger(__name__)
 
-class Configuration:
+
+class ConfigurationCenter:
     def __init__(self):
-        self.storage_runner = None
-        self.config_env = ConfigurationEnv()
-        config_type = self.config_env.CONFIGURATION_TYPE
-        if config_type:
-            self.init_configuration(config_type)
+        self.configuration_runner = None
+        from configs import DifyConfig  # 延迟导入
+        configuration_type = configs.dify_config.CONFIGURATION_TYPE
+        if configuration_type:
+            configuration_factory = self.get_configuration_factory(configuration_type)
+            if not configuration_factory:
+                log.warning(f"configuration center get failed, configuration type({configuration_type}) not exists")
+                return
 
-    def init_configuration(self, config_type):
-        storage_factory = self.get_storage_factory(config_type)
-        self.storage_runner = storage_factory()
-        self.storage_runner.load_config_to_env_file(self.config_env)
+            self.configuration_runner = configuration_factory()
+            self.configuration_runner.load_config_to_env_file()
+            configs.dify_config = DifyConfig()
 
     @staticmethod
-    def get_storage_factory(storage_type: str) -> type[BaseConfiguration]:
-        match storage_type:
+    def get_configuration_factory(configuration_type: str) -> type[BaseConfiguration]:
+        match configuration_type:
             case ConfigurationType.APOLLO:
                 from extensions.configuration.apollo_configuration import ApolloConfiguration
 

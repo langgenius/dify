@@ -4,7 +4,7 @@ from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
-class ApolloEnvConfig(BaseSettings):
+class ApolloConfig(BaseSettings):
     """
     Packaging build information
     """

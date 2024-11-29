@@ -2,10 +2,10 @@ import os
 
 from pydantic import Field
 
-from extensions.configuration.apollo.apollo_env import ApolloEnvConfig
+from configs.middleware.configuration.apollo import ApolloConfig
 
 
-class ConfigurationEnv(ApolloEnvConfig):
+class ConfigurationCenterConfig(ApolloConfig):
     # configuration type
     CONFIGURATION_TYPE: str = Field(
         description="configuration type",
