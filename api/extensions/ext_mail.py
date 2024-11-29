@@ -87,7 +87,7 @@ class Mail:
 
 
 def is_enabled() -> bool:
-    return dify_config.MAIL_TYPE
+    return dify_config.MAIL_TYPE is not None
 
 
 def init_app(app: DifyApp):
