@@ -598,6 +598,9 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
             # message = cast(AssistantPromptMessage, message)
             message_dict = {"role": "assistant", "content": message.content}
             if message.tool_calls:
+                # fix azure when enable json schema cant process content = "" in assistant fix with None
+                if not message.content:
+                    message_dict["content"] = None
                 message_dict["tool_calls"] = [helper.dump_model(tool_call) for tool_call in message.tool_calls]
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
