@@ -236,6 +236,7 @@ def _extract_text_from_csv(file_content: bytes) -> str:
 
 
 def _extract_text_from_excel(file_content: bytes) -> str:
+    """Extract text from an Excel file using pandas."""
     try:
         excel_file = pd.ExcelFile(io.BytesIO(file_content))
         markdown_table = ""
