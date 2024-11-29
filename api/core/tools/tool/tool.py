@@ -317,14 +317,14 @@ class Tool(BaseModel, ABC):
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, message=text, save_as=save_as)
 
-    def create_blob_message(self, blob: bytes, meta: dict = {}, save_as: str = "") -> ToolInvokeMessage:
+    def create_blob_message(self, blob: bytes, meta: Optional[dict] = None, save_as: str = "") -> ToolInvokeMessage:
         """
         create a blob message
 
         :param blob: the blob
         :return: the blob message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.BLOB, message=blob, meta=meta, save_as=save_as)
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.BLOB, message=blob, meta=meta or {}, save_as=save_as)
 
     def create_json_message(self, object: dict) -> ToolInvokeMessage:
         """
