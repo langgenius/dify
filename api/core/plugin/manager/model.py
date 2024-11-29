@@ -381,6 +381,7 @@ class PluginModelManager(BasePluginManager):
                         "model_type": "tts",
                         "model": model,
                         "credentials": credentials,
+                        "tenant_id": tenant_id,
                         "content_text": content_text,
                         "voice": voice,
                     },
