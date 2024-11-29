@@ -90,7 +90,7 @@ def initialize_extensions(app: DifyApp):
         is_enabled = ext.is_enabled() if hasattr(ext, "is_enabled") else True
         if not is_enabled:
             if dify_config.DEBUG:
-                logging.info(f"Skipped loading {short_name}")
+                logging.info(f"Skipped {short_name}")
             continue
 
         start_time = time.perf_counter()
