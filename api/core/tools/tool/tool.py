@@ -317,7 +317,7 @@ class Tool(BaseModel, ABC):
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, message=text, save_as=save_as)
 
-    def create_blob_message(self, blob: bytes, meta: Optional[dict] = None, save_as: str = "") -> ToolInvokeMessage:
+    def create_blob_message(self, blob: bytes, meta: dict = {}, save_as: str = "") -> ToolInvokeMessage:
         """
         create a blob message
 
