@@ -10,7 +10,7 @@ log = logging.getLogger(__name__)
 class ConfigurationCenter:
     def __init__(self):
         self.configuration_runner = None
-        from configs import DifyConfig  # 延迟导入
+        from configs import DifyConfig
         configuration_type = configs.dify_config.CONFIGURATION_TYPE
         if configuration_type:
             configuration_factory = self.get_configuration_factory(configuration_type)
