@@ -1,6 +1,7 @@
 import { checkTaskStatus as fetchCheckTaskStatus } from '@/service/plugins'
 import type { PluginStatus } from '../../types'
 import { TaskStatus } from '../../types'
+import { sleep } from '@/utils'
 
 const INTERVAL = 10 * 1000 // 10 seconds
 
@@ -17,31 +18,37 @@ function checkTaskStatus() {
     taskId,
     pluginUniqueIdentifier,
   }: Params) => {
-    if (isStop) return
+    if (isStop) {
+      return {
+        status: TaskStatus.success,
+      }
+    }
     const res = await fetchCheckTaskStatus(taskId)
     const { plugins } = res.task
     const plugin = plugins.find((p: PluginStatus) => p.plugin_unique_identifier === pluginUniqueIdentifier)
     if (!plugin) {
       nextStatus = TaskStatus.failed
-      Promise.reject(new Error('Plugin package not found'))
-      return
+      return {
+        status: TaskStatus.failed,
+        error: 'Plugin package not found',
+      }
     }
     nextStatus = plugin.status
     if (nextStatus === TaskStatus.running) {
-      setTimeout(async () => {
-        await doCheckStatus({
-          taskId,
-          pluginUniqueIdentifier,
-        })
-      }, INTERVAL)
-      return
+      await sleep(INTERVAL)
+      return await doCheckStatus({
+        taskId,
+        pluginUniqueIdentifier,
+      })
     }
     if (nextStatus === TaskStatus.failed) {
-      Promise.reject(plugin.message)
-      return
+      return {
+        status: TaskStatus.failed,
+        error: plugin.message,
+      }
     }
     return ({
-      status: nextStatus,
+      status: TaskStatus.success,
     })
   }
 
