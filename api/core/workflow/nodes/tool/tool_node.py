@@ -196,6 +196,8 @@ class ToolNode(BaseNode[ToolNodeData]):
                 else:
                     transfer_method = FileTransferMethod.TOOL_FILE
 
+                tool_file_id = str(url).split("/")[-1].split(".")[0]
+
                 with Session(db.engine) as session:
                     stmt = select(ToolFile).where(ToolFile.id == tool_file_id)
                     tool_file = session.scalar(stmt)
