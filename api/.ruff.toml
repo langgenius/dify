@@ -1,10 +1,10 @@
-exclude=[
+exclude = [
     "migrations/*",
 ]
 line-length = 120
 
-
 [format]
+quote-style = "double"
 
 [lint]
 preview = true
@@ -27,6 +27,7 @@ select = [
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
+    "RUF200", # invalid-pyproject-toml
     "S506", # unsafe-yaml-load
     "SIM", # flake8-simplify rules
     "TRY400", # error-instead-of-exception
@@ -35,6 +36,7 @@ select = [
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
 ]
+
 ignore = [
     "E402", # module-import-not-at-top-of-file
     "E711", # none-comparison
@@ -85,7 +87,7 @@ ignore = [
 ]
 
 [lint.pyflakes]
-extend-generics=[
+extend-generics = [
     "_pytest.monkeypatch",
     "tests.integration_tests",
 ]

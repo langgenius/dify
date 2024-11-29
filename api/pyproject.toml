@@ -1,4 +1,5 @@
 [project]
+name = "dify-api"
 requires-python = ">=3.11,<3.13"
 
 [build-system]
@@ -6,7 +7,6 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
-name = "dify-api"
 package-mode = false
 
 ############################################################
