@@ -1,12 +1,15 @@
 import logging
 from collections.abc import Generator
-from typing import Union
+from typing import TYPE_CHECKING, Union
 
 from flask import Flask
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
 from extensions.storage.storage_type import StorageType
+
+if TYPE_CHECKING:
+    from dify_app import DifyApp
 
 
 class Storage:
@@ -122,8 +125,5 @@ class Storage:
 storage = Storage()
 
 
-from dify_app import DifyApp
-
-
-def init_app(app: DifyApp):
+def init_app(app: "DifyApp"):
     storage.init_app(app)
