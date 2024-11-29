@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import dayjs from 'dayjs'
 import DetailPanel from './detail'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse } from '@/models/log'
 import type { App } from '@/types/app'
@@ -104,7 +105,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                   </div>
                 )}
               </td>
-              <td className='p-3 pr-2 w-[160px]'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
+              <td className='p-3 pr-2 w-[160px]'>{dayjs.unix(log.created_at).format(t('appLog.dateTimeFormat') as string)}</td>
               <td className='p-3 pr-2'>{statusTdRender(log.workflow_run.status)}</td>
               <td className='p-3 pr-2'>
                 <div className={cn(
