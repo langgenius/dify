@@ -25,7 +25,9 @@ class ToolFileMessageTransformer:
         for message in messages:
             if message.type in {ToolInvokeMessage.MessageType.TEXT, ToolInvokeMessage.MessageType.LINK}:
                 yield message
-            elif message.type == ToolInvokeMessage.MessageType.IMAGE and isinstance(message.message, str):
+            elif message.type == ToolInvokeMessage.MessageType.IMAGE and isinstance(
+                message.message, ToolInvokeMessage.TextMessage
+            ):
                 # try to download image
                 try:
                     if not conversation_id:
@@ -49,11 +51,10 @@ class ToolFileMessageTransformer:
                         meta=message.meta.copy() if message.meta is not None else {},
                     )
                 except Exception as e:
-                    logger.exception(f"Failed to download image from {url}")
                     yield ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.TEXT,
                         message=ToolInvokeMessage.TextMessage(
-                            text=f"Failed to download image: {message.message}, you can try to download it yourself."
+                            text=f"Failed to download image: {message.message.text}: {e}"
                         ),
                         meta=message.meta.copy() if message.meta is not None else {},
                         save_as=message.save_as,
