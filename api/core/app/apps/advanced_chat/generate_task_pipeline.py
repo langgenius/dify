@@ -428,7 +428,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 # Save message
                 self._save_message(graph_runtime_state=graph_runtime_state)
 
-                yield self._message_end_to_stream_response()
+                yield self._message_end_to_stream_response(graph_runtime_state=graph_runtime_state)
                 break
             elif isinstance(event, QueueRetrieverResourcesEvent):
                 self._handle_retriever_resources(event)
@@ -487,7 +487,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 # Save message
                 self._save_message(graph_runtime_state=graph_runtime_state)
 
-                yield self._message_end_to_stream_response()
+                yield self._message_end_to_stream_response(graph_runtime_state=graph_runtime_state)
             else:
                 continue
 
@@ -548,7 +548,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             extras=self._application_generate_entity.extras,
         )
 
-    def _message_end_to_stream_response(self) -> MessageEndStreamResponse:
+    def _message_end_to_stream_response(self, graph_runtime_state) -> MessageEndStreamResponse:
         """
         Message end to stream response.
         :return:
@@ -559,7 +559,15 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
             if "annotation_reply" in extras["metadata"]:
                 del extras["metadata"]["annotation_reply"]
-
+        extras["metadata"]["answer"] = {}
+        if (
+            graph_runtime_state
+            and graph_runtime_state.variable_pool
+            and graph_runtime_state.variable_pool.variable_dictionary
+        ):
+            for key, item in graph_runtime_state.variable_pool.variable_dictionary["conversation"].items():
+                if item.name.startswith("answer_"):
+                    extras["metadata"]["answer"][item.name] = item.value
         return MessageEndStreamResponse(
             task_id=self._application_generate_entity.task_id, id=self._message.id, files=self._recorded_files, **extras
         )
