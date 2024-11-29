@@ -211,7 +211,7 @@ export const useFile = (fileConfig: FileUpload) => {
       type: '',
       size: 0,
       progress: 0,
-      transferMethod: TransferMethod.remote_url,
+      transferMethod: TransferMethod.local_file,
       supportFileType: '',
       url,
       isRemote: true,
