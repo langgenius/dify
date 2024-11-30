@@ -123,6 +123,7 @@ const StepTwo = ({
     doSetSegmentIdentifier(value ? escape(value) : DEFAULT_SEGMENT_IDENTIFIER)
   }, [])
   const [maxChunkLength, setMaxChunkLength] = useState(4000) // default chunk length
+  const [limitMaxChunkLength, setLimitMaxChunkLength] = useState(4000)
   const [overlap, setOverlap] = useState(50)
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
@@ -212,8 +213,8 @@ const StepTwo = ({
   }
 
   const confirmChangeCustomConfig = () => {
-    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > 4000) {
-      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
+    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > limitMaxChunkLength) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck', { limit: limitMaxChunkLength }) })
       return
     }
     setCustomFileIndexingEstimate(null)
@@ -343,8 +344,8 @@ const StepTwo = ({
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.overlapCheck') })
       return
     }
-    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > 4000) {
-      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
+    if (segmentationType === SegmentType.CUSTOM && maxChunkLength > limitMaxChunkLength) {
+      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck', { limit: limitMaxChunkLength }) })
       return
     }
     if (isSetting) {
@@ -416,6 +417,7 @@ const StepTwo = ({
       const separator = res.rules.segmentation.separator
       setSegmentIdentifier(separator)
       setMaxChunkLength(res.rules.segmentation.max_tokens)
+      setLimitMaxChunkLength(res.limits.indexing_max_segmentation_tokens_length)
       setOverlap(res.rules.segmentation.chunk_overlap)
       setRules(res.rules.pre_processing_rules)
       setDefaultConfig(res.rules)
@@ -671,7 +673,7 @@ const StepTwo = ({
                         className='h-9'
                         placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
                         value={maxChunkLength}
-                        max={4000}
+                        max={limitMaxChunkLength}
                         min={1}
                         onChange={e => setMaxChunkLength(parseInt(e.target.value.replace(/^0+/, ''), 10))}
                       />

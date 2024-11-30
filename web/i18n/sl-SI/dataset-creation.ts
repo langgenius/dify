@@ -152,7 +152,7 @@ const translation = {
     indexSettingTip: 'Če želite spremeniti način indeksiranja in model vdelave, pojdite na ',
     retrievalSettingTip: 'Če želite spremeniti nastavitve iskanja, pojdite na ',
     datasetSettingLink: 'nastavitve Znanja.',
-    maxLengthCheck: 'Največja dolžina kosa mora biti manjša od 4000',
+    maxLengthCheck: 'Največja dolžina kosa mora biti manjša od {{limit}}',
   },
   stepThree: {
     creationTitle: '🎉 Znanje ustvarjeno',
