@@ -3,12 +3,12 @@ from datetime import timedelta
 import pytz
 from celery import Celery, Task
 from celery.schedules import crontab
-from flask import Flask
 
 from configs import dify_config
+from dify_app import DifyApp
 
 
-def init_app(app: Flask) -> Celery:
+def init_app(app: DifyApp) -> Celery:
     class FlaskTask(Task):
         def __call__(self, *args: object, **kwargs: object) -> object:
             with app.app_context():

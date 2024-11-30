@@ -4,6 +4,7 @@ from redis.connection import Connection, SSLConnection
 from redis.sentinel import Sentinel
 
 from configs import dify_config
+from dify_app import DifyApp
 
 
 class RedisClientWrapper:
@@ -43,7 +44,7 @@ class RedisClientWrapper:
 redis_client = RedisClientWrapper()
 
 
-def init_app(app):
+def init_app(app: DifyApp):
     global redis_client
     connection_class = Connection
     if dify_config.REDIS_USE_SSL:
