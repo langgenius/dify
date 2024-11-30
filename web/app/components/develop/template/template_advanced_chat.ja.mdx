@@ -161,7 +161,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - `title` (string) ノードの名前
         - `index` (int) 実行シーケンス番号、トレースノードシーケンスを表示するために使用
         - `predecessor_node_id` (string) オプションのプレフィックスノードID、キャンバス表示実行パスに使用
-        - `inputs` (array[object]) ノードで使用されるすべての前のノード変数の内容
+        - `inputs` (object) ノードで使用されるすべての前のノード変数の内容
         - `created_at` (timestamp) 開始のタイムスタンプ、例：1705395332
     - `event: node_finished` ノード実行が終了、成功または失敗は同じイベント内で異なる状態で示されます
       - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
@@ -174,7 +174,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - `title` (string) ノードの名前
         - `index` (int) 実行シーケンス番号、トレースノードシーケンスを表示するために使用
         - `predecessor_node_id` (string) オプションのプレフィックスノードID、キャンバス表示実行パスに使用
-        - `inputs` (array[object]) ノードで使用されるすべての前のノード変数の内容
+        - `inputs` (object) ノードで使用されるすべての前のノード変数の内容
         - `process_data` (json) オプションのノードプロセスデータ
         - `outputs` (json) オプションの出力内容
         - `status` (string) 実行の状態、`running` / `succeeded` / `failed` / `stopped`
@@ -564,7 +564,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     - `data` (array[object]) メッセージリスト
     - `id` (string) メッセージID
     - `conversation_id` (string) 会話ID
-    - `inputs` (array[object]) ユーザー入力パラメータ。
+    - `inputs` (object) ユーザー入力パラメータ。
     - `query` (string) ユーザー入力/質問内容。
     - `message_files` (array[object]) メッセージファイル
       - `id` (string) ID
@@ -664,7 +664,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     - `data` (array[object]) 会話のリスト
       - `id` (string) 会話ID
       - `name` (string) 会話名、デフォルトではLLMによって生成されます。
-      - `inputs` (array[object]) ユーザー入力パラメータ。
+      - `inputs` (object) ユーザー入力パラメータ。
       - `introduction` (string) 紹介
       - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
       - `updated_at` (timestamp) 更新タイムスタンプ、例：1705395332
@@ -793,7 +793,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### 応答
     - `id` (string) 会話ID
     - `name` (string) 会話名
-    - `inputs` array[object] ユーザー入力パラメータ
+    - `inputs` (object) ユーザー入力パラメータ
     - `status` (string) 会話状態
     - `introduction` (string) 紹介
     - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332

@@ -162,7 +162,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - `title` (string) 节点名称
         - `index` (int) 执行序号，用于展示 Tracing Node 顺序
         - `predecessor_node_id` (string) 前置节点 ID，用于画布展示执行路径
-        - `inputs` (array[object]) 节点中所有使用到的前置节点变量内容
+        - `inputs` (object) 节点中所有使用到的前置节点变量内容
         - `created_at` (timestamp) 开始时间
     - `event: node_finished` node 执行结束，成功失败同一事件中不同状态
       - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
@@ -173,7 +173,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         - `node_id` (string) 节点 ID
         - `index` (int) 执行序号，用于展示 Tracing Node 顺序
         - `predecessor_node_id` (string) optional 前置节点 ID，用于画布展示执行路径
-        - `inputs` (array[object]) 节点中所有使用到的前置节点变量内容
+        - `inputs` (object) 节点中所有使用到的前置节点变量内容
         - `process_data` (json) Optional 节点过程数据
         - `outputs` (json) Optional 输出内容
         - `status` (string) 执行状态 `running` / `succeeded` / `failed` / `stopped`
@@ -570,7 +570,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `data` (array[object])  消息列表
     - `id`  (string) 消息 ID
     - `conversation_id` (string)  会话 ID
-    - `inputs` (array[object]) 用户输入参数。
+    - `inputs` (object) 用户输入参数。
     - `query`  (string) 用户输入 / 提问内容。
     - `message_files` (array[object]) 消息文件
       - `id` (string) ID
@@ -699,7 +699,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `data` (array[object]) 会话列表
       - `id`  (string) 会话 ID
       - `name`  (string) 会话名称，默认由大语言模型生成。
-      - `inputs` (array[object]) 用户输入参数。
+      - `inputs` (object) 用户输入参数。
       - `status` (string) 会话状态
       - `introduction` (string) 开场白
       - `created_at` (timestamp) 创建时间
@@ -830,7 +830,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ### Response
     - `id`  (string) 会话 ID
     - `name`  (string) 会话名称
-    - `inputs` array[object] 用户输入参数
+    - `inputs` (object) 用户输入参数
     - `status` (string) 会话状态
     - `introduction` (string) 开场白
     - `created_at` (timestamp) 创建时间

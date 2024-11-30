@@ -528,7 +528,7 @@ Chat applications support session persistence, allowing previous chat history to
     - `data` (array[object]) Message list
     - `id` (string) Message ID
     - `conversation_id` (string) Conversation ID
-    - `inputs` (array[object]) User input parameters.
+    - `inputs` (object) User input parameters.
     - `query` (string) User input / question content.
     - `message_files` (array[object]) Message files
       - `id` (string) ID
@@ -698,7 +698,7 @@ Chat applications support session persistence, allowing previous chat history to
     - `data` (array[object]) List of conversations
       - `id` (string) Conversation ID
       - `name` (string) Conversation name, by default, is a snippet of the first question asked by the user in the conversation.
-      - `inputs` (array[object]) User input parameters.
+      - `inputs` (object) User input parameters.
       - `status` (string) Conversation status
       - `introduction` (string) Introduction
       - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
@@ -828,7 +828,7 @@ Chat applications support session persistence, allowing previous chat history to
     ### Response
     - `id` (string) Conversation ID
     - `name` (string) Conversation name
-    - `inputs` array[object] User input parameters
+    - `inputs` (object) User input parameters
     - `status` (string) Conversation status
     - `introduction` (string) Introduction
     - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
