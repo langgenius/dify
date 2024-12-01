@@ -359,6 +359,9 @@ class AppDslService:
             app.icon_background = icon_background or app_data.get("icon_background", app.icon_background)
             app.updated_by = account.id
         else:
+            if account.current_tenant_id is None:
+                raise ValueError("Current tenant is not set")
+
             # Create new app
             app = App()
             app.id = str(uuid4())
