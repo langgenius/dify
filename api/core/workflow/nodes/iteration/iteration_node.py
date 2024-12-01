@@ -235,7 +235,11 @@ class IterationNode(BaseNode[IterationNodeData]):
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     outputs={"output": jsonable_encoder(outputs)},
-                    metadata={NodeRunMetadataKey.ITERATION_DURATION_MAP: iter_run_map},
+                    metadata={
+                        NodeRunMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
+                        NodeRunMetadataKey.TOTAL_TOKENS: graph_engine.graph_runtime_state.total_tokens,
+                    },
+
                 )
             )
         except IterationNodeError as e:
