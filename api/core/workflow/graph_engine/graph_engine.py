@@ -54,7 +54,7 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
         self.max_submit_count = max_submit_count
         self.submit_count = 0
 
-    def submit(self, fn, *args, **kwargs):
+    def submit(self, fn, /, *args, **kwargs):
         self.submit_count += 1
         self.check_is_full()
 
@@ -152,7 +152,7 @@ class GraphEngine:
                     elif isinstance(item, NodeRunSucceededEvent):
                         if item.node_type == NodeType.END:
                             self.graph_runtime_state.outputs = (
-                                item.route_node_state.node_run_result.outputs
+                                dict(item.route_node_state.node_run_result.outputs)
                                 if item.route_node_state.node_run_result
                                 and item.route_node_state.node_run_result.outputs
                                 else {}
