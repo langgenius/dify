@@ -38,7 +38,7 @@ class Extensible:
 
     @classmethod
     def scan_extensions(cls):
-        extensions: list[ModuleExtension] = []
+        extensions = []
         position_map = {}
 
         # get the path of the current class

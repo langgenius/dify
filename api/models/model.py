@@ -937,7 +937,7 @@ class Message(db.Model):  # type: ignore[name-defined]
         if not current_app:
             raise ValueError(f"App {self.app_id} not found")
 
-        files: list[File] = []
+        files = []
         for message_file in message_files:
             if message_file.transfer_method == "local_file":
                 if message_file.upload_file_id is None:

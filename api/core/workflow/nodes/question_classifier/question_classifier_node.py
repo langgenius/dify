@@ -37,7 +37,7 @@ from .template_prompts import (
 )
 
 if TYPE_CHECKING:
-    from core.file import File
+    pass
 
 
 class QuestionClassifierNode(LLMNode):
@@ -63,7 +63,7 @@ class QuestionClassifierNode(LLMNode):
         node_data.instruction = node_data.instruction or ""
         node_data.instruction = variable_pool.convert_template(node_data.instruction).text
 
-        files: Sequence[File] = (
+        files = (
             self._fetch_files(
                 selector=node_data.vision.configs.variable_selector,
             )
