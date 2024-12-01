@@ -287,11 +287,12 @@ x-shared-env: &shared-api-worker-env
   OCEANBASE_CLUSTER_NAME: ${OCEANBASE_CLUSTER_NAME:-difyai}
   OCEANBASE_MEMORY_LIMIT: ${OCEANBASE_MEMORY_LIMIT:-6G}
   CREATE_TIDB_SERVICE_JOB_ENABLED: ${CREATE_TIDB_SERVICE_JOB_ENABLED:-false}
+  RETRIEVAL_TOP_N: ${RETRIEVAL_TOP_N:-0}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.11.2
+    image: langgenius/dify-api:0.12.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -311,7 +312,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.11.2
+    image: langgenius/dify-api:0.12.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -330,7 +331,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.11.2
+    image: langgenius/dify-web:0.12.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
