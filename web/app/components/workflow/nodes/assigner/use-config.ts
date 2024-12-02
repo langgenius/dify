@@ -6,6 +6,7 @@ import type { ValueSelector, Var } from '../../types'
 import { WriteMode } from './types'
 import type { AssignerNodeOperation, AssignerNodeType } from './types'
 import { useGetAvailableVars } from './hooks'
+import { convertV1ToV2 } from './utils'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   useIsChatMode,
@@ -14,7 +15,8 @@ import {
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
 
-const useConfig = (id: string, payload: AssignerNodeType) => {
+const useConfig = (id: string, rawPayload: AssignerNodeType) => {
+  const payload = useMemo(() => convertV1ToV2(rawPayload), [rawPayload])
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
   const getAvailableVars = useGetAvailableVars()
