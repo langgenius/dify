@@ -6,7 +6,7 @@ import string
 import subprocess
 import time
 import uuid
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
 from typing import Any, Optional, Union
@@ -180,7 +180,9 @@ def generate_text_hash(text: str) -> str:
     return sha256(hash_text.encode()).hexdigest()
 
 
-def compact_generate_response(response: Union[dict, RateLimitGenerator]) -> Response:
+def compact_generate_response(
+    response: Union[Mapping[str, Any], RateLimitGenerator, Generator[str, None, None]],
+) -> Response:
     if isinstance(response, dict):
         return Response(response=json.dumps(response), status=200, mimetype="application/json")
     else:
