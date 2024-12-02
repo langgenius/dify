@@ -104,8 +104,7 @@ class OceanBaseVector(BaseVector):
                 val = int(row[6])
                 vals.append(val)
             if len(vals) == 0:
-                print("ob_vector_memory_limit_percentage not found in parameters.")
-                exit(1)
+                raise ValueError("ob_vector_memory_limit_percentage not found in parameters.")
             if any(val == 0 for val in vals):
                 try:
                     self._client.perform_raw_text_sql("ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30")
