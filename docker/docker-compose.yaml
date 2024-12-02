@@ -314,7 +314,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - /etc/timezone:/etc/timezone:ro
     networks:
-      - ssrf_proxy_networks
+      - ssrf_proxy_network
       - default
 
   # worker service
