@@ -50,7 +50,11 @@ class ToolNode(BaseNode[ToolNodeData]):
         node_data = cast(ToolNodeData, self.node_data)
 
         # fetch tool icon
-        tool_info = {"provider_type": node_data.provider_type.value, "provider_id": node_data.provider_id}
+        tool_info = {
+            "provider_type": node_data.provider_type.value,
+            "provider_id": node_data.provider_id,
+            "plugin_unique_identifier": node_data.plugin_unique_identifier,
+        }
 
         # get tool runtime
         try:

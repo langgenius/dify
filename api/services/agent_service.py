@@ -1,6 +1,9 @@
+import threading
+
 import pytz
 from flask_login import current_user
 
+import contexts
 from core.app.app_config.easy_ui_based_app.agent.manager import AgentConfigManager
 from core.tools.tool_manager import ToolManager
 from extensions.ext_database import db
@@ -14,6 +17,9 @@ class AgentService:
         """
         Service to get agent logs
         """
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
+
         conversation: Conversation = (
             db.session.query(Conversation)
             .filter(

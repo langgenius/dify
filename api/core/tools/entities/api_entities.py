@@ -34,6 +34,7 @@ class ToolProviderApiEntity(BaseModel):
     is_team_authorization: bool = False
     allow_delete: bool = True
     plugin_id: Optional[str] = Field(default="", description="The plugin id of the tool")
+    plugin_unique_identifier: Optional[str] = Field(default="", description="The unique identifier of the tool")
     tools: list[ToolApiEntity] = Field(default_factory=list)
     labels: list[str] = Field(default_factory=list)
 
@@ -58,6 +59,7 @@ class ToolProviderApiEntity(BaseModel):
             "author": self.author,
             "name": self.name,
             "plugin_id": self.plugin_id,
+            "plugin_unique_identifier": self.plugin_unique_identifier,
             "description": self.description.to_dict(),
             "icon": self.icon,
             "label": self.label.to_dict(),

@@ -12,11 +12,15 @@ class PluginToolProviderController(BuiltinToolProviderController):
     entity: ToolProviderEntityWithPlugin
     tenant_id: str
     plugin_id: str
+    plugin_unique_identifier: str
 
-    def __init__(self, entity: ToolProviderEntityWithPlugin, plugin_id: str, tenant_id: str) -> None:
+    def __init__(
+        self, entity: ToolProviderEntityWithPlugin, plugin_id: str, plugin_unique_identifier: str, tenant_id: str
+    ) -> None:
         self.entity = entity
         self.tenant_id = tenant_id
         self.plugin_id = plugin_id
+        self.plugin_unique_identifier = plugin_unique_identifier
 
     @property
     def provider_type(self) -> ToolProviderType:
@@ -53,6 +57,8 @@ class PluginToolProviderController(BuiltinToolProviderController):
             entity=tool_entity,
             runtime=ToolRuntime(tenant_id=self.tenant_id),
             tenant_id=self.tenant_id,
+            icon=self.entity.identity.icon,
+            plugin_unique_identifier=self.plugin_unique_identifier,
         )
 
     def get_tools(self) -> list[PluginTool]:
@@ -64,6 +70,8 @@ class PluginToolProviderController(BuiltinToolProviderController):
                 entity=tool_entity,
                 runtime=ToolRuntime(tenant_id=self.tenant_id),
                 tenant_id=self.tenant_id,
+                icon=self.entity.identity.icon,
+                plugin_unique_identifier=self.plugin_unique_identifier,
             )
             for tool_entity in self.entity.tools
         ]

@@ -22,14 +22,16 @@ API_TOOL_DEFAULT_TIMEOUT = (
 
 class ApiTool(Tool):
     api_bundle: ApiToolBundle
+    provider_id: str
 
     """
     Api tool
     """
 
-    def __init__(self, entity: ToolEntity, api_bundle: ApiToolBundle, runtime: ToolRuntime):
+    def __init__(self, entity: ToolEntity, api_bundle: ApiToolBundle, runtime: ToolRuntime, provider_id: str):
         super().__init__(entity, runtime)
         self.api_bundle = api_bundle
+        self.provider_id = provider_id
 
     def fork_tool_runtime(self, runtime: ToolRuntime):
         """
@@ -42,6 +44,7 @@ class ApiTool(Tool):
             entity=self.entity,
             api_bundle=self.api_bundle.model_copy(),
             runtime=runtime,
+            provider_id=self.provider_id,
         )
 
     def validate_credentials(

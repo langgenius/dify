@@ -1,6 +1,7 @@
 from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, SystemPromptMessage, UserPromptMessage
 from core.tools.__base.tool import Tool
+from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
 
@@ -18,6 +19,25 @@ class BuiltinTool(Tool):
 
     :param meta: the meta data of a tool call processing
     """
+
+    provider: str
+
+    def __init__(self, provider: str, **kwargs):
+        super().__init__(**kwargs)
+        self.provider = provider
+
+    def fork_tool_runtime(self, runtime: ToolRuntime) -> "BuiltinTool":
+        """
+        fork a new tool with meta data
+
+        :param meta: the meta data of a tool call processing, tenant_id is required
+        :return: the new tool
+        """
+        return self.__class__(
+            entity=self.entity.model_copy(),
+            runtime=runtime,
+            provider=self.provider,
+        )
 
     def invoke_model(self, user_id: str, prompt_messages: list[PromptMessage], stop: list[str]) -> LLMResult:
         """

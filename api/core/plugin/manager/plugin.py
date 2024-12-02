@@ -1,7 +1,5 @@
 from collections.abc import Sequence
 
-from pydantic import BaseModel
-
 from core.plugin.entities.bundle import PluginBundleDependency
 from core.plugin.entities.plugin import (
     GenericProviderID,
@@ -152,15 +150,12 @@ class PluginInstallationManager(BasePluginManager):
         Fetch a plugin manifest.
         """
 
-        class PluginDeclarationResponse(BaseModel):
-            declaration: PluginDeclaration
-
         return self._request_with_plugin_daemon_response(
             "GET",
             f"plugin/{tenant_id}/management/fetch/manifest",
-            PluginDeclarationResponse,
+            PluginDeclaration,
             params={"plugin_unique_identifier": plugin_unique_identifier},
-        ).declaration
+        )
 
     def fetch_plugin_installation_by_ids(
         self, tenant_id: str, plugin_ids: Sequence[str]

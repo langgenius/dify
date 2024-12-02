@@ -11,11 +11,17 @@ from models.model import File
 
 class PluginTool(Tool):
     tenant_id: str
+    icon: str
+    plugin_unique_identifier: str
     runtime_parameters: Optional[list[ToolParameter]]
 
-    def __init__(self, entity: ToolEntity, runtime: ToolRuntime, tenant_id: str) -> None:
+    def __init__(
+        self, entity: ToolEntity, runtime: ToolRuntime, tenant_id: str, icon: str, plugin_unique_identifier: str
+    ) -> None:
         super().__init__(entity, runtime)
         self.tenant_id = tenant_id
+        self.icon = icon
+        self.plugin_unique_identifier = plugin_unique_identifier
         self.runtime_parameters = None
 
     def tool_provider_type(self) -> ToolProviderType:
@@ -64,6 +70,8 @@ class PluginTool(Tool):
             entity=self.entity,
             runtime=runtime,
             tenant_id=self.tenant_id,
+            icon=self.icon,
+            plugin_unique_identifier=self.plugin_unique_identifier,
         )
 
     def get_runtime_parameters(self) -> list[ToolParameter]:

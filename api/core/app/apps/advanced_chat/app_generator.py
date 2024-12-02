@@ -152,6 +152,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow_run_id=workflow_run_id,
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
 
         return self._generate(
             workflow=workflow,
@@ -201,6 +203,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             ),
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
 
         return self._generate(
             workflow=workflow,
