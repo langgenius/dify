@@ -116,7 +116,7 @@ class IterationNode(BaseNode[IterationNodeData]):
         variable_pool.add([self.node_id, "item"], iterator_list_value[0])
 
         # init graph engine
-        from core.workflow.graph_engine.graph_engine import GraphEngine, GraphEngineThreadPool
+        from core.workflow.graph_engine.graph_engine import GraphEngine
 
         graph_engine = GraphEngine(
             tenant_id=self.tenant_id,
