@@ -1,5 +1,6 @@
 from typing import cast
-from core.extension.extensible import ExtensionModule, ModuleExtension, Extensible
+
+from core.extension.extensible import Extensible, ExtensionModule, ModuleExtension
 from core.external_data_tool.base import ExternalDataTool
 from core.moderation.base import Moderation
 

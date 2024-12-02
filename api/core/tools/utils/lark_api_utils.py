@@ -1,5 +1,5 @@
 import json
-from typing import Optional, Dict, Any, cast
+from typing import Any, Optional, cast
 
 import httpx
 
@@ -63,7 +63,7 @@ class LarkRequest:
         feishu_tenant_access_token = f"tools:{self.app_id}:feishu_tenant_access_token"
         if redis_client.exists(feishu_tenant_access_token):
             return str(redis_client.get(feishu_tenant_access_token).decode())
-        res: Dict[str, str] = self.get_tenant_access_token(self.app_id, self.app_secret)
+        res: dict[str, str] = self.get_tenant_access_token(self.app_id, self.app_secret)
         redis_client.setex(feishu_tenant_access_token, res.get("expire"), res.get("tenant_access_token"))
         return res.get("tenant_access_token", "")
 
@@ -324,7 +324,7 @@ class LarkRequest:
         auto_record: bool,
     ) -> dict:
         url = f"{self.API_BASE_URL}/calendar/update_event/{event_id}"
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
         if summary:
             payload["summary"] = summary
         if description:
@@ -703,7 +703,7 @@ class LarkRequest:
             except json.JSONDecodeError:
                 raise ValueError("The input string is not valid JSON")
 
-        payload: Dict[str, Any] = {}
+        payload: dict[str, Any] = {}
 
         if view_id:
             payload["view_id"] = view_id
