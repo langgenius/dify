@@ -6,11 +6,13 @@ import { pluginManifestToCardPluginProps } from '../../utils'
 import { useUploadGitHub } from '@/service/use-plugins'
 import Loading from '../../base/loading'
 import LoadedItem from './loaded-item'
+import type { VersionProps } from '@/app/components/plugins/types'
 
 type Props = {
   checked: boolean
   onCheckedChange: (plugin: Plugin) => void
   dependency: GitHubItemAndMarketPlaceDependency
+  versionInfo: VersionProps
   onFetchedPayload: (payload: Plugin) => void
   onFetchError: () => void
 }
@@ -19,6 +21,7 @@ const Item: FC<Props> = ({
   checked,
   onCheckedChange,
   dependency,
+  versionInfo,
   onFetchedPayload,
   onFetchError,
 }) => {
@@ -50,6 +53,7 @@ const Item: FC<Props> = ({
   return (
     <LoadedItem
       payload={payload}
+      versionInfo={versionInfo}
       checked={checked}
       onCheckedChange={onCheckedChange}
     />

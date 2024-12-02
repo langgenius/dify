@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React, { useEffect } from 'react'
 // import { RiInformation2Line } from '@remixicon/react'
-import type { Plugin, PluginManifestInMarket } from '../../../types'
+import { type Plugin, type PluginManifestInMarket, TaskStatus } from '../../../types'
 import Card from '../../../card'
 import { pluginManifestInMarketToPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
@@ -52,9 +52,9 @@ const Installed: FC<Props> = ({
   } = checkTaskStatus()
 
   useEffect(() => {
-    if (hasInstalled && toInstallVersion === installedVersion)
+    if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
       onInstalled()
-  }, [hasInstalled, toInstallVersion, installedVersion])
+  }, [hasInstalled])
 
   const handleCancel = () => {
     stop()
@@ -93,10 +93,14 @@ const Installed: FC<Props> = ({
         onInstalled()
         return
       }
-      await check({
+      const { status, error } = await check({
         taskId,
         pluginUniqueIdentifier: uniqueIdentifier,
       })
+      if (status === TaskStatus.failed) {
+        onFailed(error)
+        return
+      }
       onInstalled()
     }
     catch (e) {

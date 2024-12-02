@@ -7,12 +7,13 @@ import Card from '@/app/components/plugins/card'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import type { UpdateFromMarketPlacePayload } from '../types'
+import { TaskStatus, type UpdateFromMarketPlacePayload } from '../types'
 import { pluginManifestToCardPluginProps } from '@/app/components/plugins/install-plugin/utils'
 import useGetIcon from '../install-plugin/base/use-get-icon'
 import { updateFromMarketPlace } from '@/service/plugins'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { usePluginTaskList } from '@/service/use-plugins'
+import Toast from '../../base/toast'
 
 const i18nPrefix = 'plugin.upgrade'
 
@@ -83,10 +84,14 @@ const UpdatePluginModal: FC<Props> = ({
           return
         }
         handleRefetch()
-        await check({
+        const { status, error } = await check({
           taskId,
           pluginUniqueIdentifier: targetPackageInfo.id,
         })
+        if (status === TaskStatus.failed) {
+          Toast.notify({ type: 'error', message: error! })
+          return
+        }
         onSave()
       }
       // eslint-disable-next-line unused-imports/no-unused-vars

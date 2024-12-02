@@ -109,6 +109,7 @@ export type PluginDetail = {
 export type Plugin = {
   type: 'plugin' | 'bundle'
   org: string
+  author?: string
   name: string
   plugin_id: string
   version: string
@@ -358,4 +359,15 @@ export type Version = {
 
 export type VersionListResponse = {
   versions: Version[]
+}
+
+export type VersionInfo = {
+  installedVersion: string,
+  uniqueIdentifier: string
+}
+
+export type VersionProps = {
+  hasInstalled: boolean
+  installedVersion?: string
+  toInstallVersion: string
 }

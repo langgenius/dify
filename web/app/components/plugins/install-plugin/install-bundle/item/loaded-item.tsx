@@ -4,15 +4,17 @@ import React from 'react'
 import type { Plugin } from '../../../types'
 import Card from '../../../card'
 import Checkbox from '@/app/components/base/checkbox'
-import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import useGetIcon from '../../base/use-get-icon'
 import { MARKETPLACE_API_PREFIX } from '@/config'
+import Version from '../../base/version'
+import type { VersionProps } from '../../../types'
 
 type Props = {
   checked: boolean
   onCheckedChange: (plugin: Plugin) => void
   payload: Plugin
   isFromMarketPlace?: boolean
+  versionInfo: VersionProps
 }
 
 const LoadedItem: FC<Props> = ({
@@ -20,8 +22,13 @@ const LoadedItem: FC<Props> = ({
   onCheckedChange,
   payload,
   isFromMarketPlace,
+  versionInfo: particleVersionInfo,
 }) => {
   const { getIconUrl } = useGetIcon()
+  const versionInfo = {
+    ...particleVersionInfo,
+    toInstallVersion: payload.version,
+  }
   return (
     <div className='flex items-center space-x-2'>
       <Checkbox
@@ -35,7 +42,7 @@ const LoadedItem: FC<Props> = ({
           ...payload,
           icon: isFromMarketPlace ? `${MARKETPLACE_API_PREFIX}/plugins/${payload.org}/${payload.name}/icon` : getIconUrl(payload.icon),
         }}
-        titleLeft={payload.version ? <Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version}</Badge> : null}
+        titleLeft={payload.version ? <Version {...versionInfo} /> : null}
       />
     </div>
   )

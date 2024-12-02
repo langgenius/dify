@@ -6,12 +6,14 @@ import type { PackageDependency } from '../../../types'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import LoadedItem from './loaded-item'
 import LoadingError from '../../base/loading-error'
+import type { VersionProps } from '@/app/components/plugins/types'
 
 type Props = {
   checked: boolean
   onCheckedChange: (plugin: Plugin) => void
   payload: PackageDependency
   isFromMarketPlace?: boolean
+  versionInfo: VersionProps
 }
 
 const PackageItem: FC<Props> = ({
@@ -19,6 +21,7 @@ const PackageItem: FC<Props> = ({
   checked,
   onCheckedChange,
   isFromMarketPlace,
+  versionInfo,
 }) => {
   if (!payload.value?.manifest)
     return <LoadingError />
@@ -30,6 +33,7 @@ const PackageItem: FC<Props> = ({
       checked={checked}
       onCheckedChange={onCheckedChange}
       isFromMarketPlace={isFromMarketPlace}
+      versionInfo={versionInfo}
     />
   )
 }

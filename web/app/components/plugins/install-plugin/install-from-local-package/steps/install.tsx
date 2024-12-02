@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect } from 'react'
-import type { PluginDeclaration } from '../../../types'
+import { type PluginDeclaration, TaskStatus } from '../../../types'
 import Card from '../../../card'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import Button from '@/app/components/base/button'
@@ -43,9 +43,9 @@ const Installed: FC<Props> = ({
   const hasInstalled = !!installedVersion
 
   useEffect(() => {
-    if (hasInstalled && toInstallVersion === installedVersion)
+    if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
       onInstalled()
-  }, [hasInstalled, toInstallVersion, installedVersion])
+  }, [hasInstalled])
 
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromLocal } = useInstallPackageFromLocal()
@@ -95,10 +95,14 @@ const Installed: FC<Props> = ({
         return
       }
       handleRefetch()
-      await check({
+      const { status, error } = await check({
         taskId,
         pluginUniqueIdentifier: uniqueIdentifier,
       })
+      if (status === TaskStatus.failed) {
+        onFailed(error)
+        return
+      }
       onInstalled()
     }
     catch (e) {
