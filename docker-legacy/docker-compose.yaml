@@ -210,7 +210,7 @@ services:
       SSRF_PROXY_HTTP_URL: 'http://ssrf_proxy:3128'
       SSRF_PROXY_HTTPS_URL: 'http://ssrf_proxy:3128'
       # Indexing configuration
-      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: 1000
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: 4000
     depends_on:
       - db
       - redis
