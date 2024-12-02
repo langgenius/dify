@@ -8,9 +8,8 @@ from mimetypes import guess_extension, guess_type
 from typing import Optional, Union
 from uuid import uuid4
 
-from httpx import get
-
 from configs import dify_config
+from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import MessageFile
@@ -94,7 +93,7 @@ class ToolFileManager:
     ) -> ToolFile:
         # try to download image
         try:
-            response = get(file_url)
+            response = ssrf_proxy.get(file_url)
             response.raise_for_status()
             blob = response.content
         except Exception as e:

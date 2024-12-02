@@ -242,11 +242,13 @@ class PluginInvokeSummaryApi(Resource):
     def post(self, user_model: Account | EndUser, tenant_model: Tenant, payload: RequestInvokeSummary):
         try:
             return BaseBackwardsInvocationResponse(
-                data=PluginModelBackwardsInvocation.invoke_summary(
-                    user_id=user_model.id,
-                    tenant=tenant_model,
-                    payload=payload,
-                )
+                data={
+                    "summary": PluginModelBackwardsInvocation.invoke_summary(
+                        user_id=user_model.id,
+                        tenant=tenant_model,
+                        payload=payload,
+                    )
+                }
             ).model_dump()
         except Exception as e:
             return BaseBackwardsInvocationResponse(error=str(e)).model_dump()

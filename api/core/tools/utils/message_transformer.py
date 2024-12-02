@@ -30,9 +30,6 @@ class ToolFileMessageTransformer:
             ):
                 # try to download image
                 try:
-                    if not conversation_id:
-                        raise
-
                     assert isinstance(message.message, ToolInvokeMessage.TextMessage)
 
                     file = ToolFileManager.create_file_by_url(
