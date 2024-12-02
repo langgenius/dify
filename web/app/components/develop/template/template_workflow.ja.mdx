@@ -113,7 +113,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - `title` (string) ノードの名前
         - `index` (int) 実行シーケンス番号、トレースノードシーケンスを表示するために使用
         - `predecessor_node_id` (string) オプションのプレフィックスノードID、キャンバス表示実行パスに使用
-        - `inputs` (array[object]) ノードで使用されるすべての前のノード変数の内容
+        - `inputs` (object) ノードで使用されるすべての前のノード変数の内容
         - `created_at` (timestamp) 開始のタイムスタンプ、例：1705395332
     - `event: node_finished` ノード実行終了、同じイベントで異なる状態で成功または失敗
       - `task_id` (string) タスクID、リクエスト追跡と以下のStop Generate APIに使用
@@ -126,7 +126,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - `title` (string) ノードの名前
         - `index` (int) 実行シーケンス番号、トレースノードシーケンスを表示するために使用
         - `predecessor_node_id` (string) オプションのプレフィックスノードID、キャンバス表示実行パスに使用
-        - `inputs` (array[object]) ノードで使用されるすべての前のノード変数の内容
+        - `inputs` (object) ノードで使用されるすべての前のノード変数の内容
         - `process_data` (json) オプションのノードプロセスデータ
         - `outputs` (json) オプションの出力内容
         - `status` (string) 実行のステータス、`running` / `succeeded` / `failed` / `stopped`
