@@ -10,6 +10,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 from sqlalchemy import func
+from sqlalchemy.orm import Session
 from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
@@ -828,10 +829,11 @@ class RegisterService:
 
     @classmethod
     def invite_new_member(
-        cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Account = None
+        cls, tenant: Tenant, email: str, language: str, role: str = "normal", inviter: Account | None = None
     ) -> str:
         """Invite new member"""
-        account = Account.query.filter_by(email=email).first()
+        with Session(db.engine) as session:
+            account = session.query(Account).filter_by(email=email).first()
 
         if not account:
             TenantService.check_member_permission(tenant, inviter, None, "add")
