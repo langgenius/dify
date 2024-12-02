@@ -1,25 +1,26 @@
-import openai
-import sentry_sdk
-from langfuse import parse_error
-from sentry_sdk.integrations.celery import CeleryIntegration
-from sentry_sdk.integrations.flask import FlaskIntegration
-from werkzeug.exceptions import HTTPException
-
 from configs import dify_config
-from core.model_runtime.errors.invoke import InvokeRateLimitError
+from dify_app import DifyApp
 
 
-def before_send(event, hint):
-    if "exc_info" in hint:
-        exc_type, exc_value, tb = hint["exc_info"]
-        if parse_error.defaultErrorResponse in str(exc_value):
-            return None
-
-    return event
-
-
-def init_app(app):
+def init_app(app: DifyApp):
     if dify_config.SENTRY_DSN:
+        import openai
+        import sentry_sdk
+        from langfuse import parse_error
+        from sentry_sdk.integrations.celery import CeleryIntegration
+        from sentry_sdk.integrations.flask import FlaskIntegration
+        from werkzeug.exceptions import HTTPException
+
+        from core.model_runtime.errors.invoke import InvokeRateLimitError
+
+        def before_send(event, hint):
+            if "exc_info" in hint:
+                exc_type, exc_value, tb = hint["exc_info"]
+                if parse_error.defaultErrorResponse in str(exc_value):
+                    return None
+
+            return event
+
         sentry_sdk.init(
             dsn=dify_config.SENTRY_DSN,
             integrations=[FlaskIntegration(), CeleryIntegration()],
