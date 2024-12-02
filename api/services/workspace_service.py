@@ -29,6 +29,7 @@ class WorkspaceService:
             .filter(TenantAccountJoin.tenant_id == tenant.id, TenantAccountJoin.account_id == current_user.id)
             .first()
         )
+        assert tenant_account_join is not None, "TenantAccountJoin not found"
         tenant_info["role"] = tenant_account_join.role
 
         can_replace_logo = FeatureService.get_features(tenant_info["id"]).can_replace_logo

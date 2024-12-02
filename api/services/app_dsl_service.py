@@ -1,10 +1,10 @@
 import logging
 import uuid
 from enum import StrEnum
-from typing import Optional
+from typing import Optional, cast
 from uuid import uuid4
 
-import yaml
+import yaml  # type: ignore
 from packaging import version
 from pydantic import BaseModel
 from sqlalchemy import select
@@ -103,7 +103,7 @@ class AppDslService:
             raise ValueError(f"Invalid import_mode: {import_mode}")
 
         # Get YAML content
-        content = ""
+        content: bytes | str = b""
         if mode == ImportMode.YAML_URL:
             if not yaml_url:
                 return Import(
@@ -136,7 +136,7 @@ class AppDslService:
                     )
 
                 try:
-                    content = content.decode("utf-8")
+                    content = cast(bytes, content).decode("utf-8")
                 except UnicodeDecodeError as e:
                     return Import(
                         id=import_id,
@@ -461,8 +461,8 @@ class AppDslService:
             )
         else:
             cls._append_model_config_export_data(export_data, app_model)
-
-        return yaml.dump(export_data, allow_unicode=True)
+        dsl_data: str = yaml.dump(export_data, allow_unicode=True)
+        return dsl_data
 
     @classmethod
     def _append_workflow_export_data(cls, *, export_data: dict, app_model: App, include_secret: bool) -> None:

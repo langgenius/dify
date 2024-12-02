@@ -38,12 +38,12 @@ def create_clusters(batch_size):
     try:
         new_clusters = TidbService.batch_create_tidb_serverless_cluster(
             batch_size,
-            dify_config.TIDB_PROJECT_ID,
-            dify_config.TIDB_API_URL,
-            dify_config.TIDB_IAM_API_URL,
-            dify_config.TIDB_PUBLIC_KEY,
-            dify_config.TIDB_PRIVATE_KEY,
-            dify_config.TIDB_REGION,
+            dify_config.TIDB_PROJECT_ID or "",
+            dify_config.TIDB_API_URL or "",
+            dify_config.TIDB_IAM_API_URL or "",
+            dify_config.TIDB_PUBLIC_KEY or "",
+            dify_config.TIDB_PRIVATE_KEY or "",
+            dify_config.TIDB_REGION or "",
         )
         for new_cluster in new_clusters:
             tidb_auth_binding = TidbAuthBinding(

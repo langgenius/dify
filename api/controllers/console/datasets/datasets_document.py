@@ -1,6 +1,7 @@
 import logging
 from argparse import ArgumentTypeError
 from datetime import UTC, datetime
+from typing import cast
 
 from flask import request
 from flask_login import current_user  # type: ignore
@@ -732,8 +733,7 @@ class DocumentMetadataApi(DocumentResource):
 
         if not isinstance(doc_metadata, dict):
             raise ValueError("doc_metadata must be a dictionary.")
-
-        metadata_schema = DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type]
+        metadata_schema: dict = cast(dict, DocumentService.DOCUMENT_METADATA_SCHEMA[doc_type])
 
         document.doc_metadata = {}
         if doc_type == "others":

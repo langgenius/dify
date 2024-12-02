@@ -45,6 +45,7 @@ class BaseApiKeyListResource(Resource):
 
     @marshal_with(api_key_list)
     def get(self, resource_id):
+        assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
         keys = (
@@ -56,6 +57,7 @@ class BaseApiKeyListResource(Resource):
 
     @marshal_with(api_key_fields)
     def post(self, resource_id):
+        assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
         if not current_user.is_editor:
@@ -93,6 +95,7 @@ class BaseApiKeyResource(Resource):
     resource_id_field: str | None = None
 
     def delete(self, resource_id, api_key_id):
+        assert self.resource_id_field is not None, "resource_id_field must be set"
         resource_id = str(resource_id)
         api_key_id = str(api_key_id)
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
