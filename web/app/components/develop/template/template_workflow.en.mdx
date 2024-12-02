@@ -113,7 +113,7 @@ Workflow applications offers non-session support and is ideal for translation, a
         - `title` (string) name of node
         - `index` (int) Execution sequence number, used to display Tracing Node sequence
         - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
-        - `inputs` (array[object]) Contents of all preceding node variables used in the node
+        - `inputs` (object) Contents of all preceding node variables used in the node
         - `created_at` (timestamp) timestamp of start, e.g., 1705395332
     - `event: node_finished` node execution ends, success or failure in different states in the same event
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
@@ -126,7 +126,7 @@ Workflow applications offers non-session support and is ideal for translation, a
         - `title` (string) name of node
         - `index` (int) Execution sequence number, used to display Tracing Node sequence
         - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
-        - `inputs` (array[object]) Contents of all preceding node variables used in the node
+        - `inputs` (object) Contents of all preceding node variables used in the node
         - `process_data` (json) Optional node process data
         - `outputs` (json) Optional content of output
         - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
