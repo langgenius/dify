@@ -10,6 +10,8 @@ class Jinja2Formatter:
         :param inputs: inputs
         :return:
         """
-        result = CodeExecutor.execute_workflow_code_template(language=CodeLanguage.JINJA2, code=template, inputs=inputs)
+        result: dict[str, str] = CodeExecutor.execute_workflow_code_template(
+            language=CodeLanguage.JINJA2, code=template, inputs=inputs
+        )
 
         return result["result"]

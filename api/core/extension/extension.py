@@ -1,4 +1,5 @@
-from core.extension.extensible import ExtensionModule, ModuleExtension
+from typing import cast
+from core.extension.extensible import ExtensionModule, ModuleExtension, Extensible
 from core.external_data_tool.base import ExternalDataTool
 from core.moderation.base import Moderation
 
@@ -10,7 +11,8 @@ class Extension:
 
     def init(self):
         for module, module_class in self.module_classes.items():
-            self.__module_extensions[module.value] = module_class.scan_extensions()
+            m = cast(Extensible, module_class)
+            self.__module_extensions[module.value] = m.scan_extensions()
 
     def module_extensions(self, module: str) -> list[ModuleExtension]:
         module_extensions = self.__module_extensions.get(module)
@@ -35,7 +37,8 @@ class Extension:
 
     def extension_class(self, module: ExtensionModule, extension_name: str) -> type:
         module_extension = self.module_extension(module, extension_name)
-        return module_extension.extension_class
+        t: type = module_extension.extension_class
+        return t
 
     def validate_form_schema(self, module: ExtensionModule, extension_name: str, config: dict) -> None:
         module_extension = self.module_extension(module, extension_name)
