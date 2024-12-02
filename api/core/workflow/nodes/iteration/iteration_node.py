@@ -162,7 +162,8 @@ class IterationNode(BaseNode[IterationNodeData]):
             if self.node_data.is_parallel:
                 futures: list[Future] = []
                 q = Queue()
-                thread_pool = GraphEngineThreadPool(max_workers=self.node_data.parallel_nums, max_submit_count=100)
+                thread_pool = graph_engine.workflow_thread_pool_mapping[self.thread_pool_id]
+                thread_pool._max_workers = self.node_data.parallel_nums
                 for index, item in enumerate(iterator_list_value):
                     future: Future = thread_pool.submit(
                         self._run_single_iter_parallel,
@@ -235,7 +236,10 @@ class IterationNode(BaseNode[IterationNodeData]):
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.SUCCEEDED,
                     outputs={"output": jsonable_encoder(outputs)},
-                    metadata={NodeRunMetadataKey.ITERATION_DURATION_MAP: iter_run_map},
+                    metadata={
+                        NodeRunMetadataKey.ITERATION_DURATION_MAP: iter_run_map,
+                        "total_tokens": graph_engine.graph_runtime_state.total_tokens,
+                    },
                 )
             )
         except IterationNodeError as e:
@@ -258,6 +262,7 @@ class IterationNode(BaseNode[IterationNodeData]):
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,
                     error=str(e),
+                    metadata={"total_tokens": graph_engine.graph_runtime_state.total_tokens},
                 )
             )
         finally:

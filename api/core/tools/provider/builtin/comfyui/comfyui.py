@@ -15,7 +15,7 @@ class ComfyUIProvider(BuiltinToolProviderController):
 
         try:
             ws.connect(ws_address)
-        except Exception as e:
+        except Exception:
             raise ToolProviderCredentialValidationError(f"can not connect to {ws_address}")
         finally:
             ws.close()
