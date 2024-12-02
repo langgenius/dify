@@ -59,7 +59,7 @@ const translation = {
     endpointDeleteTip: 'Remove Endpoint',
     endpointDeleteContent: 'Would you like to remove {{name}}? ',
     endpointModalTitle: 'Setup endpoint',
-    endpointModalDesc: 'After configuring form, all members within the workspace can use this endpoint when orchestrating applications.',
+    endpointModalDesc: 'Once configured, the features provided by the plugin via API endpoints can be used.',
     serviceOk: 'Service OK',
     disabled: 'Disabled',
     modelNum: '{{num}} MODELS INCLUDED',

@@ -59,7 +59,7 @@ const translation = {
     endpointDeleteTip: '移除 API 端点',
     endpointDeleteContent: '是否要移除 {{name}} ？',
     endpointModalTitle: '设置 API 端点',
-    endpointModalDesc: '配置表单后，工作区内的所有成员都可以在编排应用时使用此 API 端点。',
+    endpointModalDesc: '完成配置后可使用插件 API 端点提供的功能',
     serviceOk: '服务正常',
     disabled: '停用',
     modelNum: '{{num}} 模型已包含',
