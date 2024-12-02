@@ -200,10 +200,10 @@ class OceanBaseVectorFactory(AbstractVectorFactory):
         return OceanBaseVector(
             collection_name,
             OceanBaseVectorConfig(
-                host=dify_config.OCEANBASE_VECTOR_HOST,
-                port=dify_config.OCEANBASE_VECTOR_PORT,
-                user=dify_config.OCEANBASE_VECTOR_USER,
+                host=dify_config.OCEANBASE_VECTOR_HOST or "",
+                port=dify_config.OCEANBASE_VECTOR_PORT or 0,
+                user=dify_config.OCEANBASE_VECTOR_USER or "",
                 password=(dify_config.OCEANBASE_VECTOR_PASSWORD or ""),
-                database=dify_config.OCEANBASE_VECTOR_DATABASE,
+                database=dify_config.OCEANBASE_VECTOR_DATABASE or "",
             ),
         )
