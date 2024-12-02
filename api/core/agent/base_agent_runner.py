@@ -157,7 +157,8 @@ class BaseAgentRunner(AppRunner):
         for parameter in parameters:
             if parameter.form != ToolParameter.ToolParameterForm.LLM:
                 continue
-
+            if parameter.form != ToolParameter.ToolParameterForm.LLM:
+                break
             parameter_type = parameter.type.as_normal_type()
             if parameter.type in {
                 ToolParameter.ToolParameterType.SYSTEM_FILES,
