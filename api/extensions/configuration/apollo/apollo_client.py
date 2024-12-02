@@ -7,8 +7,16 @@ import time
 from pathlib import Path
 
 from extensions.configuration.apollo.python_3x import http_request, makedirs_wrapper
-from extensions.configuration.apollo.util import init_ip, CONFIGURATIONS, get_value_from_dict, \
-    no_key_cache_key, NOTIFICATION_ID, NAMESPACE_NAME, url_encode_wrapper, signature
+from extensions.configuration.apollo.util import (
+    CONFIGURATIONS,
+    NAMESPACE_NAME,
+    NOTIFICATION_ID,
+    get_value_from_dict,
+    init_ip,
+    no_key_cache_key,
+    signature,
+    url_encode_wrapper,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +74,7 @@ class ApolloClient:
             else:
                 return None
         except Exception as e:
-            logger.error(str(e))
+            logger.exception("an error occurred in get_json_from_net")
             return None
 
     def get_value(self, key, default_val=None, namespace='application'):
@@ -100,8 +108,8 @@ class ApolloClient:
             self._set_local_cache_none(namespace, key)
             return default_val
         except Exception as e:
-            logger.error("get_value has error, [key is %s], [namespace is %s], [error is %s], ",
-                         key, namespace, e)
+            logger.exception("get_value has error, [key is %s], [namespace is %s]",
+                             key, namespace)
             return default_val
 
     # Set the key of a namespace to none, and do not set default val
@@ -267,7 +275,7 @@ class ApolloClient:
             else:
                 return None
         except Exception as e:
-            logger.error(str(e))
+            logger.exception("an error occurred in _do_heart_beat")
             return None
 
     def get_all_dicts(self, namespace):

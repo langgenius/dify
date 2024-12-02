@@ -21,7 +21,7 @@ class ApolloConfiguration(BaseConfiguration):
         # Retrieve the existing environment variables from the .env file
         existing_vars = {}
         if os.path.exists(env_path):
-            with open(env_path, 'r') as f:
+            with open(env_path) as f:
                 for line in f:
                     key, value = line.strip().split('=', 1)
                     existing_vars[key.strip()] = value.strip()
