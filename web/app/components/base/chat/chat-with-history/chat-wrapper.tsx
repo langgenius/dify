@@ -20,7 +20,7 @@ import AnswerIcon from '@/app/components/base/answer-icon'
 const ChatWrapper = () => {
   const {
     appParams,
-    appPrevChatList,
+    appPrevChatTree,
     currentConversationId,
     currentConversationItem,
     inputsForms,
@@ -50,8 +50,6 @@ const ChatWrapper = () => {
   }, [appParams, currentConversationItem?.introduction, currentConversationId])
   const {
     chatList,
-    chatListRef,
-    handleUpdateChatList,
     handleSend,
     handleStop,
     isResponding,
@@ -62,7 +60,7 @@ const ChatWrapper = () => {
       inputs: (currentConversationId ? currentConversationItem?.inputs : newConversationInputs) as any,
       inputsForm: inputsForms,
     },
-    appPrevChatList,
+    appPrevChatTree,
     taskId => stopChatMessageResponding('', taskId, isInstalledApp, appId),
   )
 
@@ -78,7 +76,7 @@ const ChatWrapper = () => {
       files,
       inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
       conversation_id: currentConversationId,
-      parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
+      parent_message_id: last_answer?.id || getLastAnswer(chatList)?.id || null,
     }
 
     handleSend(
@@ -91,12 +89,12 @@ const ChatWrapper = () => {
       },
     )
   }, [
-    chatListRef,
+    chatList,
+    handleNewConversationCompleted,
+    handleSend,
     currentConversationId,
     currentConversationItem,
-    handleSend,
     newConversationInputs,
-    handleNewConversationCompleted,
     isInstalledApp,
     appId,
   ])
@@ -113,9 +111,8 @@ const ChatWrapper = () => {
     if (!question)
       return
 
-    handleUpdateChatList(prevMessages)
     doSend(question.content, question.message_files, lastAnswer)
-  }, [chatList, handleUpdateChatList, doSend])
+  }, [chatList, doSend])
 
   const chatNode = useMemo(() => {
     if (inputsForms.length) {
