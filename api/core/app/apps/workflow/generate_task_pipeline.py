@@ -106,6 +106,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
         self._task_state = WorkflowTaskState()
         self._wip_workflow_node_executions = {}
+        self.total_tokens: int = 0
 
     def process(self) -> Union[WorkflowAppBlockingResponse, Generator[WorkflowAppStreamResponse, None, None]]:
         """
@@ -319,6 +320,8 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 if not workflow_run:
                     raise Exception("Workflow run not initialized.")
 
+                # FIXME for issue #11221 quick fix maybe have a better solution
+                self.total_tokens += event.metadata.get("total_tokens", 0) if event.metadata else 0
                 yield self._workflow_iteration_completed_to_stream_response(
                     task_id=self._application_generate_entity.task_id, workflow_run=workflow_run, event=event
                 )
@@ -332,7 +335,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 workflow_run = self._handle_workflow_run_success(
                     workflow_run=workflow_run,
                     start_at=graph_runtime_state.start_at,
-                    total_tokens=graph_runtime_state.total_tokens,
+                    total_tokens=graph_runtime_state.total_tokens or self.total_tokens,
                     total_steps=graph_runtime_state.node_run_steps,
                     outputs=event.outputs,
                     conversation_id=None,

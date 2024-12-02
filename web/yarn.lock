@@ -11665,13 +11665,6 @@ react-error-boundary@^4.0.2:
   dependencies:
     "@babel/runtime" "^7.12.5"
 
-react-headless-pagination@^1.1.4:
-  version "1.1.4"
-  resolved "https://registry.npmjs.org/react-headless-pagination/-/react-headless-pagination-1.1.4.tgz"
-  integrity sha512-Z5d55g3gM2BQMvHJUGm1jbbQ5Bgtq54kNlI5ca1NTwdVR8ZNunN0EdOtNKNobsFRKuZGkQ24VTIu6ulNq190Iw==
-  dependencies:
-    classnames "2.3.1"
-
 react-hook-form@^7.51.4:
   version "7.51.4"
   resolved "https://registry.npmjs.org/react-hook-form/-/react-hook-form-7.51.4.tgz"

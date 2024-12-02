@@ -125,6 +125,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
         self._conversation_name_generate_thread = None
         self._recorded_files: list[Mapping[str, Any]] = []
+        self.total_tokens: int = 0
 
     def process(self):
         """
@@ -358,6 +359,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 if not workflow_run:
                     raise Exception("Workflow run not initialized.")
 
+                # FIXME for issue #11221 quick fix maybe have a better solution
+                self.total_tokens += event.metadata.get("total_tokens", 0) if event.metadata else 0
                 yield self._workflow_iteration_completed_to_stream_response(
                     task_id=self._application_generate_entity.task_id, workflow_run=workflow_run, event=event
                 )
@@ -371,7 +374,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 workflow_run = self._handle_workflow_run_success(
                     workflow_run=workflow_run,
                     start_at=graph_runtime_state.start_at,
-                    total_tokens=graph_runtime_state.total_tokens,
+                    total_tokens=graph_runtime_state.total_tokens or self.total_tokens,
                     total_steps=graph_runtime_state.node_run_steps,
                     outputs=event.outputs,
                     conversation_id=self._conversation.id,

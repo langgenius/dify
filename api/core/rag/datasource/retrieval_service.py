@@ -3,6 +3,7 @@ from typing import Optional
 
 from flask import Flask, current_app
 
+from configs import DifyConfig
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -110,8 +111,12 @@ class RetrievalService:
                 str(dataset.tenant_id), reranking_mode, reranking_model, weights, False
             )
             all_documents = data_post_processor.invoke(
-                query=query, documents=all_documents, score_threshold=score_threshold, top_n=top_k
+                query=query,
+                documents=all_documents,
+                score_threshold=score_threshold,
+                top_n=DifyConfig.RETRIEVAL_TOP_N or top_k,
             )
+
         return all_documents
 
     @classmethod
@@ -178,7 +183,10 @@ class RetrievalService:
                         )
                         all_documents.extend(
                             data_post_processor.invoke(
-                                query=query, documents=documents, score_threshold=score_threshold, top_n=len(documents)
+                                query=query,
+                                documents=documents,
+                                score_threshold=score_threshold,
+                                top_n=DifyConfig.RETRIEVAL_TOP_N or len(documents),
                             )
                         )
                     else:
@@ -220,7 +228,10 @@ class RetrievalService:
                         )
                         all_documents.extend(
                             data_post_processor.invoke(
-                                query=query, documents=documents, score_threshold=score_threshold, top_n=len(documents)
+                                query=query,
+                                documents=documents,
+                                score_threshold=score_threshold,
+                                top_n=DifyConfig.RETRIEVAL_TOP_N or len(documents),
                             )
                         )
                     else:
