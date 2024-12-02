@@ -3,7 +3,7 @@ import re
 from abc import ABC, abstractmethod
 from base64 import b64encode
 from collections.abc import Mapping
-from typing import Any
+from typing import Any, cast
 
 
 class TemplateTransformer(ABC):
@@ -38,7 +38,7 @@ class TemplateTransformer(ABC):
         :param response: response
         :return:
         """
-        return json.loads(cls.extract_result_str_from_response(response))
+        return cast(dict, json.loads(cls.extract_result_str_from_response(response)))
 
     @classmethod
     @abstractmethod

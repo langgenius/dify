@@ -9,8 +9,8 @@ def apply_gevent_threading_patch():
     :return:
     """
     if not dify_config.DEBUG:
-        from gevent import monkey
-        from grpc.experimental import gevent as grpc_gevent
+        from gevent import monkey  # type: ignore
+        from grpc.experimental import gevent as grpc_gevent  # type: ignore
 
         # gevent
         monkey.patch_all()

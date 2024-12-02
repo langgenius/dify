@@ -10,6 +10,7 @@ def parse_json_markdown(json_string: str) -> dict:
     ends = ["```", "``", "`", "}"]
     end_index = -1
     start_index = 0
+    parsed: dict = {}
     for s in starts:
         start_index = json_string.find(s)
         if start_index != -1:
