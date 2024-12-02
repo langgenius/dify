@@ -74,6 +74,7 @@ class BuiltinToolProviderController(ToolProviderController):
             tool["identity"]["provider"] = provider
             tools.append(
                 assistant_tool_class(
+                    provider=provider,
                     entity=ToolEntity(**tool),
                     runtime=ToolRuntime(tenant_id=""),
                 )

@@ -1,3 +1,4 @@
+import contextvars
 import logging
 import queue
 import time
@@ -434,6 +435,7 @@ class GraphEngine:
                 **{
                     "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
                     "q": q,
+                    "context": contextvars.copy_context(),
                     "parallel_id": parallel_id,
                     "parallel_start_node_id": edge.target_node_id,
                     "parent_parallel_id": in_parallel_id,
@@ -476,6 +478,7 @@ class GraphEngine:
     def _run_parallel_node(
         self,
         flask_app: Flask,
+        context: contextvars.Context,
         q: queue.Queue,
         parallel_id: str,
         parallel_start_node_id: str,
@@ -485,6 +488,9 @@ class GraphEngine:
         """
         Run parallel nodes
         """
+        for var, val in context.items():
+            var.set(val)
+
         with flask_app.app_context():
             try:
                 q.put(

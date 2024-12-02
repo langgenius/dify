@@ -97,6 +97,7 @@ class ToolTransformService:
 
         if isinstance(provider_controller, PluginToolProviderController):
             result.plugin_id = provider_controller.plugin_id
+            result.plugin_unique_identifier = provider_controller.plugin_unique_identifier
 
         # get credentials schema
         schema = {x.to_basic_provider_config().name: x for x in provider_controller.get_credentials_schema()}
@@ -173,6 +174,7 @@ class ToolTransformService:
             masked_credentials={},
             is_team_authorization=True,
             plugin_id=None,
+            plugin_unique_identifier=None,
             tools=[],
             labels=labels or [],
         )
@@ -214,6 +216,7 @@ class ToolTransformService:
             ),
             type=ToolProviderType.API,
             plugin_id=None,
+            plugin_unique_identifier=None,
             masked_credentials={},
             is_team_authorization=True,
             tools=[],

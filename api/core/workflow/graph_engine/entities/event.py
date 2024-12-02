@@ -147,8 +147,8 @@ class IterationRunStartedEvent(BaseIterationEvent):
 
 class IterationRunNextEvent(BaseIterationEvent):
     index: int = Field(..., description="index")
-    pre_iteration_output: Optional[Any] = Field(None, description="pre iteration output")
-    duration: Optional[float] = Field(None, description="duration")
+    pre_iteration_output: Optional[Any] = None
+    duration: Optional[float] = None
 
 
 class IterationRunSucceededEvent(BaseIterationEvent):

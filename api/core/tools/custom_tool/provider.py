@@ -109,6 +109,7 @@ class ApiToolProviderController(ToolProviderController):
         """
         return ApiTool(
             api_bundle=tool_bundle,
+            provider_id=self.provider_id,
             entity=ToolEntity(
                 identity=ToolIdentity(
                     author=tool_bundle.author,

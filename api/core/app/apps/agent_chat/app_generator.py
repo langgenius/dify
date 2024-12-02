@@ -1,3 +1,4 @@
+import contextvars
 import logging
 import threading
 import uuid
@@ -170,7 +171,8 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         worker_thread = threading.Thread(
             target=self._generate_worker,
             kwargs={
-                "flask_app": current_app._get_current_object(),
+                "flask_app": current_app._get_current_object(),  # type: ignore
+                "contexts": contextvars.copy_context(),
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "conversation_id": conversation.id,
@@ -195,6 +197,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
     def _generate_worker(
         self,
         flask_app: Flask,
+        context: contextvars.Context,
         application_generate_entity: AgentChatAppGenerateEntity,
         queue_manager: AppQueueManager,
         conversation_id: str,
@@ -209,6 +212,9 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         :param message_id: message ID
         :return:
         """
+        for var, val in context.items():
+            var.set(val)
+
         with flask_app.app_context():
             try:
                 # get conversation and message

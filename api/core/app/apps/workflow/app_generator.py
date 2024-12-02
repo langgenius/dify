@@ -119,7 +119,10 @@ class WorkflowAppGenerator(BaseAppGenerator):
             trace_manager=trace_manager,
             workflow_run_id=workflow_run_id,
         )
+
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
 
         return self._generate(
             app_model=app_model,
@@ -223,6 +226,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             ),
         )
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
+        contexts.plugin_tool_providers.set({})
+        contexts.plugin_tool_providers_lock.set(threading.Lock())
 
         return self._generate(
             app_model=app_model,

@@ -1,3 +1,4 @@
+import contextvars
 import logging
 import uuid
 from collections.abc import Generator, Mapping, Sequence
@@ -166,7 +167,8 @@ class IterationNode(BaseNode[IterationNodeData]):
                 for index, item in enumerate(iterator_list_value):
                     future: Future = thread_pool.submit(
                         self._run_single_iter_parallel,
-                        current_app._get_current_object(),
+                        current_app._get_current_object(),  # type: ignore
+                        contextvars.copy_context(),
                         q,
                         iterator_list_value,
                         inputs,
@@ -372,7 +374,10 @@ class IterationNode(BaseNode[IterationNodeData]):
         try:
             rst = graph_engine.run()
             # get current iteration index
-            current_index = variable_pool.get([self.node_id, "index"]).value
+            variable = variable_pool.get([self.node_id, "index"])
+            if variable is None:
+                raise IterationIndexNotFoundError(f"iteration {self.node_id} current index not found")
+            current_index = variable.value
             iteration_run_id = parallel_mode_run_id if parallel_mode_run_id is not None else f"{current_index}"
             next_index = int(current_index) + 1
 
@@ -540,6 +545,7 @@ class IterationNode(BaseNode[IterationNodeData]):
     def _run_single_iter_parallel(
         self,
         flask_app: Flask,
+        context: contextvars.Context,
         q: Queue,
         iterator_list_value: list[str],
         inputs: dict[str, list],
@@ -554,6 +560,8 @@ class IterationNode(BaseNode[IterationNodeData]):
         """
         run single iteration in parallel mode
         """
+        for var, val in context.items():
+            var.set(val)
         with flask_app.app_context():
             parallel_mode_run_id = uuid.uuid4().hex
             graph_engine_copy = graph_engine.create_copy()

@@ -6,6 +6,9 @@ from os import listdir, path
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Union, cast
 
+from yarl import URL
+
+import contexts
 from core.plugin.entities.plugin import GenericProviderID
 from core.plugin.manager.tool import PluginToolManager
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -97,16 +100,26 @@ class ToolManager:
         """
         get the plugin provider
         """
-        manager = PluginToolManager()
-        provider_entity = manager.fetch_tool_provider(tenant_id, provider)
-        if not provider_entity:
-            raise ToolProviderNotFoundError(f"plugin provider {provider} not found")
+        with contexts.plugin_tool_providers_lock.get():
+            plugin_tool_providers = contexts.plugin_tool_providers.get()
+            if provider in plugin_tool_providers:
+                return plugin_tool_providers[provider]
 
-        return PluginToolProviderController(
-            entity=provider_entity.declaration,
-            plugin_id=provider_entity.plugin_id,
-            tenant_id=tenant_id,
-        )
+            manager = PluginToolManager()
+            provider_entity = manager.fetch_tool_provider(tenant_id, provider)
+            if not provider_entity:
+                raise ToolProviderNotFoundError(f"plugin provider {provider} not found")
+
+            controller = PluginToolProviderController(
+                entity=provider_entity.declaration,
+                plugin_id=provider_entity.plugin_id,
+                plugin_unique_identifier=provider_entity.plugin_unique_identifier,
+                tenant_id=tenant_id,
+            )
+
+            plugin_tool_providers[provider] = controller
+
+        return controller
 
     @classmethod
     def get_builtin_tool(cls, provider: str, tool_name: str, tenant_id: str) -> BuiltinTool | PluginTool | None:
@@ -132,7 +145,7 @@ class ToolManager:
         tenant_id: str,
         invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
         tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT,
-    ) -> Union[BuiltinTool, ApiTool, WorkflowTool]:
+    ) -> Union[BuiltinTool, PluginTool, ApiTool, WorkflowTool]:
         """
         get the tool runtime
 
@@ -260,6 +273,8 @@ class ToolManager:
             )
         elif provider_type == ToolProviderType.APP:
             raise NotImplementedError("app provider not implemented")
+        elif provider_type == ToolProviderType.PLUGIN:
+            return cls.get_plugin_provider(provider_id, tenant_id).get_tool(tool_name)
         else:
             raise ToolProviderNotFoundError(f"provider type {provider_type.value} not found")
 
@@ -477,6 +492,7 @@ class ToolManager:
             PluginToolProviderController(
                 entity=provider.declaration,
                 plugin_id=provider.plugin_id,
+                plugin_unique_identifier=provider.plugin_unique_identifier,
                 tenant_id=tenant_id,
             )
             for provider in provider_entities
@@ -758,7 +774,66 @@ class ToolManager:
         )
 
     @classmethod
-    def get_tool_icon(cls, tenant_id: str, provider_type: ToolProviderType, provider_id: str) -> Union[str, dict]:
+    def generate_builtin_tool_icon_url(cls, provider_id: str) -> str:
+        return (
+            dify_config.CONSOLE_API_URL
+            + "/console/api/workspaces/current/tool-provider/builtin/"
+            + provider_id
+            + "/icon"
+        )
+
+    @classmethod
+    def generate_plugin_tool_icon_url(cls, tenant_id: str, filename: str) -> str:
+        return str(
+            URL(dify_config.CONSOLE_API_URL)
+            / "console"
+            / "api"
+            / "workspaces"
+            / "current"
+            / "plugin"
+            / "icon"
+            % {"tenant_id": tenant_id, "filename": filename}
+        )
+
+    @classmethod
+    def generate_workflow_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict:
+        try:
+            workflow_provider: WorkflowToolProvider | None = (
+                db.session.query(WorkflowToolProvider)
+                .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
+                .first()
+            )
+
+            if workflow_provider is None:
+                raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
+
+            return json.loads(workflow_provider.icon)
+        except:
+            return {"background": "#252525", "content": "\ud83d\ude01"}
+
+    @classmethod
+    def generate_api_tool_icon_url(cls, tenant_id: str, provider_id: str) -> dict:
+        try:
+            api_provider: ApiToolProvider | None = (
+                db.session.query(ApiToolProvider)
+                .filter(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.id == provider_id)
+                .first()
+            )
+
+            if api_provider is None:
+                raise ToolProviderNotFoundError(f"api provider {provider_id} not found")
+
+            return json.loads(api_provider.icon)
+        except:
+            return {"background": "#252525", "content": "\ud83d\ude01"}
+
+    @classmethod
+    def get_tool_icon(
+        cls,
+        tenant_id: str,
+        provider_type: ToolProviderType,
+        provider_id: str,
+    ) -> Union[str, dict]:
         """
         get the tool icon
 
@@ -770,36 +845,25 @@ class ToolManager:
         provider_type = provider_type
         provider_id = provider_id
         if provider_type == ToolProviderType.BUILT_IN:
-            return (
-                dify_config.CONSOLE_API_URL
-                + "/console/api/workspaces/current/tool-provider/builtin/"
-                + provider_id
-                + "/icon"
-            )
+            provider = ToolManager.get_builtin_provider(provider_id, tenant_id)
+            if isinstance(provider, PluginToolProviderController):
+                try:
+                    return cls.generate_plugin_tool_icon_url(tenant_id, provider.entity.identity.icon)
+                except:
+                    return {"background": "#252525", "content": "\ud83d\ude01"}
+            return cls.generate_builtin_tool_icon_url(provider_id)
         elif provider_type == ToolProviderType.API:
-            try:
-                api_provider: ApiToolProvider | None = (
-                    db.session.query(ApiToolProvider)
-                    .filter(ApiToolProvider.tenant_id == tenant_id, ApiToolProvider.id == provider_id)
-                    .first()
-                )
-                if not api_provider:
-                    raise ValueError("api tool not found")
-
-                return json.loads(api_provider.icon)
-            except:
-                return {"background": "#252525", "content": "\ud83d\ude01"}
+            return cls.generate_api_tool_icon_url(tenant_id, provider_id)
         elif provider_type == ToolProviderType.WORKFLOW:
-            workflow_provider: WorkflowToolProvider | None = (
-                db.session.query(WorkflowToolProvider)
-                .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == provider_id)
-                .first()
-            )
-
-            if workflow_provider is None:
-                raise ToolProviderNotFoundError(f"workflow provider {provider_id} not found")
-
-            return json.loads(workflow_provider.icon)
+            return cls.generate_workflow_tool_icon_url(tenant_id, provider_id)
+        elif provider_type == ToolProviderType.PLUGIN:
+            provider = ToolManager.get_builtin_provider(provider_id, tenant_id)
+            if isinstance(provider, PluginToolProviderController):
+                try:
+                    return cls.generate_plugin_tool_icon_url(tenant_id, provider.entity.identity.icon)
+                except:
+                    return {"background": "#252525", "content": "\ud83d\ude01"}
+            raise ValueError(f"plugin provider {provider_id} not found")
         else:
             raise ValueError(f"provider type {provider_type} not found")
 

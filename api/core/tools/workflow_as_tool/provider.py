@@ -148,6 +148,7 @@ class WorkflowToolProviderController(ToolProviderController):
                 raise ValueError("variable not found")
 
         return WorkflowTool(
+            workflow_as_tool_id=db_provider.id,
             entity=ToolEntity(
                 identity=ToolIdentity(
                     author=user.name if user else "",
