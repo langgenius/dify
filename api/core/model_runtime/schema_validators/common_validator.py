@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Union, cast
 
 from core.model_runtime.entities.provider_entities import CredentialFormSchema, FormType
 
@@ -62,7 +62,7 @@ class CommonValidator:
                     return None
 
         # Get the value corresponding to the variable from credentials
-        value = credentials[credential_form_schema.variable]
+        value = cast(str, credentials[credential_form_schema.variable])
 
         # If max_length=0, no validation is performed
         if credential_form_schema.max_length:

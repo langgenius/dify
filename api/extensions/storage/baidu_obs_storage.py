@@ -36,7 +36,8 @@ class BaiduObsStorage(BaseStorage):
 
     def load_once(self, filename: str) -> bytes:
         response = self.client.get_object(bucket_name=self.bucket_name, key=filename)
-        return response.data.read()
+        data: bytes = response.data.read()
+        return data
 
     def load_stream(self, filename: str) -> Generator:
         response = self.client.get_object(bucket_name=self.bucket_name, key=filename).data

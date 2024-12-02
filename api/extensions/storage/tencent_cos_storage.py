@@ -25,7 +25,7 @@ class TencentCosStorage(BaseStorage):
         self.client.put_object(Bucket=self.bucket_name, Body=data, Key=filename)
 
     def load_once(self, filename: str) -> bytes:
-        data = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].get_raw_stream().read()
+        data: bytes = self.client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].get_raw_stream().read()
         return data
 
     def load_stream(self, filename: str) -> Generator:
