@@ -53,8 +53,6 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
                     response = client.request(method=method, url=url, **kwargs)
 
             if response.status_code not in STATUS_FORCELIST:
-                if stream:
-                    return response.iter_bytes()
                 return response
             else:
                 logging.warning(f"Received status code {response.status_code} for URL {url} which is in the force list")
