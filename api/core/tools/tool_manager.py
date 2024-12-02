@@ -100,6 +100,13 @@ class ToolManager:
         """
         get the plugin provider
         """
+        # check if context is set
+        try:
+            contexts.plugin_tool_providers.get()
+        except LookupError:
+            contexts.plugin_tool_providers.set({})
+            contexts.plugin_tool_providers_lock.set(Lock())
+
         with contexts.plugin_tool_providers_lock.get():
             plugin_tool_providers = contexts.plugin_tool_providers.get()
             if provider in plugin_tool_providers:
