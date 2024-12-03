@@ -1,9 +1,9 @@
 import groupBy from 'lodash-es/groupBy'
 import type { MutationOptions } from '@tanstack/react-query'
 import { useMutation } from '@tanstack/react-query'
-import { fetchFileIndexingEstimate } from './datasets'
+import { createDocument, createFirstDocument, fetchDefaultProcessRule, fetchFileIndexingEstimate } from './datasets'
 import { type IndexingType } from '@/app/components/datasets/create/step-two'
-import type { CrawlOptions, CrawlResultItem, CustomFile, DataSourceType, DocForm, FileIndexingEstimateResponse, IndexingEstimateParams, NotionInfo, ProcessRule } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, DataSourceType, DocForm, FileIndexingEstimateResponse, IndexingEstimateParams, NotionInfo, ProcessRule, ProcessRuleResponse, createDocumentResponse } from '@/models/datasets'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 
 export const getNotionInfo = (
@@ -62,19 +62,6 @@ type GetFileIndexingEstimateParamsOptionFile = GetFileIndexingEstimateParamsOpti
   files: CustomFile[]
 }
 
-type GetFileIndexingEstimateParamsOptionNotion = GetFileIndexingEstimateParamsOptionBase & {
-  dataSourceType: DataSourceType.NOTION
-  notionPages: NotionPage[]
-}
-
-type GetFileIndexingEstimateParamsOptionWeb = GetFileIndexingEstimateParamsOptionBase & {
-  dataSourceType: DataSourceType.WEB
-  websitePages: CrawlResultItem[]
-  crawlOptions?: CrawlOptions
-  websiteCrawlProvider: DataSourceProvider
-  websiteCrawlJobId: string
-}
-
 const getFileIndexingEstimateParamsForFile = ({
   docForm,
   docLanguage,
@@ -99,6 +86,23 @@ const getFileIndexingEstimateParamsForFile = ({
   }
 }
 
+export const useFetchFileIndexingEstimateForFile = (
+  options: GetFileIndexingEstimateParamsOptionFile,
+  mutationOptions: MutationOptions<FileIndexingEstimateResponse> = {},
+) => {
+  return useMutation({
+    mutationFn: async () => {
+      return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForFile(options))
+    },
+    ...mutationOptions,
+  })
+}
+
+type GetFileIndexingEstimateParamsOptionNotion = GetFileIndexingEstimateParamsOptionBase & {
+  dataSourceType: DataSourceType.NOTION
+  notionPages: NotionPage[]
+}
+
 const getFileIndexingEstimateParamsForNotion = ({
   docForm,
   docLanguage,
@@ -119,6 +123,26 @@ const getFileIndexingEstimateParamsForNotion = ({
     doc_language: docLanguage,
     dataset_id,
   }
+}
+
+export const useFetchFileIndexingEstimateForNotion = (
+  options: GetFileIndexingEstimateParamsOptionNotion,
+  mutationOptions: MutationOptions<FileIndexingEstimateResponse> = {},
+) => {
+  return useMutation({
+    mutationFn: async () => {
+      return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForNotion(options))
+    },
+    ...mutationOptions,
+  })
+}
+
+type GetFileIndexingEstimateParamsOptionWeb = GetFileIndexingEstimateParamsOptionBase & {
+  dataSourceType: DataSourceType.WEB
+  websitePages: CrawlResultItem[]
+  crawlOptions?: CrawlOptions
+  websiteCrawlProvider: DataSourceProvider
+  websiteCrawlJobId: string
 }
 
 const getFileIndexingEstimateParamsForWeb = ({
@@ -151,30 +175,6 @@ const getFileIndexingEstimateParamsForWeb = ({
   }
 }
 
-export const useFetchFileIndexingEstimateForFile = (
-  options: GetFileIndexingEstimateParamsOptionFile,
-  mutationOptions: MutationOptions<FileIndexingEstimateResponse> = {},
-) => {
-  return useMutation({
-    mutationFn: async () => {
-      return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForFile(options))
-    },
-    ...mutationOptions,
-  })
-}
-
-export const useFetchFileIndexingEstimateForNotion = (
-  options: GetFileIndexingEstimateParamsOptionNotion,
-  mutationOptions: MutationOptions<FileIndexingEstimateResponse> = {},
-) => {
-  return useMutation({
-    mutationFn: async () => {
-      return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForNotion(options))
-    },
-    ...mutationOptions,
-  })
-}
-
 export const useFetchFileIndexingEstimateForWeb = (
   options: GetFileIndexingEstimateParamsOptionWeb,
   mutationOptions: MutationOptions<FileIndexingEstimateResponse> = {},
@@ -182,6 +182,41 @@ export const useFetchFileIndexingEstimateForWeb = (
   return useMutation({
     mutationFn: async () => {
       return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForWeb(options))
+    },
+    ...mutationOptions,
+  })
+}
+
+export const useCreateFirstDocument = (
+  mutationOptions: MutationOptions<createDocumentResponse, Error, CreateDocumentReq> = {},
+) => {
+  return useMutation({
+    mutationFn: async (createDocumentReq: CreateDocumentReq,
+    ) => {
+      return createFirstDocument({ body: createDocumentReq })
+    },
+    ...mutationOptions,
+  })
+}
+
+export const useCreateDocument = (
+  datasetId: string,
+  mutationOptions: MutationOptions<createDocumentResponse, Error, CreateDocumentReq> = {},
+) => {
+  return useMutation({
+    mutationFn: async (req: CreateDocumentReq) => {
+      return createDocument({ datasetId, body: req })
+    },
+    ...mutationOptions,
+  })
+}
+
+export const useFetchDefaultProcessRule = (
+  mutationOptions: MutationOptions<ProcessRuleResponse, Error, string> = {},
+) => {
+  return useMutation({
+    mutationFn: async (url: string) => {
+      return fetchDefaultProcessRule({ url })
     },
     ...mutationOptions,
   })

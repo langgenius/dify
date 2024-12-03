@@ -25,11 +25,7 @@ import { DelimiterInput, MaxLengthInput, OverlapInput } from './inputs'
 import PreviewItem, { PreviewType } from './preview-item'
 import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FullDocumentDetail, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
-import {
-  createDocument,
-  createFirstDocument,
-  fetchDefaultProcessRule,
-} from '@/service/datasets'
+
 import Button from '@/app/components/base/button'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
@@ -55,7 +51,7 @@ import { MessageChatSquare } from '@/app/components/base/icons/src/public/common
 import { IS_CE_EDITION } from '@/config'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
-import { getNotionInfo, getWebsiteInfo, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/use-datasets'
+import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument, useFetchDefaultProcessRule, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/use-datasets'
 import Loading from '@/app/components/base/loading'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
@@ -174,8 +170,7 @@ const StepTwo = ({
     (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese'),
   )
   const [QATipHide, setQATipHide] = useState(false)
-  const [previewSwitched, setPreviewSwitched] = useState(false)
-  const [isCreating, setIsCreating] = useState(false)
+  const [qaPreviewSwitched, setQAPreviewSwitched] = useState(false)
 
   const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
 
@@ -250,21 +245,21 @@ const StepTwo = ({
         ? notionIndexingEstimateQuery.data
         : websiteIndexingEstimateQuery.data
 
-  const getIsEstimateReady = useCallback(() => {
-    if (dataSourceType === DataSourceType.FILE)
-      return fileIndexingEstimateQuery.isSuccess
+  // const getIsEstimateReady = useCallback(() => {
+  //   if (dataSourceType === DataSourceType.FILE)
+  //     return fileIndexingEstimateQuery.isSuccess
 
-    if (dataSourceType === DataSourceType.NOTION)
-      return notionIndexingEstimateQuery.isSuccess
+  //   if (dataSourceType === DataSourceType.NOTION)
+  //     return notionIndexingEstimateQuery.isSuccess
 
-    if (dataSourceType === DataSourceType.WEB)
-      return websiteIndexingEstimateQuery.isSuccess
-  }, [dataSourceType, fileIndexingEstimateQuery.isSuccess, notionIndexingEstimateQuery.isSuccess, websiteIndexingEstimateQuery.isSuccess])
+  //   if (dataSourceType === DataSourceType.WEB)
+  //     return websiteIndexingEstimateQuery.isSuccess
+  // }, [dataSourceType, fileIndexingEstimateQuery.isSuccess, notionIndexingEstimateQuery.isSuccess, websiteIndexingEstimateQuery.isSuccess])
 
-  const getFileName = (name: string) => {
-    const arr = name.split('.')
-    return arr.slice(0, -1).join('.')
-  }
+  // const getFileName = (name: string) => {
+  //   const arr = name.split('.')
+  //   return arr.slice(0, -1).join('.')
+  // }
 
   const getRuleName = (key: string) => {
     if (key === 'remove_extra_spaces')
@@ -304,7 +299,7 @@ const StepTwo = ({
       return
     }
     fetchEstimate()
-    setPreviewSwitched(false)
+    setQAPreviewSwitched(false)
   }
 
   const {
@@ -403,20 +398,22 @@ const StepTwo = ({
     return params
   }
 
-  const getRules = async () => {
-    try {
-      const res = await fetchDefaultProcessRule({ url: '/datasets/process-rule' })
-      const separator = res.rules.segmentation.separator
+  const fetchDefaultProcessRuleMutation = useFetchDefaultProcessRule({
+    onSuccess(data) {
+      const separator = data.rules.segmentation.separator
       setSegmentIdentifier(separator)
-      setMax(res.rules.segmentation.max_tokens)
-      setOverlap(res.rules.segmentation.chunk_overlap!)
-      setRules(res.rules.pre_processing_rules)
-      setDefaultConfig(res.rules)
-    }
-    catch (err) {
-      console.log(err)
-    }
-  }
+      setMax(data.rules.segmentation.max_tokens)
+      setOverlap(data.rules.segmentation.chunk_overlap!)
+      setRules(data.rules.pre_processing_rules)
+      setDefaultConfig(data.rules)
+    },
+    onError(error) {
+      Toast.notify({
+        type: 'error',
+        message: `${error}`,
+      })
+    },
+  })
 
   const getRulesFromDetail = () => {
     if (documentDetail) {
@@ -426,7 +423,7 @@ const StepTwo = ({
       const overlap = rules.segmentation.chunk_overlap
       setSegmentIdentifier(separator)
       setMax(max)
-      setOverlap(overlap)
+      setOverlap(overlap as number)
       setRules(rules.pre_processing_rules)
       setDefaultConfig(rules)
     }
@@ -437,48 +434,55 @@ const StepTwo = ({
       setSegmentationType(documentDetail.dataset_process_rule.mode)
   }
 
-  const createHandle = async () => {
-    if (isCreating)
-      return
-    setIsCreating(true)
-    try {
-      let res
-      const params = getCreationParams()
-      if (!params)
-        return false
-
-      setIsCreating(true)
-      if (!datasetId) {
-        res = await createFirstDocument({
-          body: params as CreateDocumentReq,
-        })
-        updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
-        updateResultCache && updateResultCache(res)
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
-      }
-      else {
-        res = await createDocument({
-          datasetId,
-          body: params as CreateDocumentReq,
-        })
-        updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
-        updateResultCache && updateResultCache(res)
-      }
-      if (mutateDatasetRes)
-        mutateDatasetRes()
-      onStepChange && onStepChange(+1)
-      isSetting && onSave && onSave()
-    }
-    catch (err) {
+  const createFirstDocumentMutation = useCreateFirstDocument({
+    onError(error) {
       Toast.notify({
         type: 'error',
-        message: `${err}`,
+        message: `${error}`,
+      })
+    },
+  })
+  const createDocumentMutation = useCreateDocument(datasetId!, {
+    onError(error) {
+      Toast.notify({
+        type: 'error',
+        message: `${error}`,
+      })
+    },
+  })
+
+  const isCreating = createFirstDocumentMutation.isPending || createDocumentMutation.isPending
+
+  const createHandle = async () => {
+    const params = getCreationParams()
+    if (!params)
+      return false
+
+    if (!datasetId) {
+      await createFirstDocumentMutation.mutateAsync(
+        params,
+        {
+          onSuccess(data) {
+            updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
+            updateResultCache && updateResultCache(data)
+            // eslint-disable-next-line @typescript-eslint/no-use-before-define
+            updateRetrievalMethodCache && updateRetrievalMethodCache(retrievalConfig.search_method as string)
+          },
+        },
+      )
+    }
+    else {
+      await createDocumentMutation.mutateAsync(params, {
+        onSuccess(data) {
+          updateIndexingTypeCache && updateIndexingTypeCache(indexType as string)
+          updateResultCache && updateResultCache(data)
+        },
       })
     }
-    finally {
-      setIsCreating(false)
-    }
+    if (mutateDatasetRes)
+      mutateDatasetRes()
+    onStepChange && onStepChange(+1)
+    isSetting && onSave && onSave()
   }
 
   const handleDocformSwitch = (isQAMode: boolean) => {
@@ -488,8 +492,8 @@ const StepTwo = ({
       setDocForm(DocForm.TEXT)
   }
 
-  const previewSwitch = async (language?: string) => {
-    setPreviewSwitched(true)
+  const previewSwitch = () => {
+    setQAPreviewSwitched(true)
     setIsLanguageSelectDisabled(true)
     fetchEstimate()
   }
@@ -497,8 +501,8 @@ const StepTwo = ({
   const handleSelect = (language: string) => {
     setDocLanguage(language)
     // Switch language, re-cutter
-    if (docForm === DocForm.QA && previewSwitched)
-      previewSwitch(language)
+    if (docForm === DocForm.QA && qaPreviewSwitched)
+      previewSwitch()
   }
 
   const changeToEconomicalType = () => {
@@ -511,7 +515,7 @@ const StepTwo = ({
   useEffect(() => {
     // fetch rules
     if (!isSetting) {
-      getRules()
+      fetchDefaultProcessRuleMutation.mutate('/datasets/process-rule')
     }
     else {
       getRulesFromDetail()
@@ -909,12 +913,12 @@ const StepTwo = ({
             <div className='flex items-center justify-between px-8'>
               <div className='grow flex items-center'>
                 <div>{t('datasetCreation.stepTwo.previewTitle')}</div>
-                {docForm === DocForm.QA && !previewSwitched && (
+                {docForm === DocForm.QA && !qaPreviewSwitched && (
                   <Button className='ml-2' variant='secondary-accent' onClick={() => previewSwitch()}>{t('datasetCreation.stepTwo.previewButton')}</Button>
                 )}
               </div>
             </div>
-            {docForm === DocForm.QA && !previewSwitched && (
+            {docForm === DocForm.QA && !qaPreviewSwitched && (
               <div className='px-8 pr-12 text-xs text-gray-500'>
                 <span>{t('datasetCreation.stepTwo.previewSwitchTipStart')}</span>
                 <span className='text-amber-600'>{t('datasetCreation.stepTwo.previewSwitchTipEnd')}</span>
@@ -922,26 +926,26 @@ const StepTwo = ({
             )}
           </div>
           <div className='my-4 px-8 space-y-4'>
-            {previewSwitched && docForm === DocForm.QA && estimate?.qa_preview && (
+            {qaPreviewSwitched && docForm === DocForm.QA && estimate?.qa_preview && (
               <>
                 {estimate?.qa_preview.map((item, index) => (
                   <PreviewItem type={PreviewType.QA} key={item.question} qa={item} index={index + 1} />
                 ))}
               </>
             )}
-            {(docForm === DocForm.TEXT || !previewSwitched) && estimate?.preview && (
+            {(docForm === DocForm.TEXT || !qaPreviewSwitched) && estimate?.preview && (
               <>
                 {estimate?.preview.map((item, index) => (
                   <PreviewItem type={PreviewType.TEXT} key={item} content={item} index={index + 1} />
                 ))}
               </>
             )}
-            {previewSwitched && docForm === DocForm.QA && !estimate?.qa_preview && (
+            {qaPreviewSwitched && docForm === DocForm.QA && !estimate?.qa_preview && (
               <div className='flex items-center justify-center h-[200px]'>
                 <Loading type='area' />
               </div>
             )}
-            {!previewSwitched && !estimate?.preview && (
+            {!qaPreviewSwitched && !estimate?.preview && (
               <div className='flex items-center justify-center h-[200px]'>
                 <Loading type='area' />
               </div>
