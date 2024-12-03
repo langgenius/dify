@@ -246,13 +246,13 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         conversation_id=self.conversation.id,
                     )
                     # publish files
-                    for message_file_id, save_as in message_files:
+                    for message_file_id in message_files:
                         # publish message file
                         self.queue_manager.publish(
-                            QueueMessageFileEvent(message_file_id=message_file_id.id), PublishFrom.APPLICATION_MANAGER
+                            QueueMessageFileEvent(message_file_id=message_file_id), PublishFrom.APPLICATION_MANAGER
                         )
                         # add message file ids
-                        message_file_ids.append(message_file_id.id)
+                        message_file_ids.append(message_file_id)
 
                     tool_response = {
                         "tool_call_id": tool_call_id,

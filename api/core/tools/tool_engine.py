@@ -49,7 +49,7 @@ class ToolEngine:
         conversation_id: Optional[str] = None,
         app_id: Optional[str] = None,
         message_id: Optional[str] = None,
-    ) -> tuple[str, list[tuple[MessageFile, str]], ToolInvokeMeta]:
+    ) -> tuple[str, list[str], ToolInvokeMeta]:
         """
         Agent invokes the tool with the given arguments.
         """
@@ -279,7 +279,6 @@ class ToolEngine:
                 yield ToolInvokeMessageBinary(
                     mimetype=response.meta.get("mime_type", "image/jpeg"),
                     url=cast(ToolInvokeMessage.TextMessage, response.message).text,
-                    save_as=response.save_as,
                 )
             elif response.type == ToolInvokeMessage.MessageType.BLOB:
                 if not response.meta:
@@ -288,7 +287,6 @@ class ToolEngine:
                 yield ToolInvokeMessageBinary(
                     mimetype=response.meta.get("mime_type", "octet/stream"),
                     url=cast(ToolInvokeMessage.TextMessage, response.message).text,
-                    save_as=response.save_as,
                 )
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 # check if there is a mime type in meta
@@ -296,7 +294,6 @@ class ToolEngine:
                     yield ToolInvokeMessageBinary(
                         mimetype=response.meta.get("mime_type", "octet/stream") if response.meta else "octet/stream",
                         url=cast(ToolInvokeMessage.TextMessage, response.message).text,
-                        save_as=response.save_as,
                     )
 
     @staticmethod
@@ -305,12 +302,12 @@ class ToolEngine:
         agent_message: Message,
         invoke_from: InvokeFrom,
         user_id: str,
-    ) -> list[tuple[MessageFile, str]]:
+    ) -> list[str]:
         """
         Create message file
 
         :param messages: messages
-        :return: message files, should save as variable
+        :return: message file ids
         """
         result = []
 
@@ -347,7 +344,7 @@ class ToolEngine:
             db.session.commit()
             db.session.refresh(message_file)
 
-            result.append((message_file.id, message.save_as))
+            result.append(message_file.id)
 
         db.session.close()
 

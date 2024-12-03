@@ -166,7 +166,6 @@ class ToolInvokeMessage(BaseModel):
     """
     message: JsonMessage | TextMessage | BlobMessage | VariableMessage | FileMessage | None
     meta: dict[str, Any] | None = None
-    save_as: str = ""
 
     @field_validator("message", mode="before")
     @classmethod
@@ -188,7 +187,6 @@ class ToolInvokeMessage(BaseModel):
 class ToolInvokeMessageBinary(BaseModel):
     mimetype: str = Field(..., description="The mimetype of the binary")
     url: str = Field(..., description="The url of the binary")
-    save_as: str = ""
     file_var: Optional[dict[str, Any]] = None
 
 

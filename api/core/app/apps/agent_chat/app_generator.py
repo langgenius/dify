@@ -172,7 +172,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             target=self._generate_worker,
             kwargs={
                 "flask_app": current_app._get_current_object(),  # type: ignore
-                "contexts": contextvars.copy_context(),
+                "context": contextvars.copy_context(),
                 "application_generate_entity": application_generate_entity,
                 "queue_manager": queue_manager,
                 "conversation_id": conversation.id,
