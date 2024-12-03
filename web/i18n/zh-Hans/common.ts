@@ -595,6 +595,9 @@ const translation = {
     expiring: '许可证还有 1 天到期',
     expiring_plural: '许可证还有 {{count}} 天到期',
   },
+  pagination: {
+    perPage: '每页显示',
+  },
 }
 
 export default translation

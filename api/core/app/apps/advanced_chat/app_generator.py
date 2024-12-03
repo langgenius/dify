@@ -2,8 +2,8 @@ import contextvars
 import logging
 import threading
 import uuid
-from collections.abc import Generator
-from typing import Any, Literal, Optional, Union, overload
+from collections.abc import Generator, Mapping
+from typing import Any, Optional, Union
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -23,6 +23,7 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from extensions.ext_database import db
 from factories import file_factory
 from models.account import Account
@@ -33,37 +34,17 @@ logger = logging.getLogger(__name__)
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
-    @overload
-    def generate(
-        self,
-        app_model: App,
-        workflow: Workflow,
-        user: Union[Account, EndUser],
-        args: dict,
-        invoke_from: InvokeFrom,
-        stream: Literal[True] = True,
-    ) -> Generator[str, None, None]: ...
-
-    @overload
-    def generate(
-        self,
-        app_model: App,
-        workflow: Workflow,
-        user: Union[Account, EndUser],
-        args: dict,
-        invoke_from: InvokeFrom,
-        stream: Literal[False] = False,
-    ) -> dict: ...
+    _dialogue_count: int
 
     def generate(
         self,
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
-        args: dict,
+        args: Mapping[str, Any],
         invoke_from: InvokeFrom,
-        stream: bool = True,
-    ) -> dict[str, Any] | Generator[str, Any, None]:
+        streaming: bool = True,
+    ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Generate App response.
 
@@ -134,7 +115,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             files=file_objs,
             parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
             user_id=user.id,
-            stream=stream,
+            stream=streaming,
             invoke_from=invoke_from,
             extras=extras,
             trace_manager=trace_manager,
@@ -148,12 +129,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=invoke_from,
             application_generate_entity=application_generate_entity,
             conversation=conversation,
-            stream=stream,
+            stream=streaming,
         )
 
     def single_iteration_generate(
-        self, app_model: App, workflow: Workflow, node_id: str, user: Account, args: dict, stream: bool = True
-    ) -> dict[str, Any] | Generator[str, Any, None]:
+        self, app_model: App, workflow: Workflow, node_id: str, user: Account, args: dict, streaming: bool = True
+    ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Generate App response.
 
@@ -182,7 +163,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             query="",
             files=[],
             user_id=user.id,
-            stream=stream,
+            stream=streaming,
             invoke_from=InvokeFrom.DEBUGGER,
             extras={"auto_generate_conversation_name": False},
             single_iteration_run=AdvancedChatAppGenerateEntity.SingleIterationRunEntity(
@@ -197,7 +178,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
             conversation=None,
-            stream=stream,
+            stream=streaming,
         )
 
     def _generate(
@@ -209,7 +190,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         application_generate_entity: AdvancedChatAppGenerateEntity,
         conversation: Optional[Conversation] = None,
         stream: bool = True,
-    ) -> dict[str, Any] | Generator[str, Any, None]:
+    ) -> Mapping[str, Any] | Generator[str, None, None]:
         """
         Generate App response.
 
@@ -232,6 +213,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             conversation.override_model_configs = workflow.features
             db.session.commit()
             db.session.refresh(conversation)
+
+        # get conversation dialogue count
+        self._dialogue_count = get_thread_messages_length(conversation.id)
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
@@ -303,6 +287,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     queue_manager=queue_manager,
                     conversation=conversation,
                     message=message,
+                    dialogue_count=self._dialogue_count,
                 )
 
                 runner.run()
@@ -356,6 +341,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             message=message,
             user=user,
             stream=stream,
+            dialogue_count=self._dialogue_count,
         )
 
         try:

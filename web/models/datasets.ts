@@ -175,11 +175,16 @@ export type ProcessMode = 'automatic' | 'custom'
 export type ProcessRuleResponse = {
   mode: ProcessMode
   rules: Rules
+  limits: Limits
 }
 
 export type Rules = {
   pre_processing_rules: PreProcessingRule[]
   segmentation: Segmentation
+}
+
+export type Limits = {
+  indexing_max_segmentation_tokens_length: number
 }
 
 export type PreProcessingRule = {

@@ -113,7 +113,7 @@ Workflow applications offers non-session support and is ideal for translation, a
         - `title` (string) name of node
         - `index` (int) Execution sequence number, used to display Tracing Node sequence
         - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
-        - `inputs` (array[object]) Contents of all preceding node variables used in the node
+        - `inputs` (object) Contents of all preceding node variables used in the node
         - `created_at` (timestamp) timestamp of start, e.g., 1705395332
     - `event: node_finished` node execution ends, success or failure in different states in the same event
       - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
@@ -126,7 +126,7 @@ Workflow applications offers non-session support and is ideal for translation, a
         - `title` (string) name of node
         - `index` (int) Execution sequence number, used to display Tracing Node sequence
         - `predecessor_node_id` (string) optional Prefix node ID, used for canvas display execution path
-        - `inputs` (array[object]) Contents of all preceding node variables used in the node
+        - `inputs` (object) Contents of all preceding node variables used in the node
         - `process_data` (json) Optional node process data
         - `outputs` (json) Optional content of output
         - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
@@ -499,104 +499,6 @@ Workflow applications offers non-session support and is ideal for translation, a
 ---
 
 <Heading
-  url='/parameters'
-  method='GET'
-  title='Get Application Information'
-  name='#parameters'
-/>
-<Row>
-  <Col>
-    Used at the start of entering the page to obtain information such as features, input parameter names, types, and default values.
-
-    ### Query
-
-    <Properties>
-      <Property name='user' type='string' key='user'>
-          User identifier, defined by the developer's rules, must be unique within the application.
-      </Property>
-    </Properties>
-
-    ### Response
-    - `user_input_form` (array[object]) User input form configuration
-      - `text-input` (object) Text input control
-        - `label` (string) Variable display label name
-        - `variable` (string) Variable ID
-        - `required` (bool) Whether it is required
-        - `default` (string) Default value
-      - `paragraph` (object) Paragraph text input control
-        - `label` (string) Variable display label name
-        - `variable` (string) Variable ID
-        - `required` (bool) Whether it is required
-        - `default` (string) Default value
-      - `select` (object) Dropdown control
-        - `label` (string) Variable display label name
-        - `variable` (string) Variable ID
-        - `required` (bool) Whether it is required
-        - `default` (string) Default value
-        - `options` (array[string]) Option values
-    - `file_upload` (object) File upload configuration
-      - `image` (object) Image settings
-        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`
-        - `enabled` (bool) Whether it is enabled
-        - `number_limits` (int) Image number limit, default is 3
-        - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
-    - `system_parameters` (object) System parameters
-      - `file_size_limit` (int) Document upload size limit (MB)
-      - `image_file_size_limit` (int) Image file upload size limit (MB)
-      - `audio_file_size_limit` (int) Audio file upload size limit (MB)
-      - `video_file_size_limit` (int) Video file upload size limit (MB)
-
-  </Col>
-  <Col sticky>
-
-    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
-    --header 'Authorization: Bearer {api_key}'
-    ```
-
-    </CodeGroup>
-
-    <CodeGroup title="Response">
-    ```json {{ title: 'Response' }}
-    {
-      "user_input_form": [
-          {
-              "paragraph": {
-                  "label": "Query",
-                  "variable": "query",
-                  "required": true,
-                  "default": ""
-              }
-          }
-      ],
-      "file_upload": {
-          "image": {
-              "enabled": false,
-              "number_limits": 3,
-              "detail": "high",
-              "transfer_methods": [
-                  "remote_url",
-                  "local_file"
-              ]
-          }
-      },
-      "system_parameters": {
-          "file_size_limit": 15,
-          "image_file_size_limit": 10,
-          "audio_file_size_limit": 50,
-          "video_file_size_limit": 100
-      }
-    }
-    ```
-    </CodeGroup>
-  </Col>
-</Row>
-
----
-
-<Heading
   url='/workflows/logs'
   method='GET'
   title='Get Workflow Logs'
@@ -694,6 +596,148 @@ Workflow applications offers non-session support and is ideal for translation, a
                 "created_at": 1726139644
             }
         ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='Get Application Basic Information'
+  name='#info'
+/>
+<Row>
+  <Col>
+  Used to get basic information about this application
+  ### Query
+    <Properties>
+
+   <Property name='user' type='string' key='user'>
+        User identifier, defined by the developer's rules, must be unique within the application.
+    </Property>
+      </Properties>
+  ### Response
+  - `name` (string) application name
+  - `description` (string) application description
+  - `tags` (array[string]) application tags
+  </Col>
+  <Col>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \
+      -H 'Authorization: Bearer {api_key}'
+      ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='Get Application Parameters Information'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    Used at the start of entering the page to obtain information such as features, input parameter names, types, and default values.
+
+    ### Query
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+          User identifier, defined by the developer's rules, must be unique within the application.
+      </Property>
+    </Properties>
+
+    ### Response
+    - `user_input_form` (array[object]) User input form configuration
+      - `text-input` (object) Text input control
+        - `label` (string) Variable display label name
+        - `variable` (string) Variable ID
+        - `required` (bool) Whether it is required
+        - `default` (string) Default value
+      - `paragraph` (object) Paragraph text input control
+        - `label` (string) Variable display label name
+        - `variable` (string) Variable ID
+        - `required` (bool) Whether it is required
+        - `default` (string) Default value
+      - `select` (object) Dropdown control
+        - `label` (string) Variable display label name
+        - `variable` (string) Variable ID
+        - `required` (bool) Whether it is required
+        - `default` (string) Default value
+        - `options` (array[string]) Option values
+    - `file_upload` (object) File upload configuration
+      - `image` (object) Image settings
+        Currently only supports image types: `png`, `jpg`, `jpeg`, `webp`, `gif`
+        - `enabled` (bool) Whether it is enabled
+        - `number_limits` (int) Image number limit, default is 3
+        - `transfer_methods` (array[string]) List of transfer methods, remote_url, local_file, must choose one
+    - `system_parameters` (object) System parameters
+      - `file_size_limit` (int) Document upload size limit (MB)
+      - `image_file_size_limit` (int) Image file upload size limit (MB)
+      - `audio_file_size_limit` (int) Audio file upload size limit (MB)
+      - `video_file_size_limit` (int) Video file upload size limit (MB)
+
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "user_input_form": [
+          {
+              "paragraph": {
+                  "label": "Query",
+                  "variable": "query",
+                  "required": true,
+                  "default": ""
+              }
+          }
+      ],
+      "file_upload": {
+          "image": {
+              "enabled": false,
+              "number_limits": 3,
+              "detail": "high",
+              "transfer_methods": [
+                  "remote_url",
+                  "local_file"
+              ]
+          }
+      },
+      "system_parameters": {
+          "file_size_limit": 15,
+          "image_file_size_limit": 10,
+          "audio_file_size_limit": 50,
+          "video_file_size_limit": 100
+      }
     }
     ```
     </CodeGroup>
