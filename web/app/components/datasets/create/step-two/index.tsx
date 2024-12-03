@@ -1,10 +1,8 @@
 'use client'
-import type { FC, PropsWithChildren, ReactNode } from 'react'
-import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import type { FC, PropsWithChildren } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { useBoolean } from 'ahooks'
-import { XMarkIcon } from '@heroicons/react/20/solid'
 import {
   RiArrowLeftLine,
   RiCloseLine,
@@ -65,13 +63,6 @@ const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
 }
 
-const FormField: FC<PropsWithChildren<{ label: ReactNode }>> = (props) => {
-  return <div className='space-y-2 flex-1'>
-    <TextLabel>{props.label}</TextLabel>
-    {props.children}
-  </div>
-}
-
 type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
   isSetting?: boolean
@@ -117,7 +108,6 @@ type ParentChildConfig = {
     delimiter: string
     maxLength: number
   }
-  rules: PreProcessingRule[]
 }
 
 const defaultParentChildConfig: ParentChildConfig = {
@@ -130,7 +120,6 @@ const defaultParentChildConfig: ParentChildConfig = {
     delimiter: '\\n\\n',
     maxLength: 4000,
   },
-  rules: [],
 }
 
 const StepTwo = ({
@@ -162,10 +151,6 @@ const StepTwo = ({
   const { dataset: currentDataset, mutateDatasetRes } = useDatasetDetailContext()
   const isInCreatePage = !datasetId || (datasetId && !currentDataset?.data_source_type)
   const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : currentDataset?.data_source_type
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [scrolled, setScrolled] = useState(false)
-  const previewScrollRef = useRef<HTMLDivElement>(null)
-  const [previewScrolled, setPreviewScrolled] = useState(false)
   const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.AUTO)
   const [segmentIdentifier, doSetSegmentIdentifier] = useState(DEFAULT_SEGMENT_IDENTIFIER)
   const setSegmentIdentifier = useCallback((value: string) => {
@@ -191,32 +176,17 @@ const StepTwo = ({
   )
   const [QATipHide, setQATipHide] = useState(false)
   const [previewSwitched, setPreviewSwitched] = useState(false)
-  const [showPreview, { setTrue: setShowPreview, setFalse: hidePreview }] = useBoolean()
   const [customFileIndexingEstimate, setCustomFileIndexingEstimate] = useState<FileIndexingEstimateResponse | null>(null)
   const [automaticFileIndexingEstimate, setAutomaticFileIndexingEstimate] = useState<FileIndexingEstimateResponse | null>(null)
 
-  const fileIndexingEstimate = (() => {
-    return segmentationType === SegmentType.AUTO ? automaticFileIndexingEstimate : customFileIndexingEstimate
-  })()
+  const fileIndexingEstimate = segmentationType === SegmentType.AUTO
+    ? automaticFileIndexingEstimate
+    : customFileIndexingEstimate
+
   const [isCreating, setIsCreating] = useState(false)
 
   const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
 
-  const scrollHandle = (e: Event) => {
-    if ((e.target as HTMLDivElement).scrollTop > 0)
-      setScrolled(true)
-
-    else
-      setScrolled(false)
-  }
-
-  const previewScrollHandle = (e: Event) => {
-    if ((e.target as HTMLDivElement).scrollTop > 0)
-      setPreviewScrolled(true)
-
-    else
-      setPreviewScrolled(false)
-  }
   const getFileName = (name: string) => {
     const arr = name.split('.')
     return arr.slice(0, -1).join('.')
@@ -248,7 +218,7 @@ const StepTwo = ({
     if (defaultConfig) {
       setSegmentIdentifier(defaultConfig.segmentation.separator)
       setMax(defaultConfig.segmentation.max_tokens)
-      setOverlap(defaultConfig.segmentation.chunk_overlap)
+      setOverlap(defaultConfig.segmentation.chunk_overlap!)
       setRules(defaultConfig.pre_processing_rules)
     }
     setParentChildConfig(defaultParentChildConfig)
@@ -263,13 +233,12 @@ const StepTwo = ({
       setAutomaticFileIndexingEstimate(res)
   }
 
-  const confirmChangeCustomConfig = () => {
+  const updatePreview = () => {
     if (segmentationType === SegmentType.CUSTOM && max > 4000) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
       return
     }
     setCustomFileIndexingEstimate(null)
-    setShowPreview()
     fetchFileIndexingEstimate()
     setPreviewSwitched(false)
   }
@@ -468,7 +437,7 @@ const StepTwo = ({
       const separator = res.rules.segmentation.separator
       setSegmentIdentifier(separator)
       setMax(res.rules.segmentation.max_tokens)
-      setOverlap(res.rules.segmentation.chunk_overlap)
+      setOverlap(res.rules.segmentation.chunk_overlap!)
       setRules(res.rules.pre_processing_rules)
       setDefaultConfig(res.rules)
     }
@@ -540,8 +509,8 @@ const StepTwo = ({
     }
   }
 
-  const handleSwitch = (state: boolean) => {
-    if (state)
+  const handleDocformSwitch = (isQAMode: boolean) => {
+    if (isQAMode)
       setDocForm(DocForm.QA)
     else
       setDocForm(DocForm.TEXT)
@@ -588,22 +557,6 @@ const StepTwo = ({
   }, [])
 
   useEffect(() => {
-    scrollRef.current?.addEventListener('scroll', scrollHandle)
-    return () => {
-      scrollRef.current?.removeEventListener('scroll', scrollHandle)
-    }
-  }, [])
-
-  useLayoutEffect(() => {
-    if (showPreview) {
-      previewScrollRef.current?.addEventListener('scroll', previewScrollHandle)
-      return () => {
-        previewScrollRef.current?.removeEventListener('scroll', previewScrollHandle)
-      }
-    }
-  }, [showPreview])
-
-  useEffect(() => {
     if (indexingType === IndexingType.ECONOMICAL && docForm === DocForm.QA)
       setDocForm(DocForm.TEXT)
   }, [indexingType, docForm])
@@ -620,12 +573,10 @@ const StepTwo = ({
   useEffect(() => {
     if (segmentationType === SegmentType.AUTO) {
       setAutomaticFileIndexingEstimate(null)
-      !isMobile && setShowPreview()
       fetchFileIndexingEstimate()
       setPreviewSwitched(false)
     }
     else {
-      hidePreview()
       setCustomFileIndexingEstimate(null)
       setPreviewSwitched(false)
     }
@@ -659,7 +610,7 @@ const StepTwo = ({
                 onClick={() => setSegmentationType(SegmentType.AUTO)}
                 actions={
                   <>
-                    <Button variant={'secondary-accent'}>
+                    <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
                       <RiSearchEyeLine className='h-4 w-4 mr-1.5' />
                       {t('datasetCreation.stepTwo.previewChunk')}
                     </Button>
@@ -714,7 +665,7 @@ const StepTwo = ({
                 onClick={() => setSegmentationType(SegmentType.CUSTOM)}
                 actions={
                   <>
-                    <Button variant={'secondary-accent'}>
+                    <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
                       <RiSearchEyeLine className='h-4 w-4 mr-1.5' />
                       {t('datasetCreation.stepTwo.previewChunk')}
                     </Button>
@@ -910,7 +861,7 @@ const StepTwo = ({
                   </div>
                   <Switch
                     defaultValue={docForm === DocForm.QA}
-                    onChange={handleSwitch}
+                    onChange={handleDocformSwitch}
                     size='md'
                   />
                 </div>
@@ -1000,20 +951,16 @@ const StepTwo = ({
         </div>
       </div>
       <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={() => { }} footer={null}>
-        {showPreview && <div
-          ref={previewScrollRef}
+        <div
           className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll border-l border-[#F2F4F7]')}
         >
-          <div className={cn(s.previewHeader, previewScrolled && `${s.fixed} pb-3`)}>
+          <div className={cn(s.previewHeader)}>
             <div className='flex items-center justify-between px-8'>
               <div className='grow flex items-center'>
                 <div>{t('datasetCreation.stepTwo.previewTitle')}</div>
                 {docForm === DocForm.QA && !previewSwitched && (
                   <Button className='ml-2' variant='secondary-accent' onClick={() => previewSwitch()}>{t('datasetCreation.stepTwo.previewButton')}</Button>
                 )}
-              </div>
-              <div className='flex items-center justify-center w-6 h-6 cursor-pointer' onClick={hidePreview}>
-                <XMarkIcon className='h-4 w-4'></XMarkIcon>
               </div>
             </div>
             {docForm === DocForm.QA && !previewSwitched && (
@@ -1049,21 +996,7 @@ const StepTwo = ({
               </div>
             )}
           </div>
-        </div>}
-        {!showPreview && (
-          <div className={cn(s.sideTip)}>
-            <div className={s.tipCard}>
-              <span className={s.icon} />
-              <div className={s.title}>{t('datasetCreation.stepTwo.sideTipTitle')}</div>
-              <div className={s.content}>
-                <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP1')}</p>
-                <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP2')}</p>
-                <p className='mb-3'>{t('datasetCreation.stepTwo.sideTipP3')}</p>
-                <p>{t('datasetCreation.stepTwo.sideTipP4')}</p>
-              </div>
-            </div>
-          </div>
-        )}
+        </div>
       </FloatRightContainer>
     </div>
   )
