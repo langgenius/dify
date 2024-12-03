@@ -107,6 +107,7 @@ class HttpRequestNode(BaseNode[HttpRequestNodeData]):
         node_data: HttpRequestNodeData,
     ) -> Mapping[str, Sequence[str]]:
         selectors: list[VariableSelector] = []
+        selectors += variable_template_parser.extract_selectors_from_template(node_data.url)
         selectors += variable_template_parser.extract_selectors_from_template(node_data.headers)
         selectors += variable_template_parser.extract_selectors_from_template(node_data.params)
         if node_data.body:

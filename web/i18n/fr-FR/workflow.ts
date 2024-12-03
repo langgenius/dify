@@ -500,6 +500,26 @@ const translation = {
       'clear': 'Effacer',
       'setVariable': 'Définir Variable',
       'variable': 'Variable',
+      'operations': {
+        'clear': 'Clair',
+        '*=': '*=',
+        '-=': '-=',
+        'extend': 'Étendre',
+        '+=': '+=',
+        'over-write': 'Écraser',
+        'set': 'Poser',
+        'append': 'Ajouter',
+        'title': 'Opération',
+        '/=': '/=',
+        'overwrite': 'Écraser',
+      },
+      'assignedVarsDescription': 'Les variables affectées doivent être accessibles en écriture, telles que des variables de conversation.',
+      'noVarTip': 'Cliquez sur le bouton « + » pour ajouter des variables',
+      'variables': 'Variables',
+      'setParameter': 'Définir le paramètre...',
+      'noAssignedVars': 'Aucune variable affectée disponible',
+      'varNotSet': 'Variable NON définie',
+      'selectAssignedVariable': 'Sélectionner la variable affectée...',
     },
     tool: {
       toAuthorize: 'Autoriser',
@@ -630,6 +650,13 @@ const translation = {
   },
   tracing: {
     stopBy: 'Arrêté par {{user}}',
+  },
+  variableReference: {
+    noAssignedVars: 'Aucune variable affectée disponible',
+    noVarsForOperation: 'Aucune variable n’est disponible pour l’affectation avec l’opération sélectionnée.',
+    noAvailableVars: 'Aucune variable disponible',
+    assignedVarsDescription: 'Les variables affectées doivent être des variables accessibles en écriture, telles que',
+    conversationVars: 'Variables de conversation',
   },
 }
 

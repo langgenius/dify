@@ -10,7 +10,6 @@ ABS_PATH = os.path.dirname(os.path.abspath(__file__))
 PROJECT_DIR = os.path.abspath(os.path.join(ABS_PATH, os.pardir, os.pardir))
 
 CACHED_APP = Flask(__name__)
-CACHED_APP.config.update({"TESTING": True})
 
 
 @pytest.fixture

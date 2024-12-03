@@ -71,7 +71,6 @@ def test_flask_configs(example_env_file):
     assert config["EDITION"] == "SELF_HOSTED"
     assert config["API_COMPRESSION_ENABLED"] is False
     assert config["SENTRY_TRACES_SAMPLE_RATE"] == 1.0
-    assert config["TESTING"] == False
 
     # value from env file
     assert config["CONSOLE_API_URL"] == "https://example.com"

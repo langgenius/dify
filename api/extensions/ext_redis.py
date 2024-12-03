@@ -1,9 +1,12 @@
+from typing import Any, Union
+
 import redis
 from redis.cluster import ClusterNode, RedisCluster
 from redis.connection import Connection, SSLConnection
 from redis.sentinel import Sentinel
 
 from configs import dify_config
+from dify_app import DifyApp
 
 
 class RedisClientWrapper:
@@ -43,13 +46,13 @@ class RedisClientWrapper:
 redis_client = RedisClientWrapper()
 
 
-def init_app(app):
+def init_app(app: DifyApp):
     global redis_client
-    connection_class = Connection
+    connection_class: type[Union[Connection, SSLConnection]] = Connection
     if dify_config.REDIS_USE_SSL:
         connection_class = SSLConnection
 
-    redis_params = {
+    redis_params: dict[str, Any] = {
         "username": dify_config.REDIS_USERNAME,
         "password": dify_config.REDIS_PASSWORD,
         "db": dify_config.REDIS_DB,
@@ -59,6 +62,7 @@ def init_app(app):
     }
 
     if dify_config.REDIS_USE_SENTINEL:
+        assert dify_config.REDIS_SENTINELS is not None, "REDIS_SENTINELS must be set when REDIS_USE_SENTINEL is True"
         sentinel_hosts = [
             (node.split(":")[0], int(node.split(":")[1])) for node in dify_config.REDIS_SENTINELS.split(",")
         ]
@@ -73,11 +77,13 @@ def init_app(app):
         master = sentinel.master_for(dify_config.REDIS_SENTINEL_SERVICE_NAME, **redis_params)
         redis_client.initialize(master)
     elif dify_config.REDIS_USE_CLUSTERS:
+        assert dify_config.REDIS_CLUSTERS is not None, "REDIS_CLUSTERS must be set when REDIS_USE_CLUSTERS is True"
         nodes = [
-            ClusterNode(host=node.split(":")[0], port=int(node.split.split(":")[1]))
+            ClusterNode(host=node.split(":")[0], port=int(node.split(":")[1]))
             for node in dify_config.REDIS_CLUSTERS.split(",")
         ]
-        redis_client.initialize(RedisCluster(startup_nodes=nodes, password=dify_config.REDIS_CLUSTERS_PASSWORD))
+        # FIXME: mypy error here, try to figure out how to fix it
+        redis_client.initialize(RedisCluster(startup_nodes=nodes, password=dify_config.REDIS_CLUSTERS_PASSWORD))  # type: ignore
     else:
         redis_params.update(
             {

@@ -500,6 +500,26 @@ const translation = {
       'clear': '지우기',
       'setVariable': '변수 설정',
       'variable': '변수',
+      'operations': {
+        '*=': '*=',
+        'overwrite': '덮어쓸',
+        '-=': '-=',
+        'append': '덧붙이다',
+        'over-write': '덮어쓸',
+        '+=': '+=',
+        'title': '수술',
+        'extend': '뻗치다',
+        'clear': '맑다',
+        '/=': '/=',
+        'set': '집합',
+      },
+      'variables': '변수',
+      'noAssignedVars': '사용 가능한 할당된 변수가 없습니다.',
+      'noVarTip': '"+" 버튼을 클릭하여 변수를 추가합니다.',
+      'setParameter': '매개 변수 설정...',
+      'assignedVarsDescription': '할당된 변수는 대화 변수와 같은 쓰기 가능한 변수여야 합니다.',
+      'selectAssignedVariable': '할당된 변수 선택...',
+      'varNotSet': '변수가 설정되지 않음',
     },
     tool: {
       toAuthorize: '승인하기',
@@ -630,6 +650,13 @@ const translation = {
   },
   tracing: {
     stopBy: '{{user}}에 의해 중지됨',
+  },
+  variableReference: {
+    noAvailableVars: '사용 가능한 변수 없음',
+    conversationVars: '대화 변수',
+    noVarsForOperation: '선택한 작업에 할당할 수 있는 변수가 없습니다.',
+    noAssignedVars: '사용 가능한 할당된 변수가 없습니다.',
+    assignedVarsDescription: '할당된 변수는 다음과 같이 쓰기 가능한 변수여야 합니다.',
   },
 }
 
