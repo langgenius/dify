@@ -1,5 +1,6 @@
 import datetime
 import uuid
+from typing import cast
 
 import pandas as pd
 from flask_login import current_user  # type: ignore
@@ -71,7 +72,7 @@ class AppAnnotationService:
                 app_id,
                 annotation_setting.collection_binding_id,
             )
-        return annotation
+        return cast(MessageAnnotation, annotation)
 
     @classmethod
     def enable_app_annotation(cls, args: dict, app_id: str) -> dict:

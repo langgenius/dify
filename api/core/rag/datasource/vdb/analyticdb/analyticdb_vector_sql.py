@@ -75,6 +75,7 @@ class AnalyticdbVectorBySql:
 
     @contextmanager
     def _get_cursor(self):
+        assert self.pool is not None, "Connection pool is not initialized"
         conn = self.pool.getconn()
         cur = conn.cursor()
         try:
