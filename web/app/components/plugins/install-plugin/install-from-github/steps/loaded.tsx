@@ -1,10 +1,9 @@
 'use client'
 
-import React from 'react'
+import React, { useEffect } from 'react'
 import Button from '@/app/components/base/button'
-import { type PluginDeclaration, type PluginType, TaskStatus, type UpdateFromGitHubPayload } from '../../../types'
+import { type Plugin, type PluginDeclaration, TaskStatus, type UpdateFromGitHubPayload } from '../../../types'
 import Card from '../../../card'
-import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { pluginManifestToCardPluginProps } from '../../utils'
 import { useTranslation } from 'react-i18next'
 import { updateFromGitHub } from '@/service/plugins'
@@ -12,13 +11,14 @@ import { useInstallPackageFromGitHub } from '@/service/use-plugins'
 import { RiLoader2Line } from '@remixicon/react'
 import { usePluginTaskList } from '@/service/use-plugins'
 import checkTaskStatus from '../../base/check-task-status'
+import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'
 import { parseGitHubUrl } from '../../utils'
-import { useCategories } from '../../../hooks'
+import Version from '../../base/version'
 
 type LoadedProps = {
   updatePayload: UpdateFromGitHubPayload
   uniqueIdentifier: string
-  payload: PluginDeclaration
+  payload: PluginDeclaration | Plugin
   repoUrl: string
   selectedVersion: string
   selectedPackage: string
@@ -41,11 +41,25 @@ const Loaded: React.FC<LoadedProps> = ({
   onFailed,
 }) => {
   const { t } = useTranslation()
-  const { categoriesMap } = useCategories()
+  const toInstallVersion = payload.version
+  const pluginId = (payload as Plugin).plugin_id
+  const { installedInfo, isLoading } = useCheckInstalled({
+    pluginIds: [pluginId],
+    enabled: !!pluginId,
+  })
+  const installedInfoPayload = installedInfo?.[pluginId]
+  const installedVersion = installedInfoPayload?.installedVersion
+  const hasInstalled = !!installedVersion
+
   const [isInstalling, setIsInstalling] = React.useState(false)
   const { mutateAsync: installPackageFromGitHub } = useInstallPackageFromGitHub()
   const { handleRefetch } = usePluginTaskList()
   const { check } = checkTaskStatus()
+
+  useEffect(() => {
+    if (hasInstalled && uniqueIdentifier === installedInfoPayload.uniqueIdentifier)
+      onInstalled()
+  }, [hasInstalled])
 
   const handleInstall = async () => {
     if (isInstalling) return
@@ -54,8 +68,9 @@ const Loaded: React.FC<LoadedProps> = ({
     try {
       const { owner, repo } = parseGitHubUrl(repoUrl)
       let taskId
+      let isInstalled
       if (updatePayload) {
-        const { all_installed: isInstalled, task_id } = await updateFromGitHub(
+        const { all_installed, task_id } = await updateFromGitHub(
           `${owner}/${repo}`,
           selectedVersion,
           selectedPackage,
@@ -64,31 +79,41 @@ const Loaded: React.FC<LoadedProps> = ({
         )
 
         taskId = task_id
-
-        if (isInstalled) {
-          onInstalled()
-          return
-        }
-
-        handleRefetch()
+        isInstalled = all_installed
       }
       else {
-        const { all_installed: isInstalled, task_id } = await installPackageFromGitHub({
-          repoUrl: `${owner}/${repo}`,
-          selectedVersion,
-          selectedPackage,
-          uniqueIdentifier,
-        })
-
-        taskId = task_id
-
-        if (isInstalled) {
-          onInstalled()
-          return
+        if (hasInstalled) {
+          const {
+            all_installed,
+            task_id,
+          } = await updateFromGitHub(
+            `${owner}/${repo}`,
+            selectedVersion,
+            selectedPackage,
+            installedInfoPayload.uniqueIdentifier,
+            uniqueIdentifier,
+          )
+          taskId = task_id
+          isInstalled = all_installed
         }
+        else {
+          const { all_installed, task_id } = await installPackageFromGitHub({
+            repoUrl: `${owner}/${repo}`,
+            selectedVersion,
+            selectedPackage,
+            uniqueIdentifier,
+          })
 
-        handleRefetch()
+          taskId = task_id
+          isInstalled = all_installed
+        }
       }
+      if (isInstalled) {
+        onInstalled()
+        return
+      }
+
+      handleRefetch()
 
       const { status, error } = await check({
         taskId,
@@ -120,8 +145,12 @@ const Loaded: React.FC<LoadedProps> = ({
       <div className='flex p-2 items-start content-start gap-1 self-stretch flex-wrap rounded-2xl bg-background-section-burn'>
         <Card
           className='w-full'
-          payload={{ ...pluginManifestToCardPluginProps(payload), type: categoriesMap[payload.category].label as PluginType }}
-          titleLeft={<Badge className='mx-1' size="s" state={BadgeState.Default}>{payload.version}</Badge>}
+          payload={pluginManifestToCardPluginProps(payload as PluginDeclaration)}
+          titleLeft={!isLoading && <Version
+            hasInstalled={hasInstalled}
+            installedVersion={installedVersion}
+            toInstallVersion={toInstallVersion}
+          />}
         />
       </div>
       <div className='flex justify-end items-center gap-2 self-stretch mt-4'>
@@ -134,7 +163,7 @@ const Loaded: React.FC<LoadedProps> = ({
           variant='primary'
           className='min-w-[72px] flex space-x-0.5'
           onClick={handleInstall}
-          disabled={isInstalling}
+          disabled={isInstalling || isLoading}
         >
           {isInstalling && <RiLoader2Line className='w-4 h-4 animate-spin-slow' />}
           <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
