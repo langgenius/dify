@@ -91,7 +91,9 @@ const Apps = ({
     if (currentType.length === 0)
       return filteredByCategory
     return filteredByCategory.filter((item) => {
-      if (currentType.includes('chat') && (item.app.mode === 'chat' || item.app.mode === 'advanced-chat'))
+      if (currentType.includes('chat') && item.app.mode === 'chat')
+        return true
+      if (currentType.includes('advanced-chat') && item.app.mode === 'advanced-chat')
         return true
       if (currentType.includes('agent-chat') && item.app.mode === 'agent-chat')
         return true
