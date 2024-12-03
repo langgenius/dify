@@ -626,8 +626,6 @@ class DataSetConfig(BaseSettings):
         default=30,
     )
 
-    RETRIEVAL_TOP_N: int = Field(description="number of retrieval top_n", default=0)
-
 
 class WorkspaceConfig(BaseSettings):
     """
