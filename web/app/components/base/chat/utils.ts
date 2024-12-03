@@ -19,10 +19,14 @@ function getProcessedInputsFromUrlParams(): Record<string, any> {
   return inputs
 }
 
-function getLastAnswer(chatList: ChatItem[]) {
+function isValidGeneratedAnswer(item?: ChatItem | ChatItemInTree): boolean {
+  return !!item && item.isAnswer && !item.id.startsWith('answer-placeholder-') && !item.isOpeningStatement
+}
+
+function getLastAnswer<T extends ChatItem | ChatItemInTree>(chatList: T[]): T | null {
   for (let i = chatList.length - 1; i >= 0; i--) {
     const item = chatList[i]
-    if (item.isAnswer && !item.id.startsWith('answer-placeholder-') && !item.isOpeningStatement)
+    if (isValidGeneratedAnswer(item))
       return item
   }
   return null
@@ -159,6 +163,7 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
 
 export {
   getProcessedInputsFromUrlParams,
+  isValidGeneratedAnswer,
   getLastAnswer,
   buildChatItemTree,
   getThreadMessages,

@@ -3,10 +3,11 @@ import Chat from '../chat'
 import type {
   ChatConfig,
   ChatItem,
+  ChatItemInTree,
   OnSend,
 } from '../types'
 import { useChat } from '../chat/hooks'
-import { getLastAnswer } from '../utils'
+import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
 import { useChatWithHistoryContext } from './context'
 import Header from './header'
 import ConfigPanel from './config-panel'
@@ -50,6 +51,7 @@ const ChatWrapper = () => {
   }, [appParams, currentConversationItem?.introduction, currentConversationId])
   const {
     chatList,
+    setTargetMessageId,
     handleSend,
     handleStop,
     isResponding,
@@ -70,13 +72,13 @@ const ChatWrapper = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const doSend: OnSend = useCallback((message, files, last_answer) => {
+  const doSend: OnSend = useCallback((message, files, isRegenerate = false, parentAnswer: ChatItem | null = null) => {
     const data: any = {
       query: message,
       files,
       inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
       conversation_id: currentConversationId,
-      parent_message_id: last_answer?.id || getLastAnswer(chatList)?.id || null,
+      parent_message_id: (isRegenerate ? parentAnswer?.id : getLastAnswer(chatList)?.id) || null,
     }
 
     handleSend(
@@ -99,19 +101,10 @@ const ChatWrapper = () => {
     appId,
   ])
 
-  const doRegenerate = useCallback((chatItem: ChatItem) => {
-    const index = chatList.findIndex(item => item.id === chatItem.id)
-    if (index === -1)
-      return
-
-    const prevMessages = chatList.slice(0, index)
-    const question = prevMessages.pop()
-    const lastAnswer = getLastAnswer(prevMessages)
-
-    if (!question)
-      return
-
-    doSend(question.content, question.message_files, lastAnswer)
+  const doRegenerate = useCallback((chatItem: ChatItemInTree) => {
+    const question = chatList.find(item => item.id === chatItem.parentMessageId)!
+    const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
+    doSend(question.content, question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
   }, [chatList, doSend])
 
   const chatNode = useMemo(() => {
@@ -184,6 +177,7 @@ const ChatWrapper = () => {
         answerIcon={answerIcon}
         hideProcessDetail
         themeBuilder={themeBuilder}
+        switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
       />
     </div>
   )

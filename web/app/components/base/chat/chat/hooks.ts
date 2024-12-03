@@ -68,7 +68,8 @@ export const useChat = (
 
   const [chatTree, setChatTree] = useState<ChatItemInTree[]>(prevChatTree || [])
   const chatTreeRef = useRef<ChatItemInTree[]>(chatTree)
-  const threadMessages = useMemo(() => getThreadMessages(chatTree), [chatTree])
+  const [targetMessageId, setTargetMessageId] = useState<string>()
+  const threadMessages = useMemo(() => getThreadMessages(chatTree, targetMessageId), [chatTree, targetMessageId])
 
   const getIntroduction = useCallback((str: string) => {
     return processOpeningStatement(str, formSettings?.inputs || {}, formSettings?.inputsForm || [])
@@ -232,13 +233,15 @@ export const useChat = (
       return false
     }
 
+    const parentMessage = threadMessages.find(item => item.id === data.parent_message_id)
+
     const questionId = `question-${Date.now()}`
     const questionItem = {
       id: questionId,
       content: data.query,
       isAnswer: false,
       message_files: data.files,
-      parent_message_id: data.parent_message_id,
+      parentMessageId: data.parent_message_id,
     }
 
     const placeholderAnswerId = `answer-placeholder-${Date.now()}`
@@ -246,7 +249,8 @@ export const useChat = (
       id: placeholderAnswerId,
       content: '',
       isAnswer: true,
-      parent_message_id: questionItem.id,
+      parentMessageId: questionItem.id,
+      siblingIndex: parentMessage?.children?.length || chatTree.length,
     }
 
     updateCurrentQAOnTree({
@@ -258,12 +262,14 @@ export const useChat = (
     })
 
     // answer
-    const responseItem: ChatItem = {
+    const responseItem: ChatItemInTree = {
       id: placeholderAnswerId,
       content: '',
       agent_thoughts: [],
       message_files: [],
       isAnswer: true,
+      parentMessageId: questionItem.id,
+      siblingIndex: parentMessage?.children?.length || chatTree.length,
     }
 
     handleResponding(true)
@@ -324,7 +330,9 @@ export const useChat = (
           }
 
           if (messageId && !hasSetResponseId) {
+            questionItem.id = `question-${messageId}`
             responseItem.id = messageId
+            responseItem.parentMessageId = questionItem.id
             hasSetResponseId = true
           }
 
@@ -588,6 +596,8 @@ export const useChat = (
     return true
   }, [
     t,
+    chatTree.length,
+    threadMessages,
     config?.suggested_questions_after_answer,
     updateCurrentQAOnTree,
     updateChatTreeNode,
@@ -655,6 +665,7 @@ export const useChat = (
 
   return {
     chatList,
+    setTargetMessageId,
     updateChatTreeNode,
     conversationId: conversationId.current,
     isResponding,
