@@ -260,6 +260,13 @@ const translation = {
     zoomTo100: '放大到 100%',
     zoomToFit: '自适应视图',
   },
+  variableReference: {
+    noAvailableVars: '没有可用变量',
+    noVarsForOperation: '当前选择的操作没有可用的变量进行赋值。',
+    noAssignedVars: '没有可用的赋值变量',
+    assignedVarsDescription: '赋值变量必须是可写入的变量，例如：',
+    conversationVars: '会话变量',
+  },
   panel: {
     userInputField: '用户输入字段',
     changeBlock: '更改节点',
@@ -517,6 +524,8 @@ const translation = {
       },
       'variable': '变量',
       'variables': '变量',
+      'noAssignedVars': '没有可用的赋值变量',
+      'assignedVarsDescription': '赋值变量必须是可写入的变量，例如会话变量。',
     },
     tool: {
       toAuthorize: '授权',

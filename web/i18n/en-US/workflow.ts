@@ -260,6 +260,13 @@ const translation = {
     zoomTo100: 'Zoom to 100%',
     zoomToFit: 'Zoom to Fit',
   },
+  variableReference: {
+    noAvailableVars: 'No available variables',
+    noVarsForOperation: 'There are no variables available for assignment with the selected operation.',
+    noAssignedVars: 'No available assigned variables',
+    assignedVarsDescription: 'Assigned variables must be writable variables, such as ',
+    conversationVars: 'conversation variables',
+  },
   panel: {
     userInputField: 'User Input Field',
     changeBlock: 'Change Block',
@@ -517,6 +524,8 @@ const translation = {
         '/=': '/=',
       },
       'variable': 'Variable',
+      'noAssignedVars': 'No available assigned variables',
+      'assignedVarsDescription': 'Assigned variables must be writable variables, such as conversation variables.',
     },
     tool: {
       toAuthorize: 'To authorize',
