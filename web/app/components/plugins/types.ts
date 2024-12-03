@@ -119,6 +119,7 @@ export type Plugin = {
   verified: boolean
   label: Record<Locale, string>
   brief: Record<Locale, string>
+  description: Record<Locale, string>
   // Repo readme.md content
   introduction: string
   repository: string

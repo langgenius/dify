@@ -296,6 +296,7 @@ export const useMutationPluginsFromMarketplace = () => {
         category,
         tags,
         exclude,
+        type,
       } = pluginsSearchParams
       return postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/search/basic', {
         body: {
@@ -307,6 +308,7 @@ export const useMutationPluginsFromMarketplace = () => {
           category: category !== 'all' ? category : '',
           tags,
           exclude,
+          type,
         },
       })
     },

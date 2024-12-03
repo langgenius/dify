@@ -4,7 +4,7 @@ const translation = {
     models: '模型',
     tools: '工具',
     extensions: '扩展',
-    bundles: '捆绑包',
+    bundles: '插件集',
   },
   search: '搜索',
   allCategories: '所有类别',

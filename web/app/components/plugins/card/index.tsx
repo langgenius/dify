@@ -44,7 +44,7 @@ const Card = ({
   const locale = localeFromProps ? getLanguage(localeFromProps) : defaultLocale
   const { categoriesMap } = useCategories()
   const { type, category, name, org, label, brief, icon, verified } = payload
-  const cornerMark = type !== 'plugin' ? type : categoriesMap[category]?.label
+  const cornerMark = type !== 'plugin' ? categoriesMap.bundle?.label : categoriesMap[category]?.label
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj?.[locale] || obj?.['en-US'] || obj?.en_US || ''
 

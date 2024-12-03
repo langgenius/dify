@@ -1,13 +1,40 @@
+import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginType } from '@/app/components/plugins/types'
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
 } from '@/app/components/plugins/marketplace/types'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import {
+  MARKETPLACE_API_PREFIX,
+  MARKETPLACE_URL_PREFIX,
+} from '@/config'
 
 export const getPluginIconInMarketplace = (plugin: Plugin) => {
+  if (plugin.type === 'bundle')
+    return `${MARKETPLACE_API_PREFIX}/bundles/${plugin.org}/${plugin.name}/icon`
   return `${MARKETPLACE_API_PREFIX}/plugins/${plugin.org}/${plugin.name}/icon`
+}
+
+export const getFormattedPlugin = (bundle: any) => {
+  if (bundle.type === 'bundle') {
+    return {
+      ...bundle,
+      icon: getPluginIconInMarketplace(bundle),
+      brief: bundle.description,
+      label: bundle.labels,
+    }
+  }
+  return {
+    ...bundle,
+    icon: getPluginIconInMarketplace(bundle),
+  }
+}
+
+export const getPluginLinkInMarketplace = (plugin: Plugin) => {
+  if (plugin.type === 'bundle')
+    return `${MARKETPLACE_URL_PREFIX}/bundles/${plugin.org}/${plugin.name}`
+  return `${MARKETPLACE_URL_PREFIX}/plugins/${plugin.org}/${plugin.name}`
 }
 
 export const getMarketplaceCollectionsAndPlugins = async (query?: CollectionsAndPluginsSearchParams) => {
@@ -17,6 +44,8 @@ export const getMarketplaceCollectionsAndPlugins = async (query?: CollectionsAnd
     let marketplaceUrl = `${MARKETPLACE_API_PREFIX}/collections?page=1&page_size=100`
     if (query?.condition)
       marketplaceUrl += `&condition=${query.condition}`
+    if (query?.type)
+      marketplaceUrl += `&type=${query.type}`
     const marketplaceCollectionsData = await globalThis.fetch(marketplaceUrl, { cache: 'no-store' })
     const marketplaceCollectionsDataJson = await marketplaceCollectionsData.json()
     marketplaceCollections = marketplaceCollectionsDataJson.data.collections
@@ -30,15 +59,13 @@ export const getMarketplaceCollectionsAndPlugins = async (query?: CollectionsAnd
           body: JSON.stringify({
             category: query?.category,
             exclude: query?.exclude,
+            type: query?.type,
           }),
         },
       )
       const marketplaceCollectionPluginsDataJson = await marketplaceCollectionPluginsData.json()
       const plugins = marketplaceCollectionPluginsDataJson.data.plugins.map((plugin: Plugin) => {
-        return {
-          ...plugin,
-          icon: getPluginIconInMarketplace(plugin),
-        }
+        return getFormattedPlugin(plugin)
       })
 
       marketplaceCollectionPluginsMap[collection.name] = plugins
@@ -67,4 +94,14 @@ export const getMarketplaceListCondition = (pluginType: string) => {
     return 'category=endpoint'
 
   return ''
+}
+
+export const getMarketplaceListFilterType = (category: string) => {
+  if (category === PLUGIN_TYPE_SEARCH_MAP.all)
+    return undefined
+
+  if (category === PLUGIN_TYPE_SEARCH_MAP.bundle)
+    return 'bundle'
+
+  return 'plugin'
 }
