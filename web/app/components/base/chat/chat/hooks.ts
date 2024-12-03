@@ -250,9 +250,10 @@ export const useChat = (
       content: '',
       isAnswer: true,
       parentMessageId: questionItem.id,
-      siblingIndex: parentMessage?.children?.length || chatTree.length,
+      siblingIndex: parentMessage?.children?.length ?? chatTree.length,
     }
 
+    setTargetMessageId(undefined)
     updateCurrentQAOnTree({
       parentId: data.parent_message_id,
       responseItem: placeholderAnswerItem,
@@ -269,7 +270,7 @@ export const useChat = (
       message_files: [],
       isAnswer: true,
       parentMessageId: questionItem.id,
-      siblingIndex: parentMessage?.children?.length || chatTree.length,
+      siblingIndex: parentMessage?.children?.length ?? chatTree.length,
     }
 
     handleResponding(true)
@@ -425,8 +426,13 @@ export const useChat = (
         onThought(thought) {
           isAgentMode = true
           const response = responseItem as any
-          if (thought.message_id && !hasSetResponseId)
+          if (thought.message_id && !hasSetResponseId) {
             response.id = thought.message_id
+            questionItem.id = `question-${thought.message_id}`
+            response.id = thought.message_id
+            response.parentMessageId = questionItem.id
+            hasSetResponseId = true
+          }
           if (response.agent_thoughts.length === 0) {
             response.agent_thoughts.push(thought)
           }
