@@ -91,7 +91,7 @@ enum SegmentType {
   AUTO = 'automatic',
   CUSTOM = 'custom',
 }
-enum IndexingType {
+export enum IndexingType {
   QUALIFIED = 'high_quality',
   ECONOMICAL = 'economy',
 }
