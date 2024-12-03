@@ -1,7 +1,8 @@
 import groupBy from 'lodash-es/groupBy'
+import { useMutation } from '@tanstack/react-query'
+import { fetchFileIndexingEstimate } from './datasets'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { CrawlOptions, CrawlResultItem, CustomFile, DocForm, IndexingEstimateParams, NotionInfo, ProcessRule } from '@/models/datasets'
-import { DataSourceType } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, CustomFile, DataSourceType, DocForm, IndexingEstimateParams, NotionInfo, ProcessRule } from '@/models/datasets'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 
 const getNotionInfo = (
@@ -47,22 +48,33 @@ const getWebsiteInfo = (
   }
 }
 
-type GetFileIndexingEstimateParamsOption = {
+type GetFileIndexingEstimateParamsOptionBase = {
   docForm: DocForm
   docLanguage: string
-  dataSourceType: DataSourceType
-  files: CustomFile[]
   indexingTechnique: IndexingType
   processRule: ProcessRule
   dataset_id: string
-  notionPages?: NotionPage[]
-  websitePages?: CrawlResultItem[]
-  crawlOptions?: CrawlOptions
-  websiteCrawlProvider?: DataSourceProvider
-  websiteCrawlJobId?: string
 }
 
-const getFileIndexingEstimateParams = ({
+type GetFileIndexingEstimateParamsOptionFile = GetFileIndexingEstimateParamsOptionBase & {
+  dataSourceType: DataSourceType.FILE
+  files: CustomFile[]
+}
+
+type GetFileIndexingEstimateParamsOptionNotion = GetFileIndexingEstimateParamsOptionBase & {
+  dataSourceType: DataSourceType.NOTION
+  notionPages: NotionPage[]
+}
+
+type GetFileIndexingEstimateParamsOptionWeb = GetFileIndexingEstimateParamsOptionBase & {
+  dataSourceType: DataSourceType.WEB
+  websitePages: CrawlResultItem[]
+  crawlOptions?: CrawlOptions
+  websiteCrawlProvider: DataSourceProvider
+  websiteCrawlJobId: string
+}
+
+const getFileIndexingEstimateParamsForFile = ({
   docForm,
   docLanguage,
   dataSourceType,
@@ -70,62 +82,100 @@ const getFileIndexingEstimateParams = ({
   indexingTechnique,
   processRule,
   dataset_id,
+}: GetFileIndexingEstimateParamsOptionFile): IndexingEstimateParams => {
+  return {
+    info_list: {
+      data_source_type: dataSourceType,
+      file_info_list: {
+        file_ids: files.map(file => file.id) as string[],
+      },
+    },
+    indexing_technique: indexingTechnique,
+    process_rule: processRule,
+    doc_form: docForm,
+    doc_language: docLanguage,
+    dataset_id,
+  }
+}
+
+const getFileIndexingEstimateParamsForNotion = ({
+  docForm,
+  docLanguage,
+  dataSourceType,
   notionPages,
+  indexingTechnique,
+  processRule,
+  dataset_id,
+}: GetFileIndexingEstimateParamsOptionNotion): IndexingEstimateParams => {
+  return {
+    info_list: {
+      data_source_type: dataSourceType,
+      notion_info_list: getNotionInfo(notionPages),
+    },
+    indexing_technique: indexingTechnique,
+    process_rule: processRule,
+    doc_form: docForm,
+    doc_language: docLanguage,
+    dataset_id,
+  }
+}
+
+const getFileIndexingEstimateParamsForWeb = ({
+  docForm,
+  docLanguage,
+  dataSourceType,
   websitePages,
   crawlOptions,
   websiteCrawlProvider,
   websiteCrawlJobId,
-}: GetFileIndexingEstimateParamsOption): IndexingEstimateParams | undefined => {
-  if (dataSourceType === DataSourceType.FILE) {
-    return {
-      info_list: {
-        data_source_type: dataSourceType,
-        file_info_list: {
-          file_ids: files.map(file => file.id) as string[],
-        },
-      },
-      indexing_technique: indexingTechnique,
-      process_rule: processRule,
-      doc_form: docForm,
-      doc_language: docLanguage,
-      dataset_id,
-    }
-  }
-  if (dataSourceType === DataSourceType.NOTION) {
-    return {
-      info_list: {
-        data_source_type: dataSourceType,
-        notion_info_list: getNotionInfo(
-          notionPages as NotionPage[],
-        ),
-      },
-      indexing_technique: indexingTechnique,
-      process_rule: processRule,
-      doc_form: docForm,
-      doc_language: docLanguage,
-      dataset_id,
-    }
-  }
-  if (dataSourceType === DataSourceType.WEB) {
-    return {
-      info_list: {
-        data_source_type: dataSourceType,
-        website_info_list: getWebsiteInfo({
-          websiteCrawlProvider: websiteCrawlProvider as DataSourceProvider,
-          websiteCrawlJobId: websiteCrawlJobId as string,
-          websitePages: websitePages as CrawlResultItem[],
-          crawlOptions,
-        }),
-      },
-      indexing_technique: indexingTechnique,
-      process_rule: processRule,
-      doc_form: docForm,
-      doc_language: docLanguage,
-      dataset_id,
-    }
+  indexingTechnique,
+  processRule,
+  dataset_id,
+}: GetFileIndexingEstimateParamsOptionWeb): IndexingEstimateParams => {
+  return {
+    info_list: {
+      data_source_type: dataSourceType,
+      website_info_list: getWebsiteInfo({
+        websiteCrawlProvider,
+        websiteCrawlJobId,
+        websitePages,
+        crawlOptions,
+      }),
+    },
+    indexing_technique: indexingTechnique,
+    process_rule: processRule,
+    doc_form: docForm,
+    doc_language: docLanguage,
+    dataset_id,
   }
 }
 
-export const useFetchFileIndexingEstimate = () => {
+export const useFetchFileIndexingEstimateForFile = (
+  options: GetFileIndexingEstimateParamsOptionFile,
+) => {
+  return useMutation({
+    mutationFn: async () => {
+      return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForFile(options))
+    },
+  })
+}
 
+export const useFetchFileIndexingEstimateForNotion = (
+  options: GetFileIndexingEstimateParamsOptionNotion,
+) => {
+  return useMutation({
+    mutationFn: async () => {
+      return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForNotion(options))
+    },
+  })
+}
+
+export const useFetchFileIndexingEstimateForWeb = (
+  options: GetFileIndexingEstimateParamsOptionWeb,
+) => {
+  return useMutation({
+    mutationFn: async () => {
+      return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForWeb(options))
+    },
+  })
 }
