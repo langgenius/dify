@@ -157,7 +157,10 @@ class Tool(ABC):
 
         return parameters
 
-    def create_image_message(self, image: str, save_as: str = "") -> ToolInvokeMessage:
+    def create_image_message(
+        self,
+        image: str,
+    ) -> ToolInvokeMessage:
         """
         create an image message
 
@@ -165,7 +168,7 @@ class Tool(ABC):
         :return: the image message
         """
         return ToolInvokeMessage(
-            type=ToolInvokeMessage.MessageType.IMAGE, message=ToolInvokeMessage.TextMessage(text=image), save_as=save_as
+            type=ToolInvokeMessage.MessageType.IMAGE, message=ToolInvokeMessage.TextMessage(text=image)
         )
 
     def create_file_message(self, file: "File") -> ToolInvokeMessage:
@@ -173,10 +176,9 @@ class Tool(ABC):
             type=ToolInvokeMessage.MessageType.FILE,
             message=ToolInvokeMessage.FileMessage(),
             meta={"file": file},
-            save_as="",
         )
 
-    def create_link_message(self, link: str, save_as: str = "") -> ToolInvokeMessage:
+    def create_link_message(self, link: str) -> ToolInvokeMessage:
         """
         create a link message
 
@@ -184,10 +186,10 @@ class Tool(ABC):
         :return: the link message
         """
         return ToolInvokeMessage(
-            type=ToolInvokeMessage.MessageType.LINK, message=ToolInvokeMessage.TextMessage(text=link), save_as=save_as
+            type=ToolInvokeMessage.MessageType.LINK, message=ToolInvokeMessage.TextMessage(text=link)
         )
 
-    def create_text_message(self, text: str, save_as: str = "") -> ToolInvokeMessage:
+    def create_text_message(self, text: str) -> ToolInvokeMessage:
         """
         create a text message
 
@@ -195,10 +197,11 @@ class Tool(ABC):
         :return: the text message
         """
         return ToolInvokeMessage(
-            type=ToolInvokeMessage.MessageType.TEXT, message=ToolInvokeMessage.TextMessage(text=text), save_as=save_as
+            type=ToolInvokeMessage.MessageType.TEXT,
+            message=ToolInvokeMessage.TextMessage(text=text),
         )
 
-    def create_blob_message(self, blob: bytes, meta: Optional[dict] = None, save_as: str = "") -> ToolInvokeMessage:
+    def create_blob_message(self, blob: bytes, meta: Optional[dict] = None) -> ToolInvokeMessage:
         """
         create a blob message
 
@@ -209,7 +212,6 @@ class Tool(ABC):
             type=ToolInvokeMessage.MessageType.BLOB,
             message=ToolInvokeMessage.BlobMessage(blob=blob),
             meta=meta,
-            save_as=save_as,
         )
 
     def create_json_message(self, object: dict) -> ToolInvokeMessage:

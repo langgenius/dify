@@ -44,7 +44,6 @@ class ToolFileMessageTransformer:
                     yield ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                         message=ToolInvokeMessage.TextMessage(text=url),
-                        save_as=message.save_as,
                         meta=message.meta.copy() if message.meta is not None else {},
                     )
                 except Exception as e:
@@ -54,7 +53,6 @@ class ToolFileMessageTransformer:
                             text=f"Failed to download image: {message.message.text}: {e}"
                         ),
                         meta=message.meta.copy() if message.meta is not None else {},
-                        save_as=message.save_as,
                     )
             elif message.type == ToolInvokeMessage.MessageType.BLOB:
                 # get mime type and save blob to storage
@@ -83,14 +81,12 @@ class ToolFileMessageTransformer:
                     yield ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                         message=ToolInvokeMessage.TextMessage(text=url),
-                        save_as=message.save_as,
                         meta=message.meta.copy() if message.meta is not None else {},
                     )
                 else:
                     yield ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.LINK,
                         message=ToolInvokeMessage.TextMessage(text=url),
-                        save_as=message.save_as,
                         meta=message.meta.copy() if message.meta is not None else {},
                     )
             elif message.type == ToolInvokeMessage.MessageType.FILE:
@@ -104,14 +100,12 @@ class ToolFileMessageTransformer:
                             yield ToolInvokeMessage(
                                 type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                                 message=ToolInvokeMessage.TextMessage(text=url),
-                                save_as=message.save_as,
                                 meta=message.meta.copy() if message.meta is not None else {},
                             )
                         else:
                             yield ToolInvokeMessage(
                                 type=ToolInvokeMessage.MessageType.LINK,
                                 message=ToolInvokeMessage.TextMessage(text=url),
-                                save_as=message.save_as,
                                 meta=message.meta.copy() if message.meta is not None else {},
                             )
                     else:

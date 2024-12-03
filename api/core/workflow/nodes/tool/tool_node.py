@@ -1,5 +1,4 @@
 from collections.abc import Generator, Mapping, Sequence
-from os import path
 from typing import Any, cast
 
 from sqlalchemy import select
@@ -236,8 +235,7 @@ class ToolNode(BaseNode[ToolNodeData]):
                         type=FileType.IMAGE,
                         transfer_method=FileTransferMethod.TOOL_FILE,
                         related_id=tool_file_id,
-                        filename=message.save_as,
-                        extension=path.splitext(message.save_as)[1],
+                        extension=None,
                         mime_type=message.meta.get("mime_type", "application/octet-stream"),
                     )
                 )
