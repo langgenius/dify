@@ -38,6 +38,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
           query: searchPluginText,
           tags: filterPluginTags,
           exclude,
+          type: 'plugin',
         })
         return
       }
@@ -46,6 +47,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
         query: searchPluginText,
         tags: filterPluginTags,
         exclude,
+        type: 'plugin',
       })
     }
     else {
@@ -54,6 +56,7 @@ export const useMarketplace = (searchPluginText: string, filterPluginTags: strin
           category: PluginType.tool,
           condition: getMarketplaceListCondition(PluginType.tool),
           exclude,
+          type: 'plugin',
         })
         resetPlugins()
       }

@@ -30,7 +30,10 @@ import {
   useMarketplaceCollectionsAndPlugins,
   useMarketplacePlugins,
 } from './hooks'
-import { getMarketplaceListCondition } from './utils'
+import {
+  getMarketplaceListCondition,
+  getMarketplaceListFilterType,
+} from './utils'
 import { useInstalledPluginList } from '@/service/use-plugins'
 
 export type MarketplaceContextValue = {
@@ -60,7 +63,7 @@ export const MarketplaceContext = createContext<MarketplaceContextValue>({
   handleSearchPluginTextChange: () => {},
   filterPluginTags: [],
   handleFilterPluginTagsChange: () => {},
-  activePluginType: PLUGIN_TYPE_SEARCH_MAP.all,
+  activePluginType: 'all',
   handleActivePluginTypeChange: () => {},
   plugins: undefined,
   resetPlugins: () => {},
@@ -131,6 +134,7 @@ export const MarketplaceContextProvider = ({
         tags: hasValidTags ? tagsFromSearchParams : [],
         sortBy: sortRef.current.sortBy,
         sortOrder: sortRef.current.sortOrder,
+        type: getMarketplaceListFilterType(activePluginTypeRef.current),
       })
       history.pushState({}, '', `/${searchParams?.language ? `?language=${searchParams?.language}` : ''}`)
     }
@@ -138,6 +142,7 @@ export const MarketplaceContextProvider = ({
       if (shouldExclude && isSuccess) {
         queryMarketplaceCollectionsAndPlugins({
           exclude,
+          type: getMarketplaceListFilterType(activePluginTypeRef.current),
         })
       }
     }
@@ -153,6 +158,7 @@ export const MarketplaceContextProvider = ({
         category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
         condition: getMarketplaceListCondition(activePluginTypeRef.current),
         exclude,
+        type: getMarketplaceListFilterType(activePluginTypeRef.current),
       })
       resetPlugins()
 
@@ -178,6 +184,7 @@ export const MarketplaceContextProvider = ({
         category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
         condition: getMarketplaceListCondition(activePluginTypeRef.current),
         exclude,
+        type: getMarketplaceListFilterType(activePluginTypeRef.current),
       })
       resetPlugins()
 
@@ -191,6 +198,7 @@ export const MarketplaceContextProvider = ({
       sortBy: sortRef.current.sortBy,
       sortOrder: sortRef.current.sortOrder,
       exclude,
+      type: getMarketplaceListFilterType(activePluginTypeRef.current),
     })
   }, [queryPlugins, resetPlugins, queryMarketplaceCollectionsAndPlugins, exclude])
 
@@ -203,6 +211,7 @@ export const MarketplaceContextProvider = ({
         category: type === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : type,
         condition: getMarketplaceListCondition(type),
         exclude,
+        type: getMarketplaceListFilterType(activePluginTypeRef.current),
       })
       resetPlugins()
 
@@ -216,6 +225,7 @@ export const MarketplaceContextProvider = ({
       sortBy: sortRef.current.sortBy,
       sortOrder: sortRef.current.sortOrder,
       exclude,
+      type: getMarketplaceListFilterType(activePluginTypeRef.current),
     })
   }, [queryPlugins, resetPlugins, queryMarketplaceCollectionsAndPlugins, exclude])
 
@@ -230,6 +240,7 @@ export const MarketplaceContextProvider = ({
       sortBy: sortRef.current.sortBy,
       sortOrder: sortRef.current.sortOrder,
       exclude,
+      type: getMarketplaceListFilterType(activePluginTypeRef.current),
     })
   }, [queryPlugins, exclude])
 

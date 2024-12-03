@@ -264,6 +264,7 @@ export const useMarketplace = (providers: ModelProvider[], searchText: string) =
         query: searchText,
         category: PluginType.model,
         exclude,
+        type: 'plugin',
       })
     }
     else {
@@ -271,6 +272,7 @@ export const useMarketplace = (providers: ModelProvider[], searchText: string) =
         category: PluginType.model,
         condition: getMarketplaceListCondition(PluginType.model),
         exclude,
+        type: 'plugin',
       })
       resetPlugins()
     }

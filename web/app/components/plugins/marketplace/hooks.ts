@@ -13,8 +13,8 @@ import type {
   PluginsSearchParams,
 } from './types'
 import {
+  getFormattedPlugin,
   getMarketplaceCollectionsAndPlugins,
-  getPluginIconInMarketplace,
 } from './utils'
 import i18n from '@/i18n/i18next-config'
 import {
@@ -64,10 +64,9 @@ export const useMarketplacePlugins = () => {
   })
 
   return {
-    plugins: data?.data?.plugins.map(plugin => ({
-      ...plugin,
-      icon: getPluginIconInMarketplace(plugin),
-    })),
+    plugins: data?.data?.plugins.map((plugin) => {
+      return getFormattedPlugin(plugin)
+    }),
     resetPlugins: reset,
     queryPlugins,
     queryPluginsWithDebounced,

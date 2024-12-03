@@ -28,6 +28,7 @@ export type PluginsSearchParams = {
   category?: string
   tags?: string[]
   exclude?: string[]
+  type?: 'plugin' | 'bundle'
 }
 
 export type PluginsSort = {
@@ -39,6 +40,7 @@ export type CollectionsAndPluginsSearchParams = {
   category?: string
   condition?: string
   exclude?: string[]
+  type?: 'plugin' | 'bundle'
 }
 
 export type SearchParams = {

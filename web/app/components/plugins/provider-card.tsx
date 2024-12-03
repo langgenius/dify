@@ -11,10 +11,11 @@ import Title from './card/base/title'
 import DownloadCount from './card/base/download-count'
 import Button from '@/app/components/base/button'
 import { useGetLanguage } from '@/context/i18n'
-import { MARKETPLACE_URL_PREFIX } from '@/config'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import cn from '@/utils/classnames'
 import { useBoolean } from 'ahooks'
+import { getPluginLinkInMarketplace } from '@/app/components/plugins/marketplace/utils'
+import { useI18N } from '@/context/i18n'
 
 type Props = {
   className?: string
@@ -32,6 +33,7 @@ const ProviderCard: FC<Props> = ({
   }] = useBoolean(false)
   const language = useGetLanguage()
   const { org, label } = payload
+  const { locale } = useI18N()
 
   return (
     <div className={cn('group relative p-4 pb-3 border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg hover-bg-components-panel-on-panel-item-bg rounded-xl shadow-xs', className)}>
@@ -72,7 +74,7 @@ const ProviderCard: FC<Props> = ({
           className='grow'
           variant='secondary'
         >
-          <a href={`${MARKETPLACE_URL_PREFIX}/plugins/${payload.org}/${payload.name}`} target='_blank' className='flex items-center gap-0.5'>
+          <a href={`${getPluginLinkInMarketplace(payload)}?language=${locale}`} target='_blank' className='flex items-center gap-0.5'>
             {t('plugin.detailPanel.operation.detail')}
             <RiArrowRightUpLine className='w-4 h-4' />
           </a>
