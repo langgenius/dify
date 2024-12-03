@@ -1,3 +1,4 @@
+import { useCallback } from 'react'
 import type { DefaultValueForm } from './types'
 import Input from '@/app/components/base/input'
 import { VarType } from '@/app/components/workflow/types'
@@ -12,6 +13,19 @@ const DefaultValue = ({
   forms,
   onFormChange,
 }: DefaultValueProps) => {
+  const getFormChangeHandler = useCallback(({ key, type }: DefaultValueForm) => {
+    return (payload: any) => {
+      let value
+      if (type === VarType.string || type === VarType.number)
+        value = payload.target.value
+
+      if (type === VarType.array || type === VarType.arrayNumber || type === VarType.arrayString || type === VarType.arrayObject)
+        value = payload
+
+      onFormChange({ key, type, value })
+    }
+  }, [onFormChange])
+
   return (
     <div className='px-4 pt-2'>
       <div className='mb-2 body-xs-regular text-text-tertiary'>On error, will return below value</div>
@@ -32,7 +46,7 @@ const DefaultValue = ({
                     <Input
                       type={form.type}
                       value={form.value || (form.type === VarType.string ? '' : 0)}
-                      onChange={e => onFormChange({ key: form.key, type: form.type, value: e.target.value })}
+                      onChange={getFormChangeHandler({ key: form.key, type: form.type })}
                     />
                   )
                 }
@@ -46,8 +60,8 @@ const DefaultValue = ({
                   ) && (
                     <CodeEditor
                       language={CodeLanguage.json}
-                      value={form.value ? JSON.stringify(form.value) : (form.type === VarType.object ? '{}' : '[]')}
-                      onChange={v => onFormChange({ key: form.key, type: form.type, value: JSON.parse(v) })}
+                      value={form.value}
+                      onChange={getFormChangeHandler({ key: form.key, type: form.type })}
                     />
                   )
                 }

@@ -4,100 +4,29 @@ import {
 } from 'react'
 import { ErrorHandleTypeEnum } from './types'
 import type { DefaultValueForm } from './types'
-import type { Node } from '@/app/components/workflow/types'
-import {
-  BlockEnum,
-  VarType,
+import { getDefaultValue } from './utils'
+import type {
+  CommonNodeType,
 } from '@/app/components/workflow/types'
 import {
   useEdgesInteractions,
   useNodeDataUpdate,
 } from '@/app/components/workflow/hooks'
-import type { CodeNodeType } from '@/app/components/workflow/nodes/code/types'
 
-type UseGetDefaultValueForms = (params: Pick<Node, 'id' | 'data'>) => DefaultValueForm[]
-export const useGetDefaultValueForms: UseGetDefaultValueForms = ({
-  data,
-}) => {
-  const { type, error_strategy } = data
-
-  if (error_strategy === ErrorHandleTypeEnum.defaultValue) {
-    if (type === BlockEnum.LLM) {
-      return [{
-        key: 'text',
-        type: VarType.string,
-      }]
-    }
-
-    if (type === BlockEnum.HttpRequest) {
-      return [
-        {
-          key: 'body',
-          type: VarType.string,
-        },
-        {
-          key: 'status_code',
-          type: VarType.number,
-        },
-        {
-          key: 'headers',
-          type: VarType.object,
-        },
-        {
-          key: 'files',
-          type: VarType.arrayFile,
-          value: [],
-        },
-      ]
-    }
-
-    if (type === BlockEnum.Tool) {
-      return [
-        {
-          key: 'text',
-          type: VarType.string,
-        },
-        {
-          key: 'files',
-          type: VarType.arrayFile,
-          value: [],
-        },
-        {
-          key: 'json',
-          type: VarType.arrayObject,
-        },
-      ]
-    }
-
-    if (type === BlockEnum.Code) {
-      const { outputs } = data as CodeNodeType
-
-      return Object.keys(outputs).map((key) => {
-        return {
-          key,
-          type: outputs[key].type,
-        }
-      })
-    }
-  }
-
-  return []
-}
-
-export const useDefaultValue = ({
-  id,
-  data,
-}: Pick<Node, 'id' | 'data'>) => {
+export const useDefaultValue = (
+  id: string,
+) => {
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
-  const handleFormChange = useCallback(({
-    key,
-    value,
-    type,
-  }: DefaultValueForm) => {
+  const handleFormChange = useCallback((
+    {
+      key,
+      value,
+      type,
+    }: DefaultValueForm,
+    data: CommonNodeType,
+  ) => {
     const default_value = data.default_value || []
     const index = default_value.findIndex(form => form.key === key)
-
-    console.log(default_value, value)
 
     if (index > -1) {
       const newDefaultValue = [...default_value]
@@ -124,21 +53,24 @@ export const useDefaultValue = ({
         ],
       },
     })
-  }, [])
+  }, [handleNodeDataUpdateWithSyncDraft, id])
 
   return {
     handleFormChange,
   }
 }
 
-export const useErrorHandle = ({
-  id,
-}: Pick<Node, 'id' | 'data'>) => {
+export const useErrorHandle = (
+  id: string,
+) => {
   const [collapsed, setCollapsed] = useState(true)
   const { handleNodeDataUpdateWithSyncDraft } = useNodeDataUpdate()
   const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
 
-  const handleErrorHandleTypeChange = useCallback((value: ErrorHandleTypeEnum) => {
+  const handleErrorHandleTypeChange = useCallback((value: ErrorHandleTypeEnum, data: CommonNodeType) => {
+    if (data.error_strategy === value)
+      return
+
     if (value === ErrorHandleTypeEnum.none) {
       handleNodeDataUpdateWithSyncDraft({
         id,
@@ -167,6 +99,7 @@ export const useErrorHandle = ({
         id,
         data: {
           error_strategy: value,
+          default_value: getDefaultValue(data),
         },
       })
       setCollapsed(false)
