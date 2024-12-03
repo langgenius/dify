@@ -62,8 +62,8 @@ class AgentChatAppRunner(AppRunner):
             app_record=app_record,
             model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
-            inputs=inputs,
-            files=files,
+            inputs=dict(inputs),
+            files=list(files),
             query=query,
         )
 
@@ -84,8 +84,8 @@ class AgentChatAppRunner(AppRunner):
             app_record=app_record,
             model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
-            inputs=inputs,
-            files=files,
+            inputs=dict(inputs),
+            files=list(files),
             query=query,
             memory=memory,
         )
@@ -97,8 +97,8 @@ class AgentChatAppRunner(AppRunner):
                 app_id=app_record.id,
                 tenant_id=app_config.tenant_id,
                 app_generate_entity=application_generate_entity,
-                inputs=inputs,
-                query=query,
+                inputs=dict(inputs),
+                query=query or "",
                 message_id=message.id,
             )
         except ModerationError as e:
@@ -154,9 +154,9 @@ class AgentChatAppRunner(AppRunner):
             app_record=app_record,
             model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
-            inputs=inputs,
-            files=files,
-            query=query,
+            inputs=dict(inputs),
+            files=list(files),
+            query=query or "",
             memory=memory,
         )
 
@@ -171,6 +171,7 @@ class AgentChatAppRunner(AppRunner):
             return
 
         agent_entity = app_config.agent
+        assert agent_entity is not None
 
         # init model instance
         model_instance = ModelInstance(
@@ -181,15 +182,16 @@ class AgentChatAppRunner(AppRunner):
             app_record=app_record,
             model_config=application_generate_entity.model_conf,
             prompt_template_entity=app_config.prompt_template,
-            inputs=inputs,
-            files=files,
-            query=query,
+            inputs=dict(inputs),
+            files=list(files),
+            query=query or "",
             memory=memory,
         )
 
         # change function call strategy based on LLM model
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+        assert model_schema is not None
 
         if {ModelFeature.MULTI_TOOL_CALL, ModelFeature.TOOL_CALL}.intersection(model_schema.features or []):
             agent_entity.strategy = AgentEntity.Strategy.FUNCTION_CALLING

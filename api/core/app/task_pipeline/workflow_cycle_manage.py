@@ -385,7 +385,7 @@ class WorkflowCycleManage:
                 id=workflow_run.id,
                 workflow_id=workflow_run.workflow_id,
                 sequence_number=workflow_run.sequence_number,
-                inputs=workflow_run.inputs_dict,
+                inputs=dict(workflow_run.inputs_dict),
                 created_at=int(workflow_run.created_at.timestamp()),
             ),
         )
@@ -424,7 +424,7 @@ class WorkflowCycleManage:
                 workflow_id=workflow_run.workflow_id,
                 sequence_number=workflow_run.sequence_number,
                 status=workflow_run.status,
-                outputs=workflow_run.outputs_dict,
+                outputs=dict(workflow_run.outputs_dict),
                 error=workflow_run.error,
                 elapsed_time=workflow_run.elapsed_time,
                 total_tokens=workflow_run.total_tokens,
@@ -432,7 +432,7 @@ class WorkflowCycleManage:
                 created_by=created_by,
                 created_at=int(workflow_run.created_at.timestamp()),
                 finished_at=int(workflow_run.finished_at.timestamp()),
-                files=self._fetch_files_from_node_outputs(workflow_run.outputs_dict),
+                files=self._fetch_files_from_node_outputs(dict(workflow_run.outputs_dict)),
             ),
         )
 
