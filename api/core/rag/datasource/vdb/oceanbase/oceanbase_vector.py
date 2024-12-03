@@ -104,8 +104,7 @@ class OceanBaseVector(BaseVector):
                 val = int(row[6])
                 vals.append(val)
             if len(vals) == 0:
-                print("ob_vector_memory_limit_percentage not found in parameters.")
-                exit(1)
+                raise ValueError("ob_vector_memory_limit_percentage not found in parameters.")
             if any(val == 0 for val in vals):
                 try:
                     self._client.perform_raw_text_sql("ALTER SYSTEM SET ob_vector_memory_limit_percentage = 30")
@@ -200,10 +199,10 @@ class OceanBaseVectorFactory(AbstractVectorFactory):
         return OceanBaseVector(
             collection_name,
             OceanBaseVectorConfig(
-                host=dify_config.OCEANBASE_VECTOR_HOST,
-                port=dify_config.OCEANBASE_VECTOR_PORT,
-                user=dify_config.OCEANBASE_VECTOR_USER,
+                host=dify_config.OCEANBASE_VECTOR_HOST or "",
+                port=dify_config.OCEANBASE_VECTOR_PORT or 0,
+                user=dify_config.OCEANBASE_VECTOR_USER or "",
                 password=(dify_config.OCEANBASE_VECTOR_PASSWORD or ""),
-                database=dify_config.OCEANBASE_VECTOR_DATABASE,
+                database=dify_config.OCEANBASE_VECTOR_DATABASE or "",
             ),
         )

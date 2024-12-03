@@ -23,6 +23,7 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.prompt.utils.get_thread_messages_length import get_thread_messages_length
 from extensions.ext_database import db
 from factories import file_factory
 from models.account import Account
@@ -34,6 +35,8 @@ logger = logging.getLogger(__name__)
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
+    _dialogue_count: int
+
     def generate(
         self,
         app_model: App,
@@ -214,6 +217,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             db.session.commit()
             db.session.refresh(conversation)
 
+        # get conversation dialogue count
+        self._dialogue_count = get_thread_messages_length(conversation.id)
+
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
             task_id=application_generate_entity.task_id,
@@ -286,6 +292,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                     queue_manager=queue_manager,
                     conversation=conversation,
                     message=message,
+                    dialogue_count=self._dialogue_count,
                 )
 
                 runner.run()
@@ -339,6 +346,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             message=message,
             user=user,
             stream=stream,
+            dialogue_count=self._dialogue_count,
         )
 
         try:

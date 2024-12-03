@@ -43,7 +43,7 @@ from core.workflow.graph_engine.entities.event import (
 )
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes import NodeType
-from core.workflow.nodes.node_mapping import node_type_classes_mapping
+from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.model import App
@@ -138,7 +138,8 @@ class WorkflowBasedAppRunner(AppRunner):
 
         # Get node class
         node_type = NodeType(iteration_node_config.get("data", {}).get("type"))
-        node_cls = node_type_classes_mapping[node_type]
+        node_version = iteration_node_config.get("data", {}).get("version", "1")
+        node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
         # init variable pool
         variable_pool = VariablePool(

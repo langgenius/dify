@@ -390,11 +390,11 @@ class AppDslService:
 
             environment_variables_list = workflow_data.get("environment_variables", [])
             environment_variables = [
-                variable_factory.build_variable_from_mapping(obj) for obj in environment_variables_list
+                variable_factory.build_environment_variable_from_mapping(obj) for obj in environment_variables_list
             ]
             conversation_variables_list = workflow_data.get("conversation_variables", [])
             conversation_variables = [
-                variable_factory.build_variable_from_mapping(obj) for obj in conversation_variables_list
+                variable_factory.build_conversation_variable_from_mapping(obj) for obj in conversation_variables_list
             ]
 
             workflow_service = WorkflowService()

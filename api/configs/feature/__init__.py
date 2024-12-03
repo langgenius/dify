@@ -647,7 +647,7 @@ class IndexingConfig(BaseSettings):
 
     INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: PositiveInt = Field(
         description="Maximum token length for text segmentation during indexing",
-        default=1000,
+        default=4000,
     )
 
 

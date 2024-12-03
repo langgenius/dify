@@ -64,7 +64,9 @@ const Input = ({
           destructive && 'bg-components-input-bg-destructive border-components-input-border-destructive text-components-input-text-filled hover:bg-components-input-bg-destructive hover:border-components-input-border-destructive focus:bg-components-input-bg-destructive focus:border-components-input-border-destructive',
           className,
         )}
-        placeholder={placeholder ?? (showLeftIcon ? t('common.operation.search') ?? '' : t('common.placeholder.input'))}
+        placeholder={placeholder ?? (showLeftIcon
+          ? (t('common.operation.search') || '')
+          : (t('common.placeholder.input') || ''))}
         value={value}
         onChange={onChange}
         disabled={disabled}

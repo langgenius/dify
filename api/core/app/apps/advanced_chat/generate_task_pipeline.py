@@ -88,6 +88,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         message: Message,
         user: Union[Account, EndUser],
         stream: bool,
+        dialogue_count: int,
     ) -> None:
         """
         Initialize AdvancedChatAppGenerateTaskPipeline.
@@ -98,6 +99,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         :param message: message
         :param user: user
         :param stream: stream
+        :param dialogue_count: dialogue count
         """
         super().__init__(application_generate_entity, queue_manager, user, stream)
 
@@ -114,7 +116,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             SystemVariableKey.FILES: application_generate_entity.files,
             SystemVariableKey.CONVERSATION_ID: conversation.id,
             SystemVariableKey.USER_ID: user_id,
-            SystemVariableKey.DIALOGUE_COUNT: conversation.dialogue_count,
+            SystemVariableKey.DIALOGUE_COUNT: dialogue_count,
             SystemVariableKey.APP_ID: application_generate_entity.app_config.app_id,
             SystemVariableKey.WORKFLOW_ID: workflow.id,
             SystemVariableKey.WORKFLOW_RUN_ID: application_generate_entity.workflow_run_id,

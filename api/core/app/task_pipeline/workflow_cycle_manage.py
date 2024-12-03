@@ -340,7 +340,7 @@ class WorkflowCycleManage:
                 WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.FAILED.value,
                 WorkflowNodeExecution.error: event.error,
                 WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
-                WorkflowNodeExecution.process_data: json.dumps(event.process_data) if event.process_data else None,
+                WorkflowNodeExecution.process_data: json.dumps(process_data) if process_data else None,
                 WorkflowNodeExecution.outputs: json.dumps(outputs) if outputs else None,
                 WorkflowNodeExecution.finished_at: finished_at,
                 WorkflowNodeExecution.elapsed_time: elapsed_time,
