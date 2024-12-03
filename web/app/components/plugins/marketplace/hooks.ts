@@ -1,5 +1,6 @@
 import {
   useCallback,
+  useEffect,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,16 +24,25 @@ import {
 
 export const useMarketplaceCollectionsAndPlugins = () => {
   const [isLoading, setIsLoading] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
   const [marketplaceCollections, setMarketplaceCollections] = useState<MarketplaceCollection[]>()
   const [marketplaceCollectionPluginsMap, setMarketplaceCollectionPluginsMap] = useState<Record<string, Plugin[]>>()
 
   const queryMarketplaceCollectionsAndPlugins = useCallback(async (query?: CollectionsAndPluginsSearchParams) => {
-    setIsLoading(true)
-    const { marketplaceCollections, marketplaceCollectionPluginsMap } = await getMarketplaceCollectionsAndPlugins(query)
-    setIsLoading(false)
-
-    setMarketplaceCollections(marketplaceCollections)
-    setMarketplaceCollectionPluginsMap(marketplaceCollectionPluginsMap)
+    try {
+      setIsLoading(true)
+      setIsSuccess(false)
+      const { marketplaceCollections, marketplaceCollectionPluginsMap } = await getMarketplaceCollectionsAndPlugins(query)
+      setIsLoading(false)
+      setIsSuccess(true)
+      setMarketplaceCollections(marketplaceCollections)
+      setMarketplaceCollectionPluginsMap(marketplaceCollectionPluginsMap)
+    }
+    // eslint-disable-next-line unused-imports/no-unused-vars
+    catch (e) {
+      setIsLoading(false)
+      setIsSuccess(false)
+    }
   }, [])
 
   return {
@@ -42,6 +52,7 @@ export const useMarketplaceCollectionsAndPlugins = () => {
     setMarketplaceCollectionPluginsMap,
     queryMarketplaceCollectionsAndPlugins,
     isLoading,
+    isSuccess,
   }
 }
 
@@ -67,6 +78,7 @@ export const useMarketplacePlugins = () => {
     plugins: data?.data?.plugins.map((plugin) => {
       return getFormattedPlugin(plugin)
     }),
+    total: data?.data?.total,
     resetPlugins: reset,
     queryPlugins,
     queryPluginsWithDebounced,
@@ -83,4 +95,29 @@ export const useMixedTranslation = (localeFromOuter?: string) => {
   return {
     t,
   }
+}
+
+export const useMarketplaceContainerScroll = (callback: () => void) => {
+  const container = document.getElementById('marketplace-container')
+
+  const handleScroll = useCallback((e: Event) => {
+    const target = e.target as HTMLDivElement
+    const {
+      scrollTop,
+      scrollHeight,
+      clientHeight,
+    } = target
+    if (scrollTop + clientHeight >= scrollHeight - 5 && scrollTop > 0)
+      callback()
+  }, [callback])
+
+  useEffect(() => {
+    if (container)
+      container.addEventListener('scroll', handleScroll)
+
+    return () => {
+      if (container)
+        container.removeEventListener('scroll', handleScroll)
+    }
+  }, [container, handleScroll])
 }

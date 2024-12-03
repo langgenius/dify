@@ -45,15 +45,19 @@ export type MarketplaceContextValue = {
   handleFilterPluginTagsChange: (tags: string[]) => void
   activePluginType: string
   handleActivePluginTypeChange: (type: string) => void
+  page: number
+  handlePageChange: (page: number) => void
   plugins?: Plugin[]
   resetPlugins: () => void
   sort: PluginsSort
   handleSortChange: (sort: PluginsSort) => void
+  handleQueryPluginsWhenNoCollection: () => void
   marketplaceCollectionsFromClient?: MarketplaceCollection[]
   setMarketplaceCollectionsFromClient: (collections: MarketplaceCollection[]) => void
   marketplaceCollectionPluginsMapFromClient?: Record<string, Plugin[]>
   setMarketplaceCollectionPluginsMapFromClient: (map: Record<string, Plugin[]>) => void
   isLoading: boolean
+  isSuccessCollections: boolean
 }
 
 export const MarketplaceContext = createContext<MarketplaceContextValue>({
@@ -65,15 +69,19 @@ export const MarketplaceContext = createContext<MarketplaceContextValue>({
   handleFilterPluginTagsChange: () => {},
   activePluginType: 'all',
   handleActivePluginTypeChange: () => {},
+  page: 1,
+  handlePageChange: () => {},
   plugins: undefined,
   resetPlugins: () => {},
   sort: DEFAULT_SORT,
   handleSortChange: () => {},
+  handleQueryPluginsWhenNoCollection: () => {},
   marketplaceCollectionsFromClient: [],
   setMarketplaceCollectionsFromClient: () => {},
   marketplaceCollectionPluginsMapFromClient: {},
   setMarketplaceCollectionPluginsMapFromClient: () => {},
   isLoading: false,
+  isSuccessCollections: false,
 })
 
 type MarketplaceContextProviderProps = {
@@ -108,6 +116,8 @@ export const MarketplaceContextProvider = ({
   const filterPluginTagsRef = useRef(filterPluginTags)
   const [activePluginType, setActivePluginType] = useState(categoryFromSearchParams)
   const activePluginTypeRef = useRef(activePluginType)
+  const [page, setPage] = useState(1)
+  const pageRef = useRef(page)
   const [sort, setSort] = useState(DEFAULT_SORT)
   const sortRef = useRef(sort)
   const {
@@ -117,6 +127,7 @@ export const MarketplaceContextProvider = ({
     setMarketplaceCollectionPluginsMap: setMarketplaceCollectionPluginsMapFromClient,
     queryMarketplaceCollectionsAndPlugins,
     isLoading,
+    isSuccess: isSuccessCollections,
   } = useMarketplaceCollectionsAndPlugins()
   const {
     plugins,
@@ -135,6 +146,7 @@ export const MarketplaceContextProvider = ({
         sortBy: sortRef.current.sortBy,
         sortOrder: sortRef.current.sortOrder,
         type: getMarketplaceListFilterType(activePluginTypeRef.current),
+        page: pageRef.current,
       })
       history.pushState({}, '', `/${searchParams?.language ? `?language=${searchParams?.language}` : ''}`)
     }
@@ -152,6 +164,8 @@ export const MarketplaceContextProvider = ({
   const handleSearchPluginTextChange = useCallback((text: string) => {
     setSearchPluginText(text)
     searchPluginTextRef.current = text
+    setPage(1)
+    pageRef.current = 1
 
     if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
       queryMarketplaceCollectionsAndPlugins({
@@ -172,12 +186,15 @@ export const MarketplaceContextProvider = ({
       sortBy: sortRef.current.sortBy,
       sortOrder: sortRef.current.sortOrder,
       exclude,
+      page: pageRef.current,
     })
   }, [queryPluginsWithDebounced, queryMarketplaceCollectionsAndPlugins, resetPlugins, exclude])
 
   const handleFilterPluginTagsChange = useCallback((tags: string[]) => {
     setFilterPluginTags(tags)
     filterPluginTagsRef.current = tags
+    setPage(1)
+    pageRef.current = 1
 
     if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
       queryMarketplaceCollectionsAndPlugins({
@@ -199,12 +216,15 @@ export const MarketplaceContextProvider = ({
       sortOrder: sortRef.current.sortOrder,
       exclude,
       type: getMarketplaceListFilterType(activePluginTypeRef.current),
+      page: pageRef.current,
     })
   }, [queryPlugins, resetPlugins, queryMarketplaceCollectionsAndPlugins, exclude])
 
   const handleActivePluginTypeChange = useCallback((type: string) => {
     setActivePluginType(type)
     activePluginTypeRef.current = type
+    setPage(1)
+    pageRef.current = 1
 
     if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
       queryMarketplaceCollectionsAndPlugins({
@@ -226,12 +246,25 @@ export const MarketplaceContextProvider = ({
       sortOrder: sortRef.current.sortOrder,
       exclude,
       type: getMarketplaceListFilterType(activePluginTypeRef.current),
+      page: pageRef.current,
     })
   }, [queryPlugins, resetPlugins, queryMarketplaceCollectionsAndPlugins, exclude])
 
-  const handleSortChange = useCallback((sort: PluginsSort) => {
-    setSort(sort)
-    sortRef.current = sort
+  const handlePageChange = useCallback(() => {
+    setPage(pageRef.current + 1)
+    pageRef.current++
+
+    if (!searchPluginTextRef.current && !filterPluginTagsRef.current.length) {
+      queryMarketplaceCollectionsAndPlugins({
+        category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
+        condition: getMarketplaceListCondition(activePluginTypeRef.current),
+        exclude,
+        type: getMarketplaceListFilterType(activePluginTypeRef.current),
+      })
+      resetPlugins()
+
+      return
+    }
 
     queryPlugins({
       query: searchPluginTextRef.current,
@@ -241,8 +274,42 @@ export const MarketplaceContextProvider = ({
       sortOrder: sortRef.current.sortOrder,
       exclude,
       type: getMarketplaceListFilterType(activePluginTypeRef.current),
+      page: pageRef.current,
+    })
+  }, [exclude, queryPlugins, queryMarketplaceCollectionsAndPlugins, resetPlugins])
+
+  const handleSortChange = useCallback((sort: PluginsSort) => {
+    setSort(sort)
+    sortRef.current = sort
+    setPage(1)
+    pageRef.current = 1
+
+    queryPlugins({
+      query: searchPluginTextRef.current,
+      category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
+      tags: filterPluginTagsRef.current,
+      sortBy: sortRef.current.sortBy,
+      sortOrder: sortRef.current.sortOrder,
+      exclude,
+      type: getMarketplaceListFilterType(activePluginTypeRef.current),
+      page: pageRef.current,
     })
   }, [queryPlugins, exclude])
+
+  const handleQueryPluginsWhenNoCollection = useCallback(() => {
+    queryPlugins({
+      query: searchPluginTextRef.current,
+      category: activePluginTypeRef.current === PLUGIN_TYPE_SEARCH_MAP.all ? undefined : activePluginTypeRef.current,
+      tags: filterPluginTagsRef.current,
+      sortBy: sortRef.current.sortBy,
+      sortOrder: sortRef.current.sortOrder,
+      exclude,
+      type: getMarketplaceListFilterType(activePluginTypeRef.current),
+      page: pageRef.current,
+    })
+  }, [exclude, queryPlugins])
+
+  // useMarketplaceContainerScroll(handlePageChange)
 
   return (
     <MarketplaceContext.Provider
@@ -255,15 +322,19 @@ export const MarketplaceContextProvider = ({
         handleFilterPluginTagsChange,
         activePluginType,
         handleActivePluginTypeChange,
+        page,
+        handlePageChange,
         plugins,
         resetPlugins,
         sort,
         handleSortChange,
+        handleQueryPluginsWhenNoCollection,
         marketplaceCollectionsFromClient,
         setMarketplaceCollectionsFromClient,
         marketplaceCollectionPluginsMapFromClient,
         setMarketplaceCollectionPluginsMapFromClient,
         isLoading: isLoading || isPluginsLoading,
+        isSuccessCollections,
       }}
     >
       {children}

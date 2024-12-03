@@ -1,4 +1,5 @@
 'use client'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Plugin } from '../../types'
 import type { MarketplaceCollection } from '../types'
@@ -24,6 +25,13 @@ const ListWrapper = ({
   const marketplaceCollectionsFromClient = useMarketplaceContext(v => v.marketplaceCollectionsFromClient)
   const marketplaceCollectionPluginsMapFromClient = useMarketplaceContext(v => v.marketplaceCollectionPluginsMapFromClient)
   const isLoading = useMarketplaceContext(v => v.isLoading)
+  const isSuccessCollections = useMarketplaceContext(v => v.isSuccessCollections)
+  const handleQueryPluginsWhenNoCollection = useMarketplaceContext(v => v.handleQueryPluginsWhenNoCollection)
+
+  useEffect(() => {
+    if (!marketplaceCollectionsFromClient?.length && isSuccessCollections)
+      handleQueryPluginsWhenNoCollection()
+  }, [handleQueryPluginsWhenNoCollection, marketplaceCollections, marketplaceCollectionsFromClient, isSuccessCollections])
 
   return (
     <div className='relative flex flex-col grow px-12 py-2 bg-background-default-subtle'>
