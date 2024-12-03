@@ -9,7 +9,6 @@ import {
   RiSearchEyeLine,
 } from '@remixicon/react'
 import Link from 'next/link'
-import { groupBy } from 'lodash-es'
 import Image from 'next/image'
 import SettingCog from '../assets/setting-gear-mod.svg'
 import OrangeEffect from '../assets/option-card-effect-orange.svg'
@@ -17,23 +16,21 @@ import FamilyMod from '../assets/family-mod.svg'
 import Note from '../assets/note-mod.svg'
 import FileList from '../assets/file-list-3-fill.svg'
 import { indexMethodIcon } from '../icons'
-import PreviewItem, { PreviewType } from './preview-item'
 import s from './index.module.css'
 import unescape from './unescape'
 import escape from './escape'
 import { OptionCard } from './option-card'
 import LanguageSelect from './language-select'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from './inputs'
+import PreviewItem, { PreviewType } from './preview-item'
 import cn from '@/utils/classnames'
-import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FullDocumentDetail, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
   createDocument,
   createFirstDocument,
-  fetchFileIndexingEstimate as didFetchFileIndexingEstimate,
   fetchDefaultProcessRule,
 } from '@/service/datasets'
 import Button from '@/app/components/base/button'
-import Loading from '@/app/components/base/loading'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
@@ -58,6 +55,8 @@ import { MessageChatSquare } from '@/app/components/base/icons/src/public/common
 import { IS_CE_EDITION } from '@/config'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
+import { getNotionInfo, getWebsiteInfo, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/use-datasets'
+import Loading from '@/app/components/base/loading'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
@@ -87,7 +86,7 @@ type StepTwoProps = {
   onCancel?: () => void
 }
 
-enum SegmentType {
+export enum SegmentType {
   AUTO = 'automatic',
   CUSTOM = 'custom',
 }
@@ -176,16 +175,91 @@ const StepTwo = ({
   )
   const [QATipHide, setQATipHide] = useState(false)
   const [previewSwitched, setPreviewSwitched] = useState(false)
-  const [customFileIndexingEstimate, setCustomFileIndexingEstimate] = useState<FileIndexingEstimateResponse | null>(null)
-  const [automaticFileIndexingEstimate, setAutomaticFileIndexingEstimate] = useState<FileIndexingEstimateResponse | null>(null)
-
-  const fileIndexingEstimate = segmentationType === SegmentType.AUTO
-    ? automaticFileIndexingEstimate
-    : customFileIndexingEstimate
-
   const [isCreating, setIsCreating] = useState(false)
 
   const [parentChildConfig, setParentChildConfig] = useState<ParentChildConfig>(defaultParentChildConfig)
+
+  const getIndexing_technique = () => indexingType || indexType
+
+  const getProcessRule = () => {
+    const processRule: ProcessRule = {
+      rules: {} as any, // api will check this. It will be removed after api refactored.
+      mode: segmentationType,
+    }
+    if (segmentationType === SegmentType.CUSTOM) {
+      const ruleObj = {
+        pre_processing_rules: rules,
+        segmentation: {
+          separator: unescape(segmentIdentifier),
+          max_tokens: max,
+          chunk_overlap: overlap,
+        },
+      }
+      processRule.rules = ruleObj
+    }
+    return processRule
+  }
+
+  const fileIndexingEstimateQuery = useFetchFileIndexingEstimateForFile({
+    docForm: docForm as DocForm,
+    docLanguage,
+    dataSourceType: DataSourceType.FILE,
+    files,
+    indexingTechnique: getIndexing_technique() as any,
+    processRule: getProcessRule(),
+    dataset_id: datasetId!,
+  })
+  const notionIndexingEstimateQuery = useFetchFileIndexingEstimateForNotion({
+    docForm: docForm as DocForm,
+    docLanguage,
+    dataSourceType: DataSourceType.NOTION,
+    notionPages,
+    indexingTechnique: getIndexing_technique() as any,
+    processRule: getProcessRule(),
+    dataset_id: datasetId || '',
+  })
+
+  const websiteIndexingEstimateQuery = useFetchFileIndexingEstimateForWeb({
+    docForm: docForm as DocForm,
+    docLanguage,
+    dataSourceType: DataSourceType.WEB,
+    websitePages,
+    crawlOptions,
+    websiteCrawlProvider,
+    websiteCrawlJobId,
+    indexingTechnique: getIndexing_technique() as any,
+    processRule: getProcessRule(),
+    dataset_id: datasetId || '',
+  })
+
+  const fetchEstimate = useCallback(() => {
+    if (dataSourceType === DataSourceType.FILE)
+      fileIndexingEstimateQuery.mutate()
+
+    if (dataSourceType === DataSourceType.NOTION)
+      notionIndexingEstimateQuery.mutate()
+
+    if (dataSourceType === DataSourceType.WEB)
+      websiteIndexingEstimateQuery.mutate()
+  }, [dataSourceType, fileIndexingEstimateQuery, notionIndexingEstimateQuery, websiteIndexingEstimateQuery])
+
+  const estimate
+    = dataSourceType === DataSourceType.FILE
+      ? fileIndexingEstimateQuery.data
+      : dataSourceType === DataSourceType.NOTION
+        ? notionIndexingEstimateQuery.data
+        : websiteIndexingEstimateQuery.data
+
+  const getIsEstimateReady = useCallback(() => {
+    if (dataSourceType === DataSourceType.FILE)
+      return fileIndexingEstimateQuery.isSuccess
+
+    if (dataSourceType === DataSourceType.NOTION)
+      return notionIndexingEstimateQuery.isSuccess
+
+    if (dataSourceType === DataSourceType.WEB)
+      return websiteIndexingEstimateQuery.isSuccess
+  }, [dataSourceType, fileIndexingEstimateQuery.isSuccess, notionIndexingEstimateQuery.isSuccess, websiteIndexingEstimateQuery.isSuccess])
 
   const getFileName = (name: string) => {
     const arr = name.split('.')
@@ -224,122 +298,15 @@ const StepTwo = ({
     setParentChildConfig(defaultParentChildConfig)
   }
 
-  const fetchFileIndexingEstimate = async (docForm = DocForm.TEXT, language?: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    const res = await didFetchFileIndexingEstimate(getFileIndexingEstimateParams(docForm, language)!)
-    if (segmentationType === SegmentType.CUSTOM)
-      setCustomFileIndexingEstimate(res)
-    else
-      setAutomaticFileIndexingEstimate(res)
-  }
-
   const updatePreview = () => {
     if (segmentationType === SegmentType.CUSTOM && max > 4000) {
       Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck') })
       return
     }
-    setCustomFileIndexingEstimate(null)
-    fetchFileIndexingEstimate()
+    fetchEstimate()
     setPreviewSwitched(false)
   }
 
-  const getIndexing_technique = () => indexingType || indexType
-
-  const getProcessRule = () => {
-    const processRule: ProcessRule = {
-      rules: {} as any, // api will check this. It will be removed after api refactored.
-      mode: segmentationType,
-    }
-    if (segmentationType === SegmentType.CUSTOM) {
-      const ruleObj = {
-        pre_processing_rules: rules,
-        segmentation: {
-          separator: unescape(segmentIdentifier),
-          max_tokens: max,
-          chunk_overlap: overlap,
-        },
-      }
-      processRule.rules = ruleObj
-    }
-    return processRule
-  }
-
-  const getNotionInfo = () => {
-    const workspacesMap = groupBy(notionPages, 'workspace_id')
-    const workspaces = Object.keys(workspacesMap).map((workspaceId) => {
-      return {
-        workspaceId,
-        pages: workspacesMap[workspaceId],
-      }
-    })
-    return workspaces.map((workspace) => {
-      return {
-        workspace_id: workspace.workspaceId,
-        pages: workspace.pages.map((page) => {
-          const { page_id, page_name, page_icon, type } = page
-          return {
-            page_id,
-            page_name,
-            page_icon,
-            type,
-          }
-        }),
-      }
-    }) as NotionInfo[]
-  }
-
-  const getWebsiteInfo = () => {
-    return {
-      provider: websiteCrawlProvider,
-      job_id: websiteCrawlJobId,
-      urls: websitePages.map(page => page.source_url),
-      only_main_content: crawlOptions?.only_main_content,
-    }
-  }
-
-  const getFileIndexingEstimateParams = (docForm: DocForm, language?: string): IndexingEstimateParams | undefined => {
-    if (dataSourceType === DataSourceType.FILE) {
-      return {
-        info_list: {
-          data_source_type: dataSourceType,
-          file_info_list: {
-            file_ids: files.map(file => file.id) as string[],
-          },
-        },
-        indexing_technique: getIndexing_technique() as string,
-        process_rule: getProcessRule(),
-        doc_form: docForm,
-        doc_language: language || docLanguage,
-        dataset_id: datasetId as string,
-      }
-    }
-    if (dataSourceType === DataSourceType.NOTION) {
-      return {
-        info_list: {
-          data_source_type: dataSourceType,
-          notion_info_list: getNotionInfo(),
-        },
-        indexing_technique: getIndexing_technique() as string,
-        process_rule: getProcessRule(),
-        doc_form: docForm,
-        doc_language: language || docLanguage,
-        dataset_id: datasetId as string,
-      }
-    }
-    if (dataSourceType === DataSourceType.WEB) {
-      return {
-        info_list: {
-          data_source_type: dataSourceType,
-          website_info_list: getWebsiteInfo(),
-        },
-        indexing_technique: getIndexing_technique() as string,
-        process_rule: getProcessRule(),
-        doc_form: docForm,
-        doc_language: language || docLanguage,
-        dataset_id: datasetId as string,
-      }
-    }
-  }
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
@@ -423,10 +390,15 @@ const StepTwo = ({
         }
       }
       if (dataSourceType === DataSourceType.NOTION)
-        params.data_source.info_list.notion_info_list = getNotionInfo()
+        params.data_source.info_list.notion_info_list = getNotionInfo(notionPages)
 
-      if (dataSourceType === DataSourceType.WEB)
-        params.data_source.info_list.website_info_list = getWebsiteInfo()
+      if (dataSourceType === DataSourceType.WEB) {
+        params.data_source.info_list.website_info_list = getWebsiteInfo({
+          websiteCrawlProvider,
+          websiteCrawlJobId,
+          websitePages,
+        })
+      }
     }
     return params
   }
@@ -519,16 +491,7 @@ const StepTwo = ({
   const previewSwitch = async (language?: string) => {
     setPreviewSwitched(true)
     setIsLanguageSelectDisabled(true)
-    if (segmentationType === SegmentType.AUTO)
-      setAutomaticFileIndexingEstimate(null)
-    else
-      setCustomFileIndexingEstimate(null)
-    try {
-      await fetchFileIndexingEstimate(DocForm.QA, language)
-    }
-    finally {
-      setIsLanguageSelectDisabled(false)
-    }
+    fetchEstimate()
   }
 
   const handleSelect = (language: string) => {
@@ -569,18 +532,6 @@ const StepTwo = ({
     else
       setIndexType(isAPIKeySet ? IndexingType.QUALIFIED : IndexingType.ECONOMICAL)
   }, [isAPIKeySet, indexingType, datasetId])
-
-  useEffect(() => {
-    if (segmentationType === SegmentType.AUTO) {
-      setAutomaticFileIndexingEstimate(null)
-      fetchFileIndexingEstimate()
-      setPreviewSwitched(false)
-    }
-    else {
-      setCustomFileIndexingEstimate(null)
-      setPreviewSwitched(false)
-    }
-  }, [segmentationType, indexType])
 
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
     search_method: RETRIEVE_METHOD.semantic,
@@ -971,26 +922,26 @@ const StepTwo = ({
             )}
           </div>
           <div className='my-4 px-8 space-y-4'>
-            {previewSwitched && docForm === DocForm.QA && fileIndexingEstimate?.qa_preview && (
+            {previewSwitched && docForm === DocForm.QA && estimate?.qa_preview && (
               <>
-                {fileIndexingEstimate?.qa_preview.map((item, index) => (
+                {estimate?.qa_preview.map((item, index) => (
                   <PreviewItem type={PreviewType.QA} key={item.question} qa={item} index={index + 1} />
                 ))}
               </>
             )}
-            {(docForm === DocForm.TEXT || !previewSwitched) && fileIndexingEstimate?.preview && (
+            {(docForm === DocForm.TEXT || !previewSwitched) && estimate?.preview && (
               <>
-                {fileIndexingEstimate?.preview.map((item, index) => (
+                {estimate?.preview.map((item, index) => (
                   <PreviewItem type={PreviewType.TEXT} key={item} content={item} index={index + 1} />
                 ))}
               </>
             )}
-            {previewSwitched && docForm === DocForm.QA && !fileIndexingEstimate?.qa_preview && (
+            {previewSwitched && docForm === DocForm.QA && !estimate?.qa_preview && (
               <div className='flex items-center justify-center h-[200px]'>
                 <Loading type='area' />
               </div>
             )}
-            {!previewSwitched && !fileIndexingEstimate?.preview && (
+            {!previewSwitched && !estimate?.preview && (
               <div className='flex items-center justify-center h-[200px]'>
                 <Loading type='area' />
               </div>

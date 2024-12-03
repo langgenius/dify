@@ -1,11 +1,12 @@
 import groupBy from 'lodash-es/groupBy'
+import type { MutationOptions } from '@tanstack/react-query'
 import { useMutation } from '@tanstack/react-query'
 import { fetchFileIndexingEstimate } from './datasets'
-import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { CrawlOptions, CrawlResultItem, CustomFile, DataSourceType, DocForm, IndexingEstimateParams, NotionInfo, ProcessRule } from '@/models/datasets'
+import { type IndexingType } from '@/app/components/datasets/create/step-two'
+import type { CrawlOptions, CrawlResultItem, CustomFile, DataSourceType, DocForm, FileIndexingEstimateResponse, IndexingEstimateParams, NotionInfo, ProcessRule } from '@/models/datasets'
 import type { DataSourceProvider, NotionPage } from '@/models/common'
 
-const getNotionInfo = (
+export const getNotionInfo = (
   notionPages: NotionPage[],
 ) => {
   const workspacesMap = groupBy(notionPages, 'workspace_id')
@@ -31,7 +32,7 @@ const getNotionInfo = (
   }) as NotionInfo[]
 }
 
-const getWebsiteInfo = (
+export const getWebsiteInfo = (
   opts: {
     websiteCrawlProvider: DataSourceProvider
     websiteCrawlJobId: string
@@ -152,30 +153,36 @@ const getFileIndexingEstimateParamsForWeb = ({
 
 export const useFetchFileIndexingEstimateForFile = (
   options: GetFileIndexingEstimateParamsOptionFile,
+  mutationOptions: MutationOptions<FileIndexingEstimateResponse> = {},
 ) => {
   return useMutation({
     mutationFn: async () => {
       return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForFile(options))
     },
+    ...mutationOptions,
   })
 }
 
 export const useFetchFileIndexingEstimateForNotion = (
   options: GetFileIndexingEstimateParamsOptionNotion,
+  mutationOptions: MutationOptions<FileIndexingEstimateResponse> = {},
 ) => {
   return useMutation({
     mutationFn: async () => {
       return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForNotion(options))
     },
+    ...mutationOptions,
   })
 }
 
 export const useFetchFileIndexingEstimateForWeb = (
   options: GetFileIndexingEstimateParamsOptionWeb,
+  mutationOptions: MutationOptions<FileIndexingEstimateResponse> = {},
 ) => {
   return useMutation({
     mutationFn: async () => {
       return fetchFileIndexingEstimate(getFileIndexingEstimateParamsForWeb(options))
     },
+    ...mutationOptions,
   })
 }
