@@ -3,7 +3,6 @@ from typing import Optional
 
 from flask import Flask, current_app
 
-from configs import DifyConfig
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
@@ -114,7 +113,7 @@ class RetrievalService:
                 query=query,
                 documents=all_documents,
                 score_threshold=score_threshold,
-                top_n=DifyConfig.RETRIEVAL_TOP_N or top_k,
+                top_n=top_k,
             )
 
         return all_documents
@@ -186,7 +185,7 @@ class RetrievalService:
                                 query=query,
                                 documents=documents,
                                 score_threshold=score_threshold,
-                                top_n=DifyConfig.RETRIEVAL_TOP_N or len(documents),
+                                top_n=len(documents),
                             )
                         )
                     else:
@@ -231,7 +230,7 @@ class RetrievalService:
                                 query=query,
                                 documents=documents,
                                 score_threshold=score_threshold,
-                                top_n=DifyConfig.RETRIEVAL_TOP_N or len(documents),
+                                top_n=len(documents),
                             )
                         )
                     else:

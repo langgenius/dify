@@ -10,10 +10,10 @@ from collections.abc import Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
 from typing import Any, Optional, Union
-from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
 from flask_restful import fields
+from zoneinfo import available_timezones
 
 from configs import dify_config
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
