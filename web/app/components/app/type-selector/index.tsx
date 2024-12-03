@@ -47,7 +47,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
         <PortalToFollowElemContent className='z-[1002]'>
           <ul className='relative p-1 w-[240px] bg-components-panel-bg-blur rounded-xl shadow-lg border border-components-panel-border'>
             {allTypes.map(mode => (
-              <AppTypeSelectorItem key={mode} mode={mode}
+              <AppTypeSelectorItem key={mode} type={mode}
                 checked={Boolean(value.length > 0 && value?.indexOf(mode) !== -1)}
                 onClick={() => {
                   if (value?.indexOf(mode) !== -1)
@@ -82,65 +82,65 @@ function AppTypeSelectTrigger({ values }: { values: AppSelectorProps['value'] })
     return <div className={cn(
       'flex items-center justify-between gap-1 h-8 flex-nowrap',
     )}>
-      <AppTypeIcon mode={values[0]} />
+      <AppTypeIcon type={values[0]} />
       <div className='flex flex-1 items-center text-center line-clamp-1'>
-        <AppTypeLabel mode={values[0]} />
+        <AppTypeLabel type={values[0]} className="system-sm-medium text-components-menu-item-text" />
       </div>
     </div>
   }
   return <div className={cn(
     'flex items-center justify-between h-8 -space-x-2 relative',
   )}>
-    {values.map((mode, index) => (<AppTypeIcon key={mode} mode={mode} wrapperClassName='border border-components-panel-on-panel-item-bg' style={{ zIndex: 5 - index }} />))}
+    {values.map((mode, index) => (<AppTypeIcon key={mode} type={mode} wrapperClassName='border border-components-panel-on-panel-item-bg' style={{ zIndex: 5 - index }} />))}
   </div>
 }
 
 type AppTypeSelectorItemProps = {
   checked: boolean
-  mode: AppMode
+  type: AppMode
   onClick: () => void
 }
-function AppTypeSelectorItem({ checked, mode, onClick }: AppTypeSelectorItemProps) {
+function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProps) {
   return <li className='flex items-center space-x-2 pl-2 py-1 pr-1 rounded-lg cursor-pointer hover:bg-state-base-hover' onClick={onClick}>
     <Checkbox checked={checked} />
-    <AppTypeIcon mode={mode} />
+    <AppTypeIcon type={type} />
     <div className='grow p-1 pl-0'>
-      <AppTypeLabel mode={mode} />
+      <AppTypeLabel type={type} className="system-sm-medium text-components-menu-item-text" />
     </div>
   </li>
 }
 
 type AppTypeIconProps = {
-  mode: AppMode
+  type: AppMode
   style?: React.CSSProperties
   className?: string
   wrapperClassName?: string
 }
 
-export function AppTypeIcon({ mode, className, wrapperClassName, style }: AppTypeIconProps) {
+export function AppTypeIcon({ type, className, wrapperClassName, style }: AppTypeIconProps) {
   const wrapperClassNames = cn('w-5 h-5 inline-flex items-center justify-center rounded-md border border-divider-regular', wrapperClassName)
   const iconClassNames = cn('w-3.5 h-3.5 text-components-avatar-shape-fill-stop-100', className)
-  if (mode === 'chat') {
+  if (type === 'chat') {
     return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-solid')}>
       <ChatBot className={iconClassNames} />
     </div>
   }
-  if (mode === 'agent-chat') {
+  if (type === 'agent-chat') {
     return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-violet-solid')}>
       <Logic className={iconClassNames} />
     </div>
   }
-  if (mode === 'advanced-chat') {
+  if (type === 'advanced-chat') {
     return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-blue-light-solid')}>
       <BubbleTextMod className={iconClassNames} />
     </div>
   }
-  if (mode === 'workflow') {
+  if (type === 'workflow') {
     return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-indigo-solid')}>
       <RiExchange2Fill className={iconClassNames} />
     </div>
   }
-  if (mode === 'completion') {
+  if (type === 'completion') {
     return <div style={style} className={cn(wrapperClassNames, 'bg-components-icon-bg-teal-solid')}>
       <ListSparkle className={iconClassNames} />
     </div>
@@ -149,22 +149,22 @@ export function AppTypeIcon({ mode, className, wrapperClassName, style }: AppTyp
 }
 
 type AppTypeLabelProps = {
-  mode: AppMode
+  type: AppMode
   className?: string
 }
-function AppTypeLabel({ mode, className }: AppTypeLabelProps) {
+export function AppTypeLabel({ type, className }: AppTypeLabelProps) {
   const { t } = useTranslation()
   let label = ''
-  if (mode === 'chat')
+  if (type === 'chat')
     label = t('app.typeSelector.chatbot')
-  if (mode === 'agent-chat')
+  if (type === 'agent-chat')
     label = t('app.typeSelector.agent')
-  if (mode === 'completion')
+  if (type === 'completion')
     label = t('app.typeSelector.completion')
-  if (mode === 'advanced-chat')
+  if (type === 'advanced-chat')
     label = t('app.typeSelector.advanced')
-  if (mode === 'workflow')
+  if (type === 'workflow')
     label = t('app.typeSelector.workflow')
 
-  return <span className={cn('system-sm-medium text-components-menu-item-text', className)}>{label}</span>
+  return <span className={className}>{label}</span>
 }

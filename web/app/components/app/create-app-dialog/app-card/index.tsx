@@ -1,7 +1,7 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { PlusIcon } from '@heroicons/react/20/solid'
-import { AppTypeIcon } from '../../type-selector'
+import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 import Button from '@/app/components/base/button'
 import cn from '@/utils/classnames'
 import type { App } from '@/models/explore'
@@ -30,19 +30,13 @@ const AppCard = ({
             background={app.app.icon_background}
             imageUrl={app.app.icon_url}
           />
-          <AppTypeIcon wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4' className='w-3 h-3' mode={appBasicInfo.mode} />
+          <AppTypeIcon wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4' className='w-3 h-3' type={appBasicInfo.mode} />
         </div>
         <div className='grow flex flex-col gap-1'>
           <div className='line-clamp-1'>
             <span className='system-md-semibold text-text-secondary' title={appBasicInfo.name}>{appBasicInfo.name}</span>
           </div>
-          <div className='system-2xs-medium-uppercase text-text-tertiary'>
-            {appBasicInfo.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
-            {appBasicInfo.mode === 'chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
-            {appBasicInfo.mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
-            {appBasicInfo.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}
-            {appBasicInfo.mode === 'completion' && <div className='truncate'>{t('app.types.completion').toUpperCase()}</div>}
-          </div>
+          <AppTypeLabel className='system-2xs-medium-uppercase text-text-tertiary' type={app.app.mode} />
         </div>
       </div>
       <div className="py-1 system-xs-regular text-text-tertiary">

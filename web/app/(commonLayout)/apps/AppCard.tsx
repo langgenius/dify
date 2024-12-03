@@ -21,8 +21,6 @@ import Divider from '@/app/components/base/divider'
 import { getRedirection } from '@/utils/app-redirection'
 import { useProviderContext } from '@/context/provider-context'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
-import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import EditAppModal from '@/app/components/explore/create-app-modal'
 import SwitchAppModal from '@/app/components/app/switch-app-modal'
@@ -31,6 +29,7 @@ import TagSelector from '@/app/components/base/tag-management/selector'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { AppTypeIcon } from '@/app/components/app/type-selector'
 
 export type AppCardProps = {
   app: App
@@ -268,30 +267,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               background={app.icon_background}
               imageUrl={app.icon_url}
             />
-            <span className='absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
-              {app.mode === 'advanced-chat' && (
-                <ChatBot className='w-3 h-3 text-[#1570EF]' />
-              )}
-              {app.mode === 'agent-chat' && (
-                <CuteRobot className='w-3 h-3 text-indigo-600' />
-              )}
-              {app.mode === 'chat' && (
-                <ChatBot className='w-3 h-3 text-[#1570EF]' />
-              )}
-              {app.mode === 'completion' && (
-                <AiText className='w-3 h-3 text-[#0E9384]' />
-              )}
-              {app.mode === 'workflow' && (
-                <Route className='w-3 h-3 text-[#f79009]' />
-              )}
-            </span>
+            <AppTypeIcon type={app.mode} wrapperClassName='absolute -bottom-0.5 -right-0.5 w-4 h-4 shadow-sm' className='w-3 h-3' />
           </div>
           <div className='grow w-0 py-[1px]'>
             <div className='flex items-center text-sm leading-5 font-semibold text-gray-800'>
               <div className='truncate' title={app.name}>{app.name}</div>
             </div>
             <div className='flex items-center text-[10px] leading-[18px] text-gray-500 font-medium'>
-              {app.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
+              {app.mode === 'advanced-chat' && <div className='truncate'>{t('app.types.advanced').toUpperCase()}</div>}
               {app.mode === 'chat' && <div className='truncate'>{t('app.types.chatbot').toUpperCase()}</div>}
               {app.mode === 'agent-chat' && <div className='truncate'>{t('app.types.agent').toUpperCase()}</div>}
               {app.mode === 'workflow' && <div className='truncate'>{t('app.types.workflow').toUpperCase()}</div>}

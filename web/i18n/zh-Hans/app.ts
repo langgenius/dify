@@ -6,7 +6,7 @@ const translation = {
     agent: 'Agent',
     workflow: '工作流',
     completion: '文本生成',
-    advanced: '工作流编排',
+    advanced: 'Chatflow',
   },
   duplicate: '复制',
   duplicateTitle: '复制应用',
@@ -130,6 +130,7 @@ const translation = {
     agent: 'Agent',
     workflow: '工作流',
     completion: '文本生成',
+    advanced: 'Chatflow',
   },
   tracing: {
     title: '追踪应用性能',
