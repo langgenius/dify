@@ -296,17 +296,24 @@ class BuiltinToolManageService:
             provider_id_entity = GenericProviderID(provider_name)
             provider_name = provider_id_entity.provider_name
             if provider_id_entity.organization != "langgenius":
-                return None
-
-            provider_obj = (
-                db.session.query(BuiltinToolProvider)
-                .filter(
-                    BuiltinToolProvider.tenant_id == tenant_id,
-                    (BuiltinToolProvider.provider == provider_name)
-                    | (BuiltinToolProvider.provider == full_provider_name),
+                provider_obj = (
+                    db.session.query(BuiltinToolProvider)
+                    .filter(
+                        BuiltinToolProvider.tenant_id == tenant_id,
+                        BuiltinToolProvider.provider == full_provider_name,
+                    )
+                    .first()
                 )
-                .first()
-            )
+            else:
+                provider_obj = (
+                    db.session.query(BuiltinToolProvider)
+                    .filter(
+                        BuiltinToolProvider.tenant_id == tenant_id,
+                        (BuiltinToolProvider.provider == provider_name)
+                        | (BuiltinToolProvider.provider == full_provider_name),
+                    )
+                    .first()
+                )
 
             if provider_obj is None:
                 return None

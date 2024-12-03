@@ -43,7 +43,9 @@ class PluginTool(Tool):
                 url = parameter.generate_url()
                 if url is None:
                     raise ValueError(f"File {parameter.id} does not have a valid URL")
-                tool_parameters[parameter_name] = PluginFileEntity(url=url).model_dump()
+                tool_parameters[parameter_name] = PluginFileEntity(
+                    url=url, mime_type=parameter.mime_type, type=parameter.type
+                ).model_dump()
             elif isinstance(parameter, list) and all(isinstance(p, File) for p in parameter):
                 tool_parameters[parameter_name] = []
                 for p in parameter:
@@ -51,7 +53,9 @@ class PluginTool(Tool):
                     url = p.generate_url()
                     if url is None:
                         raise ValueError(f"File {p.id} does not have a valid URL")
-                    tool_parameters[parameter_name].append(PluginFileEntity(url=url)).model_dump()
+                    tool_parameters[parameter_name].append(
+                        PluginFileEntity(url=url, mime_type=p.mime_type, type=p.type).model_dump()
+                    )
 
         return manager.invoke(
             tenant_id=self.tenant_id,
