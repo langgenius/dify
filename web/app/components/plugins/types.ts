@@ -312,6 +312,7 @@ export type UninstallPluginResponse = {
 
 export type PluginsFromMarketplaceResponse = {
   plugins: Plugin[]
+  total: number
 }
 export type PluginsFromMarketplaceByInfoResponse = {
   list: {

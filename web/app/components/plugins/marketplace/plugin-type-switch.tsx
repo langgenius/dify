@@ -19,9 +19,11 @@ export const PLUGIN_TYPE_SEARCH_MAP = {
 }
 type PluginTypeSwitchProps = {
   locale?: string
+  className?: string
 }
 const PluginTypeSwitch = ({
   locale,
+  className,
 }: PluginTypeSwitchProps) => {
   const { t } = useMixedTranslation(locale)
   const activePluginType = useMarketplaceContext(s => s.activePluginType)
@@ -57,7 +59,8 @@ const PluginTypeSwitch = ({
 
   return (
     <div className={cn(
-      'sticky top-[60px] shrink-0 flex items-center justify-center py-3 bg-background-body space-x-2 z-10',
+      'sticky top-[56px] shrink-0 flex items-center justify-center py-3 bg-background-body space-x-2 z-10',
+      className,
     )}>
       {
         options.map(option => (

@@ -22,6 +22,7 @@ import {
 import {
   useDefaultModel,
   useMarketplace,
+  useMarketplaceAllPlugins,
   useUpdateModelList,
   useUpdateModelProviders,
 } from './hooks'
@@ -128,6 +129,10 @@ const ModelProviderPage = ({ searchText }: Props) => {
     marketplaceCollectionPluginsMap,
     isLoading: isPluginsLoading,
   } = useMarketplace(providers, searchText)
+  const {
+    plugins: allPlugins,
+    isLoading: isAllPluginsLoading,
+  } = useMarketplaceAllPlugins()
 
   const cardRender = useCallback((plugin: Plugin) => {
     if (plugin.type === 'bundle')
@@ -206,18 +211,31 @@ const ModelProviderPage = ({ searchText }: Props) => {
           <div className='flex items-center mb-2 pt-2'>
             <span className='pr-1 text-text-tertiary system-sm-regular'>{t('common.modelProvider.discoverMore')}</span>
             <Link target="_blank" href={`${MARKETPLACE_URL_PREFIX}`} className='inline-flex items-center system-sm-medium text-text-accent'>
-              Dify Marketplace
+              {t('plugin.marketplace.difyMarketplace')}
               <RiArrowRightUpLine className='w-4 h-4' />
             </Link>
           </div>
         </div>
-        {!collapse && isPluginsLoading && <Loading type='area' />}
+        {!collapse && (isPluginsLoading || isAllPluginsLoading) && <Loading type='area' />}
         {
           !isPluginsLoading && (
             <List
               marketplaceCollections={marketplaceCollections || []}
               marketplaceCollectionPluginsMap={marketplaceCollectionPluginsMap || {}}
               plugins={plugins}
+              showInstallButton
+              locale={locale}
+              cardContainerClassName='grid grid-cols-2 gap-2'
+              cardRender={cardRender}
+            />
+          )
+        }
+        {
+          !isAllPluginsLoading && (
+            <List
+              marketplaceCollections={[]}
+              marketplaceCollectionPluginsMap={{}}
+              plugins={allPlugins}
               showInstallButton
               locale={locale}
               cardContainerClassName='grid grid-cols-2 gap-2'

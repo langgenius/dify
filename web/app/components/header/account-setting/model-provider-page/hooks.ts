@@ -285,3 +285,25 @@ export const useMarketplace = (providers: ModelProvider[], searchText: string) =
     plugins: plugins?.filter(plugin => plugin.type !== 'bundle'),
   }
 }
+
+export const useMarketplaceAllPlugins = () => {
+  const {
+    plugins,
+    queryPlugins,
+    isLoading,
+  } = useMarketplacePlugins()
+
+  useEffect(() => {
+    queryPlugins({
+      query: '',
+      category: PluginType.model,
+      type: 'plugin',
+      pageSize: 1000,
+    })
+  }, [queryPlugins])
+
+  return {
+    plugins: plugins?.filter(plugin => plugin.type !== 'bundle'),
+    isLoading,
+  }
+}

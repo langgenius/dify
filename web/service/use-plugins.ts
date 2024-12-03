@@ -297,11 +297,12 @@ export const useMutationPluginsFromMarketplace = () => {
         tags,
         exclude,
         type,
+        page = 1,
       } = pluginsSearchParams
       return postMarketplace<{ data: PluginsFromMarketplaceResponse }>('/plugins/search/basic', {
         body: {
-          page: 1,
-          page_size: 10,
+          page,
+          page_size: 100,
           query,
           sort_by: sortBy,
           sort_order: sortOrder,

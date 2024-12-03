@@ -13,12 +13,14 @@ type MarketplaceProps = {
   showInstallButton?: boolean
   shouldExclude?: boolean
   searchParams?: SearchParams
+  pluginTypeSwitchClassName?: string
 }
 const Marketplace = async ({
   locale,
   showInstallButton = true,
   shouldExclude,
   searchParams,
+  pluginTypeSwitchClassName,
 }: MarketplaceProps) => {
   let marketplaceCollections: any = []
   let marketplaceCollectionPluginsMap = {}
@@ -34,7 +36,10 @@ const Marketplace = async ({
         <Description locale={locale} />
         <IntersectionLine />
         <SearchBoxWrapper locale={locale} />
-        <PluginTypeSwitch locale={locale} />
+        <PluginTypeSwitch
+          locale={locale}
+          className={pluginTypeSwitchClassName}
+        />
         <ListWrapper
           locale={locale}
           marketplaceCollections={marketplaceCollections}
