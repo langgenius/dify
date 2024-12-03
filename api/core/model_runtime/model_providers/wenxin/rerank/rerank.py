@@ -79,7 +79,9 @@ class WenxinRerankModel(RerankModel):
             results = wenxin_rerank.rerank(model, query, docs, top_n)
 
             rerank_documents = []
-            assert "results" in results, "results key not found in response"
+            if "results" not in results:
+                raise ValueError("results key not found in response")
+
             for result in results["results"]:
                 index = result["index"]
                 if "document" in result:
