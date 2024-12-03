@@ -1,35 +1,23 @@
-import os
+from abc import ABC
 
-from configs import dify_config
+from pydantic import parse_obj_as
+
+import configs
+from configs import DifyConfig, dify_config
 from extensions.configuration.apollo.apollo_client import ApolloClient
 from extensions.configuration.base_configuration import BaseConfiguration
 
 
-class ApolloConfiguration(BaseConfiguration):
+class ApolloConfiguration(BaseConfiguration, ABC):
     """Implementation for Apollo Configuration."""
 
-    def load_config_to_env_file(self):
-        client = ApolloClient(app_id=dify_config.APOLLO_APP_ID, cluster=dify_config.APOLLO_CLUSTER,
-                              config_url=dify_config.APOLLO_CONFIG_URL, start_hot_update=False,
-                              _notification_map={dify_config.APOLLO_NAMESPACE: -1})
+    def __init__(self):
+        super().__init__()
+        self.configuration_client = ApolloClient(app_id=dify_config.APOLLO_APP_ID, cluster=dify_config.APOLLO_CLUSTER,
+                                                 config_url=dify_config.APOLLO_CONFIG_URL, start_hot_update=False,
+                                                 _notification_map={dify_config.APOLLO_NAMESPACE: -1})
 
-        # Get the path to the .env file
-        env_path = os.path.join(os.getcwd(), '.env')
-
-        apollo_config_dicts = client.get_all_dicts(dify_config.APOLLO_NAMESPACE)
-
-        # Retrieve the existing environment variables from the .env file
-        existing_vars = {}
-        if os.path.exists(env_path):
-            with open(env_path) as f:
-                for line in f:
-                    key, value = line.strip().split('=', 1)
-                    existing_vars[key.strip()] = value.strip()
-
-        # Update the existing variables with the new Apollo configuration
-        existing_vars.update(apollo_config_dicts)
-
-        # Write the updated variables back to the .env file
-        with open(env_path, 'w') as f:
-            for key, value in existing_vars.items():
-                f.write(f"{key}={value}\n")
+    def load_configs(self):
+        # get all the config
+        apollo_config_dicts = self.configuration_client.get_all_dicts(dify_config.APOLLO_NAMESPACE)
+        configs.dify_config = parse_obj_as(DifyConfig, apollo_config_dicts)

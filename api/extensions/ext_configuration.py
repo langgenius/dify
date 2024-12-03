@@ -10,7 +10,6 @@ log = logging.getLogger(__name__)
 class ConfigurationCenter:
     def __init__(self):
         self.configuration_runner = None
-        from configs import DifyConfig
         configuration_type = configs.dify_config.CONFIGURATION_TYPE
         if configuration_type:
             configuration_factory = self.get_configuration_factory(configuration_type)
@@ -19,8 +18,7 @@ class ConfigurationCenter:
                 return
 
             self.configuration_runner = configuration_factory()
-            self.configuration_runner.load_config_to_env_file()
-            configs.dify_config = DifyConfig()
+            self.configuration_runner.load_configs()
 
     @staticmethod
     def get_configuration_factory(configuration_type: str) -> type[BaseConfiguration]:
