@@ -42,7 +42,7 @@ class ProviderConfigEncrypter(BaseModel):
         for field_name, field in fields.items():
             if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in data:
-                    encrypted = encrypter.encrypt_token(self.tenant_id, data[field_name])
+                    encrypted = encrypter.encrypt_token(self.tenant_id, data[field_name] or "")
                     data[field_name] = encrypted
 
         return data
@@ -96,6 +96,10 @@ class ProviderConfigEncrypter(BaseModel):
             if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in data:
                     try:
+                        # if the value is None or empty string, skip decrypt
+                        if not data[field_name]:
+                            continue
+
                         data[field_name] = encrypter.decrypt_token(self.tenant_id, data[field_name])
                     except:
                         pass
