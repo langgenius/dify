@@ -199,12 +199,9 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             # FIXME: when bedrock-runtime support two users consecutive, we should remove this placeholder
             conversations_list = parameters["messages"]
             # if two consecutive user messages found, insert an assistant message placeholder
-            i = 0
-            while i < len(conversations_list) - 1:
+            for i in range(len(conversations_list) - 2, -1, -1):
                 if conversations_list[i]["role"] == "user" and conversations_list[i + 1]["role"] == "user":
                     conversations_list.insert(i + 1, {"role": "assistant", "content": [{"text": "placeholder"}]})
-                    i += 1
-                i += 1
 
             if stream:
                 response = bedrock_client.converse_stream(**parameters)
