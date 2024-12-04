@@ -157,6 +157,7 @@ class ToolInvokeMessage(BaseModel):
         BLOB = "blob"
         JSON = "json"
         IMAGE_LINK = "image_link"
+        BINARY_LINK = "binary_link"
         VARIABLE = "variable"
         FILE = "file"
 
