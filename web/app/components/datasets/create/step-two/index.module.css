@@ -394,19 +394,6 @@
   max-width: 524px;
 }
 
-.previewHeader {
-  position: sticky;
-  top: 0;
-  left: 0;
-  padding-top: 42px;
-  background-color: #fff;
-  font-weight: 600;
-  font-size: 18px;
-  line-height: 28px;
-  color: #101828;
-  z-index: 10;
-}
-
 /* 
  * `fixed` must under `previewHeader` because of style override would not work
  */

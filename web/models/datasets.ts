@@ -330,6 +330,7 @@ export type NotionPage = {
 }
 
 export type ProcessRule = {
+  processRule: { pre_processing_rules: PreProcessingRule[]; segmentation: { separator: string; max_tokens: number; chunk_overlap: number } }
   mode: string
   rules: Rules
 }

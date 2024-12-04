@@ -16,13 +16,15 @@ import FamilyMod from '../assets/family-mod.svg'
 import Note from '../assets/note-mod.svg'
 import FileList from '../assets/file-list-3-fill.svg'
 import { indexMethodIcon } from '../icons'
+import { PreviewContainer } from '../../preview/container'
+import { ChunkContainer, QAPreview } from '../../chunk'
+import { PreviewHeader } from '../../preview/header'
 import s from './index.module.css'
 import unescape from './unescape'
 import escape from './escape'
 import { OptionCard } from './option-card'
 import LanguageSelect from './language-select'
 import { DelimiterInput, MaxLengthInput, OverlapInput } from './inputs'
-import PreviewItem, { PreviewType } from './preview-item'
 import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FullDocumentDetail, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 
@@ -58,14 +60,13 @@ const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
 }
 
-type ValueOf<T> = T[keyof T]
 type StepTwoProps = {
   isSetting?: boolean
   documentDetail?: FullDocumentDetail
   isAPIKeySet: boolean
   onSetting: () => void
   datasetId?: string
-  indexingType?: ValueOf<IndexingType>
+  indexingType?: IndexingType
   retrievalMethod?: string
   dataSourceType: DataSourceType
   files: CustomFile[]
@@ -156,7 +157,7 @@ const StepTwo = ({
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
   const hasSetIndexType = !!indexingType
-  const [indexType, setIndexType] = useState<ValueOf<IndexingType>>(
+  const [indexType, setIndexType] = useState<IndexingType>(
     (indexingType
       || isAPIKeySet)
       ? IndexingType.QUALIFIED
@@ -906,52 +907,40 @@ const StepTwo = ({
         </div>
       </div>
       <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={() => { }} footer={null}>
-        <div
-          className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll border-l border-[#F2F4F7]')}
+        <PreviewContainer
+          header={<PreviewHeader
+            title='Preview'
+          >
+          </PreviewHeader>}
+          className={cn(s.previewWrap, isMobile && s.isMobile, 'relative h-full overflow-y-scroll space-y-4')}
         >
-          <div className={cn(s.previewHeader)}>
-            <div className='flex items-center justify-between px-8'>
-              <div className='grow flex items-center'>
-                <div>{t('datasetCreation.stepTwo.previewTitle')}</div>
-                {docForm === DocForm.QA && !qaPreviewSwitched && (
-                  <Button className='ml-2' variant='secondary-accent' onClick={() => previewSwitch()}>{t('datasetCreation.stepTwo.previewButton')}</Button>
-                )}
-              </div>
+          {qaPreviewSwitched && docForm === DocForm.QA && estimate?.qa_preview && (
+            estimate?.qa_preview.map(item => (
+              <QAPreview key={item.question} qa={item} />
+            ))
+          )}
+          {(docForm === DocForm.TEXT || !qaPreviewSwitched) && estimate?.preview && (
+            estimate?.preview.map((item, index) => (
+              <ChunkContainer
+                key={item}
+                label={`Chunk-${index + 1}`}
+                characterCount={item.length}
+              >
+                {item}
+              </ChunkContainer>
+            ))
+          )}
+          {qaPreviewSwitched && docForm === DocForm.QA && !estimate?.qa_preview && (
+            <div className='flex items-center justify-center h-[200px]'>
+              <Loading type='area' />
             </div>
-            {docForm === DocForm.QA && !qaPreviewSwitched && (
-              <div className='px-8 pr-12 text-xs text-gray-500'>
-                <span>{t('datasetCreation.stepTwo.previewSwitchTipStart')}</span>
-                <span className='text-amber-600'>{t('datasetCreation.stepTwo.previewSwitchTipEnd')}</span>
-              </div>
-            )}
-          </div>
-          <div className='my-4 px-8 space-y-4'>
-            {qaPreviewSwitched && docForm === DocForm.QA && estimate?.qa_preview && (
-              <>
-                {estimate?.qa_preview.map((item, index) => (
-                  <PreviewItem type={PreviewType.QA} key={item.question} qa={item} index={index + 1} />
-                ))}
-              </>
-            )}
-            {(docForm === DocForm.TEXT || !qaPreviewSwitched) && estimate?.preview && (
-              <>
-                {estimate?.preview.map((item, index) => (
-                  <PreviewItem type={PreviewType.TEXT} key={item} content={item} index={index + 1} />
-                ))}
-              </>
-            )}
-            {qaPreviewSwitched && docForm === DocForm.QA && !estimate?.qa_preview && (
-              <div className='flex items-center justify-center h-[200px]'>
-                <Loading type='area' />
-              </div>
-            )}
-            {!qaPreviewSwitched && !estimate?.preview && (
-              <div className='flex items-center justify-center h-[200px]'>
-                <Loading type='area' />
-              </div>
-            )}
-          </div>
-        </div>
+          )}
+          {!qaPreviewSwitched && !estimate?.preview && (
+            <div className='flex items-center justify-center h-[200px]'>
+              <Loading type='area' />
+            </div>
+          )}
+        </PreviewContainer>
       </FloatRightContainer>
     </div>
   )
