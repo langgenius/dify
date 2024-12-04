@@ -13,7 +13,8 @@ NAMESPACE_NAME = "namespaceName"
 def signature(timestamp, uri, secret):
     import base64
     import hmac
-    string_to_sign = '' + timestamp + '\n' + uri
+
+    string_to_sign = "" + timestamp + "\n" + uri
     hmac_code = hmac.new(secret.encode(), string_to_sign.encode(), hashlib.sha1).digest()
     return base64.b64encode(hmac_code).decode()
 
@@ -41,7 +42,7 @@ def init_ip():
     ip = ""
     try:
         s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        s.connect(('8.8.8.8', 53))
+        s.connect(("8.8.8.8", 53))
         ip = s.getsockname()[0]
     finally:
         s.close()

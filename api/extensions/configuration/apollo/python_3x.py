@@ -7,7 +7,7 @@ from urllib.error import HTTPError
 
 # Create an SSL context that allows for a lower level of security
 ssl_context = ssl.create_default_context()
-ssl_context.set_ciphers('HIGH:!DH:!aNULL')
+ssl_context.set_ciphers("HIGH:!DH:!aNULL")
 ssl_context.check_hostname = False
 ssl_context.verify_mode = ssl.CERT_NONE
 

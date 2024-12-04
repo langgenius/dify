@@ -13,9 +13,13 @@ class ApolloConfiguration(BaseConfiguration, ABC):
 
     def __init__(self):
         super().__init__()
-        self.configuration_client = ApolloClient(app_id=dify_config.APOLLO_APP_ID, cluster=dify_config.APOLLO_CLUSTER,
-                                                 config_url=dify_config.APOLLO_CONFIG_URL, start_hot_update=False,
-                                                 _notification_map={dify_config.APOLLO_NAMESPACE: -1})
+        self.configuration_client = ApolloClient(
+            app_id=dify_config.APOLLO_APP_ID,
+            cluster=dify_config.APOLLO_CLUSTER,
+            config_url=dify_config.APOLLO_CONFIG_URL,
+            start_hot_update=False,
+            _notification_map={dify_config.APOLLO_NAMESPACE: -1},
+        )
 
     def load_configs(self):
         # get all the config
