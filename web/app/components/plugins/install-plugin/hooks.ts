@@ -4,32 +4,33 @@ import { compareVersion, getLatestVersion } from '@/utils/semver'
 import type { GitHubRepoReleaseResponse } from '../types'
 import { GITHUB_ACCESS_TOKEN } from '@/config'
 
+const formatReleases = (releases: any) => {
+  return releases.map((release: any) => ({
+    tag_name: release.tag_name,
+    assets: release.assets.map((asset: any) => ({
+      browser_download_url: asset.browser_download_url,
+      name: asset.name,
+    })),
+  }))
+}
+
 export const useGitHubReleases = () => {
   const fetchReleases = async (owner: string, repo: string) => {
     try {
-      let res, bodyJson
       if (!GITHUB_ACCESS_TOKEN) {
         // Fetch releases without authentication from client
-        res = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`)
-        if (!res.ok) throw new Error('Failed to fetch releases')
-        bodyJson = await res.json()
+        const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/releases`)
+        if (!res.ok) throw new Error('Failed to fetch repository releases')
+        const data = await res.json()
+        return formatReleases(data)
       }
       else {
         // Fetch releases with authentication from server
-        res = await fetch(`/repos/${owner}/${repo}/releases`)
-        bodyJson = await res.json()
+        const res = await fetch(`/repos/${owner}/${repo}/releases`)
+        const bodyJson = await res.json()
         if (bodyJson.status !== 200) throw new Error(bodyJson.data.message)
+        return formatReleases(bodyJson.data)
       }
-
-      const formattedReleases = bodyJson.data.map((release: any) => ({
-        tag_name: release.tag_name,
-        assets: release.assets.map((asset: any) => ({
-          browser_download_url: asset.browser_download_url,
-          name: asset.name,
-        })),
-      }))
-
-      return formattedReleases
     }
     catch (error) {
       if (error instanceof Error) {
