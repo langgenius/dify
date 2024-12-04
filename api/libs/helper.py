@@ -9,7 +9,7 @@ import uuid
 from collections.abc import Generator
 from datetime import datetime
 from hashlib import sha256
-from typing import Any, Optional, Union, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from flask import Response, stream_with_context
 from flask_restful import fields
