@@ -56,7 +56,7 @@ class BaseIndexProcessor(ABC):
         """
         Get the NodeParser object according to the processing rule.
         """
-        if processing_rule_mode == "custom":
+        if processing_rule_mode in ["custom", "hierarchical"]:
             # The user-defined segmentation rule
             max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
             if max_tokens < 50 or max_tokens > max_segmentation_tokens_length:

@@ -9,6 +9,7 @@ from core.rag.index_processor.index_processor_factory import IndexProcessorFacto
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import ChildChunk, Dataset, DatasetProcessRule, DocumentSegment
+from models.dataset import Document as DatasetDocument
 
 
 class VectorService:
@@ -17,34 +18,35 @@ class VectorService:
         cls, keywords_list: Optional[list[list[str]]], segments: list[DocumentSegment], dataset: Dataset, doc_form: str
     ):
         documents = []
-        if doc_form == IndexType.PARENT_CHILD_INDEX:
-            # get embedding model instance
-            if dataset.indexing_technique == "high_quality":
-                # check embedding model setting
-                model_manager = ModelManager()
 
-                if dataset.embedding_model_provider:
-                    embedding_model_instance = model_manager.get_model_instance(
-                        tenant_id=dataset.tenant_id,
-                        provider=dataset.embedding_model_provider,
-                        model_type=ModelType.TEXT_EMBEDDING,
-                        model=dataset.embedding_model,
-                    )
-                else:
-                    embedding_model_instance = model_manager.get_default_model_instance(
-                        tenant_id=dataset.tenant_id,
-                        model_type=ModelType.TEXT_EMBEDDING,
-                    )
-            else:
-                raise ValueError("The knowledge base index technique is not high quality!")
-            # get the process rule
-            processing_rule = (
-                db.session.query(DatasetProcessRule)
-                .filter(DatasetProcessRule.id == document.dataset_process_rule_id)
-                .first()
-            )
         for segment in segments:
             if doc_form == IndexType.PARENT_CHILD_INDEX:
+                document = DatasetDocument.query.filter_by(id=segment.document_id).first()
+                # get the process rule
+                processing_rule = (
+                    db.session.query(DatasetProcessRule)
+                    .filter(DatasetProcessRule.id == document.dataset_process_rule_id)
+                    .first()
+                )
+                # get embedding model instance
+                if dataset.indexing_technique == "high_quality":
+                    # check embedding model setting
+                    model_manager = ModelManager()
+
+                    if dataset.embedding_model_provider:
+                        embedding_model_instance = model_manager.get_model_instance(
+                            tenant_id=dataset.tenant_id,
+                            provider=dataset.embedding_model_provider,
+                            model_type=ModelType.TEXT_EMBEDDING,
+                            model=dataset.embedding_model,
+                        )
+                    else:
+                        embedding_model_instance = model_manager.get_default_model_instance(
+                            tenant_id=dataset.tenant_id,
+                            model_type=ModelType.TEXT_EMBEDDING,
+                        )
+                else:
+                    raise ValueError("The knowledge base index technique is not high quality!")
                 cls.generate_child_chunks(segment, document, dataset, embedding_model_instance, processing_rule, False)
             else:
                 document = Document(
@@ -121,7 +123,7 @@ class VectorService:
         documents = index_processor.transform(
             [document],
             embedding_model_instance=embedding_model_instance,
-            process_rule=processing_rule,
+            process_rule=processing_rule.to_dict(),
             tenant_id=dataset.tenant_id,
             doc_language=dataset_document.doc_language,
         )

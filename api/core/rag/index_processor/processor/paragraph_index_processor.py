@@ -13,7 +13,7 @@ from core.rag.index_processor.index_processor_base import BaseIndexProcessor
 from core.rag.models.document import Document
 from core.tools.utils.text_processing_utils import remove_leading_symbols
 from libs import helper
-from models.dataset import Dataset
+from models.dataset import Dataset, DatasetProcessRule
 from services.entities.knowledge_entities.knowledge_entities import Rule
 
 
@@ -30,7 +30,11 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
 
     def transform(self, documents: list[Document], **kwargs) -> list[Document]:
         process_rule = kwargs.get("process_rule")
-        rules = Rule(**process_rule.get("rules"))
+        if process_rule.get("mode") == "automatic":
+            automatic_rule = DatasetProcessRule.AUTOMATIC_RULES
+            rules = Rule(**automatic_rule)
+        else:
+            rules = Rule(**process_rule.get("rules"))
         # Split the text documents into nodes.
         splitter = self._get_splitter(
             processing_rule_mode=process_rule.get("mode"),
