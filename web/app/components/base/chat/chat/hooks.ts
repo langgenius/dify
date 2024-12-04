@@ -253,7 +253,7 @@ export const useChat = (
       siblingIndex: parentMessage?.children?.length ?? chatTree.length,
     }
 
-    setTargetMessageId(undefined)
+    setTargetMessageId(parentMessage?.id)
     updateCurrentQAOnTree({
       parentId: data.parent_message_id,
       responseItem: placeholderAnswerItem,
