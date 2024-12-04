@@ -196,7 +196,7 @@ class GraphEngine:
             return
         except Exception as e:
             logger.exception("Unknown Error when graph running")
-            yield GraphRunFailedEvent(error=str(e), handle_exceptions=handle_exceptions)
+            yield GraphRunFailedEvent(error=str(e), exceptions_count=len(handle_exceptions))
             self._release_thread()
             raise e
 
@@ -314,6 +314,11 @@ class GraphEngine:
                 break
 
             if len(edge_mappings) == 1:
+                if (
+                    previous_route_node_state.status == RouteNodeState.Status.EXCEPTION
+                    and node_instance.node_data.error_strategy == ErrorStrategy.FAIL_BRANCH
+                ):
+                    break
                 edge = edge_mappings[0]
 
                 if edge.run_condition:
@@ -332,7 +337,6 @@ class GraphEngine:
                 next_node_id = edge.target_node_id
             else:
                 final_node_id = None
-
                 if any(edge.run_condition for edge in edge_mappings):
                     # if nodes has run conditions, get node id which branch to take based on the run condition results
                     condition_edge_mappings = {}
@@ -611,6 +615,7 @@ class GraphEngine:
                                     handle_exceptions=handle_exceptions,
                                 )
                                 route_node_state.node_run_result = run_result
+                                route_node_state.status = RouteNodeState.Status.EXCEPTION
                                 if run_result.outputs:
                                     for variable_key, variable_value in run_result.outputs.items():
                                         # append variables to variable pool recursively
@@ -808,15 +813,29 @@ class GraphEngine:
             "status": WorkflowNodeExecutionStatus.EXCEPTION,
             "error": error_result.error,
             "inputs": error_result.inputs,
+            "metadata": {
+                NodeRunMetadataKey.ERROR_STRATEGY: node_instance.node_data.error_strategy,
+            },
         }
 
         if node_instance.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
             return NodeRunResult(
                 **node_error_args,
-                outputs=node_instance.node_data.default_value_dict,
+                outputs={
+                    **node_instance.node_data.default_value_dict,
+                    "error_message": error_result.error,
+                    "error_type": error_result.error_type,
+                },
             )
 
-        return NodeRunResult(**node_error_args, outputs=None, edge_source_handle=FailBranchSourceHandle.FAILED)
+        return NodeRunResult(
+            **node_error_args,
+            outputs={
+                "error_message": error_result.error,
+                "error_type": error_result.error_type,
+            },
+            edge_source_handle=FailBranchSourceHandle.FAILED,
+        )
 
 
 class GraphRunFailedError(Exception):

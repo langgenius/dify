@@ -16,7 +16,7 @@ class DefaultValueType(StrEnum):
     ARRAY_NUMBER = "Array[Number]"
     ARRAY_STRING = "Array[String]"
     ARRAY_OBJECT = "Array[Object]"
-    ARRAY_FILES = "Array[Files]"
+    ARRAY_FILES = "Array[File]"
 
 
 NumberType = Union[int, float]
@@ -100,6 +100,8 @@ class DefaultValue(BaseModel):
         elif value_type == DefaultValueType.ARRAY_FILES:
             # handle files type
             pass
+
+        return self
 
 
 class BaseNodeData(ABC, BaseModel):

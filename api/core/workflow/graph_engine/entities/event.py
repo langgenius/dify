@@ -32,7 +32,7 @@ class GraphRunSucceededEvent(BaseGraphEvent):
 
 class GraphRunFailedEvent(BaseGraphEvent):
     error: str = Field(..., description="failed reason")
-    exceptions_count: int = Field(..., description="exception count")
+    exceptions_count: Optional[int] = Field(description="exception count", default=0)
 
 
 class GraphRunPartialSucceededEvent(BaseGraphEvent):

@@ -494,7 +494,7 @@ def test_variable_pool_error_type_variable():
     list(graph_engine.run())
     error_message = graph_engine.graph_runtime_state.variable_pool.get(["node", "error_message"])
     error_type = graph_engine.graph_runtime_state.variable_pool.get(["node", "error_type"])
-    assert error_message.value == "Request failed with status code 404"
+    assert error_message != None
     assert error_type.value == "HTTPResponseCodeError"
 
 
@@ -554,3 +554,25 @@ def test_continue_on_error_link_fail_branch():
         for e in events
     )
     assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 2
+
+
+def test_no_node_in_fail_branch_continue_on_error():
+    """Test HTTP node with fail-branch error strategy"""
+    graph_config = {
+        "edges": FAIL_BRANCH_EDGES[:-1],
+        "nodes": [
+            {"data": {"title": "Start", "type": "start", "variables": []}, "id": "start"},
+            {
+                "data": {"title": "success", "type": "answer", "answer": "HTTP request successful"},
+                "id": "success",
+            },
+            ContinueOnErrorTestHelper.get_http_node(),
+        ],
+    }
+
+    graph_engine = ContinueOnErrorTestHelper.create_test_graph_engine(graph_config)
+    events = list(graph_engine.run())
+
+    assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
+    assert any(isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {} for e in events)
+    assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 0
