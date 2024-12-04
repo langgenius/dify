@@ -49,11 +49,6 @@ export const getDefaultValue = (data: CommonNodeType) => {
         type: VarType.object,
         value: getDefaultValueByType(VarType.object),
       },
-      {
-        key: 'files',
-        type: VarType.arrayFile,
-        value: getDefaultValueByType(VarType.arrayFile),
-      },
     ]
   }
 
@@ -63,11 +58,6 @@ export const getDefaultValue = (data: CommonNodeType) => {
         key: 'text',
         type: VarType.string,
         value: getDefaultValueByType(VarType.string),
-      },
-      {
-        key: 'files',
-        type: VarType.arrayFile,
-        value: getDefaultValueByType(VarType.arrayFile),
       },
       {
         key: 'json',

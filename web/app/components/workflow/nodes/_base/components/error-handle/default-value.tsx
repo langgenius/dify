@@ -21,7 +21,7 @@ const DefaultValue = ({
       if (type === VarType.string || type === VarType.number)
         value = payload.target.value
 
-      if (type === VarType.array || type === VarType.arrayNumber || type === VarType.arrayString || type === VarType.arrayObject)
+      if (type === VarType.array || type === VarType.arrayNumber || type === VarType.arrayString || type === VarType.arrayObject || type === VarType.arrayFile)
         value = payload
 
       onFormChange({ key, type, value })
