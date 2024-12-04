@@ -202,9 +202,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             i = 0
             while i < len(conversations_list) - 1:
                 if conversations_list[i]["role"] == "user" and conversations_list[i + 1]["role"] == "user":
-                    conversations_list.insert(
-                        i + 1, conversations_list.insert(i + 1, {"role": "assistant", "content": [{"text": "placeholder"}]}) 
-                    )
+                    conversations_list.insert(i + 1, {"role": "assistant", "content": [{"text": "placeholder"}]})
                     i += 1
                 i += 1
 
