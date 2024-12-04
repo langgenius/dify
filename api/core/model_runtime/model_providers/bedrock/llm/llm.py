@@ -198,11 +198,15 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             # add placeholder for conversation because that bedrock-runtime doesn't support two users
             # FIXME: when bedrock-runtime support two users, we should remove this placeholder
             conversations_list = parameters["messages"]
-            # if two roles next to each other, insert a placeholder('role': 'assistant') for conversation
-            for i in range(len(conversations_list) - 1):
+            # if two consecutive user messages found, insert a system message placeholder
+            i = 0
+            while i < len(conversations_list) - 1:
                 if conversations_list[i]["role"] == "user" and conversations_list[i + 1]["role"] == "user":
-                    # insert a placeholder for assistant and it can not be empty string
-                    conversations_list.insert(i + 1, {"role": "assistant", "content": [{"text": "placeholder"}]})
+                    conversations_list.insert(
+                        i + 1, {"role": "system", "content": [{"text": "Continue the conversation."}]}
+                    )
+                    i += 1
+                i += 1
 
             if stream:
                 response = bedrock_client.converse_stream(**parameters)
