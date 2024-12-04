@@ -24,7 +24,6 @@ import Textarea from '@/app/components/base/textarea'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
-import Tooltip from '@/app/components/base/tooltip'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
@@ -94,17 +93,17 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
     handleCreateApp()
   })
   return <>
-    <div className='flex justify-center h-full'>
-      <div className='flex-1 flex justify-end'>
-        <div className='px-10 w-[740px] max-w-[760px]'>
-          <div className='w-full h-6 xl:h-[139px]' />
+    <div className='flex justify-center h-full overflow-y-auto overflow-x-hidden'>
+      <div className='flex-1 shrink-0 flex justify-end'>
+        <div className='px-10'>
+          <div className='w-full h-6 2xl:h-[139px]' />
           <div className='pt-1 pb-6'>
             <span className='title-2xl-semi-bold text-text-primary'>{t('app.newApp.startFromBlank')}</span>
           </div>
           <div className='leading-6 mb-2'>
             <span className='system-sm-semibold text-text-secondary'>{t('app.newApp.chooseAppType')}</span>
           </div>
-          <div className='flex flex-col gap-4'>
+          <div className='flex flex-col w-[660px] gap-4'>
             <div>
               <div className='mb-2'>
                 <span className='system-2xs-medium-uppercase text-text-tertiary'>{t('app.newApp.forBeginners')}</span>
@@ -114,7 +113,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   active={appMode === 'chat'}
                   title={t('app.types.chatbot')}
                   description={t('app.newApp.chatbotShortDescription')}
-                  tooltipContent={t('app.newApp.chatbotDescription')}
                   icon={<div className='w-6 h-6 bg-components-icon-bg-blue-solid rounded-md flex items-center justify-center'>
                     <ChatBot className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
                   </div>}
@@ -125,7 +123,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   active={appMode === 'agent-chat'}
                   title={t('app.types.agent')}
                   description={t('app.newApp.agentShortDescription')}
-                  tooltipContent={t('app.newApp.agentDescription')}
                   icon={<div className='w-6 h-6 bg-components-icon-bg-violet-solid rounded-md flex items-center justify-center'>
                     <Logic className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
                   </div>}
@@ -136,7 +133,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   active={appMode === 'completion'}
                   title={t('app.newApp.completeApp')}
                   description={t('app.newApp.completionShortDescription')}
-                  tooltipContent={t('app.newApp.completionDescription')}
                   icon={<div className='w-6 h-6 bg-components-icon-bg-teal-solid rounded-md flex items-center justify-center'>
                     <ListSparkle className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
                   </div>}
@@ -155,7 +151,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   active={appMode === 'advanced-chat'}
                   title={t('app.types.advanced')}
                   description={t('app.newApp.advancedShortDescription')}
-                  tooltipContent={t('app.newApp.advancedDescription')}
                   icon={<div className='w-6 h-6 bg-components-icon-bg-blue-light-solid rounded-md flex items-center justify-center'>
                     <BubbleTextMod className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
                   </div>}
@@ -167,7 +162,6 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
                   active={appMode === 'workflow'}
                   title={t('app.types.workflow')}
                   description={t('app.newApp.workflowShortDescription')}
-                  tooltipContent={t('app.newApp.workflowDescription')}
                   icon={<div className='w-6 h-6 bg-components-icon-bg-indigo-solid rounded-md flex items-center justify-center'>
                     <RiExchange2Fill className='w-4 h-4 text-components-avatar-shape-fill-stop-100' />
                   </div>}
@@ -239,13 +233,13 @@ function CreateApp({ onClose, onSuccess, onCreateFromTemplate }: CreateAppProps)
           </div>
         </div>
       </div>
-      <div className='flex-1 h-full flex justify-start relative'>
-        <div className='h-6 xl:h-[139px] absolute left-0 top-0 right-0 border-b border-b-divider-subtle'></div>
-        <div className='w-[740px] max-w-[760px] border-x border-x-divider-subtle'>
-          <div className='h-6 xl:h-[139px]' />
+      <div className='flex-1 shrink h-full flex justify-start relative overflow-hidden'>
+        <div className='h-6 2xl:h-[139px] absolute left-0 top-0 right-0 border-b border-b-divider-subtle'></div>
+        <div className='max-w-[760px] border-x border-x-divider-subtle'>
+          <div className='h-6 2xl:h-[139px]' />
           <AppPreview mode={appMode} />
           <div className='absolute left-0 right-0 border-b border-b-divider-subtle'></div>
-          <div className='w-[664px] h-[448px] flex items-center justify-center' style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 4px, rgba(16,24,40,0.04) 5px,transparent 4px, transparent 8px)' }}>
+          <div className='w-[664px] h-[448px] flex items-center justify-center' style={{ background: 'repeating-linear-gradient(135deg, transparent, transparent 2px, rgba(16,24,40,0.04) 4px,transparent 3px, transparent 6px)' }}>
             <AppScreenShot mode={appMode} />
           </div>
           <div className='absolute left-0 right-0 border-b border-b-divider-subtle'></div>
@@ -284,31 +278,28 @@ type AppTypeCardProps = {
   beta?: boolean
   title: string
   description: string
-  tooltipContent: string
   active: boolean
   onClick: () => void
 }
-function AppTypeCard({ icon, title, beta = false, description, tooltipContent, active, onClick }: AppTypeCardProps) {
+function AppTypeCard({ icon, title, beta = false, description, active, onClick }: AppTypeCardProps) {
   const { t } = useTranslation()
-  return <Tooltip
-    popupContent={
-      <div className='max-w-[280px] body-xs-regular text-text-secondary'>{tooltipContent}</div>
-    }
-  >
-    <div
-      className={cn(`w-[191px] h-[84px] p-3 border-[0.5px] relative box-content
+  return <div
+    className={
+      cn(`w-[191px] h-[84px] p-3 border-[0.5px] relative box-content
       rounded-xl border-components-option-card-option-border
-      bg-components-panel-on-panel-item-bg shadow-xs cursor-pointer`, active ? 'outline outline-[1.5px] outline-components-option-card-option-selected-border' : '')}
-      onClick={onClick}
-    >
-      {beta && <div className='px-[5px] py-[3px]
+      bg-components-panel-on-panel-item-bg shadow-xs cursor-pointer hover:shadow-md`, active
+        ? 'outline outline-[1.5px] outline-components-option-card-option-selected-border shadow-md'
+        : '')
+    }
+    onClick={onClick}
+  >
+    {beta && <div className='px-[5px] py-[3px]
       rounded-[5px] min-w-[18px] absolute top-3 right-3
       border border-divider-deep system-2xs-medium-uppercase text-text-tertiary'>{t('common.menus.status')}</div>}
-      {icon}
-      <div className='system-sm-semibold text-text-secondary mt-2 mb-0.5'>{title}</div>
-      <div className='system-xs-regular text-text-tertiary'>{description}</div>
-    </div>
-  </Tooltip>
+    {icon}
+    <div className='system-sm-semibold text-text-secondary mt-2 mb-0.5'>{title}</div>
+    <div className='system-xs-regular text-text-tertiary'>{description}</div>
+  </div>
 }
 
 function AppPreview({ mode }: { mode: AppMode }) {
@@ -359,9 +350,9 @@ function AppScreenShot({ mode }: { mode: AppMode }) {
     'workflow': 'Workflow',
   }
   return <picture>
-    <source media="(max-width: 768px)" srcSet={`/screenshots/Light/${modeToImageMap[mode]}.png`} />
-    <source media="(max-width: 1200px)" srcSet={`/screenshots/Light/${modeToImageMap[mode]}@2x.png`} />
-    <source media="(max-width: 1920px)" srcSet={`/screenshots/Light/${modeToImageMap[mode]}@3x.png`} />
+    <source media="(resolution: 1x)" srcSet={`/screenshots/Light/${modeToImageMap[mode]}.png`} />
+    <source media="(resolution: 2x)" srcSet={`/screenshots/Light/${modeToImageMap[mode]}@2x.png`} />
+    <source media="(resolution: 3x)" srcSet={`/screenshots/Light/${modeToImageMap[mode]}@3x.png`} />
     <Image
       src={`/screenshots/Light/${modeToImageMap[mode]}.png`}
       alt='App Screen Shot'
