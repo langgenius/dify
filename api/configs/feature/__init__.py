@@ -255,15 +255,18 @@ class HttpConfig(BaseSettings):
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
     HTTP_REQUEST_MAX_CONNECT_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=10, description="Maximum connection timeout in seconds for HTTP requests")
+        PositiveInt,
+        Field(ge=10, description="Maximum connection timeout in seconds for HTTP requests"),
     ] = 10
 
     HTTP_REQUEST_MAX_READ_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=60, description="Maximum read timeout in seconds for HTTP requests")
+        PositiveInt,
+        Field(ge=60, description="Maximum read timeout in seconds for HTTP requests"),
     ] = 60
 
     HTTP_REQUEST_MAX_WRITE_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=10, description="Maximum write timeout in seconds for HTTP requests")
+        PositiveInt,
+        Field(ge=10, description="Maximum write timeout in seconds for HTTP requests"),
     ] = 20
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
@@ -625,6 +628,8 @@ class DataSetConfig(BaseSettings):
         description="Interval in days for message cleanup operations - plan: sandbox",
         default=30,
     )
+
+    RETRIEVAL_TOP_N: Optional[PositiveInt] = Field(description="number of retrieval top_n", default=None)
 
 
 class WorkspaceConfig(BaseSettings):
