@@ -12,7 +12,7 @@ import { PageType } from '@/app/components/base/features/new-feature-panel/annot
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
-interface Props {
+type Props = {
   pageType: PageType
 }
 
@@ -52,7 +52,7 @@ const LogAnnotation: FC<Props> = ({
           options={options}
         />
       )}
-      <div className={cn('grow', appDetail.mode !== 'workflow' && 'mt-3')}>
+      <div className={cn('grow h-0', appDetail.mode !== 'workflow' && 'mt-3')}>
         {pageType === PageType.log && appDetail.mode !== 'workflow' && (<Log appDetail={appDetail} />)}
         {pageType === PageType.annotation && (<Annotation appDetail={appDetail} />)}
         {pageType === PageType.log && appDetail.mode === 'workflow' && (<WorkflowLog appDetail={appDetail} />)}

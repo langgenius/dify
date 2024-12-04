@@ -516,6 +516,26 @@ const translation = {
       'clear': 'साफ़ करें',
       'setVariable': 'चर सेट करें',
       'variable': 'चर',
+      'operations': {
+        'clear': 'स्पष्ट',
+        '/=': '/=',
+        '*=': '*=',
+        'over-write': 'अधिलेखित',
+        'title': 'परिचालन',
+        '+=': '+=',
+        'overwrite': 'अधिलेखित',
+        'set': 'अस्त हो',
+        'extend': 'पसार',
+        '-=': '-=',
+        'append': 'संलग्न',
+      },
+      'setParameter': 'पैरामीटर सेट करें...',
+      'noVarTip': 'चर जोड़ने के लिए "+" बटन पर क्लिक करें',
+      'variables': 'चर',
+      'selectAssignedVariable': 'असाइन किए गए चर का चयन करें...',
+      'varNotSet': 'चर सेट नहीं',
+      'assignedVarsDescription': 'असाइन किए गए चर लिखने योग्य चर होने चाहिए, जैसे वार्तालाप चर।',
+      'noAssignedVars': 'कोई उपलब्ध असाइन किए गए चर नहीं',
     },
     tool: {
       toAuthorize: 'अधिकृत करने के लिए',
@@ -650,6 +670,13 @@ const translation = {
   },
   tracing: {
     stopBy: '{{user}} द्वारा रोका गया',
+  },
+  variableReference: {
+    conversationVars: 'बातचीत चर',
+    noAvailableVars: 'कोई उपलब्ध चर नहीं',
+    assignedVarsDescription: 'असाइन किए गए चर लिखने योग्य चर होने चाहिए, जैसे',
+    noVarsForOperation: 'चयनित कार्रवाई के साथ असाइनमेंट के लिए कोई चर उपलब्ध नहीं हैं.',
+    noAssignedVars: 'कोई उपलब्ध असाइन किए गए चर नहीं',
   },
 }
 

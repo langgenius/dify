@@ -38,7 +38,7 @@ from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProce
 from core.workflow.nodes.base import BaseNode
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
-from core.workflow.nodes.node_mapping import node_type_classes_mapping
+from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
 from extensions.ext_database import db
 from models.enums import UserFrom
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
@@ -64,7 +64,6 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
         self.submit_count -= 1
 
     def check_is_full(self) -> None:
-        print(f"submit_count: {self.submit_count}, max_submit_count: {self.max_submit_count}")
         if self.submit_count > self.max_submit_count:
             raise ValueError(f"Max submit count {self.max_submit_count} of workflow thread pool reached.")
 
@@ -228,7 +227,8 @@ class GraphEngine:
 
             # convert to specific node
             node_type = NodeType(node_config.get("data", {}).get("type"))
-            node_cls = node_type_classes_mapping[node_type]
+            node_version = node_config.get("data", {}).get("version", "1")
+            node_cls = NODE_TYPE_CLASSES_MAPPING[node_type][node_version]
 
             previous_node_id = previous_route_node_state.node_id if previous_route_node_state else None
 

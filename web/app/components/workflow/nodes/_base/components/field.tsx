@@ -9,7 +9,7 @@ import type { DefaultTFuncReturn } from 'i18next'
 import cn from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
 
-interface Props {
+type Props = {
   className?: string
   title: JSX.Element | string | DefaultTFuncReturn
   tooltip?: React.ReactNode
@@ -47,12 +47,11 @@ const Field: FC<Props> = ({
               triggerClassName='w-4 h-4 ml-1'
             />
           )}
-
         </div>
         <div className='flex'>
           {operations && <div>{operations}</div>}
           {supportFold && (
-            <RiArrowDownSLine className='w-4 h-4 text-text-tertiary cursor-pointer transform transition-transform' style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
+            <RiArrowDownSLine className='w-4 h-4 text-text-tertiary cursor-pointer transition-transform' style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
           )}
         </div>
       </div>

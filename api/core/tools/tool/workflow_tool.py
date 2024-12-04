@@ -58,11 +58,11 @@ class WorkflowTool(Tool):
             user=self._get_user(user_id),
             args={"inputs": tool_parameters, "files": files},
             invoke_from=self.runtime.invoke_from,
-            stream=False,
+            streaming=False,
             call_depth=self.workflow_call_depth + 1,
             workflow_thread_pool_id=self.thread_pool_id,
         )
-
+        assert isinstance(result, dict)
         data = result.get("data", {})
 
         if data.get("error"):

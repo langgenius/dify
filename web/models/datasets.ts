@@ -10,7 +10,7 @@ export enum DataSourceType {
 
 export type DatasetPermission = 'only_me' | 'all_team_members' | 'partial_members'
 
-export interface DataSet {
+export type DataSet = {
   id: string
   name: string
   icon: string
@@ -46,7 +46,7 @@ export interface DataSet {
   }
 }
 
-export interface ExternalAPIItem {
+export type ExternalAPIItem = {
   id: string
   tenant_id: string
   name: string
@@ -60,7 +60,7 @@ export interface ExternalAPIItem {
   created_at: string
 }
 
-export interface ExternalKnowledgeItem {
+export type ExternalKnowledgeItem = {
   id: string
   name: string
   description: string | null
@@ -78,11 +78,11 @@ export interface ExternalKnowledgeItem {
   tags: Tag[]
 }
 
-export interface ExternalAPIDeleteResponse {
+export type ExternalAPIDeleteResponse = {
   result: 'success' | 'error'
 }
 
-export interface ExternalAPIUsage {
+export type ExternalAPIUsage = {
   is_using: boolean
   count: number
 }
@@ -95,7 +95,7 @@ export type CustomFile = File & {
   created_at?: number
 }
 
-export interface CrawlOptions {
+export type CrawlOptions = {
   crawl_sub_pages: boolean
   only_main_content: boolean
   includes: string
@@ -105,20 +105,20 @@ export interface CrawlOptions {
   use_sitemap: boolean
 }
 
-export interface CrawlResultItem {
+export type CrawlResultItem = {
   title: string
   markdown: string
   description: string
   source_url: string
 }
 
-export interface FileItem {
+export type FileItem = {
   fileID: string
   file: CustomFile
   progress: number
 }
 
-export interface DataSetListResponse {
+export type DataSetListResponse = {
   data: DataSet[]
   has_more: boolean
   limit: number
@@ -126,7 +126,7 @@ export interface DataSetListResponse {
   total: number
 }
 
-export interface ExternalAPIListResponse {
+export type ExternalAPIListResponse = {
   data: ExternalAPIItem[]
   has_more: boolean
   limit: number
@@ -134,12 +134,12 @@ export interface ExternalAPIListResponse {
   total: number
 }
 
-export interface QA {
+export type QA = {
   question: string
   answer: string
 }
 
-export interface IndexingEstimateResponse {
+export type IndexingEstimateResponse = {
   tokens: number
   total_price: number
   currency: string
@@ -152,7 +152,7 @@ export type FileIndexingEstimateResponse = {
   total_nodes: number
 } & IndexingEstimateResponse
 
-export interface IndexingStatusResponse {
+export type IndexingStatusResponse = {
   id: string
   indexing_status: DocumentIndexingStatus
   processing_started_at: number
@@ -166,28 +166,33 @@ export interface IndexingStatusResponse {
   completed_segments: number
   total_segments: number
 }
-export interface IndexingStatusBatchResponse {
+export type IndexingStatusBatchResponse = {
   data: IndexingStatusResponse[]
 }
 
 export type ProcessMode = 'automatic' | 'custom'
 
-export interface ProcessRuleResponse {
+export type ProcessRuleResponse = {
   mode: ProcessMode
   rules: Rules
+  limits: Limits
 }
 
-export interface Rules {
+export type Rules = {
   pre_processing_rules: PreProcessingRule[]
   segmentation: Segmentation
 }
 
-export interface PreProcessingRule {
+export type Limits = {
+  indexing_max_segmentation_tokens_length: number
+}
+
+export type PreProcessingRule = {
   id: string
   enabled: boolean
 }
 
-export interface Segmentation {
+export type Segmentation = {
   separator: string
   max_tokens: number
   chunk_overlap: number
@@ -219,7 +224,7 @@ export const DisplayStatusList = [
 
 export type DocumentDisplayStatus = typeof DisplayStatusList[number]
 
-export interface DataSourceInfo {
+export type DataSourceInfo = {
   upload_file: {
     id: string
     name: string
@@ -237,7 +242,7 @@ export interface DataSourceInfo {
   url: string
 }
 
-export interface InitialDocumentDetail {
+export type InitialDocumentDetail = {
   id: string
   batch: string
   position: number
@@ -273,7 +278,7 @@ export type SimpleDocumentDetail = InitialDocumentDetail & {
   }
 }
 
-export interface DocumentListResponse {
+export type DocumentListResponse = {
   data: SimpleDocumentDetail[]
   has_more: boolean
   total: number
@@ -281,7 +286,7 @@ export interface DocumentListResponse {
   limit: number
 }
 
-export interface DocumentReq {
+export type DocumentReq = {
   original_document_id?: string
   indexing_technique?: string
   doc_form: 'text_model' | 'qa_model'
@@ -300,7 +305,7 @@ export type IndexingEstimateParams = DocumentReq & Partial<DataSource> & {
   dataset_id: string
 }
 
-export interface DataSource {
+export type DataSource = {
   type: DataSourceType
   info_list: {
     data_source_type: DataSourceType
@@ -316,21 +321,21 @@ export interface DataSource {
   }
 }
 
-export interface NotionInfo {
+export type NotionInfo = {
   workspace_id: string
   pages: DataSourceNotionPage[]
 }
-export interface NotionPage {
+export type NotionPage = {
   page_id: string
   type: string
 }
 
-export interface ProcessRule {
+export type ProcessRule = {
   mode: string
   rules: Rules
 }
 
-export interface createDocumentResponse {
+export type createDocumentResponse = {
   dataset?: DataSet
   batch: string
   documents: InitialDocumentDetail[]
@@ -361,7 +366,7 @@ export type FullDocumentDetail = SimpleDocumentDetail & {
   [key: string]: any
 }
 
-export interface DocMetadata {
+export type DocMetadata = {
   title: string
   language: string
   author: string
@@ -393,7 +398,7 @@ export type DocumentDetailResponse = FullDocumentDetail
 export const SEGMENT_STATUS_LIST = ['waiting', 'completed', 'error', 'indexing']
 export type SegmentStatus = typeof SEGMENT_STATUS_LIST[number]
 
-export interface SegmentsQuery {
+export type SegmentsQuery = {
   last_id?: string
   limit: number
   // status?: SegmentStatus
@@ -402,7 +407,7 @@ export interface SegmentsQuery {
   enabled?: boolean
 }
 
-export interface SegmentDetailModel {
+export type SegmentDetailModel = {
   id: string
   position: number
   document_id: string
@@ -426,14 +431,14 @@ export interface SegmentDetailModel {
   answer?: string
 }
 
-export interface SegmentsResponse {
+export type SegmentsResponse = {
   data: SegmentDetailModel[]
   has_more: boolean
   limit: number
   total: number
 }
 
-export interface HitTestingRecord {
+export type HitTestingRecord = {
   id: string
   content: string
   source: 'app' | 'hit_testing' | 'plugin'
@@ -443,13 +448,13 @@ export interface HitTestingRecord {
   created_at: number
 }
 
-export interface HitTesting {
+export type HitTesting = {
   segment: Segment
   score: number
   tsne_position: TsnePosition
 }
 
-export interface ExternalKnowledgeBaseHitTesting {
+export type ExternalKnowledgeBaseHitTesting = {
   content: string
   title: string
   score: number
@@ -459,7 +464,7 @@ export interface ExternalKnowledgeBaseHitTesting {
   }
 }
 
-export interface Segment {
+export type Segment = {
   id: string
   document: Document
   content: string
@@ -471,14 +476,14 @@ export interface Segment {
   index_node_hash: string
 }
 
-export interface Document {
+export type Document = {
   id: string
   data_source_type: string
   name: string
   doc_type: DocType
 }
 
-export interface HitTestingRecordsResponse {
+export type HitTestingRecordsResponse = {
   data: HitTestingRecord[]
   has_more: boolean
   limit: number
@@ -486,12 +491,12 @@ export interface HitTestingRecordsResponse {
   page: number
 }
 
-export interface TsnePosition {
+export type TsnePosition = {
   x: number
   y: number
 }
 
-export interface HitTestingResponse {
+export type HitTestingResponse = {
   query: {
     content: string
     tsne_position: TsnePosition
@@ -499,14 +504,14 @@ export interface HitTestingResponse {
   records: Array<HitTesting>
 }
 
-export interface ExternalKnowledgeBaseHitTestingResponse {
+export type ExternalKnowledgeBaseHitTestingResponse = {
   query: {
     content: string
   }
   records: Array<ExternalKnowledgeBaseHitTesting>
 }
 
-export interface RelatedApp {
+export type RelatedApp = {
   id: string
   name: string
   mode: AppMode
@@ -516,12 +521,12 @@ export interface RelatedApp {
   icon_url: string
 }
 
-export interface RelatedAppResponse {
+export type RelatedAppResponse = {
   data: Array<RelatedApp>
   total: number
 }
 
-export interface SegmentUpdater {
+export type SegmentUpdater = {
   content: string
   answer?: string
   keywords?: string[]
@@ -532,12 +537,12 @@ export enum DocForm {
   QA = 'qa_model',
 }
 
-export interface ErrorDocsResponse {
+export type ErrorDocsResponse = {
   data: IndexingStatusResponse[]
   total: number
 }
 
-export interface SelectedDatasetsMode {
+export type SelectedDatasetsMode = {
   allHighQuality: boolean
   allHighQualityVectorSearch: boolean
   allHighQualityFullTextSearch: boolean

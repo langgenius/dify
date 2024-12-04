@@ -528,7 +528,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     - `data` (array[object]) メッセージリスト
     - `id` (string) メッセージID
     - `conversation_id` (string) 会話ID
-    - `inputs` (array[object]) ユーザー入力パラメータ。
+    - `inputs` (object) ユーザー入力パラメータ。
     - `query` (string) ユーザー入力/質問内容。
     - `message_files` (array[object]) メッセージファイル
       - `id` (string) ID
@@ -682,16 +682,13 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
           アプリケーション内で開発者によって一意に定義される必要があります。
       </Property>
       <Property name='last_id' type='string' key='last_id'>
-          現在のページの最後のレコードのID、デフォルトはnullです。
+          (Optional)現在のページの最後のレコードのID、デフォルトはnullです。
       </Property>
       <Property name='limit' type='int' key='limit'>
-          1回のリクエストで返すレコードの数、デフォルトは最新の20件です。
-      </Property>
-      <Property name='pinned' type='bool' key='pinned'>
-        ピン留めされた会話のみを`true`として返し、ピン留めされていないもののみを`false`として返します
+          (Optional)1回のリクエストで返すレコードの数、デフォルトは最新の20件です。最大100、最小1。
       </Property>
       <Property name='sort_by' type='string' key='sort_by'>
-        ソートフィールド（オプション）、デフォルト：-updated_at（更新時間で降順にソート）
+        (Optional)ソートフィールド、デフォルト：-updated_at（更新時間で降順にソート）
         - 利用可能な値：created_at, -created_at, updated_at, -updated_at
         - フィールドの前の記号は順序または逆順を表し、"-"は逆順を表します。
       </Property>
@@ -701,9 +698,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     - `data` (array[object]) 会話のリスト
       - `id` (string) 会話ID
       - `name` (string) 会話名、デフォルトでは、ユーザーが会話で最初に尋ねた質問のスニペットです。
-      - `inputs` (array[object]) ユーザー入力パラメータ。
+      - `inputs` (object) ユーザー入力パラメータ。
       - `introduction` (string) 紹介
       - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
+      - `updated_at` (timestamp) 更新タイムスタンプ、例：1705395332
     - `has_more` (bool)
     - `limit` (int) 返されたエントリの数、入力がシステム制限を超える場合、システム制限の数を返します
 
@@ -733,7 +731,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
               "myName": "Lucy"
           },
           "status": "normal",
-          "created_at": 1679667915
+          "created_at": 1679667915,
+          "updated_at": 1679667915
         },
         {
           "id": "hSIhXBhNe8X1d8Et"
@@ -815,10 +814,10 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
     <Properties>
       <Property name='name' type='string' key='name'>
-          会話の名前。このパラメータは、`auto_generate`が`true`に設定されている場合、省略できます。
+        (Optional)会話の名前。このパラメータは、`auto_generate`が`true`に設定されている場合、省略できます。
       </Property>
       <Property name='auto_generate' type='bool' key='auto_generate'>
-        タイトルを自動生成します。デフォルトは`false`です。
+        (Optional)タイトルを自動生成します。デフォルトは`false`です。
       </Property>
       <Property name='user' type='string' key='user'>
         ユーザー識別子、開発者によって定義され、アプリケーション内で一意である必要があります。
@@ -828,13 +827,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     ### 応答
     - `id` (string) 会話ID
     - `name` (string) 会話名
-    - `inputs` array[object] ユーザー入力パラメータ。
+    - `inputs` (object) ユーザー入力パラメータ
+    - `status` (string) 会話状態
     - `introduction` (string) 紹介
     - `created_at` (timestamp) 作成タイムスタンプ、例：1705395332
+    - `updated_at` (timestamp) 更新タイムスタンプ、例：1705395332
   </Col>
   <Col sticky>
 
-    <CodeGroup title="リクエスト" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "user": "abc-123"\n}'`}>
+    <CodeGroup title="リクエスト" tag="POST" label="/conversations/:conversation_id/name" targetCode={`curl -X POST '${props.appDetail.api_base_url}/conversations/:conversation_id/name' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "name": "", \n "auto_generate": true, \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -X POST '${props.appDetail.api_base_url}/conversations/{conversation_id}/name' \
@@ -842,6 +843,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     --header 'Authorization: Bearer {api_key}' \
     --data-raw '{
         "name": "",
+        "auto_generate": true,
         "user": "abc-123"
     }'
     ```
@@ -855,7 +857,8 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         "name": "Chat vs AI",
         "inputs": {},
         "introduction": "",
-        "created_at": 1705569238
+        "created_at": 1705569238,
+        "updated_at": 1705569238
     }
     ```
     </CodeGroup>
@@ -960,13 +963,57 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     </CodeGroup>
   </Col>
 </Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='アプリケーションの基本情報を取得'
+  name='#info'
+/>
+<Row>
+  <Col>
+  このアプリケーションの基本情報を取得するために使用されます
+  ### Query
+    <Properties>
+
+   <Property name='user' type='string' key='user'>
+        ユーザー識別子、開発者のルールによって定義され、アプリケーション内で一意でなければなりません。
+    </Property>
+      </Properties>
+  ### Response
+  - `name` (string) アプリケーションの名前
+  - `description` (string) アプリケーションの説明
+  - `tags` (array[string]) アプリケーションのタグ
+  </Col>
+  <Col>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \
+      -H 'Authorization: Bearer {api_key}'
+      ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
 
 ---
 
 <Heading
   url='/parameters'
   method='GET'
-  title='アプリケーション情報を取得'
+  title='アプリケーションのパラメータ情報を取得'
   name='#parameters'
 />
 <Row>
@@ -1086,7 +1133,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 <Heading
   url='/meta'
   method='GET'
-  title='アプリケーションメタ情報を取得'
+  title='アプリケーションのメタ情報を取得'
   name='#meta'
 />
 <Row>
@@ -1120,14 +1167,14 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
     <CodeGroup title="応答">
     ```json {{ title: '応答' }}
     {
-    "tool_icons": {
+      "tool_icons": {
         "dalle2": "https://cloud.dify.ai/console/api/workspaces/current/tool-provider/builtin/dalle/icon",
         "api_tool": {
-            "background": "#252525",
-            "content": "\ud83d\ude01"
+          "background": "#252525",
+          "content": "\ud83d\ude01"
         }
+      }
     }
-  }
     ```
     </CodeGroup>
   </Col>

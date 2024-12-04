@@ -1,4 +1,3 @@
-/* eslint-disable multiline-ternary */
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
@@ -22,7 +21,7 @@ import { getNewVar } from '@/utils/var'
 import { varHighlightHTML } from '@/app/components/app/configuration/base/var-highlight'
 import Toast from '@/app/components/base/toast'
 
-const MAX_QUESTION_NUM = 5
+const MAX_QUESTION_NUM = 10
 
 export type IOpeningStatementProps = {
   value: string

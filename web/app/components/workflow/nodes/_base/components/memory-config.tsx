@@ -15,7 +15,7 @@ const i18nPrefix = 'workflow.nodes.common.memory'
 const WINDOW_SIZE_MIN = 1
 const WINDOW_SIZE_MAX = 100
 const WINDOW_SIZE_DEFAULT = 50
-interface RoleItemProps {
+type RoleItemProps = {
   readonly: boolean
   title: string
   value: string
@@ -43,7 +43,7 @@ const RoleItem: FC<RoleItemProps> = ({
   )
 }
 
-interface Props {
+type Props = {
   className?: string
   readonly: boolean
   config: { data?: Memory }
@@ -53,7 +53,7 @@ interface Props {
 
 const MEMORY_DEFAULT: Memory = {
   window: { enabled: false, size: WINDOW_SIZE_DEFAULT },
-  query_prompt_template: '',
+  query_prompt_template: '{{#sys.query#}}',
 }
 
 const MemoryConfig: FC<Props> = ({

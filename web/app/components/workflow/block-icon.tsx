@@ -21,7 +21,7 @@ import {
 } from '@/app/components/base/icons/src/vender/workflow'
 import AppIcon from '@/app/components/base/app-icon'
 
-interface BlockIconProps {
+type BlockIconProps = {
   type: BlockEnum
   size?: string
   className?: string
@@ -48,6 +48,7 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.VariableAggregator]: <VariableX className={className} />,
     [BlockEnum.Assigner]: <Assigner className={className} />,
     [BlockEnum.Tool]: <VariableX className={className} />,
+    [BlockEnum.IterationStart]: <VariableX className={className} />,
     [BlockEnum.Iteration]: <Iteration className={className} />,
     [BlockEnum.ParameterExtractor]: <ParameterExtractor className={className} />,
     [BlockEnum.DocExtractor]: <DocsExtractor className={className} />,

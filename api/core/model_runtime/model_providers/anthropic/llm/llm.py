@@ -453,7 +453,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
 
         return credentials_kwargs
 
-    def _convert_prompt_messages(self, prompt_messages: list[PromptMessage]) -> tuple[str, list[dict]]:
+    def _convert_prompt_messages(self, prompt_messages: Sequence[PromptMessage]) -> tuple[str, list[dict]]:
         """
         Convert prompt messages to dict list and system
         """
@@ -461,7 +461,15 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         first_loop = True
         for message in prompt_messages:
             if isinstance(message, SystemPromptMessage):
-                message.content = message.content.strip()
+                if isinstance(message.content, str):
+                    message.content = message.content.strip()
+                elif isinstance(message.content, list):
+                    # System prompt only support text
+                    message.content = "".join(
+                        c.data.strip() for c in message.content if isinstance(c, TextPromptMessageContent)
+                    )
+                else:
+                    raise ValueError(f"Unknown system prompt message content type {type(message.content)}")
                 if first_loop:
                     system = message.content
                     first_loop = False
@@ -475,6 +483,10 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 if isinstance(message, UserPromptMessage):
                     message = cast(UserPromptMessage, message)
                     if isinstance(message.content, str):
+                        # handle empty user prompt see #10013 #10520
+                        # responses, ignore user prompts containing only whitespace, the Claude API can't handle it.
+                        if not message.content.strip():
+                            continue
                         message_dict = {"role": "user", "content": message.content}
                         prompt_message_dicts.append(message_dict)
                     else:

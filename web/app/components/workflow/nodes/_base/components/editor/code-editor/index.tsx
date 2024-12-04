@@ -16,7 +16,7 @@ loader.config({ paths: { vs: '/vs' } })
 
 const CODE_EDITOR_LINE_HEIGHT = 18
 
-export interface Props {
+export type Props = {
   value?: string | object
   placeholder?: JSX.Element | string
   onChange?: (value: string) => void
@@ -33,6 +33,7 @@ export interface Props {
   showFileList?: boolean
   onGenerated?: (value: string) => void
   showCodeGenerator?: boolean
+  className?: string
 }
 
 export const languageMap = {
@@ -67,6 +68,7 @@ const CodeEditor: FC<Props> = ({
   showFileList,
   onGenerated,
   showCodeGenerator = false,
+  className,
 }) => {
   const [isFocus, setIsFocus] = React.useState(false)
   const [isMounted, setIsMounted] = React.useState(false)
@@ -187,7 +189,7 @@ const CodeEditor: FC<Props> = ({
   )
 
   return (
-    <div className={cn(isExpand && 'h-full')}>
+    <div className={cn(isExpand && 'h-full', className)}>
       {noWrapper
         ? <div className='relative no-wrapper' style={{
           height: isExpand ? '100%' : (editorContentHeight) / 2 + CODE_EDITOR_LINE_HEIGHT, // In IDE, the last line can always be in lop line. So there is some blank space in the bottom.

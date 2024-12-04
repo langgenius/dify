@@ -86,7 +86,7 @@ class WordExtractor(BaseExtractor):
                 image_count += 1
                 if rel.is_external:
                     url = rel.reltype
-                    response = ssrf_proxy.get(url, stream=True)
+                    response = ssrf_proxy.get(url)
                     if response.status_code == 200:
                         image_ext = mimetypes.guess_extension(response.headers["Content-Type"])
                         file_uuid = str(uuid.uuid4())
