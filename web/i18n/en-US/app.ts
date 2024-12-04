@@ -56,7 +56,7 @@ const translation = {
     forBeginners: 'FOR BEGINNERS',
     forAdvanced: 'FOR ADVANCED USERS',
     noIdeaTip: 'No ideas? Check out our templates',
-    captionName: 'App icon & name',
+    captionName: 'App Name & Icon',
     appNamePlaceholder: 'Give your app a name',
     captionDescription: 'Description',
     optional: 'Optional',
