@@ -1,0 +1,14 @@
+identity:
+  author: Aliyun
+  name: aliyun
+  label:
+    en_US: Aliyun
+    zh_Hans: 阿里云
+  description:
+    en_US: Alibaba Cloud, More Than Just Cloud http://www.alibabacloud.com
+    zh_Hans: 阿里云, 为了服务法计算的价值 http://www.aliyun.com
+  icon: aliyun.svg
+  tags:
+    - utilities
+    - productivity
+credentials_for_provider:

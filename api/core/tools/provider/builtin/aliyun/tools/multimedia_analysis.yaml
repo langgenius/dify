@@ -1,0 +1,78 @@
+identity: # 工具的基本信息
+  name: multimedia_analysis # 工具名称，唯一，不允许和其他工具重名
+  author: Aliyun # 作者
+  label: # 标签，用于前端展示
+    en_US: Aliyun multimedia analysis # 英文标签
+    zh_Hans: 阿里云多媒体分析 # 中文标签
+description: # 描述，用于前端展示
+  human: # 用于前端展示的介绍，支持多语言
+    en_US: Aliyun multimedia analysis
+    zh_Hans: 阿里云多媒体分析
+  llm: A multimedia analysis service API.
+parameters: # 参数列表
+  - name: endpoint_url # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: multimedia endpoint url # 英文标签
+      zh_Hans: 多媒体分析调用路径 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: multimedia endpoint url used for calling
+      zh_Hans: 用于多媒体分析服务调用的API路径
+    llm_description: endpoint url for aliyun multimedia analysis API service
+    form: llm
+  - name: app_id # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: app_id # 英文标签
+      zh_Hans: app id # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: app id
+      zh_Hans: app id
+    llm_description: app id
+    form: llm
+  - name: token # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: token # 英文标签
+      zh_Hans: 调用token # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: token used for calling
+      zh_Hans: 用于服务调用的token
+    llm_description: token for aliyun multimedia analysis API service
+    form: llm
+  - name: model_name # 参数名称
+    type: string # 参数类型
+    required: false # 是否必填
+    label: # 参数标签
+      en_US: model name # 英文标签
+      zh_Hans: 调用模型名 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: model name
+      zh_Hans: 调用模型名
+    llm_description: token for aliyun multimedia analysis API service
+    form: llm
+  - name: image_url # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: image url # 英文标签
+      zh_Hans: 调用的请求图片地址 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: image url used for calling
+      zh_Hans: 待分析的图片地址
+    llm_description: image url for request. 
+    form: llm
+  - name: text # 参数名称
+    type: string # 参数类型
+    required: false # 是否必填
+    label: # 参数标签
+      en_US: text # 英文标签
+      zh_Hans: 调用的请求文本 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: text used for calling
+      zh_Hans: 待分析的文本
+    llm_description: text for request. 
+    form: llm

@@ -1,0 +1,56 @@
+identity: # 工具的基本信息
+  name: qwen_vl # 工具名称，唯一，不允许和其他工具重名
+  author: Aliyun # 作者
+  label: # 标签，用于前端展示
+    en_US: Aliyun qwen vl # 英文标签
+    zh_Hans: 阿里云百炼图文大模型 # 中文标签
+description: # 描述，用于前端展示
+  human: # 用于前端展示的介绍，支持多语言
+    en_US: Aliyun dashscope vl
+    zh_Hans: 阿里云百炼图文大模型
+  llm: Aliyun qwen vl service API.
+parameters: # 参数列表
+  - name: token # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: token # 英文标签
+      zh_Hans: 调用token # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: token used for calling
+      zh_Hans: 用于服务调用的token
+    llm_description: token for aliyun bailian vl API service
+    form: llm
+  - name: model_name # 参数名称
+    type: string # 参数类型
+    required: false # 是否必填
+    label: # 参数标签
+      en_US: model name # 英文标签
+      zh_Hans: 调用模型名 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: model name, default is qwen-vl-max
+      zh_Hans: 调用模型名, 默认是qwen-vl-max
+    llm_description: token for aliyun multimedia analysis API service
+    form: llm
+  - name: images # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: images # 英文标签
+      zh_Hans: 图像列表 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: images, seperated by comma
+      zh_Hans: 图像列表, 以英文逗号做分割
+    llm_description: image list, seperated by comma
+    form: llm
+  - name: text # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: text # 英文标签
+      zh_Hans: 文本内容 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: text
+      zh_Hans: 文本内容
+    llm_description: text
+    form: llm

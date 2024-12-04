@@ -1,0 +1,45 @@
+identity: # 工具的基本信息
+  name: EAS # 工具名称，唯一，不允许和其他工具重名
+  author: Aliyun # 作者
+  label: # 标签，用于前端展示
+    en_US: Aliyun PAI EAS # 英文标签
+    zh_Hans: 阿里云PAI EAS # 中文标签
+description: # 描述，用于前端展示
+  human: # 用于前端展示的介绍，支持多语言
+    en_US: Aliyun PAI EAS
+    zh_Hans: Aliyun PAI EAS工具
+  llm: A tool for request an elastic algorithm service(EAS). Input contains endpoint url, token and query.
+parameters: # 参数列表
+  - name: eas_endpoint_url # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: eas endpoint url # 英文标签
+      zh_Hans: 调用路径 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: eas endpoint url used for calling
+      zh_Hans: 用于服务调用的API
+    llm_description: url for aliyun PAI eas service
+    form: llm
+  - name: eas_token # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: eas token # 英文标签
+      zh_Hans: 调用token # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: eas token used for calling
+      zh_Hans: 用于服务调用的token
+    llm_description: token for aliyun PAI eas service
+    form: llm
+  - name: query # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: eas query # 英文标签
+      zh_Hans: 调用的请求数据 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: eas query used for calling
+      zh_Hans: 用于服务调用的请求数据
+    llm_description: query for request, the input data format depends on the api defination. 
+    form: llm
