@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.12.1
+    image: langgenius/dify-api:0.13.0
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -210,7 +210,7 @@ services:
       SSRF_PROXY_HTTP_URL: 'http://ssrf_proxy:3128'
       SSRF_PROXY_HTTPS_URL: 'http://ssrf_proxy:3128'
       # Indexing configuration
-      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: 1000
+      INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: 4000
     depends_on:
       - db
       - redis
@@ -227,7 +227,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.12.1
+    image: langgenius/dify-api:0.13.0
     restart: always
     environment:
       CONSOLE_WEB_URL: ''
@@ -397,7 +397,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.12.1
+    image: langgenius/dify-web:0.13.0
     restart: always
     environment:
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is

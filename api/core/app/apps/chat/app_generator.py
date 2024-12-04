@@ -55,7 +55,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         user: Union[Account, EndUser],
         args: Any,
         invoke_from: InvokeFrom,
-        stream: bool = True,
+        streaming: bool = True,
     ) -> Union[dict, Generator[str, None, None]]:
         """
         Generate App response.
@@ -142,7 +142,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             invoke_from=invoke_from,
             extras=extras,
             trace_manager=trace_manager,
-            stream=stream,
+            stream=streaming,
         )
 
         # init generate records
@@ -179,7 +179,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream,
+            stream=streaming,
         )
 
         return ChatAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)

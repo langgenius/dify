@@ -48,7 +48,8 @@ class AppInfoApi(Resource):
     @validate_app_token
     def get(self, app_model: App):
         """Get app information"""
-        return {"name": app_model.name, "description": app_model.description}
+        tags = [tag.name for tag in app_model.tags]
+        return {"name": app_model.name, "description": app_model.description, "tags": tags}
 
 
 api.add_resource(AppParameterApi, "/parameters")

@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.12.1",
+  "version": "0.13.0",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -77,7 +77,6 @@
     "react-dom": "~18.2.0",
     "react-easy-crop": "^5.0.8",
     "react-error-boundary": "^4.0.2",
-    "react-headless-pagination": "^1.1.4",
     "react-hook-form": "^7.51.4",
     "react-i18next": "^12.2.0",
     "react-infinite-scroll-component": "^6.1.0",

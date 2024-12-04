@@ -354,9 +354,107 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
 ---
 
 <Heading
+  url='/text-to-audio'
+  method='POST'
+  title='文字转语音'
+  name='#audio'
+/>
+<Row>
+  <Col>
+    文字转语音。
+
+    ### Request Body
+
+    <Properties>
+      <Property name='message_id' type='str' key='text'>
+        Dify 生成的文本消息，那么直接传递生成的message-id 即可，后台会通过 message_id 查找相应的内容直接合成语音信息。如果同时传 message_id 和 text，优先使用 message_id。
+      </Property>
+      <Property name='text' type='str' key='text'>
+        语音生成内容。如果没有传 message-id的话，则会使用这个字段的内容
+      </Property>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",\n    "text": "你好Dify",\n    "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
+        "text": "你好Dify",
+        "user": "abc-123",
+        "streaming": false
+    }'
+    ```
+    
+    </CodeGroup>
+
+    <CodeGroup title="headers">
+    ```json {{ title: 'headers' }}
+    {
+      "Content-Type": "audio/wav"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/info'
+  method='GET'
+  title='获取应用基本信息'
+  name='#info'
+/>
+<Row>
+  <Col>
+  用于获取应用的基本信息
+  ### Query
+    <Properties>
+
+   <Property name='user' type='string' key='user'>
+      用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+    </Property>
+      </Properties>
+  ### Response
+  - `name` (string) 应用名称
+  - `description` (string) 应用描述
+  - `tags` (array[string]) 应用标签
+  </Col>
+  <Col>
+    <CodeGroup title="Request" tag="GET" label="/info" targetCode={`curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \\\n-H 'Authorization: Bearer {api_key}'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/info?user=abc-123' \
+      -H 'Authorization: Bearer {api_key}'
+      ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "name": "My App",
+      "description": "This is my app.",
+      "tags": [
+        "tag1",
+        "tag2"
+      ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/parameters'
   method='GET'
-  title='获取应用配置信息'
+  title='获取应用参数'
   name='#parameters'
 />
 <Row>
@@ -456,60 +554,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
           "audio_file_size_limit": 50,
           "video_file_size_limit": 100
       }
-    }
-    ```
-    </CodeGroup>
-  </Col>
-</Row>
-
----
-
-<Heading
-  url='/text-to-audio'
-  method='POST'
-  title='文字转语音'
-  name='#audio'
-/>
-<Row>
-  <Col>
-    文字转语音。
-
-    ### Request Body
-
-    <Properties>
-      <Property name='message_id' type='str' key='text'>
-        Dify 生成的文本消息，那么直接传递生成的message-id 即可，后台会通过 message_id 查找相应的内容直接合成语音信息。如果同时传 message_id 和 text，优先使用 message_id。
-      </Property>
-      <Property name='text' type='str' key='text'>
-        语音生成内容。如果没有传 message-id的话，则会使用这个字段的内容
-      </Property>
-      <Property name='user' type='string' key='user'>
-        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
-      </Property>
-    </Properties>
-  </Col>
-  <Col sticky>
-
-    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",\n    "text": "你好Dify",\n    "user": "abc-123"\n}'`}>
-
-    ```bash {{ title: 'cURL' }}
-    curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \
-    --header 'Authorization: Bearer {api_key}' \
-    --header 'Content-Type: application/json' \
-    --data-raw '{
-        "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
-        "text": "你好Dify",
-        "user": "abc-123",
-        "streaming": false
-    }'
-    ```
-    
-    </CodeGroup>
-
-    <CodeGroup title="headers">
-    ```json {{ title: 'headers' }}
-    {
-      "Content-Type": "audio/wav"
     }
     ```
     </CodeGroup>

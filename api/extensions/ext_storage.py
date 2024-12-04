@@ -5,6 +5,7 @@ from typing import Union
 from flask import Flask
 
 from configs import dify_config
+from dify_app import DifyApp
 from extensions.storage.base_storage import BaseStorage
 from extensions.storage.storage_type import StorageType
 
@@ -122,5 +123,5 @@ class Storage:
 storage = Storage()
 
 
-def init_app(app: Flask):
+def init_app(app: DifyApp):
     storage.init_app(app)
