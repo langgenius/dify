@@ -18,6 +18,7 @@ from core.workflow.graph_engine.entities.event import (
     BaseIterationEvent,
     GraphEngineEvent,
     GraphRunFailedEvent,
+    GraphRunPartialSucceededEvent,
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunExceptionEvent,
@@ -37,6 +38,7 @@ from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeSta
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
 from core.workflow.nodes.base import BaseNode
+from core.workflow.nodes.base.entities import BaseNodeData
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.enums import ErrorStrategy, FailBranchSourceHandle
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
@@ -142,8 +144,10 @@ class GraphEngine:
                 )
 
             # run graph
-            generator = stream_processor.process(self._run(start_node_id=self.graph.root_node_id))
-
+            handle_exceptions = []
+            generator = stream_processor.process(
+                self._run(start_node_id=self.graph.root_node_id, handle_exceptions=handle_exceptions)
+            )
             for item in generator:
                 try:
                     yield item
@@ -176,17 +180,23 @@ class GraphEngine:
                     logger.exception("Graph run failed")
                     yield GraphRunFailedEvent(error=str(e))
                     return
-
-            # trigger graph run success event
-            yield GraphRunSucceededEvent(outputs=self.graph_runtime_state.outputs)
+            # count exceptions to determine partial success
+            exceptions_count = len(handle_exceptions)
+            if exceptions_count > 0:
+                yield GraphRunPartialSucceededEvent(
+                    exceptions_count=exceptions_count, outputs=self.graph_runtime_state.outputs
+                )
+            else:
+                # trigger graph run success event
+                yield GraphRunSucceededEvent(outputs=self.graph_runtime_state.outputs)
             self._release_thread()
         except GraphRunFailedError as e:
-            yield GraphRunFailedEvent(error=e.error)
+            yield GraphRunFailedEvent(error=e.error, exceptions_count=exceptions_count)
             self._release_thread()
             return
         except Exception as e:
             logger.exception("Unknown Error when graph running")
-            yield GraphRunFailedEvent(error=str(e))
+            yield GraphRunFailedEvent(error=str(e), handle_exceptions=handle_exceptions)
             self._release_thread()
             raise e
 
@@ -200,6 +210,7 @@ class GraphEngine:
         in_parallel_id: Optional[str] = None,
         parent_parallel_id: Optional[str] = None,
         parent_parallel_start_node_id: Optional[str] = None,
+        handle_exceptions: list[str] = [],
     ) -> Generator[GraphEngineEvent, None, None]:
         parallel_start_node_id = None
         if in_parallel_id:
@@ -253,6 +264,7 @@ class GraphEngine:
                     parallel_start_node_id=parallel_start_node_id,
                     parent_parallel_id=parent_parallel_id,
                     parent_parallel_start_node_id=parent_parallel_start_node_id,
+                    handle_exceptions=handle_exceptions,
                 )
 
                 for item in generator:
@@ -549,6 +561,7 @@ class GraphEngine:
         parallel_start_node_id: Optional[str] = None,
         parent_parallel_id: Optional[str] = None,
         parent_parallel_start_node_id: Optional[str] = None,
+        handle_exceptions: list[str] = [],
     ) -> Generator[GraphEngineEvent, None, None]:
         """
         Run node
@@ -591,7 +604,10 @@ class GraphEngine:
                             if node_instance.should_continue_on_error:
                                 # if run failed, handle error
                                 run_result = self._handle_continue_on_error(
-                                    node_instance, item.run_result, self.graph_runtime_state.variable_pool
+                                    node_instance,
+                                    item.run_result,
+                                    self.graph_runtime_state.variable_pool,
+                                    handle_exceptions=handle_exceptions,
                                 )
                                 route_node_state.node_run_result = run_result
                                 if run_result.outputs:
@@ -768,30 +784,35 @@ class GraphEngine:
         return new_instance
 
     def _handle_continue_on_error(
-        self, node_instance: BaseNode, error_result: NodeRunResult, variable_pool: VariablePool
+        self,
+        node_instance: BaseNode[BaseNodeData],
+        error_result: NodeRunResult,
+        variable_pool: VariablePool,
+        handle_exceptions: list[str] = [],
     ) -> NodeRunResult:
         """
         handle continue on error when self._should_continue_on_error is True
 
-        Args:
-            error_result (NodeRunResult): error run result
-            variable_pool (VariablePool): variable pool
-        Returns:
-            NodeRunResult: excption run result
+
+        :param    error_result (NodeRunResult): error run result
+        :param    variable_pool (VariablePool): variable pool
+        :return:  excption run result
         """
         # add error message and error type to variable pool
         variable_pool.add([node_instance.node_id, "error_message"], error_result.error)
         variable_pool.add([node_instance.node_id, "error_type"], error_result.error_type)
-
+        # add error message to handle_exceptions
+        handle_exceptions.append(error_result.error)
         node_error_args = {
             "status": WorkflowNodeExecutionStatus.EXCEPTION,
             "error": error_result.error,
             "inputs": error_result.inputs,
         }
+
         if node_instance.node_data.error_strategy is ErrorStrategy.DEFAULT_VALUE:
             return NodeRunResult(
                 **node_error_args,
-                outputs=node_instance.node_data.default_value,
+                outputs=node_instance.node_data.default_value_dict,
             )
 
         return NodeRunResult(**node_error_args, outputs=None, edge_source_handle=FailBranchSourceHandle.FAILED)

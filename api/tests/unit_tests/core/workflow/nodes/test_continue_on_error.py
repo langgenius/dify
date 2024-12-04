@@ -1,6 +1,7 @@
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import (
+    GraphRunPartialSucceededEvent,
     GraphRunSucceededEvent,
     NodeRunExceptionEvent,
     NodeRunStreamChunkEvent,
@@ -212,15 +213,16 @@ def test_code_default_value_continue_on_error():
         "nodes": [
             {"data": {"title": "start", "type": "start", "variables": []}, "id": "start"},
             {"data": {"title": "answer", "type": "answer", "answer": "{{#node.result#}}"}, "id": "answer"},
-            ContinueOnErrorTestHelper.get_code_node(error_code, "default-value", {"result": 132123}),
+            ContinueOnErrorTestHelper.get_code_node(
+                error_code, "default-value", [{"key": "result", "type": "Number", "value": 132123}]
+            ),
         ],
     }
 
     graph_engine = ContinueOnErrorTestHelper.create_test_graph_engine(graph_config)
     events = list(graph_engine.run())
-
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
-    assert any(isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "132123"} for e in events)
+    assert any(isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {"answer": "132123"} for e in events)
     assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
 
@@ -253,7 +255,7 @@ def test_code_fail_branch_continue_on_error():
     assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
     assert any(
-        isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "node node run failed"} for e in events
+        isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {"answer": "node node run failed"} for e in events
     )
 
 
@@ -296,7 +298,9 @@ def test_http_node_default_value_continue_on_error():
         "nodes": [
             {"data": {"title": "start", "type": "start", "variables": []}, "id": "start"},
             {"data": {"title": "answer", "type": "answer", "answer": "{{#node.response#}}"}, "id": "answer"},
-            ContinueOnErrorTestHelper.get_http_node("default-value", {"response": "http node got error response"}),
+            ContinueOnErrorTestHelper.get_http_node(
+                "default-value", [{"key": "response", "type": "String", "value": "http node got error response"}]
+            ),
         ],
     }
 
@@ -305,7 +309,7 @@ def test_http_node_default_value_continue_on_error():
 
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
     assert any(
-        isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "http node got error response"}
+        isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {"answer": "http node got error response"}
         for e in events
     )
     assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
@@ -333,7 +337,9 @@ def test_http_node_fail_branch_continue_on_error():
     events = list(graph_engine.run())
 
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
-    assert any(isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "HTTP request failed"} for e in events)
+    assert any(
+        isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {"answer": "HTTP request failed"} for e in events
+    )
     assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
 
@@ -344,7 +350,9 @@ def test_tool_node_default_value_continue_on_error():
         "nodes": [
             {"data": {"title": "start", "type": "start", "variables": []}, "id": "start"},
             {"data": {"title": "answer", "type": "answer", "answer": "{{#node.result#}}"}, "id": "answer"},
-            ContinueOnErrorTestHelper.get_tool_node("default-value", {"result": "default tool result"}),
+            ContinueOnErrorTestHelper.get_tool_node(
+                "default-value", [{"key": "result", "type": "String", "value": "default tool result"}]
+            ),
         ],
     }
 
@@ -352,7 +360,9 @@ def test_tool_node_default_value_continue_on_error():
     events = list(graph_engine.run())
 
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
-    assert any(isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "default tool result"} for e in events)
+    assert any(
+        isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {"answer": "default tool result"} for e in events
+    )
     assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
 
@@ -378,7 +388,9 @@ def test_tool_node_fail_branch_continue_on_error():
     events = list(graph_engine.run())
 
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
-    assert any(isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "tool execute failed"} for e in events)
+    assert any(
+        isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {"answer": "tool execute failed"} for e in events
+    )
     assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
 
@@ -389,7 +401,9 @@ def test_llm_node_default_value_continue_on_error():
         "nodes": [
             {"data": {"title": "start", "type": "start", "variables": []}, "id": "start"},
             {"data": {"title": "answer", "type": "answer", "answer": "{{#node.answer#}}"}, "id": "answer"},
-            ContinueOnErrorTestHelper.get_llm_node("default-value", {"answer": "default LLM response"}),
+            ContinueOnErrorTestHelper.get_llm_node(
+                "default-value", [{"key": "answer", "type": "String", "value": "default LLM response"}]
+            ),
         ],
     }
 
@@ -398,7 +412,7 @@ def test_llm_node_default_value_continue_on_error():
 
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
     assert any(
-        isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "default LLM response"} for e in events
+        isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {"answer": "default LLM response"} for e in events
     )
     assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
@@ -425,7 +439,9 @@ def test_llm_node_fail_branch_continue_on_error():
     events = list(graph_engine.run())
 
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
-    assert any(isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "LLM request failed"} for e in events)
+    assert any(
+        isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {"answer": "LLM request failed"} for e in events
+    )
     assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
 
@@ -451,7 +467,9 @@ def test_status_code_error_http_node_fail_branch_continue_on_error():
     events = list(graph_engine.run())
 
     assert any(isinstance(e, NodeRunExceptionEvent) for e in events)
-    assert any(isinstance(e, GraphRunSucceededEvent) and e.outputs == {"answer": "http execute failed"} for e in events)
+    assert any(
+        isinstance(e, GraphRunPartialSucceededEvent) and e.outputs == {"answer": "http execute failed"} for e in events
+    )
     assert sum(1 for e in events if isinstance(e, NodeRunStreamChunkEvent)) == 1
 
 

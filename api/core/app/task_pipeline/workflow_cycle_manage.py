@@ -165,6 +165,55 @@ class WorkflowCycleManage:
 
         return workflow_run
 
+    def _handle_workflow_run_partial_success(
+        self,
+        workflow_run: WorkflowRun,
+        start_at: float,
+        total_tokens: int,
+        total_steps: int,
+        outputs: Mapping[str, Any] | None = None,
+        exceptions_count: int = 0,
+        conversation_id: Optional[str] = None,
+        trace_manager: Optional[TraceQueueManager] = None,
+    ) -> WorkflowRun:
+        """
+        Workflow run success
+        :param workflow_run: workflow run
+        :param start_at: start time
+        :param total_tokens: total tokens
+        :param total_steps: total steps
+        :param outputs: outputs
+        :param conversation_id: conversation id
+        :return:
+        """
+        workflow_run = self._refetch_workflow_run(workflow_run.id)
+
+        outputs = WorkflowEntry.handle_special_values(outputs)
+
+        workflow_run.status = WorkflowRunStatus.PARTIAL_SUCCESSED.value
+        workflow_run.outputs = json.dumps(outputs or {})
+        workflow_run.elapsed_time = time.perf_counter() - start_at
+        workflow_run.total_tokens = total_tokens
+        workflow_run.total_steps = total_steps
+        workflow_run.finished_at = datetime.now(UTC).replace(tzinfo=None)
+        workflow_run.exceptions_count = exceptions_count
+        db.session.commit()
+        db.session.refresh(workflow_run)
+
+        if trace_manager:
+            trace_manager.add_trace_task(
+                TraceTask(
+                    TraceTaskName.WORKFLOW_TRACE,
+                    workflow_run=workflow_run,
+                    conversation_id=conversation_id,
+                    user_id=trace_manager.user_id,
+                )
+            )
+
+        db.session.close()
+
+        return workflow_run
+
     def _handle_workflow_run_failed(
         self,
         workflow_run: WorkflowRun,
@@ -338,7 +387,11 @@ class WorkflowCycleManage:
         )
         db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.id == workflow_node_execution.id).update(
             {
-                WorkflowNodeExecution.status: WorkflowNodeExecutionStatus.FAILED.value,
+                WorkflowNodeExecution.status: (
+                    WorkflowNodeExecutionStatus.FAILED.value
+                    if not isinstance(event, QueueNodeExceptionEvent)
+                    else WorkflowNodeExecutionStatus.EXCEPTION.value
+                ),
                 WorkflowNodeExecution.error: event.error,
                 WorkflowNodeExecution.inputs: json.dumps(inputs) if inputs else None,
                 WorkflowNodeExecution.process_data: json.dumps(event.process_data) if event.process_data else None,
@@ -352,12 +405,11 @@ class WorkflowCycleManage:
         db.session.commit()
         db.session.close()
         process_data = WorkflowEntry.handle_special_values(event.process_data)
-        status = (
+        workflow_node_execution.status = (
             WorkflowNodeExecutionStatus.FAILED.value
             if not isinstance(event, QueueNodeExceptionEvent)
             else WorkflowNodeExecutionStatus.EXCEPTION.value
         )
-        workflow_node_execution.status = status
         workflow_node_execution.error = event.error
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
         workflow_node_execution.process_data = json.dumps(process_data) if process_data else None
@@ -438,6 +490,7 @@ class WorkflowCycleManage:
                 created_at=int(workflow_run.created_at.timestamp()),
                 finished_at=int(workflow_run.finished_at.timestamp()),
                 files=self._fetch_files_from_node_outputs(workflow_run.outputs_dict),
+                exceptions_count=workflow_run.exceptions_count,
             ),
         )
 

@@ -25,6 +25,7 @@ class QueueEvent(StrEnum):
     WORKFLOW_STARTED = "workflow_started"
     WORKFLOW_SUCCEEDED = "workflow_succeeded"
     WORKFLOW_FAILED = "workflow_failed"
+    WORKFLOW_PARTIAL_SUCCEEDED = "workflow_partial_succeeded"
     ITERATION_START = "iteration_start"
     ITERATION_NEXT = "iteration_next"
     ITERATION_COMPLETED = "iteration_completed"
@@ -250,6 +251,17 @@ class QueueWorkflowFailedEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.WORKFLOW_FAILED
     error: str
+    exceptions_count: int
+
+
+class QueueWorkflowPartialSuccessEvent(AppQueueEvent):
+    """
+    QueueWorkflowFailedEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.WORKFLOW_PARTIAL_SUCCEEDED
+    exceptions_count: int
+    outputs: Optional[dict[str, Any]] = None
 
 
 class QueueNodeStartedEvent(AppQueueEvent):

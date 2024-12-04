@@ -24,12 +24,12 @@ class NodeType(StrEnum):
     LIST_OPERATOR = "list-operator"
 
 
-class ErrorStrategy(str, Enum):
+class ErrorStrategy(StrEnum):
     FAIL_BRANCH = "fail-branch"
     DEFAULT_VALUE = "default-value"
 
 
-class FailBranchSourceHandle(str, Enum):
+class FailBranchSourceHandle(StrEnum):
     FAILED = "fail-branch"
     SUCCESS = "success-branch"
 

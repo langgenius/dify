@@ -32,6 +32,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
+    QueueWorkflowPartialSuccessEvent,
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
@@ -376,6 +377,29 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     total_steps=graph_runtime_state.node_run_steps,
                     outputs=event.outputs,
                     conversation_id=self._conversation.id,
+                    trace_manager=trace_manager,
+                )
+
+                yield self._workflow_finish_to_stream_response(
+                    task_id=self._application_generate_entity.task_id, workflow_run=workflow_run
+                )
+
+                self._queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
+            elif isinstance(event, QueueWorkflowPartialSuccessEvent):
+                if not workflow_run:
+                    raise Exception("Workflow run not initialized.")
+
+                if not graph_runtime_state:
+                    raise Exception("Graph runtime state not initialized.")
+
+                workflow_run = self._handle_workflow_run_partial_success(
+                    workflow_run=workflow_run,
+                    start_at=graph_runtime_state.start_at,
+                    total_tokens=graph_runtime_state.total_tokens,
+                    total_steps=graph_runtime_state.node_run_steps,
+                    outputs=event.outputs,
+                    exceptions_count=event.exceptions_count,
+                    conversation_id=None,
                     trace_manager=trace_manager,
                 )
 
