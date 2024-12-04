@@ -1,15 +1,6 @@
 from typing import Optional
-
 import boto3
 from botocore.config import Config
-from botocore.exceptions import (
-    ClientError,
-    EndpointConnectionError,
-    NoRegionError,
-    ServiceNotInRegionError,
-    UnknownServiceError,
-)
-
 from core.model_runtime.entities.rerank_entities import RerankDocument, RerankResult
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
