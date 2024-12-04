@@ -79,6 +79,8 @@ const translation = {
   runDetail: {
     title: '对话日志',
     workflowTitle: '日志详情',
+    fileListLabel: '文件列表',
+    fileListDetail: '详情',
   },
   promptLog: 'Prompt 日志',
   agentLog: 'Agent 日志',

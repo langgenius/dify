@@ -38,7 +38,7 @@ const ResultText: FC<ResultTextProps> = ({
           </StatusContainer>
         </div>
       )}
-      {!isRunning && !outputs && !error && (
+      {!isRunning && !outputs && !error && !allFiles?.length && (
         <div className='mt-[120px] px-4 py-2 flex flex-col items-center text-[13px] leading-[18px] text-gray-500'>
           <ImageIndentLeft className='w-6 h-6 text-gray-400' />
           <div className='mr-2'>{t('runLog.resultEmpty.title')}</div>
@@ -49,9 +49,9 @@ const ResultText: FC<ResultTextProps> = ({
           </div>
         </div>
       )}
-      {outputs && (
+      {(outputs || !!allFiles?.length) && (
         <div className='px-4 py-2'>
-          <Markdown content={outputs} />
+          {outputs && <Markdown content={outputs} />}
           {!!allFiles?.length && (
             <FileList
               files={allFiles}

@@ -27,15 +27,15 @@ const ResultTab = ({
     onCurrentTabChange(tab)
   }
   useEffect(() => {
-    if (data?.resultText)
+    if (data?.resultText || !!data?.files?.length)
       switchTab('RESULT')
     else
       switchTab('DETAIL')
-  }, [data?.resultText])
+  }, [data?.files?.length, data?.resultText])
 
   return (
     <div className='grow relative flex flex-col'>
-      {data?.resultText && (
+      {(data?.resultText || !!data?.files?.length) && (
         <div className='shrink-0 flex items-center mb-2 border-b-[0.5px] border-[rgba(0,0,0,0.05)]'>
           <div
             className={cn(
@@ -56,7 +56,7 @@ const ResultTab = ({
       <div className={cn('grow bg-white')}>
         {currentTab === 'RESULT' && (
           <>
-            <Markdown content={data?.resultText || ''} />
+            {data?.resultText && <Markdown content={data?.resultText || ''} />}
             {!!data?.files?.length && (
               <FileList
                 files={data?.files}

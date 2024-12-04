@@ -79,6 +79,8 @@ const translation = {
   runDetail: {
     title: 'Conversation Log',
     workflowTitle: 'Log Detail',
+    fileListLabel: 'File List',
+    fileListDetail: 'Detail',
   },
   promptLog: 'Prompt Log',
   agentLog: 'Agent Log',

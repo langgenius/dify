@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RiArrowRightSLine } from '@remixicon/react'
 import FileImageRender from './file-image-render'
 import FileTypeIcon from './file-type-icon'
@@ -16,18 +17,18 @@ type Props = {
 }
 
 const FileListInLog = ({ fileList }: Props) => {
+  const { t } = useTranslation()
   const [expanded, setExpanded] = useState(false)
-
   if (!fileList.length)
     return null
   return (
     <div className={cn('border-t border-divider-subtle px-3 py-2', expanded && 'py-3')}>
       <div className='flex justify-between gap-1'>
         {expanded && (
-          <div></div>
+          <div className='text-text-tertiary system-xs-medium-uppercase'>{t('appLog.runDetail.fileListLabel')}</div>
         )}
         {!expanded && (
-          <div className='flex'>
+          <div className='flex gap-1'>
             {fileList.map((file) => {
               const { id, name, type, supportFileType, base64Url, url } = file
               const isImageFile = supportFileType === SupportUploadFileTypes.image
@@ -63,7 +64,7 @@ const FileListInLog = ({ fileList }: Props) => {
           </div>
         )}
         <div className='flex items-center gap-1 cursor-pointer' onClick={() => setExpanded(!expanded)}>
-          {!expanded && <div className='text-text-tertiary system-xs-medium-uppercase'>DETAIL</div>}
+          {!expanded && <div className='text-text-tertiary system-xs-medium-uppercase'>{t('appLog.runDetail.fileListDetail')}</div>}
           <RiArrowRightSLine className={cn('w-4 h-4 text-text-tertiary', expanded && 'rotate-90')} />
         </div>
       </div>

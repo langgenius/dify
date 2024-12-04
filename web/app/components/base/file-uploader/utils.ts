@@ -162,7 +162,7 @@ export const getFilesInLogs = (rawData: any) => {
     if (typeof rawData[key] === 'object' || Array.isArray(rawData[key]))
       return rawData[key]
     return undefined
-  }).filter(Boolean)).filter(item => item?.model_identity === '__dify__file__')
+  }).filter(Boolean)).filter(item => item?.dify_model_identity === '__dify__file__')
   return getProcessedFilesFromResponse(originalFiles)
 }
 
