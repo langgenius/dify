@@ -9,6 +9,7 @@ import {
 } from 'reactflow'
 import { RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { ChatVarType } from './type'
 import { useStore } from '@/app/components/workflow/store'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { BubbleX, LongArrowLeft, LongArrowRight } from '@/app/components/base/icons/src/vender/line/others'
@@ -64,6 +65,10 @@ const ChatVariablePanel = () => {
   }, [getEffectedNodes, store])
 
   const handleEdit = (chatVar: ConversationVariable) => {
+    // set empty object to be editable
+    if (chatVar.value_type === ChatVarType.Object && JSON.stringify(chatVar.value) === '{}')
+      chatVar.value = { '': '' }
+
     setCurrentVar(chatVar)
     setShowVariableModal(true)
   }
