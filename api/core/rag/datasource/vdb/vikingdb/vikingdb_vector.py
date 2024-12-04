@@ -120,12 +120,12 @@ class VikingDBVector(BaseVector):
 
         for i, page_content in enumerate(page_contents):
             metadata = {}
-            if metadatas is not None:
-                for key, val in metadatas[i].items():
-                    metadata[key] = val
+            for key, val in (metadatas[i] or {}).items():
+                metadata[key] = val
+            value: Any = metadata[i].get("doc_id") if metadata[i] is not None else None
             doc = Data(
                 {
-                    vdb_Field.PRIMARY_KEY.value: metadatas[i]["doc_id"],
+                    vdb_Field.PRIMARY_KEY.value: value,
                     vdb_Field.VECTOR.value: embeddings[i] if embeddings else None,
                     vdb_Field.CONTENT_KEY.value: page_content,
                     vdb_Field.METADATA_KEY.value: json.dumps(metadata),

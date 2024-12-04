@@ -3,7 +3,7 @@ from typing import cast
 
 import httpx
 from flask_login import current_user  # type: ignore
-from flask_restful import Resource, marshal_with  # type: ignore
+from flask_restful import Resource, marshal_with, reqparse  # type: ignore
 
 import services
 from controllers.common import helpers

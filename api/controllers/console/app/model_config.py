@@ -1,4 +1,5 @@
 import json
+from typing import cast
 
 from flask import request
 from flask_login import current_user  # type: ignore
@@ -26,7 +27,9 @@ class ModelConfigResource(Resource):
         """Modify app model config"""
         # validate config
         model_configuration = AppModelConfigService.validate_configuration(
-            tenant_id=current_user.current_tenant_id, config=request.json, app_mode=AppMode.value_of(app_model.mode)
+            tenant_id=current_user.current_tenant_id,
+            config=cast(dict, request.json),
+            app_mode=AppMode.value_of(app_model.mode),
         )
 
         new_app_model_config = AppModelConfig(
@@ -41,6 +44,8 @@ class ModelConfigResource(Resource):
             original_app_model_config = (
                 db.session.query(AppModelConfig).filter(AppModelConfig.id == app_model.app_model_config_id).first()
             )
+            if original_app_model_config is None:
+                raise ValueError("Original app model config not found")
             agent_mode = original_app_model_config.agent_mode_dict
             # decrypt agent tool parameters if it's secret-input
             parameter_map = {}

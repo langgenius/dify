@@ -107,7 +107,8 @@ class WeaviateVector(BaseVector):
             for i, text in enumerate(texts):
                 data_properties = {Field.TEXT_KEY.value: text}
                 if metadatas is not None:
-                    for key, val in metadatas[i].items():
+                    # metadata maybe None
+                    for key, val in (metadatas[i] or {}).items():
                         data_properties[key] = self._json_serializable(val)
 
                 batch.add_data_object(

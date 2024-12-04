@@ -129,7 +129,7 @@ class OAuthCallback(Resource):
 
 
 def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Optional[Account]:
-    account = Account.get_by_openid(provider, user_info.id)
+    account: Optional[Account] = Account.get_by_openid(provider, user_info.id)
 
     if not account:
         account = Account.query.filter_by(email=user_info.email).first()

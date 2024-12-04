@@ -9,7 +9,7 @@ import tempfile
 import unicodedata
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Optional, cast
+from typing import Any, Literal, Optional, cast
 from urllib.parse import unquote
 
 import chardet
@@ -125,7 +125,7 @@ def extract_using_readabilipy(html):
     os.unlink(article_json_path)
     os.unlink(html_path)
 
-    article_json = {
+    article_json: dict[str, Any] = {
         "title": None,
         "byline": None,
         "date": None,
@@ -300,7 +300,7 @@ def strip_control_characters(text):
 
 def normalize_unicode(text):
     """Normalize unicode such that things that are visually equivalent map to the same unicode string where possible."""
-    normal_form = "NFKC"
+    normal_form: Literal["NFC", "NFD", "NFKC", "NFKD"] = "NFKC"
     text = unicodedata.normalize(normal_form, text)
     return text
 
@@ -332,6 +332,7 @@ def add_content_digest(element):
 
 
 def content_digest(element):
+    digest: Any
     if is_text(element):
         # Hash
         trimmed_string = element.string.strip()

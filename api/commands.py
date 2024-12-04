@@ -285,8 +285,7 @@ def migrate_knowledge_vector_database():
     while True:
         try:
             datasets = (
-                db.session.query(Dataset)
-                .filter(Dataset.indexing_technique == "high_quality")
+                Dataset.query.filter(Dataset.indexing_technique == "high_quality")
                 .order_by(Dataset.created_at.desc())
                 .paginate(page=page, per_page=50)
             )

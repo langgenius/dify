@@ -21,7 +21,11 @@ class InstalledAppsListApi(Resource):
     @marshal_with(installed_app_list_fields)
     def get(self):
         current_tenant_id = current_user.current_tenant_id
-        installed_apps = db.session.query(InstalledApp).filter(InstalledApp.tenant_id == current_tenant_id).all()
+        installed_apps_from_db = (
+            db.session.query(InstalledApp).filter(InstalledApp.tenant_id == current_tenant_id).all()
+        )
+        if not installed_apps_from_db:
+            return {"installed_apps": []}
 
         current_user.role = TenantService.get_user_role(current_user, current_user.current_tenant)
         installed_apps = [
@@ -34,7 +38,7 @@ class InstalledAppsListApi(Resource):
                 "editable": current_user.role in {"owner", "admin"},
                 "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id,
             }
-            for installed_app in installed_apps
+            for installed_app in installed_apps_from_db
             if installed_app.app is not None
         ]
         installed_apps.sort(
