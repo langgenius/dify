@@ -57,7 +57,7 @@ import Divider from '@/app/components/base/divider'
 import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument, useFetchDefaultProcessRule, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/knowledge/use-create-dataset'
 import Loading from '@/app/components/base/loading'
 import Badge from '@/app/components/base/badge'
-import { SkeletonCircle, SkeletonContanier, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import { SkeletonContanier, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className='text-text-secondary text-xs font-semibold leading-none'>{props.children}</label>
@@ -967,7 +967,7 @@ const StepTwo = ({
                 <SkeletonContanier key={i}>
                   <SkeletonRow>
                     <SkeletonRectangle className="w-20" />
-                    <SkeletonCircle />
+                    <SkeletonPoint />
                     <SkeletonRectangle className="w-24" />
                   </SkeletonRow>
                   <SkeletonRectangle className="w-full" />

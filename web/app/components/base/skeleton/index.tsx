@@ -7,7 +7,7 @@ export const SkeletonRow = twc.div`flex items-center gap-2`
 
 export const SkeletonRectangle = twc.div`h-2 rounded-sm opacity-20 bg-text-tertiary my-1`
 
-export const SkeletonCircle: FC = () =>
+export const SkeletonPoint: FC = () =>
   <div className='text-text-quaternary text-xs font-medium'>·</div>
 
 /** Usage
