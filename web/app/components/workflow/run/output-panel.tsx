@@ -7,6 +7,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { FileList } from '@/app/components/base/file-uploader'
 import StatusContainer from '@/app/components/workflow/run/status-container'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 
 type OutputPanelProps = {
   isRunning?: boolean
@@ -43,7 +44,7 @@ const OutputPanel: FC<OutputPanelProps> = ({
         fileList.push(outputs[key])
       }
     }
-    return fileList
+    return getProcessedFilesFromResponse(fileList)
   }, [outputs])
   return (
     <div className='py-2'>
