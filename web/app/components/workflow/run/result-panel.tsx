@@ -19,6 +19,7 @@ type ResultPanelProps = {
   finished_at?: number
   steps?: number
   showSteps?: boolean
+  exceptionCounts?: number
 }
 
 const ResultPanel: FC<ResultPanelProps> = ({
@@ -33,6 +34,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   created_by,
   steps,
   showSteps,
+  exceptionCounts,
 }) => {
   const { t } = useTranslation()
   return (
@@ -43,6 +45,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
           time={elapsed_time}
           tokens={total_tokens}
           error={error}
+          exceptionCounts={exceptionCounts}
         />
       </div>
       <div className='px-4 py-2 flex flex-col gap-2'>

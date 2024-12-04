@@ -69,7 +69,7 @@ const NextStep = ({
         items.push({
           branch: {
             id: ErrorHandleTypeEnum.failBranch,
-            name: 'ON FAILURE',
+            name: t('workflow.common.onFailure'),
           },
           nextNodes,
         })

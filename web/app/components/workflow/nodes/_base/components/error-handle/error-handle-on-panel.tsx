@@ -1,4 +1,5 @@
 import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Collapse from '../collapse'
 import { ErrorHandleTypeEnum } from './types'
 import ErrorHandleTypeSelector from './error-handle-type-selector'
@@ -20,6 +21,7 @@ const ErrorHandle = ({
   id,
   data,
 }: ErrorHandleProps) => {
+  const { t } = useTranslation()
   const { error_strategy, default_value } = data
   const {
     collapsed,
@@ -50,7 +52,9 @@ const ErrorHandle = ({
           onCollapse={setCollapsed}
           trigger={
             <div className='grow flex items-center justify-between pr-4'>
-              <div className='system-sm-semibold-uppercase text-text-secondary'>ERROR HANDLING</div>
+              <div className='system-sm-semibold-uppercase text-text-secondary'>
+                {t('workflow.nodes.common.errorHandle.title')}
+              </div>
               <ErrorHandleTypeSelector
                 value={error_strategy || ErrorHandleTypeEnum.none}
                 onSelected={getHandleErrorHandleTypeChange(data)}

@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next'
 import { NodeSourceHandle } from '../node-handle'
 import { ErrorHandleTypeEnum } from './types'
 import type { Node } from '@/app/components/workflow/types'
@@ -9,6 +10,7 @@ const ErrorHandleOnNode = ({
   id,
   data,
 }: ErrorHandleOnNodeProps) => {
+  const { t } = useTranslation()
   const { error_strategy } = data
 
   if (!error_strategy)
@@ -20,19 +22,21 @@ const ErrorHandleOnNode = ({
         'relative flex items-center justify-between px-[5px] h-6 bg-workflow-block-parma-bg rounded-md',
         data._runningStatus === NodeRunningStatus.Exception && 'border-[0.5px] border-components-badge-status-light-warning-halo bg-state-warning-hover',
       )}>
-        <div className='system-xs-medium-uppercase text-text-tertiary'>on failure</div>
+        <div className='system-xs-medium-uppercase text-text-tertiary'>
+          {t('workflow.common.onFailure')}
+        </div>
         <div className={cn(
           'system-xs-medium text-text-secondary',
           data._runningStatus === NodeRunningStatus.Exception && 'text-text-warning',
         )}>
           {
             error_strategy === ErrorHandleTypeEnum.defaultValue && (
-              'Output Default Value'
+              t('workflow.nodes.common.errorHandle.defaultValue.output')
             )
           }
           {
             error_strategy === ErrorHandleTypeEnum.failBranch && (
-              'Fail Branch'
+              t('workflow.nodes.common.errorHandle.failBranch.title')
             )
           }
         </div>

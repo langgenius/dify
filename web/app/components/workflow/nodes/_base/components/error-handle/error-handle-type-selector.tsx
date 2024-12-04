@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   RiArrowDownSLine,
   RiCheckLine,
@@ -19,22 +20,23 @@ const ErrorHandleTypeSelector = ({
   value,
   onSelected,
 }: ErrorHandleTypeSelectorProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const options = [
     {
       value: ErrorHandleTypeEnum.none,
-      label: 'None',
-      description: 'The node will stop running if an exception occurs and is not handled',
+      label: t('workflow.nodes.common.errorHandle.none.title'),
+      description: t('workflow.nodes.common.errorHandle.none.desc'),
     },
     {
       value: ErrorHandleTypeEnum.defaultValue,
-      label: 'Default Value',
-      description: 'When an error occurs, specify a static output content',
+      label: t('workflow.nodes.common.errorHandle.defaultValue.title'),
+      description: t('workflow.nodes.common.errorHandle.defaultValue.desc'),
     },
     {
       value: ErrorHandleTypeEnum.failBranch,
-      label: 'Fail Branch',
-      description: 'When an error occurs, it will execute the exception branch',
+      label: t('workflow.nodes.common.errorHandle.failBranch.title'),
+      description: t('workflow.nodes.common.errorHandle.failBranch.desc'),
     },
   ]
   const selectedOption = options.find(option => option.value === value)
@@ -70,14 +72,14 @@ const ErrorHandleTypeSelector = ({
                   setOpen(false)
                 }}
               >
-                <div className='mr-1 w-4'>
+                <div className='mr-1 w-4 shrink-0'>
                   {
                     value === option.value && (
                       <RiCheckLine className='w-4 h-4 text-text-accent' />
                     )
                   }
                 </div>
-                <div>
+                <div className='grow'>
                   <div className='mb-0.5 system-sm-semibold text-text-secondary'>{option.label}</div>
                   <div className='system-xs-regular text-text-tertiary'>{option.description}</div>
                 </div>

@@ -63,7 +63,7 @@ const Add = ({
 
   const tip = useMemo(() => {
     if (isFailBranch)
-      return 'Add Fail Branch'
+      return t('workflow.common.addFailureBranch')
 
     if (isParallel)
       return t('workflow.common.addParallelNode')
