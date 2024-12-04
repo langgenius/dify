@@ -99,7 +99,7 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
       try {
         return JSON.parse(String(children).replace(/\n$/, ''))
       }
-      catch (error) {}
+      catch (error) { }
     }
     return JSON.parse('{"title":{"text":"ECharts error - Wrong JSON format."}}')
   }, [language, children])
@@ -157,7 +157,7 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
       >
         <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
         <div style={{ display: 'flex' }}>
-          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG}/>}
+          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
           <CopyBtn
             className='mr-1'
             value={String(children).replace(/\n$/, '')}
@@ -237,7 +237,7 @@ export function Markdown(props: { content: string; className?: string }) {
           () => {
             return (tree) => {
               const iterate = (node: any) => {
-                if (node.type === 'element' && !node.properties?.src && node.properties?.ref && node.properties.ref.startsWith('{') && node.properties.ref.endsWith('}'))
+                if (node.type === 'element' && node.properties?.ref)
                   delete node.properties.ref
 
                 if (node.children)
