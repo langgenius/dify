@@ -80,7 +80,7 @@ const FileItem = ({
           }
         </div>
         {
-          showDownloadAction && (
+          showDownloadAction && url && (
             <ActionButton
               size='m'
               className='hidden group-hover/file-item:flex absolute -right-1 -top-1'

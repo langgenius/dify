@@ -173,7 +173,8 @@ const InputVarList: FC<Props> = ({
                   value={varInput?.type === VarKindType.constant ? (varInput?.value || '') : (varInput?.value || [])}
                   onChange={handleNotMixedTypeChange(variable)}
                   onOpen={handleOpen(index)}
-                  defaultVarKindType={VarKindType.variable}
+                  defaultVarKindType={isNumber ? VarKindType.constant : VarKindType.variable}
+                  isSupportConstantValue={isSupportConstantValue}
                   filterVar={isNumber ? filterVar : undefined}
                   availableVars={isSelect ? availableVars : undefined}
                   schema={schema}

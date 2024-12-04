@@ -70,6 +70,8 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         {"prefix": "cohere.command-r", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "amazon.titan", "support_system_prompts": False, "support_tool_use": False},
         {"prefix": "ai21.jamba-1-5", "support_system_prompts": True, "support_tool_use": False},
+        {"prefix": "amazon.nova", "support_system_prompts": True, "support_tool_use": False},
+        {"prefix": "us.amazon.nova", "support_system_prompts": True, "support_tool_use": False},
     ]
 
     @staticmethod
