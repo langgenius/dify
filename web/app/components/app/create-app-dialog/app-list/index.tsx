@@ -166,7 +166,7 @@ const Apps = ({
         <div className='w-[180px] text-center'>
           <span className='title-xl-semi-bold text-text-primary'>{t('app.newApp.startFromTemplate')}</span>
         </div>
-        <div className='flex-1 max-w-[548px] p-1.5 flex items-center rounded-xl bg-components-panel-bg-blur border border-components-panel-border'>
+        <div className='flex-1 max-w-[548px] p-1.5 flex items-center rounded-xl shadow-md bg-components-panel-bg-blur border border-components-panel-border'>
           <AppTypeSelector value={currentType} onChange={setCurrentType} />
           <div className='h-[14px]'>
             <Divider type='vertical' />

@@ -45,7 +45,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className='z-[1002]'>
-          <ul className='relative p-1 w-[240px] bg-components-panel-bg-blur rounded-xl shadow-lg border border-components-panel-border'>
+          <ul className='relative p-1 w-[240px] bg-components-panel-bg-blur backdrop-blur-[5px] rounded-xl shadow-lg border border-components-panel-border'>
             {allTypes.map(mode => (
               <AppTypeSelectorItem key={mode} type={mode}
                 checked={Boolean(value.length > 0 && value?.indexOf(mode) !== -1)}
@@ -71,11 +71,9 @@ function AppTypeSelectTrigger({ values }: { values: AppSelectorProps['value'] })
     return <div className={cn(
       'flex items-center justify-between gap-1 h-8',
     )}>
-      <RiFilter3Line className='w-4 h-4' />
-      <div className='flex-1 min-w-[65px] text-center system-sm-medium text-text-tertiary'>{t('app.typeSelector.all')}</div>
-      <div className='w-4 h-4 p-[1px]'>
-        <RiArrowDownSLine className='w-4 h-4' />
-      </div>
+      <RiFilter3Line className='w-4 h-4 text-text-tertiary' />
+      <div className='grow min-w-[65px] text-center system-sm-medium text-text-tertiary'>{t('app.typeSelector.all')}</div>
+      <RiArrowDownSLine className='w-4 h-4 text-text-tertiary' />
     </div>
   }
   if (values.length === 1) {
@@ -102,7 +100,7 @@ type AppTypeSelectorItemProps = {
 }
 function AppTypeSelectorItem({ checked, type, onClick }: AppTypeSelectorItemProps) {
   return <li className='flex items-center space-x-2 pl-2 py-1 pr-1 rounded-lg cursor-pointer hover:bg-state-base-hover' onClick={onClick}>
-    <Checkbox checked={checked} />
+    <Checkbox checked={checked} className='bg-components-checkbox-bg-unchecked' />
     <AppTypeIcon type={type} />
     <div className='grow p-1 pl-0'>
       <AppTypeLabel type={type} className="system-sm-medium text-components-menu-item-text" />
