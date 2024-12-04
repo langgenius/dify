@@ -10,13 +10,13 @@ from core.workflow.nodes.enums import ErrorStrategy
 
 
 class DefaultValueType(StrEnum):
-    STRING = "String"
-    NUMBER = "Number"
-    OBJECT = "Object"
-    ARRAY_NUMBER = "Array[Number]"
-    ARRAY_STRING = "Array[String]"
-    ARRAY_OBJECT = "Array[Object]"
-    ARRAY_FILES = "Array[File]"
+    STRING = "string"
+    NUMBER = "number"
+    OBJECT = "object"
+    ARRAY_NUMBER = "array[number]"
+    ARRAY_STRING = "array[string]"
+    ARRAY_OBJECT = "array[object]"
+    ARRAY_FILES = "array[file]"
 
 
 NumberType = Union[int, float]
